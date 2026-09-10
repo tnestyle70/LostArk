@@ -1423,7 +1423,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1471,6 +1471,51 @@ function Read-WorldSequenceDocument {
                     if ($resource.diffuseTextureAssetId -isnot [string]) { throw 'World object diffuse path must be a string' }
                     if ($resource.diffuseTextureAssetId -ne '') { Assert-SequenceAssetPath $resource.diffuseTextureAssetId $false }
                 }
+            }
+            if ($null -ne $resource.PSObject.Properties['materialProfile']) {
+                if ($alias) { throw 'World object sequence alias cannot own a material profile' }
+                $material = $resource.materialProfile
+                Assert-ExactJsonProperties $material @('materialName','sourceMaterial','family','parameters','textures') 'World object material'
+                if ($material.materialName -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($material.materialName) -notin 1..63 -or
+                    $material.sourceMaterial -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($material.sourceMaterial) -notin 1..512 -or
+                    $material.materialName -match '[\x00-\x1f\x7f]' -or $material.sourceMaterial -match '[\x00-\x1f\x7f]' -or
+                    $material.family -cne 'source.character.monster-pbr-masked.v1') {
+                    throw 'World object material identity or native family is invalid'
+                }
+                # Exact named inputs of the selected native Base/Light pair, program 21.
+                $parameterNames = @('1.use_dyeing_sp','1.use_emissive_flickerspeed_fixed','beckmannspecular_constant_max','buffcolor','constantoutline','constantoutline_blink','constantoutline_color','diffusecolor','emissive_color','emissive_flicker_speed','emissive_intensity','emissive_intensitymin','fresnel_radius','fresnel_rimlightintensity','fx_color_desaturation_actiontool','fx_color_desaturation_buffsettool','fx_color_intensity_actiontool','fx_color_intensity_buffsettool','hit_color','ibl_color_bottom','ibl_color_top','ibl_exposer','ibl_intensity','ibl_normal_smooth','ibl_reflect_lodbias','metalicness_power','normaltex_intensity','orennayar','orennayar_brightness','pbr_specular_intensity','pbr_specular_power','roughness_power','selectioncolor','shadowfactor','specular_power_limit','state','state_noise','trans_rim_hard','trans_rim_inradius','transcolor','transcolor_rimlight ')
+                Assert-ExactJsonProperties $material.parameters $parameterNames 'World object native material parameters'
+                foreach ($name in $parameterNames) {
+                    $value = $material.parameters.$name
+                    if ($value -is [array]) {
+                        if ($value.Count -ne 4) { throw "Invalid native material vector: $name" }
+                        $values = $value
+                    } else { $values = @($value) }
+                    foreach ($component in $values) {
+                        if (-not (Test-JsonNumber $component) -or [Math]::Abs([double]$component) -gt 1000000) {
+                            throw "Invalid native material parameter: $name"
+                        }
+                    }
+                }
+                if ($material.textures -isnot [array] -or $material.textures.Count -ne 8) {
+                    throw 'World object native material requires eight texture expressions'
+                }
+                $textureMask = 0
+                foreach ($texture in $material.textures) {
+                    Assert-ExactJsonProperties $texture @('expressionIndex','assetId','colorSpace') 'World object native material texture'
+                    if (-not (Test-JsonNumber $texture.expressionIndex) -or [double]$texture.expressionIndex % 1 -ne 0 -or $texture.expressionIndex -notin 0..7 -or
+                        $texture.assetId -isnot [string] -or $texture.colorSpace -cnotin @('srgb','linear')) {
+                        throw 'Invalid world object native material texture'
+                    }
+                    $bit = 1 -shl [int]$texture.expressionIndex
+                    if (($textureMask -band $bit) -ne 0) { throw 'Duplicate world object native texture expression' }
+                    $textureMask = $textureMask -bor $bit
+                    Assert-SequenceAssetPath $texture.assetId $false
+                    if (-not [IO.File]::Exists((Join-Path $runtimeResourceRoot $texture.assetId))) {
+                        throw "World object material texture is missing: $($texture.assetId)"
+                    }
+                }
+                if ($textureMask -ne 255) { throw 'World object native texture coverage is incomplete' }
             }
             $objectResources[$resource.objectId] = $resource
         }

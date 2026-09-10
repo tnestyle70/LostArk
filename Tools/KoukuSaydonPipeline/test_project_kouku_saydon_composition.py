@@ -493,6 +493,24 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertTrue(all("placement" not in cue for cue in legacy["worldSequences"]))
             self.assertAlmostEqual(1101, legacy["logicWindows"][0]["contactTargets"][0]["targetWorldX"])
 
+    def test_anchored_object_placement_preserves_local_transform_without_fixed_collision_admission(self):
+        for anchor in ("BOSS", "PLAYER"):
+            sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+            instance = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.trumpet")
+            resource = next(row for row in sequences["objectResources"] if row["objectId"] == instance["bindings"][0]["targetId"])
+            instance["anchorKind"] = resource["anchorKind"] = anchor
+            world = dict(sequenceInstanceId=instance["instanceId"], anchorKind="NONE", positionOffset=[0, 0, 0])
+            cue = dict(startMs=0, durationMs=1000, placement=dict(position=[.3, .2, -.1], rotationDegrees=[90, 180, 45], scale=[2, 1, 3]))
+            with self.subTest(anchor=anchor):
+                projected = subject._project_world_placement(cue, world, sequences)
+                self.assertEqual(cue["placement"], projected["placement"])
+                self.assertEqual("NONE", projected["anchorKind"])
+                with self.assertRaisesRegex(subject.CompositionError, "fixed WORLD anchor"):
+                    subject._project_fixed_object_target(cue, world, dict(startMs=0, durationMs=1000), 1, sequences)
+                resource["anchorKind"] = "WORLD"
+                with self.assertRaises(subject.CompositionError):
+                    subject._project_world_placement(cue, world, sequences)
+
     def test_world_placement_rejects_invalid_transform_and_non_object_anchor(self):
         for invalid in ("null", "field", "position", "rotation", "scale", "boolean", "binding", "anchor", "disabled"):
             document = self.placed_contact_document()
@@ -2703,7 +2721,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append({"logicId": logic_id, "displayName": "Body charge", "logicType": "TRIGGER",
-                                   "triggerKind": "ENTER_AREA", "bossChargeDistanceM": 7})
+                                   "triggerKind": "ENTER_AREA", "bossChargeDistanceM": 7, "chargeYawOffsetDegrees": 90})
         resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append({"resourceId": resource_id, "displayName": "Body", "kind": "COLLIDER",
@@ -2716,7 +2734,12 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             "startMs": 0, "durationMs": 1000, "logicOccurrenceId": box_id, "anchorKind": "BOSS", "followBoss": True}]
         self.validate(document)
         row = next(row for row in subject.project_encounter(document)["patterns"] if row["patternId"] == FIRST_PRODUCT_ID)
-        self.assertEqual((0, 1000, 7), tuple(row["logicWindows"][0][key] for key in ("startMs", "durationMs", "bossChargeDistanceM")))
+        self.assertEqual((0, 1000, 7, 90), tuple(row["logicWindows"][0][key] for key in ("startMs", "durationMs", "bossChargeDistanceM", "chargeYawOffsetDegrees")))
+        for distance, yaw in ((7, 361), (7, float("nan")), (0, 90)):
+            invalid = copy.deepcopy(document)
+            next(x for x in invalid["logics"] if x["logicId"] == logic_id).update(bossChargeDistanceM=distance, chargeYawOffsetDegrees=yaw)
+            with self.subTest(distance=distance, yaw=yaw), self.assertRaises(subject.CompositionError):
+                self.validate(invalid)
         self.assertEqual("BOSS_CURRENT", row["logicWindows"][0]["cardRegions"][0]["anchorKind"])
         for conflict in ("overlap", "bossMotion", "retarget"):
             invalid = copy.deepcopy(document)

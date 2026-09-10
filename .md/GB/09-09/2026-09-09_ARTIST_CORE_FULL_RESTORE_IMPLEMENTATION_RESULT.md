@@ -184,3 +184,60 @@ Catalog/ResourceTree에서 `이펙트_도화가AltV_전체` 하나를 선택하�
 근거는 `out/ArtistAltVUnified20260910/merge-receipt.json`, `final-data-checks.json`, `provider-merged.log`, `camera-merged.log`, `final-parse-diff.json`과 `handoff.md`다. 백업 정본은 `before-exact/`에 있다. 복사한 옛 generic Solo probe는 provider를 잘라내는 자체 구성 때문에32행을 거절했으나, 실제 provider closure를 포함한 위 검사30개는 모두 통과했다. 그 옛 probe의 실패를 full 문서 invalid로 기록하지 않는다.
 
 원본의 emitterDuration500초인 burst-only6행 때문에 Playback의 종료 하한은506.633초다. 해당행은 rate0·1회 burst·입자 수명2~2.25초여서8분 동안 입자가 계속 표시된다는 뜻은 아니며, NATURAL 빈 객체가 오래 남는 기존 경계다. 시간 분포를 임의 변경하지 않았고, 전체 source emitter의 안전한 종료시간 계산 최적화는 이번 단일 restore 연결과 분리해 미구현으로 남겼다.
+
+## G09. 도화가 전체 스킬 이펙트 미발생 긴급 수정
+
+Alt V 두 EFFECT 행을 단일 restore로 합친 변경에서 Artist.animevents 헤더의 이벤트 수가1048로 남았다. 실제는1047행이라 CAnimationEffectCueDocument::Load_FromText가 `Animation event row count does not match the header.`로 문서 전체를 거부했다. 그 결과 Product prewarm과 Character::Load_EffectCues에 도화가 제품 이펙트가 등록되지 않았다.
+
+헤더1048→1047 한 줄을 수정했다. 기존18개 제품 EFFECT, 원본 이벤트, 저작 이펙트 및 C++ 검증은 그대로다. 실제 제품 Debug 객체에 연결한 기존 console 진단을 사용해 수정 전 헤더의 거부와 수정 후 로드를 대조했다. Client/UI는 실행·조작하지 않았으며 실행 중인 Client/Server와 제품 EXE를 교체하지 않았다.
+
+| 검사 | 실제 결과 |
+|---|---|
+| 수정 범위 | Git 기준 헤더 한 줄만 변경, 기존 이벤트 내용 보존 |
+| 데이터 검사 | declared1047=actual1047, 제품 cue18개 Catalog 등록·저작 JSON parse 성공 |
+| 실제 Product prewarm | Load_ForProductPrewarm 성공, admitted cue18개 |
+| 실제 캐릭터 로더 | Artist wmodel의 실제99개 clip으로 Load 성공, cue18/unavailable0/sound163/hit14 |
+| 수정 전 오류 대조 | 메모리에서 이전1048 헤더를 넣으면 행 수 오류로 거부, 이미 로드된18개 cue 보존 |
+| 최소 컴파일 | 기존 제품 Debug 객체를 사용한 console 진단 컴파일·링크·실행 성공. C++ 변경이 없는 데이터 수정이므로 제품 재빌드 불필요 |
+| diff 검사 | git diff --check 성공 |
+| 사용자 화면 | 미확인. 실행 중인 Character Select에서 다른 class→Artist로 재선택하거나 재입장하여 새 Character가 정본을 다시 읽은 뒤 확인 |
+
+근거는 `out/ArtistEventHeaderFix20260910/data-checks.json`, `out/ArtistCueRestore20260910/artist-cue-validation.log`다. 에이전트는 화면 확인을 대신하지 않았다. 사용자 우선순위에 따라 도화가 오류만 처리했고, 앞서 진행하던 쿠크 변경과 차원술사 BA 검토는 보류했다.
+
+## G10. 기존 Product 선택과 Alt V GPU 발생 수 수정
+
+사용자 지정 Q31200/W31430/R31210의ba1·ba4/S31420/F31470을 기존 unified로, A31460을 기존 linear-reveal.unified로 연결했다. 다른11개 제품 cue와1047행 헤더는 유지한다. 실제99개 model clip의 제품 loader는18 cues/unavailable0/sounds163/hits14이며 prewarm도18개가 등록됐다.
+
+Alt V254행 중 simulation-only 위치 provider2개는 Playback::Rebuild_Frame에서 GPU 대상에서 제외하지만 Renderer::Resolve_GpuRenderFamily에서 sprite로 집계됐다. helper가 동일한 provider를 END로 분류하도록 고쳐 전체 발생 수·순서 검사를 유지한다. 실제 Renderer TU 컴파일과 현 Debug 객체에 연결한 Load/Stage/Render 진단으로16시점 모두247 GPU occurrence를 일치시켰고, 잘못된 frame의 한 occurrence 삭제는 계속 거부했다. 진단은 실제 평가된 frame을 소비하되 submission element set을 비워 GPU draw/UI 없이 Render admission 오류를 검증했다. 이는 화면 fidelity 판정이 아니다.
+
+근거: out/ArtistAltVRenderFix20260910/{compile.log,render-validation.log,product-cues.log}. 최종 제품 빌드와 사용자의 Alt V 재생은 후속 통합 검증 전이다.
+
+
+## 2026-09-10 최종 Product 통합 확인
+
+사용자 마지막 Save/종료 뒤 최신 원본에 통합하고 관련 publisher와 정규 Debug Product 빌드를 완료했다.
+Engine/Shared/Server/Client 컴파일·링크·EXE/DLL/셰이더 배포는 PASS이며 실행 입력 누락은0이다.
+이 기록은 위의 Product 통합 대기 상태를 갱신한다. 세부 게시 revision·새 Server 검사·남은 사용자
+화면 확인은09-10 KOUKU_PATTERN_EFFECT_ANCHOR_FEAR_AUTHORING_IMPLEMENTATION_RESULT의 G10에 있다.
+빌드 근거: `out/BuildPipeline/runs/20260910T091016153Z-debug-product.json`. Client/UI 실행·캡처와 최종 육안 승인은 수행하지 않았다.
+
+
+## G11. 실행 후 꽃밭·하늘 합성 범위 재확인
+
+사용자는 새 EXE 실행 중 Alt V의 꽃밭/스카이박스가 연결됐는지와 배경을 강제로 맨 앞에 그린 것인지
+질문했다. 읽기 전용 조사에서 full254행의 Sky_Mirror_SM2개 및 Field01 provider2+표시30개를 다시
+확인했다. Sky의 native892 재질은 opaque_back_depth_write이며 Select_Pass0이
+Shader_EffectMeshFamilyCarrier의 OpaqueBackDepthWrite → DSS_Default를 사용한다.
+Engine_Shader_Defines의 깊이 검사는 true, 쓰기는 all, 비교는 less_equal이다. clip2 구체는 반경71.68m,
+위치[0,-1,-5]/yaw229.998779/scale1.75, 원본 하늘 texture와 player-relative 생성 기준을 사용한다.
+따라서 현재 구현에 깊이 검사를 끄고 모든 맵 위에 덮는 sky 전용 처리가 있는 것은 아니다.
+
+원본 action/UPK Kismet에는 Sky spawn·local-only flag·player-attached camera와 Matinee 곡선이 있다.
+반면 shader bytecode 자체가 전체 장면의 draw order나 월드 visibility 정책을 소유한다고 볼 수는 없다.
+현재 generator는 원본 nativeBlend/nativeTwoSided로 renderProfile을 선택한다. 이는 원작 custom native의
+모든 D3D 상태·장면 차폐 처리까지 해독·재현했다는 근거가 아니다. HidePawn Parts9 및 조명 control
+rollback 경계는 기존 조사와 같이 미확정이다. 깊이 검사가 있으므로 가까운 기존 맵 geometry가 남는
+현상이 보인다면 우선 원본 장면 visibility/native 명령의 미복구 범위를 추가 조사해야 한다.
+
+이번 확인은 코드/실행 데이터 변경이나 UI 조작 없이 수행했다. 렌더링 복원 정본의 오래된 꽃밭222행/
+Field01 제외 표기만 현재254행·provider 지원 상태로 정정했다. 사용자의 최종 화면 판정은 대기한다.

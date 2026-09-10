@@ -1333,7 +1333,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr);
 }
 
-bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct()
+bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct(
+	const CGameplayCatalog& activeGameplay)
 {
 	const auto dataRoot = Resolve_DataRoot();
 	const auto repositoryRoot = dataRoot.parent_path().parent_path().parent_path();
@@ -1356,7 +1357,26 @@ bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct()
 			return false;
 		}
 	}
-	return Load();
+	CGameplayCatalog published;
+	if (!published.Load())
+	{
+		m_strStatus = published.Get_Status();
+		return false;
+	}
+	if (activeGameplay.m_NonKoukuBootstrapRows.empty() ||
+		published.m_KoukuBootstrapRows.empty())
+	{
+		m_strStatus = "KoukuSaydon reload requires an admitted active baseline and published encounter";
+		return false;
+	}
+	// Retain the live process balance, even if another publisher has newer rows on disk.
+	// Reparse the joined rows to validate every encounter reference against that balance.
+	const std::string rows = activeGameplay.m_NonKoukuBootstrapRows +
+		published.m_KoukuBootstrapRows;
+	const std::string joined = "LOSTARK_GAMEPLAY_BOOTSTRAP\t" +
+		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+		std::to_string(std::count(rows.begin(), rows.end(), '\n')) + "\n" + rows;
+	return Load_BootstrapBytes(joined, nullptr, nullptr);
 }
 
 bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
@@ -1400,6 +1420,28 @@ bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
 
 bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	const std::filesystem::path& path,
+	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+	const LostArk::Shared::GameplayDataRevision* parentRevision)
+{
+	std::ifstream bootstrapFile(path, std::ios::binary);
+	if (!bootstrapFile)
+	{
+		m_strStatus = "Missing gameplay bootstrap: " + path.string();
+		return false;
+	}
+	const std::string bootstrapBytes{
+		std::istreambuf_iterator<char>{ bootstrapFile },
+		std::istreambuf_iterator<char>{} };
+	if (bootstrapFile.bad())
+	{
+		m_strStatus = "Gameplay bootstrap could not be read";
+		return false;
+	}
+	return Load_BootstrapBytes(bootstrapBytes, expectedBootstrapRevision, parentRevision);
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
+	const std::string& bootstrapBytes,
 	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
 	const LostArk::Shared::GameplayDataRevision* parentRevision)
 {
@@ -1548,20 +1590,6 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	m_ValtanPresentationGenerationId = {};
 	m_iKoukuSaydonProductSourceRevision = 0u;
 
-	std::ifstream bootstrapFile(path, std::ios::binary);
-	if (!bootstrapFile)
-	{
-		m_strStatus = "Missing gameplay bootstrap: " + path.string();
-		return false;
-	}
-	const std::string bootstrapBytes{
-		std::istreambuf_iterator<char>{ bootstrapFile },
-		std::istreambuf_iterator<char>{} };
-	if (bootstrapFile.bad())
-	{
-		m_strStatus = "Gameplay bootstrap could not be read";
-		return false;
-	}
 	LostArk::Shared::GameplayDataRevision admittedRevision{};
 	if (!Calculate_GameplayDataRevision(bootstrapBytes, admittedRevision))
 	{
@@ -2597,10 +2625,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
         else if (!fields.empty() && "PATTERNLOGICCHARGE" == fields[0])
         {
-            float distance = 0.f;
-            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+            float distance = 0.f, yawOffset = 0.f;
+            if ((fields.size() != 5u && fields.size() != 6u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
                 !IsStableId(fields[3]) || !ParseNumber(fields[4], distance) || !std::isfinite(distance) ||
-                distance <= 0.f || distance > 1000.f)
+                distance <= 0.f || distance > 1000.f || (fields.size() == 6u &&
+                (!ParseNumber(fields[5], yawOffset) || !std::isfinite(yawOffset) || std::abs(yawOffset) > 360.f)))
             { m_strStatus = "Boss charge row is invalid"; return false; }
             const auto owners = m_BossPatterns.find(std::string(fields[1]));
             if (owners == m_BossPatterns.end()) { m_strStatus = "Boss charge encounter is missing"; return false; }
@@ -2618,6 +2647,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
                     window->iStartMs < other.iStartMs + other.iDurationMs)
                 { m_strStatus = "Boss charge windows overlap"; return false; }
             window->fBossChargeDistanceM = distance;
+            window->fChargeYawOffsetDegrees = yawOffset;
         }
         else if (!fields.empty() && "PATTERNLOGICHOLD" == fields[0])
         {
@@ -6698,6 +6728,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	   from validated owners because target/bundle rows use IDs in column 1. */
 	std::string nonKoukuRows = "LOSTARK_NON_KOUKU_GAMEPLAY\t" +
 		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\n";
+	std::string koukuBootstrapRows, nonKoukuBootstrapRows;
 	std::istringstream domainInput{ bootstrapBytes };
 	std::getline(domainInput, line);
 	const auto* koukuPatterns = Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
@@ -6722,6 +6753,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					bundle->strEncounterId == "ENCOUNTER_KAKULSAYDON_G1";
 			}
 		}
+		auto& domainRows = koukuOwned ? koukuBootstrapRows : nonKoukuBootstrapRows;
+		domainRows.append(line); domainRows.push_back('\n');
 		if (!koukuOwned) { nonKoukuRows.append(line); nonKoukuRows.push_back('\n'); }
 	}
 	LostArk::Shared::GameplayDataRevision nonKoukuRevision{};
@@ -6731,6 +6764,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		return false;
 	}
 	rollback.committed = true;
+	m_KoukuBootstrapRows = std::move(koukuBootstrapRows);
+	m_NonKoukuBootstrapRows = std::move(nonKoukuBootstrapRows);
 	m_NonKoukuGameplayRevision = nonKoukuRevision;
 	m_ActiveRevision = nullptr == parentRevision ?
 		admittedRevision : *parentRevision;

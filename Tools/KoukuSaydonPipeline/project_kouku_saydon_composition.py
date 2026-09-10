@@ -153,7 +153,7 @@ LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KE
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
                            "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs"}
 LOGIC_TRIGGER_VALUE_KEYS = {"triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
-                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "rearmOnExit", "repeatAfterKnockback"}
+                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
@@ -494,9 +494,12 @@ def _validate_logic_definition(
             for hour in hours:
                 _integer(hour, f"{context} clockHours", 2, 12)
         elif kind == "ENTER_AREA":
-            if extra - {"bossChargeDistanceM", "rearmOnExit", "repeatAfterKnockback"} != {"triggerKind"}:
+            if extra - {"bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback"} != {"triggerKind"}:
                 raise CompositionError(f"{context} ENTER_AREA carries unrelated values")
             definition["bossChargeDistanceM"] = _number(logic.get("bossChargeDistanceM", 0), f"{context} bossChargeDistanceM", 0, 1000)
+            definition["chargeYawOffsetDegrees"] = _number(logic.get("chargeYawOffsetDegrees", 0), f"{context} chargeYawOffsetDegrees", -360, 360)
+            if definition["chargeYawOffsetDegrees"] and not definition["bossChargeDistanceM"]:
+                raise CompositionError(f"{context} charge yaw requires positive charge distance")
             definition["rearmOnExit"] = _boolean(logic.get("rearmOnExit", False), f"{context} rearmOnExit")
             definition["repeatAfterKnockback"] = _boolean(logic.get("repeatAfterKnockback", False), f"{context} repeatAfterKnockback")
             if definition["rearmOnExit"] and definition["repeatAfterKnockback"]:
@@ -1995,8 +1998,9 @@ def _validate_world_occurrence_placement(cue, world, sequences):
     if instance.get("enabled", True) is not True:
         raise CompositionError("WORLD placement initial Object state is disabled")
     resource = next((row for row in sequences.get("objectResources", []) if row["objectId"] == bindings[0]["targetId"]), None)
-    if resource is None or instance.get("anchorKind", "WORLD") != "WORLD" or resource.get("anchorKind", "WORLD") != "WORLD":
-        raise CompositionError("WORLD placement requires an absolute WORLD Object anchor")
+    anchor = instance.get("anchorKind", "WORLD")
+    if resource is None or anchor not in {"WORLD", "PLAYER", "BOSS"} or resource.get("anchorKind", "WORLD") != anchor:
+        raise CompositionError("WORLD placement requires a matching WORLD/PLAYER/BOSS Object anchor")
     if "walkableSurface" in instance:
         raise CompositionError("WORLD Object placement cannot replace a Map walkable surface")
     return placement
@@ -2678,6 +2682,7 @@ def _project_logic_window(
         "windowId": box["occurrenceId"],
         **({"holdLogicOccurrenceId": box["holdLogicOccurrenceId"]} if box.get("holdLogicOccurrenceId") else {}),
         **({"bossChargeDistanceM": logic["bossChargeDistanceM"]} if logic.get("bossChargeDistanceM", 0) else {}),
+        **({"chargeYawOffsetDegrees": logic["chargeYawOffsetDegrees"]} if logic.get("chargeYawOffsetDegrees", 0) else {}),
         **({"rearmOnExit": True} if logic.get("rearmOnExit", False) else {}),
         **({"repeatAfterKnockback": True} if logic.get("repeatAfterKnockback", False) else {}),
         "kind": kind,

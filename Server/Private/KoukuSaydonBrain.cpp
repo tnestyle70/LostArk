@@ -284,7 +284,10 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			break;
 		}
         if (!std::isfinite(window.fBossChargeDistanceM) || window.fBossChargeDistanceM < 0.f ||
-            window.fBossChargeDistanceM > 1000.f || (window.fBossChargeDistanceM > 0.f &&
+            window.fBossChargeDistanceM > 1000.f || !std::isfinite(window.fChargeYawOffsetDegrees) ||
+            std::abs(window.fChargeYawOffsetDegrees) > 360.f ||
+            (window.fChargeYawOffsetDegrees != 0.f && window.fBossChargeDistanceM <= 0.f) ||
+            (window.fBossChargeDistanceM > 0.f &&
             (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || pattern.BossMotion)))
             valuesValid = false;
         if (window.fBossChargeDistanceM > 0.f)

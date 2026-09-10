@@ -44,3 +44,9 @@ V의 원본 PlaySkeletalMesh notify는 mesh/clip이 None이므로 이 빈 notify
 V에 이미 추가된 F17140 native446의4개 wave는 원본 F와 같은 geometry/material을 참조하지만, 이전 저작 patch가 F의 HDR startColor와 ColorScaleOverLife를 낮은 상수로 바꿨다. 이 두 분포가 이전 patch 값인 경우에만 승인된 F 원본 값으로 복구하며 현재 radius·시각과 사용자 다른 편집은 보존한다. F 원문은 수정하지 않는다. Alt V는 실제 lightning texture를 쓰는 native1166의6개 occurrence를 독립 seed로 하나씩 복제해12개로 늘린다. 기존 발생 시각과 shape를 유지하며 다른 에너지·방패 요소를 일괄 복제하지 않는다.
 
 기존 `patch_warlord_v_guardian_lightning.py`를 확장하고 전체 full generator는 다시 실행하지 않는다. JSON은 현재 bytes를 보존한 뒤 CAS 확인하고 저장한다. 기존 PS 수치 검사, 실제 codec 저장·재로드, 변경 shader의 Product 빌드와 diff check를 수행하며 Client/UI와 최종 시각 판정은 사용자에게 남긴다. 새 C++ 파일이나 project/filter 등록은 없다.
+
+## G06. 워로드 Q source follow 크기 복구
+
+Q full의 원본 native PS12개는 실제 Playback119행을 소비한357case에서 nonfinite0이며 붉은 HDR 출력이 있다. 제품 Warlord admission transform0.0001과 -90도 yaw를 적용한 실제 CModel의 손·worldzero·spine bone은 축0.01과 이미 m단위인 translation을 함께 가진다. 일반 source follow가 이0.01을 이미 m단위인 particle 크기에 다시 곱해 핵심 효과가 작아진다. 실제 Renderer/현재CSO 대조에서 축만 정규화하면 동일0.6667초의 maxRGB0.119533이81.4834로 증가했다.
+
+`Effect_PresentationService.h/cpp`의 기존 엄격한0.01 검증과 translation 보존 함수를 재사용한다. 새 선택 helper는 `effect.warlord.skill.17030.full.restore`만 허용하며 다른 class·slot·기존 Artist31470 경로는 확장하지 않는다. `Effect_Tool.cpp`의 현재 pose와 과거 pose source anchor, Product source anchor가 같은 선택과 matrix 함수를 소비한다. Q JSON·shader 수식·원본 색과 발생 수는 보존한다. 새 파일이나 project/filter 등록은 없다. 변경 번역 단위 최소 컴파일과 actual CModel/Playback/Renderer GPU 숫자 대조, diff check를 수행하고 Client/UI와 화면 판정은 사용자에게 남긴다.

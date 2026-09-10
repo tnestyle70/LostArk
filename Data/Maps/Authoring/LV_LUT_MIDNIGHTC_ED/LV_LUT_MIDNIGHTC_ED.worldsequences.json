@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 424,
+  "revision": 426,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -50,7 +50,8 @@
         1
       ],
       "sequenceInstanceId": "",
-      "defaultMotionInstanceId": "world.object.instance.kouku.ball"
+      "defaultMotionInstanceId": "world.object.instance.kouku.ball",
+      "materialProfile": {"materialName": "mn_rhcn_00_mi", "sourceMaterial": "mn_rhcn_00.mat.mn_rhcn_00_mi", "family": "source.character.monster-pbr-masked.v1", "parameters": {"1.use_dyeing_sp": 0.0, "1.use_emissive_flickerspeed_fixed": 0.0, "beckmannspecular_constant_max": 3.3499999046325684, "buffcolor": [0.0, 0.0, 0.0, 1.0], "constantoutline": 0.0, "constantoutline_blink": 0.5, "constantoutline_color": [0.0, 0.0, 0.0, 1.0], "diffusecolor": [1.0, 1.0, 1.0, 1.0], "emissive_color": [0.9658146500587463, 0.005028203595429659, 0.013473397120833397, 1.0], "emissive_flicker_speed": 0.6499999761581421, "emissive_intensity": 2.5, "emissive_intensitymin": 0.30000001192092896, "fresnel_radius": 0.949999988079071, "fresnel_rimlightintensity": 0.5, "fx_color_desaturation_actiontool": 0.0, "fx_color_desaturation_buffsettool": 0.0, "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0], "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0], "hit_color": [0.0, 0.0, 0.0, 0.0], "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0], "ibl_color_top": [1.0, 1.0, 1.0, 1.0], "ibl_exposer": 5.0, "ibl_intensity": 1.0, "ibl_normal_smooth": 0.699999988079071, "ibl_reflect_lodbias": 80.0, "metalicness_power": 0.20000000298023224, "normaltex_intensity": 1.0, "orennayar": 1.0, "orennayar_brightness": 1.0, "pbr_specular_intensity": 10.0, "pbr_specular_power": 6.0, "roughness_power": 3.0, "selectioncolor": [0.0, 0.0, 0.0, 1.0], "shadowfactor": 0.5, "specular_power_limit": 0.9200000166893005, "state": [0.0, 0.0, 0.0, 0.0], "state_noise": [1.0, 0.0, 0.0, 1.0], "trans_rim_hard": 1.0, "trans_rim_inradius": 0.0, "transcolor": [0.0, 0.0, 0.0, 1.0], "transcolor_rimlight ": 1.0}, "textures": [{"expressionIndex": 0, "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_n.dds", "colorSpace": "linear"}, {"expressionIndex": 1, "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_d.dds", "colorSpace": "srgb"}, {"expressionIndex": 2, "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_s.dds", "colorSpace": "srgb"}, {"expressionIndex": 3, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb"}, {"expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.tga", "colorSpace": "srgb"}, {"expressionIndex": 5, "assetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_e.dds", "colorSpace": "srgb"}, {"expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb"}, {"expressionIndex": 7, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear"}]}
     },
     {
       "objectId": "world.object.kouku.seto",
@@ -379,6 +380,24 @@
       ],
       "sequenceInstanceId": "",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon_showtime_gun_right"
+    },
+    {
+      "objectId": "world.object.kouku.whirlwind_hammer",
+      "displayName": "월드오브젝트_쿠크뿅망치",
+      "modelAssetId": "Effect/KoukuSaydon/WorldObjects/WhirlwindHammer/WhirlwindHammer.wmodel",
+      "anchorKind": "BOSS",
+      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "anchorBone": "b_wp_1",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.01,
+      "animated": false,
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.whirlwind_hammer"
     }
   ],
   "templates": [
@@ -354467,8 +354486,8 @@
               ],
               "rotationQuaternion": [
                 -0.5,
-                -0.5,
                 0.5,
+                -0.5,
                 0.5
               ],
               "scaleMultiplier": [
@@ -354487,8 +354506,8 @@
               ],
               "rotationQuaternion": [
                 -0.5,
-                -0.5,
                 0.5,
+                -0.5,
                 0.5
               ],
               "scaleMultiplier": [
@@ -354553,8 +354572,8 @@
               ],
               "rotationQuaternion": [
                 -0.5,
-                -0.5,
                 0.5,
+                -0.5,
                 0.5
               ],
               "scaleMultiplier": [
@@ -354573,8 +354592,8 @@
               ],
               "rotationQuaternion": [
                 -0.5,
-                -0.5,
                 0.5,
+                -0.5,
                 0.5
               ],
               "scaleMultiplier": [
@@ -354748,6 +354767,92 @@
                 -0.41562693643844706,
                 0.5720614037905293,
                 0.5720614037905293
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.whirlwind_hammer",
+      "displayName": "월드오브젝트_쿠크뿅망치_손에들기",
+      "category": "WorldObject",
+      "durationMs": 6502,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0.3,
+                0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                -0.5,
+                -0.5,
+                0.5,
+                0.5
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 6502,
+              "positionOffset": [
+                0.3,
+                0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                -0.5,
+                -0.5,
+                0.5,
+                0.5
               ],
               "scaleMultiplier": [
                 1,
@@ -362707,6 +362812,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.saydon_showtime_gun_right"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.whirlwind_hammer",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.whirlwind_hammer",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "BOSS",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.whirlwind_hammer"
         }
       ]
     }

@@ -6301,6 +6301,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Stage_NewWorldPlacement(
 	const auto source = std::find_if(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
 		[&](const auto& row) { return row.strInstanceId == instanceId; });
 	if (source == m_WorldSequenceResources.end() || !source->bSupportsPlacement) return true;
+	if (source->strAnchorKind == "BOSS" || source->strAnchorKind == "PLAYER")
+	{ outPlacement = KOUKU_SAYDON_WORLD_PLACEMENT{}; return true; }
 	if (!source->bEnabled || !m_WorldPlacementResolver)
 	{ outStatus = "A live character placement is required to append this Object."; return false; }
 	KOUKU_SAYDON_WORLD_PLACEMENT placement;
@@ -6324,7 +6326,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_WorldBoxPlacement(
 	if (found->Placement && *found->Placement == placement)
 	{ outStatus = "World occurrence placement is unchanged."; return true; }
 	found->Placement = placement;
-	if (!Commit_Candidate(std::move(candidate), "Updated this Object box's world Transform. Save keeps this placement.", outStatus)) return false;
+	if (!Commit_Candidate(std::move(candidate), "Updated this Object box's Transform. Save keeps this placement.", outStatus)) return false;
 	Queue_WorldBoxPreview(patternId, occurrenceId);
 	return true;
 }
@@ -8176,7 +8178,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 		const auto source = std::find_if(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
 			[&](const auto& row) { return row.strInstanceId == world->strSequenceInstanceId; });
 		const bool supportsPlacement = source != m_WorldSequenceResources.end() && source->bSupportsPlacement;
-		ImGui::BeginDisabled(!supportsPlacement);
+		const bool localPlacement = supportsPlacement && source->strAnchorKind != "WORLD";
+		ImGui::BeginDisabled(!supportsPlacement || localPlacement);
 		const bool placeNear = ImGui::Button("Place near character##WorldBox");
 		ImGui::EndDisabled();
 		if (placeNear)
@@ -8185,11 +8188,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 			(void)Place_WorldBoxNearCharacter(patternId, occurrenceId, status);
 			return;
 		}
-		if (box->Placement)
+		if (box->Placement || localPlacement)
 		{
 			ImGui::SameLine();
 			if (ImGui::Button("Preview placements##WorldBox")) Queue_WorldBoxPreview(patternId, occurrenceId);
-			auto placement = *box->Placement;
+			auto placement = box->Placement.value_or(KOUKU_SAYDON_WORLD_PLACEMENT{});
 			const auto vectorControl = [](const char* label, std::array<double, 3u>& values,
 				const float step, const float minimum, const float maximum) {
 				float v[3] = { static_cast<float>(values[0]), static_cast<float>(values[1]), static_cast<float>(values[2]) };
@@ -8197,7 +8200,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 				for (std::size_t i = 0u; i < 3u; ++i) values[i] = v[i];
 				return true;
 			};
-			bool changed = vectorControl("World position (m)##WorldBox", placement.Position, .05f, -100000.f, 100000.f);
+			bool changed = vectorControl(localPlacement ? "Local position (m)##WorldBox" : "World position (m)##WorldBox", placement.Position, .05f, -100000.f, 100000.f);
 			changed |= vectorControl("Rotation (degrees)##WorldBox", placement.RotationDegrees, .5f, -36000.f, 36000.f);
 			changed |= vectorControl("Scale##WorldBox", placement.Scale, .01f, .001f, 1000.f);
 			if (changed)
@@ -8206,7 +8209,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 				(void)Set_WorldBoxPlacement(patternId, occurrenceId, placement, status);
 				return;
 			}
-			ImGui::TextWrapped("This box owns its world transform. Other boxes and the saved Object Motion are independent. Scale multiplies the Object's authored size.");
+			ImGui::TextWrapped(localPlacement ?
+				"This box adds a local transform after its saved Motion and before the live Boss/Character anchor. Scale multiplies the authored Object size." :
+				"This box owns its world transform. Other boxes and the saved Object Motion are independent. Scale multiplies the Object's authored size.");
 		}
 		else
 		{
@@ -8900,7 +8905,17 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			{ draft.bRearmOnExit = repeat == 1; draft.bRepeatAfterKnockback = repeat == 2; }
 			float distance = static_cast<float>(draft.fBossChargeDistanceM);
 			if (ImGui::InputFloat("Charge distance (m)", &distance, 0.5f, 1.f, "%.2f"))
-				draft.fBossChargeDistanceM = std::clamp(distance, 0.f, 1000.f);
+				{
+                    draft.fBossChargeDistanceM = std::clamp(distance, 0.f, 1000.f);
+                    if (draft.fBossChargeDistanceM == 0.0) draft.fChargeYawOffsetDegrees = 0.0;
+                }
+            if (draft.fBossChargeDistanceM > 0.0)
+            {
+                float yawOffset = static_cast<float>(draft.fChargeYawOffsetDegrees);
+                if (ImGui::InputFloat("Charge facing offset (degrees)", &yawOffset, 5.f, 90.f, "%.1f"))
+                    draft.fChargeYawOffsetDegrees = std::clamp(yawOffset, -360.f, 360.f);
+                ImGui::TextWrapped("Rotates the boss body without changing its captured travel direction.");
+            }
 			ImGui::TextWrapped("A linked Collider supplies the player-contact region. Entry runs Success for each player. After knockback finishes repeats while inside, with no hit during knockback. Connect one damage Result with Knockback enabled. Exit/re-entry mode requires leaving all linked Colliders first. No entry before the window ends is Timeout. Charge distance 0 keeps the boss still; positive distance uses this Trigger window and captures its target direction once at the window start.");
 		}
 		else if (draft.strTriggerKind == "OBJECT_CONTACT")

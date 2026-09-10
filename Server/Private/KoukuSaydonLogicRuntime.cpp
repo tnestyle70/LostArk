@@ -828,7 +828,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
             motion.StartPosition = {boss.fPositionX, boss.fPositionY, boss.fPositionZ};
             motion.EndPosition = {boss.fPositionX + dx / length * window.fBossChargeDistanceM,
                 boss.fPositionY, boss.fPositionZ + dz / length * window.fBossChargeDistanceM};
-            motion.fYawDegrees = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+            // The authored clip may face a different native axis; its body yaw
+            // must not rotate the captured world-space travel vector.
+            motion.fYawDegrees = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN) + window.fChargeYawOffsetDegrees;
             state.ChargeMotion = motion;
             boss.iTargetEntityId = target->iNetEntityId;
             boss.iPatternTargetEntityId = target->iNetEntityId;

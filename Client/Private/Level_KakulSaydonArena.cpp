@@ -507,7 +507,22 @@ bool_t Client::CLevel_KakulSaydonArena::Create_CompositionPreviewActor(
     desc.strShaderTag = L"Prototype_Component_Shader_VtxAnimMeshBinary";
     desc.pIdleClip = actor->presentationClips.idle.c_str();
     desc.vPosition = placement->position;
-    desc.fYawDegree = pattern.ResetBossYawDegrees ? float(*pattern.ResetBossYawDegrees) : placement->yawDegrees;
+    desc.fYawDegree = placement->yawDegrees;
+    // The Server preserves the live facing even when only position is reset.
+    // Start preview from that same authoritative pose, rather than an unrelated spawn yaw.
+    std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+    m_Replication.Collect_KoukuPresentationViews(bosses, players);
+    for (const auto& live : bosses)
+    {
+        if (live.strArchetypeId != placement->archetypeId || live.iOwnerBossNetEntityId ||
+            !live.Snapshot.iCurrentHp) continue;
+        desc.fYawDegree = live.Snapshot.fYawDegrees;
+        if (!pattern.bResetBossToSpawn)
+            desc.vPosition = {live.Snapshot.fPositionX, live.Snapshot.fPositionY, live.Snapshot.fPositionZ};
+        break;
+    }
+    if (pattern.ResetBossYawDegrees) desc.fYawDegree = float(*pattern.ResetBossYawDegrees);
     if (pattern.BossMotion)
     {
         const auto& motion = *pattern.BossMotion;

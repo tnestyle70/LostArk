@@ -131,3 +131,36 @@ hold 참조와 slot/offset을 Server bootstrap에 투영한다. patternbindings�
 Server LogicRuntime은 결과를 capture 요청으로 전달하고 GameRoom이 기존 attachment 함수를 호출한다.
 Client Npc는 IPlayerHandGripSocketSource를 구현하고 ClientReplication이 같은 Character API에 연결한다.
 새 C++ 파일이나 protocol 추가 없이 기존 파일과 protocol73을 사용한다.
+
+## G07. 후속 방향·암전·블렌딩 및 최신 게시 정합
+
+2026-09-10 후속 요청의 시작 원본은 revision254, Encounter와 patternbindings는243이다.
+P24 휠윈드는 이미 4000~5602ms 원형 접촉, 최대 HP10% 피해와2m/242ms knockback을
+저장하고 있다. P25 피자 aura는 원본의 BOSS +Y1.45m에만 있고 게시본에는 없다.
+번들9/10은 각각 P24/P23 한 actor의 실행 묶음이며 여러 pattern의 진행 순서가 아니다.
+등장 전 독립 재생은 자식 ID를 사용하고, 관문 진행 순서는 Server의 별도 진행 계약에 연결한다.
+
+Create_CompositionPreviewActor는 항상 authoring spawn yaw를 사용하지만 Server는 reset=false일 때
+현재 boss pose를 유지한다. Preview가 동일한 replicated snapshot의 시작 pose를 사용하게 하며,
+명시 reset position/yaw와 BossMotion은 각각 기존 우선순위를 유지한다. 보스가 아직 없으면
+preview의 authoring placement를 유지한다. Collider의 authored +Z/Y축 계약을 임의로 뒤집지 않는다.
+
+CEffectV2Object::Submit_Presentation의 TexturedOverlay가 기존 Scale/scaleInEnd/scaleOutStart를
+소비하도록 연결한다. 별도 렌더 경로나 schema 없이 얼굴이 중심점에서 약300ms 동안 커진다.
+거미 FEAR 전용 Scene Profile은 map/direct/ambient/specular를0으로 하고 낮은 exposure와
+검정 fog를 사용한다. 기존 진짜 세이튼/파1빨2 암전은 그대로 두고 거미 Result만 새 profile을
+참조하며 player light는 제거한다. 공포3초와 얼굴1초 지연/2초수명, 종료 복구는 유지한다.
+
+P13의 모든 내부 인접 animation 전환에150ms blendInMs를 명시하고 같은 clip 재시작도 포함한다.
+이전 두 경계100ms도150ms로 늘린다. Server CONTACT는 기존 bone bake를 통해 동일 pose로
+게시한다. source clip, stage/판정 시각과 카드 위치는 유지한다.
+
+코드/authoring 수정과 실행 바이너리 반영을 분리한다. 현재 사용자 Client/Server가 실행 중이므로
+원본 저장은 사용자의 Save 이후 최신 bytes를 보존해 CAS 비교 후 수행한다. 기존 focused projector와
+Server 계약 검사, 변경 JSON/XML parse, 최소 Debug 컴파일, git diff --check를 사용한다.
+신규 C++ 파일은 없고 project/filter 등록 변경은 필요하지 않다. 실제 UI 입력·Save 왕복·화면 판정은
+사용자가 한다. 월드소품/공재질/워로드Q는 해당 독립 PLAN/RESULT에서 구현 상태를 기록한다.
+
+## G08. 실행 중 Publish 뒤 쿠크만 stage하고 현재 밸런스를 보존한다
+
+사용자가 Publish All Patterns 뒤 Server REJECTED와 남은 Waiting 문구를 첨부했다. 현재 Load_PublishedKoukuProduct는 전체 Gameplay.bootstrap을 새로 읽은 뒤 non-Kouku 해시가 현재 Server와 다르면 거부한다. 쿠크 게시 뒤 파일에 존재하는 별도 밸런스 변경까지 함께 비교하기 때문이다. 현재 활성 catalog의 검증된 non-Kouku 행과 게시된 catalog의 검증된 Kouku 소유 행만 합치고 기존 단일 bootstrap parser로 다시 검증한다. 행 수와 참조를 재검사하며 실패 시 기존 catalog와 실행을 보존한다. 공개 gameplay revision은 현재 활성 revision을 유지하고 Kouku source revision은 새 게시값을 pin한다. 기존 fixed-tick admission과 실행 중 세대 pin을 그대로 사용한다. 결과 거부·완료 상태에서는 UI의 이전 요청 Waiting 문자열을 중복 표시하지 않는다. 승인 대기5초·시작 대기15초는 기존 bounded 정책이며 게시 소요시간과 구분한다. 실제 catalog/room focused 검사와 최소 Server/Client 컴파일 뒤 Product 빌드에 포함한다. 새 C++ 파일이나 두 번째 런타임은 추가하지 않는다.

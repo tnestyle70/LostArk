@@ -63,6 +63,24 @@ namespace
 	constexpr f32_t ARTIST_SOURCE_BONE_COMBINED_SCALE = 0.01f;
 	constexpr f32_t ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE = 0.00005f;
 	constexpr f32_t ARTIST_SOURCE_BONE_UNIFORM_SCALE_TOLERANCE = 0.000005f;
+	// Source-bone scale manifest for the separately measured Warlord Q document.
+	struct SOURCE_BONE_IMPORT_SCALE_CONTRACT final
+	{
+		std::string_view strEffectAssetId;
+		f32_t fPrototypeAdmissionScale;
+		f32_t fRigRootScale;
+		f32_t fCombinedAnchorScale;
+		f32_t fReciprocal;
+	};
+	constexpr SOURCE_BONE_IMPORT_SCALE_CONTRACT WARLORD_Q_SOURCE_BONE_SCALE = {
+		"effect.warlord.skill.17030.full.restore", 0.0001f, 100.f, 0.01f, 100.f };
+	static_assert(WARLORD_Q_SOURCE_BONE_SCALE.fPrototypeAdmissionScale *
+		WARLORD_Q_SOURCE_BONE_SCALE.fRigRootScale ==
+		WARLORD_Q_SOURCE_BONE_SCALE.fCombinedAnchorScale);
+	static_assert(WARLORD_Q_SOURCE_BONE_SCALE.fCombinedAnchorScale ==
+		ARTIST_SOURCE_BONE_COMBINED_SCALE);
+	static_assert(WARLORD_Q_SOURCE_BONE_SCALE.fReciprocal *
+		WARLORD_Q_SOURCE_BONE_SCALE.fCombinedAnchorScale == 1.f);
 	constexpr f32_t SOURCE_BONE_ORTHOGONAL_TOLERANCE = 0.001f;
 	constexpr f32_t SOURCE_BONE_AFFINE_TOLERANCE = 0.00001f;
 	constexpr f32_t SOURCE_BONE_MINIMUM_BASIS_LENGTH = 0.00000001f;
@@ -1304,7 +1322,9 @@ namespace
                 AddRequest({
                     Element.ActionCueAttachment.strRuntimeAnchorSlotId,
                     Element.ActionCueAttachment.strRuntimeBoneName,
-                    Element.ActionCueAttachment.SocketLocalTransform, false,
+                    Element.ActionCueAttachment.SocketLocalTransform,
+                    Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
+                        Document.strEffectAssetId),
 					Element.ActionCueAttachment.eOrientation });
             }
             for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
@@ -3398,6 +3418,15 @@ bool_t Client::CEffectPresentationService::Reload_SelectedProductEffect(
 	}
 	g_strStatus = strOutStatus;
 	return false;
+}
+
+bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
+	const std::string& strEffectAssetId)
+{
+	// Q source particles are already meters. Its actual Warlord combined bones
+	// retain a 0.01 import basis; translation is already in world-ready meters.
+	// Keep admission narrow until another document has the same measured contract.
+	return strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId;
 }
 
 bool_t Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(

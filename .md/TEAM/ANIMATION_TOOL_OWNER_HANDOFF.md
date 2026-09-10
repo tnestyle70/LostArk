@@ -1029,6 +1029,9 @@ Boss는 부모 Object의 `anchorBossArchetypeId`와 BODY `anchorBone`을 지정�
 Product는 살아 있는 복제 보스, Model View는 선택한 preview actor를 사용하고 다른 보스로 대체하지 않는다.
 원본 쿠크·세이튼의 `b_wp_1`은 오른손, `b_wp_2`는 왼손이다. 손 소품의 local Transform은
 Object 상태에서 편집하며 Composition World는 `anchorKind=NONE`으로 추가한다.
+부모 Object Detail의 `Object Position`/`Object Rotation`은 Default Motion 첫 key를 기준으로
+연결된 모든 Motion key의 위치·회전을 같은 변화량으로 조절한다. key 시간과 Motion별 상대 값은
+유지한다. `Object Scale`은 모든 Motion의 공통 모델 크기다. 개별 key는 자식 Motion에서 편집한다.
 `BOSS_SPAWN`은 생성 당시 위치를 고정하는 별도 용도이며 손 추적에 사용하지 않는다.
 Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
 Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
@@ -1058,6 +1061,11 @@ Append하면 같은 Pattern에 배치된 Object들이 정지된 첫 pose로 함�
 Rotation, Scale을 조절하면 해당 occurrence의 보이는 Object에 즉시 반영하며 Save는 절대 월드 좌표를 저장한다.
 다른 Preview가 실행 중이거나 해당 카드가 사라진 경우에는 선택 Pattern의 배치 Preview를 연다.
 `Preview placements`로 저장한 배치를 다시 확인할 수 있다.
+BOSS/PLAYER Object의 Box Detail에도 Position/Rotation/Scale을 표시한다. 이 `placement`는
+저장 Motion의 local Transform 뒤, 살아 있는 Boss/BODY bone 또는 Character anchor 앞에 합성하는
+박스별 local 보정이다. WORLD Object는 기존 절대 배치 의미를 유지한다. 이 local 보정은 Motion
+원본이나 다른 박스를 변경하지 않는다. Client presentation과 publisher는 같은 값을 보존하며,
+Server의 고정 WORLD Object collision/접촉 대상은 계속 고정 WORLD anchor만 허용한다.
 새 Object 박스의 기본 수명은 커서부터 Pattern 끝까지다. 시간은 Box Detail에서 조절한다.
 커튼·룰렛은 기존 Map group/sequence를 사용하며 독립 모델 카드용 placement로 자동 바꾸지 않는다.
 동반 Effect 연결은 해당 WORLD Box Detail의 `Attached Effect`에 있다.
@@ -1077,7 +1085,10 @@ Server bootstrap이 소유한다. 별도 source나 두 번째 실행 경로는 �
 쿠크 Pattern/Logic 수정은 Publish 성공 뒤 다음 Complete Play에서 Server가 정확한 source revision을
 검증해 적용한다. 현재 재생과 Restart는 기존 Pattern 정의·Logic·애니메이션 binding을 유지하며,
 새 게시본은 Stop Server Play 뒤 새 Complete Play로 시작한다. 후보 파일 누락·손상·revision 불일치,
-게시 진행 중·다른 encounter/player/boss balance 변경은 기존 상태를 보존하고 이유를 표시한다.
+게시 진행 중에는 기존 상태를 보존하고 이유를 표시한다. 게시된 쿠크 소유 행은 현재 Server의
+검증된 나머지 행과 합쳐 같은 parser로 재검증하므로, 디스크의 별도 encounter/player/boss balance
+변경은 가져오지 않고 현재 balance를 유지한다. 새 쿠크 정의가 현재 balance에서 없는 참조를 요구하면 거부한다.
+승인 대기는 최대5초, 승인 뒤 시작 대기는 최대15초이며 거절 후 이전 Waiting 문구를 표시하지 않는다.
 다른 PC에서 게시하면 Server 호스트와 Client에도 동일 Product가 전달되어야 한다.
 World placement와 일반 balance 변경은 여전히 Server 재시작으로 적용한다. 외부 World/Camera/Effect
 리소스 원문은 각각의 기존 게시·수명 계약을 따르며 Pattern source revision과 동일한 버전 계약은 아니다.
@@ -1278,3 +1289,9 @@ DURATION의 GAZE_REAL_BOSS는 판정 구간이 끝날 때 플레이어 시야 �
 `insideOutcome`은 SUCCESS가 기본이며 기존 진짜 세이튼 찾기는 이 값을 유지한다.
 파1빨2는 FAIL을 저장해 바라본 플레이어에게 Fail의 FEAR를 적용하고 시야 밖은 Success로 처리한다.
 Workbench의 Facing boss outcome에서 선택하며 원본 Save와 Publish가 같은 필드를 전달한다.
+
+### 쿠크 손 소품 재질과 돌진 몸 방향
+
+worldsequences v3의 objectResources는 optional materialProfile(materialName/sourceMaterial/family/parameters/textures)을 저장한다. texture는 expressionIndex와 Resources 상대 assetId, colorSpace를 가지며 publisher와 기존 CModel material override가 같은 계약을 검증한다. 잘못된 입력은 이전 문서를 보존한다. 쿠크 공의 source.character.monster-pbr-masked.v1은 원본41개 parameter·8개 texture와 program21을 사용한다.
+
+ENTER_AREA의 bossChargeDistanceM이 양수일 때 optional chargeYawOffsetDegrees를 저장할 수 있다. Workbench의 Charge Facing Offset은 포착한 이동 벡터와 끝점을 바꾸지 않고 body yaw에만 더한다. 기본값0은 기존 동작을 유지하며, 양수 돌진 거리 없이 offset만 설정하거나 범위[-360,360] 밖/비유한 값은 거부한다. Composition→projector→Gameplay publisher→Server charge가 동일한 값을 소비한다.

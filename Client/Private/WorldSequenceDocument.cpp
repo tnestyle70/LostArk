@@ -1,6 +1,7 @@
 #include "WorldSequenceDocument.h"
 
 #include "DataJson.h"
+#include "SourceCharacterMaterialParameters.h"
 
 #include <algorithm>
 #include <charconv>
@@ -140,6 +141,33 @@ namespace
 			[](const unsigned char character) { return static_cast<char_t>(std::tolower(character)); });
 		return value.back() != '/' && (!model || extension == ".wmodel");
 	}
+
+    bool_t Validate_MaterialProfile(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,
+        Engine::MODEL_SOURCE_CHARACTER_PARAMETERS* out = nullptr)
+    {
+        Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed;
+        if (profile.materialName.empty() || profile.materialName.size() > 63u ||
+            !Is_ValidUtf8DisplayText(profile.materialName) || profile.sourceMaterial.empty() ||
+            profile.sourceMaterial.size() > 512u || !Is_ValidUtf8DisplayText(profile.sourceMaterial) ||
+            profile.family != "source.character.monster-pbr-masked.v1" ||
+            !SourceCharacterMaterial::Configure(profile.family, profile.parameters, packed)) return false;
+        for (const auto& [name, values] : profile.parameters)
+            for (const auto value : values)
+                if (!std::isfinite(value) || std::abs(value) > 1000000.f) return false;
+        const uint32_t required = packed.baseTextureMask | packed.lightTextureMask;
+        uint32_t supplied = 0u;
+        for (const auto& texture : profile.textures)
+        {
+            if (texture.expressionIndex >= Engine::SOURCE_CHARACTER_TEXTURE_COUNT ||
+                !Is_ResourcePath(texture.assetId, false)) return false;
+            const auto bit = 1u << texture.expressionIndex;
+            if ((supplied & bit) != 0u || (required & bit) == 0u) return false;
+            supplied |= bit;
+        }
+        if (supplied != required) return false;
+        if (out) *out = packed;
+        return true;
+    }
 
 	bool_t Read_Uint32(
 		const DATA_JSON_VALUE* value,
@@ -382,7 +410,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -420,6 +448,33 @@ bool_t Client::CWorldSequenceDocument::Load(
 				(std::string(key) == "sequenceInstanceId" ? object.sequenceInstanceId :
 					object.diffuseTextureAssetId) = field->Get_String();
 			}
+            if (const auto* value = row.Find("materialProfile"))
+            {
+                WORLD_SEQUENCE_MATERIAL_PROFILE profile;
+                if (!Is_ExactObject(*value, { "materialName", "sourceMaterial", "family", "parameters", "textures" }) ||
+                    !value->Find("materialName")->Is_String() || !value->Find("sourceMaterial")->Is_String() ||
+                    !value->Find("family")->Is_String() || !value->Find("textures")->Is_Array() ||
+                    !SourceCharacterMaterial::Read(*value->Find("parameters"), profile.parameters))
+                { outStatus = "Invalid world object material profile: " + object.objectId; return false; }
+                profile.materialName = value->Find("materialName")->Get_String();
+                profile.sourceMaterial = value->Find("sourceMaterial")->Get_String();
+                profile.family = value->Find("family")->Get_String();
+                for (const auto& texture : value->Find("textures")->Get_Array())
+                {
+                    WORLD_SEQUENCE_MATERIAL_TEXTURE input;
+                    if (!Is_ExactObject(texture, { "expressionIndex", "assetId", "colorSpace" }) ||
+                        !Read_Uint32(texture.Find("expressionIndex"), input.expressionIndex) ||
+                        !texture.Find("assetId")->Is_String() || !texture.Find("colorSpace")->Is_String() ||
+                        (texture.Find("colorSpace")->Get_String() != "srgb" && texture.Find("colorSpace")->Get_String() != "linear"))
+                    { outStatus = "Invalid world object material texture: " + object.objectId; return false; }
+                    input.assetId = texture.Find("assetId")->Get_String();
+                    input.srgb = texture.Find("colorSpace")->Get_String() == "srgb";
+                    profile.textures.push_back(std::move(input));
+                }
+                if (!Validate_MaterialProfile(profile))
+                { outStatus = "World object material input contract failed: " + object.objectId; return false; }
+                object.materialProfile = std::move(profile);
+            }
 			staged.m_ObjectResources.push_back(std::move(object));
 		}
 	}
@@ -780,6 +835,29 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< "\",\n      \"anchorBone\": \"" << CDataJson::Escape(object.anchorBone) << "\"";
 		if (!object.defaultMotionInstanceId.empty())
 			output << ",\n      \"defaultMotionInstanceId\": \"" << CDataJson::Escape(object.defaultMotionInstanceId) << "\"";
+        if (object.materialProfile)
+        {
+            const auto& profile = *object.materialProfile;
+            output << ",\n      \"materialProfile\": {\n        \"materialName\": \"" << CDataJson::Escape(profile.materialName)
+                << "\",\n        \"sourceMaterial\": \"" << CDataJson::Escape(profile.sourceMaterial)
+                << "\",\n        \"family\": \"" << CDataJson::Escape(profile.family) << "\",\n        \"parameters\": {";
+            bool first = true;
+            for (const auto& [name, value] : profile.parameters)
+            {
+                output << (first ? "" : ",") << "\n          \"" << CDataJson::Escape(name) << "\": ["
+                    << value[0] << ", " << value[1] << ", " << value[2] << ", " << value[3] << "]";
+                first = false;
+            }
+            output << "\n        },\n        \"textures\": [";
+            for (size_t i = 0u; i < profile.textures.size(); ++i)
+            {
+                const auto& texture = profile.textures[i];
+                output << (i ? "," : "") << "\n          {\"expressionIndex\": " << texture.expressionIndex
+                    << ", \"assetId\": \"" << CDataJson::Escape(texture.assetId)
+                    << "\", \"colorSpace\": \"" << (texture.srgb ? "srgb" : "linear") << "\"}";
+            }
+            output << "\n        ]\n      }";
+        }
 		output << "\n    }";
 	}
 	output << (m_ObjectResources.empty() ? "],\n" : "\n  ],\n")
@@ -966,6 +1044,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid or duplicate world object resource: " + object.objectId;
 			return false;
 		}
+        if (object.materialProfile && (alias || !Validate_MaterialProfile(*object.materialProfile)))
+        { outStatus = "Invalid world object material profile: " + object.objectId; return false; }
 		if (!object.defaultMotionInstanceId.empty())
 		{
 			const auto* motion = Find_Instance(object.defaultMotionInstanceId);
@@ -1416,6 +1496,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.anchorKind != right.anchorKind || left.anchorBossArchetypeId != right.anchorBossArchetypeId ||
 			left.anchorBone != right.anchorBone ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
+            left.materialProfile != right.materialProfile ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
 			left.defaultMotionInstanceId != right.defaultMotionInstanceId) return false;
@@ -1620,4 +1701,21 @@ bool_t Client::CWorldSequenceDocument::Is_ValidStableId(
 			return 0 != std::isalnum(character) || character == '_' ||
 				character == '-' || character == '.';
 		});
+}
+
+bool_t Client::CWorldSequenceDocument::Build_MaterialOverride(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,
+    const std::filesystem::path& resourceRoot, Engine::MODEL_MATERIAL_OVERRIDE& out)
+{
+    Engine::MODEL_MATERIAL_OVERRIDE staged;
+    if (!resourceRoot.is_absolute() || !Validate_MaterialProfile(profile, &staged.surface.sourceCharacter)) return false;
+    staged.materialName = profile.materialName;
+    staged.surface.family = Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;
+    for (const auto& texture : profile.textures)
+    {
+        auto& input = staged.sourceCharacterTextures[texture.expressionIndex];
+        input.path = (resourceRoot / texture.assetId).lexically_normal();
+        input.srgb = texture.srgb;
+    }
+    out = std::move(staged);
+    return true;
 }

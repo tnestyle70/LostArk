@@ -1655,7 +1655,13 @@ HRESULT Client::CEffectV2Object::Submit_Presentation()
 		Engine::PRESENTATION_SCREEN_OVERLAY_DESC Overlay;
 		Overlay.fSampleTimeSeconds = (std::max)(0.f, m_fTime);
 		Overlay.vPosition = S.Evaluate_OverlayPosition(Life_Ratio());
-		Overlay.vScale = S.vOverlayScale;
+		// Screen overlays share the authored scale curve/envelope with world effects.
+		// Keep a positive footprint at the first sample instead of submitting a singular scale.
+		const float3_t scale = m_Params.Scale.Evaluate(Life_Ratio());
+		const float envelope = Scale_Envelope();
+		Overlay.vScale = {
+			(std::max)(0.001f, std::fabs(S.vOverlayScale.x * scale.x) * envelope),
+			(std::max)(0.001f, std::fabs(S.vOverlayScale.y * scale.y) * envelope) };
 		Overlay.fRotationDegrees = S.fOverlayRotationDegrees;
 		Overlay.vTint = S.vTint;
 		Overlay.fAlpha = Saturate(ScreenPost_Intensity()) * Alpha_Envelope();

@@ -724,6 +724,7 @@ namespace LostArk::Server
 		std::uint32_t iContactPriority = 0u;
 		bool bHasContactGroup = false;
 		float fBossChargeDistanceM = 0.f;
+        float fChargeYawOffsetDegrees = 0.f;
         std::string strHoldLogicOccurrenceId;
 	};
 
@@ -1216,7 +1217,7 @@ namespace LostArk::Server
 	{
 	public:
 		bool Load();
-		bool Load_PublishedKoukuProduct();
+		bool Load_PublishedKoukuProduct(const CGameplayCatalog& activeGameplay);
 		/* Load one immutable candidate artifact by its exact canonical path. The
 		content hash is checked before parsing/commit; a successful load exposes
 		the verified parent manifest revision, not the child bootstrap hash. */
@@ -1256,8 +1257,8 @@ namespace LostArk::Server
 		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
 		[[nodiscard]] std::uint32_t Find_KoukuSaydonProductSourceRevision(
 			const std::string& encounterId) const noexcept;
-		/* A Kouku audition imports only this domain. Every other authored row,
-		   including player/boss profiles, damage and Valtan, must stay exact. */
+		/* Kouku reload joins published encounter rows with the active process baseline.
+		   Player/boss profiles, damage and Valtan remain exact even when disk differs. */
 		[[nodiscard]] bool Has_SameNonKoukuGameplay(
 			const CGameplayCatalog& other) const noexcept;
 		/* Madness gauge policy of one encounter, or nullptr when it authored none. */
@@ -1300,6 +1301,10 @@ namespace LostArk::Server
 	private:
 		bool Load_BootstrapPath(
 			const std::filesystem::path& bootstrapPath,
+			const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+			const LostArk::Shared::GameplayDataRevision* parentRevision);
+		bool Load_BootstrapBytes(
+			const std::string& bootstrapBytes,
 			const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
 			const LostArk::Shared::GameplayDataRevision* parentRevision);
 		/* Shared by the per-skill and per-stage rows so both read one packed
@@ -1357,6 +1362,8 @@ namespace LostArk::Server
 		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision
 			m_ValtanPresentationGenerationId{};
+		std::string m_KoukuBootstrapRows;
+		std::string m_NonKoukuBootstrapRows;
 		std::string m_strStatus;
 	};
 }

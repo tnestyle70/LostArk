@@ -131,8 +131,18 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             const auto path = CRuntimeAssetRoot::Resolve(resource->modelAssetId);
             if (path.empty())
             { m_Status = "World Object model path is invalid: " + resource->modelAssetId; return false; }
+            MODEL_ASSET_LOAD_DESC load;
+            load.assetRoot = CRuntimeAssetRoot::Get_ResourceRoot();
+            load.meshPath = path;
+            if (resource->materialProfile)
+            {
+                MODEL_MATERIAL_OVERRIDE material;
+                if (!CWorldSequenceDocument::Build_MaterialOverride(*resource->materialProfile, load.assetRoot, material))
+                { m_Status = "World Object material admission failed: " + resource->objectId; return false; }
+                load.materialOverrides.push_back(std::move(material));
+            }
             staged.model = CModel::Create(targets.device, targets.context,
-                resource->animated ? MODEL::ANIM : MODEL::NONANIM, path.string().c_str(),
+                resource->animated ? MODEL::ANIM : MODEL::NONANIM, load,
                 XMMatrixScaling(resource->modelPreScale, resource->modelPreScale, resource->modelPreScale));
             if (!staged.model || !staged.model->Get_NumMeshes())
             { m_Status = "World Object model admission failed: " + resource->modelAssetId; return false; }
@@ -281,7 +291,7 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
         XMConvertToRadians(motion.revolutionDegreesPerSecond.y * seconds),
         XMConvertToRadians(motion.revolutionDegreesPerSecond.z * seconds));
     const vector_t orbit = XMLoadFloat3(&motion.revolutionOffset);
-    const vector_t position = ((active.placement || anchor.emissionOverride) ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) +
+    const vector_t position = (((active.placement && instance.anchorKind == "WORLD") || anchor.emissionOverride) ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) +
         velocity * seconds + XMLoadFloat3(&motion.acceleration) * (.5f * seconds * seconds) +
         XMVector3TransformNormal(orbit, revolution) - orbit;
     const vector_t scale = XMLoadFloat3(&resource.scale) * XMLoadFloat3(&key.scaleMultiplier);
@@ -298,7 +308,8 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
             XMConvertToRadians(motion.angularVelocityDegrees.y * seconds),
             XMConvertToRadians(motion.angularVelocityDegrees.z * seconds));
     matrix_t world = XMMatrixScalingFromVector(scale) * rotation * XMMatrixTranslationFromVector(position);
-    if (!anchor.emissionOverride) world *= basis;
+    const bool localPlacement = active.placement && (instance.anchorKind == "BOSS" || instance.anchorKind == "PLAYER");
+    if (!anchor.emissionOverride && !localPlacement) world *= basis;
     if (active.placement)
     {
         const auto& placement = *active.placement;
@@ -308,7 +319,7 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
             (anchor.emissionOverride ? XMMatrixIdentity() : XMMatrixTranslationFromVector(XMLoadFloat3(&placement.position)));
     }
     else if (!anchor.emissionOverride) world.r[3] += XMVectorSet(active.positionOffset.x, active.positionOffset.y, active.positionOffset.z, 0.f);
-    if (anchor.emissionOverride) world *= basis;
+    if (anchor.emissionOverride || localPlacement) world *= basis;
     XMStoreFloat4x4(&out, world);
     return true;
 }
