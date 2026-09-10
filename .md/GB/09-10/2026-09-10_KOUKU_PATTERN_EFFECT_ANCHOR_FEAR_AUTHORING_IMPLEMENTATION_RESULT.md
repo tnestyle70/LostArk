@@ -182,3 +182,22 @@ start offset의 묶음이며 같은 boss의 순차 진행 자체는 패턴 순�
 Server snapshot→presentation에서 offset1회 적용을 검토했다. 손 위치·몸 방향·공 반사·암전과 확대·
 블렌딩 및 스킬의 최종 색/모양은 사용자의 인게임 확인 대상이다. 대규모 공동 dirty 상태이므로
 자동 stage/commit/push는 하지 않았다.
+
+
+## G12. 사용자 인게임 검증 완료와 PR 인계
+
+2026-09-10 사용자가 새 EXE에서 확인한 뒤 “pr 올리고 merge까지 해줘 전부 검증 끝났어”라고
+서면으로 검증 완료를 알렸다. 이 작업 범위의 사용자 인게임 검증은 완료로 갱신한다. 에이전트가
+Client/UI를 실행·캡처하거나 화면을 대신 판정한 기록은 아니다. 앞선 G10과 관련 RESULT의
+사용자 화면 대기는 이 결정으로 갱신하며, 원본 HidePawn·native 조명 수명 등 명시적인 미구현
+분석 경계를 새로 구현됐다고 승격하지 않는다.
+
+사용자가 마지막 저장본을1686e76a6a17a103a3ab49d4e0cb2fb64037bea1(effect version 2)로
+commit/push했고, PR은 해당 코드·데이터와 이 검증 완료 기록을 포함한다. 워로드 Q와 차원술사 R의
+사용자 최종 Save도 보존한다. 새 C++ 변경이 없으므로 위 정규 Debug Product 빌드와 새 Server 검사
+근거를 유지한다. 최종 PR 변경 JSON13개와 project/filter XML4개 parse, git diff --check를 확인했다.
+
+사용자가 이어서 “아 내가 병합 시킬게”라고 결정했으므로 에이전트는 PR만 생성하고 merge하지 않는다.
+Resources/EngineSDK/out 및 EXE·DLL·PDB·CSO는 PR에 넣지 않는다. 손망치의 실행 입력은
+`Effect/KoukuSaydon/WorldObjects/WhirlwindHammer/WhirlwindHammer.wmodel`이며 로컬 파일 존재를
+확인했다. Resources는 기존 팀 Drive 경로로 전달하는 대상이고 Drive 업로드 완료 여부는 확인하지 않았다.
