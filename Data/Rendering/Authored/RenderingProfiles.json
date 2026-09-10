@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 25,
+  "revision": 26,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -442,6 +442,79 @@
         "windSpeed": 0,
         "patchScale": 0.01,
         "patchSoftness": 0.15
+      }
+    },
+    {
+      "profileId": "scene.kakulsaydon.spider-blackout.v1",
+      "mapLightIntensityMultiplier": 0,
+      "displayName": "거미카운터_완전암전",
+      "exposureMultiplier": 0.10000000149011612,
+      "bloomIntensityMultiplier": 0,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "ambient": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "specular": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "distance": 80,
+        "orthographicWidth": 64,
+        "orthographicHeight": 64,
+        "near": 0.100000001,
+        "far": 180,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": true,
+        "color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "density": 8,
+        "heightFalloff": 0.0001,
+        "topHeight": 1000,
+        "startDistance": 0,
+        "maximumOpacity": 1,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
       }
     }
   ]

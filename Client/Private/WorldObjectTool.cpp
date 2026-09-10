@@ -1057,6 +1057,57 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
         changed |= ImGui::Checkbox("Animated Model", &resource.animated);
     }
     if (changed) Mark_Dirty();
+    if (!alias)
+    {
+        const auto* initial = m_Document.Find_Instance(resource.defaultMotionInstanceId);
+        const auto* initialSequence = initial ? m_Document.Find_Template(initial->templateId) : nullptr;
+        if (initialSequence && !initialSequence->tracks.empty() && !initialSequence->tracks.front().keys.empty())
+        {
+            const auto& first = initialSequence->tracks.front().keys.front();
+            auto position = first.positionOffset;
+            auto rotation = QuaternionEuler(first.rotationQuaternion);
+            ImGui::SeparatorText("Object Transform / All Motion Keys");
+            bool transformChanged = ImGui::DragFloat3("Object Position (m)", &position.x, .01f);
+            transformChanged |= ImGui::DragFloat3("Object Rotation (deg)", &rotation.x, .25f);
+            ImGui::TextWrapped("Position and Rotation adjust every connected Motion key relative to its current pose. Object Scale above applies to all Motions. Use a child Motion for individual keys.");
+            if (transformChanged)
+            {
+                auto candidate = m_Document;
+                const auto translationDelta = XMLoadFloat3(&position) - XMLoadFloat3(&first.positionOffset);
+                const auto rotationDelta = XMMatrixTranspose(XMMatrixRotationQuaternion(XMLoadFloat4(&first.rotationQuaternion))) *
+                    XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotation.x), XMConvertToRadians(rotation.y), XMConvertToRadians(rotation.z));
+                std::vector<std::string> editedTemplates;
+                for (const auto& id : StateIds(resource))
+                {
+                    const auto* motion = candidate.Find_Instance(id);
+                    auto* sequence = motion ? candidate.Find_Template(motion->templateId) : nullptr;
+                    if (!sequence || std::find(editedTemplates.begin(), editedTemplates.end(), sequence->sequenceId) != editedTemplates.end()) continue;
+                    // Shared templates cannot be rewritten on behalf of a different Object.
+                    for (const auto& other : candidate.Get_Instances())
+                        if (other.templateId == sequence->sequenceId)
+                            for (const auto& binding : other.bindings)
+                                if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE || binding.targetId != resource.objectId)
+                                { m_Status = "This Motion template is shared with another target. Edit its keys separately; Object transform was preserved."; return; }
+                    for (auto& track : sequence->tracks)
+                        for (auto& key : track.keys)
+                        {
+                            XMStoreFloat3(&key.positionOffset, XMLoadFloat3(&key.positionOffset) + translationDelta);
+                            XMStoreFloat4(&key.rotationQuaternion, XMQuaternionNormalize(XMQuaternionRotationMatrix(
+                                XMMatrixRotationQuaternion(XMLoadFloat4(&key.rotationQuaternion)) * rotationDelta)));
+                        }
+                    editedTemplates.push_back(sequence->sequenceId);
+                }
+                std::string status;
+                if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+                { m_Status = "Object transform refused: " + status + ". Existing draft preserved."; return; }
+                m_Document = std::move(candidate);
+                Mark_Dirty();
+                m_Status = "Updated the Object transform in every connected Motion. Save preserves these keys.";
+                return;
+            }
+        }
+        else ImGui::TextDisabled("Choose a Default Motion to edit Object Position and Rotation here.");
+    }
     ImGui::SeparatorText("Connected Motions");
     const auto motions = StateIds(resource);
     const auto* defaultMotion = m_Document.Find_Instance(resource.defaultMotionInstanceId);

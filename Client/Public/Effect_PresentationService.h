@@ -219,6 +219,9 @@ public:
 		EFFECT_SCENE_BUDGET_COST& OutCost,
 		std::string& strOutStatus);
 	static EFFECT_SCENE_BUDGET_PROBE Get_SceneBudgetProbe();
+	// Only measured document contracts may remove the source import basis scale.
+	static bool_t Requires_SourceBoneImportScaleNormalization(
+		const std::string& strEffectAssetId);
 	static bool_t Build_SourceBoneAnchorWorld(
 		const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
 		float4x4_t& OutWorld);

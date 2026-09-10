@@ -1407,3 +1407,27 @@ D 원본 startsize의 비베이크 DistributionVectorUniformRange는 두 개의 
 CEffectDistribution operation4에 원본4벡터를 담아 같은 Playback 경로에서 평가한다. Codec의
 기존 Validate 위임으로 형태·component·시간·유한값을 거부하고, alpha의 비베이크 cubic keys도
 실제 원본에서 회수한다. RNG 순서·signed flip·birth geometry와 기존 operation0~3를 확인한다.
+
+### G38. BA 전체 목록과 제품 연결, A 발생 높이 — 2026-09-10
+
+기존 BA1~4 full 문서(내부 ID ba0~ba3)를 그대로 사용한다. 현재 Codec Load와 실제 GPU Stage를
+먼저 실행해 문서 오류와 목록 누락을 구분한다. EffectCatalog의 제품 등록 및 EffectResourceTree의
+명시적 목록 참조에서 빠진 요청 문서만 추가한다. 다른 평타나 A를 복제해 BA 모양을 추정하지 않는다.
+
+A full의 0.6초 두 번째 타격은 Y=0.8, 나머지는 Y=-0.9/-0.8로 저장돼 있다. 같은 검격·cube
+발생에 속한 원래 요소의 Y만 두 번째 값으로 맞추고 X/Z·회전·크기·원본 module을 유지한다.
+sprite 원본 carrier의 detail timing start delay에는 각각 0.2초를 더한다. mesh cube의 timing은 유지한다.
+
+제품 animevents는 BA 네 단계 full, Q tuning, W/E full, R tuning, A/S/F/D/V/AltV full로 연결한다.
+full 문서 안에 들어 있는 발생을 animevent에서 중복 생성하지 않도록 실제 원래 clip/time 연결을
+확인한다. 기존 skillbindings와 Server skill/stage 이름 및 T는 유지한다. R tuning의 사용자 저장은
+편집하지 않는다. header row count는 변경 후 실제 행 수로 계산한다.
+
+변경 전 bytes를 out에 보관하며 사용자 Save가 겹치면 원본을 덮어쓰지 않는다. JSON parse,
+기존 BA 단계 회귀 검사, 실제 Codec/Playback/GPU 준비와 offscreen draw 수치만 확인한다.
+새 제품 C++ 파일·프로젝트 등록·전체 제품 빌드·Client/UI 실행·화면 캡처는 수행하지 않는다.
+
+G38 조사에서 legacy BA audition의 저장된 source hash는 LF 원문과 일치하나 현재 checkout은
+CRLF인 문제가 확인됐다. 내용 수정이나 hash 검증 완화 없이 해당 donor 3개의 LF bytes를
+복구하고 `.gitattributes`의 BA restore 문서 한 패턴에 `text eol=lf`를 고정한다. 실제 source index
+freshness와 Open에서 사용하는 catalog provenance 검사를 그대로 재실행한다.

@@ -1654,3 +1654,79 @@ F1 Effect Tool에서 R2050180 full, D2050240 clip1 full, S2050220 full, AltV2050
 최종 통합 확인: 변경 JSON과 Alt V 총4개 parse, 현재 Client project/filter XML2개 parse,
 저장소 전체 git diff --check가 모두 성공했다. 검증한 제품 소스5개·변경 JSON3개의 SHA와
 현재 파일이 일치하며 새 EXE SHA도 receipt와 같다. Resources 추가와 Git stage/commit/push는 없다.
+
+## G38. DimensionMaster BA 목록·제품 연결과 A 높이 — 2026-09-10
+
+### 반영한 데이터
+
+`DimensionMaster.animevents`의 요청 슬롯을 BA 네 단계 full, Q tuning, W/E full, R tuning,
+A/S/F/D/V/AltV full로 연결했다. 요청한 14개 aggregate 문서는 각각 실제 첫 clip의 0ms에 한 번
+시작한다. W/E/D full 생성기가 `cue.globalTimeSeconds`를 detail timing에 저장하므로 분리 clip마다
+같은 full을 다시 생성하지 않는다. 기존 분리 Product cue 25개를 14개로 바꾸고 header를 실제
+1542행으로 계산했다. T 2050500의 기존 cue, source/orig·SOUND/HIT 행과 skillbindings,
+PlayerSkills 및 combo 단계는 유지했다. EffectCatalog는 누락된 exact Product 13개만,
+EffectResourceTree는 누락된 BA full 4개와 D/V full 2개만 추가했다.
+
+A full은 두 번째 0.600000024초 발생의 Y=0.800000012를 기준으로 나머지 세 발생의 검격·crack·cube
+등 함께 배치된 36요소 Y만 맞췄다. 기존 X/Z·rotation·scale과 source module은 유지했다.
+sprite carrier 34개의 detail startDelaySeconds에는 각각 0.2초를 더했다. mesh cube의 발생 시간
+0.25/0.600000024/0.899999976/1.29999995초는 유지한다. A 전체 요소 수는 66개다.
+R tuning 사용자 저장 파일은 편집하지 않았으며 작업 시작 시 bytes SHA는
+`419219079911aaa39fa366446c2a4387ee3893bc1bb0e8189b840d9677c25d4d`였다.
+
+### BA 번호와 실제 원본 대조
+
+기존 DisplayName과 내부 단계 이름은 0부터 시작한다. 아래 연결을 유지했으며 legacy audition의
+이전 이름을 Product 단계로 오인해 재배치하지 않았다. 사용자가 목록의 BA1/BA2가 같았다고 기억한
+부분은 실제 동일 normalatk_1_1 원본을 쓰는 아래 두 행과 일치한다. A를 축소 복제한 새로운 BA는 만들지 않았다.
+
+| 기존 DisplayName | combo stage | 실제 animevent clip 끝 | Product full ID 끝 | 원본 핵심 구성 |
+|---|---:|---|---|---|
+| 이펙트_차원술사BA0_전체 | 0 | att_battle_1_01 | 2050010.ba0.full.restore | normalatk_0_1, cone/plane, scale 1 |
+| 이펙트_차원술사BA1_전체 | 1 | att_battle_1_02 | 2050010.ba1.full.restore | normalatk_1_1, fm_h_swing_01/02/03, scale 1.1 |
+| 이펙트_차원술사BA2_전체 | 2 | att_battle_1_03 | 2050010.ba2.full.restore | normalatk_1_1, 같은 swing 3종, scale 1.2 |
+| 이펙트_차원술사BA3_전체 | 3 | att_battle_1_04 | 2050010.ba3.full.restore | normalatk_3_1 검격 2회와 core localcrack, swing scale 1.2 |
+
+legacy `ba1.unified → ba3.restore`, `ba2.unified → ba0.restore`, `ba3.unified → ba2.restore`는
+읽기 전용 출처를 가진 별도 audition 관계로 유지한다. 이 3개 donor는 CRLF checkout 때문에 저장된
+sourceDocumentRawSha256와 달라 All Effects의 freshness gate에서 열기가 거부됐다. 각 파일을 LF로만
+정규화하면 기존 hash와 정확히 일치했다. 기존 JSON 내용과 pin은 수정하지 않고 LF bytes를 복구했으며
+`.gitattributes`에 `/Data/Effects/Authored/effect.dimensionmaster.skill.2050010.ba*.restore.effect.json text eol=lf`
+한 줄을 추가했다. EOL 수정 3개의 JSON diff는 없고 기존 hash 검증도 완화하지 않았다.
+
+### 실제 수행한 검증
+
+- BA 기존 단계 회귀 검사 7개 PASS. Product full 연결 계약과 G33에서 이미 제거된 미지원 행 이후의
+  15/12/7/25개 요소 수로 기존 검사를 갱신했다.
+- 현재 Debug obj 기반 focused probe를 컴파일·링크했다. 실제 SourceIndex Build의 freshness,
+  Open의 catalog provenance 검사, legacy 3개 Codec Load가 모두 PASS다.
+- 실제 DimensionMaster 모델의 154개 clip으로 AnimationEffectCueDocument Load를 실행해 15개 cue,
+  unavailable 0개를 확인했다. 요청 14개 모두 실제 Catalog Capture/Stage와 Codec Save/Reload 후
+  정규 Serialize 일치를 확인했다. 저장 대상은 out 사본이며 사용자 원본은 Save하지 않았다.
+- BA full 4개는 Codec Load, GPU Stage, CPU Playback 300 tick에서 유한 transform을 확인했다.
+  BA full 4개와 수정한 A full은 실제 DimensionMaster 모델/bone을 사용한 offscreen WARP Render를
+  각각 75 frame 실행했다. draw failure와 nonfinite pixel은 0이었다. 256×256 float target의 최대
+  비영 픽셀 수는 BA0 2515, BA1 425, BA2 519, BA3 1623, A 7002였다. 이 수치는 제출 경로 확인이며
+  색·모양·높이의 사용자 육안 승인이 아니다. 이미지 저장이나 화면 캡처는 하지 않았다.
+- 변경 JSON parse와 해당 파일의 git diff --check를 통과했다. 제품 C++ 변경·전체 제품 빌드·
+  Client/Server/UI 실행·stage/commit/push는 수행하지 않았다. 쿠크 props의 이전 dirty 작업은 보존했다.
+
+증거는 `out/DimensionMasterFullRestore20260910/`의 `data_changes.json`, `line_ending_repair.json`,
+`ba-source-comparison.log`, `ba-tests.log`, `product-audit.log`, `ba0..3.draw.log`, `a.draw.log`와
+`before/` bytes backup에 있다. 이전 probe의 리소스 root/CSO 설정 누락에 따른 실패는 환경 교정 후
+재실행했으며, 누락으로 잘못 판단했던 Resources는 수정하거나 복제하지 않았다.
+
+### 남은 실행 경계
+
+위 결과는 데이터와 focused runtime 경로까지다. 실행 중인 Client의 기존 catalog/Effect instance에는
+자동 소급 적용하지 않았다. 사용자의 저장·종료 뒤 root가 정식 실행 파일과 전체 데이터 연결을
+통합하고, 사용자가 직접 All Effects의 기존 BA0~3_전체와 제품 평타 1~4타, A 및 요청 슬롯을 확인해야 한다.
+
+
+## 2026-09-10 최종 Product 통합 확인
+
+사용자 마지막 Save/종료 뒤 최신 원본에 통합하고 관련 publisher와 정규 Debug Product 빌드를 완료했다.
+Engine/Shared/Server/Client 컴파일·링크·EXE/DLL/셰이더 배포는 PASS이며 실행 입력 누락은0이다.
+이 기록은 위의 Product 통합 대기 상태를 갱신한다. 세부 게시 revision·새 Server 검사·남은 사용자
+화면 확인은09-10 KOUKU_PATTERN_EFFECT_ANCHOR_FEAR_AUTHORING_IMPLEMENTATION_RESULT의 G10에 있다.
+빌드 근거: `out/BuildPipeline/runs/20260910T091016153Z-debug-product.json`. Client/UI 실행·캡처와 최종 육안 승인은 수행하지 않았다.

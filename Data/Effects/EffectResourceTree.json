@@ -105,6 +105,12 @@
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34630.clip3.full.restore", "displayName": "창술사 Alt+V 3 원본 전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34630.clip4.full.restore", "displayName": "창술사 Alt+V 4 원본 전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34650.clip1.full.restore", "displayName": "창술사 34650 flm_sk_dragoncleave_01 전체 복원", "parentId": "root.v1"},
-    {"kind": "V1", "assetId": "effect.lancemaster.skill.34650.clip2.full.restore", "displayName": "창술사 34650 flm_sk_dragoncleave_03 전체 복원", "parentId": "root.v1"}
+    {"kind": "V1", "assetId": "effect.lancemaster.skill.34650.clip2.full.restore", "displayName": "창술사 34650 flm_sk_dragoncleave_03 전체 복원", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050010.ba0.full.restore", "displayName": "이펙트_차원술사BA0_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050010.ba1.full.restore", "displayName": "이펙트_차원술사BA1_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050010.ba2.full.restore", "displayName": "이펙트_차원술사BA2_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050010.ba3.full.restore", "displayName": "이펙트_차원술사BA3_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050240.clip1.full.restore", "displayName": "이펙트_차원술사D_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050520.full.restore", "displayName": "이펙트_차원술사V_전체", "parentId": "root.v1"}
   ]
 }

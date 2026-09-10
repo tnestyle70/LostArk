@@ -659,6 +659,9 @@ namespace
 	Client::EFFECT_GPU_RENDER_FAMILY Resolve_GpuRenderFamily(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
+		// Location providers simulate for dependent particles but never own a GPU draw.
+		if (Client::Is_EffectSimulationOnlyParticle(Element))
+			return Client::EFFECT_GPU_RENDER_FAMILY::END;
 		switch (Element.Renderer.eType)
 		{
 		case Client::EFFECT_RENDERER_TYPE::STANDALONE_MESH:

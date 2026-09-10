@@ -556,7 +556,9 @@ Composition의 모든 Save는 전체 편집본을 원자 저장한다. Boss Patt
 F1의 같은 계층에 재생 불가 사유와 함께 남긴다. Save와 Publish의 상세 계약은 팀 Animation 사용서를 따른다.
 쿠크 Pattern/Logic의 새 source revision은 다음 Complete Play에서 Server가 게시 파일과 scope를
 검증해 승인한 뒤 적용한다. 진행 중 run/Restart는 원래 Pattern·Logic·body binding을 유지한다.
-World placement와 다른 gameplay balance 변경은 Server 재시작 대상이다. 파일 게시 성공만으로
+쿠크 재승인은 게시된 쿠크 행과 현재 Server의 검증된 나머지 행을 합쳐 기존 parser로 검사한다.
+별도로 게시된 balance가 디스크에 있어도 쿠크 재생을 막거나 현재 balance를 바꾸지 않는다.
+World placement와 다른 gameplay balance 자체를 적용하려면 Server를 재시작한다. 파일 게시 성공만으로
 Server 재생 승인 완료를 표시하지 않는다. box `durationMs`와 optional
 placement TRS는 protocol 69 WORLD cue로 전달한다. 정상 완료는 `FINISH_OWNER`로 이미 시작한
 재생의 저작 수명을 보존하고, Stop/실패는 `STOP_OWNER`로 즉시 정리한다. 양쪽 실행 파일 갱신 후 Server와 Client를 재시작한다.

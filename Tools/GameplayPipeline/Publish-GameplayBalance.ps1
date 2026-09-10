@@ -3427,6 +3427,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			'maxDistanceM','poseIndex','threshold','shieldArcDegrees',
 			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout')
 		if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) { $windowProperties += 'bossChargeDistanceM' }
+        if ($null -ne $window.PSObject.Properties['chargeYawOffsetDegrees']) { $windowProperties += 'chargeYawOffsetDegrees' }
 		if ($null -ne $window.PSObject.Properties['rearmOnExit']) { $windowProperties += 'rearmOnExit' }
 		if ($null -ne $window.PSObject.Properties['repeatAfterKnockback']) { $windowProperties += 'repeatAfterKnockback' }
 		if ($null -ne $window.PSObject.Properties['holdLogicOccurrenceId']) { $windowProperties += 'holdLogicOccurrenceId' }
@@ -3566,12 +3567,20 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$patternRows.Add((@('PATTERNLOGICREARM', $koukuEncounterDocument.encounterId,
 				$koukuPattern.patternId, $window.windowId, $repeatMode) -join "`t"))
 		}
+        $chargeYawOffset = 0.0
+        if ($null -ne $window.PSObject.Properties['chargeYawOffsetDegrees']) {
+            Assert-JsonNumber $window.chargeYawOffsetDegrees 'Boss charge yaw offset'
+            if ([Math]::Abs([double]$window.chargeYawOffsetDegrees) -gt 360 -or
+                $null -eq $window.PSObject.Properties['bossChargeDistanceM']) { throw 'Charge yaw needs a charge distance and -360..360 degrees' }
+            $chargeYawOffset = [double]$window.chargeYawOffsetDegrees
+        }
         if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) {
             Assert-JsonNumber $window.bossChargeDistanceM 'Boss charge distance'
             if ($windowKind -cne 'ENTER_AREA' -or $window.bossChargeDistanceM -le 0 -or $window.bossChargeDistanceM -gt 1000 -or
                 $null -ne $koukuPattern.PSObject.Properties['bossMotion']) { throw 'Boss charge needs ENTER_AREA and 0..1000 m without absolute bossMotion' }
             $patternRows.Add((@('PATTERNLOGICCHARGE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
-                $window.windowId, (Format-InvariantFloat $window.bossChargeDistanceM 'Boss charge distance')) -join "`t"))
+                $window.windowId, (Format-InvariantFloat $window.bossChargeDistanceM 'Boss charge distance'),
+                (Format-InvariantFloat $chargeYawOffset 'Boss charge yaw offset')) -join "`t"))
         }
 		$contactTargetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		if ($windowKind -ceq 'OBJECT_CONTACT') {

@@ -1271,7 +1271,9 @@ namespace
 
         BOSS_PATTERN_LOGIC_WINDOW charge{};
         charge.strWindowId = "charge.1"; charge.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        tests.Require(charge.fChargeYawOffsetDegrees == 0.f, "Legacy charge facing offset defaults to zero");
         charge.iStartMs = 101u; charge.iDurationMs = 1001u; charge.fBossChargeDistanceM = 7.f;
+        charge.fChargeYawOffsetDegrees = 90.f;
         BOSS_LOGIC_REGION body{};
         body.strRegionId = "charge.body"; body.bCircle = true;
         body.fRadiusM = 1.f; body.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
@@ -1288,13 +1290,13 @@ namespace
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 519u, events, output);
         tests.Require(std::abs(boss->fPositionX) < .001f && boss->fPositionZ > 3.f && boss->fPositionZ < 4.f &&
-            std::abs(boss->fYawDegrees) < .001f && boss->fPatternTargetLastPositionZ == 10.f,
-            "Boss charge captures one target position and keeps its direction after that player moves");
+            std::abs(boss->fYawDegrees - 90.f) < .001f && boss->fPatternTargetLastPositionZ == 10.f,
+            "Boss charge keeps its captured travel direction after the player moves while rotating body yaw by ninety degrees");
         players.at(1u).fPositionX = 0.f; players.at(1u).fPositionZ = 7.f;
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 534u, events, output);
         tests.Require(std::abs(boss->fPositionZ - 7.f) < .001f && std::abs(boss->fPositionX) < .001f &&
-            players.at(1u).eAction == PLAYER_ACTION_STATE::FEAR && players.at(1u).iActionStartTick == 534u,
+            std::abs(boss->fYawDegrees - 90.f) < .001f && players.at(1u).eAction == PLAYER_ACTION_STATE::FEAR && players.at(1u).iActionStartTick == 534u,
             "Boss charge reaches exactly seven metres on its pattern-clock deadline and its body collider follows before fear overlap");
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 550u, events, output);
@@ -3515,7 +3517,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const HANDLE publishing = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
 				0u, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 			CGameplayCatalog blockedProduct;
-			tests.Require(publishing != INVALID_HANDLE_VALUE && !blockedProduct.Load_PublishedKoukuProduct() &&
+			tests.Require(publishing != INVALID_HANDLE_VALUE && !blockedProduct.Load_PublishedKoukuProduct(*generation) &&
 				blockedProduct.Get_Status().find("publish is in progress") != std::string::npos,
 				"Kouku admission cannot read a publisher transaction before commit or rollback");
 			auto restart = play; restart.iRequestSequence = 2u;
@@ -3579,11 +3581,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			publish(foreign); play.iRequestSequence = 9u;
 			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
-				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_REVISION_MISMATCH &&
-				reloadRoom->m_pKoukuPublishedProductGeneration == refreshedPin &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED &&
+				result.iPinnedSourceRevision == oldSource + 2u &&
+				reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration->Has_SameNonKoukuGameplay(*generation) &&
 				reloadRoom->Get_ActiveGameplayGeneration() == generation,
-				"Kouku reload rejects unrelated damage changes and retains process balance");
-			publish(published); play.iRequestSequence = 10u; play.Scope.iExpectedSourceRevision = oldSource;
+				"Kouku reload admits only encounter edits and retains active damage despite unrelated disk changes");
+			stop = play; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;
+			stop.iRequestSequence = 10u; stop.iExpectedRunEpoch = result.iRoomAuditionEpoch;
+			(void)reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, stop, result);
+			publish(published); play.iRequestSequence = 11u; play.Scope.iExpectedSourceRevision = oldSource;
 			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
 				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
 				"A new run cannot roll back to an older source after a newer Product was admitted");

@@ -704,6 +704,17 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	}
 
+    // A static World Object may own the same native material contract as an actor.
+    // Submit its real CMaterial into the shared direct-light pass after legacy resets.
+    const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
+    if (nativeSurface && nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+    {
+        const uint32_t noMapSurface = 0u;
+        if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &noMapSurface, sizeof(noMapSurface))) ||
+            FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &noMapSurface, sizeof(noMapSurface)))) return E_FAIL;
+        return model->Bind_SourceCharacter(shader, meshIndex);
+    }
+
 	const auto* surface = model->Get_MaterialSurface(meshIndex);
 	const bool_t hasDefinition = surface &&
 		surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY &&

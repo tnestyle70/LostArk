@@ -143,6 +143,7 @@ namespace Client
 		bool_t bRearmOnExit = false;
 		bool_t bRepeatAfterKnockback = false;
 		double fBossChargeDistanceM = 0.0;
+        double fChargeYawOffsetDegrees = 0.0;
 		std::string strHudMode;
 		std::array<double, 3> TeleportPosition{};
 		std::string strClonePatternId;

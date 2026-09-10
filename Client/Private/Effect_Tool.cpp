@@ -762,6 +762,7 @@ namespace
 		Client::EFFECT_TRANSFORM_DESC SocketLocalTransform{};
 		Client::EFFECT_ATTACHMENT_ORIENTATION eOrientation =
 			Client::EFFECT_ATTACHMENT_ORIENTATION::BONE;
+		bool_t bNormalizeSourceImportScale = false;
 	};
 
 	std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Collect_ToolSourceAnchorRequests(
@@ -797,7 +798,9 @@ namespace
 					Element.ActionCueAttachment.strRuntimeAnchorSlotId,
 					Element.ActionCueAttachment.strRuntimeBoneName,
 					Element.ActionCueAttachment.SocketLocalTransform,
-					Element.ActionCueAttachment.eOrientation });
+					Element.ActionCueAttachment.eOrientation,
+					Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
+						Document.strEffectAssetId) });
 			}
 		}
 		std::sort(Requests.begin(), Requests.end(),
@@ -905,7 +908,10 @@ namespace
 			strOutError = "owner_yaw attachment requires the actual preview owner transform.";
 			return false;
 		}
-		if ((nullptr != pValtanCue || bNeedsOwnerYaw) && !Requests.empty())
+		const bool_t bNeedsImportScaleNormalization = std::any_of(Requests.begin(), Requests.end(),
+			[](const TOOL_SOURCE_ANCHOR_REQUEST& Request)
+			{ return Request.bNormalizeSourceImportScale; });
+		if ((nullptr != pValtanCue || bNeedsOwnerYaw || bNeedsImportScaleNormalization) && !Requests.empty())
 		{
 			pValtanModel = Client::CAnimationTargetService::Resolve_Model();
 			if (nullptr == pValtanModel ||
@@ -934,6 +940,7 @@ namespace
 			}
 			float4x4_t BoneAnchorWorld{};
 			const bool_t bUsesRawBone = nullptr != pValtanCue ||
+				Request.bNormalizeSourceImportScale ||
 				Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW;
 			const bool_t bResolved = bUsesRawBone ?
 				(nullptr != pValtanModel &&
@@ -956,7 +963,20 @@ namespace
 				float4x4_t RawBone{};
 				XMStoreFloat4x4(&RawBone, pValtanModel->Get_BoneMatrix(
 					Request.strRuntimeBoneName.c_str()));
-				if (!Build_ToolValtanSourceAnchorWorld(
+				if (Request.bNormalizeSourceImportScale && nullptr == pValtanCue &&
+					Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::BONE)
+				{
+					Client::EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+					AnchorBuild.RawBone = RawBone;
+					AnchorBuild.OwnerWorld = SampledValtanOwnerRoot;
+					if (!Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(AnchorBuild, BoneAnchorWorld))
+					{
+						strOutError = "Source follow bone does not match its admitted import scale: " + Request.strRuntimeBoneName;
+						bAllResolved = false;
+						continue;
+					}
+				}
+				else if (!Build_ToolValtanSourceAnchorWorld(
 						RawBone, SampledValtanOwnerRoot,
 						nullptr != pValtanCue ? pValtanCue->eScalePolicy :
 							Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE,
@@ -31815,6 +31835,17 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 					{
 						strProviderError =
 							"Source-anchor history could not normalize the Valtan source bone with its cue scale policy.";
+						return false;
+					}
+				}
+				else if (Request.bNormalizeSourceImportScale)
+				{
+					EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+					AnchorBuild.RawBone = PoseSample.BoneCombinedMatrices[iBoneSample];
+					AnchorBuild.OwnerWorld = PoseSample.RootWorld;
+					if (!CEffectPresentationService::Build_SourceBoneAnchorWorld(AnchorBuild, BoneWorld))
+					{
+						strProviderError = "Source-anchor history does not match its admitted import scale.";
 						return false;
 					}
 				}

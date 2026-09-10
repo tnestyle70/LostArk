@@ -1573,7 +1573,7 @@ HRESULT CModel::Ready_BinaryModel(
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 20u || mask == 0u ||
+            if (source.program == 0u || source.program > 21u || mask == 0u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
                 replacement.surface.hasBakedLighting || replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");

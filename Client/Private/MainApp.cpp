@@ -8462,7 +8462,11 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
 	for (const auto& member : audition.Members) ImGui::BulletText("%s | boss %u | %s | state %u",member.strMemberId.c_str(),member.iBossNetEntityId,member.strPatternId.c_str(),unsigned(member.eState));
-	ImGui::TextWrapped("%s",audition.strStatus.c_str()); ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
+	ImGui::TextWrapped("%s",audition.strStatus.c_str());
+	// Submission returns a pending message once; the service owns its later verdict.
+	if (!m_strKoukuCompletePlayStatus.starts_with("Waiting for the Server to admit") &&
+		m_strKoukuCompletePlayStatus != audition.strStatus)
+		ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()
@@ -8896,7 +8900,8 @@ void CMainApp::RefreshWorldObjectResources()
 				row.strObjectDisplayName = owner->displayName;
 				row.bDefaultMotion = owner->defaultMotionInstanceId == instance.instanceId;
 				row.bSupportsPlacement = owner->sequenceInstanceId.empty() &&
-					instance.anchorKind == "WORLD" && owner->anchorKind == "WORLD";
+					instance.anchorKind == owner->anchorKind &&
+					(instance.anchorKind == "WORLD" || instance.anchorKind == "BOSS" || instance.anchorKind == "PLAYER");
 			}
 			for (const auto& animation : sequence->animationTracks)
 				row.AnimationClips.push_back(animation.clipName);

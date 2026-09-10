@@ -335,8 +335,10 @@ namespace
 		if (hasContactValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "OBJECT_CONTACT"))
 		{ outStatus = "Only OBJECT_CONTACT carries target placements and contact priority."; return false; }
         if (!std::isfinite(logic.fBossChargeDistanceM) || logic.fBossChargeDistanceM < 0.0 || logic.fBossChargeDistanceM > 1000.0 ||
+            !std::isfinite(logic.fChargeYawOffsetDegrees) || std::abs(logic.fChargeYawOffsetDegrees) > 360.0 ||
+            (logic.fChargeYawOffsetDegrees != 0.0 && logic.fBossChargeDistanceM <= 0.0) ||
             (logic.fBossChargeDistanceM != 0.0 && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")))
-        { outStatus = "Only ENTER_AREA accepts a boss charge distance of 0..1000 m."; return false; }
+        { outStatus = "Only ENTER_AREA accepts a boss charge distance of 0..1000 m and charge yaw of -360..360 degrees; nonzero yaw requires positive distance."; return false; }
 		if (((logic.bRearmOnExit || logic.bRepeatAfterKnockback) && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) ||
 			(logic.bRearmOnExit && logic.bRepeatAfterKnockback))
 		{ outStatus = "ENTER_AREA accepts one contact repeat policy."; return false; }
@@ -2002,7 +2004,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "followupPatternId", "triggerKind", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "followupPatternId", "triggerKind", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -2081,6 +2083,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalUnsigned("effectDelayMs", MAX_TIME_MS, stagedLogic.iEffectDelayMs) ||
 				!optionalText("triggerKind", stagedLogic.strTriggerKind) ||
 				!optionalFinite("bossChargeDistanceM", 0.0, 1000.0, stagedLogic.fBossChargeDistanceM) ||
+                !optionalFinite("chargeYawOffsetDegrees", -360.0, 360.0, stagedLogic.fChargeYawOffsetDegrees) ||
 				!optionalText("hudMode", stagedLogic.strHudMode) ||
 				!optionalText("clonePatternId", stagedLogic.strClonePatternId) ||
 				!Try_ParseTextList(logicValue.Find("targetWorldOccurrenceIds"), 64u, stagedLogic.TargetWorldOccurrenceIds) ||
@@ -3152,6 +3155,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				output << ",\n      \"repeatAfterKnockback\": true";
             if (logic.strTriggerKind == "ENTER_AREA" && logic.fBossChargeDistanceM != 0.0)
                 output << ",\n      \"bossChargeDistanceM\": " << logic.fBossChargeDistanceM;
+            if (logic.strTriggerKind == "ENTER_AREA" && logic.fChargeYawOffsetDegrees != 0.0)
+                output << ",\n      \"chargeYawOffsetDegrees\": " << logic.fChargeYawOffsetDegrees;
 			if (logic.strTriggerKind == "OBJECT_CONTACT")
 			{
 				output << ",\n";

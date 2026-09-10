@@ -52,3 +52,20 @@ Area WorldSequences scope Publish/Check와 KoukuSaydon domain publish로 생성�
 Client/UI 실행·조작·캡처는 하지 않는다. Server + Client profile을 사용자가 Ctrl+F5로 실행하고,
 Lobby → KoukuSaydon → F1 → KoukuSaydon Complete Play → Gate 2 →
 쿠크_팡파레 / 쿠크_레이저를 재생한다. 손 정렬·크기·색의 최종 판단은 사용자 검토로 남긴다.
+
+## G05. 손 소품 Transform 편집과 휠윈드 망치
+
+부모 Object Detail에서 기본 Motion 첫 key를 기준으로 Position/Rotation을 노출하고 변경량을 해당
+Object의 연결 Motion key 전체에 적용한다. Object Scale은 기존 공통 값이다. 기존 Motion의 상대
+궤적과 key 시간은 유지하며 후보 document 검증 성공 뒤 교체한다. 새 JSON 필드는 추가하지 않는다.
+
+Action Workbench의 WORLD 박스 placement는 WORLD resource에서는 기존 절대 배치이고,
+BOSS/PLAYER resource에서는 기존 Motion 뒤, 실제 anchor 앞에 합성하는 local 보정이다.
+MainApp resource 공급, Workbench 입력·저장, projector admission과 WorldSequencePlayer가 동일한
+anchor 의미를 소비한다. Map placement와 Server world-collider는 기존 고정 WORLD 제한을 유지한다.
+
+레이저 대포·트럼펫은 기존 local quaternion에 소품 local Y 180도 회전을 합성한다.
+휠윈드 망치는 원본 Encore Kouku의 소켓·mesh·material을 확인하고 기존 CModel/CMaterial 손 소품
+경로에 등록한다. P24 WORLD occurrence 추가는 통합 writer가 수행한다.
+새 C++ 파일과 project/filter 등록은 없다. 필요한 파일만 컴파일하고 JSON/publisher 검사와
+실제 matrix 합성 수치 확인을 수행한다. 화면 판정은 사용자가 한다.

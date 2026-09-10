@@ -298,7 +298,9 @@
       "overlayEnterEnd": 0.0,
       "overlayExitStart": 1.0,
       "overlayRotationDegrees": 0.0
-    }
+    },
+    "scaleInEnd": 0.15,
+    "scaleOutStart": 1
   },
   "parts": []
 }

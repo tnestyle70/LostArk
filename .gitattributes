@@ -78,6 +78,7 @@
 /Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json text eol=crlf
 # Keep the surviving DimensionMaster authored document LF-stable.
 /Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050010.ba*.restore.effect.json text eol=lf
 /Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli text eol=lf
 /Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl text eol=lf
 /Client/Private/Effect_DocumentRenderer.cpp text eol=lf

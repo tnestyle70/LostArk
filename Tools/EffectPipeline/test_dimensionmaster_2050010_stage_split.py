@@ -43,7 +43,7 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
         # Every nonfinal BA must instead require another click or hold repeat.
         self.assertTrue(all(s["inputCloseMs"] > s["inputOpenMs"] for s in stages[:-1]))
 
-    def test_product_cues_connect_each_clip_to_its_own_tuned_effect(self) -> None:
+    def test_product_cues_connect_each_clip_to_its_own_full_effect(self) -> None:
         lines = (self.repository_root / "Data/Animation/Authored/DimensionMaster/"
                  "DimensionMaster.animevents").read_text(encoding="utf-8").splitlines()
         self.assertEqual(int(lines[0].rsplit(" ", 1)[1]), len(lines) - 1)
@@ -51,25 +51,20 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
         self.assertEqual(len(cues), 4)
         for stage, line in enumerate(cues):
             self.assertTrue(line.startswith(f'"pc_sp_m_00_sk_att_battle_1_0{stage + 1}" EFFECT startms=0 '))
-            self.assertIn(f'payload="effect.dimensionmaster.skill.2050010.ba{stage}.restore"', line)
+            self.assertIn(f'payload="effect.dimensionmaster.skill.2050010.ba{stage}.full.restore"', line)
             self.assertIn('effectref=asset anchor="root" follow=follow orientation=action_facing stop=natural', line)
         self.assertTrue(any('"pc_sp_m_00_sk_att_battle_1_02" EFFECT' in line and 'src=orig' in line
                             for line in lines))
 
-    def test_tuned_product_and_full_comparison_have_distinct_payloads(self) -> None:
+    def test_tuned_and_full_product_documents_have_distinct_payloads(self) -> None:
         rows = {r["effectAssetId"]: r for r in self.load_json("Data/Effects/EffectCatalog.json")["effects"]}
         for stage in range(4):
             for full in [False, True]:
                 effect = self.load_effect(stage, full)
                 asset = effect["effectAssetId"]
-                if full:
-                    self.assertNotIn(asset, rows)
-                    owner = asset.removesuffix(".full.restore") + ".restore"
-                    self.assertIn(owner, rows)
-                else:
-                    self.assertIn(asset, rows, f"Missing Catalog row: {asset}")
-                    self.assertEqual(rows[asset]["payloadKind"], "DIRECT_AUTHORED_DOCUMENT")
-                    self.assertEqual(rows[asset]["authoringPath"], f"Effects/Authored/{asset}.effect.json")
+                self.assertIn(asset, rows, f"Missing Catalog row: {asset}")
+                self.assertEqual(rows[asset]["payloadKind"], "DIRECT_AUTHORED_DOCUMENT")
+                self.assertEqual(rows[asset]["authoringPath"], f"Effects/Authored/{asset}.effect.json")
                 self.assertEqual((effect["schema"], effect["version"]), ("lostark.effect-authoring", 13))
             self.assertNotEqual(self.load_effect(stage)["elements"], self.load_effect(stage, True)["elements"])
 
@@ -105,9 +100,10 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
                 self.assertEqual(e["detail"]["mesh"]["modelPreScale"], .01)
                 self.assertFalse(e["detail"]["particle"]["billboard"])
 
-    def test_full_comparisons_preserve_all_native_occurrences_and_pending_rows(self) -> None:
+    def test_full_documents_preserve_admitted_native_occurrences(self) -> None:
         all_ids = []
-        for stage, count in enumerate([18, 14, 9, 34]):
+        # G33 removed 16 confirmed unsupported/hidden rows before this Product switch.
+        for stage, count in enumerate([15, 12, 7, 25]):
             effect = self.load_effect(stage, True)
             self.assertEqual(len(effect["elements"]), count)
             for e in effect["elements"]:

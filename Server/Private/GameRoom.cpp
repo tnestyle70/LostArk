@@ -6573,7 +6573,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 		CKoukuSaydonBrain::Resolve_ProductSourceRevision(*productGeneration))
 	{
 		auto candidate = std::make_shared<CGameplayCatalog>();
-		if (!candidate->Load_PublishedKoukuProduct())
+		if (!candidate->Load_PublishedKoukuProduct(m_GameplayCatalog.Active()))
 			return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
 				"KoukuSaydon published Product was not admitted: " + candidate->Get_Status());
 		const auto publishedSource = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*candidate);

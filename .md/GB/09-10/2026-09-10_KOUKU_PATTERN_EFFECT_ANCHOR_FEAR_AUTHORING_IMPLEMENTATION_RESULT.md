@@ -108,6 +108,77 @@ Lobby → KoukuSaydon → F1 → `KoukuSaydon Complete Play (Server Boss Replay)
 잡기 Trigger의 `Capture Hold window`와 Success의 CAPTURE_PLAYER 연결을 볼 수 있다.
 손 위치는 Result의 `Grip forward / up / right (m)`에서 조정한다.
 
-이 변경은 서버 전체 Hot Reload 구현을 포함하지 않는다. 이번 게시 revision229는 새 Server
-시작으로 소비된다. 이후 Save/Publish만으로 실행 중 Server의 revision이 바뀌지는 않으며
-현재는 Server 재시작과 Client 재접속이 필요하다. 한 버튼 무중단 교체는 별도 검토 범위다.
+초기 게시 revision229는 새 Server 시작으로 소비했다. 이후 G08/G10에서 쿠크 encounter 전용
+게시·재승인을 구현하고 새 Product에 반영했다. 실행 중 run의 revision은 유지하며 새 Complete Play가
+게시된 쿠크 revision을 승인한다. 쿠크 밖의 실제 balance와 world placement 변경은 계속 Server 재시작 대상이다.
+
+## G08. Publish 뒤 다른 밸런스 때문에 거절되던 재승인 경로
+
+사용자 첨부 화면은 Server REJECTED였고, 이전 Waiting 문자열이 별도로 계속 표시됐다. Load_PublishedKoukuProduct가 전체 게시물을 현재 Server와 비교하여 쿠크 밖의 별도 balance 변경까지 거부하던 경로를 수정했다. 새 게시물은 잠금 아래 기존 loader로 검증하고, 그 쿠크 소유 행과 현재 활성 catalog의 검증된 non-Kouku 행을 합쳐 동일한 Load_BootstrapBytes parser로 재검사한다. 별도 파일 런타임이나 미검증 map 복사 경로는 추가하지 않았다. 실행 중 generation·Restart·STOP의 pin과 fixed-tick admission은 유지한다. MainApp은 Server status와 별개로 남아 있던 초기 Waiting 문자열을 다시 표시하지 않는다.
+
+별도 out 경로로 Server 전체 C++ 컴파일·링크 후 기존 --kouku-bundle-contract-test가 failures0이었다. publisher 잠금 중 거부, 기존 run Restart pin, 새700ms stage 실행, stale STOP 거부, 손상 문서 실패 보존, 미게시 source 거부, 외부 damage99999 변경을 제외하면서 새 쿠크 source만 승인, 과거 source rollback 거부를 실제 CGameRoom으로 확인했다. 현 Client/Server 프로세스나 제품 EXE를 교체하지 않았다. 근거는 out/KoukuLivePublishFix20260910/{build.log,contract.log}다. 최종 Product 빌드·사용자 아레나 검증은 후속 단계다.
+
+## G09. 최종 저장·종료 대기 checkpoint
+
+사용자는 편집 중이며 끝나면 Save/종료 완료를 알리겠다고 답했다. 따라서 source 데이터 통합, runtime publisher와 Product EXE 교체는 보류한다. task-local out/KoukuFollowup20260910/stage_changes.py는 최신 원본을 다시 읽고 기존 decimal/서식을 보존해 P13 내부20전환150ms, 거미 전용 blackout/얼굴300ms확대, P24손망치WORLD, logic31몸yaw90, 공 materialProfile을 준비한다. 현재 검증 후보는 source259→260이며 실제 저장 때는 마지막 사용자 revision을 기준으로 다시 만든다. 각 source의 기존 bytes를 모두 비교한 뒤 원자 교체한다. 실행 중인 도구의 메모리 draft를 대신 Save하지 않는다.
+
+실행 준비 확인: 최종 MainApp/WorldObjectTool 개별 컴파일 성공. 새 charge 필드를 포함한 별도 Server 전체 빌드·링크와 기존 --kouku-object-overlap-contract-test/--kouku-bundle-contract-test 모두 failures0. 대포·트럼펫180도 및 망치 object/template/instance의5개 변경은 현재 worldsequences와 준비했던 값이 정확히 일치한다. 소품 Transform 공개 코드와 원본 Resources 모델도 보존됐다. 정식 Product는 아직 빌드하지 않았다.
+
+P25 aura 읽기 검토: source259/published256의 anchor BOSS, follow, offsetY1.4500000477와현재start5465/duration7647이 같다. 실제 Snapshot→KoukuPresentationPlayer→Make_Pivot→V2 GROUP에서 offset을 한 번 합성한다. leaf 자체Y1이 더해져 최종중심은bossY+2.4500000477이며 미리보기와 제품이 동일하다. 사용자 손조정은 바꾸지 않는다. P13/P17은 reset=false이며 preview가live Snapshot position/yaw를 쓰도록 한 수정으로 Server 시작 기준에 맞는다. 무본collider localTRS와weaponBone*socket boss-local bake에 live yaw는 각각 한 번 적용된다. 여러 플레이어에서 서로 다른 retarget 대상을 택하면 방향 차이는 의도된 상태이며 사용자 최종 화면은 미검증이다.
+
+도화가 기존Product/AltV는 Artist 결과G10, 차원술사 mapping/A/BA는 Round2 결과G38, 워로드Q는 Warlord 결과G13, 공과거미몸방향은09-10 개별결과에 검증 근거를 둔다. 해당 source 구현과 최소 검증은 완료했고, 최종 사용자 저장본 통합→WorldSequences Publish/Check→Kouku domain publish→Product Debug 빌드가 남는다.
+
+
+## G10. 마지막 저장본 통합·게시·정규 Debug 실행 준비 완료
+
+사용자가 Save/종료를 알린 뒤 마지막 Composition262를 다시 읽어263으로 통합했다. 중간에 사용자가
+이전 EXE를 실행했으나 다시 종료를 확인한 뒤 정규 Product 빌드를 시작했다. 광역 원본 재저장 대신
+대상 JSON 값만 교체했고, 사용자 R tuning과 기존 WorldSequence 소품 설정을 보존했다.
+
+- P13 내부20개 animation 전환을150ms blend로 연결했다. 거미 logic35만 전용 완전암전 profile을
+  사용하고 local light를 제거했다. 얼굴의 기존1000ms delay는 유지하며300ms 점확대를 연결했다.
+- 거미 logic31의 몸 yaw는+90이며7m charge 이동 자체는 보존한다. Source/Encounter/Server의
+  charge3개 구간이 같은 값을 소비한다. P24는 손망치 World18을 전체6502ms occurrence로 연결한다.
+- 대포·트럼펫180도와 망치 actor/bone·Transform5개 설정은 마지막 저장본에서도 준비값과 동일했다.
+  Object Tool/Action Workbench Pos·Rot·Scale 및 앵커 기준 보정 코드가 새 EXE에 들어갔다.
+- 공 materialProfile41값/8texture를 worldsequences426에 통합했다. 기존4개 map light는 이미 켜져
+  있었으며 공에 원본 PBR mask·IBL·BRDF를 연결했다. 전체 맵 모든 material family 복원은 아니다.
+- Artist 지정7cue(Q/W/R2/A/S/F)와18개 전체 cue, DM 요청14개 연결과 A36개 Y·34개 sprite delay,
+  BA4개 full/기존 All Effects3개 donor freshness를 마지막 저장본으로 다시 확인했다.
+  사용자 R tuning SHA256는419219079911aaa39fa366446c2a4387ee3893bc1bb0e8189b840d9677c25d4d로 보존됐다.
+- Warlord Q의 source bone scale 중복 적용과 Artist Alt V의 simulation provider GPU 집계 차이 수정이
+  새 Client에 반영됐다. Q 원인을 확인했으므로 이전 효과로 우회하지 않고 full.restore 연결을 유지했다.
+
+| 최종 검사 | 실제 결과 |
+|---|---|
+| WorldSequences Validate/Publish/Check | PASS, source/runtime426 전체 동등, material 입력8개 물리 파일 존재 |
+| Kouku domain 게시 | PASS, Composition/Encounter/patternbindings/Server 모두263, Product22patterns/6bundles |
+| RenderingProfiles Publish | PASS, source/runtime26 전체 동등, 거미 blackout 참조 닫힘 |
+| 정규 Debug Product | Engine/Shared/Server/Client 컴파일·링크·배포 PASS, SkipBuild=False, missingRuntimeInputs0 |
+| 새 제품 Server bundle 검사 | --kouku-bundle-contract-test exit0/failures0, 외부 balance 보존·게시 revision 재승인·실패 rollback 확인 |
+| 새 제품 Server overlap 검사 | --kouku-object-overlap-contract-test exit0/failures0, 거미 charge/공포와 휠윈드 방향·거리·반복 hit·navigation 확인 |
+| 변경 JSON/XML | 변경 JSON12개 및 project/filter XML4개 parse PASS |
+| DLL 배포 | Engine/Bin/Debug와 Client/Bin/Debug의 Engine.dll SHA256 일치 |
+| diff 검사 | git diff --check exit0; 줄끝 정규화 안내만 있음 |
+| 사용자 화면 | 미실행. Client/UI 실행·조작·캡처 및 visual PASS를 수행하지 않음 |
+
+Rendering publish 최초 검사는 exposure의 float32 최소값과 fog heightFalloff 하한을 거부했다.
+새 profile만 각각0.10000000149011612와0.0001로 바로잡은 후 실제 publisher를 통과했다.
+정규 빌드는 약288초였고 C4819/C4828·기존 FXC 경고와 외부 DirectXTK PDB 경고가 남지만
+compiler/linker error는 없다. build receipt는 `out/BuildPipeline/runs/20260910T091016153Z-debug-product.json`다.
+통합 증거는 `out/KoukuFollowup20260910/`의 publish.log, rendering-publish.log,
+worldsequences-publish.log, worldsequences-check.log, product-build.log,
+server-bundle-contract.log, server-object-contract.log, parse-check.json, final-source-check.json이다.
+
+18:10 KST 새 Client.exe 생성·배포가 완료됐고, 확인 시 지속 Client/Server는 종료 상태였다.
+사용자는 Visual Studio의 Server + Client profile을 Ctrl+F5로 실행한다. 쿠크는 Lobby → KoukuSaydon →
+F1 → KoukuSaydon Complete Play에서 최신 inventory를 불러와 검증한다. Publish 뒤 기존 실행은 Stop하고
+새 Complete Play로 게시 revision을 승인한다. 일반 승인 제한5초/예약 시작15초는 정상 대기 소요시간이
+아니라 timeout이며 REJECTED 뒤 기다린다고 승인되지 않는다. 별도 Waiting 문구 잔류도 제거했다.
+
+Bundle9/10은 개별 P24/P23를 유지하므로 개별 재생을 위해 분리할 필요가 없다. bundle은 동시 actor와
+start offset의 묶음이며 같은 boss의 순차 진행 자체는 패턴 순서로 관리한다. 사용자가 지정하지 않은
+전체 Gate2 진행 순서는 새로 만들지 않았다. P25 aura의 사용자 BOSS/offset은 그대로 유지하며
+Server snapshot→presentation에서 offset1회 적용을 검토했다. 손 위치·몸 방향·공 반사·암전과 확대·
+블렌딩 및 스킬의 최종 색/모양은 사용자의 인게임 확인 대상이다. 대규모 공동 dirty 상태이므로
+자동 stage/commit/push는 하지 않았다.
