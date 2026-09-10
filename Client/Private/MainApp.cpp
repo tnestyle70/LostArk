@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "MainApp.h"
+#include "DungeonTimerView.h"
 #include "BossImmuneGaugeView.h"
 
 #include "CharacterSelectionState.h"
@@ -770,6 +771,9 @@ HRESULT CMainApp::Initialize()
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
+
+	m_pDungeonTimerView = std::make_unique<CDungeonTimerView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 	/* Authored layer tints are opaque -- every real slot would otherwise sit fully visible from
 	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
 	boss. */
@@ -1042,6 +1046,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
+	/* Screen-anchored, so it runs in every Level -- including the one the HUD
+	   Layout Tool is used from. */
+	if (nullptr != m_pDungeonTimerView)
+	{
+#ifdef _DEBUG
+		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
+#endif
+		m_pDungeonTimerView->Update(fTimeDelta,
+			CCombatHUDViewModel::Get().Get_DungeonTimer());
+	}
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
 	Update_BossImmuneGauge(fTimeDelta);
@@ -2240,6 +2254,8 @@ HRESULT CMainApp::Render()
 	{
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
+		if (nullptr != m_pDungeonTimerView)
+			m_pDungeonTimerView->Render();
 		RenderChargeGaugeText();
 		RenderSkillCooldownText();
 		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
@@ -7176,12 +7192,6 @@ void CMainApp::RenderKoukuUiPreviewControls()
 		}
 		bChanged = true;
 	}
-	if (bChanged)
-	{
-		m_KoukuUiPreview.isValid = m_bKoukuUiPreview;
-		m_KoukuUiPreview.iMadnessMaximum = 100u;
-		viewModel.Debug_Set_KoukuGimmickPreview(m_KoukuUiPreview);
-	}
 	/* Fires the floating status word over the local character in the KoukuSaydon
 	arena, so the retail damagetext motion can be looked at without waiting for the
 	Server to apply FEAR. The word and colour come from the same retail tables the
@@ -7191,6 +7201,76 @@ void CMainApp::RenderKoukuUiPreviewControls()
 		viewModel.Debug_Fire_StatusEffectTextPreview();
 	ImGui::SameLine();
 	ImGui::TextDisabled("KoukuSaydon arena only");
+	/* Corner minigame time limit (retail dungeontimer.gfx, titleImageType
+	   KOUKUSATON). Drawn on the real screen by m_pDungeonTimerView, not on the
+	   HUD Layout Tool canvas -- that tool only positions the emblem. No Server
+	   deadline exists for the card maze or the Mario stage, so the countdown runs
+	   in CCombatHUDViewModel. Never touches Server truth. */
+	ImGui::SeparatorText("Dungeon timer (Debug)");
+	{
+		HUD_DUNGEON_TIMER_STATE timer = viewModel.Get_DungeonTimer();
+		bool_t bRunning = viewModel.Is_DungeonTimerRunning();
+		bool_t bTimerChanged = false;
+		if (ImGui::Checkbox("Show timer##Kouku", &m_bDungeonTimerPreview))
+		{
+			timer.isVisible = m_bDungeonTimerPreview;
+			timer.fSeconds = m_fDungeonTimerStartSeconds;
+			if (!m_bDungeonTimerPreview)
+				bRunning = false;
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputFloat("Start s##Kouku", &m_fDungeonTimerStartSeconds, 0.f, 0.f, "%.0f"))
+		{
+			m_fDungeonTimerStartSeconds = (std::clamp)(m_fDungeonTimerStartSeconds, 0.f, 3599.f);
+			timer.fSeconds = m_fDungeonTimerStartSeconds;
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputFloat("Warn s##Kouku", &m_fDungeonTimerWarningSeconds, 0.f, 0.f, "%.0f"))
+		{
+			m_fDungeonTimerWarningSeconds = (std::clamp)(m_fDungeonTimerWarningSeconds, 0.f, 600.f);
+			bTimerChanged = true;
+		}
+		if (ImGui::Button(bRunning ? "Pause##KoukuTimer" : "Run##KoukuTimer"))
+		{
+			bRunning = !bRunning;
+			if (bRunning)
+			{
+				m_bDungeonTimerPreview = true;
+				timer.isVisible = true;
+				/* A stopped clock sitting at zero is a fresh run, not a resume. Without
+				   this the countdown starts at 0, which is below the warning threshold,
+				   so it comes up in the warning colour and the split readout. */
+				if (timer.fSeconds <= 0.f)
+					timer.fSeconds = m_fDungeonTimerStartSeconds;
+			}
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset##KoukuTimer"))
+		{
+			timer.fSeconds = m_fDungeonTimerStartSeconds;
+			bRunning = false;
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		ImGui::TextDisabled("%02d:%02d", static_cast<int32_t>(timer.fSeconds) / 60,
+			static_cast<int32_t>(timer.fSeconds) % 60);
+		if (bTimerChanged)
+		{
+			timer.fWarningSeconds = m_fDungeonTimerWarningSeconds;
+			viewModel.Debug_Set_DungeonTimer(timer, bRunning);
+		}
+	}
+	if (bChanged)
+	{
+		m_KoukuUiPreview.isValid = m_bKoukuUiPreview;
+		m_KoukuUiPreview.iMadnessMaximum = 100u;
+		viewModel.Debug_Set_KoukuGimmickPreview(m_KoukuUiPreview);
+	}
 	ImGui::TextDisabled("Preview only (no Server truth). Modes: %zu loaded.", m_KoukuHudModes.size());
 }
 

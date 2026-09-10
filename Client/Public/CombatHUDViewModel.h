@@ -221,6 +221,20 @@ namespace Client
 		LostArk::Shared::CARD_MAZE_PRESENTATION CardMaze;
 	};
 
+	/* KoukuSaydon minigame time limit (retail dungeontimer.gfx, titleImageType
+	KOUKUSATON) -- a screen-anchored widget, unlike the world-anchored madness
+	gauge, so CMainApp owns its view and this is its own state rather than part of
+	HUD_KOUKU_GIMMICK_STATE. The Server owns no minigame deadline yet: no card maze
+	or Mario field carries one, so today the Debug preview is the only producer. */
+	struct HUD_DUNGEON_TIMER_STATE
+	{
+		bool isVisible = false;
+		float fSeconds = 0.f;
+		/* Below this the movie swaps to the seconds-and-hundredths readout and the
+		warning colour. The class default is 10. */
+		float fWarningSeconds = 10.f;
+	};
+
 	class CCombatHUDViewModel final
 	{
 	public:
@@ -343,6 +357,29 @@ namespace Client
 		all RenderEstherGauge checks to skip drawing. Never touches Server truth. */
 		void Debug_Set_Esther_Preview(bool enable);
 
+		/* The HUD Layout Tool drives the dungeon timer here: nothing else writes it
+		today. Running counts fSeconds down on the tick below and stops at zero. */
+		void Debug_Set_DungeonTimer(const HUD_DUNGEON_TIMER_STATE& state, const bool running)
+		{
+			m_DungeonTimer = state;
+			m_bDungeonTimerRunning = running;
+		}
+		bool Is_DungeonTimerRunning() const
+		{
+			return m_bDungeonTimerRunning;
+		}
+		void Debug_Tick_DungeonTimer(const float fTimeDelta)
+		{
+			if (!m_bDungeonTimerRunning || !m_DungeonTimer.isVisible)
+				return;
+			m_DungeonTimer.fSeconds -= fTimeDelta;
+			if (m_DungeonTimer.fSeconds <= 0.f)
+			{
+				m_DungeonTimer.fSeconds = 0.f;
+				m_bDungeonTimerRunning = false;
+			}
+		}
+
 #ifdef _DEBUG
 		/* The explicit F1 override never replaces the replicated player values.
 		Disabling it exposes the latest snapshot immediately. */
@@ -368,6 +405,10 @@ namespace Client
 		}
 #endif
 		HUD_KOUKU_GIMMICK_STATE Get_KoukuGimmick() const;
+		const HUD_DUNGEON_TIMER_STATE& Get_DungeonTimer() const
+		{
+			return m_DungeonTimer;
+		}
 		const LostArk::Shared::BINGO_BOARD_SNAPSHOT& Get_BingoBoard() const
 		{
 			return m_BingoBoard;
@@ -439,6 +480,8 @@ namespace Client
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_KOUKU_GIMMICK_STATE m_KoukuGimmick;
+		HUD_DUNGEON_TIMER_STATE m_DungeonTimer;
+		bool m_bDungeonTimerRunning = false;
 		LostArk::Shared::BINGO_BOARD_SNAPSHOT m_BingoBoard;
 		HUD_BOSS_STATE m_Boss;
 		std::string m_strInteractPromptTriggerId;
