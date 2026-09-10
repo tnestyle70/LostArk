@@ -8,6 +8,7 @@
 #include "MapPlacementRuntime.h"
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
+#include "StatusEffectTextView.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanCinematicCameraController.h"
 #include "WorldSequencePlayer.h"
@@ -297,6 +298,9 @@ private:
 	   letting the camera travel that distance on screen. Server owns the
 	   move; this only reads the action state it already replicates. */
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
+	/* Turns replicated player state into floating status words. Reads the
+	   snapshots only; it never decides that a status is on. */
+	void Update_StatusEffectText(f32_t fTimeDelta);
 	void Update_CardMazePresentation(f32_t fTimeDelta);
 	void Update_MarioBallBouncePresentation(f32_t fTimeDelta);
 	void Update_MarioLayoutPresentation();
@@ -452,6 +456,8 @@ private:
 	bool_t m_bDebugGateFailed = false;
 	std::string m_strDebugGateStatus =
 		"Choose a gate. The Server raises its bosses and moves only your player.";
+	/* Last F1 status-word preview serial already turned into a word. */
+	std::uint32_t m_iStatusEffectTextPreviewSerial = 0u;
 #endif
 	/* One full-screen slot, black, whose alpha is the whole effect. Built
 	   hidden so the first rendered frame after activation cannot flash it. */
@@ -460,6 +466,10 @@ private:
 	/* Madness gauge under the local character. Reads CCombatHUDViewModel's
 	   KoukuSaydon gimmick state only; hidden while that state is invalid. */
 	unique_ptr<CKoukuMadnessGaugeView> m_pMadnessGaugeView;
+	/* Floating status word over a head (currently the Server FEAR state). Owns no
+	   gameplay truth: Update submits one word per replicated FEAR occurrence and
+	   Render draws whatever is still inside its motion. */
+	CStatusEffectTextView m_StatusEffectTextView;
 	f32_t m_fTriggerMoveFadeAlpha = 0.f;
 	/* Speed gate. The short hops share TRIGGER_MOVE with the stage
 	   transition, so the fade arms only once the character is seen moving

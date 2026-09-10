@@ -7182,6 +7182,15 @@ void CMainApp::RenderKoukuUiPreviewControls()
 		m_KoukuUiPreview.iMadnessMaximum = 100u;
 		viewModel.Debug_Set_KoukuGimmickPreview(m_KoukuUiPreview);
 	}
+	/* Fires the floating status word over the local character in the KoukuSaydon
+	arena, so the retail damagetext motion can be looked at without waiting for the
+	Server to apply FEAR. The word and colour come from the same retail tables the
+	live path uses (EFTable_GameMsg tip.name.skillbuffdmgfont_*, and
+	EFTable_SkillBuff.FontColor = 0x8041D9 for fear). */
+	if (ImGui::Button("Fire fear status word##Kouku"))
+		viewModel.Debug_Fire_StatusEffectTextPreview();
+	ImGui::SameLine();
+	ImGui::TextDisabled("KoukuSaydon arena only");
 	ImGui::TextDisabled("Preview only (no Server truth). Modes: %zu loaded.", m_KoukuHudModes.size());
 }
 

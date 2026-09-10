@@ -354,6 +354,18 @@ namespace Client
 		{
 			return m_KoukuGimmickPreview.isValid;
 		}
+		/* Debug-only: F1 fires one status word over the local character without any
+		Server truth. The serial is the occurrence key -- the arena spawns a word
+		whenever it changes, so pressing the button twice pops two words. Server
+		FEAR keeps using the snapshot's own action start tick. */
+		void Debug_Fire_StatusEffectTextPreview()
+		{
+			++m_iStatusEffectTextPreviewSerial;
+		}
+		std::uint32_t Get_StatusEffectTextPreviewSerial() const
+		{
+			return m_iStatusEffectTextPreviewSerial;
+		}
 #endif
 		HUD_KOUKU_GIMMICK_STATE Get_KoukuGimmick() const;
 		const LostArk::Shared::BINGO_BOARD_SNAPSHOT& Get_BingoBoard() const
@@ -442,6 +454,7 @@ namespace Client
 		HUD_ITEMANNOUNCE_TEXT_RECTS m_ItemAnnounceTextRects;
 #ifdef _DEBUG
 		HUD_KOUKU_GIMMICK_STATE m_KoukuGimmickPreview;
+		std::uint32_t m_iStatusEffectTextPreviewSerial = 0u;
 #endif
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;

@@ -1230,6 +1230,63 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
 			CCombatHUDViewModel::Get().Get_KoukuGimmick());
 	}
+	Update_StatusEffectText(fTimeDelta);
+}
+
+void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeDelta)
+{
+	/* "gongpo" (fear). The word and its colour are retail data, not a code
+	   decision: EFTable_GameMsg tip.name.skillbuffdmgfont_<buffId> spells it and
+	   EFTable_SkillBuff.FontColor gives 0x8041D9 on all 66 fear buff rows that show
+	   one. Those rows also carry FontShow 1, which is the movie motion the view
+	   draws. Written with universal character names so this file keeps the
+	   ASCII bytes its codepage needs, exactly like the card maze suit names below. */
+	static const std::wstring FEAR_WORD = L"\uACF5\uD3EC";
+	constexpr std::uint32_t FEAR_COLOR_RGB = 0x8041D9u;
+
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+	Collect_KoukuPresentationViews(bosses, players);
+	for (const KOUKU_CARD_PRESENTATION_VIEW& view : players)
+	{
+		if (LostArk::Shared::PLAYER_ACTION_STATE::FEAR != view.Snapshot.eAction ||
+			0u == view.Snapshot.iCurrentHp || 0u == view.Snapshot.iActionStartTick)
+		{
+			continue;
+		}
+		CStatusEffectTextView::REQUEST request{};
+		request.iOwnerEntityId = view.Snapshot.iNetEntityId;
+		/* The Server owns the window, so its start tick is the occurrence: one
+		   word per FEAR, and a second FEAR pops a second word. */
+		request.iOccurrenceKey = view.Snapshot.iActionStartTick;
+		request.strWord = FEAR_WORD;
+		request.iColorRgb = FEAR_COLOR_RGB;
+		request.pAnchor = view.pCharacter;
+		m_StatusEffectTextView.Submit(request);
+	}
+
+#ifdef _DEBUG
+	/* F1 preview: the same word over the local character with no Server truth,
+	   keyed by the button's own serial so repeated presses keep firing. */
+	const std::uint32_t previewSerial =
+		CCombatHUDViewModel::Get().Get_StatusEffectTextPreviewSerial();
+	const auto previewAnchor = m_Replication.Get_LocalCharacter();
+	/* Only consume the serial once there is a character to hang the word on, so
+	   a press made before the local character is up is not swallowed. */
+	if (previewSerial != m_iStatusEffectTextPreviewSerial && nullptr != previewAnchor)
+	{
+		m_iStatusEffectTextPreviewSerial = previewSerial;
+		CStatusEffectTextView::REQUEST request{};
+		request.iOwnerEntityId = 0u;
+		request.iOccurrenceKey = previewSerial;
+		request.strWord = FEAR_WORD;
+		request.iColorRgb = FEAR_COLOR_RGB;
+		request.pAnchor = previewAnchor;
+		m_StatusEffectTextView.Submit(request);
+	}
+#endif
+
+	m_StatusEffectTextView.Update(fTimeDelta);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
@@ -1593,6 +1650,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.68f),
 			Colors::White, 0.f, float2_t(mazeSize.x * 0.5f, mazeSize.y * 0.5f), 1.f);
 	}
+	/* Floating status words last, over the scene and over the two prompts above,
+	   the way the retail damage-text canvas sits on its own top layer. */
+	m_StatusEffectTextView.Render();
 	return drawn;
 }
 

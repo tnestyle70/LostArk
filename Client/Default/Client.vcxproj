@@ -69,6 +69,7 @@
     <ClInclude Include="..\Public\CharacterSelectWindowView.h" />
     <ClInclude Include="..\Public\MinimapView.h" />
     <ClInclude Include="..\Public\KoukuMadnessGaugeView.h" />
+    <ClInclude Include="..\Public\StatusEffectTextView.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
@@ -305,6 +306,7 @@
     <ClCompile Include="..\Private\CharacterSelectWindowView.cpp" />
     <ClCompile Include="..\Private\MinimapView.cpp" />
     <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp" />
+    <ClCompile Include="..\Private\StatusEffectTextView.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
