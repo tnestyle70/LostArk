@@ -161,6 +161,7 @@ private:
 	f32_t m_fCharacterYawDegrees = 0.f;
 	bool_t m_hasCapturedCharacterYaw = false;
 	f32_t m_fMeasuredEyeHeight = 0.f;
+	f32_t m_fSubjectScale = 1.f;
 	CCustomizingIconDocument m_IconDocument;
 	/* Morph weights each face preset sets, in the same order as the grid's icons. Loaded
 	next to the icons, per class. */
@@ -266,6 +267,7 @@ private:
 	int32_t m_iSelectedCostume = 0;
 	bool_t m_bCostumeChanged = false;
 	int32_t m_iSelectedHair = 0;
+	int32_t m_iFacePresetScrollRow = 0;
 	int32_t m_iHairScrollRow = 0;
 	int32_t m_iEyeIrisScrollRow = 0;
 	int32_t m_iAdornScrollRow = 0;

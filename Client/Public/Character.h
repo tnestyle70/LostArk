@@ -118,6 +118,9 @@ public:
 	bool_t Is_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind) const;
 	void Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind, bool_t isVisible);
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
+	/* The uniform scale the catalog admits this class at. Bone matrices are model space,
+	so anything measured off them has to be multiplied by this to be a world size. */
+	f32_t Get_PresentationScale() const { return m_fPresentationScale; }
 	uint32_t Get_PrototypeLevelIndex() const
 	{
 		return m_iPrototypeLevelIndex;

@@ -519,7 +519,8 @@ f32_t Client::CCustomizingView::Get_Distance() const
 {
 	const f32_t fFaceDistance =
 		FACE_DISTANCE * (Get_FaceLookHeight() / REFERENCE_EYE_HEIGHT);
-	return FULLBODY_DISTANCE + (fFaceDistance - FULLBODY_DISTANCE) * m_fZoomBlend;
+	return (FULLBODY_DISTANCE + (fFaceDistance - FULLBODY_DISTANCE) * m_fZoomBlend) *
+		m_fSubjectScale;
 }
 
 f32_t Client::CCustomizingView::Get_Pitch() const
@@ -540,8 +541,8 @@ float3_t Client::CCustomizingView::Get_LateralOffset() const
 
 f32_t Client::CCustomizingView::Get_LookHeight() const
 {
-	return FULLBODY_LOOK_HEIGHT +
-		(Get_FaceLookHeight() - FULLBODY_LOOK_HEIGHT) * m_fZoomBlend;
+	return (FULLBODY_LOOK_HEIGHT +
+		(Get_FaceLookHeight() - FULLBODY_LOOK_HEIGHT) * m_fZoomBlend) * m_fSubjectScale;
 }
 
 float3_t Client::CCustomizingView::Get_CameraPositionOffset() const
@@ -743,9 +744,12 @@ void Client::CCustomizingView::Update_Tabs()
 
 void Client::CCustomizingView::Apply_SliderVisibility()
 {
+	/* The rows live inside the folded half, so the fold state is part of the test: a track and
+	its thumb left visible over an empty panel is what a collapsed section looked like. */
+	const bool_t bSection = FACE_TAB_INDEX == m_iSelectedTab && m_isFaceDetailExpanded;
 	for (const FACE_SLIDER_ROW& Row : FACE_SLIDER_ROWS)
 	{
-		const bool_t bVisible = FACE_TAB_INDEX == m_iSelectedTab && Row.iPart == m_iSelectedPart;
+		const bool_t bVisible = bSection && Row.iPart == m_iSelectedPart;
 		m_pView->Set_SlotVisible(Slider_TrackSlotId(Row.pSliderId), bVisible);
 		m_pView->Set_SlotVisible(Slider_ThumbSlotId(Row.pSliderId), bVisible);
 	}
@@ -1173,6 +1177,7 @@ void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacte
 	m_isEyeOddSelected = false;
 	m_iSelectedEyeIris = -1;
 	m_iSelectedAdornSub = 0;
+	m_iFacePresetScrollRow = 0;
 	m_iHairScrollRow = 0;
 	m_iEyeIrisScrollRow = 0;
 	m_iAdornScrollRow = 0;
@@ -1309,8 +1314,9 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 	/* The adorn list is one grid the sub-tab re-fills, so it is filled per frame from the
 	page in view rather than once here. */
 	/* The face tab's grid is 기본 얼굴 -- the face-shape set -- not the base tab's whole
-	appearance presets. The two have the same row count, so the wrong one looked plausible. */
-	Fn_Fill("CC_FacePreset", FACE_PRESET_COUNT, pIcons->FaceShapes);
+	appearance presets. The two have the same row count, so the wrong one looked plausible.
+	It is filled per frame from its scroll window, like hair and iris: Warlord ships 35 shapes
+	against 25 cells. */
 	/* The recommended-style row stays empty: it is account content the client fetches,
 	not a table, and the icon package that looked like it is the background picker. */
 }
@@ -1322,6 +1328,12 @@ void Client::CCustomizingView::Update_SubjectMetrics(const shared_ptr<CCharacter
 	const shared_ptr<Engine::CModel> pModel = pCharacter->Get_BodyModel();
 	if (nullptr == pModel)
 		return;
+
+	/* Get_BoneMatrix is model space; the catalog may admit a class at a scale, and the
+	framing below is world metres. DimensionMaster is admitted at 1.5. */
+	m_fSubjectScale = pCharacter->Get_PresentationScale();
+	if (!std::isfinite(m_fSubjectScale) || m_fSubjectScale <= 0.f)
+		m_fSubjectScale = 1.f;
 
 	f32_t fSum = 0.f;
 	int32_t iFound = 0;
@@ -1400,6 +1412,11 @@ bool_t Client::CCustomizingView::Consume_TabGridScroll(const int32_t iWheel)
 	if (nullptr == pIcons)
 		return false;
 
+	if (FACE_TAB_INDEX == m_iSelectedTab && m_isFaceDefaultExpanded)
+	{
+		return Consume_GridScroll("CC_FacePreset", FACE_PRESET_COUNT,
+			static_cast<int32_t>(pIcons->FaceShapes.size()), m_iFacePresetScrollRow, iWheel);
+	}
 	if (HAIR_TAB_INDEX == m_iSelectedTab)
 	{
 		return Consume_GridScroll("CC_HairShape", HAIR_SHAPE_COUNT,
@@ -1542,12 +1559,23 @@ bool_t Client::CCustomizingView::Apply_SurfaceColor(
 		weight of the iris over the base, which is the clarity slider, so the wheel moves
 		only the hue and leaves the slider where it was set. */
 		const bool_t isIris = EYE_IRIS_SURFACE_INDEX == iSurface;
-		const char_t* pEyeParameter = m_isEyeOddSelected ?
-			(isIris ? EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_BASE_COLOR_LEFT_PARAMETER) :
-			(isIris ? EYE_IRIS_COLOR_PARAMETER : EYE_BASE_COLOR_PARAMETER);
 		const f32_t fAlpha = (isIris && m_fEyeIrisAlpha >= 0.f) ? m_fEyeIrisAlpha : 1.f;
-		return pCharacter->Set_FaceMaterialParameter(pEyeParameter,
-			float4_t(vColor.x, vColor.y, vColor.z, fAlpha));
+		const float4_t vWritten(vColor.x, vColor.y, vColor.z, fAlpha);
+		const char_t* pRight = isIris ? EYE_IRIS_COLOR_PARAMETER : EYE_BASE_COLOR_PARAMETER;
+		const char_t* pLeft =
+			isIris ? EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_BASE_COLOR_LEFT_PARAMETER;
+		/* The program does not pick one pair or the other: it reads the plain pair for one
+		eye and the *left pair for the other, every frame, and the odd-eye flag only decides
+		whether the two are allowed to differ. So a single swatch has to write both, or one
+		eye keeps the authored colour. The 오드아이 sub-tab is what narrows the write to the
+		eye being edited. */
+		if (!m_isEyeOddSelected)
+		{
+			const bool_t bRight = pCharacter->Set_FaceMaterialParameter(pRight, vWritten);
+			const bool_t bLeft = pCharacter->Set_FaceMaterialParameter(pLeft, vWritten);
+			return bRight || bLeft;
+		}
+		return pCharacter->Set_FaceMaterialParameter(pLeft, vWritten);
 	}
 	const int32_t iPage = iSurface - FIRST_MAKEUP_SURFACE_INDEX;
 	const char_t* pParameter = EYESHADOW_SURFACE_INDEX == iSurface ?
@@ -1857,10 +1885,12 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			bBound)
 		{
 			m_fEyeIrisAlpha = fAlpha;
+			/* Same reason as the swatch: both eyes unless the odd-eye tab is up. */
 			const float4_t& vIris = m_SurfaceColors[EYE_IRIS_SURFACE_INDEX];
-			pCharacter->Set_FaceMaterialParameter(m_isEyeOddSelected ?
-				EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_IRIS_COLOR_PARAMETER,
-				float4_t(vIris.x, vIris.y, vIris.z, fAlpha));
+			const float4_t vWritten(vIris.x, vIris.y, vIris.z, fAlpha);
+			if (!m_isEyeOddSelected)
+				pCharacter->Set_FaceMaterialParameter(EYE_IRIS_COLOR_PARAMETER, vWritten);
+			pCharacter->Set_FaceMaterialParameter(EYE_IRIS_COLOR_LEFT_PARAMETER, vWritten);
 		}
 	}
 	Fn_ShowList("CC_EyeIris", EYE_IRIS_COUNT, bEye);
@@ -1956,8 +1986,12 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			m_iSelectedAdornSub = i;
 		}
 	}
-	Fn_ShowList("CC_AdornItem", ADORN_ITEM_COUNT, bAdorn);
-	if (bAdorn)
+	/* The eyebrow page has no grid: its list does not exist in the retail table, and neither
+	does an Eyebrow mesh-type array (CustomizingMeshTypes.json carries Eye, HeadBase, MouthLip
+	and Nose only). Showing its cells anyway drew ten empty plates. */
+	const bool_t bAdornGrid = bAdorn && !Get_AdornPage().empty();
+	Fn_ShowList("CC_AdornItem", ADORN_ITEM_COUNT, bAdornGrid);
+	if (bAdornGrid)
 	{
 		const std::vector<std::string>& Page = Get_AdornPage();
 		m_iAdornScrollRow = Clamp_ScrollRow(m_iAdornScrollRow,
@@ -2122,12 +2156,21 @@ void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCha
 	const auto* pFacePresets = m_FacePresetDocument.Find(m_strIconClassAssetId);
 	const int32_t iFacePresetCount = nullptr != pFacePresets ?
 		static_cast<int32_t>(pFacePresets->size()) : 0;
+	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
+	if (bDefaultOpen && nullptr != pIcons)
+	{
+		m_iFacePresetScrollRow = Clamp_ScrollRow(m_iFacePresetScrollRow,
+			static_cast<int32_t>(pIcons->FaceShapes.size()), FACE_PRESET_COUNT);
+		Fill_ScrollingGrid("CC_FacePreset", FACE_PRESET_COUNT, m_iFacePresetScrollRow,
+			pIcons->FaceShapes);
+	}
 	for (int32_t i = 0; i < FACE_PRESET_COUNT; ++i)
 	{
 		const string strId = "CC_FacePreset" + std::to_string(i);
+		const int32_t iEntry = m_iFacePresetScrollRow * GRID_COLUMNS + i;
 		m_pView->Set_SlotVisible(strId, bDefaultOpen);
 		m_pView->Set_SlotVisible(strId + "_Plate", bDefaultOpen);
-		if (!bDefaultOpen || i >= iFacePresetCount)
+		if (!bDefaultOpen || iEntry >= iFacePresetCount)
 			continue;
 
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
@@ -2136,8 +2179,8 @@ void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCha
 		if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 		{
 			CMainApp::Play_UIButtonClickSound();
-			m_iSelectedFacePreset = i;
-			Apply_FacePreset(pCharacter, i);
+			m_iSelectedFacePreset = iEntry;
+			Apply_FacePreset(pCharacter, iEntry);
 		}
 	}
 
