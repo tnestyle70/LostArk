@@ -1,5 +1,65 @@
 # 캐릭터 외형 크기와 모코코 기준 재질 연결 구현 계획서
 
+## G11. 2026-09-10 세 캐릭터 재질과 TJ 커스터마이징 통합
+
+사용자가 차원술사·워로드·도화가의 본체, 머리, 장비, 무기를 모두 복구하고
+`Downloads/TJ_Character (1)`과 통합한 공유 기준본을 요청했다. 기존 G10의
+차원술사 우선 범위를 세 클래스로 확대한다. 변경 전 실측은
+`out/CharacterPR352Audit20260910/`에 보존한다. PR 352 merge `146525de`와
+현재 작업 트리의 재질 변경을 함께 소비하며 다른 기능의 미커밋 변경은 보존한다.
+
+### 파일과 데이터 흐름
+
+- TJ Artist 본체의 눈 UV1/UV2, 눈 본 연결과 눈 AO 가중치 수정을 보존한다.
+  네 클래스의 기존 face morph 주소·위치·UV0 일치 검증은 통합 전후 유지한다.
+- 차원술사는 현재 236개 본, 헤어 UV1, 본체 154개 clip과 Esther clip을 유지한다.
+  TJ Customizing의 5개 clip은 채널 이름·index가 기존 본과 일치함을 검사한 뒤
+  현재 skeleton hash로 연결한다. TJ의 225개 본체·UV1 없는 헤어로 되돌리지 않는다.
+- `CharacterCatalog.json -> CActorCatalog -> CModel -> CMaterial`의 기존 재질
+  override 경로에 원본 MIC의 parameter·texture와 정확한 source PS pair를 연결한다.
+  PR 352 얼굴·눈 입력과 현재 별도 헤어 override를 함께 유지한다. 도화가 의상·붓·헤어는
+  기존 family와 원본 PS가 다른 항목에 필요한 source program을 같은 경로에 추가한다.
+- `Shader_SourceCharacterMaterial.hlsli`는 각 source program의 실제 varying 계약을
+  연결한다. 워로드 legacy head program12 direct pass의 UV/light/view/position 배치가
+  현재 기본 배치와 다른 결함을 수정한다. 기존 program을 다른 family로 치환하지 않는다.
+- 차원술사 무기는 현재 19개 사용 material slot의 누락 texture가 0이다. 사용자 첨부
+  Character Select 화면의 검은 무기를 기준으로 source program8/9의 실제 입력·출력을
+  수치 검사하고, 확인된 미연결 입력을 기존 Renderer의 scene 환경 계약에 연결한다.
+- 바이너리는 먼저 `out/CharacterPR352Audit20260910/merged-candidate/`에 생성한다.
+  원본과 현재 설치본을 보존하고 구조·재질 로딩 검사가 성공한 후보만 설치·공유 대상으로 삼는다.
+  WModel만으로 JSON 재질 매핑이나 shader 수정이 전달된다고 간주하지 않는다.
+
+### 검증과 완료 경계
+
+원본 SHA와 section/vertex/rig/clip 비교, 실제 CModel Create/Clone/Attach,
+사용 material별 texture·추가 UV 검증, 원본 varying을 사용하는 WARP 수치 검사,
+관련 Debug 빌드, JSON/XML parse와 diff check를 기록한다. 기존 도구·probe를 재사용하고
+별도 제품 runtime이나 검증 프레임워크를 추가하지 않는다. 모델·texture의 전달 폴더와
+Git 대상 코드·JSON을 함께 정리한다. Resources는 Git에 추가하지 않는다.
+최종 화면은 사용자가 Character Select에서 세 클래스의 본체·머리·장비·무기와
+커스터마이징·애니메이션을 직접 확인한다. 화면 미확인을 완전 복구 PASS로 기록하지 않는다.
+
+## G10. 2026-09-10 차원술사 재질 복원 재개
+
+사용자가 차원술사의 환경반사·재질 복원을 요청했다. 기존 17 override와 의상/피부/눈/무기
+source program은 유지하고, G01의 실제 별도 헤어와 G06의 0으로 막힌 환경 cube를 연결한다.
+RenderingProfile의 optional `environment`는 Resources 상대 cube ID, RGBM6 color/offset와
+rotation/intensity를 소유한다. Renderer는 cube SRV를 먼저 stage하고 기존 quality/shadow/fog/light
+교체가 성공한 뒤 함께 commit한다. 없는 environment는 명시적으로 이전 cube를 해제한다.
+CMaterial의 기존 source base 바인딩이 Renderer의 환경을 소비하며 program 3/8/9의 원본
+SampleLevel·방향·LOD·RGBM6 decode 계산을 유지한다. Engine 공용 struct/Renderer/GameInstance/
+Material, Client RenderingProfileService, 기존 rendering publisher와 profile JSON만 확장한다.
+새 C++ 파일과 별도 renderer·하네스는 추가하지 않는다.
+별도 헤어는 body/equipment와 외부 AnimSet의236bone palette를 공유한다. 기존154+1+1개
+animation의 key/event/clip은 유지하고 WANM trailer의 골격 참조 hash만 새 WSKL과 동기화한다.
+mesh·skeleton·animation container를 각각 파싱한 수치 검사에 더해 실제 WModel decoder와
+CModel Attach/Clone을 확인한다.
+
+Character Select의 이미 추출·설치된 map cube와 해당 map의 프로젝트 선택 rotation/color를
+같은 scene profile에 연결한다. 다른 씬은 정확 대응 입력을 확인한 경우만 연결한다.
+원본 engine의 SH packing과 전역 probe 선택이 확인되지 않은 상태를 원작 환경광 전체 복구로
+표현하지 않는다. 캐릭터 선택의 광택·헤어 화면은 사용자가 직접 판정한다.
+
 작성일: 2026-09-09. 상태: **조사 완료 / 차원술사 1.5배 우선 적용 / 전체 재질 복구 계획**.
 
 이 문서는 현재 여섯 playable character의 크기를 실측하고, 모코코 창술사를 비교 기준으로

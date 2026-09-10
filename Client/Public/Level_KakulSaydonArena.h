@@ -142,6 +142,8 @@ public:
 		float3_t positionOffset{};
 		std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> placement;
 		WORLD_EMISSION_ANCHOR emissionAnchor;
+		std::string bossArchetypeId;
+		std::string actorProfileId;
 	};
 	bool_t Debug_BeginCompositionWorldPreview(const std::string& patternId,
 		std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues, std::string& status,

@@ -173,6 +173,10 @@ public:
 	m_pClassSelectView is private to this level, so CMainApp reaches it through Get_Active()
 	instead of a second CUILayoutRuntime of its own. */
 	void Render_ArenaSpawnLabels();
+	/* The Create Character nickname step's own glyphs. Separate from the pass above
+	because that one is suppressed while the customizing screen is up, and this modal
+	opens from inside it. */
+	void Render_CreateCharacterModalText();
 	/* The customizing screen's own LOA-font labels, same post-EndFrame pass. */
 	void Render_CustomizingText();
 	/* True while the customizing screen owns the screen: CMainApp hides the combat HUD

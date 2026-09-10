@@ -1,4 +1,4 @@
-"""Cut one ActorX PSA sequence out of a family AnimSet and re-base it onto a rig.
+"""Cut ActorX PSA sequences out of a family AnimSet and re-base them onto a rig.
 
 A retail family AnimSet holds a thousand or more sequences and drives only the
 bones that family shares.  A class rig carries extra attachment bones -- hair
@@ -6,8 +6,10 @@ strands, a tail, skirt panels -- that the shared clip never touches, and
 ``build_umodel_gltf_psa.py`` requires the PSA bone list to match the glTF joint
 list exactly, in order.
 
-This step writes a new PSA holding one sequence, with its bone list rewritten to
-the rig's joint order.  A bone the source clip does not animate is emitted as a
+This step writes a new PSA holding the sequences asked for, with its bone list
+rewritten to the rig's joint order.  Several clips can be cut in one pass -- the
+character-creation screen plays an idle and four social actions off one set --
+and they are written in the order given.  A bone the source clip does not animate is emitted as a
 constant key holding the rig's own bind pose, which is where an unanimated bone
 sits anyway.  No key value is invented: animated bones keep their source bytes.
 
@@ -31,7 +33,8 @@ lying flat in a T-pose.
 
 Usage:
   python trim_psa_clip.py --psa <family.psa> --gltf <rig.gltf>
-                          --clip <sequence name> --output <out.psa>
+                          --clip <sequence name> [--clip <another> ...]
+                          --output <out.psa>
                           [--target-space gltf|actorx] [--report <out.json>]
 """
 
@@ -196,7 +199,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--psa", required=True, type=Path)
     parser.add_argument("--gltf", required=True, type=Path)
-    parser.add_argument("--clip", required=True)
+    parser.add_argument("--clip", required=True, action="append",
+                        help="sequence to cut; repeat for more than one")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--report", type=Path)
     parser.add_argument(
@@ -227,29 +231,31 @@ def main() -> int:
     if info_size != ANIM_INFO.size:
         raise SystemExit("Unsupported PSA ANIMINFO layout")
     info_payload = read_records(args.psa, layout["ANIMINFO"])
-    selected = None
-    for index in range(info_count):
-        values = ANIM_INFO.unpack_from(info_payload, index * info_size)
-        if decode_name(values[0]) == args.clip:
-            selected = values
-            break
-    if selected is None:
-        raise SystemExit(f"PSA has no sequence named {args.clip}")
-
-    total_bones = selected[2]
-    track_time = float(selected[7])
-    rate = float(selected[8])
-    start_bone = selected[9]
-    first_frame = selected[10]
-    frame_count = selected[11]
-    if total_bones != source_bone_count or start_bone != 0 or frame_count <= 0:
-        raise SystemExit(f"Unsupported PSA sequence contract: {args.clip}")
-    if not math.isfinite(rate) or rate <= 0.0:
-        raise SystemExit(f"Sequence has no usable rate: {args.clip}")
-    if not math.isclose(track_time, float(frame_count), abs_tol=0.0001):
-        raise SystemExit(
-            f"Sequence track time does not match its frame count: {args.clip}"
-        )
+    if len(set(args.clip)) != len(args.clip):
+        raise SystemExit("The same clip was asked for twice")
+    chosen = []
+    for clip in args.clip:
+        selected = None
+        for index in range(info_count):
+            values = ANIM_INFO.unpack_from(info_payload, index * info_size)
+            if decode_name(values[0]) == clip:
+                selected = values
+                break
+        if selected is None:
+            raise SystemExit(f"PSA has no sequence named {clip}")
+        total_bones = selected[2]
+        track_time = float(selected[7])
+        rate = float(selected[8])
+        start_bone = selected[9]
+        if total_bones != source_bone_count or start_bone != 0 or selected[11] <= 0:
+            raise SystemExit(f"Unsupported PSA sequence contract: {clip}")
+        if not math.isfinite(rate) or rate <= 0.0:
+            raise SystemExit(f"Sequence has no usable rate: {clip}")
+        if not math.isclose(track_time, float(selected[11]), abs_tol=0.0001):
+            raise SystemExit(
+                f"Sequence track time does not match its frame count: {clip}"
+            )
+        chosen.append((clip, selected))
 
     joint_names, joint_parents, joint_nodes = load_gltf_rig(args.gltf)
     source_slot = {name: index for index, name in enumerate(source_bones)}
@@ -263,23 +269,11 @@ def main() -> int:
     key_size, key_count, _ = layout["ANIMKEYS"]
     if key_size != ANIM_KEY.size or key_count != info_total_frames(info_payload, info_size, info_count) * source_bone_count:
         raise SystemExit("PSA ANIMKEYS count does not match its sequence table")
-    keys = read_key_slice(
-        args.psa,
-        layout["ANIMKEYS"],
-        first_frame * source_bone_count,
-        frame_count * source_bone_count,
-    )
-    scales = None
-    if "SCALEKEYS" in layout:
+    has_scales = "SCALEKEYS" in layout
+    if has_scales:
         scale_size, scale_count, _ = layout["SCALEKEYS"]
         if scale_size != SCALE_KEY.size or scale_count != key_count:
             raise SystemExit("PSA SCALEKEYS count/layout mismatch")
-        scales = read_key_slice(
-            args.psa,
-            layout["SCALEKEYS"],
-            first_frame * source_bone_count,
-            frame_count * source_bone_count,
-        )
 
     # Bind pose fallbacks for the bones this clip never drives.
     bind_key: dict[int, bytes] = {}
@@ -301,32 +295,68 @@ def main() -> int:
 
     out_bone_count = len(joint_names)
     out_keys = bytearray()
-    out_scales = bytearray() if scales is not None else None
-    for frame in range(frame_count):
-        row = frame * source_bone_count
-        for slot, name in enumerate(joint_names):
-            source = source_slot.get(name)
-            if source is None:
-                out_keys += bind_key[slot]
+    out_scales = bytearray() if has_scales else None
+    out_info = bytearray()
+    out_first_frame = 0
+    written = []
+    for clip, selected in chosen:
+        rate = float(selected[8])
+        first_frame = selected[10]
+        frame_count = selected[11]
+        keys = read_key_slice(
+            args.psa,
+            layout["ANIMKEYS"],
+            first_frame * source_bone_count,
+            frame_count * source_bone_count,
+        )
+        scales = read_key_slice(
+            args.psa,
+            layout["SCALEKEYS"],
+            first_frame * source_bone_count,
+            frame_count * source_bone_count,
+        ) if has_scales else None
+        for frame in range(frame_count):
+            row = frame * source_bone_count
+            for slot, name in enumerate(joint_names):
+                source = source_slot.get(name)
+                if source is None:
+                    out_keys += bind_key[slot]
+                    if out_scales is not None:
+                        out_scales += bind_scale[slot]
+                    continue
+                at = (row + source) * key_size
+                scale_at = (row + source) * SCALE_KEY.size
+                if not cancel:
+                    out_keys += keys[at : at + key_size]
+                    if out_scales is not None:
+                        out_scales += scales[scale_at : scale_at + SCALE_KEY.size]
+                    continue
+                px, py, pz, qx, qy, qz, qw, time = ANIM_KEY.unpack_from(keys, at)
+                if joint_parents[slot] >= 0:
+                    qx, qy, qz, qw = unconjugate(qx, qy, qz, qw)
+                out_keys += ANIM_KEY.pack(
+                    *cancel_position(px, py, pz), *cancel_rotation(qx, qy, qz, qw), time
+                )
                 if out_scales is not None:
-                    out_scales += bind_scale[slot]
-                continue
-            at = (row + source) * key_size
-            scale_at = (row + source) * SCALE_KEY.size
-            if not cancel:
-                out_keys += keys[at : at + key_size]
-                if out_scales is not None:
-                    out_scales += scales[scale_at : scale_at + SCALE_KEY.size]
-                continue
-            px, py, pz, qx, qy, qz, qw, time = ANIM_KEY.unpack_from(keys, at)
-            if joint_parents[slot] >= 0:
-                qx, qy, qz, qw = unconjugate(qx, qy, qz, qw)
-            out_keys += ANIM_KEY.pack(
-                *cancel_position(px, py, pz), *cancel_rotation(qx, qy, qz, qw), time
-            )
-            if out_scales is not None:
-                sx, sy, sz, stime = SCALE_KEY.unpack_from(scales, scale_at)
-                out_scales += SCALE_KEY.pack(*cancel_scale(sx, sy, sz), stime)
+                    sx, sy, sz, stime = SCALE_KEY.unpack_from(scales, scale_at)
+                    out_scales += SCALE_KEY.pack(*cancel_scale(sx, sy, sz), stime)
+        out_info += ANIM_INFO.pack(
+            encode_name(clip, 64),
+            encode_name("trimmed", 64),
+            out_bone_count,
+            selected[3],
+            selected[4],
+            selected[5],
+            selected[6],
+            float(frame_count),
+            rate,
+            0,
+            out_first_frame,
+            frame_count,
+        )
+        written.append({"clip": clip, "frameCount": frame_count, "rate": rate,
+                        "firstFrame": out_first_frame})
+        out_first_frame += frame_count
 
     out_bones = bytearray()
     child_count = [0] * out_bone_count
@@ -362,23 +392,6 @@ def main() -> int:
         struct.pack_into("<i", record, 72, joint_parents[slot])
         out_bones += record
 
-    out_info = bytearray(
-        ANIM_INFO.pack(
-            encode_name(args.clip, 64),
-            encode_name("trimmed", 64),
-            out_bone_count,
-            selected[3],
-            selected[4],
-            selected[5],
-            selected[6],
-            float(frame_count),
-            rate,
-            0,
-            0,
-            frame_count,
-        )
-    )
-
     def chunk(name: str, record_size: int, record_count: int, payload: bytes) -> bytes:
         return CHUNK_HEADER.pack(
             encode_name(name, 20), 0, record_size, record_count
@@ -387,13 +400,14 @@ def main() -> int:
     blob = bytearray()
     blob += chunk("ANIMHEAD", 0, 0, b"")
     blob += chunk("BONENAMES", bone_size, out_bone_count, bytes(out_bones))
-    blob += chunk("ANIMINFO", ANIM_INFO.size, 1, bytes(out_info))
+    blob += chunk("ANIMINFO", ANIM_INFO.size, len(chosen), bytes(out_info))
     blob += chunk(
-        "ANIMKEYS", ANIM_KEY.size, frame_count * out_bone_count, bytes(out_keys)
+        "ANIMKEYS", ANIM_KEY.size, out_first_frame * out_bone_count, bytes(out_keys)
     )
     if out_scales is not None:
         blob += chunk(
-            "SCALEKEYS", SCALE_KEY.size, frame_count * out_bone_count, bytes(out_scales)
+            "SCALEKEYS", SCALE_KEY.size, out_first_frame * out_bone_count,
+            bytes(out_scales)
         )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -402,13 +416,11 @@ def main() -> int:
     report = {
         "sourcePsa": str(args.psa),
         "rigGltf": str(args.gltf),
-        "clip": args.clip,
-        "frameCount": frame_count,
-        "rate": rate,
+        "clips": written,
         "sourceBoneCount": source_bone_count,
         "outputBoneCount": out_bone_count,
         "paddedBones": padded,
-        "hasScaleKeys": scales is not None,
+        "hasScaleKeys": has_scales,
         "targetSpace": args.target_space,
         "output": str(args.output),
     }
@@ -418,9 +430,11 @@ def main() -> int:
             json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
         )
     print(
-        f"{args.output}: clip={args.clip} frames={frame_count} rate={rate} "
-        f"bones={source_bone_count}->{out_bone_count} padded={len(padded)}"
+        f"{args.output}: bones={source_bone_count}->{out_bone_count} "
+        f"padded={len(padded)} frames={out_first_frame}"
     )
+    for row in written:
+        print(f"    {row['clip']}: frames={row['frameCount']} rate={row['rate']}")
     return 0
 
 

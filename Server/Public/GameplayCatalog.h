@@ -641,6 +641,8 @@ namespace LostArk::Server
 		std::string strFearPresentationId;
         LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
         std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
+		float fPushRangeM = 0.f;
+		std::uint32_t iPushMs = 0u;
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
@@ -708,6 +710,8 @@ namespace LostArk::Server
 		float fNormalYawOffsetDegrees = 0.f;
 		std::vector<BOSS_LOGIC_REGION> CardRegions;
 		bool bInsideIsFail = false;
+		bool bRearmOnExit = false;
+		bool bRepeatAfterKnockback = false;
 		bool bEndsPatternOnSuccess = false;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnSuccess;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnFail;
@@ -1212,6 +1216,7 @@ namespace LostArk::Server
 	{
 	public:
 		bool Load();
+		bool Load_PublishedKoukuProduct();
 		/* Load one immutable candidate artifact by its exact canonical path. The
 		content hash is checked before parsing/commit; a successful load exposes
 		the verified parent manifest revision, not the child bootstrap hash. */
@@ -1251,6 +1256,10 @@ namespace LostArk::Server
 		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
 		[[nodiscard]] std::uint32_t Find_KoukuSaydonProductSourceRevision(
 			const std::string& encounterId) const noexcept;
+		/* A Kouku audition imports only this domain. Every other authored row,
+		   including player/boss profiles, damage and Valtan, must stay exact. */
+		[[nodiscard]] bool Has_SameNonKoukuGameplay(
+			const CGameplayCatalog& other) const noexcept;
 		/* Madness gauge policy of one encounter, or nullptr when it authored none. */
 		[[nodiscard]] const BOSS_ENCOUNTER_MADNESS_POLICY* Find_KoukuMadnessPolicy(
 			const std::string& encounterId) const noexcept;
@@ -1345,6 +1354,7 @@ namespace LostArk::Server
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
+		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision
 			m_ValtanPresentationGenerationId{};
 		std::string m_strStatus;

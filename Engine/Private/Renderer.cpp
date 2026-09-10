@@ -3,6 +3,7 @@
 #include "Render_OutputContract.h"
 #include "Profiler.h"
 
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <typeinfo>
@@ -355,6 +356,57 @@ namespace
 			Settings.fPatchSoftness > 0.f &&
 			Settings.fPatchSoftness <= 0.5f;
 	}
+}
+
+HRESULT CRenderer::Stage_RenderEnvironment(const wstring_t& cubePath,
+    const float4_t& color, const float4_t& rotationIntensity,
+    RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload) const
+{
+    const float values[] = {color.x, color.y, color.z, color.w,
+        rotationIntensity.x, rotationIntensity.y, rotationIntensity.z, rotationIntensity.w};
+    for (float value : values) if (!std::isfinite(value)) return E_INVALIDARG;
+    if (color.x < 0.f || color.y < 0.f || color.z < 0.f || color.w < 0.f ||
+        color.x > 64.f || color.y > 64.f || color.z > 64.f || color.w > 64.f ||
+        rotationIntensity.z < 0.f || rotationIntensity.z > 64.f ||
+        rotationIntensity.w != 0.f ||
+        std::abs(rotationIntensity.x * rotationIntensity.x +
+            rotationIntensity.y * rotationIntensity.y - 1.f) > .001f) return E_INVALIDARG;
+    RENDER_ENVIRONMENT_STATE staged;
+    staged.strCubePath = cubePath;
+    staged.vColor = color;
+    staged.vRotationIntensity = rotationIntensity;
+    if (!cubePath.empty() && !forceReload && cubePath == m_RenderEnvironment.strCubePath &&
+        m_RenderEnvironment.pCube)
+    {
+        // Quality edits and mood changes in the same scene retain its staged cube.
+        staged.pCube = m_RenderEnvironment.pCube;
+    }
+    else if (!cubePath.empty())
+    {
+        if (FAILED(CreateDDSTextureFromFileEx(m_pDevice.Get(), cubePath.c_str(), 0,
+            D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
+            DDS_LOADER_DEFAULT, nullptr, staged.pCube.GetAddressOf()))) return E_FAIL;
+        D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
+        staged.pCube->GetDesc(&desc);
+        if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBE ||
+            desc.TextureCube.MipLevels == 0u ||
+            (desc.Format != DXGI_FORMAT_BC1_UNORM && desc.Format != DXGI_FORMAT_BC2_UNORM &&
+             desc.Format != DXGI_FORMAT_BC3_UNORM && desc.Format != DXGI_FORMAT_R8G8B8A8_UNORM &&
+             desc.Format != DXGI_FORMAT_B8G8R8A8_UNORM))
+            return E_INVALIDARG;
+    }
+    outState = std::move(staged);
+    return S_OK;
+}
+
+void CRenderer::Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state)
+{
+    m_RenderEnvironment = state;
+}
+
+RENDER_ENVIRONMENT_STATE CRenderer::Get_RenderEnvironment() const
+{
+    return m_RenderEnvironment;
 }
 
 HRESULT CRenderer::Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings)

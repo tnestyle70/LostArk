@@ -62,6 +62,7 @@ namespace LostArk::Server
 		negative range, toward) the hit source, and optionally KNOCKDOWN until
 		downMs expires. A window or knockdown already running keeps the new hit
 		from re-arming, and DEAD or TRIGGER_MOVE players are never armed. */
+		static bool Can_ArmPlayerHitReaction(const SERVER_PLAYER& player, std::uint32_t serverTick);
 		static void Arm_PlayerHitReaction(
 			SERVER_PLAYER& player,
 			float sourceX,

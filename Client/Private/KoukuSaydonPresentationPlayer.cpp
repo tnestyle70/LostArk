@@ -591,8 +591,12 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ProductWorldEmissionAnchor(
     return true;
 }
 
-bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(std::string& status)
+bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
+    std::string& status, const std::uint32_t expectedSourceRevision)
 {
+    // Restart keeps its admitted in-memory Product even after another publish.
+    if (expectedSourceRevision && m_bProductLoaded && expectedSourceRevision == m_iProductSourceRevision)
+    { status = "KoukuSaydon presentation already matches the admitted source revision."; return true; }
     m_bProductAttempted = true;
     try
     {
@@ -615,6 +619,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(std::string& status)
             Text(root, "bossArchetypeId") != "BOSS_KAKULSAYDON_G1_KOUKU")
             throw std::runtime_error("KoukuSaydon Product presentation header is incompatible.");
         const auto sourceRevision = UInt(root, "sourceRevision", 1u, UINT32_MAX);
+        if (expectedSourceRevision && sourceRevision != expectedSourceRevision)
+            throw std::runtime_error("KoukuSaydon presentation source revision mismatch: requested " +
+                std::to_string(expectedSourceRevision) + ", published " + std::to_string(sourceRevision) +
+                ". Previous presentation is preserved; publish the matching Product on this Client.");
         const auto& patterns = Field(root, "patterns");
         if (!patterns.Is_Array() || patterns.Get_Array().size() > 4096u)
             throw std::runtime_error("Product patterns must be a bounded array.");
@@ -1491,7 +1499,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (auto* level = CLevel_KakulSaydonArena::Get_Active())
         { std::string cameraStatus; if (!level->Reload_PublishedCameraShots(cameraStatus)) m_strStatus = cameraStatus; }
         if (run->iPinnedSourceRevision != m_iProductSourceRevision)
-        { std::string status; (void)Reload_Product(status); }
+        { std::string status; (void)Reload_Product(status, run->iPinnedSourceRevision); }
     }
     if (runLive && !run->strBundleId.empty())
     {
@@ -2050,6 +2058,15 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
                 [&](const auto& value) { return value.strWorldId == box.strWorldId; });
             auto& player = member.session.previewWorlds.at(box.strOccurrenceId);
             auto worldTargets = targets;
+            worldTargets.bossAnchor = [&member](const std::string& archetype, const std::string& bone,
+                CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
+            {
+                if (archetype != CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(member.pattern.strTargetBossPlacementId) ||
+                    !member.actor || !member.actor->Get_Transform())
+                { status = "World Object Boss anchor does not match this preview actor: " + archetype; return false; }
+                return CWorldSequencePlayer::Resolve_BossBoneAnchor(member.actor->Get_Model(),
+                    *member.actor->Get_Transform()->Get_WorldMatrixPtr(), bone, out, status);
+            };
             worldTargets.objectEmissionAnchor = Make_WorldEmissionAnchor(member.pattern, *world, box);
             const auto span = player->Get_InstanceElapsedSpanMs(world->strSequenceInstanceId,
                 box.fPlaybackSpeed, box.iDurationMs);

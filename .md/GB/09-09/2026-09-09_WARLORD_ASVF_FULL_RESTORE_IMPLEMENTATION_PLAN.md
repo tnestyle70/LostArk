@@ -36,3 +36,11 @@ Client/UI는 실행·조작·캡처하지 않는다. 화면의 번개 움직임�
 V의 원본 PlaySkeletalMesh notify는 mesh/clip이 None이므로 이 빈 notify를 모델 복원 근거로 쓰지 않는다. 실제 FX_SM의 방패 geometry와 원본 재질을 조사한 뒤 사용자가 요청한 5방향 배치를 별도 저작 요소로 연결한다. ALT_V는 원본 SuperGProtection의 sk_wgl_gdd_01과 fx_w_wgl_gdd_02를 조사하며 외곽 큰 원6개와 캐릭터 주변6개 배치를 명시적으로 구성한다. 요청한 배치 수와 반지름 보강은 project-authored이고 원본 occurrence와 구분한다. 정상 source shield와 번개를 유지하고 실제 미지원 Solo 의존성은 full에서 제외해 정확 ID와 사유를 기록한다.
 
 기존 build_warlord_asvf_full_restore.py를 전체 생성 옵션으로 확장한다. 공용 Runtime/Tool/Catalog/ResourceTree/project 등록과 통합 컴파일은 root가 수행한다. 워로드 전용 shader/header는 기존 native 함수의 변경 없이 새 프로그램1000~1199/2000~2199를 연결한다. 생성 JSON의 stable ID, source anchor, 모든 Resources 존재, 실제 codec Load/Save/Solo를 검증하고 사용자 실행은 대기한다.
+
+## G05. 사용자 재검토의 V·Alt V 방패와 번개 교정
+
+사용자가 현재 EXE에서 V/Alt V 방패 미표시와 V의 F 낙뢰 미표시를 보고했다. 기존 full 저작본과 사용자 위치·회전·수명을 보존하고 실제 재질 입력을 고친다. `Shader_EffectWarlordNativeGroup1088.hlsli`의1122/1123 원본 local-vertex material은 `meshemitterdynamicparameter` uniform을 소비한다. 이를 Dynamic 모듈 없는 particle stream0으로 바꾸면 원본 dissolve 식이 모든 fragment를 버린다. 저장 material parameter의 해당 lane을 base/light 양쪽에서 소비하도록 교정하고 기존 PS probe로 실제 alpha와 finite 출력을 확인한다.
+
+V에 이미 추가된 F17140 native446의4개 wave는 원본 F와 같은 geometry/material을 참조하지만, 이전 저작 patch가 F의 HDR startColor와 ColorScaleOverLife를 낮은 상수로 바꿨다. 이 두 분포가 이전 patch 값인 경우에만 승인된 F 원본 값으로 복구하며 현재 radius·시각과 사용자 다른 편집은 보존한다. F 원문은 수정하지 않는다. Alt V는 실제 lightning texture를 쓰는 native1166의6개 occurrence를 독립 seed로 하나씩 복제해12개로 늘린다. 기존 발생 시각과 shape를 유지하며 다른 에너지·방패 요소를 일괄 복제하지 않는다.
+
+기존 `patch_warlord_v_guardian_lightning.py`를 확장하고 전체 full generator는 다시 실행하지 않는다. JSON은 현재 bytes를 보존한 뒤 CAS 확인하고 저장한다. 기존 PS 수치 검사, 실제 codec 저장·재로드, 변경 shader의 Product 빌드와 diff check를 수행하며 Client/UI와 최종 시각 판정은 사용자에게 남긴다. 새 C++ 파일이나 project/filter 등록은 없다.

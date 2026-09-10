@@ -641,6 +641,14 @@ bool_t Client::CKoukuSaydonPresentationAssetService::Reload_ProductBindings(
     auto stagedGrips = g_AttachmentGripsByArchetype;
     auto revisions = g_BindingSourceRevisions;
     const auto ready = g_ReadyByLevel.find(levelIndex);
+    // A new run epoch can restart the same pinned Product after disk publication.
+    if (ready != g_ReadyByLevel.end() && !ready->second.empty() &&
+        std::all_of(ready->second.begin(), ready->second.end(), [&](const auto& archetype) {
+            const auto revision = revisions.find(archetype);
+            return !archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX) ||
+                (revision != revisions.end() && revision->second == expectedSourceRevision);
+        }))
+    { status = "Product animation bindings already match the admitted source revision."; return true; }
     if (ready != g_ReadyByLevel.end())
         for (const auto& archetype : ready->second)
         {

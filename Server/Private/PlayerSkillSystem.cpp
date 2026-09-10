@@ -1337,6 +1337,20 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
 	return true;
 }
 
+bool LostArk::Server::CPlayerSkillSystem::Can_ArmPlayerHitReaction(
+	const SERVER_PLAYER& player, const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	return !(0u == player.iCurrentHp ||
+		PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+		PLAYER_ACTION_STATE::FEAR == player.eAction ||
+		player.fKnockbackRemainingSeconds > 0.f ||
+		static_cast<std::int32_t>(
+			player.iHitReactionGraceEndTick - serverTick) > 0);
+}
+
 void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 	SERVER_PLAYER& player,
 	const float sourceX,
@@ -1348,17 +1362,7 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 	const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	if (0u == player.iCurrentHp ||
-		PLAYER_ACTION_STATE::DEAD == player.eAction ||
-		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
-		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
-		PLAYER_ACTION_STATE::FEAR == player.eAction ||
-		player.fKnockbackRemainingSeconds > 0.f ||
-		static_cast<std::int32_t>(
-			player.iHitReactionGraceEndTick - serverTick) > 0)
-	{
-		return;
-	}
+	if (!Can_ArmPlayerHitReaction(player, serverTick)) return;
 	const bool hasPush =
 		0.f != pushRangeM && 0u != pushMs && std::isfinite(pushRangeM);
 	if (!hasPush && !knockdown)

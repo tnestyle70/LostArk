@@ -221,6 +221,29 @@ function Assert-RenderingProfileDocument([object]$Document) {
         [StringComparer]::Ordinal)
     foreach ($profile in $profiles) {
         $profileFields = @('profileId', 'exposureMultiplier', 'bloomIntensityMultiplier', 'light', 'shadow', 'fog')
+        if ($null -ne $profile.PSObject.Properties['environment']) {
+            $profileFields += 'environment'
+            $environment = $profile.environment
+            Assert-ExactProperties $environment @('cubeTexture', 'color', 'rotationIntensity') 'profile.environment'
+            $assetId = $environment.cubeTexture
+            if ($assetId -isnot [string] -or [string]::IsNullOrEmpty($assetId) -or
+                $assetId.Length -gt 1024 -or $assetId -match '[\\\x00-\x1f:]' -or
+                $assetId.StartsWith('/') -or $assetId -match '(^|/)\.{1,2}(/|$)' -or
+                -not $assetId.EndsWith('.dds', [StringComparison]::Ordinal)) {
+                throw 'profile.environment.cubeTexture must be a Resources-relative DDS asset ID.'
+            }
+            Assert-Vector4 $environment.color 0.0 64.0 'profile.environment.color'
+            $rotation = @($environment.rotationIntensity)
+            if ($rotation.Count -ne 4) { throw 'profile.environment.rotationIntensity requires four numbers.' }
+            Assert-FiniteFloatRange $rotation[0] -1.0 1.0 'profile.environment.rotationIntensity[0]'
+            Assert-FiniteFloatRange $rotation[1] -1.0 1.0 'profile.environment.rotationIntensity[1]'
+            Assert-FiniteFloatRange $rotation[2] 0.0 64.0 'profile.environment.rotationIntensity[2]'
+            Assert-FiniteFloatRange $rotation[3] 0.0 0.0 'profile.environment.rotationIntensity[3]'
+            if ([Math]::Abs([single]$rotation[0] * [single]$rotation[0] +
+                [single]$rotation[1] * [single]$rotation[1] - 1.0) -gt 0.001) {
+                throw 'profile.environment.rotationIntensity.xy must be a unit rotation.'
+            }
+        }
         if ($null -ne $profile.PSObject.Properties['displayName']) {
             $profileFields += 'displayName'
             if ($profile.displayName -isnot [string] -or [string]::IsNullOrEmpty($profile.displayName) -or

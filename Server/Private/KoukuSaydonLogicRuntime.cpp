@@ -1,6 +1,7 @@
 #include "KoukuSaydonLogicRuntime.h"
 
 #include "ServerCombatHitRuntime.h"
+#include "PlayerSkillSystem.h"
 #include "KoukuSaydonBrain.h"
 #include "ServerCollisionSystem.h"
 #include "Gameplay/CombatCollisionContract.h"
@@ -392,6 +393,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 	(void)ledger;
 	state.bOpened = true;
 	state.Answers.clear();
+	state.InsidePlayers.clear();
+	state.NextContactHitTicks.clear();
 	state.iBossHpAtOpen = boss.iCurrentHp;
 	switch (window.eKind)
 	{
@@ -498,17 +501,20 @@ LostArk::Server::CKoukuSaydonLogicRuntime::Judge_Gaze(
 	const float dz = boss.fPositionZ - player.fPositionZ;
 	if (!std::isfinite(dx) || !std::isfinite(dz) || !std::isfinite(player.fYawDegrees))
 		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	const auto insideAnswer = window.bInsideIsFail ?
+		KOUKUSAYDON_LOGIC_ANSWER::FAIL : KOUKUSAYDON_LOGIC_ANSWER::SUCCESS;
+	const auto outsideAnswer = window.bInsideIsFail ?
+		KOUKUSAYDON_LOGIC_ANSWER::SUCCESS : KOUKUSAYDON_LOGIC_ANSWER::FAIL;
 	const float distanceSq = dx * dx + dz * dz;
 	// Standing on the boss counts as facing it: no direction to judge.
 	if (distanceSq < 0.01f)
-		return KOUKUSAYDON_LOGIC_ANSWER::SUCCESS;
+		return insideAnswer;
 	if (window.fMaxDistanceM > 0.f &&
 		distanceSq > window.fMaxDistanceM * window.fMaxDistanceM)
-		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+		return outsideAnswer;
 	const float toBoss = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
 	const float difference = Wrap180(toBoss - player.fYawDegrees);
-	return std::fabs(difference) <= window.fHalfAngleDegrees ?
-		KOUKUSAYDON_LOGIC_ANSWER::SUCCESS : KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	return std::fabs(difference) <= window.fHalfAngleDegrees ? insideAnswer : outsideAnswer;
 }
 
 bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
@@ -609,6 +615,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 				(std::max)(1u, Percent_Of(player.iMaximumHp, result.iPercent));
 		hit.fSourceX = boss.fPositionX;
 		hit.fSourceZ = boss.fPositionZ;
+		hit.fPushRangeM = result.fPushRangeM;
+		hit.iPushMs = result.iPushMs;
 		hit.iServerTick = serverTick;
 		hit.bIgnoreDefense = true;
 		hit.bIgnoreCounter = true;
@@ -1052,14 +1060,47 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			if (!enter && !reachedEnd) break;
 			for (auto& [playerId, player] : players)
 			{
-				if (!Is_Judgeable(player) || (enter && KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
+				if (!Is_Judgeable(player) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback &&
+					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
 				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
 					[&](const BOSS_LOGIC_REGION& region) { return Contains_LogicRegion(region, boss, player, serverTick - ledger.iPatternStartTick); });
 				const bool inside = window.CardRegions.end() != caught;
-				if (!inside && !reachedEnd) continue;
 				const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
 					window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+				if (enter && window.bRepeatAfterKnockback)
+				{
+					if (inside)
+					{
+						const auto next = state.NextContactHitTicks.find(playerId);
+						if (!CPlayerSkillSystem::Can_ArmPlayerHitReaction(player, serverTick) ||
+							(next != state.NextContactHitTicks.end() && !Has_ReachedTick(serverTick, next->second))) continue;
+					}
+					else
+					{
+						const auto answer = state.Answers.find(playerId);
+						if (answer != state.Answers.end() && answer->second != KOUKUSAYDON_LOGIC_ANSWER::NONE) continue;
+					}
+				}
+				if (enter && window.bRearmOnExit)
+				{
+					if (inside)
+					{
+						if (captureCandidate)
+						{
+							if (state.InsidePlayers.contains(playerId)) continue;
+						}
+						else if (!state.InsidePlayers.insert(playerId).second) continue;
+					}
+					else
+					{
+						state.InsidePlayers.erase(playerId);
+						// Timeout belongs only to players who never entered this window.
+						const auto answer = state.Answers.find(playerId);
+						if (answer != state.Answers.end() && answer->second != KOUKUSAYDON_LOGIC_ANSWER::NONE) continue;
+					}
+				}
+				if (!inside && !reachedEnd) continue;
 				// Capture is committed by the room; an ineligible candidate remains retryable.
 				if (!captureCandidate)
 					state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
@@ -1068,6 +1109,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					(window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout;
 				Apply_Results(answered, state, &player, players,
 					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+				if (inside && enter && window.bRepeatAfterKnockback && !answered.empty())
+					state.NextContactHitTicks[playerId] = Add_Ticks(serverTick, Ticks_FromMs(answered.front().iPushMs));
 				/* Only this seam knows which region caught this player, and that
 				region is the thing that will carry them, so the grab happens here
 				rather than in the typed result switch. */

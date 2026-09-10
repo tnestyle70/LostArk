@@ -83,6 +83,9 @@ private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSkeletonModelCom = { nullptr };
+	/* True when this piece carries bones the body does not have, so it poses its own skeleton
+	from the body and binds its own palette instead of borrowing the body's. See Initialize. */
+	bool_t m_hasOwnBones = false;
 	string m_strSocketBoneName;
 	f32_t m_fSocketYawDegrees = 0.f;
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };

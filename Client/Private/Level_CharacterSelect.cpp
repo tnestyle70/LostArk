@@ -2171,6 +2171,22 @@ namespace
 
 	constexpr f32_t ROW_Y_START = 60.f;
 	constexpr f32_t ROW_GAP = 7.f;
+	/* The right panel is a body plate with a separate bottom cap, and the list it frames is
+	an accordion: expanding a category pushes every row below it down by the thumbnail's
+	height. So the panel cannot keep the fixed rect ClassSelect_Layout.json authored -- that
+	one frames the retail row count and our six categories already overrun it collapsed, and
+	by a further thumbnail expanded, which is why the panel stopped halfway down the list.
+	Only the body grows; the cap keeps its authored height and the overlap it was authored
+	at (296.29 - 235.71 into the body, 305.71 - 296.29 below it). */
+	constexpr f32_t PANEL_BODY_X = 930.f;
+	constexpr f32_t PANEL_BODY_Y = 4.29f;
+	constexpr f32_t PANEL_WIDTH = 340.f;
+	constexpr f32_t PANEL_CAP_X = 950.f;
+	constexpr f32_t PANEL_CAP_HEIGHT = 70.f;
+	constexpr f32_t PANEL_CAP_OVERLAP = 60.57f;
+	constexpr f32_t PANEL_CAP_BELOW_BODY = 9.43f;
+	/* Below the last row, to the panel's own edge. */
+	constexpr f32_t PANEL_BOTTOM_MARGIN = 14.f;
 	constexpr f32_t THUMB_W = 134.f;
 	constexpr f32_t THUMB_H = 78.f;
 	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
@@ -2472,6 +2488,14 @@ void CLevel_CharacterSelect::Update_ClassList()
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
 	}
+
+	/* fRowY is now the bottom of the list, so the panel behind it is sized to what was
+	actually laid out this frame rather than to a rect authored for a different row count. */
+	const f32_t fBodyHeight = fRowY + PANEL_BOTTOM_MARGIN - PANEL_CAP_BELOW_BODY - PANEL_BODY_Y;
+	m_pClassSelectView->Set_SlotRect(
+		"PanelBgRight", PANEL_BODY_X, PANEL_BODY_Y, PANEL_WIDTH, fBodyHeight);
+	m_pClassSelectView->Set_SlotRect("PanelBgRightBottom", PANEL_CAP_X,
+		PANEL_BODY_Y + fBodyHeight - PANEL_CAP_OVERLAP, PANEL_WIDTH, PANEL_CAP_HEIGHT);
 }
 
 void CLevel_CharacterSelect::Render_ClassListText()
@@ -2903,6 +2927,23 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 
+}
+
+void CLevel_CharacterSelect::Render_CreateCharacterModalText()
+{
+	/* Split out of Render_ArenaSpawnLabels: that pass is skipped while the customizing screen
+	is up (its spawn-button captions must not float over it), and the nickname step opens from
+	inside that screen -- so the modal drew its art with none of its text, which also looked
+	like the field refusing to type. This runs whenever the modal is open, whatever is behind
+	it. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vViewportSize.x / 1280.f;
+	const float textScaleY = vViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
 	/* Create Character modal text -- real Draw_Text same as everything else above.
 	Render_CreateCharacterModal owns the CUI_Sprite art state and the WM_CHAR editing; every
 	glyph the modal shows (title/labels, the nickname itself, the IME's in-progress syllable,
@@ -3052,6 +3093,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 }
+
 
 #ifdef _DEBUG
 void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()

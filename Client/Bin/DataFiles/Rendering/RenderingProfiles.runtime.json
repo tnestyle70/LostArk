@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  24,
+    "revision":  25,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -96,6 +96,21 @@
                      },
                      {
                          "profileId":  "scene.character-select.warm-high-key.v1",
+                         "environment":  {
+                                             "cubeTexture":  "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+                                             "color":  [
+                                                           1,
+                                                           1,
+                                                           1,
+                                                           0
+                                                       ],
+                                             "rotationIntensity":  [
+                                                                       0,
+                                                                       1,
+                                                                       1,
+                                                                       0
+                                                                   ]
+                                         },
                          "qualityOverride":  {
                                                  "ssaoEnabled":  true,
                                                  "ssaoRadius":  0.0399999991,
@@ -635,6 +650,21 @@
                      },
                      {
                          "profileId":  "scene.character-select.customizing-dark.v1",
+                         "environment":  {
+                                             "cubeTexture":  "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+                                             "color":  [
+                                                           1,
+                                                           1,
+                                                           1,
+                                                           0
+                                                       ],
+                                             "rotationIntensity":  [
+                                                                       0,
+                                                                       1,
+                                                                       1,
+                                                                       0
+                                                                   ]
+                                         },
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  0.850000024,
                          "light":  {

@@ -54,7 +54,7 @@ public:
     CKoukuSaydonPresentationPlayer(ComPtr<ID3D11Device> device,
         ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
     ~CKoukuSaydonPresentationPlayer();
-    bool Reload_Product(std::string& status);
+    bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
     using WORLD_EMISSION_ANCHOR = std::function<bool_t(f32_t, float4x4_t&)>;
     static WORLD_EMISSION_ANCHOR Make_WorldEmissionAnchor(
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,

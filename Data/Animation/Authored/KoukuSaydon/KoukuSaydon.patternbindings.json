@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 8,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 230,
+  "sourceRevision": 243,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -1385,16 +1385,6 @@
       "endPolicy": "EXACT"
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.1",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_21.animation.1",
-      "clip": "rpcz00_att_battle_1_08",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
       "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.2",
       "occurrenceId": "KAKULSAYDON_G1_PATTERN_21.animation.2",
       "clip": "rpcz00_att_battle_1_03",
@@ -1905,9 +1895,9 @@
       "patternId": "KAKULSAYDON_G1_PATTERN_17",
       "attachmentSlot": "BOSS_LEFT_HAND",
       "gripLocalOffset": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ]
     }
   ],
@@ -8024,18 +8014,18 @@
           "resourceDurationMs": 3000,
           "positionOffset": [
             0,
-            0,
+            1.149999976158142,
             0
           ],
           "rotationDegrees": [
             0,
-            0,
+            90,
             0
           ],
           "scale": [
+            3,
             1,
-            1,
-            1
+            3
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -8074,7 +8064,7 @@
       "gateId": "GATE2",
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
-      "durationMs": 7500,
+      "durationMs": 5833,
       "presentationOccurrences": []
     },
     {
@@ -8099,7 +8089,61 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 6502,
-      "presentationOccurrences": []
+      "presentationOccurrences": [
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "CIRCLE",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.44",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 1000,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_24.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_24.presentation.2",
+          "startMs": 4000,
+          "durationMs": 1602,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_18",
@@ -8114,36 +8158,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8157,7 +8201,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.1",
           "startMs": 1000,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8167,36 +8211,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8210,7 +8254,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.2",
           "startMs": 1175,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8220,36 +8264,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8263,7 +8307,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.3",
           "startMs": 1350,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8273,36 +8317,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8316,7 +8360,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.4",
           "startMs": 1525,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8326,36 +8370,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8369,7 +8413,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.5",
           "startMs": 1700,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8379,36 +8423,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8422,7 +8466,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.6",
           "startMs": 1875,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8432,36 +8476,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8475,7 +8519,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.7",
           "startMs": 10000,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8485,36 +8529,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8528,7 +8572,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.8",
           "startMs": 10175,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8538,36 +8582,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8581,7 +8625,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.9",
           "startMs": 10350,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8591,36 +8635,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8634,7 +8678,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.10",
           "startMs": 10525,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8644,36 +8688,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8687,7 +8731,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.11",
           "startMs": 10700,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8697,36 +8741,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8740,7 +8784,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.12",
           "startMs": 10875,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8750,36 +8794,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8793,7 +8837,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.13",
           "startMs": 19000,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8803,36 +8847,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8846,7 +8890,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.14",
           "startMs": 19175,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8856,36 +8900,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8899,7 +8943,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.15",
           "startMs": 19350,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8909,36 +8953,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -8952,7 +8996,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.16",
           "startMs": 19525,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -8962,36 +9006,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9005,7 +9049,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.17",
           "startMs": 19700,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9015,36 +9059,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9058,7 +9102,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.presentation.18",
           "startMs": 19875,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         }
@@ -9077,36 +9121,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9120,7 +9164,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.1",
           "startMs": 1000,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9130,36 +9174,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9173,7 +9217,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.2",
           "startMs": 1175,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9183,36 +9227,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9226,7 +9270,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.3",
           "startMs": 1350,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9236,36 +9280,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9279,7 +9323,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.4",
           "startMs": 1525,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9289,36 +9333,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9332,7 +9376,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.5",
           "startMs": 1700,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9342,36 +9386,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9385,7 +9429,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.6",
           "startMs": 1875,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9395,36 +9439,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9438,7 +9482,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.7",
           "startMs": 10000,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9448,36 +9492,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9491,7 +9535,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.8",
           "startMs": 10175,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9501,36 +9545,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9544,7 +9588,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.9",
           "startMs": 10350,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9554,36 +9598,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9597,7 +9641,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.10",
           "startMs": 10525,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9607,36 +9651,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9650,7 +9694,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.11",
           "startMs": 10700,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9660,36 +9704,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9703,7 +9747,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.12",
           "startMs": 10875,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9713,36 +9757,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9756,7 +9800,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.13",
           "startMs": 19000,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9766,36 +9810,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9809,7 +9853,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.14",
           "startMs": 19175,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9819,36 +9863,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9862,7 +9906,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.15",
           "startMs": 19350,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9872,36 +9916,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9915,7 +9959,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.16",
           "startMs": 19525,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9925,36 +9969,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -9968,7 +10012,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.17",
           "startMs": 19700,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         },
@@ -9978,36 +10022,36 @@
           "shape": "CIRCLE",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 1.0,
-          "halfAngleDegrees": 180.0,
+          "radiusM": 1,
+          "halfAngleDegrees": 180,
           "resourceId": "kakulsaydon.g1.presentation.37",
           "kind": "COLLIDER",
           "assetId": "",
           "resourceDurationMs": 8000,
           "positionOffset": [
             0.35,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "followBoss": true,
           "bone": "",
           "regionId": "",
@@ -10021,7 +10065,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.presentation.18",
           "startMs": 19875,
           "durationMs": 8000,
-          "brightnessMultiplier": 1.0,
+          "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal"
         }

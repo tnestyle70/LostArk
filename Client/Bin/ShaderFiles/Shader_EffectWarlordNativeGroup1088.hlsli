@@ -4952,7 +4952,7 @@ float3 WarlordNative1122Directional(WARLORD_NATIVE_INPUT input, float3 tangentLi
     source[6] = g_WarlordSourceMaterialParameters[16u];
     source[7] = g_WarlordSourceMaterialParameters[9u];
     source[8] = g_WarlordSourceMaterialParameters[8u];
-    source[9] = input.dynamicParameter;
+    source[9] = g_WarlordSourceMaterialParameters[12u]; // LocalVF named material uniform.
     source[10] = g_WarlordSourceMaterialParameters[13u];
     source[11] = WarlordNativeAppend(g_WarlordSourceMaterialTime.xxxx,g_WarlordSourceMaterialTime.xxxx,1u);
     source[12] = g_WarlordSourceMaterialParameters[15u];
@@ -5432,7 +5432,7 @@ float4 WarlordNative1122(WARLORD_NATIVE_INPUT input)
     source[9] = g_WarlordSourceMaterialParameters[17u];
     source[10] = g_WarlordSourceMaterialParameters[5u];
     source[11] = g_WarlordSourceMaterialParameters[11u];
-    source[12] = input.dynamicParameter;
+    source[12] = g_WarlordSourceMaterialParameters[12u]; // LocalVF named material uniform.
     source[13] = g_WarlordSourceMaterialParameters[10u];
     source[14] = g_WarlordSourceMaterialParameters[13u];
     source[15] = WarlordNativeAppend(g_WarlordSourceMaterialTime.xxxx,g_WarlordSourceMaterialTime.xxxx,1u);
@@ -5796,7 +5796,7 @@ float3 WarlordNative1123Directional(WARLORD_NATIVE_INPUT input, float3 tangentLi
     source[6] = g_WarlordSourceMaterialParameters[20u];
     source[7] = g_WarlordSourceMaterialParameters[11u];
     source[8] = g_WarlordSourceMaterialParameters[10u];
-    source[9] = input.dynamicParameter;
+    source[9] = g_WarlordSourceMaterialParameters[16u]; // LocalVF named material uniform.
     source[10] = g_WarlordSourceMaterialParameters[17u];
     source[11] = WarlordNativeAppend(g_WarlordSourceMaterialTime.xxxx,g_WarlordSourceMaterialTime.xxxx,1u);
     source[12] = g_WarlordSourceMaterialParameters[19u];
@@ -6278,7 +6278,7 @@ float4 WarlordNative1123(WARLORD_NATIVE_INPUT input)
     source[12] = g_WarlordSourceMaterialParameters[21u];
     source[13] = g_WarlordSourceMaterialParameters[6u];
     source[14] = g_WarlordSourceMaterialParameters[15u];
-    source[15] = input.dynamicParameter;
+    source[15] = g_WarlordSourceMaterialParameters[16u]; // LocalVF named material uniform.
     source[16] = g_WarlordSourceMaterialParameters[12u];
     source[17] = g_WarlordSourceMaterialParameters[17u];
     source[18] = WarlordNativeAppend(g_WarlordSourceMaterialTime.xxxx,g_WarlordSourceMaterialTime.xxxx,1u);

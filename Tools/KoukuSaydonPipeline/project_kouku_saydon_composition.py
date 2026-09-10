@@ -140,7 +140,7 @@ LOGIC_KIND_VALUE_KEYS = {
         "sectorCount", "sectorSymbols", "centerX", "centerZ", "outerRadiusM",
         "worldSequenceInstanceId", "regionIds",
     },
-    "GAZE_REAL_BOSS": {"halfAngleDegrees", "maxDistanceM"},
+    "GAZE_REAL_BOSS": {"halfAngleDegrees", "maxDistanceM", "insideOutcome"},
     "POSE_INPUT": {"poseIndex"},
     "STAGGER_WINDOW": {"threshold", "shieldArcDegrees", "endsPatternOnSuccess", "normalYawOffsetDegrees"},
     "AREA_OVERLAP": {"insideOutcome"},
@@ -151,9 +151,9 @@ LOGIC_KIND_VALUE_KEYS = {
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
-                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset"}
+                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs"}
 LOGIC_TRIGGER_VALUE_KEYS = {"triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
-                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM"}
+                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "rearmOnExit", "repeatAfterKnockback"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
@@ -436,6 +436,8 @@ def _validate_logic_definition(
                 logic.get("worldSequenceInstanceId", ""), f"{context} worldSequenceInstanceId"
             )
         elif kind == "GAZE_REAL_BOSS":
+            if logic.get("insideOutcome", "SUCCESS") not in {"SUCCESS", "FAIL"}:
+                raise CompositionError(f"{context} insideOutcome must be SUCCESS or FAIL")
             definition["halfAngleDegrees"] = _number(
                 logic.get("halfAngleDegrees", 0.0), f"{context} halfAngleDegrees", 1.0, 180.0
             )
@@ -492,9 +494,13 @@ def _validate_logic_definition(
             for hour in hours:
                 _integer(hour, f"{context} clockHours", 2, 12)
         elif kind == "ENTER_AREA":
-            if extra - {"bossChargeDistanceM"} != {"triggerKind"}:
+            if extra - {"bossChargeDistanceM", "rearmOnExit", "repeatAfterKnockback"} != {"triggerKind"}:
                 raise CompositionError(f"{context} ENTER_AREA carries unrelated values")
             definition["bossChargeDistanceM"] = _number(logic.get("bossChargeDistanceM", 0), f"{context} bossChargeDistanceM", 0, 1000)
+            definition["rearmOnExit"] = _boolean(logic.get("rearmOnExit", False), f"{context} rearmOnExit")
+            definition["repeatAfterKnockback"] = _boolean(logic.get("repeatAfterKnockback", False), f"{context} repeatAfterKnockback")
+            if definition["rearmOnExit"] and definition["repeatAfterKnockback"]:
+                raise CompositionError(f"{context} choose one contact repeat policy")
         elif kind == "OBJECT_CONTACT":
             required = {"triggerKind", "targetWorldOccurrenceIds", "targetRadiusM"}
             if not required <= extra or extra - required - {"contactGroupId", "contactPriority"}:
@@ -534,6 +540,17 @@ def _validate_logic_definition(
             raise CompositionError(f"{context} {kind} does not take a percent")
         if kind not in {"CLOWN_TRANSFORM", "FEAR"} and duration_ms != 0:
             raise CompositionError(f"{context} {kind} does not take a durationMs")
+        if extra & {"pushRangeM", "pushMs"}:
+            if kind != "MAX_HP_PERCENT_DAMAGE":
+                raise CompositionError(f"{context} only MAX_HP_PERCENT_DAMAGE owns push values")
+            if ("pushRangeM" in logic) != ("pushMs" in logic):
+                raise CompositionError(f"{context} pushRangeM and pushMs must be supplied together")
+            push_range = _number(logic.get("pushRangeM", 0), f"{context} pushRangeM", 0, 20)
+            push_ms = _integer(logic.get("pushMs", 0), f"{context} pushMs", 0, MAX_TIMELINE_MS)
+            if (push_range == 0) != (push_ms == 0):
+                raise CompositionError(f"{context} pushRangeM and pushMs must both be zero or positive")
+            definition["pushRangeM"] = push_range
+            definition["pushMs"] = push_ms
         if kind == "FEAR":
             if duration_ms == 0:
                 raise CompositionError(f"{context} FEAR requires durationMs > 0")
@@ -1243,6 +1260,10 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             )
             if logic_start_ms + logic_duration_ms > MAX_TIMELINE_MS:
                 raise CompositionError(f"Logic box exceeds 600 seconds: {box_id}")
+            if enabled and status == "PRODUCT" and owner.get("repeatAfterKnockback", False):
+                hits = [logic_defs[target] for target in outcomes["Success"]]
+                if len(hits) != 1 or hits[0].get("kind") != "MAX_HP_PERCENT_DAMAGE" or hits[0].get("pushRangeM", 0) <= 0 or hits[0].get("pushMs", 0) <= 0:
+                    raise CompositionError(f"{box_context} repeat after knockback requires one damage Success with positive knockback")
             if enabled and status == "PRODUCT" and (owner["type"] == "DURATION" or kind in {"ENTER_AREA", "OBJECT_CONTACT"}):
                 if kind is None:
                     raise CompositionError(
@@ -2629,6 +2650,9 @@ def _project_outcomes(logics: dict[str, dict[str, Any]], targets: list[str]) -> 
         })
         if logic["outcomeKind"] == "FEAR":
             projected[-1]["presentationId"] = logic["logicId"]
+        elif logic["outcomeKind"] == "MAX_HP_PERCENT_DAMAGE" and logic.get("pushRangeM", 0):
+            projected[-1]["pushRangeM"] = float(logic["pushRangeM"])
+            projected[-1]["pushMs"] = int(logic["pushMs"])
         elif logic["outcomeKind"] == "CAPTURE_PLAYER":
             projected[-1]["attachmentSlot"] = logic["attachmentSlot"]
             projected[-1]["gripLocalOffset"] = dict(logic["gripLocalOffset"])
@@ -2654,6 +2678,8 @@ def _project_logic_window(
         "windowId": box["occurrenceId"],
         **({"holdLogicOccurrenceId": box["holdLogicOccurrenceId"]} if box.get("holdLogicOccurrenceId") else {}),
         **({"bossChargeDistanceM": logic["bossChargeDistanceM"]} if logic.get("bossChargeDistanceM", 0) else {}),
+        **({"rearmOnExit": True} if logic.get("rearmOnExit", False) else {}),
+        **({"repeatAfterKnockback": True} if logic.get("repeatAfterKnockback", False) else {}),
         "kind": kind,
         "startMs": box["startMs"],
         "durationMs": box["durationMs"],

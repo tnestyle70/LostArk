@@ -64,6 +64,15 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[6] = float4(tangentView, 1.f);
         input.values[7] = clipPosition;
     }
+    if (g_SourceCharacterProgram == 12u)
+    {
+        // The legacy head direct VS packs UV/light/view/position into 2/3/5/6.
+        // Its base pass uses the common layout above.
+        input.values[2] = float4(uv, 0.f, 0.f);
+        input.values[3] = float4(tangentLight, 1.f);
+        input.values[5] = float4(tangentView, 1.f);
+        input.values[6] = sourcePosition;
+    }
     if (g_SourceCharacterProgram == 6u)
     {
         input.values[2] = float4(uv, 0.f, 0.f);
@@ -81,14 +90,17 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[6] = float4(tangentView, 1.f);
         input.values[7] = float4(up, 0.f);
     }
-    if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u)
+    if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
+        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u)
     {
         input.values[5] = float4(0.f, 0.f, 0.f, 1.f); // Source fog identity.
-        input.values[6] = g_SourceCharacterProgram == 7u ? float4(tangentView, 1.f) : 0.f;
+        input.values[6] = g_SourceCharacterProgram == 6u ? 0.f : float4(tangentView, 1.f);
         input.values[7] = float4(up, 0.f);
         input.values[8] = sourcePosition;
         input.values[9] = frontFace ? 1.f : 0.f;
     }
+    if (g_SourceCharacterProgram == 19u)
+        input.values[8] = frontFace ? 1.f : 0.f;
 #endif
     input.lightColor = lightColor;
     input.shadow = shadow;
@@ -121,7 +133,8 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     // Opaque native PS alpha is explicitly zero and is not coverage. Hair and
     // eyelash carry actual opacity. The existing opaque character draw uses
     // ordered coverage until its source sorted-translucency passes are present.
-    if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u)
+    if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
+        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u)
     {
         static const float threshold[16] = {
             .5f, 8.5f, 2.5f, 10.5f, 12.5f, 4.5f, 14.5f, 6.5f,

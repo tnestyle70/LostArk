@@ -8707,7 +8707,7 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
-		if (!Element.bVisible ||
+		if (!Element.bVisible || Is_EffectSimulationOnlyParticle(Element) ||
 			(!Is_EffectElementAuthoringExecutionTarget(Element) &&
 			 !Is_EffectPresentationExecutionTarget(Element)))
 			continue;

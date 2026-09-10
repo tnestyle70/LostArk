@@ -447,7 +447,8 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     // The existing combined pass adds Specular without multiplying albedo again.
     // Hair's native pass uses its own projected PCF protocol. Until that
     // engine-owned projection is available, use this renderer's shadow once.
-    const float shadowAdapter = g_SourceCharacterProgram == 7u ? directShadow : 1.f;
+    const float shadowAdapter = (g_SourceCharacterProgram == 7u ||
+        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u) ? directShadow : 1.f;
     output.vSpecular = float4(native.targets[0].rgb * (attenuation * shadowAdapter), 0.f);
     // Engine-owned source SH/cube values are not authored in these MICs. Keep
     // the scene's explicit ambient approximation separate from recovered direct.

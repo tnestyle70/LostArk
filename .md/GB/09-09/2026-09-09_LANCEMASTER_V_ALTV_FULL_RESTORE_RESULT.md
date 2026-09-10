@@ -247,4 +247,24 @@ V 마지막 spear 재생은 기존 첫 시퀀스 `fx_pc_flm_00.par_k_flm_squalll
 
 수치 근거는 `out/LanceMasterSlashFollowup20260910/codec-result.log`, `delta-review.json`, `product-binding-join.json`, `root-motion-clock-evidence.json`, `slash-materialize-result.json`에 있다. 이번 검격 추가로 신규 Resources나 shader compile 항목은 발생하지 않는다.
 
-T34650의 누락은 별도 담당이 원본 `PlaySkeletalMesh`를 조사·복구한다. 현 G18 검격16문서에는 T를 포함하지 않는다. 확인한 원본은 `SK_FLM_GDR_01.Mesh.SK_FLM_PMSHB_00_SK`, animation `SK_DragonCleave_03`, material `FX_M_MI_T_00.FX_MI.FX_T_Me_Master_02_01_Sk_Dt_Tr`, child `Par_T_FLM_DragonCleave_01_Cast_01`, clip2 local0.5초/1.2초 수명이다. T의 실제 추가·검증 완료 수치는 해당 담당의 결과 이후 기록한다.
+G18 검격16문서에는 T를 포함하지 않는다. T의 원본 `PlaySkeletalMesh` 연결과 후속 재질 입력 교정은 아래 G19에 기록한다.
+
+## G19. T 용 복원 재개와 투명도 입력 교정
+
+T34650의 현재 full restore는 clip1 30Element, clip2 80Element와2ModelCue다. 원본 `SK_FLM_GDR_01.Mesh.SK_FLM_PMSHB_00_SK`의 두 section, animation `SK_DragonCleave_03`, material `FX_M_MI_T_00.FX_MI.FX_T_Me_Master_02_01_Sk_Dt_Tr`와 child `Par_T_FLM_DragonCleave_01_Cast_01`를 사용한다. clip2의 기존74Element에 본 부착 child6개와 용 cue2개가 추가되어 있고 이번 재개에서 데이터와 시각을 바꾸지 않았다. 용은 clip2 local0.5초부터1.2초 동안 재생한다.
+
+모델이 존재해도 보이지 않는 결함은 skeletal cue의 원본 DynamicParameter가 shader 입력까지 전달되지 않는 데 있었다. native1360의 opacity는 이 값의 x를 사용한다. 기존 zero-init particle 값을 전달하면 noise가 있어도 모든 alpha가0이 된다. `Shader_VtxAnimMeshBinary.hlsl`의1360 분기에서 이미 bind된 원본 재질 parameter8을 사용하도록2줄을 추가했다. 다른 native profile의 입력은 보존했다.
+
+| 실행한 확인 | 결과 |
+|---|---|
+| 기존 실제 CModel 재실행 | 모델2개, clip2개, 유한 bone palette18개, 움직이는 clip2개, 오류0 |
+| 실제 Effect codec 저장·재로드 |80Element/2ModelCue/본 child6개 정확히 일치 |
+| 기존 native PS probe 재사용, 실제 DDS4개와 원본 재질 값 |6시각×3depth gap×전후36case, nonfinite0 |
+| 수정 전 zero DynamicParameter |18case 모두 alpha-positive pixel0 |
+| 수정 후 원본 DynamicParameter |양수 depth gap12case 모두4096/4096 pixel에 비영 alpha, 최대alpha1 |
+| depth fade 경계 |gap0의6case는 원본 계산대로 alpha0 유지 |
+| scoped git diff --check |PASS |
+| 현재 Product CSO 재생성·배포 |Debug Product PASS, 새 Shader_VtxAnimMeshBinary.cso 생성·배포. `out/BuildPipeline/runs/20260910T063843956Z-debug-product.json` |
+| Client/UI 실행·조작·캡처와 화면 fidelity |미실행, 사용자 확인 대상 |
+
+CModel/codec 근거는 `out/ArtistWarlordVisualFollowup20260910/LanceT/t_models_codec_probe-resume-20260910.log`, PS 수치 근거는 같은 폴더의 `dynamic_parameter_resume/out/DimensionMasterRound3_20260909/s_native_ps_probe/ps_results.csv`다. 기존 probe를 재사용했으며 새로운 영구 검증 프로젝트는 추가하지 않았다.

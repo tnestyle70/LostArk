@@ -12,6 +12,7 @@ struct MODEL_MESH_DATA;
 struct MODEL_ASSET_LOAD_DESC;
 struct MODEL_COLOR_TINT;
 struct MODEL_SURFACE_PARAMETERS;
+struct MODEL_SOURCE_CHARACTER_PARAMETERS;
 
 class ENGINE_DLL CModel final : public CComponent
 {
@@ -134,6 +135,17 @@ public:
 	void Clear_AnimationTransitionPose() { m_bExplicitAnimationPose = false; }
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
+	/* Poses this model's skeleton from another one, matched by bone name, for a worn part that
+	rides a body's animation. A bone the source also has takes the source's combined matrix; a
+	bone only this model has -- the costume-only chains a hairstyle or a dress adds -- is
+	rebuilt from its own rest local onto whichever parent was just posed, so it hangs off the
+	animated body instead of collapsing.
+
+	Without this a part with extra bones cannot be drawn from its own palette at all: the body's
+	palette is shorter, and every vertex weighted past its end reads a zero matrix. Returns how
+	many bones the source supplied, so a caller can tell a matched skeleton from an unrelated
+	one. Bones are stored parent-before-child, so one forward pass is enough. */
+	uint32_t Pose_BonesFrom(const CModel& source);
 	bool_t Enable_RootMotionSuppression(
 		const char_t* pBoneName, int32_t iVerticalAxis);
 
@@ -231,6 +243,17 @@ public:
 	because a plain multiply needs no mask to ride on. */
 	uint32_t Override_MaterialDiffuseTint(
 		const char_t* pMaterialNameFragment, const float4_t& vTint);
+	/* The same match by name fragment, for a material drawn by a native source-character
+	program: the creation screen's skin and make-up choices are that program's own constants
+	and texture registers. See CMaterial::Set_SourceCharacterConstants. Only materials on such
+	a program take these, so the count says whether the choice landed on anything at all. */
+	uint32_t Override_SourceCharacterConstants(
+		const char_t* pMaterialNameFragment,
+		const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters);
+	uint32_t Override_SourceCharacterTexture(
+		const char_t* pMaterialNameFragment, uint32_t iRegister,
+		ComPtr<ID3D11ShaderResourceView> pTexture);
+	void Clear_SourceCharacterOverrides();
 	/* Null when the mesh or its material is out of range. */
 	const float4_t* Get_MaterialDiffuseTint(uint32_t iMeshIndex) const;
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
@@ -275,7 +298,11 @@ public:
 
 private:
 	const aiScene*						m_pAIScene = { nullptr };
-	Assimp::Importer					m_Importer = {};
+	/* Built only for a model that actually goes through Assimp. Its constructor registers
+	every importer Assimp ships, and the runtime loads .wmodel exclusively, so as a plain
+	member it built that whole registry for every model in the game and never read a file
+	with it -- which is also what the CRT leak dump was full of. */
+	unique_ptr<Assimp::Importer>		m_pImporter;
 
 private:
 	MODEL								m_eType = { MODEL::END };
@@ -298,6 +325,10 @@ private:
 	vector<shared_ptr<class CMaterial>>	m_Materials;
 
 	vector<shared_ptr<class CBone>>		m_Bones;
+	/* Pose_BonesFrom's name join, kept because it is the same two skeletons every frame.
+	-1 marks a bone the source does not have. */
+	vector<int32_t>						m_SourcePoseBoneIndices;
+	const CModel*						m_pSourcePoseModel = { nullptr };
 	vector<float4x4_t>					m_BoneRestLocalTransforms;
 	uint64_t							m_iSkeletonHash = {};
 

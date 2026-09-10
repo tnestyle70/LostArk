@@ -46,6 +46,8 @@ namespace LostArk::Server
 		/* STAGGER_WINDOW measures the health the boss lost since it opened. */
 		std::uint32_t iBossHpAtOpen = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER> Answers;
+		std::set<LostArk::Shared::PLAYER_ID> InsidePlayers;
+		std::map<LostArk::Shared::PLAYER_ID, std::uint32_t> NextContactHitTicks;
 	};
 
 	/* One authored presentation cue (world sequence or scene profile) waiting

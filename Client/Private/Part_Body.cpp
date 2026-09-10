@@ -102,7 +102,8 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
         const auto* surface = m_pModelCom->Get_MaterialSurface(i);
         if (iPassIndex == 0u && surface &&
             surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-            (surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u))
+            (surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
+             surface->sourceCharacter.program == 18u || surface->sourceCharacter.program == 20u))
             materialPass = 6u;
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, {},

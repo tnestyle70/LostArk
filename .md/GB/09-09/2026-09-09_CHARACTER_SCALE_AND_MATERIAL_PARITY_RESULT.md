@@ -1,5 +1,84 @@
 # 캐릭터 크기·재질 연결 실측 결과
 
+## G10. 차원술사 재질 복원 재개 — 2026-09-10
+
+사용자는 환경반사가 부족하게 느껴진 장소를 **Character Select**로 확인했다.
+아래의 09-09 조사·배율 기록은 당시 상태다. 이번 재개에서 실제 별도 헤어와 Character Select
+환경 cube를 추가 연결했으며, 원작 SH·다른 씬의 cube까지 복구한 것으로 확대하지 않는다.
+
+### 실제 수정
+
+- 본체·장비·무기의 기존 source material은 유지했다. 별도 `pc_sp_m_55_hair/head.wmodel`에
+  실제 source program 7 override를 추가하고 장비의 source hair/eyelash main pass를 6으로 연결했다.
+  기존 숨긴 body hair mask 512는 유지한다. 그림자는 기존 pass 1 diffuse-alpha 경로를 사용하며
+  원본 native hair shadow와의 동일성은 이번 검증 범위가 아니다.
+- 본체의 기존 225 bone 순서를 유지하고 원본 hair55 bone 11개를 뒤에 연결했다. body/head와
+  Esther/Customizing AnimSet의 4 WModel을 236 bone 기준으로 정합했다. 154+1+1 animation의
+  key·event·clip bytes와 원래 geometry·weights·material을 보존했다. WANM trailer의 골격 참조
+  hash156개는 확장한236bone WSKL과 맞췄다. 헤어 16,956정점의 UV1을 원본
+  triangle corner와 native half 자료로 복구했다. asset service는 차원술사 body/equipment의
+  bone hash/name/parent/rest 호환성을 prototype commit 전에 검사한다. 원본 pack 계약이 다른
+  워로드 등 다른 클래스에 이 exact 검사를 강제하지 않는다.
+- `RenderingProfileService`의 optional `environment`가 cube Resources ID, RGBM6 color/offset,
+  rotation/intensity를 저장한다. Renderer는 cube SRV를 먼저 stage하고 quality/shadow/fog/light가
+  모두 성공한 뒤 commit한다. scene environment를 생략하면 이전 cube를 비우며, 실패하면 이전
+  profile 상태를 유지한다. 같은 cube를 사용하는 품질 slider·mood 변경은 기존 SRV를 재사용한다.
+  명시적인 catalog Reload는 cube를 다시 stage하므로 파일 변경과 로드 실패가 숨겨지지 않는다.
+- `CMaterial`의 기존 source base 바인딩에서 scene 환경을 전달하며 원본 program 3/8/9의
+  0으로 대체됐던 cube sample 3곳을 실제 `SampleLevel`로 연결했다. 기존 방향·LOD·RGBM6
+  decode 계산은 유지한다. 모코코·워로드의 material-owned 2D IBL을 복사하지 않았다.
+- authored RenderingProfiles revision 25의 `scene.character-select.warm-high-key.v1`과
+  같은 맵의 `scene.character-select.customizing-dark.v1`에 기존 map cube를 연결했다.
+  `Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds`는 128×128×6,
+  8 mip, DXGI B8G8R8A8_UNORM, RGBM6 입력이다. color `[1,1,1,0]`와 rotation/intensity
+  `[0,1,1,0]`는 해당 map의 기존 프로젝트 선택을 공유하며 원작 전역 probe 선택값으로 표기하지 않는다.
+
+실제 C++ decoder 재검사에서 body가 거절되고 animation 없는 head는 통과했다. WAnimationReader는
+WANM 끝의 skeletonHash와 WSKL의 일치를 요구하는데, 초기 조립본이 이전225bone 해시를
+보존한 것이 원인이었다. body154개와 외부2개 clip의 끝8byte만
+`0x43588e0806b2ee7f`에서 `0xb8ac2e42de1c269e`로 교정했다. 이외 byte는 모두 동일하며
+재조립 도구도 같은 참조 동기화를 수행한다. 근거는
+`out/CharacterMaterialRestore20260908/geometry/hair_resume/animation_trailer_hash_repair.json`이다.
+
+사용자가 올린 Visual Studio 오류 목록의 `Part_Equipment.cpp:124` C3083은 실제 컴파일 오류였다.
+헤어 pass 분기가 참조하는 `MODEL_SURFACE_FAMILY`와 `MODEL_SURFACE_PARAMETERS`의
+완전한 정의 헤더가 빠져 있었다. 같은 타입을 사용하는 Part_Body와 동일하게
+`BinaryAsset/ModelAssetData.h`를 직접 include했다. 기존 UTF-8/CRLF를 보존했다.
+아래 Product 빌드는 이 실제 소비자 CPP와 새 환경반사 셰이더까지 포함한다. 환경반사 경로 변환의
+C4996 두 건도 C++20에서 폐기된 `filesystem::u8path`를 프로젝트의 기존
+`filesystem::path(u8string(...))` 방식으로 교체해 닫았다. UTF-8 path 의미와 경로 검증은 유지했다.
+
+### 현재 검증 증거와 남은 경계
+
+| 구분 | 실제 결과 |
+|---|---|
+| 헤어 리소스 수치 | 4 WModel 설치, 범위를 넘던 positive-weight 정점 13,057개→0. rest/idle0 16,956정점 finite, 자기 palette와 body palette 위치 차이 0 |
+| Rendering publisher | Validate 통과. 기존 test 파일에서 environment 저장·재로드 및 잘못된 9개 입력의 거절·이전 runtime bytes 보존 통과 |
+| 실제 cube 숫자 readback | 기존 `s_native_ps_probe.exe`로 원본 program 3 sample/decode 부분만 검증. 6면×8 mip×켜짐/꺼짐×3회=288 case, nonfinite 0. 꺼짐 144 case RGB 0, 켜짐 144 case 모두 RGB 양수, 최대 1.50920427 |
+| shader 범위 | 위 수치는 실제 cube SampleLevel/RGBM6 decode 부분이며 full material·Client 화면 또는 원작 visual fidelity 판정이 아님 |
+| 실제 헤어 CModel | 현재 Engine에서236bone/154clip body + 외부2clip Attach/Clone,156clip finite, program7/pass6 바인딩, 이전UV/225bone AnimSet 거절과 live clone 보존 PASS·failures0 |
+| C++·최종 Product build | Debug Engine/Shared/Server/Client compile·link·DLL/CSO 배포 PASS. `out/BuildPipeline/runs/20260910T063843956Z-debug-product.json` |
+| 새 제품 바이너리의 재질 바인딩 | 실제 Product DLL/CSO를 probe에 복사해 hash 일치 확인. 창술사+차원술사10모델/23override/24slot, 워로드9모델/14slot의 실제 CModel/CMaterial 바인딩 모두 failures0 |
+| runtime profile publish | 공식 publisher Publish PASS, authored/runtime 모두 revision25와 두 Character Select environment 입력 일치 |
+| source 공백·인코딩 | scoped `git diff --check` 통과. 기존 C++ UTF-8/CP949와 CRLF 유지 |
+| 사용자 화면 | 미실시. 사용자가 Server + Client profile을 Ctrl+F5로 시작해 Lobby → Character Select → 차원술사에서 확인 |
+
+세부 근거는 [헤어 설치와 수치](C:/Users/user/Desktop/LostArk/out/CharacterMaterialRestore20260908/geometry/hair_resume/hair_restore_receipt.json),
+[publisher 검사](C:/Users/user/Desktop/LostArk/out/DimensionMasterMaterialResume20260910/publisher-environment-test.log),
+[cube 수치](C:/Users/user/Desktop/LostArk/out/DimensionMasterMaterialResume20260910/cube-numeric-result.json),
+[cube 검사 범위](C:/Users/user/Desktop/LostArk/out/DimensionMasterMaterialResume20260910/cube-seam-source.json),
+[실제 헤어 CModel](C:/Users/user/Desktop/LostArk/out/DimensionMasterMaterialResume20260910/hair-activation-before-product.json)에 있다.
+기존 headless 소비자와 out fixture를 사용했으며 새 runtime·전용 프레임워크·Client 실행은 추가하지 않았다.
+최종 근거는 `out/DimensionMasterMaterialResume20260910/final-product-build.log`,
+`final-rendering-publish.log`, `final-probe-inputs.json`, `final-character-activation.json`과
+`final-warlord-activation.json`이다. 입력 기록의 DLL/CSO는 실제 `Client/Bin/Debug`와 byte exact다.
+기존 코드페이지·FXC·외부 PDB 경고는 남아 있으며 경고0이나 화면 PASS를 뜻하지 않는다.
+
+현재 Bern/쿠크의 runtime map material에는 environment 연결이 없고 설치된 대응 cube도 확인되지
+않았다. 원본 package에 해당 cube가 존재하지 않는다는 판정은 아니다. 이번 사용자 확인 장소가
+Character Select이므로 다른 씬 추출을 추가하지 않았다. 원작 SH packing/전역 environment 선택,
+헤어 먼 거리 mip·sorted transparency·native shadow 및 실제 화면 인상은 별도 남은 경계다.
+
 작성일: 2026-09-09. 상태: **조사·전체 복구 계획 작성 / 차원술사 1.5배 외형 코드 반영**.
 
 대응 [구현 계획서](C:/Users/user/Desktop/LostArk/.md/GB/09-09/2026-09-09_CHARACTER_SCALE_AND_MATERIAL_PARITY_IMPLEMENTATION_PLAN.md)의

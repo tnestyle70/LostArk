@@ -74,7 +74,7 @@ namespace
 			return "Saved Product and the Server-active gameplay revision differ; republish and restart the Server.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::
 			REJECTED_SOURCE_REVISION_MISMATCH:
-			return "Saved Product source revision differs from the Server catalog; Publish and restart the Server.";
+			return "The Server could not admit the requested saved Product. Finish Publish All Patterns on the Server host, then retry Complete Play.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_STALE_REQUEST:
 			return "The Server rejected a stale or reused audition request identity.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED:

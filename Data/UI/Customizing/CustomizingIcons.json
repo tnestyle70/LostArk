@@ -710,6 +710,20 @@
     "UI/Customizing/Icons/characterpreset_fighter_245.png",
     "UI/Customizing/Icons/characterpreset_fighter_246.png",
     "UI/Customizing/Icons/characterpreset_fighter_247.png"
+   ],
+   "category8": [
+    "UI/Customizing/Icons/all_customizing_02_68.png"
+   ],
+   "category7": [
+    "UI/Customizing/Icons/all_customizing_02_69.png"
+   ],
+   "category10": [
+    "UI/Customizing/Icons/all_customizing_01_56.png",
+    "UI/Customizing/Icons/all_customizing_01_57.png",
+    "UI/Customizing/Icons/all_customizing_01_58.png",
+    "UI/Customizing/Icons/all_customizing_01_59.png",
+    "UI/Customizing/Icons/all_customizing_01_60.png",
+    "UI/Customizing/Icons/all_customizing_01_61.png"
    ]
   },
   "Warlord": {
@@ -953,6 +967,28 @@
     "UI/Customizing/Icons/characterpreset_warrior_237.png",
     "UI/Customizing/Icons/characterpreset_warrior_238.png",
     "UI/Customizing/Icons/characterpreset_warrior_239.png"
+   ],
+   "category8": [
+    "UI/Customizing/Icons/all_customizing_02_66.png"
+   ],
+   "category7": [
+    "UI/Customizing/Icons/all_customizing_02_67.png"
+   ],
+   "category10": [
+    "UI/Customizing/Icons/all_customizing_02_38.png",
+    "UI/Customizing/Icons/all_customizing_02_39.png",
+    "UI/Customizing/Icons/all_customizing_02_40.png",
+    "UI/Customizing/Icons/all_customizing_02_41.png",
+    "UI/Customizing/Icons/all_customizing_02_42.png",
+    "UI/Customizing/Icons/all_customizing_02_43.png"
+   ],
+   "category11": [
+    "UI/Customizing/Icons/all_customizing_02_32.png",
+    "UI/Customizing/Icons/all_customizing_02_33.png",
+    "UI/Customizing/Icons/all_customizing_02_34.png",
+    "UI/Customizing/Icons/all_customizing_02_35.png",
+    "UI/Customizing/Icons/all_customizing_02_36.png",
+    "UI/Customizing/Icons/all_customizing_02_37.png"
    ]
   }
  }

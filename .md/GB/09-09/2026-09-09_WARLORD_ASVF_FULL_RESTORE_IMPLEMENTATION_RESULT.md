@@ -150,3 +150,27 @@ ALT_V의 원본 `par_w_wgl_supergprotection_sdenergy.particlespriteemitter_36.pa
 ALT_V clip1의 원본 `fx_cm_05.vectorfield.fx_n_vector_field1`은 실제10×10×10 벡터 필드다. 같은 원본을 읽은 Artist 추출 결과의 raw/source export 근거와 binary SHA256를 대조해 `Effect/Warlord/VectorFields/fx_cm_05.fx_n_vector_field1.wvectorfield`에 배치하고 source module의 `vectorfield.assetid`로 연결했다. material이나 단순 force vector로 대체하지 않았다. 정확한 source package/export와 파일 기록은 `out/WarlordAllRestore20260910/vector_field_receipt.json`에 있다.
 
 현재 generator는 `--all-skills --evidence-root out/WarlordAllRestore20260910`으로 일반 full들을 생성한 뒤 `--compose-shields-only`로 방패 및 V clip별 문서를 생성한다. 이전 default invocation은 A/S/F/V4개 원본 생성 경로를 유지한다. 원본 package·shader cache·module·geometry와 extra T raw stage의 회수 자료는 해당 out폴더에 보존한다. 현재 package에서 shader cache layout을 다시 읽었으며 이전 저장 layout의 code-section offset을 강제로 허용하지 않았다.
+
+## G12. 사용자 재검토 후 방패와 황색 번개 수정
+
+사용자는 현재 EXE에서 V/Alt V 방패와 V의 F형 번개가 보이지 않는다고 보고했다. 방패의 native1122/1123은 local vertex factory의 원본 material uniform `meshemitterdynamicparameter`를 써야 하지만 새 PBR adapter가 Dynamic 모듈 없는 particle stream0을 넘겼다. 원본 dissolve 식이 모든 fragment를 버리는 원인을 확인하고 `Shader_EffectWarlordNativeGroup1088.hlsli`의 base/light 네 입력을1122 parameter12,1123 parameter16으로 복구했다. 원본 cutoff·dead와 기존78개 방패/장식 행의 위치·크기·수명은 유지했다.
+
+기존 standalone PS probe를 재사용했다.1122 full PS는 수정 전0/4096에서 수정 후4096/4096 비영 RGB로 바뀌었고 최대RGB는5.859292다.1122/1123의 원본 mask gate도0→4096이며 material uniform을0으로 둔 음성 대조는 계속0이다. 수정 후27case에서 nonfinite는0이었다.1123은 probe의7texture 입력 한계 때문에8texture 전체 radiance가 아닌 실제 mask14instruction만 검사했다. 근거는 `out/WarlordGuardianVisible20260910/handoff.md`, `before-results.csv`, `after-results.csv`다.
+
+V의 F17140 native4464wave는 이미 연결되어 있었다. 이전 patch가 원본 F의 HDR startColor와 ColorScaleOverLife를 낮은 상수로 교체한 차이를 확인했다. 현재도 그 이전 patch 값과 정확히 일치하는 두 분포만 F 원본으로 되돌렸다. 총16distribution을 교정했고 기존 wave 시각·반경·position·seed·alpha·material과 다른 Element는 모두 보존했다. F 원문 SHA는 변하지 않았다. 이 변경은 실제 F 입력의 복구이며 V 미표시의 모든 원인을 화면으로 검증했다는 뜻은 아니다.
+
+Alt V clip1의 native1166 electric005 번개6개는 기존 발생 시각과 shape 그대로 독립 seed 복제6개를 추가했다. 번개 occurrence6→12, 명시 burst24→48이며 기존179Element는 모든 field가 동일하다. 새 전체 행 수는185다. 새 copy의 sourceNode는 `authored-copy:<원본 ID>`를 사용한다. 수정 스크립트 재실행은 모든 대상 JSON을 바이트 단위로 유지했다.
+
+| 항목 | 상태 |
+|---|---|
+| V full/clip2/clip3 행 수 |52/29/24 유지 |
+| Alt V clip1/clip2 행 수 |185/155 |
+| 변경 JSON parse·보존 대조·스크립트 멱등성·diff check |PASS |
+| 방패 PS 수치 검증 |위에 명시한 범위 PASS |
+| 변경4문서 실제 codec Load/Save/Solo |290Element,290Solo, save_failures0·예상 밖 실패0 PASS (`out/WarlordGuardianVisible20260910/codec-result.log`) |
+| 최종 Product shader |Debug Product compile/link·배포 PASS. 새 Warlord1088 mesh/particle CSO 생성 및 본체9모델/14slot의 새 제품 DLL/CSO 바인딩 failures0 |
+| 사용자 새 실행파일에서 방패·번개 재검토 |미실행 |
+
+데이터 변경 근거는 `out/ArtistWarlordVisualFollowup20260910/Warlord/v-altv-lightning-resume.json`과 `lightning-resume-verification.json`, 직전 사용자 파일은 `lightning_resume_before/`에 있다.
+
+최종 빌드 근거는 `out/BuildPipeline/runs/20260910T063843956Z-debug-product.json`이다. 새 제품의 본체 재질 회귀 검사는 `out/DimensionMasterMaterialResume20260910/final-warlord-activation.json`, DLL/CSO 실물 일치는 같은 폴더의 `final-probe-inputs.json`에 있다.

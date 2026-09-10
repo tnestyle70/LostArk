@@ -554,7 +554,10 @@ Composition의 모든 Save는 전체 편집본을 원자 저장한다. Boss Patt
 패턴·쿠크 World·Gameplay balance 중 뒤 단계가 실패하면 이전 출력과 receipt를 함께 복구한다.
 개별 PRODUCT 선택은 필요하지 않다. 실행 가능한 항목은 기존 Product 경로로 배포하고, 미완성 항목은
 F1의 같은 계층에 재생 불가 사유와 함께 남긴다. Save와 Publish의 상세 계약은 팀 Animation 사용서를 따른다.
-Server 재시작 전에는 새 revision이 전투에 적용됐다고 표시하지 않는다. box `durationMs`와 optional
+쿠크 Pattern/Logic의 새 source revision은 다음 Complete Play에서 Server가 게시 파일과 scope를
+검증해 승인한 뒤 적용한다. 진행 중 run/Restart는 원래 Pattern·Logic·body binding을 유지한다.
+World placement와 다른 gameplay balance 변경은 Server 재시작 대상이다. 파일 게시 성공만으로
+Server 재생 승인 완료를 표시하지 않는다. box `durationMs`와 optional
 placement TRS는 protocol 69 WORLD cue로 전달한다. 정상 완료는 `FINISH_OWNER`로 이미 시작한
 재생의 저작 수명을 보존하고, Stop/실패는 `STOP_OWNER`로 즉시 정리한다. 양쪽 실행 파일 갱신 후 Server와 Client를 재시작한다.
 여러 카드의 접촉은 Composition `TRIGGER / OBJECT_CONTACT`와 `PLAY_CONTACT_WORLD_OBJECT_MOTION` Result로 연결한다. 대상은 저장 Motion ID가 아니라 같은 Pattern의 WORLD occurrence 목록이며 실제 맞은 카드별로 반응한다. 전체 조커찾기 제한시간은 `DURATION / EXTERNAL_SIGNAL`과 접촉 Result의 `COMPLETE_LOGIC_WINDOW`로 분리한다. Collider의 `BOSS → WEAPON → Bone`에서 실제 망치 Bone을 선택하며, Product publish가 기존 WModel에서 서버용 Bone 궤적을 계산한다. 자세한 저작 순서는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md` 17.7을 따른다.

@@ -605,6 +605,50 @@ bool_t CModel::Set_BoneLocalMatrix(
     return true;
 }
 
+uint32_t CModel::Pose_BonesFrom(const CModel& source)
+{
+    /* By name, because the two skeletons are cooked separately and neither order nor count
+       matches: a worn part carries the body's bones plus its own. */
+    if (m_SourcePoseBoneIndices.size() != m_Bones.size() ||
+        m_pSourcePoseModel != &source)
+    {
+        m_SourcePoseBoneIndices.assign(m_Bones.size(), -1);
+        for (size_t index = 0; index < m_Bones.size(); ++index)
+        {
+            if (nullptr == m_Bones[index])
+                continue;
+            for (size_t other = 0; other < source.m_Bones.size(); ++other)
+            {
+                if (nullptr == source.m_Bones[other] ||
+                    !source.m_Bones[other]->Compare_Name(m_Bones[index]->Get_Name()))
+                    continue;
+                m_SourcePoseBoneIndices[index] = static_cast<int32_t>(other);
+                break;
+            }
+        }
+        m_pSourcePoseModel = &source;
+    }
+
+    uint32_t supplied = 0u;
+    for (size_t index = 0; index < m_Bones.size(); ++index)
+    {
+        if (nullptr == m_Bones[index])
+            continue;
+        const int32_t other = m_SourcePoseBoneIndices[index];
+        if (other >= 0)
+        {
+            m_Bones[index]->Set_CombinedTransformationMatrix(
+                source.m_Bones[static_cast<size_t>(other)]->Get_CombinedTransformationMatrix());
+            ++supplied;
+            continue;
+        }
+        /* A costume-only bone: its parent was posed already, so its own rest local carries it. */
+        m_Bones[index]->Update_CombinedTransformationMatrix(
+            m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+    }
+    return supplied;
+}
+
 void CModel::Refresh_BoneCombinedMatrices()
 {
     for (auto& pBone : m_Bones)
@@ -778,7 +822,8 @@ HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, 
     if (MODEL::NONANIM == eType)
         iFlag |= aiProcess_PreTransformVertices;
 
-    m_pAIScene = m_Importer.ReadFile(pModelFilePath, iFlag);
+    m_pImporter = make_unique<Assimp::Importer>();
+    m_pAIScene = m_pImporter->ReadFile(pModelFilePath, iFlag);
     if (nullptr == m_pAIScene)
         return E_FAIL;
 
@@ -1100,6 +1145,76 @@ uint32_t CModel::Override_MaterialDyeColor(
         ++matched;
     }
     return matched;
+}
+
+namespace
+{
+    /* Every Override_* below matches a material the same way: case-insensitively, on a
+    fragment of its name, so a caller never has to know a class rig's material order. */
+    bool_t MaterialNameContains(const string& name, const string& fragment)
+    {
+        string lowered = name;
+        transform(lowered.begin(), lowered.end(), lowered.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        return lowered.find(fragment) != string::npos;
+    }
+
+    string LoweredFragment(const char_t* pMaterialNameFragment)
+    {
+        string fragment = nullptr != pMaterialNameFragment ? pMaterialNameFragment : "";
+        transform(fragment.begin(), fragment.end(), fragment.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        return fragment;
+    }
+}
+
+uint32_t CModel::Override_SourceCharacterConstants(
+    const char_t* pMaterialNameFragment,
+    const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters)
+{
+    const string fragment = LoweredFragment(pMaterialNameFragment);
+    if (fragment.empty())
+        return 0u;
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
+            !MaterialNameContains(pMaterial->Get_Name(), fragment))
+            continue;
+        if (pMaterial->Set_SourceCharacterConstants(parameters))
+            ++matched;
+    }
+    return matched;
+}
+
+uint32_t CModel::Override_SourceCharacterTexture(
+    const char_t* pMaterialNameFragment, const uint32_t iRegister,
+    ComPtr<ID3D11ShaderResourceView> pTexture)
+{
+    const string fragment = LoweredFragment(pMaterialNameFragment);
+    if (fragment.empty())
+        return 0u;
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
+            !MaterialNameContains(pMaterial->Get_Name(), fragment))
+            continue;
+        if (pMaterial->Set_SourceCharacterTextureOverride(iRegister, pTexture))
+            ++matched;
+    }
+    return matched;
+}
+
+void CModel::Clear_SourceCharacterOverrides()
+{
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr != pMaterial)
+            pMaterial->Clear_SourceCharacterOverrides();
+    }
 }
 
 uint32_t CModel::Override_MaterialDiffuseTint(
@@ -1458,7 +1573,7 @@ HRESULT CModel::Ready_BinaryModel(
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 14u || mask == 0u ||
+            if (source.program == 0u || source.program > 20u || mask == 0u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
                 replacement.surface.hasBakedLighting || replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");
@@ -1487,7 +1602,8 @@ HRESULT CModel::Ready_BinaryModel(
             {
                 if (material.name != replacement.materialName) continue;
                 const size_t materialIndex = static_cast<size_t>(&material - asset.materials.data());
-                if ((source.program == 5u || source.program == 7u) &&
+                if ((source.program == 5u || source.program == 7u ||
+                    source.program == 18u || source.program == 19u) &&
                     any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
                         return mesh.materialIndex == materialIndex &&
                             (!mesh.hasTexcoord1 || (source.program == 5u && !mesh.hasTexcoord2));
@@ -1931,6 +2047,6 @@ shared_ptr<CPrototype> CModel::Clone(void* pArg)
 
 void CModel::Free()
 {
-    if (false == m_isCloned)
-        m_Importer.FreeScene();    
+    if (false == m_isCloned && nullptr != m_pImporter)
+        m_pImporter->FreeScene();
 }

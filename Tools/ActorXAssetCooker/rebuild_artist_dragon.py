@@ -1,16 +1,53 @@
-"""Stage Artist's original DRA geometry with corrected ActorX animations.
+"""Stage Artist's DRA geometry with corrected ActorX animations.
 
-The source geometry and cue transform are unchanged. Output is staged in the
-requested directory, never installed automatically.
+Source width is the default. An explicit body-width scale adjusts bind-space
+cross sections without changing the skeleton, animation or cue transform.
+Output is staged in the requested directory, never installed automatically.
 """
 from __future__ import annotations
 import argparse
 import json
+import math
 from pathlib import Path
+import struct
 import subprocess
 
 import build_umodel_gltf_psa as intake
 import retime_wmodel_ticks as ticks
+
+
+def adjust_body_width(document: dict, payload: bytearray, factor: float) -> dict:
+    """Author DRA's local X width before skinning; retain its animated path."""
+    if not math.isfinite(factor) or factor <= 0.0:
+        raise ValueError("DRA body width must be a finite positive scale")
+    report = {"axis": "bind-space X", "factor": factor, "sourceValue": 1.0,
+              "classification": "SOURCE_UNCHANGED" if factor == 1.0 else "PROJECT_AUTHORED",
+              "skeletonAndAnimationTranslationUnchanged": True}
+    if factor == 1.0:
+        return report
+    adjusted = set()
+    for mesh in document["meshes"]:
+        for primitive in mesh["primitives"]:
+            for semantic, width in (("POSITION", 3), ("NORMAL", 3), ("TANGENT", 4)):
+                index = primitive["attributes"][semantic]
+                if index in adjusted:
+                    continue
+                adjusted.add(index)
+                offset, count = intake.read_accessor_floats(document, payload, index, width)
+                for row in range(count):
+                    at = offset + row * width * 4
+                    values = list(struct.unpack_from("<" + "f" * width, payload, at))
+                    values[0] *= 1.0 / factor if semantic == "NORMAL" else factor
+                    if semantic != "POSITION":
+                        length = math.sqrt(sum(value * value for value in values[:3]))
+                        if not math.isfinite(length) or length <= 0.0:
+                            raise ValueError("DRA width adjustment produced an invalid normal/tangent")
+                        values[:3] = [value / length for value in values[:3]]
+                    struct.pack_into("<" + "f" * width, payload, at, *values)
+                if semantic == "POSITION":
+                    for bound in ("min", "max"):
+                        document["accessors"][index][bound][0] *= factor
+    return report
 
 
 def rebuild(args: argparse.Namespace) -> dict:
@@ -21,6 +58,7 @@ def rebuild(args: argparse.Namespace) -> dict:
     psa = intake.read_psa(intake.bounded_file(args.psa, "DRA PSA"))
     source_buffer, joints = intake.validate_gltf(document, source, psa)
     payload = bytearray(source_buffer.read_bytes())
+    width_adjustment = adjust_body_width(document, payload, args.body_width_scale)
     changed = set()
     for mesh in document["meshes"]:
         for primitive in mesh["primitives"]:
@@ -58,7 +96,7 @@ def rebuild(args: argparse.Namespace) -> dict:
     cooked = ticks.read_bounded(wmodel)
     retiming = ticks.retime(cooked, 30.0, 1000.0)
     wmodel.write_bytes(cooked)
-    report = {"sourceGltf": str(source), "sourceGltfSha256": intake.sha256(source), "sourceBufferSha256": intake.sha256(source_buffer), "sourcePsaSha256": intake.sha256(args.psa), "sourceQuaternionConvention": "Undo ActorX Y/W mirror, swap Y/Z, conjugate root only", "geometryUnchanged": True, "clips": clips, "retiming": retiming, "command": command, "outputWmodel": str(wmodel), "outputSha256": intake.sha256(wmodel), "installed": False}
+    report = {"sourceGltf": str(source), "sourceGltfSha256": intake.sha256(source), "sourceBufferSha256": intake.sha256(source_buffer), "sourcePsaSha256": intake.sha256(args.psa), "sourceQuaternionConvention": "Undo ActorX Y/W mirror, swap Y/Z, conjugate root only", "geometryUnchanged": args.body_width_scale == 1.0, "bodyWidthAuthoring": width_adjustment, "clips": clips, "retiming": retiming, "command": command, "outputWmodel": str(wmodel), "outputSha256": intake.sha256(wmodel), "installed": False}
     (out / "receipt.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
 
@@ -71,5 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--texture-root", type=Path, required=True)
     parser.add_argument("--material-asset", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--body-width-scale", type=float, default=1.0,
+                        help="Project-authored bind-space X width; source value is 1")
     result = rebuild(parser.parse_args())
     print(json.dumps({key: result[key] for key in ("outputWmodel", "outputSha256", "installed")}))

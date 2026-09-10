@@ -572,6 +572,16 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 			&noSurfaceEmissive, sizeof(noSurfaceEmissive))))
 		return E_FAIL;
 
+	// Static world objects share this Effect with character equipment. An explicit
+	// diffuse SRV skips CMaterial's reset, so a preceding source character draw
+	// must not select its program (or leave its dye/hit tint) for this mesh.
+	// The instanced map shader omits these optional character-only variables.
+	const float4_t identityEmissive(1.f, 1.f, 1.f, 1.f);
+	for (const char_t* name : { "g_SourceCharacterProgram", "g_SourceCharacterRow",
+		"g_HasDyeMask", "g_HasFullSurfaceEmissiveOverride" })
+		shader->Bind_RawValue(name, &noSurfaceEmissive, sizeof(noSurfaceEmissive));
+	shader->Bind_RawValue("g_EmissiveColor", &identityEmissive, sizeof(identityEmissive));
+
 	const uint32_t hasNormalTexture =
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_NORMALS) ? 1u : 0u;

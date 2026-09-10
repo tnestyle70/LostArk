@@ -974,7 +974,9 @@ namespace
    }
    cues.push_back({box.strOccurrenceId, def->strSequenceInstanceId, box.iStartMs, box.iDurationMs,
     box.fPlaybackSpeed, offset, placement, previewAtCharacter ? CKoukuSaydonPresentationPlayer::WORLD_EMISSION_ANCHOR{} :
-     CKoukuSaydonPresentationPlayer::Make_WorldEmissionAnchor(pattern, *def, box)});
+     CKoukuSaydonPresentationPlayer::Make_WorldEmissionAnchor(pattern, *def, box),
+    previewAtCharacter ? std::string{} : std::string(CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(pattern.strTargetBossPlacementId)),
+    previewAtCharacter ? std::string{} : pattern.strActorProfileId});
   }
   return arena->Debug_BeginCompositionWorldPreview(pattern.strPatternId, std::move(cues), status, sourceDocument);
  }
@@ -1792,9 +1794,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 
 		std::string serverPatternId;
 		std::uint32_t sourceRevision = 0u;
+		// Only the Server-admitted run epoch may replace Product presentation.
 		if (workbench->Consume_ServerPlayRequest(
-				serverPatternId, sourceRevision) && route.owner == DEBUG_TOOL::SEQUENCER && (!m_pKoukuPresentationPlayer ||
-			m_pKoukuPresentationPlayer->Reload_Product(m_strToolStatus)))
+				serverPatternId, sourceRevision) && route.owner == DEBUG_TOOL::SEQUENCER)
 		{
 			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
 			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
@@ -2273,6 +2275,9 @@ HRESULT CMainApp::Render()
 			// its text labels, drawn from this separate text pass.
 			if (!isCharSelectOverlayOpen)
 				pCharacterSelect->Render_ArenaSpawnLabels();
+			/* Outside that gate: the nickname step opens from the customizing screen, so the
+			gate that hides the spawn captions would take every glyph of this modal with it. */
+			pCharacterSelect->Render_CreateCharacterModalText();
 			pCharacterSelect->Render_CustomizingText();
 #ifdef _DEBUG
 			pCharacterSelect->Render_RaidEntryDebugPreviewText();
@@ -8430,7 +8435,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		if (!m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus)) return false;
 		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition() &&
 			m_pKoukuSaydonActionWorkbench->Get_Composition().iRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
-		{ m_strKoukuCompletePlayStatus = "Saved Composition and published Boss Patterns differ. Use Publish All Patterns and restart Server before Complete Play."; return false; }
+		{ m_strKoukuCompletePlayStatus = "Saved Composition and published Boss Patterns differ. Use Publish All Patterns before Complete Play."; return false; }
 		return true;
 	};
 	const std::string playLabel=(bundleSelected?"Complete Play - "+std::to_string(selectedBundle->Members.size())+" actors":"Complete Play - Selected Pattern")+"##KoukuServerPattern";

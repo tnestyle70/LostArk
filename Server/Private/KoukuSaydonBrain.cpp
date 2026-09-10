@@ -235,6 +235,13 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		const bool endTickKind =
 			BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS == window.eKind;
 		bool valuesValid = true;
+		if (((window.bRearmOnExit || window.bRepeatAfterKnockback) && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) ||
+			(window.bRearmOnExit && window.bRepeatAfterKnockback))
+		{ status = "ENTER_AREA accepts one contact repeat policy"; return false; }
+		if (window.bRepeatAfterKnockback && (window.OnSuccess.size() != 1u ||
+			window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+			window.OnSuccess.front().fPushRangeM <= 0.f || window.OnSuccess.front().iPushMs == 0u))
+		{ status = "Repeat after knockback requires one damage Success with positive knockback"; return false; }
 		switch (window.eKind)
 		{
 		case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
@@ -315,6 +322,10 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				return false;
 			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 			{
+				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > 20.f ||
+					result.iPushMs > 600000u || ((result.fPushRangeM > 0.f) != (result.iPushMs > 0u)) ||
+					(result.fPushRangeM > 0.f && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE))
+					return false;
 				const bool worldMotion = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind;
 				if ((worldMotion && (result.strTargetWorldInstanceId.empty() || result.strMotionInstanceId.empty() ||
 					result.iPercent != 0u || result.iDurationMs != 0u || !result.strPatternId.empty())) ||
@@ -351,7 +362,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		if (window.strWindowId.empty() || !windowIds.insert(window.strWindowId).second ||
 			0u == window.iDurationMs || endMs > patternDurationMs || !valuesValid ||
 			(window.bInsideIsFail && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window.eKind &&
-				BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind) ||
+				BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind &&
+				BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS != window.eKind) ||
 			std::any_of(window.CardRegions.begin(),window.CardRegions.end(),[&](const BOSS_LOGIC_REGION& region)
 			{ return region.WorldTrack.bEnabled && (region.WorldTrack.Keys.empty() ||
 				(BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window.eKind && BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind &&

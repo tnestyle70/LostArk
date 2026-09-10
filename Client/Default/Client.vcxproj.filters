@@ -2433,10 +2433,7 @@
     <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.full.restore.effectsequence.json">
       <Filter>96.DataFiles</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.clip1.full.restore.effectsequence.json">
-      <Filter>96.DataFiles</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.clip2.full.restore.effectsequence.json">
+    <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.full.restore.effectsequence.json">
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCubeSampleScene.hlsli">
@@ -2698,8 +2695,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectNativeScreenPost.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31490.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31910.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.clip1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.clip2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31950.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17040.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17090.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>

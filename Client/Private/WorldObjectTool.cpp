@@ -357,7 +357,7 @@ bool CWorldObjectTool::Create_Object()
         if (!m_Document.Find_ObjectResource(resource.objectId)) break;
     }
     resource.displayName = m_NewObjectName.data();
-    resource.anchorKind = m_NewObjectAnchor == 1 ? "PLAYER" : "WORLD";
+    resource.anchorKind = m_NewObjectAnchor == 2 ? "BOSS" : m_NewObjectAnchor == 1 ? "PLAYER" : "WORLD";
     if (m_Document.Get_ObjectResources().size() >= CWorldSequenceDocument::MAX_INSTANCE_COUNT)
     { m_Status = "World object resource capacity reached."; return false; }
     m_Document.Get_ObjectResources().push_back(resource);
@@ -430,6 +430,7 @@ void CWorldObjectTool::Change_ResourceAnchor(
         { m_Status = "Map anchor needs the current character placement: " + m_Status; return; }
     }
     resource.anchorKind = anchorKind;
+    if (anchorKind != "BOSS") { resource.anchorBossArchetypeId.clear(); resource.anchorBone.clear(); }
     for (const auto& id : StateIds(resource))
     {
         auto* instance = m_Document.Find_Instance(id);
@@ -438,7 +439,8 @@ void CWorldObjectTool::Change_ResourceAnchor(
         instance->position = position;
     }
     Mark_Dirty();
-    m_Status = anchorKind == "PLAYER" ?
+    m_Status = anchorKind == "BOSS" ?
+        "Boss anchor applied to this resource's states. Choose the boss and BODY bone below." : anchorKind == "PLAYER" ?
         "Character anchor applied to this resource's states; offsets start at the character origin." :
         "Map anchor applied to this resource's states at the current character position.";
 }
@@ -569,8 +571,9 @@ void CWorldObjectTool::Render_Resources()
     if (ImGui::BeginPopupModal("Create Object Resource", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::InputTextWithHint("Name", "New object name", m_NewObjectName.data(), m_NewObjectName.size());
-        ImGui::Combo("Anchor Type", &m_NewObjectAnchor, "Map\0Character\0");
-        ImGui::TextUnformatted(m_NewObjectAnchor == 0 ?
+        ImGui::Combo("Anchor Type", &m_NewObjectAnchor, "Map\0Character\0Boss\0");
+        ImGui::TextUnformatted(m_NewObjectAnchor == 2 ?
+            "Boss: motions follow the chosen boss BODY bone. Select the boss and bone in Object Detail." : m_NewObjectAnchor == 0 ?
             "Map: motions created later use a fixed world anchor." :
             "Character: motions created later use each living character as their anchor.");
         ImGui::TextUnformatted("Creates the parent Object only. Add its motions from Object Detail.");
@@ -596,9 +599,9 @@ void CWorldObjectTool::Render_Resources()
             const auto searchable = sequence ? sequence->displayName + " " + sequence->sequenceId + " " + id : id;
             return Lower(searchable).find(search) != std::string::npos;
         };
-        for (const char* anchor : {"WORLD", "PLAYER"})
+        for (const char* anchor : {"WORLD", "PLAYER", "BOSS"})
         {
-            const char* category = std::string(anchor) == "WORLD" ? "Map" : "Character";
+            const char* category = std::string(anchor) == "WORLD" ? "Map" : std::string(anchor) == "BOSS" ? "Boss" : "Character";
             size_t count = 0;
             for (const auto& resource : m_Document.Get_ObjectResources()) if (resource.anchorKind == anchor) ++count;
             const std::string categoryLabel = std::string(category) + " (" + std::to_string(count) + ")";
@@ -1015,11 +1018,32 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
     bool changed = EditText("Object Name", resource.displayName);
     ImGui::TextDisabled("%s", resource.objectId.c_str());
     const bool alias = !resource.sequenceInstanceId.empty();
-    int resourceAnchor = resource.anchorKind == "PLAYER" ? 1 : 0;
+    int resourceAnchor = resource.anchorKind == "BOSS" ? 2 : resource.anchorKind == "PLAYER" ? 1 : 0;
     ImGui::BeginDisabled(alias);
-    if (ImGui::Combo("Anchor Type", &resourceAnchor, "Map\0Character\0"))
-        Change_ResourceAnchor(resource, resourceAnchor == 1 ? "PLAYER" : "WORLD");
+    if (ImGui::Combo("Anchor Type", &resourceAnchor, "Map\0Character\0Boss\0"))
+        Change_ResourceAnchor(resource, resourceAnchor == 2 ? "BOSS" : resourceAnchor == 1 ? "PLAYER" : "WORLD");
     ImGui::EndDisabled();
+    if (resource.anchorKind == "BOSS")
+    {
+        static constexpr const char* actorIds[] = {
+            "BOSS_KAKULSAYDON_G1_KOUKU", "BOSS_KAKULSAYDON_G1_SAYDON",
+            "BOSS_KAKULSAYDON_G2_KOUKU", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "BOSS_KAKULSAYDON_G3_SAYDON"};
+        static constexpr const char* actorLabels[] = {
+            "Kouku / Gate 1", "Saydon / Gate 1", "Kouku / Gate 2", "Big Saydon / Gate 2", "Saydon / Gate 3"};
+        const char* selected = resource.anchorBossArchetypeId.empty() ? "Choose Boss" : resource.anchorBossArchetypeId.c_str();
+        for (size_t i = 0u; i < std::size(actorIds); ++i)
+            if (resource.anchorBossArchetypeId == actorIds[i]) selected = actorLabels[i];
+        if (ImGui::BeginCombo("Boss Actor", selected))
+        {
+            for (size_t i = 0u; i < std::size(actorIds); ++i)
+                if (ImGui::Selectable(actorLabels[i], resource.anchorBossArchetypeId == actorIds[i]))
+                { resource.anchorBossArchetypeId = actorIds[i]; changed = true; }
+            ImGui::EndCombo();
+        }
+        changed |= EditText("Boss Archetype ID", resource.anchorBossArchetypeId);
+        changed |= EditText("BODY Bone", resource.anchorBone);
+        ImGui::TextWrapped("Follows the named BODY bone every frame. Empty bone uses the boss root. Hand props use b_wp_1 or b_wp_2. Transform keys edit the local grip offset and rotation.");
+    }
     if (alias) ImGui::TextDisabled("Placed objects keep their Map anchor.");
     if (alias)
         ImGui::TextWrapped("Placed object sequence: %s. This editor updates its existing tracks and bindings.", resource.sequenceInstanceId.c_str());
@@ -1110,11 +1134,11 @@ void CWorldObjectTool::Render_Detail()
     changed |= ImGui::Checkbox("Enabled", &instance->enabled);
     if (!alias)
     {
-        ImGui::TextDisabled("Creation Anchor: %s", instance->anchorKind == "PLAYER" ? "Character" : "Map");
-        changed |= ImGui::DragFloat3(instance->anchorKind == "PLAYER" ? "Character Offset" : "Map Position", &instance->position.x, .01f);
+        ImGui::TextDisabled("Creation Anchor: %s", instance->anchorKind == "BOSS" ? "Boss / BODY Bone" : instance->anchorKind == "PLAYER" ? "Character" : "Map");
+        changed |= ImGui::DragFloat3(instance->anchorKind == "BOSS" ? "Bone Offset" : instance->anchorKind == "PLAYER" ? "Character Offset" : "Map Position", &instance->position.x, .01f);
         if (ImGui::Button("Use Current Character Position"))
         {
-            if (instance->anchorKind == "PLAYER") { instance->position = {}; changed = true; }
+            if (instance->anchorKind == "PLAYER" || instance->anchorKind == "BOSS") { instance->position = {}; changed = true; }
             else if (auto* level = CLevel_KakulSaydonArena::Get_Active()) changed |= level->Try_Get_AuthoringPreviewPlacement(instance->position, m_Status);
             else m_Status = "Player placement requires the active KoukuSaydon arena.";
         }

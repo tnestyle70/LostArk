@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 230,
+  "sourceRevision": 243,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -3214,8 +3214,8 @@
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_11.logic.1",
           "kind": "GAZE_REAL_BOSS",
-          "startMs": 1374,
-          "durationMs": 1641,
+          "startMs": 1496,
+          "durationMs": 710,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -3223,7 +3223,7 @@
           "outerRadiusM": 0.0,
           "stopYawDegrees": 0.0,
           "normalYawOffsetDegrees": 0.0,
-          "insideOutcome": "SUCCESS",
+          "insideOutcome": "FAIL",
           "cardRegions": [],
           "halfAngleDegrees": 45.0,
           "maxDistanceM": 30.0,
@@ -3246,8 +3246,8 @@
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_11.logic.2",
           "kind": "GAZE_REAL_BOSS",
-          "startMs": 7775,
-          "durationMs": 1641,
+          "startMs": 7943,
+          "durationMs": 756,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -3255,7 +3255,7 @@
           "outerRadiusM": 0.0,
           "stopYawDegrees": 0.0,
           "normalYawOffsetDegrees": 0.0,
-          "insideOutcome": "SUCCESS",
+          "insideOutcome": "FAIL",
           "cardRegions": [],
           "halfAngleDegrees": 45.0,
           "maxDistanceM": 30.0,
@@ -3278,8 +3278,8 @@
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_11.logic.3",
           "kind": "GAZE_REAL_BOSS",
-          "startMs": 14343,
-          "durationMs": 1641,
+          "startMs": 14526,
+          "durationMs": 787,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -3287,7 +3287,7 @@
           "outerRadiusM": 0.0,
           "stopYawDegrees": 0.0,
           "normalYawOffsetDegrees": 0.0,
-          "insideOutcome": "SUCCESS",
+          "insideOutcome": "FAIL",
           "cardRegions": [],
           "halfAngleDegrees": 45.0,
           "maxDistanceM": 30.0,
@@ -13606,7 +13606,7 @@
         },
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_15.logic.4",
-          "bossChargeDistanceM": 7.0,
+          "bossChargeDistanceM": 7,
           "kind": "ENTER_AREA",
           "startMs": 4500,
           "durationMs": 1167,
@@ -13660,7 +13660,7 @@
         },
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_15.logic.5",
-          "bossChargeDistanceM": 7.0,
+          "bossChargeDistanceM": 7,
           "kind": "ENTER_AREA",
           "startMs": 11667,
           "durationMs": 1167,
@@ -13714,7 +13714,7 @@
         },
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_15.logic.6",
-          "bossChargeDistanceM": 7.0,
+          "bossChargeDistanceM": 7,
           "kind": "ENTER_AREA",
           "startMs": 18834,
           "durationMs": 1167,
@@ -13906,16 +13906,16 @@
               "anchorKind": "BOSS_CURRENT",
               "center": [
                 0,
-                0,
+                1.149999976158142,
                 0
               ],
-              "yawDegrees": 0,
+              "yawDegrees": 90,
               "halfExtents": [
+                3,
                 1,
-                1,
-                1
+                3
               ],
-              "radiusM": 3,
+              "radiusM": 9,
               "halfAngleDegrees": 45,
               "cardSymbol": "NONE",
               "cardColor": "NONE"
@@ -13935,9 +13935,9 @@
               "patternId": "",
               "attachmentSlot": "BOSS_LEFT_HAND",
               "gripLocalOffset": {
-                "forwardM": 0.0,
-                "upM": 0.0,
-                "rightM": 0.0
+                "forwardM": 0,
+                "upM": 0,
+                "rightM": 0
               }
             }
           ],
@@ -14265,26 +14265,6 @@
       "maximumRange": 1.0,
       "stages": [
         {
-          "stageId": "STAGE_1",
-          "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.1",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
           "stageId": "STAGE_2",
           "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.2",
           "stageKind": "ACTIVE",
@@ -14348,7 +14328,26 @@
       "resetBossToSpawn": false,
       "logicWindows": [],
       "mechanicTriggers": [],
-      "worldSequences": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.object.instance.kouku.laser_cannon",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_21.world.1",
+          "startMs": 0,
+          "durationMs": 5833,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
       "sceneProfiles": []
     },
     {
@@ -14567,7 +14566,26 @@
       "resetBossToSpawn": false,
       "logicWindows": [],
       "mechanicTriggers": [],
-      "worldSequences": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.object.instance.kouku.trumpet",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_23.world.1",
+          "startMs": 0,
+          "durationMs": 10667,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
       "sceneProfiles": []
     },
     {
@@ -14784,7 +14802,63 @@
         }
       ],
       "resetBossToSpawn": false,
-      "logicWindows": [],
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_24.logic.1",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 4000,
+          "durationMs": 1602,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_24.presentation.2",
+              "shape": "CIRCLE",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                1,
+                1,
+                1
+              ],
+              "radiusM": 3,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        }
+      ],
       "mechanicTriggers": [],
       "worldSequences": [],
       "sceneProfiles": []
@@ -15085,17 +15159,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -15109,7 +15183,7 @@
                   1.2,
                   933.177546
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -15237,17 +15311,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -15261,7 +15335,7 @@
                   1.2,
                   918.018593
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -15389,17 +15463,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -15413,7 +15487,7 @@
                   1.2,
                   937.090136
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -15541,17 +15615,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -15565,7 +15639,7 @@
                   1.2,
                   919.254661
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -15693,17 +15767,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -15717,7 +15791,7 @@
                   1.2,
                   941.002727
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -15845,17 +15919,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -15869,7 +15943,7 @@
                   1.2,
                   920.490729
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -15997,17 +16071,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16021,7 +16095,7 @@
                   1.2,
                   933.177546
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -16149,17 +16223,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16173,7 +16247,7 @@
                   1.2,
                   918.018593
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -16301,17 +16375,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16325,7 +16399,7 @@
                   1.2,
                   937.090136
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -16453,17 +16527,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16477,7 +16551,7 @@
                   1.2,
                   919.254661
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -16605,17 +16679,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16629,7 +16703,7 @@
                   1.2,
                   941.002727
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -16757,17 +16831,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16781,7 +16855,7 @@
                   1.2,
                   920.490729
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -16909,17 +16983,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -16933,7 +17007,7 @@
                   1.2,
                   933.177546
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -17061,17 +17135,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -17085,7 +17159,7 @@
                   1.2,
                   918.018593
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -17213,17 +17287,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -17237,7 +17311,7 @@
                   1.2,
                   937.090136
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -17365,17 +17439,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -17389,7 +17463,7 @@
                   1.2,
                   919.254661
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -17517,17 +17591,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -17541,7 +17615,7 @@
                   1.2,
                   941.002727
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -17669,17 +17743,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -17693,7 +17767,7 @@
                   1.2,
                   920.490729
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -17829,7 +17903,7 @@
             ],
             "rotationDegrees": [
               0,
-              90.0,
+              90,
               0
             ],
             "scale": [
@@ -17864,7 +17938,7 @@
             ],
             "rotationDegrees": [
               0,
-              84.0,
+              84,
               0
             ],
             "scale": [
@@ -17899,7 +17973,7 @@
             ],
             "rotationDegrees": [
               0,
-              78.0,
+              78,
               0
             ],
             "scale": [
@@ -17934,7 +18008,7 @@
             ],
             "rotationDegrees": [
               0,
-              72.0,
+              72,
               0
             ],
             "scale": [
@@ -17969,7 +18043,7 @@
             ],
             "rotationDegrees": [
               0,
-              -24.0,
+              -24,
               0
             ],
             "scale": [
@@ -18039,7 +18113,7 @@
             ],
             "rotationDegrees": [
               0,
-              54.0,
+              54,
               0
             ],
             "scale": [
@@ -18074,7 +18148,7 @@
             ],
             "rotationDegrees": [
               0,
-              48.0,
+              48,
               0
             ],
             "scale": [
@@ -18109,7 +18183,7 @@
             ],
             "rotationDegrees": [
               0,
-              42.0,
+              42,
               0
             ],
             "scale": [
@@ -18144,7 +18218,7 @@
             ],
             "rotationDegrees": [
               0,
-              36.0,
+              36,
               0
             ],
             "scale": [
@@ -18249,7 +18323,7 @@
             ],
             "rotationDegrees": [
               0,
-              18.0,
+              18,
               0
             ],
             "scale": [
@@ -18319,7 +18393,7 @@
             ],
             "rotationDegrees": [
               0,
-              6.0,
+              6,
               0
             ],
             "scale": [
@@ -18389,7 +18463,7 @@
             ],
             "rotationDegrees": [
               0,
-              -96.0,
+              -96,
               0
             ],
             "scale": [
@@ -18424,7 +18498,7 @@
             ],
             "rotationDegrees": [
               0,
-              -102.0,
+              -102,
               0
             ],
             "scale": [
@@ -18459,7 +18533,7 @@
             ],
             "rotationDegrees": [
               0,
-              -18.0,
+              -18,
               0
             ],
             "scale": [
@@ -18494,7 +18568,7 @@
             ],
             "rotationDegrees": [
               0,
-              -24.0,
+              -24,
               0
             ],
             "scale": [
@@ -18564,7 +18638,7 @@
             ],
             "rotationDegrees": [
               0,
-              -36.0,
+              -36,
               0
             ],
             "scale": [
@@ -18634,7 +18708,7 @@
             ],
             "rotationDegrees": [
               0,
-              -138.0,
+              -138,
               0
             ],
             "scale": [
@@ -18669,7 +18743,7 @@
             ],
             "rotationDegrees": [
               0,
-              -54.0,
+              -54,
               0
             ],
             "scale": [
@@ -18704,7 +18778,7 @@
             ],
             "rotationDegrees": [
               0,
-              -60.0,
+              -60,
               0
             ],
             "scale": [
@@ -18774,7 +18848,7 @@
             ],
             "rotationDegrees": [
               0,
-              -72.0,
+              -72,
               0
             ],
             "scale": [
@@ -18809,7 +18883,7 @@
             ],
             "rotationDegrees": [
               0,
-              -168.0,
+              -168,
               0
             ],
             "scale": [
@@ -18949,7 +19023,7 @@
             ],
             "rotationDegrees": [
               0,
-              -102.0,
+              -102,
               0
             ],
             "scale": [
@@ -18984,7 +19058,7 @@
             ],
             "rotationDegrees": [
               0,
-              -108.0,
+              -108,
               0
             ],
             "scale": [
@@ -19019,7 +19093,7 @@
             ],
             "rotationDegrees": [
               0,
-              -204.0,
+              -204,
               0
             ],
             "scale": [
@@ -19054,7 +19128,7 @@
             ],
             "rotationDegrees": [
               0,
-              -210.0,
+              -210,
               0
             ],
             "scale": [
@@ -19089,7 +19163,7 @@
             ],
             "rotationDegrees": [
               0,
-              -126.0,
+              -126,
               0
             ],
             "scale": [
@@ -19124,7 +19198,7 @@
             ],
             "rotationDegrees": [
               0,
-              -132.0,
+              -132,
               0
             ],
             "scale": [
@@ -19159,7 +19233,7 @@
             ],
             "rotationDegrees": [
               0,
-              -138.0,
+              -138,
               0
             ],
             "scale": [
@@ -19194,7 +19268,7 @@
             ],
             "rotationDegrees": [
               0,
-              -144.0,
+              -144,
               0
             ],
             "scale": [
@@ -19299,7 +19373,7 @@
             ],
             "rotationDegrees": [
               0,
-              -162.0,
+              -162,
               0
             ],
             "scale": [
@@ -19334,7 +19408,7 @@
             ],
             "rotationDegrees": [
               0,
-              -168.0,
+              -168,
               0
             ],
             "scale": [
@@ -19404,7 +19478,7 @@
             ],
             "rotationDegrees": [
               0,
-              -180.0,
+              -180,
               0
             ],
             "scale": [
@@ -19439,7 +19513,7 @@
             ],
             "rotationDegrees": [
               0,
-              -276.0,
+              -276,
               0
             ],
             "scale": [
@@ -19474,7 +19548,7 @@
             ],
             "rotationDegrees": [
               0,
-              -282.0,
+              -282,
               0
             ],
             "scale": [
@@ -19509,7 +19583,7 @@
             ],
             "rotationDegrees": [
               0,
-              -198.0,
+              -198,
               0
             ],
             "scale": [
@@ -19544,7 +19618,7 @@
             ],
             "rotationDegrees": [
               0,
-              -204.0,
+              -204,
               0
             ],
             "scale": [
@@ -19579,7 +19653,7 @@
             ],
             "rotationDegrees": [
               0,
-              -210.0,
+              -210,
               0
             ],
             "scale": [
@@ -19614,7 +19688,7 @@
             ],
             "rotationDegrees": [
               0,
-              -216.0,
+              -216,
               0
             ],
             "scale": [
@@ -19684,7 +19758,7 @@
             ],
             "rotationDegrees": [
               0,
-              -318.0,
+              -318,
               0
             ],
             "scale": [
@@ -19719,7 +19793,7 @@
             ],
             "rotationDegrees": [
               0,
-              -234.0,
+              -234,
               0
             ],
             "scale": [
@@ -19789,7 +19863,7 @@
             ],
             "rotationDegrees": [
               0,
-              -246.0,
+              -246,
               0
             ],
             "scale": [
@@ -19824,7 +19898,7 @@
             ],
             "rotationDegrees": [
               0,
-              -252.0,
+              -252,
               0
             ],
             "scale": [
@@ -19894,7 +19968,7 @@
             ],
             "rotationDegrees": [
               0,
-              -354.0,
+              -354,
               0
             ],
             "scale": [
@@ -19929,7 +20003,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -19964,7 +20038,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -19999,7 +20073,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20034,7 +20108,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20069,7 +20143,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20104,7 +20178,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20139,7 +20213,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20174,7 +20248,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20209,7 +20283,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20244,7 +20318,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20279,7 +20353,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20314,7 +20388,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20349,7 +20423,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20384,7 +20458,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20419,7 +20493,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -20454,7 +20528,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20489,7 +20563,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20524,7 +20598,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -20833,17 +20907,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -20857,7 +20931,7 @@
                   1.2,
                   933.177546
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -20985,17 +21059,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21009,7 +21083,7 @@
                   1.2,
                   918.018593
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -21137,17 +21211,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21161,7 +21235,7 @@
                   1.2,
                   937.090136
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -21289,17 +21363,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21313,7 +21387,7 @@
                   1.2,
                   919.254661
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -21441,17 +21515,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21465,7 +21539,7 @@
                   1.2,
                   941.002727
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -21593,17 +21667,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21617,7 +21691,7 @@
                   1.2,
                   920.490729
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -21745,17 +21819,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21769,7 +21843,7 @@
                   1.2,
                   933.177546
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -21897,17 +21971,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -21921,7 +21995,7 @@
                   1.2,
                   918.018593
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22049,17 +22123,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22073,7 +22147,7 @@
                   1.2,
                   937.090136
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22201,17 +22275,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22225,7 +22299,7 @@
                   1.2,
                   919.254661
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22353,17 +22427,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22377,7 +22451,7 @@
                   1.2,
                   941.002727
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22505,17 +22579,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22529,7 +22603,7 @@
                   1.2,
                   920.490729
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22657,17 +22731,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22681,7 +22755,7 @@
                   1.2,
                   933.177546
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22809,17 +22883,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22833,7 +22907,7 @@
                   1.2,
                   918.018593
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -22961,17 +23035,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -22985,7 +23059,7 @@
                   1.2,
                   937.090136
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -23113,17 +23187,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -23137,7 +23211,7 @@
                   1.2,
                   919.254661
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -23265,17 +23339,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -23289,7 +23363,7 @@
                   1.2,
                   941.002727
                 ],
-                "baselineYawDegrees": 192.0,
+                "baselineYawDegrees": 192,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -23417,17 +23491,17 @@
               "anchorKind": "WORLD",
               "center": [
                 0.35,
-                0.0,
-                0.0
+                0,
+                0
               ],
-              "yawDegrees": 0.0,
+              "yawDegrees": 0,
               "halfExtents": [
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1
               ],
-              "radiusM": 1.0,
-              "halfAngleDegrees": 180.0,
+              "radiusM": 1,
+              "halfAngleDegrees": 180,
               "cardSymbol": "NONE",
               "cardColor": "NONE",
               "worldTrack": {
@@ -23441,7 +23515,7 @@
                   1.2,
                   920.490729
                 ],
-                "baselineYawDegrees": 252.0,
+                "baselineYawDegrees": 252,
                 "baselineScale": [
                   1.14999998,
                   1.14999998,
@@ -23577,7 +23651,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -23612,7 +23686,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -23647,7 +23721,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -23682,7 +23756,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -23717,7 +23791,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -23752,7 +23826,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -23787,7 +23861,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -23822,7 +23896,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -23857,7 +23931,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -23892,7 +23966,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -23927,7 +24001,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -23962,7 +24036,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -23997,7 +24071,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -24032,7 +24106,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -24067,7 +24141,7 @@
             ],
             "rotationDegrees": [
               0,
-              192.0,
+              192,
               0
             ],
             "scale": [
@@ -24102,7 +24176,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -24137,7 +24211,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [
@@ -24172,7 +24246,7 @@
             ],
             "rotationDegrees": [
               0,
-              252.0,
+              252,
               0
             ],
             "scale": [

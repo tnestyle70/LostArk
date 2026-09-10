@@ -3716,8 +3716,7 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 			m_KoukuSaydonPatternAudition.ePhase &&
 		nullptr != Active_KoukuPlayerLedger())
 	{
-		const CGameplayCatalog* pinnedCatalog = m_GameplayCatalog.Resolve(
-			m_KoukuSaydonPatternAudition.PinnedGameplayRevision);
+		const CGameplayCatalog* pinnedCatalog = Resolve_KoukuProductCatalog();
 		std::string status;
 		const BOSS_PATTERN_DEFINITION* pattern = nullptr == pinnedCatalog ? nullptr :
 			CKoukuSaydonBrain::Find_AnimationOnlyPattern(
@@ -3844,7 +3843,11 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 #ifdef _DEBUG
 	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ==
 		m_KoukuSaydonPatternAudition.ePhase)
+	{
 		ledger = Active_KoukuPlayerLedger();
+		if (const auto* product = Resolve_KoukuProductCatalog())
+			policy = product->Find_KoukuMadnessPolicy(std::string(KOUKUSAYDON_G1_ENCOUNTER_ID));
+	}
 #endif
 	CKoukuSaydonLogicRuntime::Update_PlayerModes(
 		m_Players, ledger, policy, serverTick);
@@ -3882,7 +3885,10 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
         { m_strStatus = "Kouku capture candidate lost its owning Hold window"; continue; }
         if (Capture_PlayerAttachment(request.iPlayerNetEntityId, boss.iNetEntityId,
             request.eAttachmentSlot, serverTick, request.iHoldEndTick))
+        {
             member->LogicLedger.Windows[request.iWindowIndex].Answers[player->second] = KOUKUSAYDON_LOGIC_ANSWER::SUCCESS;
+            member->LogicLedger.Windows[request.iWindowIndex].InsidePlayers.insert(player->second);
+        }
         else
             m_strStatus = "Kouku capture candidate was no longer eligible at room commit";
     }
@@ -6443,8 +6449,13 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	outResult.iExpectedRunEpoch = request.iExpectedRunEpoch;
 	outResult.PinnedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
 	outResult.iPinnedSourceRevision =
-		CKoukuSaydonBrain::Resolve_ProductSourceRevision(
-			m_GameplayCatalog.Active());
+		CKoukuSaydonBrain::Resolve_ProductSourceRevision(m_GameplayCatalog.Active());
+#ifdef _DEBUG
+	if (m_pKoukuPublishedProductGeneration &&
+		m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
+		outResult.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(
+			*m_pKoukuPublishedProductGeneration);
+#endif
 
 	const auto reject = [&outResult](
 		const KOUKUSAYDON_PATTERN_AUDITION_RESULT result,
@@ -6519,21 +6530,23 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	if (!Write_Message(shape, request) || m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || request.Scope.eWorldId != m_eWorldId ||
 		request.Scope.strEncounterId != KOUKUSAYDON_G1_ENCOUNTER_ID)
 		return reject(RESULT::REJECTED_SCOPE_MISMATCH, "KoukuSaydon audition world/session/selection scope is invalid");
-	if (request.Scope.ExpectedGameplayRevision != m_GameplayCatalog.Get_ActiveRevision())
+	const bool controlsRun = request.eOperation == OP::STOP || restart;
+	const auto expectedGameplay = controlsRun && running ?
+		m_KoukuSaydonPatternAudition.PinnedGameplayRevision : m_GameplayCatalog.Get_ActiveRevision();
+	if (request.Scope.ExpectedGameplayRevision != expectedGameplay)
 		return reject(RESULT::REJECTED_REVISION_MISMATCH, "KoukuSaydon audition expected gameplay revision is not active");
-	if (request.Scope.iExpectedSourceRevision != outResult.iPinnedSourceRevision)
-		return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
-			"KoukuSaydon Product revision mismatch: requested " +
-			std::to_string(request.Scope.iExpectedSourceRevision) +
-			", Server active " + std::to_string(outResult.iPinnedSourceRevision) +
-			". Restart Server after publishing the saved PRODUCT, then reconnect Client.");
-	if (request.eOperation == OP::STOP || restart)
+	if (controlsRun)
 	{
 		if (!running || m_KoukuSaydonPatternAudition.iOwnerSessionId != sessionId ||
 			request.iExpectedRunEpoch != m_KoukuSaydonPatternAudition.iRoomAuditionEpoch ||
 			request.strBundleId != m_KoukuSaydonPatternAudition.Request.strBundleId ||
 			request.Scope.strGateId != m_KoukuSaydonPatternAudition.Request.Scope.strGateId)
 			return reject(RESULT::REJECTED_STALE_REQUEST, "Stop/restart does not own the exact active run epoch");
+		outResult.PinnedGameplayRevision = m_KoukuSaydonPatternAudition.PinnedGameplayRevision;
+		outResult.iPinnedSourceRevision = m_KoukuSaydonPatternAudition.iPinnedSourceRevision;
+		if (request.Scope.iExpectedSourceRevision != outResult.iPinnedSourceRevision)
+			return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
+				"Stop/restart must name the original run Product revision; stop that run before playing a newly published Product");
 		if (request.eOperation == OP::STOP)
 		{
 			const auto& member = m_KoukuSaydonPatternAudition.Members.front();
@@ -6550,7 +6563,35 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	}
 	else if (running) return reject(RESULT::REJECTED_BUSY, "KoukuSaydon room already owns an audition run");
 
-	const auto& catalog = m_GameplayCatalog.Active();
+	std::shared_ptr<const CGameplayCatalog> productGeneration = restart ?
+		m_KoukuSaydonPatternAudition.pProductGeneration : m_GameplayCatalog.Get_ActiveGeneration();
+	if (!restart && m_pKoukuPublishedProductGeneration &&
+		m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
+		productGeneration = m_pKoukuPublishedProductGeneration;
+	if (!productGeneration) productGeneration = m_GameplayCatalog.Get_ActiveGeneration();
+	if (!restart && request.Scope.iExpectedSourceRevision !=
+		CKoukuSaydonBrain::Resolve_ProductSourceRevision(*productGeneration))
+	{
+		auto candidate = std::make_shared<CGameplayCatalog>();
+		if (!candidate->Load_PublishedKoukuProduct())
+			return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
+				"KoukuSaydon published Product was not admitted: " + candidate->Get_Status());
+		const auto publishedSource = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*candidate);
+		if (publishedSource != request.Scope.iExpectedSourceRevision ||
+			publishedSource < outResult.iPinnedSourceRevision)
+			return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
+				"KoukuSaydon Product revision mismatch: requested " +
+				std::to_string(request.Scope.iExpectedSourceRevision) + ", published " +
+				std::to_string(publishedSource) + ". Publish the saved PRODUCT and reload the inventory.");
+		if (!candidate->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
+			return reject(RESULT::REJECTED_REVISION_MISMATCH,
+				"KoukuSaydon reload cannot change player/boss balance or other encounters; restart Server to apply those separately published changes");
+		productGeneration = std::move(candidate);
+	}
+	if (nullptr == productGeneration || request.Scope.iExpectedSourceRevision !=
+		CKoukuSaydonBrain::Resolve_ProductSourceRevision(*productGeneration))
+		return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH, "KoukuSaydon exact run Product revision is unavailable");
+	const auto& catalog = *productGeneration;
 	const auto* definitions = catalog.Find_BossPatterns(request.Scope.strEncounterId);
 	if (!definitions) return reject(RESULT::REJECTED_UNKNOWN_PATTERN, "KoukuSaydon Product patterns are unavailable");
 	const auto findPattern = [definitions](const std::string& id) -> const BOSS_PATTERN_DEFINITION*
@@ -6568,6 +6609,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	staged.ePhase = PHASE::PENDING; staged.iOwnerSessionId = sessionId; staged.Request = request;
 	staged.iRoomAuditionEpoch = m_iNextKoukuSaydonPatternAuditionEpoch;
 	staged.PinnedGameplayRevision = request.Scope.ExpectedGameplayRevision; staged.iPinnedSourceRevision = request.Scope.iExpectedSourceRevision;
+	staged.pProductGeneration = std::move(productGeneration);
 	staged.iCommonStartTick = m_iServerTick == 0u ? 1u : Add_ServerTicksSkippingReservedZero(m_iServerTick, 1u);
 	std::vector<BOSS_PATTERN_BUNDLE_MEMBER> requestedMembers;
 	if (bundleRequest)
@@ -6663,9 +6705,12 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	}
 	if (restart) Clear_KoukuSaydonPatternAudition();
 	m_KoukuSaydonPatternAudition = std::move(staged);
+	m_pKoukuPublishedProductGeneration = m_KoukuSaydonPatternAudition.pProductGeneration;
 	m_iNextKoukuSaydonPatternAuditionEpoch = Add_ServerTicksSkippingReservedZero(m_iNextKoukuSaydonPatternAuditionEpoch, 1u);
 	const auto& first = m_KoukuSaydonPatternAudition.Members.front();
 	outResult.eResult = RESULT::QUEUED; outResult.iRoomAuditionEpoch = m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
+	outResult.PinnedGameplayRevision = m_KoukuSaydonPatternAudition.PinnedGameplayRevision;
+	outResult.iPinnedSourceRevision = m_KoukuSaydonPatternAudition.iPinnedSourceRevision;
 	outResult.iCommonStartTick = m_KoukuSaydonPatternAudition.iCommonStartTick;
 	outResult.iBossNetEntityId = first.iBossEntityId; outResult.strResolvedPatternId = first.PatternIds.front();
 	m_KoukuSaydonPatternAuditionReceiptBySessionId[sessionId] = {request, outResult, std::nullopt};
@@ -6901,7 +6946,7 @@ bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_
 			!std::any_of(surfaces.begin(), surfaces.end(), containsBoss)) continue;
 		if (!boss.strPatternId.empty())
 		{
-			const auto* catalog = m_GameplayCatalog.Resolve(boss.PinnedDefinitionRevision);
+			const auto* catalog = Resolve_KoukuProductCatalog();
 			std::string patternStatus;
 			const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, boss.strPatternId, patternStatus) : nullptr;
 			if (!pattern || pattern->BossMotion) continue;
@@ -6914,12 +6959,23 @@ bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_
 	return true;
 }
 
+const LostArk::Server::CGameplayCatalog*
+LostArk::Server::CGameRoom::Resolve_KoukuProductCatalog() const noexcept
+{
+	const auto& run = m_KoukuSaydonPatternAudition;
+	if (run.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) return nullptr;
+	const auto* product = run.pProductGeneration ? run.pProductGeneration.get() :
+		m_GameplayCatalog.Resolve(run.PinnedGameplayRevision);
+	return product && CKoukuSaydonBrain::Resolve_ProductSourceRevision(*product) == run.iPinnedSourceRevision ?
+		product : nullptr;
+}
+
 void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
 	auto& run = m_KoukuSaydonPatternAudition;
 	if (run.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) return;
-	const auto* catalog = m_GameplayCatalog.Resolve(run.PinnedGameplayRevision);
+	const auto* catalog = Resolve_KoukuProductCatalog();
 	if (!catalog || CKoukuSaydonBrain::Resolve_ProductSourceRevision(*catalog) != run.iPinnedSourceRevision)
 	{ m_strStatus = "KoukuSaydon pinned run generation is unavailable"; Clear_KoukuSaydonPatternAudition(); return; }
 	struct START final { SERVER_WORLD_ENTITY* live; SERVER_WORLD_ENTITY staged; KOUKUSAYDON_PATTERN_AUDITION_MEMBER* member; KOUKUSAYDON_LOGIC_LEDGER ledger; };
@@ -7003,7 +7059,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 		boss.PinnedDefinitionRevision = m_GameplayCatalog.Get_ActiveRevision(); return true;
 	}
 	if (member->bCompleted || member->ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING) return true;
-	const auto* catalog = m_GameplayCatalog.Resolve(m_KoukuSaydonPatternAudition.PinnedGameplayRevision);
+	const auto* catalog = Resolve_KoukuProductCatalog();
 	std::string status;
 	const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, member->PatternIds[member->iPatternIndex], status) : nullptr;
 	if (!pattern || boss.strPatternId != pattern->strPatternId)
@@ -7012,7 +7068,9 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	const auto completedPatternId = boss.strPatternId;
 	const auto sequence = boss.iPatternSequence, stage = boss.iPatternStageIndex;
 	KOUKUSAYDON_LOGIC_OUTPUT output;
-	CKoukuSaydonLogicRuntime::Update(boss, *pattern, member->LogicLedger, m_Players, *catalog,
+	const auto* baseCatalog = m_GameplayCatalog.Resolve(m_KoukuSaydonPatternAudition.PinnedGameplayRevision);
+	if (!baseCatalog) { m_strStatus = "KoukuSaydon base gameplay pin is unavailable"; Clear_KoukuSaydonPatternAudition(); return true; }
+	CKoukuSaydonLogicRuntime::Update(boss, *pattern, member->LogicLedger, m_Players, *baseCatalog,
 		catalog->Find_KoukuMadnessPolicy(boss.strEncounterId), serverTick, m_TickDamageEvents, output,
         &m_ServerNavigation, &m_ServerCollisionSystem);
 	const bool early = Apply_KoukuLogicOutput(output, boss, serverTick);
@@ -16598,11 +16656,12 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			owner->iPatternSequence != pending.iPatternSequence || 0u == owner->iCurrentHp)
 			continue;
 		const auto& trigger = pending.Trigger;
-		const CGameplayCatalog* catalog = m_GameplayCatalog.Resolve(owner->PinnedDefinitionRevision);
+		const CGameplayCatalog* catalog = Resolve_KoukuProductCatalog();
+		const CGameplayCatalog* baseCatalog = m_GameplayCatalog.Resolve(owner->PinnedDefinitionRevision);
 		std::string status;
 		const BOSS_PATTERN_DEFINITION* clonePattern = nullptr == catalog ? nullptr :
 			CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, trigger.strClonePatternId, status);
-		if (nullptr == clonePattern || trigger.ClockHours.size() != 3u ||
+		if (nullptr == clonePattern || nullptr == baseCatalog || trigger.ClockHours.size() != 3u ||
 			std::find(clonePattern->AuditionBossArchetypeIds.begin(), clonePattern->AuditionBossArchetypeIds.end(),
 				owner->strArchetypeId) == clonePattern->AuditionBossArchetypeIds.end())
 		{
@@ -16641,7 +16700,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			if (INVALID_NET_ENTITY_ID == nextId ||
 				(m_ServerNavigation.Is_Loaded() && !m_ServerNavigation.Is_PointWalkableExact(
 					placement.fPositionX, placement.fPositionZ)) ||
-				!Build_WorldEntity(placement, nextId, clone, catalog, owner->iNetEntityId))
+				!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId))
 			{
 				admitted = false;
 				break;
@@ -16708,7 +16767,7 @@ void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serv
 		bool live = owner != m_WorldEntities.end() && !owner->strPatternId.empty() &&
 			owner->iPatternSequence == clone->iKoukuCloneOwnerSequence && owner->iCurrentHp > 0u &&
 			!CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, clone->iKoukuCloneEndTick);
-		const auto* catalog = m_GameplayCatalog.Resolve(clone->PinnedDefinitionRevision);
+		const auto* catalog = Resolve_KoukuProductCatalog();
 		if (live && nullptr != catalog && !clone->strPatternId.empty())
 		{
 			std::string status;
