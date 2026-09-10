@@ -33,6 +33,12 @@ SamplerState SourceCharacterSampler
     MaxAnisotropy = 16;
     AddressU = Wrap; AddressV = Wrap; AddressW = Wrap;
 };
+SamplerState SourceCharacterStampSampler
+{
+    Filter = ANISOTROPIC;
+    MaxAnisotropy = 16;
+    AddressU = Clamp; AddressV = Clamp; AddressW = Clamp;
+};
 SamplerState SourceCharacterLookupSampler
 {
     Filter = MIN_MAG_MIP_LINEAR;
@@ -2340,7 +2346,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 171: mad r9.xy, v4.xyxx, r9.xyxx, -r9.zwzz
     r9.xy = ((v4.xyxx)*(r9.xyxx)+(-(r9.zwzz))).xy;
     // 172: sample_b_indexable(texture2d)(float,float,float,float) r9.xy, r9.xyxx, t4.xyzw, s5, l(0.000000)
-    r9.xy = ((g_SourceCharacterTexture4.SampleBias(SourceCharacterSampler, (r9.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xy;
+    r9.xy = ((g_SourceCharacterTexture4.SampleBias(SourceCharacterStampSampler, (r9.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xy;
     // 173: mul r1.z, r9.x, cb0[4].w
     r1.z = ((r9.xxxx)*(source[4].wwww)).z;
     // 174: mad r9.xzw, -r7.xxyz, cb0[3].xxyz, cb0[4].xxyz
@@ -2356,7 +2362,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 179: mad r9.xz, v4.xxyx, r9.xxzx, -r10.xxyx
     r9.xz = ((v4.xxyx)*(r9.xxzx)+(-(r10.xxyx))).xz;
     // 180: sample_b_indexable(texture2d)(float,float,float,float) r9.xz, r9.xzxx, t5.xzyw, s6, l(0.000000)
-    r9.xz = ((g_SourceCharacterTexture5.SampleBias(SourceCharacterSampler, (r9.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xzyw).xz;
+    r9.xz = ((g_SourceCharacterTexture5.SampleBias(SourceCharacterStampSampler, (r9.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xzyw).xz;
     // 181: mul r1.z, r9.x, cb0[6].w
     r1.z = ((r9.xxxx)*(source[6].wwww)).z;
     // 182: add r10.xyz, -r6.xyzx, cb0[6].xyzx
@@ -2394,7 +2400,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 198: mad r11.yz, r8.wwww, r11.yyzy, -r1.zzzz
     r11.yz = ((r8.wwww)*(r11.yyzy)+(-(r1.zzzz))).yz;
     // 199: sample_b_indexable(texture2d)(float,float,float,float) r12.xyz, r11.yzyy, t6.xyzw, s7, l(0.000000)
-    r12.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r11.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
+    r12.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r11.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
     // 200: mad r11.x, -cb0[25].w, cb0[26].x, r10.x
     r11.x = ((-(source[25].wwww))*(source[26].xxxx)+(r10.xxxx)).x;
     // 201: add r10.zw, r10.wwwy, r11.xxxw
@@ -2408,7 +2414,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 205: add r11.x, r1.z, l(1.000000)
     r11.x = ((r1.zzzz)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
     // 206: sample_b_indexable(texture2d)(float,float,float,float) r11.xyz, r11.xzxx, t6.xyzw, s7, l(0.000000)
-    r11.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r11.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
+    r11.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r11.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
     // 207: add r11.xyz, r11.xyzx, r12.xyzx
     r11.xyz = ((r11.xyzx)+(r12.xyzx)).xyz;
     // 208: mul r11.xyz, r11.xyzx, cb0[9].wwww
@@ -2420,11 +2426,11 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 211: mad r10.xy, v4.xyxx, r9.xzxx, -r10.xyxx
     r10.xy = ((v4.xyxx)*(r9.xzxx)+(-(r10.xyxx))).xy;
     // 212: sample_b_indexable(texture2d)(float,float,float,float) r1.z, r10.xyxx, t6.xywz, s7, l(0.000000)
-    r1.z = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r10.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xywz).z;
+    r1.z = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r10.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xywz).z;
     // 213: add r10.z, -r10.x, l(1.990000)
     r10.z = ((-(r10.xxxx))+(float4(1.990000,1.990000,1.990000,1.990000))).z;
     // 214: sample_b_indexable(texture2d)(float,float,float,float) r8.w, r10.zyzz, t6.xyzw, s7, l(0.000000)
-    r8.w = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r10.zyzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).w;
+    r8.w = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r10.zyzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).w;
     // 215: add r1.z, r1.z, r8.w
     r1.z = ((r1.zzzz)+(r8.wwww)).z;
     // 216: mul r1.z, r1.z, cb0[11].w
@@ -2514,7 +2520,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 258: mad r7.xy, cb0[28].wwww, r7.xyxx, r7.zwzz
     r7.xy = ((source[28].wwww)*(r7.xyxx)+(r7.zwzz)).xy;
     // 259: sample_b_indexable(texture2d)(float,float,float,float) r10.xyzw, r7.xyxx, t7.xyzw, s8, l(0.000000)
-    r10.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterSampler, (r7.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
+    r10.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterStampSampler, (r7.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
     // 260: mul r9.xzw, r10.xxyz, r10.wwww
     r9.xzw = ((r10.xxyz)*(r10.wwww)).xzw;
     // 261: mad r10.xyz, r10.wwww, cb0[16].xyzx, -r9.xzwx
@@ -2526,7 +2532,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight4(SOURCE_CHARACTER_NATIVE_INP
     // 264: mad r1.yz, cb0[30].wwww, r7.xxyx, r1.yyzy
     r1.yz = ((source[30].wwww)*(r7.xxyx)+(r1.yyzy)).yz;
     // 265: sample_b_indexable(texture2d)(float,float,float,float) r7.xyzw, r1.yzyy, t7.xyzw, s8, l(0.000000)
-    r7.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterSampler, (r1.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
+    r7.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterStampSampler, (r1.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
     // 266: mad r7.xyz, r7.wwww, r7.xyzx, r9.xzwx
     r7.xyz = ((r7.wwww)*(r7.xyzx)+(r9.xzwx)).xyz;
     // 267: add r1.y, r7.w, r10.w
@@ -9874,9 +9880,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase4(SOURCE_CHARACTER_NATIVE_INPU
     // 36: mad r0.xy, cb0[31].wwww, r0.xyxx, r0.zwzz
     r0.xy = ((source[31].wwww)*(r0.xyxx)+(r0.zwzz)).xy;
     // 37: sample_b_indexable(texture2d)(float,float,float,float) r0.xyzw, r0.xyxx, t7.xyzw, s7, l(0.000000)
-    r0.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterSampler, (r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
+    r0.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterStampSampler, (r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
     // 38: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, r1.xyxx, t7.xyzw, s7, l(0.000000)
-    r1.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
+    r1.xyzw = ((g_SourceCharacterTexture7.SampleBias(SourceCharacterStampSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyzw;
     // 39: add r2.x, r0.w, r1.w
     r2.x = ((r0.wwww)+(r1.wwww)).x;
     // 40: mul r0.xyz, r0.xyzx, r0.wwww
@@ -9930,7 +9936,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase4(SOURCE_CHARACTER_NATIVE_INPU
     // 64: add r4.x, r1.x, l(1.000000)
     r4.x = ((r1.xxxx)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
     // 65: sample_b_indexable(texture2d)(float,float,float,float) r4.xyz, r4.xzxx, t6.xyzw, s6, l(0.000000)
-    r4.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r4.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
+    r4.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r4.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
     // 66: mad r2.y, cb0[28].w, cb0[29].x, r3.x
     r2.y = ((source[28].wwww)*(source[29].xxxx)+(r3.xxxx)).y;
     // 67: add r1.xy, r2.ywyy, r3.zyzz
@@ -9942,7 +9948,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase4(SOURCE_CHARACTER_NATIVE_INPU
     // 70: mad r1.xy, r1.zzzz, r1.xyxx, -r0.wwww
     r1.xy = ((r1.zzzz)*(r1.xyxx)+(-(r0.wwww))).xy;
     // 71: sample_b_indexable(texture2d)(float,float,float,float) r1.xyz, r1.xyxx, t6.xyzw, s6, l(0.000000)
-    r1.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
+    r1.xyz = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xyz;
     // 72: add r1.xyz, r4.xyzx, r1.xyzx
     r1.xyz = ((r4.xyzx)+(r1.xyzx)).xyz;
     // 73: mul r1.xyz, r1.xyzx, cb0[10].wwww
@@ -9956,7 +9962,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase4(SOURCE_CHARACTER_NATIVE_INPU
     // 77: mad r2.xy, v4.xyxx, r2.zwzz, -r2.xyxx
     r2.xy = ((v4.xyxx)*(r2.zwzz)+(-(r2.xyxx))).xy;
     // 78: sample_b_indexable(texture2d)(float,float,float,float) r2.xy, r2.xyxx, t5.xyzw, s5, l(0.000000)
-    r2.xy = ((g_SourceCharacterTexture5.SampleBias(SourceCharacterSampler, (r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xy;
+    r2.xy = ((g_SourceCharacterTexture5.SampleBias(SourceCharacterStampSampler, (r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).xy;
     // 79: mul r0.w, r2.x, cb0[7].w
     r0.w = ((r2.xxxx)*(source[7].wwww)).w;
     // 80: mul r2.x, r2.y, cb0[9].w
@@ -9970,7 +9976,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase4(SOURCE_CHARACTER_NATIVE_INPU
     // 84: mad r2.yz, v4.xxyx, r4.xxyx, -r2.yyzy
     r2.yz = ((v4.xxyx)*(r4.xxyx)+(-(r2.yyzy))).yz;
     // 85: sample_b_indexable(texture2d)(float,float,float,float) r2.y, r2.yzyy, t4.yxzw, s4, l(0.000000)
-    r2.y = ((g_SourceCharacterTexture4.SampleBias(SourceCharacterSampler, (r2.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).yxzw).y;
+    r2.y = ((g_SourceCharacterTexture4.SampleBias(SourceCharacterStampSampler, (r2.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).yxzw).y;
     // 86: mul r2.y, r2.y, cb0[5].w
     r2.y = ((r2.yyyy)*(source[5].wwww)).y;
     // 87: sample_b_indexable(texture2d)(float,float,float,float) r4.xyzw, v4.xyxx, t3.xyzw, s3, l(0.000000)
@@ -9998,9 +10004,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase4(SOURCE_CHARACTER_NATIVE_INPU
     // 98: add r3.z, -r3.x, l(1.990000)
     r3.z = ((-(r3.xxxx))+(float4(1.990000,1.990000,1.990000,1.990000))).z;
     // 99: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r3.zyzz, t6.xyzw, s6, l(0.000000)
-    r0.w = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r3.zyzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).w;
+    r0.w = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r3.zyzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).w;
     // 100: sample_b_indexable(texture2d)(float,float,float,float) r2.w, r3.xyxx, t6.xyzw, s6, l(0.000000)
-    r2.w = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterSampler, (r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).w;
+    r2.w = ((g_SourceCharacterTexture6.SampleBias(SourceCharacterStampSampler, (r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x)).xyzw).w;
     // 101: add r0.w, r0.w, r2.w
     r0.w = ((r0.wwww)+(r2.wwww)).w;
     // 102: mul r0.w, r0.w, cb0[12].w
