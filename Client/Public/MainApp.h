@@ -28,6 +28,7 @@ class CKoukuSaydonActionWorkbench;
 class CKoukuSaydonPresentationPlayer;
 class CHUDLayoutTool;
 class CUILayoutRuntime;
+class CDungeonTimerView;
 class CBossImmuneGaugeView;
 class CBalanceTool;
 class CValtanBossTool;
@@ -471,6 +472,12 @@ private:
 	uint32_t m_iArenaCameraLastLevel = UINT32_MAX;
 	bool_t m_bKoukuUiPreview = false;
 	HUD_KOUKU_GIMMICK_STATE m_KoukuUiPreview;
+	/* Dungeon-timer preview controls. The Server owns no minigame deadline, so
+	   CCombatHUDViewModel runs the countdown and these are just the panel inputs.
+	   10 minutes matches the length a card maze run is judged against. */
+	bool_t m_bDungeonTimerPreview = false;
+	f32_t m_fDungeonTimerStartSeconds = 600.f;
+	f32_t m_fDungeonTimerWarningSeconds = 10.f;
 #endif
 	/* UI/BossUI/BossUI.json's runtime consumer (Update_BossHealthBar) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same as m_pInventoryView/m_pItemUpgradeView. The boss
@@ -478,6 +485,10 @@ private:
 	isn't part of the always-on top/bottom menu chrome (Screen UI) either, so it owns its own
 	document/tab instead of being folded into either. */
 	unique_ptr<CUILayoutRuntime> m_pBossUIView = { nullptr };
+	/* KoukuSaydon minigame time limit. Screen-anchored like the boss bar, not
+	   world-anchored like the madness gauge, so it lives here and draws in every
+	   Level rather than inside the arena. */
+	unique_ptr<CDungeonTimerView> m_pDungeonTimerView;
 	unique_ptr<CBossImmuneGaugeView> m_pBossImmuneGaugeView = { nullptr };
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is

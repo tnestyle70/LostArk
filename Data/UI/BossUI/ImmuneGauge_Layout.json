@@ -1,148 +1,47 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": {
-    "width": 1280,
-    "height": 720
-  },
-  "classes": [
-    "Default"
-  ],
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
   "slots": [
     {
       "id": "Immune_Anchor",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 640.0,
-        "y": 360.0,
-        "width": 1,
-        "height": 1
-      },
+      "rect": { "x": 640, "y": 360, "width": 1, "height": 1 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Immune_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 612.666667,
-        "y": 330.333333,
-        "width": 54.666667,
-        "height": 6.0
-      },
+      "rect": { "x": 612.666687, "y": 330.333344, "width": 54.6666679, "height": 6 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/BossUI/ImmuneGauge/immune_frame.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/BossUI/ImmuneGauge/immune_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Immune_Track",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 614.0,
-        "y": 331.666667,
-        "width": 52.0,
-        "height": 3.333333
-      },
+      "rect": { "x": 614, "y": 331.666656, "width": 52, "height": 3.33333302 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/BossUI/ImmuneGauge/immune_track.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/BossUI/ImmuneGauge/immune_track.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

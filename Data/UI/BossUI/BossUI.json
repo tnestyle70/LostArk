@@ -155,7 +155,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Effect/ClickMoveEffect/click_move_glow.dds", "hoverPath": null, "tint": [1, 1, 0.9, 0], "additive": true, "flipX": false }
+        { "path": "UI/Effect/ClickMoveEffect/click_move_glow.dds", "hoverPath": null, "tint": [1, 1, 0.899999976, 0], "additive": true, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
