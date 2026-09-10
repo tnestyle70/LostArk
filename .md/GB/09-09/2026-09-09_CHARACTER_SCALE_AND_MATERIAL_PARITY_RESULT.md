@@ -1,5 +1,65 @@
 # 캐릭터 크기·재질 연결 실측 결과
 
+## G11. TJ 리소스와 캐릭터 재질 통합 — 2026-09-10
+
+PR 352의 커스터마이징과 현재 재질 복구를 통합했다. 후속 사용자 요청으로 PR 353의
+충돌 해결·Debug 빌드·머지와 기존 `GB_Resources` 갱신까지 진행한다. 아래 G10과
+09-09 기록은 당시 상태이며, 전체 원본 재질의 시각 복구 완료를 뜻하지 않는다.
+
+### 실제 반영
+
+- Artist 기본 본체·장비·머리·붓 8모델의 21개 재질을 원본 MIC에 연결했다.
+  기존 face/eye/eyeAO/base body의 PR 352 값은 보존하고, 의상·붓·헤어에 정확한
+  source program 15~20을 추가했다. 기본 의상 3행의 generic family는 원본 family로 바꿨다.
+  `CActorCatalog -> CModel -> CMaterial` 경로와 parameter·texture mask 검증을 유지한다.
+- Artist 본체는 TJ의 눈 본 가중치·눈 UV1/UV2를 유지하며 hair submesh에 UV1 3,724개를
+  추가했다. 별도 기본 머리는 두 submesh의 UV1 5,694+144개를 복구했다. 원본 native half
+  대조로 확인된 UModel의 11개 zero UV 표현만 회복하고 기존 정점·가중치·UV0는 유지했다.
+  source program별 추가 UV 검사를 확장하고, masked hair 19도 원본 TwoSided를 소비한다.
+- Warlord legacy head program12의 Light varying을 원본 VS/PS의
+  `v2=UV, v3=tangentLight, v5=tangentView, v6=sourcePosition`에 맞췄다.
+  기존 공통 배치의 0 light 벡터가 만들던 NaN을 제거했으며 PR 352의 실제 얼굴 N/D/S를 유지한다.
+- DimensionMaster는 현재 236개 본·헤어 UV1·본체 154개 clip·Esther clip을 유지한다.
+  TJ Customizing 5개 clip은 원래 채널·key·time bytes를 보존하고 skeleton hash만
+  현재 236본에 맞췄다. Artist/Warlord/LanceMaster의 TJ 본체·Customizing 변경도 보존했다.
+- runtime 후보 102개 중 신규 83개·갱신 7개를 설치했고 동일 12개는 유지했다.
+  추가로 PR 352 LanceMaster 눈의 누락된 공용 DDS 2개를 원본 추출본에서 설치했다.
+  교체 전 파일은 `out/CharacterPR352Audit20260910/before-runtime-install`에 보존했다.
+
+### 검증과 보류
+
+| 항목 | 실제 결과 |
+|---|---|
+| 두 Character 폴더의 변경 9개 WModel | material chunk 동일. 정점 위치/normal/UV0/index 동일. Artist 눈 가중치·추가 UV, DimensionMaster rig, Customizing clip 차이를 별도로 확인 |
+| 기존 face morph 연결 | 네 클래스의 morph/map 동일. 주소·rest position·UV0 대응 일치 |
+| 통합 모델 후보 | 8개 기본 후보의 462 animation, 103,081 channel, 15,445,536 key 구조 검사 통과. Artist 추가 UV는 별도 원본/후보 byte 검사 통과 |
+| Warlord 실제 원본 입력 WARP | 27조건·110,592픽셀. 기존 varying은 모두 NaN, 수정 후 nonfinite 0과 양수 RGB 110,592개. Client 화면 검증 아님 |
+| 최종 재질 JSON | 63개 override의 parameter 이름 집합·texture mask·물리 texture 참조 검사 통과 |
+| 프로젝트 | Client/Engine vcxproj와 filters 4개 XML parse 통과 |
+| Debug Product 빌드 | PASS. Engine·Shared·Server·Client 컴파일/링크 오류 0. `out/BuildPipeline/runs/20260910T071032099Z-debug-product.json`의 모든 step PASS, missingRuntimeInputs 없음. 기존 인코딩·shader·PDB 경고는 남음 |
+| Git whitespace 검사 | `git diff --check`와 `git diff --cached --check` 통과 |
+| PR 충돌 | Part_Equipment의 본/재질 패스와 CharacterCatalog의 TJ/원본 재질을 함께 보존하여 해결 |
+| 사용자 화면 | 새 통합본 확인 전. visual PASS를 기록하지 않음 |
+
+차원술사 무기는 사용자 요청에 따라 **추가 복원 보류**다. 사용 재질 19개에 누락 texture는
+없고 빈 material record 5개는 사용 정점이 없다. 실제 전체 Base/Direct WARP 30조건의
+114,060픽셀은 모두 유한하므로 중간 `1/0`을 최종 화면의 NaN 원인으로 단정하지 않는다.
+다만 cube ON/OFF 6쌍의 전체 Base 출력 bytes가 동일하여 환경반사 기여가 사라지는 현상은
+확인했다. 미연결 native BRDF/SH의 정확한 원본 입력은 확보되지 않았다.
+`character_select_project_brdf.dds`는 프로젝트 근사 생성물임을 확인했으며 이를 원본으로
+위장해 연결하거나 무기 값을 추정해서 바꾸지 않았다.
+
+도화가 추가 선택 장비 71모델의 기존 리소스는 보존한다. 전체 79모델·142재질 중
+소스 추적 134행은 runtime 복구 수가 아니다. 해당 선택 장비의 새 source override 연결은
+이번 기본 8모델 범위에 포함하지 않았다. 미해결 source 8행과 기존 owner 제한은
+`artist-all-part-source-lineage.json`과 `artist-final-handoff.json`에 기록했다.
+
+증거 위치는 `out/CharacterPR352Audit20260910/`이며 `compare-wmodels.md`,
+`artist-hair-uv-candidate.json`, `dimension-warlord-material-result.md`,
+`dm-weapon-full-warp/handoff.md`, `runtime-install.json`을 사용한다.
+리소스 물리 전달본은 기존 `out/ResourceDelivery20260910/GB_Resources.zip`과 추출 폴더를 갱신한다.
+Git PR의 JSON·shader·코드와 함께 사용해야 하며 WModel만으로 재질 식이 전달되지 않는다.
+
 ## G10. 차원술사 재질 복원 재개 — 2026-09-10
 
 사용자는 환경반사가 부족하게 느껴진 장소를 **Character Select**로 확인했다.

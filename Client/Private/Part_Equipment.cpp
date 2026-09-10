@@ -153,7 +153,8 @@ HRESULT CPart_Equipment::Render_Pass(
 		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&
 			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
 			(surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
-             surface->sourceCharacter.program == 18u || surface->sourceCharacter.program == 20u))
+             surface->sourceCharacter.program == 18u || surface->sourceCharacter.program == 19u ||
+             surface->sourceCharacter.program == 20u))
 		{
 			materialPass = 6u;
 		}

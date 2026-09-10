@@ -503,6 +503,9 @@
     <ClCompile Include="..\Private\Render_OutputContract.cpp">
       <Filter>02.Utility\03.Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\DebugLeakReport.cpp">
+      <Filter>00.GameInstance</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Presentation_Manager.cpp">
       <Filter>02.Utility\03.Renderer</Filter>
     </ClCompile>

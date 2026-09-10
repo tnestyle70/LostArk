@@ -12,6 +12,7 @@
 
 #include "ImGuiLayer.h"
 
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 
@@ -68,7 +69,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ int       nCmdShow)
 {
 #ifdef _DEBUG
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    /* Tracking on, but not the CRT's own end-of-executable report: that runs before
+    Engine.dll is detached, so everything an Engine static still held was listed as a leak
+    although it is freed moments later. Engine/Private/DebugLeakReport.cpp reports instead,
+    from the last static destroyed in that module. */
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF);
+    /* The leak dump names an allocation number but not a call stack, and the blocks it
+    reports are container bookkeeping (_Container_proxy: one pointer to the container plus
+    a null iterator list), which an address alone cannot attribute. Set LOSTARK_BREAK_ALLOC
+    to one of the numbers in braces from the dump and the debugger stops on that exact
+    allocation, so the next run says where it came from. Off unless the variable is set. */
+    char_t szBreakAlloc[32]{};
+    size_t iBreakAllocLength = 0;
+    if (0 == getenv_s(&iBreakAllocLength, szBreakAlloc, sizeof(szBreakAlloc),
+            "LOSTARK_BREAK_ALLOC") && iBreakAllocLength > 1)
+    {
+        const long iBreakAlloc = std::strtol(szBreakAlloc, nullptr, 10);
+        if (iBreakAlloc > 0)
+            _CrtSetBreakAlloc(iBreakAlloc);
+    }
 #endif
 
     UNREFERENCED_PARAMETER(hPrevInstance);
