@@ -5742,12 +5742,12 @@
           "textures": [
             {
               "expressionIndex": 0,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/normal.tga",
+              "assetId": "Character/Warlord/textures/pc_wr_00_face_n.dds",
               "colorSpace": "linear"
             },
             {
               "expressionIndex": 1,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/null.tga",
+              "assetId": "Character/Warlord/textures/pc_wr_00_face_d.tga",
               "colorSpace": "srgb"
             },
             {
@@ -5757,7 +5757,7 @@
             },
             {
               "expressionIndex": 3,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_red.tga",
+              "assetId": "Character/Warlord/textures/pc_wr_00_face_s.tga",
               "colorSpace": "srgb"
             },
             {
