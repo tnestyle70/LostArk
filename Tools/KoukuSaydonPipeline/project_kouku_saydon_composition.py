@@ -151,7 +151,7 @@ LOGIC_KIND_VALUE_KEYS = {
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
-                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs"}
+                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection"}
 LOGIC_TRIGGER_VALUE_KEYS = {"triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
@@ -543,7 +543,7 @@ def _validate_logic_definition(
             raise CompositionError(f"{context} {kind} does not take a percent")
         if kind not in {"CLOWN_TRANSFORM", "FEAR"} and duration_ms != 0:
             raise CompositionError(f"{context} {kind} does not take a durationMs")
-        if extra & {"pushRangeM", "pushMs"}:
+        if extra & {"pushRangeM", "pushMs", "pushDirection"}:
             if kind != "MAX_HP_PERCENT_DAMAGE":
                 raise CompositionError(f"{context} only MAX_HP_PERCENT_DAMAGE owns push values")
             if ("pushRangeM" in logic) != ("pushMs" in logic):
@@ -554,6 +554,10 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} pushRangeM and pushMs must both be zero or positive")
             definition["pushRangeM"] = push_range
             definition["pushMs"] = push_ms
+            direction = logic.get("pushDirection", "AWAY_FROM_BOSS")
+            if direction not in {"AWAY_FROM_BOSS", "BOSS_FORWARD"} or (direction == "BOSS_FORWARD" and push_range == 0):
+                raise CompositionError(f"{context} pushDirection requires a supported direction and positive push")
+            definition["pushDirection"] = direction
         if kind == "FEAR":
             if duration_ms == 0:
                 raise CompositionError(f"{context} FEAR requires durationMs > 0")
@@ -2630,13 +2634,14 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             anchor = "BOSS_SPAWN" if "placement" not in world_box and world.get("anchorKind","NONE") == "BOSS_SPAWN" else "WORLD"
         if min(scale) <= 0:
             raise CompositionError("Gameplay collider scale must be positive")
-        if resource["shape"] == "SECTOR" and abs(scale[0]-scale[2]) > 0.0001:
-            raise CompositionError("Circular SECTOR requires equal X/Z scale")
         result.append({"regionId":row["regionId"] or row["occurrenceId"],"shape":resource["shape"],"anchorKind":anchor,
                        "center":position,"yawDegrees":yaw,"halfExtents":[a*b for a,b in zip(resource["halfExtents"],scale)],
                        "radiusM":resource["radiusM"]*(max(scale[0],scale[2]) if resource["shape"] == "CIRCLE" else scale[0]),"halfAngleDegrees":resource["halfAngleDegrees"],
                        "cardSymbol":row["cardSymbol"] if kind == "ROULETTE_CARD_MATCH" else "NONE",
                        "cardColor":row["cardColor"] if kind == "ROULETTE_CARD_MATCH" else "NONE"})
+        if resource["shape"] in {"SECTOR", "REVERSE_SECTOR"}:
+            result[-1]["radiusXM"] = resource["radiusM"] * scale[0]
+            result[-1]["radiusZM"] = resource["radiusM"] * scale[2]
         if world_track is not None:
             result[-1]["worldTrack"] = world_track
     return result
@@ -2657,6 +2662,8 @@ def _project_outcomes(logics: dict[str, dict[str, Any]], targets: list[str]) -> 
         elif logic["outcomeKind"] == "MAX_HP_PERCENT_DAMAGE" and logic.get("pushRangeM", 0):
             projected[-1]["pushRangeM"] = float(logic["pushRangeM"])
             projected[-1]["pushMs"] = int(logic["pushMs"])
+            if logic.get("pushDirection", "AWAY_FROM_BOSS") != "AWAY_FROM_BOSS":
+                projected[-1]["pushDirection"] = logic["pushDirection"]
         elif logic["outcomeKind"] == "CAPTURE_PLAYER":
             projected[-1]["attachmentSlot"] = logic["attachmentSlot"]
             projected[-1]["gripLocalOffset"] = dict(logic["gripLocalOffset"])
@@ -2939,12 +2946,12 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
             raise CompositionError("Only V1_ELEMENT owns elementId")
         if normalized["colliderKind"] not in {"GEOMETRY", "ROULETTE_CARD_REGION"}:
             raise CompositionError("presentation colliderKind is unsupported")
-        if normalized["shape"] not in {"BOX", "SECTOR", "CIRCLE"}:
+        if normalized["shape"] not in {"BOX", "SECTOR", "REVERSE_SECTOR", "CIRCLE"}:
             raise CompositionError("presentation collider shape is unsupported")
         _integer(normalized["durationMs"], "presentation durationMs", 1, MAX_TIMELINE_MS)
         _vector3(normalized["halfExtents"], "collider halfExtents", 0.001, 100000)
         _number(normalized["radiusM"], "collider radiusM", 0.001, 100000)
-        _number(normalized["halfAngleDegrees"], "collider halfAngleDegrees", 0.001, 180)
+        _number(normalized["halfAngleDegrees"], "collider halfAngleDegrees", 0 if normalized["shape"] == "REVERSE_SECTOR" else 0.001, 180)
         result[resource_id] = normalized
     return result
 
@@ -3072,10 +3079,24 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
         and worlds[box["worldId"]].get("objectResourceId")
         and worlds[box["worldId"]].get("anchorKind", "NONE") == "BOSS_SPAWN"
     ]
+    source_animations = []
+    if any(row.get("resourceKind") in {"V1_EFFECT", "V1_ELEMENT"} for row in occurrences):
+        stage_start = 0
+        for stage in pattern["stages"]:
+            for animation in stage["animationOccurrences"]:
+                source_animations.append({
+                    **{key: animation[key] for key in (
+                        "runtimeClip", "sourceStartMs", "playMs", "playRate", "endPolicy")},
+                    "startOffsetMs": stage_start + animation["startOffsetMs"],
+                    "blendInMs": animation.get("blendInMs", 0),
+                })
+            stage_start += stage["durationMs"]
+        source_animations.sort(key=lambda row: row["startOffsetMs"])
     return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": sum(stage["durationMs"] for stage in pattern["stages"]),
             **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),
             **({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {}),
             **({"worldEmissionAnchors": emission_anchors} if emission_anchors else {}),
+            **({"sourceAnchorAnimations": source_animations} if source_animations else {}),
             "presentationOccurrences": occurrences}
 
 
@@ -3113,7 +3134,8 @@ def _join_light_resources(document: dict[str, Any], root: Path) -> int | None:
                     validate_map_lights_v2(map_lights, document["areaId"])
                 except LightValidationError as error:
                     raise CompositionError(f"Map Light catalog is invalid: {error}") from error
-                for light in _array(map_lights.get("lights"), "Map lights", 64):
+                # The map owner already validates the array and its capacity.
+                for light in map_lights["lights"]:
                     identity = _stable_id(light.get("lightId"), "Map lightId")
                     if identity in ids:
                         raise CompositionError(f"duplicate lightResourceId across Map and catalog: {identity}")

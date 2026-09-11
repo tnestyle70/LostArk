@@ -526,14 +526,15 @@ bool_t Client::CWorldSequenceDocument::Load(
 		if (const DATA_JSON_VALUE* motion = templateValue.Find("objectMotion"))
 		{
 			auto& value = parsedTemplate.objectMotion;
-			if (parsedFormatVersion < 3u || !Is_ExactObject(*motion,
+			if (parsedFormatVersion < 3u || !Is_ObjectShape(*motion,
 				{ "velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond",
-				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }) ||
+				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }, { "spawnHalfExtents" }) ||
 				!Read_Float3(motion->Find("velocity"), value.velocity) ||
 				!Read_Float3(motion->Find("acceleration"), value.acceleration) ||
 				!Read_Float3(motion->Find("angularVelocityDegrees"), value.angularVelocityDegrees) ||
 				!Read_Float3(motion->Find("revolutionDegreesPerSecond"), value.revolutionDegreesPerSecond) ||
 				!Read_Float3(motion->Find("revolutionOffset"), value.revolutionOffset) ||
+				(motion->Find("spawnHalfExtents") && !Read_Float3(motion->Find("spawnHalfExtents"), value.spawnHalfExtents)) ||
 				!Read_Uint32(motion->Find("count"), value.count, 128u) ||
 				!Read_Uint32(motion->Find("intervalMs"), value.intervalMs, MAX_DURATION_MS) ||
 				!Read_FiniteFloat(motion->Find("spreadDegrees"), value.spreadDegrees) ||
@@ -884,6 +885,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 		writeVector("angularVelocityDegrees", motion.angularVelocityDegrees);
 		writeVector("revolutionDegreesPerSecond", motion.revolutionDegreesPerSecond);
 		writeVector("revolutionOffset", motion.revolutionOffset);
+		if (motion.spawnHalfExtents.x != 0.f || motion.spawnHalfExtents.y != 0.f || motion.spawnHalfExtents.z != 0.f)
+			writeVector("spawnHalfExtents", motion.spawnHalfExtents);
 		output << "        \"count\": " << motion.count << ", \"intervalMs\": " << motion.intervalMs
 			<< ", \"spreadDegrees\": " << motion.spreadDegrees << ", \"seed\": " << motion.seed << "\n      },\n"
 			<< "      \"tracks\": [";
@@ -1082,6 +1085,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		if (!Is_BoundedFloat3(motion.velocity) || !Is_BoundedFloat3(motion.acceleration) ||
 			!Is_BoundedFloat3(motion.angularVelocityDegrees) ||
 			!Is_BoundedFloat3(motion.revolutionDegreesPerSecond) || !Is_BoundedFloat3(motion.revolutionOffset) ||
+			!Is_BoundedFloat3(motion.spawnHalfExtents) || motion.spawnHalfExtents.x < 0.f ||
+			motion.spawnHalfExtents.y < 0.f || motion.spawnHalfExtents.z < 0.f ||
 			motion.count < 1u || motion.count > 128u || motion.intervalMs > MAX_DURATION_MS ||
 			(value.effectTracks.empty() && static_cast<uint64_t>(motion.count - 1u) * motion.intervalMs >= value.durationMs) ||
 			!std::isfinite(motion.spreadDegrees) || motion.spreadDegrees < 0.f || motion.spreadDegrees > (value.effectTracks.empty() ? 180.f : 360.f))
@@ -1518,6 +1523,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			!sameFloat3(left.objectMotion.angularVelocityDegrees, right.objectMotion.angularVelocityDegrees) ||
 			!sameFloat3(left.objectMotion.revolutionDegreesPerSecond, right.objectMotion.revolutionDegreesPerSecond) ||
 			!sameFloat3(left.objectMotion.revolutionOffset, right.objectMotion.revolutionOffset) ||
+			!sameFloat3(left.objectMotion.spawnHalfExtents, right.objectMotion.spawnHalfExtents) ||
 			left.objectMotion.count != right.objectMotion.count || left.objectMotion.intervalMs != right.objectMotion.intervalMs ||
 			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed)
 		{

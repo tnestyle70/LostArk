@@ -1,7 +1,16 @@
 #ifndef LOSTARK_MAP_MATERIAL_SURFACE
 #define LOSTARK_MAP_MATERIAL_SURFACE
 
+// A source-evidenced parallel N/T has a zero bitangent. Keep it finite and
+// preserve zero; never manufacture a normal axis for that native input.
+float3 MapGeometryNormalizeOrZero(float3 value)
+{
+    return dot(value, value) > 0.f ? normalize(value) : float3(0.f, 0.f, 0.f);
+}
+
+
 #include "Shader_SourceStoneSurface.hlsli"
+#include "Shader_SourceFoliageSurface.hlsli"
 
 // Program 7: actual Valtan bg_base_opa overlay permutation. These are material
 // inputs; normal textures remain linear and color SRVs retain source SRGB.
@@ -14,10 +23,26 @@ float g_SurfaceOverlaySharpness = 0.f;
 float g_SurfaceOverlayBrightness = 1.f;
 float g_SurfaceOverlaySaturation = 1.f;
 float g_SurfaceOverlaySpecularIntensity = 0.f;
+uint g_SurfaceOverlaySeparateSpecular = 0u;
+uint g_SourceOverlayFlags = 263u;
+float4 g_SourceOverlayDirection = float4(0.f, 1.f, 0.f, 0.f);
+float4 g_SourceOverlayUV = float4(0.f, 1.f, 0.f, 0.f);
 
 // Opt-in surface programs. Each SRV preserves its source color-space contract;
 // the actual Character Select overrides include a linear diffuse texture.
 uint g_SurfaceProgram = 0;
+uint g_SourceBgFlags = 0u;
+float4 g_SourceBgBump = float4(0.f, 0.f, 1.f, 0.f);
+float4 g_SourceBgUV = float4(0.f, 1.f, 0.f, 0.f);
+uint g_SourceBgFlicker = 0u;
+float2 g_SourceBgSubspecular = float2(0.f, 60.f);
+float4 g_SourceBgRimlight = float4(0.f, 0.f, 0.f, 3.f);
+float g_SourceBgSpecularSaturation = 1.f;
+float2 g_SourceBgPanning = 0.f;
+uint g_SourceFoliageFlags = 0u;
+float4 g_SourceFoliageTransmission = float4(0.f, 0.f, 0.f, 1.f);
+Texture2D g_SourceFoliageMaskTexture;
+
 uint g_HasSurfaceDefinition = 0;
 uint g_SurfaceDebugView = 0;
 float g_SurfaceDiffuseBrightness = 1.f;
@@ -65,6 +90,8 @@ float g_SurfaceEmissivePhaseOffset = 0.f;
 float g_SurfaceEmissiveTime = 0.f;
 // Source component LOD lightmap bindings. Ordinary draws bind these values;
 // instanced draws transport the same scale/bias and coefficient vectors.
+#include "Shader_StaticShadowMap.hlsli"
+
 uint g_HasBakedLighting = 0;
 Texture2D g_BakedAverageTexture;
 Texture2D g_BakedDirectionalTexture;
@@ -103,24 +130,64 @@ sampler SurfaceMirrorUSampler = sampler_state
     AddressV = WRAP;
 };
 
+sampler SurfaceMirrorVSampler = sampler_state
+{
+    Filter = ANISOTROPIC;
+    MaxAnisotropy = 16;
+    AddressU = WRAP;
+    AddressV = MIRROR;
+};
+sampler SurfaceMirrorUVSampler = sampler_state
+{
+    Filter = ANISOTROPIC;
+    MaxAnisotropy = 16;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
 float4 SampleMapDiffuseTexture(float2 uv, SamplerState wrapSampler)
 {
-    if (g_DiffuseMirrorU != 0u)
-        return g_DiffuseTexture.Sample(SurfaceMirrorUSampler, uv);
-    return g_DiffuseTexture.Sample(wrapSampler, uv);
+    float4 sampleValue = 0.f;
+    if (g_SurfaceProgram == 8u && (g_SourceBgFlags & 1024u) != 0u)
+    {
+        if (g_DiffuseMirrorU != 0u) sampleValue = g_DiffuseTexture.Sample(SurfaceMirrorUVSampler, uv);
+        else sampleValue = g_DiffuseTexture.Sample(SurfaceMirrorVSampler, uv);
+    }
+    else if (g_DiffuseMirrorU != 0u)
+        sampleValue = g_DiffuseTexture.Sample(SurfaceMirrorUSampler, uv);
+    else sampleValue = g_DiffuseTexture.Sample(wrapSampler, uv);
+    return sampleValue;
 }
 
 float3 EvaluateMapSurfaceEmissive(float2 meshUV)
 {
     if (g_HasSurfaceEmissive == 0u)
         return 0.f;
+    if (g_SurfaceProgram == 9u || g_SurfaceProgram == 10u)
+    {
+        const float4 sampleValue = g_SurfaceEmissiveTexture.Sample(SurfaceAnisotropicSampler, meshUV);
+        const float phase = g_SurfaceEmissivePhaseOffset + sampleValue.a *
+            g_SurfaceEmissiveTime * g_SurfaceEmissiveFlickerSpeed;
+        const float flicker = (g_SourceFoliageFlags & 64u) != 0u ?
+            SourceFoliageFlicker(phase, g_SurfaceEmissiveFlickerMinimum) : 1.f;
+        return sampleValue.rgb * g_SurfaceEmissiveColor.rgb * g_SurfaceEmissiveIntensity * flicker;
+    }
     // Source bg_base_pbr_opa flicker, including its nested cosine modulation.
     // phaseOffset owns the unavailable engine-origin constant explicitly.
     const float phase = g_SurfaceEmissivePhaseOffset +
         g_SurfaceEmissiveTime * g_SurfaceEmissiveFlickerSpeed;
-    const float flicker = 0.5f * (1.f +
+    float flicker = 0.5f * (1.f +
         sin((phase + cos(phase * 3.524534f)) * 1.328987f)) +
         g_SurfaceEmissiveFlickerMinimum;
+    if (g_SurfaceProgram == 8u)
+    {
+        if (g_SourceBgFlicker == 0u) flicker = 1.f;
+        else if (g_SourceBgFlicker == 2u)
+        {
+            const float ramp = 2.f * (frac(phase) - 0.5f);
+            flicker = ramp * ramp + g_SurfaceEmissiveFlickerMinimum;
+        }
+    }
     return g_SurfaceEmissiveTexture.Sample(SurfaceAnisotropicSampler,
         meshUV * g_SurfaceEmissiveUVTiling).rgb * g_SurfaceEmissiveColor.rgb *
         g_SurfaceEmissiveIntensity * flicker;
@@ -138,7 +205,7 @@ bool IsMapSurfaceSourceSpecular()
 
 float EncodeMapSurfaceGeometricNormal(float3 normal, bool hasBakedLighting)
 {
-    normal = normalize(normal);
+    normal = MapGeometryNormalizeOrZero(normal);
     normal /= abs(normal.x) + abs(normal.y) + abs(normal.z);
     float2 oct = normal.xy;
     if (normal.z < 0.f)
@@ -167,24 +234,164 @@ struct MAP_SURFACE_SAMPLE
     float3 tangentNormal;
     float3 specular;
     float3 reflectionDelta;
+    float3 transmission;
+    float3 subspecularRadiance;
+    float3 rimlightRadiance;
+    float specularPower;
     float roughness;
     float metallic;
     float ambientOcclusion;
 };
+
+#include "Shader_SourceSpecialSurface.hlsli"
+
+bool IsMapSurfaceSourceSpecial() { return g_SurfaceProgram >= 11u && g_SurfaceProgram <= 13u; }
+
+bool IsMapSurfaceSourceFoliage() { return g_SurfaceProgram == 9u || g_SurfaceProgram == 10u; }
+
+MAP_SURFACE_SAMPLE EvaluateMapSourceFoliageSurface(float2 uv, float3 worldPosition,
+    float3 tangent, float3 binormal, float3 normal)
+{
+    MAP_SURFACE_SAMPLE result = (MAP_SURFACE_SAMPLE)0;
+    const bool grass = g_SurfaceProgram == 10u;
+    const float4 raw = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, uv);
+    clip(raw.a - 0.3333f);
+    const float4 mask = grass ? 1.f : g_SourceFoliageMaskTexture.Sample(SurfaceAnisotropicSampler, uv);
+    float3 diffuse = (g_SourceFoliageFlags & 2u) != 0u ?
+        SourceFoliageDesaturate(raw.rgb, g_SurfaceDiffuseSaturation, grass ? 1.f : mask.a) : raw.rgb;
+    const float3 specular = grass ? diffuse : ((g_SourceFoliageFlags & 8u) != 0u ?
+        g_SpecularTexture.Sample(SurfaceAnisotropicSampler, uv).rgb : mask.rrr);
+    diffuse *= grass ? g_SurfaceDiffuseBrightness * g_SurfaceDiffuseColor.rgb :
+        1.f + mask.a * (g_SurfaceDiffuseBrightness * g_SurfaceDiffuseColor.rgb - 1.f);
+    result.diffuse = float4(diffuse, raw.a);
+    result.tangentNormal = (g_SourceFoliageFlags & 1u) != 0u ?
+        SourceFoliageNormal(g_NormalTexture.Sample(SurfaceAnisotropicSampler, uv).rg,
+            g_SurfaceNormalIntensity) : float3(0.f, 0.f, 1.f);
+    const float3x3 tangentToWorld = float3x3(SourceFoliageUnit(tangent),
+        SourceFoliageUnit(binormal), SourceFoliageUnit(normal));
+    result.worldNormal = SourceFoliageUnit(mul(result.tangentNormal, tangentToWorld));
+    result.specular = (g_SourceFoliageFlags & 4u) != 0u ?
+        specular * g_SurfaceSpecularColor.rgb * g_SurfaceSpecularIntensity : 0.f;
+    result.transmission = grass ? g_SourceFoliageTransmission.rgb :
+        ((g_SourceFoliageFlags & 16u) != 0u ?
+            mask.b * g_SourceFoliageTransmission.rgb * g_SourceFoliageTransmission.w : 0.f);
+    result.ambientOcclusion = 1.f;
+    return result;
+}
+
+bool IsMapSurfaceSourceBG() { return g_SurfaceProgram == 8u; }
+
+float2 MapSourceBGUV(float2 uv)
+{
+    const float2 centered = uv - 0.5f;
+    return (float2(centered.x * g_SourceBgUV.y - centered.y * g_SourceBgUV.x,
+        centered.y * g_SourceBgUV.y + centered.x * g_SourceBgUV.x) + 0.5f) *
+        g_SurfaceUVTiling + g_SourceBgUV.zw + g_SourceBgPanning * g_SurfaceEmissiveTime;
+}
+
+float4 MapSourceBGDiffuse(float2 meshUV, float3 tangentView, out float2 surfaceUV, out float bumpShade)
+{
+    surfaceUV = MapSourceBGUV(meshUV);
+    const float4 original = SampleMapDiffuseTexture(surfaceUV, SurfaceAnisotropicSampler);
+    float4 shifted = original;
+    bumpShade = 1.f;
+    if ((g_SourceBgFlags & 2u) != 0u)
+    {
+        surfaceUV += (original.a - g_SourceBgBump.x) * g_SourceBgBump.y * tangentView.xy;
+        shifted = SampleMapDiffuseTexture(surfaceUV, SurfaceAnisotropicSampler);
+        bumpShade = saturate(original.a + g_SourceBgBump.z);
+    }
+    if ((g_SourceBgFlags & 64u) != 0u)
+        clip(((g_SourceBgFlags & 2u) != 0u ? saturate(original.a + shifted.a) : shifted.a) - 0.3333f);
+    return shifted;
+}
+
+MAP_SURFACE_SAMPLE EvaluateMapSourceBGSurface(float2 meshUV, float4 vertexColor, float3 worldPosition,
+    float3 tangent, float3 binormal, float3 normal)
+{
+    MAP_SURFACE_SAMPLE result = (MAP_SURFACE_SAMPLE)0;
+    result.ambientOcclusion = 1.f;
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+    const float3 tangentView = normalize(mul(tangentToWorld, normalize(g_vCamPosition.xyz - worldPosition)));
+    float2 surfaceUV; float bumpShade;
+    const float4 diffuse = MapSourceBGDiffuse(meshUV, tangentView, surfaceUV, bumpShade);
+    float4 encodedNormal = float4(0.5f, 0.5f, 1.f, 1.f);
+    float3 tangentNormal = float3(0.f, 0.f, 1.f);
+    if ((g_SourceBgFlags & 1u) != 0u)
+    {
+        const float2 normalUV = (g_SourceBgFlags & 16384u) != 0u ? meshUV : surfaceUV;
+        if ((g_SourceBgFlags & 6144u) == 6144u)
+            encodedNormal = g_NormalTexture.Sample(SurfaceMirrorUVSampler, normalUV);
+        else if ((g_SourceBgFlags & 2048u) != 0u)
+            encodedNormal = g_NormalTexture.Sample(SurfaceMirrorUSampler, normalUV);
+        else if ((g_SourceBgFlags & 4096u) != 0u)
+            encodedNormal = g_NormalTexture.Sample(SurfaceMirrorVSampler, normalUV);
+        else encodedNormal = g_NormalTexture.Sample(SurfaceAnisotropicSampler, normalUV);
+        const float2 raw = encodedNormal.rg * 2.f - 1.f;
+        const float vertexStrength = (g_SourceBgFlags & 128u) != 0u ? vertexColor.a : 1.f;
+        const float2 detail = (g_SourceBgFlags & 32768u) != 0u ?
+            (g_DetailNormalTexture.Sample(SurfaceAnisotropicSampler, surfaceUV * g_SurfaceDetailNormalTiling).rg * 2.f - 1.f) * g_SurfaceDetailNormalIntensity : 0.f;
+        tangentNormal = normalize(float3((raw * g_SurfaceNormalIntensity + detail) * vertexStrength,
+            sqrt(max(1.f - dot(raw, raw), 0.f)) + 0.00001f));
+    }
+    result.tangentNormal = tangentNormal;
+    result.worldNormal = normalize(mul(tangentNormal, tangentToWorld));
+    const float luminance = dot(diffuse.rgb, float3(0.3f, 0.59f, 0.11f));
+    const float3 baseDiffuse = lerp(luminance.xxx, diffuse.rgb, g_SurfaceDiffuseSaturation) *
+        g_SurfaceDiffuseColor.rgb * g_SurfaceDiffuseBrightness * bumpShade;
+    result.diffuse = float4(baseDiffuse, diffuse.a);
+    float3 subspecularColor = 0.f;
+    if ((g_SourceBgFlags & 4u) != 0u || g_SourceBgSubspecular.x != 0.f)
+    {
+        const float3 sampledSpecular = (g_SourceBgFlags & 8u) != 0u ?
+            g_SpecularTexture.Sample(SurfaceAnisotropicSampler, surfaceUV).rgb : diffuse.rgb;
+        const float3 specular = lerp(dot(sampledSpecular, float3(0.3f, 0.59f, 0.11f)).xxx,
+            sampledSpecular, g_SourceBgSpecularSaturation);
+        subspecularColor = ((g_SourceBgFlags & 256u) != 0u && (g_SourceBgFlags & 8u) == 0u ?
+            dot(specular, float3(0.3f, 0.59f, 0.11f)).xxx : specular) *
+            g_SurfaceSpecularColor.rgb * g_SurfaceSpecularIntensity;
+        if ((g_SourceBgFlags & 4u) != 0u) result.specular = subspecularColor;
+    }
+    if ((g_SourceBgFlags & 16u) != 0u)
+    {
+        const float3 reflected = reflect(-tangentView, tangentNormal);
+        float2 reflectionUV;
+        if ((g_SourceBgFlags & 32u) != 0u)
+        {
+            const float3 worldReflection = mul(reflected, tangentToWorld);
+            reflectionUV = float2(worldReflection.x, -worldReflection.z) * g_SurfaceReflectionTiling + g_SurfaceReflectionOriginOffset;
+        }
+        else reflectionUV = lerp(MapSourceBGUV(meshUV), (reflected.xy + 0.5f) * 0.5f, 0.75f);
+        const float3 sampled = g_ReflectionTexture.Sample(SurfaceAnisotropicSampler, reflectionUV).rgb;
+        const float3 signedReflection = sampled * g_SurfaceReflectionColor.rgb * (1.f + g_SurfaceReflectionContrast) - g_SurfaceReflectionContrast;
+        const float weight = ((g_SourceBgFlags & 1u) != 0u ? encodedNormal.a : 1.f) * g_SurfaceReflectionIntensity;
+        result.diffuse.rgb = (g_SourceBgFlags & 8192u) != 0u ?
+            lerp(baseDiffuse, sampled * g_SurfaceReflectionColor.rgb, weight) :
+            clamp((baseDiffuse + weight * saturate(signedReflection)) *
+            (1.f - weight * saturate(-signedReflection)), 0.f, 999.f);
+        result.reflectionDelta = abs(result.diffuse.rgb - baseDiffuse);
+    }
+    const float facing = saturate(dot(tangentNormal, tangentView));
+    result.subspecularRadiance = subspecularColor * g_SourceBgSubspecular.x *
+        MapSurfaceSafePow(facing * facing, g_SourceBgSubspecular.y);
+    const float rim = (1.f - abs(dot(tangentNormal, tangentView))) * (1.f - abs(tangentView.z));
+    result.rimlightRadiance = g_SourceBgRimlight.rgb * MapSurfaceSafePow(rim, g_SourceBgRimlight.w);
+    return result;
+}
 
 MAP_SURFACE_SAMPLE EvaluateMapSourceSpecularSurface(float2 meshUV, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal)
 {
     // Actual MAGICFLOOR component MIC selects this tiled, opaque source
     // permutation. It is distinct from the older program-1 compatibility path.
-    MAP_SURFACE_SAMPLE result;
+    MAP_SURFACE_SAMPLE result = (MAP_SURFACE_SAMPLE)0;
     const float2 uv = meshUV * g_SurfaceUVTiling;
     const float4 diffuse = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, uv);
     const float4 encodedNormal = g_NormalTexture.Sample(SurfaceAnisotropicSampler, uv);
     const float2 xy = encodedNormal.rg * 2.f - 1.f;
     const float z = sqrt(max(1.f - dot(xy, xy), 0.f)) + 0.00001f;
     result.tangentNormal = normalize(float3(xy * g_SurfaceNormalIntensity, z));
-    const float3x3 tangentToWorld = float3x3(normalize(tangent), normalize(binormal), normalize(normal));
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
     result.worldNormal = normalize(mul(result.tangentNormal, tangentToWorld));
     const float3 view = normalize(mul(tangentToWorld, normalize(g_vCamPosition.xyz - worldPosition)));
     const float3 reflected = mul(reflect(-view, result.tangentNormal), tangentToWorld);
@@ -208,7 +415,7 @@ MAP_SURFACE_SAMPLE EvaluateMapSourceSpecularSurface(float2 meshUV, float3 worldP
 MAP_SURFACE_SAMPLE EvaluateMapPBRSurface(float2 meshUV, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal)
 {
-    MAP_SURFACE_SAMPLE result;
+    MAP_SURFACE_SAMPLE result = (MAP_SURFACE_SAMPLE)0;
     const float2 tiledUV = meshUV * g_SurfaceUVTiling;
     const float2 normalUV = g_SurfaceUVFixedNormal != 0u ? meshUV : tiledUV;
     const float4 diffuse = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, tiledUV);
@@ -222,8 +429,8 @@ MAP_SURFACE_SAMPLE EvaluateMapPBRSurface(float2 meshUV, float3 worldPosition,
     // The seamless permutation explicitly removes near-flat normal noise.
     if (g_SurfaceProgram == 3u && tangentNormal.z >= 0.99985f)
         tangentNormal = float3(0.f, 0.f, 1.f);
-    const float3x3 tangentToWorld = float3x3(normalize(tangent),
-        normalize(binormal), normalize(normal));
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
+        MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
     result.tangentNormal = tangentNormal;
     result.worldNormal = normalize(mul(tangentNormal, tangentToWorld));
     const float3 worldView = normalize(g_vCamPosition.xyz - worldPosition);
@@ -291,6 +498,39 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
     float4 averageScale, float4 directionalScale, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal)
 {
+    if (IsMapSurfaceSourceFoliage())
+    {
+        const bool grass = g_SurfaceProgram == 10u;
+        float3 radiance = grass ? surface.diffuse.rgb * surface.transmission : 0.f;
+        if (g_HasBakedLighting == 0u || averageScale.w == 0.f) return radiance;
+        const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
+        const float3 coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
+        const float3x3 tangentToWorld = float3x3(SourceFoliageUnit(tangent), SourceFoliageUnit(binormal), SourceFoliageUnit(normal));
+        const float3 tangentView = mul(tangentToWorld, g_vCamPosition.xyz - worldPosition);
+        return radiance + SourceFoliageBaked(surface.diffuse.rgb, surface.tangentNormal,
+            surface.specular, surface.transmission, tangentView, average, coefficients,
+            g_SurfaceSpecularPower, grass);
+    }
+    if (IsMapSurfaceSourceBG() || IsMapSurfaceSourceSpecial())
+    {
+        if (g_HasBakedLighting == 0u || averageScale.w == 0.f) return surface.subspecularRadiance;
+        const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
+        const float3 coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
+        float3 radiance = surface.diffuse.rgb * average *
+            MapSourceDirectionalLightmapWeight(surface.tangentNormal, coefficients);
+        if (IsMapSurfaceSourceSpecial() || (g_SourceBgFlags & 4u) != 0u)
+        {
+            const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+            const float3 tangentView = normalize(mul(tangentToWorld, g_vCamPosition.xyz - worldPosition));
+            const float3 reflected = reflect(-tangentView, surface.tangentNormal);
+            const float3 lobes = saturate(float3(
+                dot(reflected.yz, float2(0.81649658f, 0.57735027f)),
+                dot(reflected, float3(-0.70710678f, -0.40824829f, 0.57735027f)),
+                dot(reflected, float3(0.70710678f, -0.40824829f, 0.57735027f))));
+            radiance += surface.specular * average * dot(coefficients, pow(lobes, (IsMapSurfaceSourceSpecial() ? surface.specularPower : g_SurfaceSpecularPower) + 1.f));
+        }
+        return radiance + surface.subspecularRadiance;
+    }
     if (IsMapSurfaceSourceSpecular())
     {
         // The original non-PBR BasePass adds three powered reflection lobes
@@ -332,8 +572,8 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
     if (g_HasEnvironmentCube == 0u || g_HasEnvironmentBRDFLookup == 0u)
         return indirect;
 
-    const float3x3 tangentToWorld = float3x3(normalize(tangent),
-        normalize(binormal), normalize(normal));
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
+        MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
     const float3 worldView = normalize(g_vCamPosition.xyz - worldPosition);
     const float3 tangentView = normalize(mul(tangentToWorld, worldView));
     const float normalView = dot(n, tangentView);
@@ -386,6 +626,13 @@ struct MAP_STONE_GBUFFER
     float4 geometry;
 };
 
+float2 MapSourceOverlayUV(float2 meshUV)
+{
+    const float2 centeredUV = meshUV - 0.5f;
+    return (float2(dot(centeredUV, float2(g_SourceOverlayUV.y, -g_SourceOverlayUV.x)),
+        dot(centeredUV, float2(g_SourceOverlayUV.x, g_SourceOverlayUV.y))) + 0.5f) * g_SurfaceUVTiling + g_SourceOverlayUV.zw;
+}
+
 MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexColor,
     float3 worldPosition, float3 tangent, float3 binormal, float3 normal,
     float4 projectedPosition, float2 lightmapUV, float4 averageScale,
@@ -406,16 +653,31 @@ MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexCol
     material.overlaySpecularIntensity = g_SurfaceOverlaySpecularIntensity;
     material.specularPower = g_SurfaceSpecularPower;
     const float2 overlayUV = meshUV * g_SurfaceOverlayTiling;
+    const float2 surfaceUV = MapSourceOverlayUV(meshUV);
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
+        MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+    const float4 sampledDiffuse = SampleMapDiffuseTexture(surfaceUV, SurfaceAnisotropicSampler);
+    if ((g_SourceOverlayFlags & 64u) != 0u) clip(sampledDiffuse.a - 0.3333f);
     // Original material instructions use SampleBias(0). The existing aniso
     // sampler is the project filtering adapter; it does not alter UV domains.
-    const SOURCE_STONE_SURFACE stone = EvaluateSourceStoneSurface(
-        SampleMapDiffuseTexture(meshUV, SurfaceAnisotropicSampler),
-        g_NormalTexture.Sample(SurfaceAnisotropicSampler, meshUV),
+    SOURCE_STONE_SURFACE stone = EvaluateSourceStoneVariants(
+        sampledDiffuse,
+        (g_SourceOverlayFlags & 1u) != 0u ? g_NormalTexture.Sample(SurfaceAnisotropicSampler,
+            (g_SourceOverlayFlags & 128u) != 0u ? meshUV : surfaceUV) : float4(0.5f, 0.5f, 1.f, 1.f),
         g_SurfaceOverlayDiffuseTexture.Sample(SurfaceAnisotropicSampler, overlayUV),
-        g_SurfaceOverlayNormalTexture.Sample(SurfaceAnisotropicSampler, overlayUV),
-        vertexColor, material);
-    const float3x3 tangentToWorld = float3x3(normalize(tangent),
-        normalize(binormal), normalize(normal));
+        (g_SourceOverlayFlags & 2u) != 0u ? g_SurfaceOverlayNormalTexture.Sample(SurfaceAnisotropicSampler, overlayUV) : float4(0.5f, 0.5f, 1.f, 1.f),
+        (g_SourceOverlayFlags & 32u) != 0u ? g_DetailNormalTexture.Sample(SurfaceAnisotropicSampler,
+            surfaceUV * g_SurfaceDetailNormalTiling) : float4(0.5f, 0.5f, 1.f, 1.f),
+        vertexColor, material, g_SourceOverlayFlags, mul(tangentToWorld, g_SourceOverlayDirection.xyz),
+        g_SourceOverlayDirection.w, g_SurfaceDetailNormalIntensity);
+    if (g_SurfaceOverlaySeparateSpecular != 0u)
+    {
+        const float3 baseSpecular = g_SpecularTexture.Sample(SurfaceAnisotropicSampler,
+            surfaceUV).rgb * material.specularColor * material.specularIntensity;
+        const float3 overlaySpecular = SourceStoneSaturation(g_SurfaceOverlayDiffuseTexture.Sample(
+            SurfaceAnisotropicSampler, overlayUV).rgb, material.overlaySaturation) * material.overlaySpecularIntensity;
+        stone.specular = lerp(baseSpecular, overlaySpecular, stone.overlayWeight);
+    }
     const bool hasLightmap = g_HasBakedLighting != 0u && averageScale.w != 0.f;
     float3 average = 0.f, coefficients = 0.f;
     if (hasLightmap)
@@ -448,14 +710,24 @@ MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexCol
     return output;
 }
 
-MAP_SURFACE_SAMPLE EvaluateMapSurface(float2 meshUV, float3 worldPosition,
+MAP_SURFACE_SAMPLE EvaluateMapSurface(float2 meshUV, float4 vertexColor, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal)
 {
+    if (g_SurfaceProgram == 11u)
+        return EvaluateMapSourceIceSurface(meshUV, vertexColor, worldPosition, tangent, binormal, normal);
+    if (g_SurfaceProgram == 12u)
+        return EvaluateMapSourceVertexBlendSurface(meshUV, vertexColor, worldPosition, tangent, binormal, normal);
+    if (g_SurfaceProgram == 13u)
+        return EvaluateMapSourceWetSurface(meshUV, vertexColor, worldPosition, tangent, binormal, normal);
+    if (IsMapSurfaceSourceFoliage())
+        return EvaluateMapSourceFoliageSurface(meshUV, worldPosition, tangent, binormal, normal);
+    if (IsMapSurfaceSourceBG())
+        return EvaluateMapSourceBGSurface(meshUV, vertexColor, worldPosition, tangent, binormal, normal);
     if (IsMapSurfaceSourceSpecular())
         return EvaluateMapSourceSpecularSurface(meshUV, worldPosition, tangent, binormal, normal);
     if (IsMapSurfacePBR())
         return EvaluateMapPBRSurface(meshUV, worldPosition, tangent, binormal, normal);
-    MAP_SURFACE_SAMPLE result;
+    MAP_SURFACE_SAMPLE result = (MAP_SURFACE_SAMPLE)0;
     result.roughness = 0.f;
     result.metallic = 0.f;
     result.ambientOcclusion = 1.f;
@@ -468,8 +740,8 @@ MAP_SURFACE_SAMPLE EvaluateMapSurface(float2 meshUV, float3 worldPosition,
     // uses the default 1; native placement override-color semantics remain open.
     const float3 tangentNormal = normalize(float3(rawXY * g_SurfaceNormalIntensity, rawZ));
     // These source meshes preserve tangent handedness in their recovered WModel.
-    const float3x3 tangentToWorld = float3x3(normalize(tangent),
-        normalize(binormal), normalize(normal));
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
+        MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
     result.tangentNormal = tangentNormal;
     result.worldNormal = normalize(mul(tangentNormal, tangentToWorld));
     const float3 worldView = normalize(g_vCamPosition.xyz - worldPosition);

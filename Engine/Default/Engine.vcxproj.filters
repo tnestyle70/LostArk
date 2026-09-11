@@ -703,6 +703,12 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli">
       <Filter>03.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceSpecialSurface.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageSurface.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Cell.hlsl">
@@ -711,5 +717,13 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred.hlsl">
       <Filter>03.ShaderFiles</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_StaticShadowMap.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SceneHeightFog.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
   </ItemGroup>
 </Project>

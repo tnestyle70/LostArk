@@ -94109,7 +94109,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.source-particle.artist-full.7ae1bf9c56f59475398faa42",
@@ -421226,7 +421227,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.source-particle.artist-full.02e99c09c714876707a152ee",

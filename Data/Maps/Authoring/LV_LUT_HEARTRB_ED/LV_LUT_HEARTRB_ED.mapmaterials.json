@@ -359,6 +359,108 @@
         "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL04_directionalmaxcomponent1_58.dds",
         "colorSpace": "linear"
       }
+    },
+    {
+      "assetId": "MAP_FBC80A02F72E_BG_LUT_WAGLOY_CIRCLEFLOOR01_SM_JJY_VST_SL00_E1274",
+      "materialName": "bg_lut_wagloy_circlefloor01_mi_rain_jjy",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_lut_wagloy_circlefloor01_mi_jjy",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.3499999940395355,
+      "diffuseSaturation": 1.0,
+      "normalIntensity": 2.0,
+      "specularIntensity": 0.30000001192092896,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        0.4924166798591614,
+        0.4650000035762787,
+        0.5,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 1.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_lut_wagloy_circlefloor01_d_jjy.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_lut_wagloy_circlefloor01_n_jjy.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_FBC80A02F72E_BG_LUT_WAGLOY_CIRCLEFLOOR01_SM_JJY_VST_SL00_E1274",
+      "materialName": "bg_lut_wagloy_circlefloor01a_mi_rain_jjy",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_lut_wagloy_circlefloor01a_mi_jjy",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.6000000238418579,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.30000001192092896,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        0.48776519298553467,
+        0.46474114060401917,
+        0.49950528144836426,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 1.2999999523162842,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 1.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_lut_memonast_deco_d_sup.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_lut_memonast_deco_n_sup.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
     }
   ],
   "placementLighting": [
@@ -514,6 +616,28 @@
         1.0,
         1.0,
         1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL00:export:1274",
+      "assetId": "MAP_FBC80A02F72E_BG_LUT_WAGLOY_CIRCLEFLOOR01_SM_JJY_VST_SL00_E1274",
+      "coordinateScale": [
+        0.1796875,
+        0.1796875
+      ],
+      "coordinateBias": [
+        0.25390625,
+        0.25390625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.301937222480774,
+        1.26918363571167,
+        1.2202305793762207
       ]
     }
   ]

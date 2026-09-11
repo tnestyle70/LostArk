@@ -65,6 +65,27 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 		}
 	};
 
+	if (Shape.iAreaType == 3 && Shape.fSectorRadiusXM > 0.f && Shape.fSectorRadiusZM > 0.f)
+	{
+		const f32_t safeSweep = Shape.fSectorAngleDegrees;
+		const f32_t sweep = Shape.bReverseSector ? 360.f - safeSweep : safeSweep;
+		if (!(sweep > 0.f && sweep <= 360.f)) return;
+		const f32_t centerAngle = Shape.bReverseSector ? 180.f : 0.f;
+		const auto point = [&](f32_t angle) {
+			const f32_t radians = XMConvertToRadians(angle);
+			return XMVectorSetY(vPosition + vLook * (Shape.fSectorRadiusZM * cosf(radians)) +
+				vRight * (Shape.fSectorRadiusXM * sinf(radians)), fGroundY);
+		};
+		for (int32_t s = 0; s < ARC_SEGMENTS; ++s)
+			Draw_Segment(point(centerAngle - sweep * .5f + sweep * s / ARC_SEGMENTS),
+				point(centerAngle - sweep * .5f + sweep * (s + 1) / ARC_SEGMENTS));
+		if (sweep < 360.f)
+		{
+			Draw_Segment(XMVectorSetY(vPosition, fGroundY), point(centerAngle - sweep * .5f));
+			Draw_Segment(XMVectorSetY(vPosition, fGroundY), point(centerAngle + sweep * .5f));
+		}
+		return;
+	}
 	const f32_t fOffset = Shape.iAreaOffsetX * UNITS_TO_METERS;
 	const f32_t fRange = Shape.iAreaRange * UNITS_TO_METERS;
 	/* Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle is the

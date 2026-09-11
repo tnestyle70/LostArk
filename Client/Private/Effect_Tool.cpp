@@ -1932,6 +1932,11 @@ namespace
         }
     }
 
+    bool Is_KoukuEffectAssetId(const std::string_view strEffectAssetId)
+    {
+        return strEffectAssetId.starts_with("effect.kouku.");
+    }
+
     std::string EffectAsset_DomainId(const std::string& strEffectAssetId)
     {
         constexpr std::pair<std::string_view, std::string_view> Domains[] =
@@ -1942,7 +1947,8 @@ namespace
             { "effect.artist.", "Artist" },
             { "effect.dimensionmaster.", "DimensionMaster" },
             { "effect.warlord.", "Warlord" },
-            { "effect.valtan.", "Valtan" }
+            { "effect.valtan.", "Valtan" },
+            { "effect.kouku.", "KoukuSaydon" }
         };
         for (const auto& [Prefix, DomainId] : Domains)
         {
@@ -3231,6 +3237,7 @@ Client::CEffect_Tool::~CEffect_Tool()
 bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 {
 	m_bAllEffectsValtanBossSelected = true;
+	m_bAllEffectsKoukuBossSelected = false;
 	const bool_t bHadPendingExactRefresh =
 		m_bValtanGraphRefreshRequested;
 	const std::string PendingExactRevision =
@@ -3307,6 +3314,7 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 	}
 
 	m_bAllEffectsValtanBossSelected = true;
+	m_bAllEffectsKoukuBossSelected = false;
 	if (Request.strPatternId.empty() || Request.strStageId.empty() ||
 		Request.strCueOccurrenceId.empty() ||
 		Request.strEffectAssetId.empty())
@@ -7698,19 +7706,32 @@ void Client::CEffect_Tool::Render_CompositionDetail(
 		return;
 	}
 	const bool_t bEligible = Is_EffectWorldMarkCarrier(Element);
+	const bool_t bBackdropEligible = Is_EffectSceneBackdropCarrier(Element);
 	static const char* const s_CompositionLabels[] =
 	{
-		"Normal Translucency", "World Mark (before translucent FX)"
+		"Normal Translucency", "World Mark (before translucent FX)",
+		"Scene Backdrop (replace map / sky)"
 	};
-	int32_t iLayer = static_cast<int32_t>(Element.eCompositionLayer);
-	ImGui::BeginDisabled(!bEligible);
-	if (ImGui::Combo("Composition Layer", &iLayer, s_CompositionLabels,
-		IM_ARRAYSIZE(s_CompositionLabels)))
+	const int32_t iLayer = static_cast<int32_t>(Element.eCompositionLayer);
+	if (ImGui::BeginCombo("Composition Layer", s_CompositionLabels[iLayer]))
 	{
-		Element.eCompositionLayer =
-			static_cast<EFFECT_COMPOSITION_LAYER>(iLayer);
-		bChanged = true;
+		for (int32_t iCandidate = 0; iCandidate < IM_ARRAYSIZE(s_CompositionLabels); ++iCandidate)
+		{
+			const bool_t bCanSelect = iCandidate == 0 ||
+				(iCandidate == 1 ? bEligible : bBackdropEligible);
+			ImGui::BeginDisabled(!bCanSelect);
+			if (ImGui::Selectable(s_CompositionLabels[iCandidate], iLayer == iCandidate))
+			{
+				Element.eCompositionLayer = static_cast<EFFECT_COMPOSITION_LAYER>(iCandidate);
+				bChanged = true;
+			}
+			ImGui::EndDisabled();
+		}
+		ImGui::EndCombo();
 	}
+	if (bBackdropEligible)
+		ImGui::TextDisabled("Scene Backdrop replaces level geometry while this opaque mesh is active; characters and FX remain visible.");
+	ImGui::BeginDisabled(!bEligible);
 	if (ImGui::Button("Configure as Ground Mark"))
 	{
 		Element.eCompositionLayer = EFFECT_COMPOSITION_LAYER::WORLD_MARK;
@@ -7728,7 +7749,7 @@ void Client::CEffect_Tool::Render_CompositionDetail(
 	if (!bEligible)
 	{
 		ImGui::TextDisabled(
-			"World Mark supports non-Opaque Local Decal and direct-authored effect.standard Sprite/Sprite Particle carriers. Mesh, opaque, and source Sprite carriers stay on Normal.");
+			"World Mark supports non-Opaque Local Decal and direct-authored effect.standard Sprite/Sprite Particle carriers. Other carriers cannot use World Mark.");
 		return;
 	}
 	if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
@@ -11880,6 +11901,12 @@ bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
     if (!m_ActiveDocument || !m_pAuthoringSequencer)
     { m_strPreviewStatus = "Load the recovery Effect and its authoring workspace first."; return false; }
     const std::string assetId = m_ActiveDocument->strEffectAssetId;
+    if (Is_KoukuEffectAssetId(assetId))
+    {
+        const bool selected = m_pAuthoringSequencer->Select_KoukuEffect(assetId);
+        m_strPreviewStatus = m_pAuthoringSequencer->Status();
+        return selected;
+    }
     const auto binding = std::find_if(m_UnifiedCandidateBindings.begin(), m_UnifiedCandidateBindings.end(),
         [&assetId](const auto& row) { return row.strEffectAssetId == assetId; });
     if (binding == m_UnifiedCandidateBindings.end())
@@ -11980,7 +12007,8 @@ bool_t Client::CEffect_Tool::Try_PreviewElementTimeline(const std::string& strEl
     const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, preview.strEffectAssetId};
     // Reusing the current document must not reselect its animation: selection
     // stops the existing preview before the replacement can be staged.
-    if (key.strStableId.ends_with(".restore") && !m_pAuthoringSequencer->Uses_Resource(key) &&
+    if (key.strStableId.ends_with(".restore") &&
+        !m_pAuthoringSequencer->Uses_Resource(key) &&
         !Prepare_RecoveryPreviewTarget()) return false;
     const bool result = m_pAuthoringSequencer->Preview_Element(key, strElementId,
         element.strDisplayName, duration, focus);
@@ -18543,6 +18571,62 @@ void Client::CEffect_Tool::Render_ValtanProductFallbackSection(
 	RenderGroup("PRODUCT ROTATION PATTERNS / READ-ONLY", Rotation);
 }
 
+void Client::CEffect_Tool::Render_KoukuAuthoredEffectSection(
+	const std::string& strSearch)
+{
+	std::vector<std::string> EffectIds;
+	for (const std::string& strEffectAssetId : CEffectCatalog::Get_EffectAssetIds())
+	{
+		if (Is_KoukuEffectAssetId(strEffectAssetId) &&
+			CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId) &&
+			(strSearch.empty() || Contains_NoCase(strEffectAssetId, strSearch)))
+		{
+			EffectIds.push_back(strEffectAssetId);
+		}
+	}
+	std::ranges::sort(EffectIds);
+	ImGui::SetNextItemOpen(true, strSearch.empty() ?
+		ImGuiCond_FirstUseEver : ImGuiCond_Always);
+	const std::string strLabel = "KoukuSaydon Saved Effects (" +
+		std::to_string(EffectIds.size()) + ")";
+	if (!ImGui::TreeNodeEx(strLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+		return;
+
+	ImGui::TextWrapped(
+		"Open an Effect to edit its Elements or use Play All and Solo. Play the linked animation and Effect from Action Workbench > Saydon > Gate 1.");
+	if (EffectIds.empty())
+		ImGui::TextDisabled("No saved KoukuSaydon Effect matches the search.");
+	for (const std::string& strEffectAssetId : EffectIds)
+	{
+		ImGui::PushID(strEffectAssetId.c_str());
+		ImGui::SeparatorText(strEffectAssetId.c_str());
+		const bool_t bActive = m_ActiveDocument.has_value() &&
+			m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+			m_ActiveDocument->strEffectAssetId == strEffectAssetId;
+		std::string strEditableStatus;
+		const std::filesystem::path* pEditablePath =
+			Observe_DirectAuthoredEditablePath(strEffectAssetId, strEditableStatus);
+		ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
+		if (ImGui::SmallButton("Open Editor") && nullptr != pEditablePath)
+		{
+			std::string strExactStatus;
+			const std::filesystem::path* pExactPath =
+				Resolve_DirectAuthoredEditablePath(strEffectAssetId, strExactStatus);
+			if (nullptr == pExactPath)
+				m_strElementStatus = std::move(strExactStatus);
+			else
+				Try_LoadDocumentPath(*pExactPath, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+					strEffectAssetId, EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", bActive ?
+				"This Effect is already open in Current Effect." : strEditableStatus.c_str());
+		ImGui::PopID();
+	}
+	ImGui::TreePop();
+}
+
 void Client::CEffect_Tool::Render_AllEffectsWindow()
 {
 	ImGui::SetNextWindowPos(ImVec2(1110.f, 705.f), ImGuiCond_FirstUseEver);
@@ -18584,26 +18668,33 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		m_ValtanPatternProductUnlinkOperation.has_value();
 	ImGui::BeginDisabled(bValtanProductUnlinkPending);
 	const char_t* pAllEffectsOwnerLabel =
-		m_bAllEffectsValtanBossSelected ?
-			"Valtan" : Class_Label(m_eAllEffectsClass);
+		m_bAllEffectsKoukuBossSelected ? "KoukuSaydon" :
+			m_bAllEffectsValtanBossSelected ?
+				"Valtan" : Class_Label(m_eAllEffectsClass);
 	if (ImGui::BeginCombo("Character / Boss", pAllEffectsOwnerLabel))
 	{
 		for (const EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION& Owner :
 			EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS)
 		{
-			const bool_t bBossOwner =
-				EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
-					Owner.eKind;
-			if (bBossOwner)
+			const bool_t bValtanOwner =
+				EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS == Owner.eKind;
+			const bool_t bKoukuOwner =
+				EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::KOUKU_BOSS == Owner.eKind;
+			if (bValtanOwner)
 				ImGui::SeparatorText("Boss Patterns");
-			const bool_t bSelected = bBossOwner ?
+			const bool_t bSelected = bKoukuOwner ?
+				m_bAllEffectsKoukuBossSelected : bValtanOwner ?
 				m_bAllEffectsValtanBossSelected :
 				(!m_bAllEffectsValtanBossSelected &&
+					!m_bAllEffectsKoukuBossSelected &&
 					Owner.eCharacterClass == m_eAllEffectsClass);
 			if (ImGui::Selectable(Owner.strLabel.data(), bSelected))
 			{
-				m_bAllEffectsValtanBossSelected = bBossOwner;
-				if (!bBossOwner)
+				m_bAllEffectsValtanBossSelected = bValtanOwner;
+				m_bAllEffectsKoukuBossSelected = bKoukuOwner;
+				if (bKoukuOwner)
+					Select_AuthoringDomain("KoukuSaydon");
+				else if (!bValtanOwner)
 				{
 					m_eAllEffectsClass = Owner.eCharacterClass;
 					Select_AuthoringDomainForClass(Owner.eCharacterClass);
@@ -18613,7 +18704,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		ImGui::EndCombo();
 	}
 	ImGui::InputTextWithHint("##effect-search",
-		m_bAllEffectsValtanBossSelected ?
+		(m_bAllEffectsValtanBossSelected || m_bAllEffectsKoukuBossSelected) ?
 			"Search existing Effects, independent Effects or playable Patterns..." :
 			"Search skill, Product cue, or saved Effect ID...",
 		m_AllEffectsSearch.data(), m_AllEffectsSearch.size());
@@ -18642,7 +18733,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	ImGui::BeginChild("ElementFirstEffectTree",
 		ImVec2(0.f, -fStatusReserve), true);
 
-	if (m_bAllEffectsValtanBossSelected)
+	if (m_bAllEffectsKoukuBossSelected)
+	{
+		Render_KoukuAuthoredEffectSection(Search);
+	}
+	else if (m_bAllEffectsValtanBossSelected)
 	{
 		Render_ValtanPatternTreeSection(Search);
 	}
@@ -22964,8 +23059,13 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
     const EFFECT_DOCUMENT_SOURCE eSource,
     const std::string& strSelectionId,
     const bool_t bBypassUnsavedGuard,
-	const EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent)
+	EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent)
 {
+    // Kouku authored documents borrow the existing sequencer model only on
+    // Play/Solo. STANDALONE_EFFECT is the legacy static Valtan target contract.
+    if (Is_KoukuEffectAssetId(strSelectionId) &&
+        ePreviewIntent == EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT)
+        ePreviewIntent = EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT;
     Engine::CProfilerScope LoadProfile(
         CGameInstance::Get().Get_Profiler(), "EffectTool.DocumentLoad");
     if (EFFECT_DOCUMENT_SOURCE::IMPORTED_REFERENCE == eSource)
@@ -34095,10 +34195,11 @@ bool Client::CEffect_Tool::Resolve_AuthoringSourceAnchors(
     if (requests.empty()) { error.clear(); return true; }
     const bool needsBones = std::any_of(requests.begin(), requests.end(), [](const auto& request)
         { return request.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; });
-    if (useKouku && needsBones)
+    if (useKouku)
     {
-        error = "This V1 Effect requires source bone attachments. Select its character in Model View; the Kouku model-reference adapter currently supplies root attachments only.";
-        return false;
+        if (!m_pAuthoringSequencer)
+        { error = "The Kouku model-reference owner is unavailable."; return false; }
+        return m_pAuthoringSequencer->Resolve_KoukuSourceAnchors(*found->second, root, anchors, error);
     }
     if (!Resolve_ToolSourceAnchorWorlds(*found->second, nullptr, anchors, error)) return false;
     if (!needsBones) return true;

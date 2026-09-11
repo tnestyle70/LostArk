@@ -11,6 +11,18 @@
 
 NS_BEGIN(Client)
 
+struct SCENE_ENVIRONMENT_REGION final
+{
+    string strRegionId;
+    float3_t vBoundsMinimum{}, vBoundsMaximum{};
+    // Convex source brush planes: inside when dot(normal, position) + w <= 0.
+    vector<float4_t> Planes;
+    HEIGHT_FOG_SETTINGS Fog{};
+    float4_t vDirectionalColor{};
+    float4_t vAmbientColor{};
+    f32_t fBlendTimeIn = 1.f, fBlendTimeOut = 1.f;
+};
+
 struct SCENE_RENDERING_PROFILE final
 {
 	string strProfileId;
@@ -29,6 +41,7 @@ struct SCENE_RENDERING_PROFILE final
 	/* Fog belongs to the scene profile because it is a per Level mood value
 	   that the F1 tool already saves, publishes and reloads. */
 	HEIGHT_FOG_SETTINGS Fog{};
+    vector<SCENE_ENVIRONMENT_REGION> EnvironmentRegions;
 	// Empty cube ID explicitly disables scene reflection. RGBM6 decode remains
 	// in the selected source program; this profile owns only scene inputs.
 	string strEnvironmentCubeAssetId;
@@ -44,6 +57,7 @@ public:
 
 public:
 	bool_t Load_Runtime(string& strOutStatus);
+    bool_t Apply_CameraEnvironment(f32_t deltaSeconds, string& status);
 	bool_t Reload_Runtime(string& strOutStatus);
 	bool_t Has_Profile(string_view strProfileId) const;
 	std::vector<std::string> Collect_ProfileIds() const
@@ -126,6 +140,11 @@ private:
 	CATALOG m_Catalog;
 	vector<string> m_ProtectedProfileIds;
 	string m_strActiveProfileId;
+    string m_strAppliedEnvironmentRegion;
+    HEIGHT_FOG_SETTINGS m_EnvironmentFogFrom{};
+    LIGHT_DESC m_EnvironmentLightFrom{};
+    f32_t m_fEnvironmentElapsed = 0.f, m_fEnvironmentDuration = 0.f;
+    f32_t m_fEnvironmentExitDuration = 1.f;
 	string m_strLevelQualityProfileId;
 	RENDER_QUALITY_SETTINGS m_EffectiveQuality{};
 };

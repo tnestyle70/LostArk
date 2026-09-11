@@ -682,8 +682,20 @@ bool_t CMapPlacementRuntime::Restore_DebugSourceLevelVisibility(
 bool_t CMapPlacementRuntime::Is_BatchEligible(
 	const MAP_ASSET_ENTRY& asset)
 {
-	return MAP_ASSET_RENDER_MODE::DEFERRED ==
-		asset.renderProfile.renderMode;
+    // Native character/prop programs submit per-material render rows to the
+    // shared actor light pass. The map instance shader has no such row inputs.
+    return MAP_ASSET_RENDER_MODE::DEFERRED == asset.renderProfile.renderMode &&
+        std::none_of(asset.materialOverrides.begin(), asset.materialOverrides.end(),
+            [&asset](const Engine::MODEL_MATERIAL_OVERRIDE& material) {
+                const auto& surface = material.surface;
+                const bool_t changedMode = surface.renderMode != Engine::MODEL_SURFACE_RENDER_MODE::INHERIT &&
+                    surface.renderMode != Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED;
+                const bool_t changedCull = surface.cullMode != Engine::MODEL_SURFACE_CULL_MODE::INHERIT &&
+                    ((surface.cullMode == Engine::MODEL_SURFACE_CULL_MODE::CULL_BACK && asset.renderProfile.cullMode != MAP_ASSET_CULL_MODE::CULL_BACK) ||
+                     (surface.cullMode == Engine::MODEL_SURFACE_CULL_MODE::CULL_FRONT && asset.renderProfile.cullMode != MAP_ASSET_CULL_MODE::CULL_FRONT) ||
+                     (surface.cullMode == Engine::MODEL_SURFACE_CULL_MODE::TWO_SIDED && asset.renderProfile.cullMode != MAP_ASSET_CULL_MODE::TWO_SIDED));
+                return surface.family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER || changedMode || changedCull;
+            });
 }
 
 HRESULT CMapPlacementRuntime::Build_StaticInstance(

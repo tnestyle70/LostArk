@@ -21,7 +21,9 @@ public:
 	const MODEL_SURFACE_PARAMETERS& Get_Surface() const { return m_Surface; }
 	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
 		const char_t* pConstantName, aiTextureType eType);
+	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader);
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> pShader);
+    HRESULT Bind_StaticShadow(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader);
     static void Reset_SourceCharacterFrame(float presentationTime = 0.f);
     static uint32_t Get_SourceCharacterFrameCount();
@@ -84,6 +86,8 @@ private:
 	string										m_strName;
 	uint64_t									m_iNameHash = {};
 
+    // The cache holds weak references; material lifetime owns GPU texture data.
+    vector<shared_ptr<ComPtr<ID3D11ShaderResourceView>>> m_SharedTextureViews;
 	vector<ComPtr<ID3D11ShaderResourceView>>	m_Textures[AI_TEXTURE_TYPE_MAX];
 	/* Sparse: only the slots the creation screen actually repainted. */
 	unordered_map<uint32_t, ComPtr<ID3D11ShaderResourceView>> m_TextureOverrides;
@@ -110,9 +114,16 @@ private:
     ComPtr<ID3D11ShaderResourceView> m_SurfaceOverlayNormal;
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceDetailNormal;
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceORM;
+    ComPtr<ID3D11ShaderResourceView> m_SourceFoliageMask;
+    ComPtr<ID3D11ShaderResourceView> m_SourceSpecialMask;
+    ComPtr<ID3D11ShaderResourceView> m_SourceBlendDiffuseG;
+    ComPtr<ID3D11ShaderResourceView> m_SourceBlendDiffuseB;
+    ComPtr<ID3D11ShaderResourceView> m_SourceBlendNormalG;
+    ComPtr<ID3D11ShaderResourceView> m_SourceBlendNormalB;
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceEmissive;
     ComPtr<ID3D11ShaderResourceView> m_BakedAverage;
     ComPtr<ID3D11ShaderResourceView> m_BakedDirectional;
+    ComPtr<ID3D11ShaderResourceView> m_StaticShadow;
     ComPtr<ID3D11ShaderResourceView> m_EnvironmentCube;
     ComPtr<ID3D11ShaderResourceView> m_EnvironmentBRDF;
 

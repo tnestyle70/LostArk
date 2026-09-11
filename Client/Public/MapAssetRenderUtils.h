@@ -85,7 +85,8 @@ public:
 		f32_t elapsedTime,
 		const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr,
 		const std::string& diagnosticAssetId = {},
-        const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting = nullptr);
+        const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting = nullptr,
+        const float4_t* worldCullSphere = nullptr);
 
 	static std::vector<MAP_SURFACE_BINDING_ROW> Get_RecentSurfaceBindings();
 };

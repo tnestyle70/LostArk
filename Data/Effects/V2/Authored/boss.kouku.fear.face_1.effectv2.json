@@ -297,7 +297,8 @@
       ],
       "overlayEnterEnd": 0.0,
       "overlayExitStart": 1.0,
-      "overlayRotationDegrees": 0.0
+      "overlayRotationDegrees": 0.0,
+      "displaySpace": true
     },
     "scaleInEnd": 0.15,
     "scaleOutStart": 1

@@ -5,9 +5,3421 @@
   "provenance": "PROJECT_AUTHORED",
   "nextLightOrdinal": 5,
   "lights": [
-    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.1", "displayName": "월드_1관문스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": true, "position": [-0.170000002,35.4700012,943.030029], "rotationDegrees": [90,0,0], "rangeMeters": 59.7999992, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 22.2600002, "color": [1,0.458823532,0.164705887,1], "brightness": 2.95000005},
-    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.2", "displayName": "2관문_촛불1", "kind": "POINT", "groupId": "default", "enabled": true, "position": [17.8700008,21.8600006,330.869995], "rotationDegrees": [0,0,0], "rangeMeters": 22, "falloffExponent": 2, "innerConeDegrees": 0, "outerConeDegrees": 0, "color": [1,0.490196079,0.352941185,1], "brightness": 8.5},
-    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.3", "displayName": "2관문_촛불2", "kind": "POINT", "groupId": "default", "enabled": true, "position": [-7.38000011,21.8600006,306.269989], "rotationDegrees": [0,0,0], "rangeMeters": 22, "falloffExponent": 2, "innerConeDegrees": 0, "outerConeDegrees": 0, "color": [1,0.490196079,0.352941185,1], "brightness": 8.5},
-    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.4", "displayName": "2관문_포커판스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": true, "position": [6.57000017,28.8600006,320.220001], "rotationDegrees": [90,0,0], "rangeMeters": 63.5, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 44.2547035, "color": [1,1,1,1], "brightness": 3}
+    {
+      "lightId": "light.LV_LUT_MIDNIGHTC_ED.1",
+      "displayName": "월드_1관문스포트라이트",
+      "kind": "SPOT",
+      "groupId": "default",
+      "enabled": true,
+      "position": [
+        -0.170000002,
+        35.4700012,
+        943.030029
+      ],
+      "rotationDegrees": [
+        90,
+        0,
+        0
+      ],
+      "rangeMeters": 59.7999992,
+      "falloffExponent": 2,
+      "innerConeDegrees": 12,
+      "outerConeDegrees": 22.2600002,
+      "color": [
+        1,
+        0.458823532,
+        0.164705887,
+        1
+      ],
+      "brightness": 2.95000005
+    },
+    {
+      "lightId": "light.LV_LUT_MIDNIGHTC_ED.2",
+      "displayName": "2관문_촛불1",
+      "kind": "POINT",
+      "groupId": "default",
+      "enabled": true,
+      "position": [
+        17.8700008,
+        21.8600006,
+        330.869995
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 22,
+      "falloffExponent": 2,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        1,
+        0.490196079,
+        0.352941185,
+        1
+      ],
+      "brightness": 8.5
+    },
+    {
+      "lightId": "light.LV_LUT_MIDNIGHTC_ED.3",
+      "displayName": "2관문_촛불2",
+      "kind": "POINT",
+      "groupId": "default",
+      "enabled": true,
+      "position": [
+        -7.38000011,
+        21.8600006,
+        306.269989
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 22,
+      "falloffExponent": 2,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        1,
+        0.490196079,
+        0.352941185,
+        1
+      ],
+      "brightness": 8.5
+    },
+    {
+      "lightId": "light.LV_LUT_MIDNIGHTC_ED.4",
+      "displayName": "2관문_포커판스포트라이트",
+      "kind": "SPOT",
+      "groupId": "default",
+      "enabled": true,
+      "position": [
+        6.57000017,
+        28.8600006,
+        320.220001
+      ],
+      "rotationDegrees": [
+        90,
+        0,
+        0
+      ],
+      "rangeMeters": 63.5,
+      "falloffExponent": 2,
+      "innerConeDegrees": 12,
+      "outerConeDegrees": 44.2547035,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "brightness": 3
+    },
+    {
+      "lightId": "light.kouku.source.ps.265",
+      "displayName": "원본 PS pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -13.98852294921875,
+        5.921143798828125,
+        740.4409375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7058823529411765,
+        0.6196078431372549,
+        1.0
+      ],
+      "brightness": 0.800000011920929,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.ps.266",
+      "displayName": "원본 PS pointlight_12_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1151.4322656250001,
+        -8.77892333984375,
+        -920.36703125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 3.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.6705882352941176,
+        0.43529411764705883,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.ps.267",
+      "displayName": "원본 PS pointlight_14_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -2.0885235595703127,
+        8.371143798828125,
+        731.5609375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 20.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7058823529411765,
+        0.6196078431372549,
+        1.0
+      ],
+      "brightness": 1.399999976158142,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.ps.268",
+      "displayName": "원본 PS pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -12.37666259765625,
+        5.921143798828125,
+        724.14515625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7058823529411765,
+        0.6196078431372549,
+        1.0
+      ],
+      "brightness": 0.800000011920929,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.ps.269",
+      "displayName": "원본 PS pointlight_3_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1160.0316406250001,
+        -10.44892333984375,
+        -927.7570312500001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 4.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.6705882352941176,
+        0.43529411764705883,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.42",
+      "displayName": "원본 SL01 dominantpointlightcomponent_0",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        26.508432617187502,
+        7.9078912353515625,
+        -72.74767578125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 14.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7137254901960784,
+        0.5764705882352941,
+        1.0
+      ],
+      "brightness": 10.0
+    },
+    {
+      "lightId": "light.kouku.source.sl01.46",
+      "displayName": "원본 SL01 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -7.924637451171876,
+        8.29568603515625,
+        -19.50924072265625
+      ],
+      "rotationDegrees": [
+        16.4300537109375,
+        125.8428955078125,
+        0.0
+      ],
+      "rangeMeters": 40.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 15.0,
+      "outerConeDegrees": 24.0,
+      "color": [
+        1.0,
+        0.8196078431372549,
+        0.6509803921568628,
+        1.0
+      ],
+      "brightness": 3.0
+    },
+    {
+      "lightId": "light.kouku.source.sl01.47",
+      "displayName": "원본 SL01 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -12.980606689453126,
+        10.531064453125,
+        -70.97162109375
+      ],
+      "rotationDegrees": [
+        27.685546875,
+        64.2041015625,
+        0.0
+      ],
+      "rangeMeters": 34.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 14.0,
+      "outerConeDegrees": 26.0,
+      "color": [
+        0.0,
+        0.43529411764705883,
+        0.8980392156862745,
+        1.0
+      ],
+      "brightness": 30.0
+    },
+    {
+      "lightId": "light.kouku.source.sl01.48",
+      "displayName": "원본 SL01 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        43.04509765625,
+        10.16321044921875,
+        -83.717119140625
+      ],
+      "rotationDegrees": [
+        24.279785156250004,
+        126.14501953125003,
+        0.0
+      ],
+      "rangeMeters": 95.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 60.0,
+      "color": [
+        1.0,
+        0.6039215686274509,
+        0.42745098039215684,
+        1.0
+      ],
+      "brightness": 4.0
+    },
+    {
+      "lightId": "light.kouku.source.sl01.267",
+      "displayName": "원본 SL01 pointlightcomponent_74",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        62.086416015625,
+        11.453323974609376,
+        -107.11642578125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.3803921568627451,
+        0.0,
+        1.0
+      ],
+      "brightness": 10.0
+    },
+    {
+      "lightId": "light.kouku.source.sl01.268",
+      "displayName": "원본 SL01 pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        8.716298217773438,
+        3.405944519042969,
+        -66.5174853515625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 4.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.5803921568627451,
+        0.27450980392156865,
+        1.0
+      ],
+      "brightness": 10.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.269",
+      "displayName": "원본 SL01 pointlight_10_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -4.323587036132813,
+        5.695944213867188,
+        -56.6072216796875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 18.0,
+      "falloffExponent": 8.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.9294117647058824,
+        0.8941176470588236,
+        1.0
+      ],
+      "brightness": 0.4000000059604645,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.270",
+      "displayName": "원본 SL01 pointlight_2_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        18.3267431640625,
+        5.695944213867188,
+        -61.88630859375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 16.0,
+      "falloffExponent": 8.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8117647058823529,
+        0.7019607843137254,
+        1.0
+      ],
+      "brightness": 1.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.271",
+      "displayName": "원본 SL01 pointlight_3_lc",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": false,
+      "position": [
+        -3.6486138916015625,
+        5.695944213867188,
+        -32.70847412109375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 16.0,
+      "falloffExponent": 8.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.9294117647058824,
+        0.8941176470588236,
+        1.0
+      ],
+      "brightness": 0.4000000059604645
+    },
+    {
+      "lightId": "light.kouku.source.sl01.272",
+      "displayName": "원본 SL01 pointlight_4_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -0.606016616821289,
+        10.35948974609375,
+        -19.563670654296875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7529411764705882,
+        0.6470588235294118,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.273",
+      "displayName": "원본 SL01 pointlight_5_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -3.813845520019531,
+        4.4459445190429685,
+        -63.558193359375004
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 4.8,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.5803921568627451,
+        0.27450980392156865,
+        1.0
+      ],
+      "brightness": 16.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.274",
+      "displayName": "원본 SL01 pointlight_6_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        4.289892272949219,
+        2.2859446716308596,
+        -44.6498974609375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.5803921568627451,
+        0.27450980392156865,
+        1.0
+      ],
+      "brightness": 10.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.275",
+      "displayName": "원본 SL01 pointlight_7_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        43.730234375,
+        5.695875244140625,
+        -78.38602539062501
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 14.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7529411764705882,
+        0.5686274509803921,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.276",
+      "displayName": "원본 SL01 pointlight_8_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        0.30674392700195313,
+        2.2859446716308596,
+        -46.196308593750004
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 8.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.6666666666666666,
+        0.4823529411764706,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.277",
+      "displayName": "원본 SL01 pointlight_9_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1.1532559967041016,
+        5.695944213867188,
+        -43.67630859375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 18.0,
+      "falloffExponent": 8.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.9294117647058824,
+        0.8941176470588236,
+        1.0
+      ],
+      "brightness": 0.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.409",
+      "displayName": "원본 SL01 spotlight_0_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -4.259302368164063,
+        19.152926025390624,
+        -20.79689453125
+      ],
+      "rotationDegrees": [
+        90.0,
+        180.0,
+        0.0
+      ],
+      "rangeMeters": 25.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 25.0,
+      "color": [
+        1.0,
+        0.6509803921568628,
+        0.4666666666666667,
+        1.0
+      ],
+      "brightness": 4.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl01.410",
+      "displayName": "원본 SL01 spotlight_1_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        3.6766925048828125,
+        15.202984619140626,
+        -19.332922363281252
+      ],
+      "rotationDegrees": [
+        61.34765910582499,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 22.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 12.0,
+      "outerConeDegrees": 22.0,
+      "color": [
+        1.0,
+        0.7176470588235294,
+        0.5568627450980392,
+        1.0
+      ],
+      "brightness": 4.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.27",
+      "displayName": "원본 SL02 dominantpointlightcomponent_0",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1419.70015625,
+        6.5893212890625,
+        -1213.136953125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 12.000989990234375,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 5.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.32",
+      "displayName": "원본 SL02 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1139.89046875,
+        7.241474609375,
+        -961.43546875
+      ],
+      "rotationDegrees": [
+        26.015625000000004,
+        -67.63183593749994,
+        0.0
+      ],
+      "rangeMeters": 120.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 60.0,
+      "color": [
+        0.6627450980392157,
+        0.6901960784313725,
+        0.7254901960784313,
+        1.0
+      ],
+      "brightness": 2.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.33",
+      "displayName": "원본 SL02 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1440.6359375,
+        34.72830078125,
+        -1194.89390625
+      ],
+      "rotationDegrees": [
+        78.75,
+        135.0,
+        0.0
+      ],
+      "rangeMeters": 75.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 20.0,
+      "outerConeDegrees": 35.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.34",
+      "displayName": "원본 SL02 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1686.54890625,
+        0.7034225463867188,
+        -1406.72265625
+      ],
+      "rotationDegrees": [
+        21.4947509765625,
+        125.96374511718751,
+        0.0
+      ],
+      "rangeMeters": 150.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 55.0,
+      "color": [
+        0.9019607843137255,
+        0.7058823529411765,
+        1.0,
+        1.0
+      ],
+      "brightness": 1.2000000476837158
+    },
+    {
+      "lightId": "light.kouku.source.sl02.35",
+      "displayName": "원본 SL02 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1949.17875,
+        28.8440283203125,
+        -1633.15375
+      ],
+      "rotationDegrees": [
+        16.875000000000004,
+        135.0,
+        0.0
+      ],
+      "rangeMeters": 150.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 20.0,
+      "outerConeDegrees": 30.0,
+      "color": [
+        1.0,
+        0.8117647058823529,
+        0.5490196078431373,
+        1.0
+      ],
+      "brightness": 1.2000000476837158
+    },
+    {
+      "lightId": "light.kouku.source.sl02.726",
+      "displayName": "원본 SL02 pointlightcomponent_1062",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1896.78046875,
+        -2.025340576171875,
+        -1653.7809375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 16.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8352941176470589,
+        0.6941176470588235,
+        1.0
+      ],
+      "brightness": 30.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.727",
+      "displayName": "원본 SL02 pointlightcomponent_1064",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": false,
+      "position": [
+        -1923.6642187500001,
+        -0.5427197265625,
+        -1682.13375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 22.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8549019607843137,
+        0.6980392156862745,
+        1.0
+      ],
+      "brightness": 1.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.728",
+      "displayName": "원본 SL02 pointlightcomponent_2697",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": false,
+      "position": [
+        -1620.20390625,
+        -30.0506787109375,
+        -1448.48
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8,
+        0.38823529411764707,
+        1.0
+      ],
+      "brightness": 5.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.729",
+      "displayName": "원본 SL02 pointlightcomponent_783",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1400.97171875,
+        7.64423828125,
+        -1181.88671875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 13.863284912109375,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 7.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.730",
+      "displayName": "원본 SL02 pointlightcomponent_784",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1452.70078125,
+        7.6442333984375,
+        -1233.61640625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 13.863284912109375,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 7.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.731",
+      "displayName": "원본 SL02 pointlightcomponent_132",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1881.07640625,
+        12.509385986328125,
+        -1698.94515625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 50.8825439453125,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8352941176470589,
+        0.6941176470588235,
+        1.0
+      ],
+      "brightness": 2.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.732",
+      "displayName": "원본 SL02 pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1402.723125,
+        -1.0720062255859375,
+        -1177.44734375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 11.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.733",
+      "displayName": "원본 SL02 pointlight_10_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1680.72875,
+        -74.54267578125,
+        -1485.4878125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 70.6086865234375,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.0,
+        0.43137254901960786,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.734",
+      "displayName": "원본 SL02 pointlight_11_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1646.97375,
+        63.126279296875005,
+        -1489.023125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 100.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.0,
+        0.43137254901960786,
+        1.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.735",
+      "displayName": "원본 SL02 pointlight_12_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1146.92734375,
+        -9.37892333984375,
+        -916.32703125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.6705882352941176,
+        0.43529411764705883,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.736",
+      "displayName": "원본 SL02 pointlight_13_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1401.44265625,
+        3.0545086669921875,
+        -1199.1215625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.737",
+      "displayName": "원본 SL02 pointlight_14_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1618.07609375,
+        -57.540844726562504,
+        -1378.0021875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 31.2990380859375,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8,
+        0.38823529411764707,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.738",
+      "displayName": "원본 SL02 pointlight_15_lc",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1637.9678125,
+        -10.6723583984375,
+        -1440.2490625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.5294117647058824,
+        0.6666666666666666,
+        1.0,
+        1.0
+      ],
+      "brightness": 10.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.739",
+      "displayName": "원본 SL02 pointlight_16_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1431.96796875,
+        17.1865380859375,
+        -1241.18828125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.740",
+      "displayName": "원본 SL02 pointlight_17_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1432.58453125,
+        3.054500732421875,
+        -1230.26359375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.741",
+      "displayName": "원본 SL02 pointlight_18_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1392.9746875,
+        15.19477783203125,
+        -1202.913125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.742",
+      "displayName": "원본 SL02 pointlight_19_lc",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1658.8303125,
+        -10.6723583984375,
+        -1446.7934375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.5294117647058824,
+        0.6666666666666666,
+        1.0,
+        1.0
+      ],
+      "brightness": 10.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.743",
+      "displayName": "원본 SL02 pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1413.8203125,
+        13.992186279296876,
+        -1219.28859375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 20.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.744",
+      "displayName": "원본 SL02 pointlight_21_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1199.825390625,
+        -9.134217529296874,
+        -958.290546875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8352941176470589,
+        0.4588235294117647,
+        1.0
+      ],
+      "brightness": 0.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.745",
+      "displayName": "원본 SL02 pointlight_22_lc",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1643.13015625,
+        -12.1323583984375,
+        -1400.24
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.6235294117647059,
+        0.7254901960784313,
+        1.0,
+        1.0
+      ],
+      "brightness": 15.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.746",
+      "displayName": "원본 SL02 pointlight_24_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1459.31890625,
+        -1.7221267700195313,
+        -1229.44953125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 11.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.747",
+      "displayName": "원본 SL02 pointlight_25_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1192.377421875,
+        -9.5781591796875,
+        -949.892265625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.6705882352941176,
+        0.43529411764705883,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.748",
+      "displayName": "원본 SL02 pointlight_26_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1204.1290625,
+        -10.328160400390626,
+        -970.1821875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.6705882352941176,
+        0.43529411764705883,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.749",
+      "displayName": "원본 SL02 pointlight_27_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1150.987109375,
+        -8.58892333984375,
+        -915.49703125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 9.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7372549019607844,
+        0.5803921568627451,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.750",
+      "displayName": "원본 SL02 pointlight_28_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1164.91171875,
+        -8.58892333984375,
+        -921.85328125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7372549019607844,
+        0.5803921568627451,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.751",
+      "displayName": "원본 SL02 pointlight_29_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1160.6217187500001,
+        -8.58892333984375,
+        -918.011875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7372549019607844,
+        0.5803921568627451,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.752",
+      "displayName": "원본 SL02 pointlight_2_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1901.20125,
+        -6.962626342773437,
+        -1649.9171875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8352941176470589,
+        0.6941176470588235,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.753",
+      "displayName": "원본 SL02 pointlight_30_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1208.15734375,
+        -8.82754638671875,
+        -965.54671875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7372549019607844,
+        0.5803921568627451,
+        1.0
+      ],
+      "brightness": 0.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.754",
+      "displayName": "원본 SL02 pointlight_33_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1596.4109375,
+        -3.3340020751953126,
+        -1438.46
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 104.722529296875,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.0,
+        0.43137254901960786,
+        1.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.755",
+      "displayName": "원본 SL02 pointlight_5_lc",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1656.8325,
+        -12.1323583984375,
+        -1412.3921875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.6235294117647059,
+        0.7254901960784313,
+        1.0,
+        1.0
+      ],
+      "brightness": 15.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.756",
+      "displayName": "원본 SL02 pointlight_6_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1615.48234375,
+        -12.180889892578126,
+        -1451.5215625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 3.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.9803921568627451,
+        0.6862745098039216,
+        1.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.757",
+      "displayName": "원본 SL02 pointlight_7_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1587.7618750000001,
+        -37.12192138671875,
+        -1324.5740625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 47.2260009765625,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.0,
+        0.43137254901960786,
+        1.0,
+        1.0
+      ],
+      "brightness": 0.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.758",
+      "displayName": "원본 SL02 pointlight_8_lc",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1635.62765625,
+        -12.1323583984375,
+        -1412.7921875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.5294117647058824,
+        0.6666666666666666,
+        1.0,
+        1.0
+      ],
+      "brightness": 15.0
+    },
+    {
+      "lightId": "light.kouku.source.sl02.759",
+      "displayName": "원본 SL02 pointlight_9_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1583.3415625,
+        -103.117265625,
+        -1370.6239062500001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 47.2260009765625,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.0,
+        0.43137254901960786,
+        1.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.1769",
+      "displayName": "원본 SL02 spotlight_0_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1916.24328125,
+        7.5566516113281255,
+        -1690.676875
+      ],
+      "rotationDegrees": [
+        59.34814255619487,
+        143.9208981293326,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 12.0,
+      "outerConeDegrees": 14.0,
+      "color": [
+        1.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "brightness": 20.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.1770",
+      "displayName": "원본 SL02 spotlight_1_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1155.853125,
+        38.77830078125,
+        -950.35015625
+      ],
+      "rotationDegrees": [
+        16.87498146765888,
+        135.00000201879763,
+        0.0
+      ],
+      "rangeMeters": 75.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 40.0,
+      "outerConeDegrees": 40.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.1771",
+      "displayName": "원본 SL02 spotlight_2_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1417.5959375,
+        34.72830078125,
+        -1215.3739062500001
+      ],
+      "rotationDegrees": [
+        78.74999917735217,
+        134.99999752439143,
+        0.0
+      ],
+      "rangeMeters": 75.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 20.0,
+      "outerConeDegrees": 25.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.1772",
+      "displayName": "원본 SL02 spotlight_4_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1918.71296875,
+        7.5566516113281255,
+        -1689.3246875
+      ],
+      "rotationDegrees": [
+        61.32567756159632,
+        148.97460680297388,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 12.0,
+      "outerConeDegrees": 14.0,
+      "color": [
+        0.0,
+        0.5882352941176471,
+        1.0,
+        1.0
+      ],
+      "brightness": 40.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl02.1773",
+      "displayName": "원본 SL02 spotlight_5_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -1918.2450000000001,
+        7.5566516113281255,
+        -1692.1984375
+      ],
+      "rotationDegrees": [
+        58.53515553542071,
+        148.7329135662003,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 12.0,
+      "outerConeDegrees": 14.0,
+      "color": [
+        0.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "brightness": 20.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl03.2",
+      "displayName": "원본 SL03 dominantspotlightcomponent_0",
+      "kind": "SPOT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        36.92901611328125,
+        43.6422119140625,
+        313.9748828125
+      ],
+      "rotationDegrees": [
+        50.80078125,
+        -82.02392578125001,
+        0.0
+      ],
+      "rangeMeters": 60.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 25.0,
+      "color": [
+        1.0,
+        0.9490196078431372,
+        0.9176470588235294,
+        1.0
+      ],
+      "brightness": 17.0
+    },
+    {
+      "lightId": "light.kouku.source.sl03.222",
+      "displayName": "원본 SL03 pointlightcomponent_1427",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -1.05294189453125,
+        -57.209965820312505,
+        1384.1468750000001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 60.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.41568627450980394,
+        0.6039215686274509,
+        1.0,
+        1.0
+      ],
+      "brightness": 3.0
+    },
+    {
+      "lightId": "light.kouku.source.sl03.223",
+      "displayName": "원본 SL03 pointlightcomponent_2946",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": false,
+      "position": [
+        0.42386535644531254,
+        9.11697998046875,
+        1351.98359375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 20.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.5333333333333333,
+        0.5333333333333333,
+        1.0
+      ],
+      "brightness": 1.0
+    },
+    {
+      "lightId": "light.kouku.source.sl03.224",
+      "displayName": "원본 SL03 pointlightcomponent_1429",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        40.95298828125,
+        -45.8799658203125,
+        1320.69328125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 65.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.20392156862745098,
+        0.09411764705882353,
+        1.0
+      ],
+      "brightness": 2.0
+    },
+    {
+      "lightId": "light.kouku.source.sl03.225",
+      "displayName": "원본 SL03 pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -9.374105224609375,
+        15.762823486328125,
+        308.71197265625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.5490196078431373,
+        0.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl03.226",
+      "displayName": "원본 SL03 pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        18.772833251953127,
+        15.762823486328125,
+        336.908515625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.5490196078431373,
+        0.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.105",
+      "displayName": "원본 SL04 pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -17.852825927734376,
+        29.339599609375,
+        755.8640625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7254901960784313,
+        0.5176470588235295,
+        1.0
+      ],
+      "brightness": 1.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.106",
+      "displayName": "원본 SL04 pointlight_13_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        11.911474609375,
+        7.241126708984375,
+        725.44265625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.24,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4235294117647059,
+        0.8352941176470589,
+        0.6862745098039216,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.107",
+      "displayName": "원본 SL04 pointlight_14_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        1.201475830078125,
+        8.371143798828125,
+        743.4209375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 20.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7058823529411765,
+        0.6196078431372549,
+        1.0
+      ],
+      "brightness": 1.399999976158142,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.108",
+      "displayName": "원본 SL04 pointlight_15_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        7.26240966796875,
+        18.088846435546877,
+        727.177421875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.109",
+      "displayName": "원본 SL04 pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -22.8848046875,
+        29.339599609375,
+        749.189453125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 11.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7254901960784313,
+        0.5176470588235295,
+        1.0
+      ],
+      "brightness": 3.799999952316284,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.110",
+      "displayName": "원본 SL04 pointlight_4_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -12.55875,
+        29.339599609375,
+        760.859765625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 11.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.7254901960784313,
+        0.5176470588235295,
+        1.0
+      ],
+      "brightness": 3.799999952316284,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.113",
+      "displayName": "원본 SL04 spotlight_0_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        11.54721923828125,
+        12.85819091796875,
+        728.475078125
+      ],
+      "rotationDegrees": [
+        59.348144939941946,
+        138.295904364585,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 18.0,
+      "color": [
+        1.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "brightness": 30.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.114",
+      "displayName": "원본 SL04 spotlight_1_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        8.95708740234375,
+        12.85819091796875,
+        729.57921875
+      ],
+      "rotationDegrees": [
+        61.32568022885266,
+        143.34961671964066,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 18.0,
+      "color": [
+        0.0,
+        0.5882352941176471,
+        1.0,
+        1.0
+      ],
+      "brightness": 50.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.115",
+      "displayName": "원본 SL04 spotlight_2_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        15.411064453125,
+        14.690528564453125,
+        730.213828125
+      ],
+      "rotationDegrees": [
+        71.56493997054652,
+        18.566895902641367,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 1.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 35.0,
+      "color": [
+        1.0,
+        0.6666666666666666,
+        0.6039215686274509,
+        1.0
+      ],
+      "brightness": 1.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.116",
+      "displayName": "원본 SL04 spotlight_4_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -2.217023620605469,
+        2.1905172729492186,
+        750.025
+      ],
+      "rotationDegrees": [
+        -21.33545094389514,
+        65.12697202142033,
+        0.0
+      ],
+      "rangeMeters": 30.0,
+      "falloffExponent": 1.0,
+      "innerConeDegrees": 20.0,
+      "outerConeDegrees": 30.0,
+      "color": [
+        1.0,
+        0.4627450980392157,
+        0.30196078431372547,
+        1.0
+      ],
+      "brightness": 6.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl04.117",
+      "displayName": "원본 SL04 spotlight_5_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        9.744276123046875,
+        12.85819091796875,
+        726.769140625
+      ],
+      "rotationDegrees": [
+        58.53515680571247,
+        143.1079123468075,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 18.0,
+      "color": [
+        0.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "brightness": 30.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.1",
+      "displayName": "원본 SL05 dominantpointlightcomponent_0",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -2.44140625e-06,
+        6.747032470703125,
+        1146.88
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "brightness": 4.0
+    },
+    {
+      "lightId": "light.kouku.source.sl05.151",
+      "displayName": "원본 SL05 pointlightcomponent_2974",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        -11.012581787109376,
+        4.950734558105469,
+        932.000859375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 0.0
+    },
+    {
+      "lightId": "light.kouku.source.sl05.152",
+      "displayName": "원본 SL05 pointlightcomponent_7042",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        2.8103271484375,
+        4.101452026367188,
+        930.176484375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 0.0
+    },
+    {
+      "lightId": "light.kouku.source.sl05.153",
+      "displayName": "원본 SL05 pointlightcomponent_7042",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        9.703319091796875,
+        4.101452026367188,
+        942.30421875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 0.0
+    },
+    {
+      "lightId": "light.kouku.source.sl05.154",
+      "displayName": "원본 SL05 pointlightcomponent_2974",
+      "kind": "POINT",
+      "groupId": "source_direct",
+      "enabled": true,
+      "position": [
+        11.0674169921875,
+        4.950734558105469,
+        953.6808593750001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 0.0
+    },
+    {
+      "lightId": "light.kouku.source.sl05.155",
+      "displayName": "원본 SL05 pointlight_0_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -20.97344970703125,
+        31.0186083984375,
+        956.225625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.156",
+      "displayName": "원본 SL05 pointlight_10_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -9.903450927734376,
+        31.0186083984375,
+        965.305625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.157",
+      "displayName": "원본 SL05 pointlight_11_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        3.513036193847656,
+        0.6,
+        926.40921875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.158",
+      "displayName": "원본 SL05 pointlight_12_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -23.06344970703125,
+        31.0186083984375,
+        951.215625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.159",
+      "displayName": "원본 SL05 pointlight_13_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        14.071705322265625,
+        0.6,
+        938.7478125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.160",
+      "displayName": "원본 SL05 pointlight_14_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        14.7562939453125,
+        0.6,
+        946.94765625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.161",
+      "displayName": "원본 SL05 pointlight_16_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -13.523450927734375,
+        28.3086083984375,
+        964.025625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 8.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.162",
+      "displayName": "원본 SL05 pointlight_17_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -21.68969970703125,
+        28.3086083984375,
+        956.0578125000001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 8.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.163",
+      "displayName": "원본 SL05 pointlight_18_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -17.873450927734375,
+        28.3086083984375,
+        959.725625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.8,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 4.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.164",
+      "displayName": "원본 SL05 pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        17.086787109375,
+        16.398046875,
+        936.486484375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.165",
+      "displayName": "원본 SL05 pointlight_20_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        8.989456787109376,
+        2.6896737670898436,
+        933.0131250000001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.166",
+      "displayName": "원본 SL05 pointlight_25_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -16.270963134765626,
+        1.123812255859375,
+        926.345703125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8666666666666667,
+        0.6941176470588235,
+        1.0
+      ],
+      "brightness": 0.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.167",
+      "displayName": "원본 SL05 pointlight_26_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        15.5912646484375,
+        1.123812255859375,
+        958.2073437500001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 10.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8666666666666667,
+        0.6941176470588235,
+        1.0
+      ],
+      "brightness": 0.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.168",
+      "displayName": "원본 SL05 pointlight_27_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -9.055908813476563,
+        2.6896737670898436,
+        951.05828125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.169",
+      "displayName": "원본 SL05 pointlight_28_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        2.4339894104003905,
+        2.6896737670898436,
+        954.597890625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.170",
+      "displayName": "원본 SL05 pointlight_29_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -6.508758544921875,
+        2.6896737670898436,
+        931.11390625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.171",
+      "displayName": "원본 SL05 pointlight_2_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        10.437373046875,
+        16.321827392578125,
+        931.833046875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.8117647058823529,
+        0.5843137254901961,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.172",
+      "displayName": "원본 SL05 pointlight_31_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -12.49631591796875,
+        2.6896737670898436,
+        939.5382812500001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 2.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.173",
+      "displayName": "원본 SL05 pointlight_34_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        10.209835205078125,
+        2.6896737670898436,
+        949.720625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 4.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.174",
+      "displayName": "원본 SL05 pointlight_3_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        16.468665771484375,
+        10.892493896484375,
+        942.726328125
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.175",
+      "displayName": "원본 SL05 pointlight_4_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -2.0525219726562502,
+        10.8925244140625,
+        925.746875
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 1.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.176",
+      "displayName": "원본 SL05 pointlight_5_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -5.265548095703125,
+        0.6,
+        928.3100000000001
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 2.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.596078431372549,
+        0.0,
+        1.0
+      ],
+      "brightness": 3.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.177",
+      "displayName": "원본 SL05 pointlight_7_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -13.563450927734376,
+        31.0186083984375,
+        963.155625
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.47058823529411764,
+        0.0,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.178",
+      "displayName": "원본 SL05 pointlight_8_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        5.773883056640625,
+        16.398046875,
+        925.17484375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 6.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.4627450980392157,
+        1.0,
+        0.8705882352941177,
+        1.0
+      ],
+      "brightness": 5.0,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.179",
+      "displayName": "원본 SL05 pointlight_9_lc",
+      "kind": "POINT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        -3.728038024902344,
+        7.90872802734375,
+        946.88109375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 22.0,
+      "falloffExponent": 3.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.6078431372549019,
+        0.9450980392156862,
+        1.0,
+        1.0
+      ],
+      "brightness": 0.800000011920929,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.227",
+      "displayName": "원본 SL05 spotlight_1_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        13.807401123046875,
+        6.472384643554688,
+        943.790625
+      ],
+      "rotationDegrees": [
+        60.00732306126558,
+        -109.9951117719055,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 50.0,
+      "color": [
+        0.403921568627451,
+        1.0,
+        0.7450980392156863,
+        1.0
+      ],
+      "brightness": 2.5,
+      "receiver": "SOURCE_CHARACTER"
+    },
+    {
+      "lightId": "light.kouku.source.sl05.228",
+      "displayName": "원본 SL05 spotlight_2_lc",
+      "kind": "SPOT",
+      "groupId": "source_baked_character",
+      "enabled": true,
+      "position": [
+        4.199136962890625,
+        6.472384643554688,
+        929.652734375
+      ],
+      "rotationDegrees": [
+        60.00732588461849,
+        -21.99461963378736,
+        0.0
+      ],
+      "rangeMeters": 15.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 50.0,
+      "color": [
+        0.403921568627451,
+        1.0,
+        0.7450980392156863,
+        1.0
+      ],
+      "brightness": 1.7999999523162842,
+      "receiver": "SOURCE_CHARACTER"
+    }
   ]
 }

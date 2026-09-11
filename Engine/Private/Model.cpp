@@ -16,6 +16,22 @@
 #include <new>
 #include <stdexcept>
 
+namespace Engine
+{
+    struct MODEL_MATERIAL_SOURCE
+    {
+        struct MESH_CHANNELS
+        {
+            uint32_t materialIndex;
+            MODEL_VERTEX_KIND vertexKind;
+            bool_t hasColor0, hasTexcoord1, hasTexcoord2, hasTangentHandedness;
+        };
+        MODEL_ASSET_LOAD_DESC identity;
+        vector<MODEL_MATERIAL_DATA> materials;
+        vector<MESH_CHANNELS> meshes;
+    };
+}
+
 namespace
 {
 	bool Is_FiniteMatrix(const float4x4_t& Matrix)
@@ -68,6 +84,7 @@ CModel::CModel(const CModel& Prototype)
     , m_eType { Prototype.m_eType }
     , m_iNumMeshes { Prototype.m_iNumMeshes }
     , m_Meshes { Prototype.m_Meshes }
+    , m_pMaterialSource { Prototype.m_pMaterialSource }
     , m_PreTransformMatrix { Prototype.m_PreTransformMatrix }
     , m_bRetainOrderedStaticGeometry { Prototype.m_bRetainOrderedStaticGeometry }
     , m_pOrderedStaticGeometrySource { Prototype.m_pOrderedStaticGeometrySource }
@@ -288,6 +305,21 @@ bool_t CModel::Sample_AnimationBoneCombinedMatrices(
 		Sample_BoneCombinedMatricesForAnimation(
 			iAnimationIndex, fTrackPositionTicks, false, 0.f,
 			BoneIndices, OutCombinedMatrices);
+}
+
+bool_t CModel::Sample_AnimationTransitionBoneCombinedMatrices(
+    const ANIMATION_TRANSITION_POSE& pose,
+    const std::span<const uint32_t> BoneIndices,
+    const std::span<float4x4_t> OutCombinedMatrices) const
+{
+    if (BoneIndices.empty() || BoneIndices.size() != OutCombinedMatrices.size() ||
+        std::any_of(BoneIndices.begin(), BoneIndices.end(),
+            [this](uint32_t index) { return index >= m_Bones.size(); })) return false;
+    std::vector<float4x4_t> local, combined;
+    if (!Build_AnimationTransitionPose(pose, local, combined)) return false;
+    for (size_t index = 0u; index < BoneIndices.size(); ++index)
+        OutCombinedMatrices[index] = combined[BoneIndices[index]];
+    return true;
 }
 
 bool_t CModel::Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose,
@@ -1330,6 +1362,14 @@ HRESULT CModel::Bind_SourceCharacter(shared_ptr<CShader> shader, uint32_t meshIn
     return m_Materials[materialIndex]->Bind_SourceCharacter(shader);
 }
 
+HRESULT CModel::Bind_SourceSpecialSurface(shared_ptr<CShader> shader, uint32_t meshIndex)
+{
+    if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
+    const uint32_t materialIndex = m_Meshes[meshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size()) return E_INVALIDARG;
+    return m_Materials[materialIndex]->Bind_SourceSpecialSurface(shader);
+}
+
 HRESULT CModel::Bind_SurfaceLighting(shared_ptr<CShader> shader, uint32_t meshIndex)
 {
     if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
@@ -1534,26 +1574,8 @@ HRESULT CModel::Ready_BinaryModel(const char_t* pModelFilePath)
     return Ready_BinaryModel(desc);
 }
 
-HRESULT CModel::Ready_BinaryModel(
-	const MODEL_ASSET_LOAD_DESC& loadDesc)
+HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, const MODEL_ASSET_LOAD_DESC& loadDesc)
 {
-	MODEL_ASSET_DATA asset{};
-	if (!CModelDecoderRegistry::Get().Decode(loadDesc, asset))
-	{
-		const MODEL_DECODE_REPORT report = CModelDecoderRegistry::Get().Get_LastReport();
-		OutputDebugStringA(("[CModel] Binary decode failed for " +
-			loadDesc.meshPath.string() + ": " + report.error + "\n").c_str());
-		return E_FAIL;
-	}
-	if (asset.meshes.empty() ||
-		((MODEL::ANIM == m_eType) != asset.hasSkeleton))
-	{
-		OutputDebugStringA(("[CModel] Binary decode produced an unusable asset for " +
-			loadDesc.meshPath.string() + " (meshes=" +
-			std::to_string(asset.meshes.size()) + ", hasSkeleton=" +
-			(asset.hasSkeleton ? "true" : "false") + ").\n").c_str());
-		return E_FAIL;
-	}
 	/* Join before allocating meshes/materials. A malformed replacement never
 	   changes a shared prototype or an already admitted material instance. */
 	vector<string> overriddenNames;
@@ -1566,16 +1588,36 @@ HRESULT CModel::Ready_BinaryModel(
 				" / " + reason + "\n").c_str());
 			return E_INVALIDARG;
 		};
+        if (replacement.surface.renderMode > MODEL_SURFACE_RENDER_MODE::WATER ||
+            replacement.surface.cullMode > MODEL_SURFACE_CULL_MODE::TWO_SIDED)
+            return failOverride("invalid material render or cull mode");
 		if (replacement.materialName.empty() ||
 			find(overriddenNames.begin(), overriddenNames.end(), replacement.materialName) != overriddenNames.end())
 			return failOverride("empty or duplicate material name");
+        if (replacement.surface.hasStaticShadow)
+        {
+            const auto& transfer = replacement.surface.staticShadowTransfer;
+            const auto root = loadDesc.assetRoot.lexically_normal();
+            const auto& path = replacement.staticShadowPath;
+            const auto relative = path.lexically_normal().lexically_relative(root);
+            if (!replacement.surface.hasBakedLighting || replacement.surface.staticShadowChannel < 1u || replacement.surface.staticShadowChannel > 15u || !root.is_absolute() || !path.is_absolute() ||
+                relative.empty() || relative.is_absolute() ||
+                any_of(relative.begin(), relative.end(), [](const filesystem::path& part) { return part == ".."; }) ||
+                !std::isfinite(transfer.x) || !std::isfinite(transfer.y) || !std::isfinite(transfer.z) ||
+                transfer.y < 1.f || transfer.z <= 0.f || transfer.z > 128.f)
+                return failOverride("invalid source static shadow inputs");
+        }
         if (replacement.surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 21u || mask == 0u ||
+            if (source.program == 0u || source.program > 84u || (source.program > 65u && source.program < 80u) ||
+                (mask == 0u && source.program != 64u && source.program != 65u) ||
+                ((source.program == 64u || source.program == 65u) && mask != 0u) || source.requiredExtraUVMask > 3u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
-                replacement.surface.hasBakedLighting || replacement.surface.hasEnvironmentCube)
+                (replacement.surface.hasBakedLighting && !((source.program >= 80u && source.program <= 83u) ||
+                    (source.program >= 40u && source.program <= 63u && source.program != 47u && source.program != 53u && source.program != 55u))) ||
+                replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");
             for (const auto* constants : { &source.baseConstants, &source.lightConstants })
                 for (const auto& value : *constants)
@@ -1597,40 +1639,63 @@ HRESULT CModel::Ready_BinaryModel(
                     any_of(relative.begin(), relative.end(), [](const filesystem::path& part) { return part == ".."; }))
                     return failOverride("source character texture escapes the resource root");
             }
+            if (replacement.surface.hasBakedLighting)
+            {
+                for (const auto& path : { replacement.bakedAveragePath, replacement.bakedDirectionalPath })
+                {
+                    const auto relative = path.lexically_normal().lexically_relative(root);
+                    if (!path.is_absolute() || relative.empty() || relative.is_absolute() ||
+                        any_of(relative.begin(), relative.end(), [](const filesystem::path& part) { return part == ".."; }))
+                        return failOverride("source map monster lighting texture escapes the resource root");
+                }
+            }
             size_t matches = 0u;
-            for (auto& material : asset.materials)
+            for (auto& material : materialSource.materials)
             {
                 if (material.name != replacement.materialName) continue;
-                const size_t materialIndex = static_cast<size_t>(&material - asset.materials.data());
+                const size_t materialIndex = static_cast<size_t>(&material - materialSource.materials.data());
+                if (any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
+                    return mesh.materialIndex == materialIndex &&
+                        (((source.requiredExtraUVMask & 1u) != 0u && !mesh.hasTexcoord1) ||
+                         ((source.requiredExtraUVMask & 2u) != 0u && !mesh.hasTexcoord2));
+                })) return failOverride("source material requires preserved extra UV channels");
                 if ((source.program == 5u || source.program == 7u ||
                     source.program == 18u || source.program == 19u) &&
-                    any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
+                    any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
                         return mesh.materialIndex == materialIndex &&
                             (!mesh.hasTexcoord1 || (source.program == 5u && !mesh.hasTexcoord2));
                     }))
                     return failOverride("source character requires native extra UV channels");
+                if (replacement.surface.hasBakedLighting &&
+                    any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
+                        return mesh.materialIndex == materialIndex && (!mesh.hasTexcoord1 || mesh.vertexKind != MODEL_VERTEX_KIND::STATIC);
+                    })) return failOverride("source map lightmap requires native static UV1");
                 // Some multipart weapons repeat one MIC in several material
                 // slots. An exact source name intentionally replaces all of them.
                 material.surface = replacement.surface;
                 material.sourceCharacterTextures = replacement.sourceCharacterTextures;
+                material.bakedAveragePath = replacement.bakedAveragePath;
+                material.bakedDirectionalPath = replacement.bakedDirectionalPath;
+                material.staticShadowPath = replacement.staticShadowPath;
                 ++matches;
             }
             if (matches == 0u) return failOverride("source character material name is absent");
             overriddenNames.push_back(replacement.materialName);
             continue;
         }
-		const auto match = find_if(asset.materials.begin(), asset.materials.end(),
-			[&](const MODEL_MATERIAL_DATA& material) { return material.name == replacement.materialName; });
-		if (match == asset.materials.end() || count_if(asset.materials.begin(), asset.materials.end(),
-			[&](const MODEL_MATERIAL_DATA& material) { return material.name == replacement.materialName; }) != 1)
-			return failOverride("material name does not resolve uniquely");
+        size_t matches = 0u;
+        for (auto match = materialSource.materials.begin(); match != materialSource.materials.end(); ++match)
+        {
+        if (match->name != replacement.materialName) continue;
+        ++matches;
 		const auto& surface = replacement.surface;
+        const bool sourceSpecial = surface.family >= MODEL_SURFACE_FAMILY::SOURCE_SNOWICE_OPAQUE &&
+            surface.family <= MODEL_SURFACE_FAMILY::SOURCE_WET_OPAQUE;
 		if (replacement.hasDiffuseAddressU)
 		{
 			if (surface.family != MODEL_SURFACE_FAMILY::LEGACY || match->diffusePath.empty())
 				return failOverride("diffuse sampler requires an existing legacy diffuse input");
 			match->diffuseMirrorU = replacement.diffuseMirrorU;
-			overriddenNames.push_back(replacement.materialName);
 			continue;
 		}
 		if (surface.family != MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION &&
@@ -1638,26 +1703,37 @@ HRESULT CModel::Ready_BinaryModel(
 			surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
 			surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
 			surface.family != MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE &&
-            surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial)
 			return failOverride("unsupported surface family");
-		const f32_t scalars[] = { surface.diffuseBrightness, surface.normalIntensity,
+		const f32_t scalars[] = { surface.diffuseBrightness,
+            surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ? std::abs(surface.normalIntensity) : surface.normalIntensity,
 			surface.specularIntensity, surface.specularPower, surface.reflectionIntensity,
 			surface.reflectionContrast, surface.reflectionTiling, surface.diffuseSaturation,
 			surface.diffuseColor.x, surface.diffuseColor.y, surface.diffuseColor.z, surface.diffuseColor.w,
 			surface.specularColor.x, surface.specularColor.y, surface.specularColor.z, surface.specularColor.w,
 			surface.reflectionColor.x, surface.reflectionColor.y, surface.reflectionColor.z, surface.reflectionColor.w };
 		if (any_of(begin(scalars), end(scalars), [](f32_t value) { return !std::isfinite(value) || value < 0.f; }) ||
-			surface.specularPower < 1.f || surface.reflectionTiling <= 0.f)
+			(surface.specularPower < 1.f && surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE && surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED && surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+                surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial) || surface.reflectionTiling <= 0.f)
 			return failOverride("invalid surface value");
 		const auto root = loadDesc.assetRoot.lexically_normal();
 		const auto reflection = replacement.reflectionPath.lexically_normal();
 		const auto relative = reflection.lexically_relative(root);
         if (surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial &&
             (!root.is_absolute() || !reflection.is_absolute() || relative.empty() ||
              relative.is_absolute() || any_of(relative.begin(), relative.end(),
                 [](const filesystem::path& part) { return part == ".."; })))
 			return failOverride("reflection escapes the resource root");
 		if (surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial &&
             (match->diffusePath.empty() || match->normalPath.empty() ||
 			(surface.family == MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION && match->specularPath.empty())))
 			return failOverride("required material input is absent");
@@ -1689,6 +1765,142 @@ HRESULT CModel::Ready_BinaryModel(
 			match->detailNormalPath = replacement.detailNormalPath;
 			match->surfaceORMPath = replacement.surfaceORMPath;
 		}
+        if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
+            surface.family == MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED)
+        {
+            const uint32_t flags = surface.sourceFoliageFlags;
+            const auto& transmission = surface.sourceFoliageTransmission;
+            const float values[] = { transmission.x, transmission.y, transmission.z, transmission.w };
+            if ((flags & ~127u) != 0u || ((flags & 8u) && !(flags & 4u)) ||
+                ((flags & 64u) && !(flags & 32u)) || surface.hasEnvironmentCube ||
+                surface.hasEmissive != ((flags & 32u) != 0u) ||
+                (surface.family == MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && (flags & (1u | 8u | 64u))) ||
+                any_of(begin(values), end(values), [](float v) { return !std::isfinite(v) || v < 0.f; }))
+                return failOverride("invalid source foliage branch or parameter");
+            const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
+                { &replacement.surfaceDiffusePath, &match->surfaceDiffusePath },
+                { &replacement.surfaceNormalPath, &match->surfaceNormalPath },
+                { &replacement.surfaceSpecularPath, &match->surfaceSpecularPath },
+                { &replacement.sourceFoliageMaskPath, &match->sourceFoliageMaskPath }
+            };
+            const bool required[] = { true, (flags & 1u) != 0u, (flags & 8u) != 0u,
+                surface.family == MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED };
+            for (size_t i = 0; i < size(inputs); ++i)
+            {
+                const auto& path = *inputs[i].first;
+                if (path.empty()) { if (required[i]) return failOverride("source foliage selected input missing"); continue; }
+                const auto rel = path.lexically_normal().lexically_relative(root);
+                if (!root.is_absolute() || !path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+                    return failOverride("source foliage texture escapes the resource root");
+                *inputs[i].second = path;
+            }
+        }
+        if (sourceSpecial)
+        {
+            const auto& special = surface.sourceSpecial;
+            const bool ice = surface.family == MODEL_SURFACE_FAMILY::SOURCE_SNOWICE_OPAQUE;
+            const bool blend = surface.family == MODEL_SURFACE_FAMILY::SOURCE_VERTEXBLEND_OPAQUE;
+            if ((special.flags & ~3u) || (!ice && !blend && special.flags) || surface.hasEnvironmentCube || surface.hasEmissive)
+                return failOverride("invalid source special branch");
+            for (const auto& value : { special.iceCoreColor, special.iceOuterColor, special.iceBlend,
+                special.wetParameters, surface.sourceBgRimlight })
+                for (float v : { value.x, value.y, value.z, value.w })
+                    if (!std::isfinite(v) || v < 0.f) return failOverride("invalid source special vector");
+            for (const auto* layers : { &special.blendDiffuse, &special.blendSpecular, &special.blendLayers })
+                for (const auto& value : *layers)
+                    for (float v : { value.x, value.y, value.z, value.w })
+                        if (!std::isfinite(v) || v < 0.f) return failOverride("invalid source blend layer");
+            for (float v : { special.normalTiling, special.wetSpecularPower, special.blendSharpness,
+                surface.detailNormalIntensity, surface.detailNormalTiling, surface.uvTiling.x, surface.uvTiling.y })
+                if (!std::isfinite(v) || v < 0.f) return failOverride("invalid source special scalar");
+            if (!std::isfinite(special.iceBumpOffset) || special.normalTiling <= 0.f ||
+                surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f || surface.detailNormalTiling <= 0.f)
+                return failOverride("invalid source special UV or parallax");
+            if (blend) for (size_t i = 0; i < 4; ++i)
+                if ((i < 2 || (special.flags & (1u << (i - 2)))) &&
+                    (special.blendLayers[i].x <= 0.f || special.blendLayers[i].y <= 0.f))
+                    return failOverride("invalid source blend UV");
+            const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
+                { &replacement.surfaceDiffusePath, &match->surfaceDiffusePath },
+                { &replacement.surfaceNormalPath, &match->surfaceNormalPath },
+                { &replacement.surfaceSpecularPath, &match->surfaceSpecularPath },
+                { &replacement.reflectionPath, &match->reflectionPath },
+                { &replacement.detailNormalPath, &match->detailNormalPath },
+                { &replacement.overlayDiffusePath, &match->overlayDiffusePath },
+                { &replacement.overlayNormalPath, &match->overlayNormalPath },
+                { &replacement.sourceSpecialMaskPath, &match->sourceSpecialMaskPath },
+                { &replacement.sourceBlendDiffuseGPath, &match->sourceBlendDiffuseGPath },
+                { &replacement.sourceBlendNormalGPath, &match->sourceBlendNormalGPath },
+                { &replacement.sourceBlendDiffuseBPath, &match->sourceBlendDiffuseBPath },
+                { &replacement.sourceBlendNormalBPath, &match->sourceBlendNormalBPath }
+            };
+            const bool required[] = { true, true, !blend && (!ice || (special.flags & 2u)), !blend,
+                blend || (ice && (special.flags & 1u)), blend, blend, ice,
+                blend && (special.flags & 1u), blend && (special.flags & 1u),
+                blend && (special.flags & 2u), blend && (special.flags & 2u) };
+            for (size_t i = 0; i < size(inputs); ++i)
+            {
+                const auto& path = *inputs[i].first;
+                if (path.empty()) { if (required[i]) return failOverride("source special input missing"); continue; }
+                if (!required[i]) return failOverride("source special inactive input supplied");
+                const auto rel = path.lexically_normal().lexically_relative(root);
+                if (!root.is_absolute() || !path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+                    return failOverride("source special texture escapes the resource root");
+                *inputs[i].second = path;
+            }
+        }
+        if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED)
+        {
+            const uint32_t flags = surface.sourceBgFlags;
+            const float viewValues[] = { surface.sourceBgSubspecular.x, surface.sourceBgSubspecular.y,
+                surface.sourceBgRimlight.x, surface.sourceBgRimlight.y, surface.sourceBgRimlight.z,
+                surface.sourceBgRimlight.w, surface.sourceBgSpecularSaturation };
+            if (any_of(begin(viewValues), end(viewValues), [](float v) { return !std::isfinite(v) || v < 0.f; }) ||
+                !std::isfinite(surface.sourceBgPanning.x) || !std::isfinite(surface.sourceBgPanning.y))
+                return failOverride("invalid source BG view lighting or panning");
+            const float values[] = { surface.sourceBgBump.x, surface.sourceBgBump.y,
+                surface.sourceBgBump.z, surface.sourceBgUV.x, surface.sourceBgUV.y,
+                surface.sourceBgUV.z, surface.sourceBgUV.w, surface.uvTiling.x, surface.uvTiling.y,
+                surface.reflectionOriginOffset.x, surface.reflectionOriginOffset.y };
+            if ((flags & ~65535u) != 0u || ((flags & 8u) != 0u && (flags & 4u) == 0u) ||
+                ((flags & 32u) != 0u && (flags & 16u) == 0u) || surface.sourceBgFlicker > 2u ||
+                surface.hasEnvironmentCube ||
+                any_of(begin(values), end(values), [](float v) { return !std::isfinite(v); }) ||
+                std::abs(surface.sourceBgUV.x * surface.sourceBgUV.x +
+                    surface.sourceBgUV.y * surface.sourceBgUV.y - 1.f) > 0.0001f)
+                return failOverride("invalid source BG branch or parameter");
+            const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
+                { &replacement.surfaceDiffusePath, &match->surfaceDiffusePath },
+                { &replacement.surfaceNormalPath, &match->surfaceNormalPath },
+                { &replacement.surfaceSpecularPath, &match->surfaceSpecularPath },
+                { &replacement.reflectionPath, &match->reflectionPath }
+            };
+            const bool required[] = { true, (flags & 1u) != 0u, (flags & 8u) != 0u, (flags & 16u) != 0u };
+            for (size_t i = 0; i < size(inputs); ++i)
+            {
+                const auto& path = *inputs[i].first;
+                if (path.empty()) { if (required[i]) return failOverride("source BG selected input missing"); continue; }
+                const auto rel = path.lexically_normal().lexically_relative(root);
+                if (!root.is_absolute() || !path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+                    return failOverride("source BG texture escapes the resource root");
+                *inputs[i].second = path;
+            }
+            if ((flags & 32768u) != 0u)
+            {
+                const auto& path = replacement.detailNormalPath;
+                const auto rel = path.lexically_normal().lexically_relative(root);
+                if (!path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }) ||
+                    !std::isfinite(surface.detailNormalIntensity) || !std::isfinite(surface.detailNormalTiling))
+                    return failOverride("invalid source detail normal");
+                match->detailNormalPath = path;
+            }
+            // Sampler identity accompanies the source diffuse, including the old explicit mirror rows.
+            match->diffuseMirrorU = replacement.diffuseMirrorU;
+        }
         if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
         {
             if (!std::isfinite(surface.uvTiling.x) || !std::isfinite(surface.uvTiling.y) ||
@@ -1713,27 +1925,46 @@ HRESULT CModel::Ready_BinaryModel(
         }
         if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
         {
-            const uint32_t materialIndex = static_cast<uint32_t>(distance(asset.materials.begin(), match));
-            if (any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
+            const uint32_t materialIndex = static_cast<uint32_t>(distance(materialSource.materials.begin(), match));
+            if (any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
                 return mesh.materialIndex == materialIndex &&
-                    (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || !mesh.hasColor0 || mesh.tangentHandedness.empty());
-            })) return failOverride("source overlay requires preserved static COLOR0 and tangent handedness");
+                    (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || !mesh.hasTangentHandedness);
+            })) return failOverride("source overlay requires preserved static geometry and tangent handedness");
             const float values[] = { surface.overlayColor.x, surface.overlayColor.y, surface.overlayColor.z,
                 surface.overlayColor.w, surface.overlayTiling, surface.overlayNormalIntensity,
                 surface.overlaySharpness, surface.overlayBrightness, surface.overlaySaturation,
-                surface.overlaySpecularIntensity };
+                surface.overlaySpecularIntensity, surface.uvTiling.x, surface.uvTiling.y, surface.detailNormalIntensity, surface.detailNormalTiling };
             if (any_of(begin(values), end(values), [](float v) { return !std::isfinite(v) || v < 0.f; }) ||
-                surface.overlayTiling <= 0.f || surface.hasEnvironmentCube || surface.hasEmissive ||
+                surface.sourceOverlayFlags > 511u || surface.overlayTiling <= 0.f || surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f || surface.hasEnvironmentCube || surface.hasEmissive ||
                 !replacement.reflectionPath.empty()) return failOverride("invalid source overlay surface");
+            const float signedValues[] = { surface.sourceOverlayDirection.x, surface.sourceOverlayDirection.y,
+                surface.sourceOverlayDirection.z, surface.sourceOverlayDirection.w,
+                surface.sourceBgUV.x, surface.sourceBgUV.y, surface.sourceBgUV.z, surface.sourceBgUV.w };
+            if (any_of(begin(signedValues), end(signedValues), [](float v) { return !std::isfinite(v); }) ||
+                (((surface.sourceOverlayFlags & 32u) != 0u) != !replacement.detailNormalPath.empty()))
+                return failOverride("invalid source overlay direction, UV or detail branch");
+            if (surface.overlaySeparateSpecular)
+            {
+                const auto path = replacement.surfaceSpecularPath.lexically_normal();
+                const auto rel = path.lexically_relative(root);
+                if (!root.is_absolute() || !path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+                    return failOverride("source overlay specular escapes the resource root");
+                match->surfaceSpecularPath = path;
+            }
             const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
                 { &replacement.surfaceDiffusePath, &match->surfaceDiffusePath },
                 { &replacement.surfaceNormalPath, &match->surfaceNormalPath },
                 { &replacement.overlayDiffusePath, &match->overlayDiffusePath },
-                { &replacement.overlayNormalPath, &match->overlayNormalPath }
+                { &replacement.overlayNormalPath, &match->overlayNormalPath },
+                { &replacement.detailNormalPath, &match->detailNormalPath }
             };
             for (const auto& input : inputs)
             {
                 const auto& path = *input.first;
+                if (path.empty() && ((input.first == &replacement.surfaceNormalPath && (surface.sourceOverlayFlags & 1u) == 0u) ||
+                    (input.first == &replacement.overlayNormalPath && (surface.sourceOverlayFlags & 2u) == 0u) ||
+                    (input.first == &replacement.detailNormalPath && (surface.sourceOverlayFlags & 32u) == 0u))) continue;
                 const auto rel = path.lexically_normal().lexically_relative(root);
                 if (!root.is_absolute() || !path.is_absolute() || rel.empty() || rel.is_absolute() ||
                     any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
@@ -1743,8 +1974,8 @@ HRESULT CModel::Ready_BinaryModel(
         }
         if (surface.hasBakedLighting)
         {
-            const uint32_t materialIndex = static_cast<uint32_t>(distance(asset.materials.begin(), match));
-            if (any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
+            const uint32_t materialIndex = static_cast<uint32_t>(distance(materialSource.materials.begin(), match));
+            if (any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
                 return mesh.materialIndex == materialIndex && (!mesh.hasTexcoord1 || mesh.vertexKind != MODEL_VERTEX_KIND::STATIC);
             })) return failOverride("baked lighting requires preserved static TEXCOORD1");
         }
@@ -1758,6 +1989,7 @@ HRESULT CModel::Ready_BinaryModel(
         const std::pair<const filesystem::path*, filesystem::path*> lightingPaths[] = {
             { &replacement.bakedAveragePath, &match->bakedAveragePath },
             { &replacement.bakedDirectionalPath, &match->bakedDirectionalPath },
+            { &replacement.staticShadowPath, &match->staticShadowPath },
             { &replacement.environmentCubePath, &match->environmentCubePath },
             { &replacement.environmentBRDFPath, &match->environmentBRDFPath }
         };
@@ -1780,11 +2012,16 @@ HRESULT CModel::Ready_BinaryModel(
 				surface.emissiveUVTiling.x, surface.emissiveUVTiling.y,
 				surface.emissiveFlickerMinimum, surface.emissiveFlickerSpeed };
 			if ((surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
-				surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE) ||
+				surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+                surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial) ||
 				any_of(begin(emissionValues), end(emissionValues),
 					[](f32_t value) { return !std::isfinite(value) || value < 0.f; }) ||
 				surface.emissiveUVTiling.x <= 0.f || surface.emissiveUVTiling.y <= 0.f ||
-				surface.emissiveFlickerMinimum > 1.f || !std::isfinite(surface.emissivePhaseOffset))
+				(surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && surface.emissiveFlickerMinimum > 1.f) || !std::isfinite(surface.emissivePhaseOffset))
 				return failOverride("invalid PBR emissive value");
 			const auto emissive = replacement.surfaceEmissivePath.lexically_normal();
 			const auto emissiveRelative = emissive.lexically_relative(root);
@@ -1796,8 +2033,46 @@ HRESULT CModel::Ready_BinaryModel(
 		}
 		match->surface = surface;
 		match->reflectionPath = reflection;
+        }
+        if (matches == 0u) return failOverride("material name is absent");
 		overriddenNames.push_back(replacement.materialName);
 	}
+	return S_OK;
+}
+
+HRESULT CModel::Ready_BinaryModel(
+	const MODEL_ASSET_LOAD_DESC& loadDesc)
+{
+	MODEL_ASSET_DATA asset{};
+	if (!CModelDecoderRegistry::Get().Decode(loadDesc, asset))
+	{
+		const MODEL_DECODE_REPORT report = CModelDecoderRegistry::Get().Get_LastReport();
+		OutputDebugStringA(("[CModel] Binary decode failed for " +
+			loadDesc.meshPath.string() + ": " + report.error + "\n").c_str());
+		return E_FAIL;
+	}
+	if (asset.meshes.empty() ||
+		((MODEL::ANIM == m_eType) != asset.hasSkeleton))
+	{
+		OutputDebugStringA(("[CModel] Binary decode produced an unusable asset for " +
+			loadDesc.meshPath.string() + " (meshes=" +
+			std::to_string(asset.meshes.size()) + ", hasSkeleton=" +
+			(asset.hasSkeleton ? "true" : "false") + ").\n").c_str());
+		return E_FAIL;
+	}
+    auto materialSource = std::make_shared<MODEL_MATERIAL_SOURCE>();
+    materialSource->identity = loadDesc;
+    materialSource->identity.materialOverrides.clear();
+    materialSource->materials = asset.materials;
+    materialSource->meshes.reserve(asset.meshes.size());
+    for (const auto& mesh : asset.meshes)
+        materialSource->meshes.push_back({ mesh.materialIndex, mesh.vertexKind,
+            mesh.hasColor0, mesh.hasTexcoord1, mesh.hasTexcoord2, !mesh.tangentHandedness.empty() });
+    // Keep only small material rows/channel facts, never decoded vertex/index arrays.
+    m_pMaterialSource = materialSource;
+    MODEL_MATERIAL_SOURCE staged = *materialSource;
+    if (FAILED(Apply_MaterialOverrides(staged, loadDesc))) return E_INVALIDARG;
+    asset.materials = std::move(staged.materials);
 	m_iSkeletonHash = asset.hasSkeleton ? asset.skeleton.skeletonHash : 0;
 
 	m_bHasSelfConsistentUnauthenticatedGeometryMetadata =
@@ -2031,6 +2306,26 @@ unique_ptr<CModel> CModel::Create(
 	return pInstance;
 }
 
+
+unique_ptr<CModel> CModel::Create_MaterialVariant(const CModel& prototype,
+    const MODEL_ASSET_LOAD_DESC& loadDesc)
+{
+    if (prototype.m_eType != MODEL::NONANIM || !prototype.m_pMaterialSource) return nullptr;
+    const auto& identity = prototype.m_pMaterialSource->identity;
+    if (identity.assetRoot.lexically_normal() != loadDesc.assetRoot.lexically_normal() ||
+        identity.meshPath.lexically_normal() != loadDesc.meshPath.lexically_normal() ||
+        identity.materialPath != loadDesc.materialPath || identity.skeletonPath != loadDesc.skeletonPath ||
+        identity.animationPaths != loadDesc.animationPaths || identity.fallbackDiffusePath != loadDesc.fallbackDiffusePath ||
+        identity.defaultAnimationName != loadDesc.defaultAnimationName) return nullptr;
+    auto instance = unique_ptr<CModel>(new CModel(prototype));
+    MODEL_MATERIAL_SOURCE staged = *prototype.m_pMaterialSource;
+    if (FAILED(instance->Apply_MaterialOverrides(staged, loadDesc))) return nullptr;
+    MODEL_ASSET_DATA materialAsset;
+    materialAsset.materials = std::move(staged.materials);
+    instance->m_Materials.clear();
+    if (FAILED(instance->Ready_Materials(materialAsset))) return nullptr;
+    return instance;
+}
 
 shared_ptr<CPrototype> CModel::Clone(void* pArg)
 {

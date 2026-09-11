@@ -3,6 +3,11 @@
 #include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Active022DecalMaterial.hlsli"
 #include "Shader_EffectLocalDecalAdapter.hlsli"
+#define EFFECT_NATIVE_DECAL_CARRIER 1
+#define EFFECT_NATIVE_PROFILE_GROUP 2304
+#include "Shader_EffectArtistNative.hlsli"
+float4 g_KoukuDecalAmbient;
+float4 g_KoukuDecalProjection; // near/far/span/center in source cm
 
 float4x4 g_ViewMatrixInverse;
 float4x4 g_ProjMatrixInverse;
@@ -100,7 +105,29 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         local.x / (halfSize.x * 2.f) + 0.5f,
         0.5f - local.z / (halfSize.y * 2.f));
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
-    if (0u != g_StandardColorV1Enabled)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2341u)
+    {
+        ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
+        nativeInput.uv = decalUV;
+        // Original LocalDecal TEXCOORD0 carries receiver fade and signed cm depth.
+        // Receiver rejection is already owned by the depth projector above.
+        nativeInput.uv1 = float2(1.f, -local.y * g_KoukuDecalProjection.z + g_KoukuDecalProjection.w);
+        nativeInput.decalProjection = float4(g_KoukuDecalProjection.xy, 1.f, 0.f);
+        nativeInput.color = g_ColorMultiply + g_ColorOffset;
+        nativeInput.screenUV = input.uv;
+        nativeInput.projectionW = viewZ * 100.f;
+        nativeInput.projectionZ = depth.x * nativeInput.projectionW;
+        const float3 worldView = g_ViewMatrixInverse[3].xyz - worldPosition.xyz;
+        const float3 localView = mul(float4(worldView, 0.f), g_DecalWorldInverse).xyz;
+        nativeInput.tangentView = normalize(float3(localView.x, -localView.z, localView.y));
+        const float3 localUp = mul(float4(0.f, 1.f, 0.f, 0.f), g_DecalWorldInverse).xyz;
+        nativeInput.tangentUp = normalize(float3(localUp.x, -localUp.z, localUp.y));
+        nativeInput.ambientColor = g_KoukuDecalAmbient.xyz;
+        nativeInput.skyIntensity = g_KoukuDecalAmbient.w;
+        nativeInput.frontFace = true;
+        output = Shade_EffectArtistNative(g_SourceMaterialProfile, nativeInput);
+    }
+    else if (0u != g_StandardColorV1Enabled)
     {
         output = Shade_EffectStandardColorV1(
             decalUV * g_UVScale + g_UVOffset,

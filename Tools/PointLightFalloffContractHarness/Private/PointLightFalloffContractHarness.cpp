@@ -30,7 +30,8 @@ static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
 static_assert(offsetof(LIGHT_DESC, fSpotInnerCos) == 92u);
 static_assert(offsetof(LIGHT_DESC, fSpotOuterCos) == 96u);
 static_assert(16u == ETOUI(DEFERRED::SPOT));
-static_assert(17u == ETOUI(DEFERRED::END));
+static_assert(17u == ETOUI(DEFERRED::PRESENTATION_DISPLAY_OVERLAY));
+static_assert(18u == ETOUI(DEFERRED::END));
 
 namespace
 {

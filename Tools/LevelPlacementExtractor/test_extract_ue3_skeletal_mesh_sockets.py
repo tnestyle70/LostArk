@@ -10,6 +10,30 @@ from extract_ue3_skeletal_mesh_sockets import parse_socket_contract
 
 
 class SkeletalMeshSocketTests(unittest.TestCase):
+    def test_detailed_array_preserves_first_socket_and_transform(self) -> None:
+        text = """Sockets[2] =
+{
+    Sockets[0] =
+    {
+        SocketName = midcontrol
+        BoneName = b_wp_1
+        RelativeLocation = { X=37.5, Y=0, Z=-15 }
+        RelativeRotation = { Yaw=16384, Pitch=0, Roll=0 }
+        RelativeScale = { X=1, Y=1, Z=1 }
+    }
+    Sockets[1] = { Name=effectroot, Bone=b_effectroot }
+}
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "mn_rpct_05_sk.props.txt"
+            source.write_text(text, encoding="utf-8")
+            contract = parse_socket_contract(source)
+        self.assertEqual([s["sourceIndex"] for s in contract["sockets"]], [0, 1])
+        first = contract["sockets"][0]
+        self.assertEqual(first["socketName"], "midcontrol")
+        self.assertEqual(first["runtimeLocalTransform"]["position"], [0.375, 0.0, -0.15])
+        self.assertEqual(first["runtimeLocalTransform"]["rotationDegrees"], [0.0, 90.0, 0.0])
+
     def test_compact_umodel_socket_summary_uses_identity_defaults(self) -> None:
         text = """Sockets[2] =
     {

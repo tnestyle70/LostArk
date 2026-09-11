@@ -135,7 +135,7 @@ VS_OUT Build_EffectMeshVertex(VS_IN input, float4x4 world, float4x4 normalMatrix
     output.sourceLightBasisY=float3(dot(input.tangent,localLightY),dot(input.binormal,localLightY),dot(input.normal,localLightY));
     output.sourceLightBasisZ=float3(dot(input.tangent,localLightZ),dot(input.binormal,localLightZ),dot(input.normal,localLightZ));
 #endif
-    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2004u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 42u == g_SourceMaterialProfile || 50u == g_SourceMaterialProfile ||
+    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2341u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 42u == g_SourceMaterialProfile || 50u == g_SourceMaterialProfile ||
         60u == g_SourceMaterialProfile || 66u == g_SourceMaterialProfile || 70u == g_SourceMaterialProfile ||
         84u == g_SourceMaterialProfile ||
         87u == g_SourceMaterialProfile ||
@@ -164,7 +164,10 @@ VS_OUT Build_EffectMeshVertex(VS_IN input, float4x4 world, float4x4 normalMatrix
         279u == g_SourceMaterialProfile ||
         280u == g_SourceMaterialProfile ||
         324u == g_SourceMaterialProfile ||
-        (g_SourceMaterialProfile >= 328u && g_SourceMaterialProfile <= 332u))
+        (g_SourceMaterialProfile >= 328u && g_SourceMaterialProfile <= 332u) ||
+        362u == g_SourceMaterialProfile || 365u == g_SourceMaterialProfile ||
+        366u == g_SourceMaterialProfile || 391u == g_SourceMaterialProfile ||
+        392u == g_SourceMaterialProfile || 394u == g_SourceMaterialProfile)
     {
         // Native VS transforms camera-to-vertex into object space before the
         // tangent dot products. Preserve that order under nonuniform scale.
@@ -342,7 +345,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 6
-    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2004u)))
+    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)))
     {
         WARLORD_NATIVE_INPUT nativeInput = (WARLORD_NATIVE_INPUT)0;
         nativeInput.uv = input.carrierUV;
@@ -393,7 +396,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 7
-    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u)))
+    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2341u)))
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.carrierUV;
@@ -442,12 +445,25 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 5
-    if (g_SourceMaterialProfile >= 324u && g_SourceMaterialProfile <= 332u)
+    if ((g_SourceMaterialProfile >= 324u && g_SourceMaterialProfile <= 332u) ||
+        (g_SourceMaterialProfile >= 362u && g_SourceMaterialProfile <= 367u) ||
+        391u == g_SourceMaterialProfile || 392u == g_SourceMaterialProfile ||
+        394u == g_SourceMaterialProfile)
     {
         SD_NATIVE_INPUT nativeInput = (SD_NATIVE_INPUT)0;
         nativeInput.uv = input.carrierUV;
-        // Selected D/F flocal RT0 reads UV0, optional tangent view, mesh
-        // color and dynamic parameters. Other varyings belong to GBuffer RTs.
+        nativeInput.uv1 = input.sourceUV1;
+        nativeInput.uvNext = input.uvNext;
+        nativeInput.subUVBlend = input.particleData.y;
+        nativeInput.sourceWorldPosition = float3(input.worldPosition.x, -input.worldPosition.z, input.worldPosition.y) * 100.f;
+        nativeInput.sourceBasisX = float3(input.tangent.x, input.binormal.x, input.normal.x);
+        nativeInput.sourceBasisZ = float3(input.tangent.y, input.binormal.y, input.normal.y);
+        nativeInput.handedness = dot(cross(input.normal, input.tangent), input.binormal) < 0.f ? -1.f : 1.f;
+        nativeInput.vertexColor = input.sourceColor;
+        nativeInput.screenUV = ALTVNativeScreenUV(input.position.xy);
+        nativeInput.projectionW = input.sourceProjectionW * 100.f;
+        nativeInput.projectionZ = input.position.z * nativeInput.projectionW;
+        nativeInput.frontFace = frontFace;
         nativeInput.tangentView = input.sourceTangentView;
         nativeInput.color = input.particleColor + g_ColorOffset;
         nativeInput.dynamicParameter = input.dynamicParameter;

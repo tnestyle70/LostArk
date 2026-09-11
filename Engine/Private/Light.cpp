@@ -8,7 +8,9 @@ namespace
 {
 	bool_t IsValidLightAttenuation(const LIGHT_DESC& LightDesc)
 	{
-		if ((LIGHT::POINT != LightDesc.eType &&
+		if (LightDesc.staticShadowChannel > 15u || (LightDesc.eReceiver != LIGHT_RECEIVER::ALL &&
+			LightDesc.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) ||
+			(LIGHT::POINT != LightDesc.eType &&
 			LIGHT::SPOT != LightDesc.eType &&
 			LIGHT::DIRECTIONAL != LightDesc.eType) ||
 			!std::isfinite(LightDesc.fFalloffExponent) ||
@@ -39,7 +41,7 @@ namespace
 			 std::isfinite(LightDesc.fSpotOuterCos) &&
 			 LightDesc.fSpotOuterCos > 0.f &&
 			 LightDesc.fSpotOuterCos <= LightDesc.fSpotInnerCos &&
-			 LightDesc.fSpotInnerCos < 1.f);
+			 LightDesc.fSpotOuterCos < 1.f && LightDesc.fSpotInnerCos <= 1.f);
 	}
 }
 
@@ -71,11 +73,17 @@ HRESULT CLight::Render_Desc(
 	const LIGHT_DESC& LightDesc,
 	shared_ptr<class CShader> pShader,
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-	bool_t bApplyDirectionalShadow)
+	bool_t bApplyDirectionalShadow, bool_t bApplyStaticShadow)
 {
 	if (!IsValidLightAttenuation(LightDesc))
 		return E_INVALIDARG;
 
+	const uint32_t receiver = static_cast<uint32_t>(LightDesc.eReceiver);
+	if (FAILED(pShader->Bind_RawValue("g_LightReceiver", &receiver, sizeof(receiver))))
+		return E_FAIL;
+
+    const uint32_t applyStaticShadow = LightDesc.staticShadowChannel != 0u ? LightDesc.staticShadowChannel : (bApplyStaticShadow ? 1u : 0u);
+    if (FAILED(pShader->Bind_RawValue("g_ApplyStaticShadow", &applyStaticShadow, sizeof(applyStaticShadow)))) return E_FAIL;
     uint32_t            iPassIndex = {};
 
     if (LIGHT::DIRECTIONAL == LightDesc.eType)

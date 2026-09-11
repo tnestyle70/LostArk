@@ -2674,14 +2674,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			BOSS_LOGIC_REGION region{};
 			std::uint32_t ordinal = 0u;
-			if (19u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+			if ((19u != fields.size() && 21u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
 				!IsStableId(fields[3]) || !ParseNumber(fields[4], ordinal) || ordinal >= 64u || !IsStableId(fields[5]))
 			{ m_strStatus = "Boss Logic region identity is invalid"; return false; }
 			region.strRegionId = std::string(fields[5]);
 			if ("BOSS_CURRENT" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
 			else if ("BOSS_SPAWN" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN;
 			else if ("WORLD" != fields[6]) { m_strStatus = "Boss Logic region anchor is invalid"; return false; }
-			region.bSector = "SECTOR" == fields[7];
+			region.bReverseSector = "REVERSE_SECTOR" == fields[7];
+			region.bSector = "SECTOR" == fields[7] || region.bReverseSector;
 			region.bCircle = "CIRCLE" == fields[7];
 			if (!region.bSector && !region.bCircle && "BOX" != fields[7]) { m_strStatus = "Boss Logic region shape is invalid"; return false; }
 			float* numbers[] = { &region.fCenterX, &region.fCenterY, &region.fCenterZ, &region.fYawDegrees,
@@ -2690,8 +2691,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				if (!ParseNumber(fields[index + 8u], *numbers[index]) || !std::isfinite(*numbers[index]))
 				{ m_strStatus = "Boss Logic region geometry is invalid"; return false; }
 			if (region.fHalfX <= 0.f || region.fHalfY <= 0.f || region.fHalfZ <= 0.f ||
-				region.fRadiusM <= 0.f || region.fHalfAngleDegrees <= 0.f || region.fHalfAngleDegrees > 180.f)
+				region.fRadiusM <= 0.f || (region.bReverseSector ? region.fHalfAngleDegrees < 0.f : region.fHalfAngleDegrees <= 0.f) || region.fHalfAngleDegrees > 180.f)
 			{ m_strStatus = "Boss Logic region dimensions are invalid"; return false; }
+			if (fields.size() == 21u && (!region.bSector ||
+				!ParseNumber(fields[19], region.fRadiusXM) || !ParseNumber(fields[20], region.fRadiusZM) ||
+				!std::isfinite(region.fRadiusXM) || !std::isfinite(region.fRadiusZM) ||
+				region.fRadiusXM <= 0.f || region.fRadiusZM <= 0.f))
+			{ m_strStatus = "Boss Logic sector axes are invalid"; return false; }
 			if ("NONE" != fields[17])
 			{
 				std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> symbols;
@@ -2716,7 +2722,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					[&](const BOSS_LOGIC_REGION& value) { return value.strRegionId == region.strRegionId; }))
 			{ m_strStatus = "Boss Logic region window/order is invalid"; return false; }
 			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW &&
-				(!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
+				(!region.bSector || region.bReverseSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
 				 region.eCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE))
 			{ m_strStatus = "Shield reflection requires boss-pivot sector regions without card mapping"; return false; }
 			window->CardRegions.push_back(std::move(region));
@@ -2893,7 +2899,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			std::uint32_t ordinal = 0u, pushMs = 0u;
 			float rangeM = 0.f;
-			if (fields.size() != 8u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			if ((fields.size() != 8u && fields.size() != 9u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				(fields.size() == 9u && fields[8] != "AWAY_FROM_BOSS" && fields[8] != "BOSS_FORWARD") ||
 				(fields[4] != "SUCCESS" && fields[4] != "FAIL" && fields[4] != "TIMEOUT") ||
 				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
 				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM <= 0.f || rangeM > 20.f ||
@@ -2917,6 +2924,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss logic push needs one max-HP damage outcome"; return false; }
 			outcomes[ordinal].fPushRangeM = rangeM;
 			outcomes[ordinal].iPushMs = pushMs;
+			if (fields.size() == 9u && fields[8] == "BOSS_FORWARD")
+				outcomes[ordinal].ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD;
 		}
 		else if (!fields.empty() && (fields[0] == "PATTERNLOGICCONTACTTARGET" || fields[0] == "PATTERNLOGICCONTACTGROUP" ||
 			fields[0] == "PATTERNLOGICCONTACTMOTION" || fields[0] == "PATTERNLOGICSIGNAL"))

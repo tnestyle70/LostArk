@@ -134,8 +134,8 @@ def _light_values(row: dict[str, Any], offset: str, rotation: str, context: str)
     inner = _finite32(row["innerConeDegrees"], 0, 89.9, f"{context}.innerConeDegrees")
     outer = _finite32(row["outerConeDegrees"], 0, 89.9, f"{context}.outerConeDegrees")
     if kind == "SPOT":
-        if not 0 < inner <= outer:
-            raise LightValidationError(f"{context} needs 0 < inner cone <= outer cone.")
+        if not (0 <= inner <= outer and outer > 0):
+            raise LightValidationError(f"{context} needs 0 <= inner cone <= outer cone and a positive outer cone.")
     elif inner != 0 or outer != 0:
         raise LightValidationError(f"{context} non-spot cone values must be zero.")
     if kind == "DIRECTIONAL" and (radius != 0 or any(position)):
@@ -177,11 +177,19 @@ def validate_map_lights_v2(document: Any, area_id: str) -> dict[str, Any]:
     if document["provenance"] != "PROJECT_AUTHORED":
         raise LightValidationError("Map light v2 provenance must be PROJECT_AUTHORED.")
     _uint(document["nextLightOrdinal"], "nextLightOrdinal")
-    if not isinstance(document["lights"], list) or len(document["lights"]) > 64:
-        raise LightValidationError("Map lights must contain 0 to 64 entries.")
+    if not isinstance(document["lights"], list) or len(document["lights"]) > 512:
+        raise LightValidationError("Map lights must contain 0 to 512 entries.")
     ids: set[str] = set()
     for row in document["lights"]:
-        _exact(row, MAP_FIELDS, "map light")
+        fields = MAP_FIELDS | ({"receiver"} if isinstance(row, dict) and "receiver" in row else set())
+        if isinstance(row, dict) and "staticShadowChannel" in row:
+            fields |= {"staticShadowChannel"}
+            channel = row["staticShadowChannel"]
+            if isinstance(channel, bool) or not isinstance(channel, (int, float)) or not math.isfinite(channel) or channel < 1 or channel > 15 or int(channel) != channel:
+                raise LightValidationError("Static shadow light channel must be an integer in [1,15].")
+        _exact(row, fields, "map light")
+        if row.get("receiver", "ALL") not in ("ALL", "SOURCE_CHARACTER"):
+            raise LightValidationError("Map light receiver must be ALL or SOURCE_CHARACTER.")
         identity = _stable(row["lightId"], "lightId")
         if identity in ids:
             raise LightValidationError(f"Duplicate map light ID: {identity}")

@@ -95,13 +95,7 @@ void CMapStaticBatchObject::Late_Update(
 			Engine::EProfilerCounter::MapBatchCount);
 	}
 
-	const bool_t hasAuthoredVisible = std::any_of(
-		m_Instances.begin(), m_Instances.end(),
-		[](const FMapStaticInstance& instance)
-		{
-			return instance.Visible;
-		});
-	if (hasAuthoredVisible)
+	if (0u != m_iAuthoredVisibleInstanceCount)
 	{
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::NONBLEND,
@@ -122,6 +116,9 @@ void CMapStaticBatchObject::Late_Update(
 
 HRESULT CMapStaticBatchObject::Render()
 {
+	if (CGameInstance::Get().Is_SceneEnvironmentReplaced())
+		return S_OK;
+
 	MAP_CAMERA_CULL_SNAPSHOT cameraSnapshot{};
 	const bool_t hasCameraSnapshot =
 		CMapAssetRenderUtils::Capture_CameraCullSnapshot(cameraSnapshot);
@@ -187,6 +184,9 @@ HRESULT CMapStaticBatchObject::Render()
 
 HRESULT CMapStaticBatchObject::Render_Shadow()
 {
+	if (CGameInstance::Get().Is_SceneEnvironmentReplaced())
+		return S_OK;
+
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
 	if (m_ShadowInstances.empty() || !m_RenderProfile.castsShadow)
 		return S_OK;
@@ -242,7 +242,15 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 		return E_INVALIDARG;
 	}
 
-	m_Instances[iter->second] = instance;
+	FMapStaticInstance& current = m_Instances[iter->second];
+	if (current.Visible != instance.Visible)
+	{
+		if (instance.Visible)
+			++m_iAuthoredVisibleInstanceCount;
+		else
+			--m_iAuthoredVisibleInstanceCount;
+	}
+	current = instance;
 	m_bShadowInstancesDirty = true;
 	m_bVisibleInstancesDirty = true;
 	return S_OK;
@@ -262,6 +270,10 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 	FMapStaticInstance& instance = m_Instances[iter->second];
 	if (instance.Visible != visible)
 	{
+		if (visible)
+			++m_iAuthoredVisibleInstanceCount;
+		else
+			--m_iAuthoredVisibleInstanceCount;
 		instance.Visible = visible;
 		m_bShadowInstancesDirty = true;
 		m_bVisibleInstancesDirty = true;
@@ -357,6 +369,8 @@ HRESULT CMapStaticBatchObject::Ensure_InstanceCapacity(
 
 	m_VisibleInstances.reserve(
 		newCapacity);
+	m_CandidateVisibleInstances.reserve(
+		newCapacity);
 
 	return S_OK;
 }
@@ -425,7 +439,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		return S_OK;
 	}
 
-	m_VisibleInstances.clear();
+	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
 
 	for (FMapStaticInstance& instance :
@@ -464,8 +478,9 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
         gpuInstance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
         gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
         gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
+        gpuInstance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
 
-		m_VisibleInstances.push_back(
+		m_CandidateVisibleInstances.push_back(
 			gpuInstance);
 	}
 
@@ -475,11 +490,20 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		profiler->Add_Counter(
 			Engine::EProfilerCounter::
 			MapVisibleInstances,
-			m_VisibleInstances.size());
+			m_CandidateVisibleInstances.size());
 	}
 
-	if (m_VisibleInstances.empty())
+	// Camera motion can leave the ordered GPU payload unchanged. Preserve the
+	// existing buffer in that case instead of discarding it every camera tick.
+	const bool_t payloadUnchanged =
+		m_CandidateVisibleInstances.size() == m_VisibleInstances.size() &&
+		(m_CandidateVisibleInstances.empty() || 0 == std::memcmp(
+			m_CandidateVisibleInstances.data(), m_VisibleInstances.data(),
+			m_CandidateVisibleInstances.size() * sizeof(VTXMESHINSTANCE)));
+	if (payloadUnchanged || m_CandidateVisibleInstances.empty())
 	{
+		if (!payloadUnchanged)
+			m_VisibleInstances.swap(m_CandidateVisibleInstances);
 		m_bVisibleInstancesDirty = requiresNextCameraTick;
 		m_bVisibleInstancesUsedCamera = hasCameraSnapshot;
 		m_iVisibleCameraRevision = cameraRevision;
@@ -488,7 +512,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 
 	if (FAILED(Ensure_InstanceCapacity(
 		static_cast<uint32_t>(
-			m_VisibleInstances.size()))))
+			m_CandidateVisibleInstances.size()))))
 	{
 		return E_FAIL;
 	}
@@ -507,13 +531,16 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 
 	std::memcpy(
 		mapped.pData,
-		m_VisibleInstances.data(),
-		m_VisibleInstances.size() *
+		m_CandidateVisibleInstances.data(),
+		m_CandidateVisibleInstances.size() *
 		sizeof(VTXMESHINSTANCE));
 
 	m_pContext->Unmap(
 		m_pInstanceBuffer.Get(),
 		0);
+	// Commit only after upload succeeds so a failed Map cannot replace the
+	// CPU payload associated with the previous successful GPU upload.
+	m_VisibleInstances.swap(m_CandidateVisibleInstances);
 	m_bVisibleInstancesDirty = requiresNextCameraTick;
 	m_bVisibleInstancesUsedCamera = hasCameraSnapshot;
 	m_iVisibleCameraRevision = cameraRevision;
@@ -538,6 +565,7 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
         gpuInstance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
         gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
         gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
+        gpuInstance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
 		m_ShadowInstances.push_back(gpuInstance);
 	}
 
@@ -573,6 +601,7 @@ HRESULT CMapStaticBatchObject::
 Rebuild_PlacementLookup()
 {
 	m_PlacementLookup.clear();
+	m_iAuthoredVisibleInstanceCount = 0u;
 	m_PlacementLookup.reserve(
 		m_Instances.size());
 
@@ -598,6 +627,8 @@ Rebuild_PlacementLookup()
 
 		if (!inserted)
 			return E_INVALIDARG;
+		if (instance.Visible)
+			++m_iAuthoredVisibleInstanceCount;
 	}
 
 	return S_OK;

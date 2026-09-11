@@ -10,6 +10,47 @@
 #include <algorithm>
 #include <cmath>
 
+namespace
+{
+    RENDERGROUP MaterialRenderGroup(const MAP_ASSET_RENDER_PROFILE& profile)
+    {
+        switch (profile.renderMode)
+        {
+        case MAP_ASSET_RENDER_MODE::DEFERRED: return RENDERGROUP::NONBLEND;
+        case MAP_ASSET_RENDER_MODE::BACKGROUND: return RENDERGROUP::PRIORITY;
+        case MAP_ASSET_RENDER_MODE::TRANSLUCENT:
+        case MAP_ASSET_RENDER_MODE::ADDITIVE:
+        case MAP_ASSET_RENDER_MODE::WATER: return RENDERGROUP::BLEND;
+        }
+        return RENDERGROUP::END;
+    }
+}
+
+MAP_ASSET_RENDER_PROFILE CMapAssetObject::Get_MaterialRenderProfile(uint32_t meshIndex) const
+{
+    auto profile = Get_EffectiveRenderProfile();
+    const auto* surface = m_pModelCom->Get_MaterialSurface(meshIndex);
+    if (!surface || m_fPresentationVortexStrength > 0.f) return profile;
+    switch (surface->renderMode)
+    {
+    case Engine::MODEL_SURFACE_RENDER_MODE::INHERIT: break;
+    case Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED: profile.renderMode = MAP_ASSET_RENDER_MODE::DEFERRED; break;
+    case Engine::MODEL_SURFACE_RENDER_MODE::TRANSLUCENT: profile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT; break;
+    case Engine::MODEL_SURFACE_RENDER_MODE::BACKGROUND: profile.renderMode = MAP_ASSET_RENDER_MODE::BACKGROUND; break;
+    case Engine::MODEL_SURFACE_RENDER_MODE::ADDITIVE: profile.renderMode = MAP_ASSET_RENDER_MODE::ADDITIVE; break;
+    case Engine::MODEL_SURFACE_RENDER_MODE::WATER: profile.renderMode = MAP_ASSET_RENDER_MODE::WATER; break;
+    }
+    switch (surface->cullMode)
+    {
+    case Engine::MODEL_SURFACE_CULL_MODE::INHERIT: break;
+    case Engine::MODEL_SURFACE_CULL_MODE::CULL_BACK: profile.cullMode = MAP_ASSET_CULL_MODE::CULL_BACK; break;
+    case Engine::MODEL_SURFACE_CULL_MODE::CULL_FRONT: profile.cullMode = MAP_ASSET_CULL_MODE::CULL_FRONT; break;
+    case Engine::MODEL_SURFACE_CULL_MODE::TWO_SIDED: profile.cullMode = MAP_ASSET_CULL_MODE::TWO_SIDED; break;
+    }
+    profile.castsShadow = profile.castsShadow && surface->castsShadow;
+    return profile;
+}
+
 CMapAssetObject::CMapAssetObject(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CGameObject { pDevice, pContext }
@@ -103,46 +144,46 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 
 	if (!m_bVisible)
 		return;
-	const MAP_ASSET_RENDER_PROFILE effectiveProfile =
-		Get_EffectiveRenderProfile();
-	if (MAP_ASSET_RENDER_MODE::DEFERRED ==
-		effectiveProfile.renderMode &&
-		CGameInstance::Get().Is_ShadowLightEnabled())
-	{
-		/* Shadow visibility follows authored placement visibility, not the
-		camera frustum, so an off-screen caster cannot pop its shadow. */
-		CGameInstance::Get().Add_RenderObject(
-			RENDERGROUP::SHADOW,
-			static_pointer_cast<CGameObject>(shared_from_this()));
-	}
-	RENDERGROUP renderGroup = RENDERGROUP::NONBLEND;
-
-	if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::TRANSLUCENT ||
-		effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::ADDITIVE ||
-		effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER)
-		renderGroup = RENDERGROUP::BLEND;
-	else if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::BACKGROUND)
-		renderGroup = RENDERGROUP::PRIORITY;
-
-	CGameInstance::Get().Add_RenderObject(
-		renderGroup,
-		static_pointer_cast<CGameObject>(shared_from_this()));
+    bool queued[static_cast<size_t>(RENDERGROUP::END)]{};
+    for (uint32_t mesh = 0; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+    {
+        const auto profile = Get_MaterialRenderProfile(mesh);
+        const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+        if (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+            surface->sourceCharacter.program >= 38u && surface->sourceCharacter.program <= 43u)
+            CGameInstance::Get().Request_SceneColorSnapshot();
+        const auto group = MaterialRenderGroup(profile);
+        if (group == RENDERGROUP::END) continue;
+        queued[static_cast<size_t>(group)] = true;
+        if (profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED && profile.castsShadow &&
+            CGameInstance::Get().Is_ShadowLightEnabled())
+            queued[static_cast<size_t>(RENDERGROUP::SHADOW)] = true;
+    }
+    for (size_t group = 0; group < std::size(queued); ++group)
+        if (queued[group]) CGameInstance::Get().Add_RenderObject(static_cast<RENDERGROUP>(group),
+            static_pointer_cast<CGameObject>(shared_from_this()));
 }
 
 HRESULT CMapAssetObject::Render()
 {
+    // Direct callers submit the same disjoint subsets as the renderer queues.
+    for (const auto group : { RENDERGROUP::PRIORITY, RENDERGROUP::NONBLEND, RENDERGROUP::BLEND })
+        if (FAILED(Render_Group(group))) return E_FAIL;
+    return S_OK;
+}
+
+HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
+{
 	/* Late_Update may already have queued this object when a presentation cue
 	   hides it. Re-check at draw time so the previous frame cannot leak through. */
-	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f)
+	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f ||
+        CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
 	MAP_CAMERA_CULL_SNAPSHOT cameraSnapshot{};
 	const bool_t hasCameraSnapshot =
 		CMapAssetRenderUtils::Capture_CameraCullSnapshot(cameraSnapshot);
-	const MAP_ASSET_RENDER_PROFILE effectiveProfile =
-		Get_EffectiveRenderProfile();
-	const bool_t background = MAP_ASSET_RENDER_MODE::BACKGROUND ==
-		effectiveProfile.renderMode;
+	const bool_t background = group == RENDERGROUP::PRIORITY;
 	MAP_FRUSTUM_CULL_DECISION cullDecision{};
 	if (!background && m_bHasWorldCullBounds && hasCameraSnapshot &&
 		CMapAssetRenderUtils::Evaluate_FrustumVisibility(
@@ -167,37 +208,28 @@ HRESULT CMapAssetObject::Render()
 			Engine::EProfilerCounter::MapVisibleInstances);
 	}
 
+    const float4_t worldCullSphere(m_vWorldCullCenter.x, m_vWorldCullCenter.y,
+        m_vWorldCullCenter.z, m_fWorldCullRadius);
 	HRESULT renderResult = Bind_ShaderResources(
 		hasCameraSnapshot ? &cameraSnapshot : nullptr);
 	if (SUCCEEDED(renderResult))
 	{
-		MAP_ASSET_RENDER_PROFILE presentationProfile =
-			Get_EffectiveRenderProfile();
-		const bool_t bWater =
-			MAP_ASSET_RENDER_MODE::WATER == presentationProfile.renderMode &&
-			m_bHasWaterProfile;
-		if (MAP_ASSET_RENDER_MODE::WATER == presentationProfile.renderMode &&
-			!m_bHasWaterProfile)
-		{
-			/* The catalog load refuses a WATER asset without a row, so this can
-			   only be a placement built before that check. Draw it as an
-			   ordinary translucent surface rather than through a water pass
-			   with identity parameters. */
-			presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
-		}
-		const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(
-			presentationProfile, m_bMirrored);
-		presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
-		renderResult = Bind_WaterShaderResources(bWater);
-
-		for (uint32_t meshIndex = 0;
-			SUCCEEDED(renderResult) &&
-			meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
-		{
+        for (uint32_t meshIndex = 0; SUCCEEDED(renderResult) && meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
+        {
+            auto presentationProfile = Get_MaterialRenderProfile(meshIndex);
+            if (MaterialRenderGroup(presentationProfile) != group) continue;
+            const bool_t bWater = presentationProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER && m_bHasWaterProfile;
+            if (presentationProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER && !m_bHasWaterProfile)
+                presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
+            const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
+            presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
+            renderResult = Bind_WaterShaderResources(bWater);
+            if (FAILED(renderResult)) break;
 			if (FAILED(
 				CMapAssetRenderUtils::Bind_Material(
 					m_pModelCom, m_pShaderCom, meshIndex,
-					presentationProfile, m_fElapsedTime, nullptr, m_AssetId, &m_BakedLighting)) ||
+					presentationProfile, m_fElapsedTime, nullptr, m_AssetId, &m_BakedLighting,
+                    m_bHasWorldCullBounds ? &worldCullSphere : nullptr)) ||
 
 				FAILED(m_pShaderCom->Begin(passIndex)) ||
 
@@ -222,29 +254,20 @@ HRESULT CMapAssetObject::Render()
 HRESULT CMapAssetObject::Render_Shadow()
 {
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
-	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f)
+	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f ||
+        CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
-	MAP_ASSET_RENDER_PROFILE presentationProfile =
-		Get_EffectiveRenderProfile();
-	if (!presentationProfile.castsShadow)
-		return S_OK;
-	if (MAP_ASSET_RENDER_MODE::DEFERRED != presentationProfile.renderMode)
-		return S_OK;
-	if (FAILED(Bind_ShadowShaderResources()))
-		return E_FAIL;
-
-	const uint32_t iCullPass = CMapAssetRenderUtils::Select_Pass(
-		presentationProfile, m_bMirrored);
-	if (iCullPass > 2u)
-		return E_UNEXPECTED;
-	presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
+    if (!m_RenderProfile.castsShadow) return S_OK;
+    if (FAILED(Bind_ShadowShaderResources())) return E_FAIL;
 
 	for (uint32_t iMesh = 0;
 		iMesh < m_pModelCom->Get_NumMeshes(); ++iMesh)
 	{
-		const auto* surface = m_pModelCom->Get_MaterialSurface(iMesh);
-		if (surface && !surface->castsShadow)
-			continue;
+        auto presentationProfile = Get_MaterialRenderProfile(iMesh);
+        if (presentationProfile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED || !presentationProfile.castsShadow) continue;
+        const uint32_t iCullPass = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
+        if (iCullPass > 2u) return E_UNEXPECTED;
+        presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
 		if (FAILED(CMapAssetRenderUtils::Bind_Material(
 				m_pModelCom, m_pShaderCom, iMesh,
 				presentationProfile, m_fElapsedTime)) ||

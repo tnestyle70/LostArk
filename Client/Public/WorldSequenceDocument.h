@@ -89,6 +89,8 @@ struct WORLD_SEQUENCE_OBJECT_MOTION
 	float3_t angularVelocityDegrees = {};
 	float3_t revolutionDegreesPerSecond = {};
 	float3_t revolutionOffset = {};
+	// Per-emitter position range around its captured origin, in local metres.
+	float3_t spawnHalfExtents = {};
 	uint32_t count = 1u;
 	uint32_t intervalMs = 0u;
 	f32_t spreadDegrees = 0.f;

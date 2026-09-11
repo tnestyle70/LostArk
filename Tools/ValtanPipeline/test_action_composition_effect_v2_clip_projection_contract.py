@@ -38,10 +38,11 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
             "std::string BuildEffectV2BindingStableId(",
             "const Client::EFFECT_V2_BINDING* ResolveEffectV2Binding(",
         )
-        self.assertIn('Binding.strStage.empty() ? "clip/" : "stage/"', stable)
-        self.assertIn("Binding.strClip", stable)
+        self.assertIn('Binding.strBindingId', stable)
+        self.assertNotIn('Binding.strStage.empty()', stable)
+        self.assertNotIn('Binding.iStartMs', stable)
         self.assertIn("strClipOccurrenceId", stable)
-        self.assertIn('StableId << "/occurrence/"', stable)
+        self.assertIn('StableId += "/occurrence/"', stable)
 
         resolver = source_slice(
             self.source,
@@ -59,13 +60,18 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
             "void Client::CValtanActionWorkbench::Build_Timeline(",
             "void Client::CValtanActionWorkbench::Pack_TimelineSubrows(",
         )
-        self.assertIn("Binding.strStage != Stage.strActionId", timeline)
-        self.assertIn("Binding.strClip != strClipName", timeline)
+        self.assertIn("Binding.strPatternId != Pattern.strPatternId", timeline)
+        self.assertIn("Binding.strStageId != Stage.strStageId", timeline)
+        self.assertIn("Binding.strActionId != Stage.strActionId", timeline)
+        self.assertIn("EFFECT_V2_CLOCK_BASIS::STAGE == Binding.eClockBasis", timeline)
+        self.assertIn("Binding.strClipOccurrenceId != strClipOccurrenceId", timeline)
+        self.assertIn("Binding.iStartMs < iSourceStartMs", timeline)
         self.assertIn("StageDraft.animationSlots", timeline)
         self.assertIn("Stage.ClipOccurrences", timeline)
         self.assertIn("iSourceMs - iSourceStartMs", timeline)
         self.assertIn("fPlayRate", timeline)
-        self.assertIn("bRepeatUntilStageEnd ?", timeline)
+        self.assertIn("bRepeatBinding ?", timeline)
+        self.assertIn("EFFECT_V2_REPEAT_POLICY::EACH_LOOP == Binding.eRepeatPolicy", timeline)
         self.assertIn("iStageDurationMs", timeline)
         self.assertIn('strLabel += " [each loop]"', timeline)
         self.assertNotIn("Reload_BossValtan", timeline)
@@ -96,10 +102,29 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
         for block in (duplicate, delete, details, timeline_render):
             self.assertIn("strEffectV2ClipOccurrenceId", block)
             self.assertIn("ResolveEffectV2Binding(", block)
-        self.assertIn("EFFECT_V2_STAGE_BINDING_KEY::From_Binding", details)
+        self.assertIn("Stage_UpdateBossValtanBinding(Candidate, Status)", details)
+        self.assertIn("Validate_EffectV2BindingClock(*pStage, Candidate, Status)", details)
         self.assertIn('SeparatorText("Selected Effect V2 Box")', details)
         self.assertIn('"Clip source start (ms)"', details)
         self.assertIn("Item.fEffectV2ClipPlayRate", timeline_render)
+
+    def test_saved_bind_slot_repeated_clips_keep_distinct_shout_clocks(self) -> None:
+        presentation = json.loads(PRESENTATION.read_text(encoding="utf-8-sig"))
+        bindings = json.loads(BINDINGS.read_text(encoding="utf-8-sig"))["bindings"]
+        pattern = next(row for row in presentation["patterns"] if row["patternId"] == "VALTAN_BIND_SLOT")
+        stage = next(row for row in pattern["stages"] if row["stageId"] == "STEP_01")
+        offsets = {}
+        cursor = 0
+        for occurrence in stage["animation"]["occurrences"]:
+            offsets[occurrence["clipOccurrenceId"]] = cursor
+            cursor += round(occurrence["playMs"] / occurrence["playRate"])
+        shouts = [row for row in bindings if row["scope"]["patternId"] == "VALTAN_BIND_SLOT"
+                  and row["scope"]["stageId"] == "STEP_01" and row["resource"]["id"] == "boss.valtan.shout"]
+        self.assertEqual(3, len(shouts))
+        self.assertEqual(3, len({row["bindingId"] for row in shouts}))
+        self.assertTrue(all(row["clock"]["basis"] == "CLIP_OCCURRENCE" for row in shouts))
+        self.assertEqual([1400, 2300, 3200], sorted(offsets[row["clock"]["clipOccurrenceId"]]
+                         + row["clock"]["startMs"] for row in shouts))
 
     def test_valtan_struggling_v2_groups_have_exact_clip_join_targets(self) -> None:
         presentation = json.loads(PRESENTATION.read_text(encoding="utf-8-sig"))
@@ -155,7 +180,7 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
                 ("mesh_att_battle_19_02", "boss.valtan.pounding.chase", 0),
                 ("mesh_att_battle_19_03", "boss.valtan.pounding", 200),
                 ("mesh_att_battle_19_03", "boss.valtan.pounding", 400),
-                ("mesh_att_battle_19_04", "boss.valtan.twohand", 1033),
+                ("mesh_att_battle_19_04", "boss.valtan.twohand", 1000),
             ]),
             joined_rows,
         )

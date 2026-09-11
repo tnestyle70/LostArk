@@ -9,6 +9,8 @@
       "sourceCatalog": "Data/Maps/Imported/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.mapset",
       "sourcePlacements": "Data/Maps/Authoring/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.mapplacements",
       "sourceWater": "Data/Maps/Authoring/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.mapwater.json",
+      "sourceMaterials": "Data/Maps/Authoring/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.mapmaterials.json",
+      "materials": "Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE.mapmaterials.json",
       "sourceLights": "Data/Maps/Authoring/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.maplights.json",
       "catalog": "Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE.mapset",
       "water": "Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE.mapwater.json",
@@ -18,8 +20,8 @@
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.navgrid",
       "gameplayDocument": "Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json",
       "placementCount": 50017,
-      "catalogAssetRows": 3021,
-      "uniqueAssetCount": 1003,
+      "catalogAssetRows": 19152,
+      "uniqueAssetCount": 16741,
       "runtimeAssetRoot": "Map/LV_BER_BERNCASTLE"
     },
     {
@@ -44,7 +46,7 @@
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
       "gameplayDocument": "Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json",
       "placementCount": 13184,
-      "assetCount": 279,
+      "assetCount": 280,
       "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED",
       "sourceMaterials": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapmaterials.json",
       "materials": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapmaterials.json"

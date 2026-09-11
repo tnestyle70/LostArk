@@ -35,6 +35,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <span>
 #include <tuple>
 #include <unordered_map>
@@ -6356,6 +6357,28 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			return E_INVALIDARG;
 		}
 		Staged.bSourceRequiresSceneColor = pNativeSD->bNeedsSceneColor;
+		Staged.bSourceRequiresSceneDepth = pNativeSD->bNeedsDepthSample;
+		if (pNativeSD->bUsesOneLayerDistortion)
+		{
+			// UE3 BasePass switches OneLayer distortion to opaque blending:
+			// its RT0 already contains the sampled scene. Retain the material's
+			// read-only depth pass and leave the distortion accumulation MRT alone.
+			D3D11_BLEND_DESC Blend{};
+			Blend.IndependentBlendEnable = TRUE;
+			for (auto& Target : Blend.RenderTarget)
+			{
+				Target.SrcBlend = Target.SrcBlendAlpha = D3D11_BLEND_ONE;
+				Target.DestBlend = Target.DestBlendAlpha = D3D11_BLEND_ZERO;
+				Target.BlendOp = Target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			}
+			Blend.RenderTarget[0u].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+			const HRESULT Result = m_pDevice->CreateBlendState(&Blend, &Staged.pNativeOneLayerBlend);
+			if (FAILED(Result))
+			{
+				strOutError = "Native OneLayer blend-state creation failed: " + Element.strElementId;
+				return Result;
+			}
+		}
 	}
 	if (Staged.iSourceMaterialProfile >= 52u && Staged.iSourceMaterialProfile <= 76u &&
 		!Client::Build_DimensionMasterVParameters(SourceMaterial, Staged.VSourceMaterialParameters))
@@ -18612,6 +18635,34 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			hFirstBindFailure = hResult;
 		return true;
 	};
+    // Fixed decal/trail carriers share the admitted native parameter packet.
+    const bool bKoukuFixedNative = nullptr == pShaderProgram &&
+        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2341u &&
+        (pShader == m_pDecalShader || pShader == m_pTrailShader);
+    if (bKoukuFixedNative)
+    {
+        if (BindFailed(pShader->Bind_RawValue("g_ArtistSourceMaterialParameters",
+                Resource.ArtistSourceMaterialParameters.data(), sizeof(Resource.ArtistSourceMaterialParameters))) ||
+            BindFailed(pShader->Bind_RawValue("g_ArtistSourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))))
+            return Fail_RenderOperation("Kouku native fixed-carrier parameter binding failed.", hFirstBindFailure);
+        if (Resource.bSourceRequiresSceneDepth &&
+            BindFailed(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), pShader, "g_EffectSceneDepthTexture")))
+            return Fail_RenderOperation("Kouku fixed-carrier source depth is unavailable.", hFirstBindFailure);
+        if (Resource.bSourceRequiresSceneColor &&
+            BindFailed(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_EffectSceneColor"), pShader, "g_EffectSceneColorTexture")))
+            return Fail_RenderOperation("Kouku fixed-carrier source scene color is unavailable.", hFirstBindFailure);
+        if (pShader == m_pDecalShader)
+        {
+            // Match the existing native model/mesh adapter: committed scene ambient;
+            // UE skylight hemispheres have no scene owner and remain disabled.
+            float4_t Ambient{0.f, 0.f, 0.f, 1.f};
+            for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+                if (Light.eType == LIGHT::DIRECTIONAL)
+                { Ambient.x += Light.vAmbient.x; Ambient.y += Light.vAmbient.y; Ambient.z += Light.vAmbient.z; }
+            if (BindFailed(pShader->Bind_RawValue("g_KoukuDecalAmbient", &Ambient, sizeof(Ambient))))
+                return Fail_RenderOperation("Kouku decal ambient binding failed.", hFirstBindFailure);
+        }
+    }
     const bool_t bGenericCarrierShader = nullptr != pShaderProgram &&
         pShaderProgram->eFamily == EFFECT_SHADER_FAMILY::GENERIC;
 	if ((nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH) || (nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE))
@@ -19030,7 +19081,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: source-profile block.",
 			hFirstBindFailure);
 	}
-    if (nullptr != pShaderProgram && !bGenericCarrierShader &&
+    if (((nullptr != pShaderProgram && !bGenericCarrierShader) || pShader == m_pDecalShader) &&
         (BindFailed(pShader->Bind_RawValue("g_SourceMaterialProfile",
             &Resource.iSourceMaterialProfile, sizeof(Resource.iSourceMaterialProfile))) ||
          BindFailed(pShader->Bind_RawValue("g_SourceTextureMask",
@@ -19910,6 +19961,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal material shader bind failed.", hResult);
+    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2341u &&
+        FAILED(m_pDecalShader->Bind_RawValue("g_KoukuDecalProjection",
+            &Projection.vSourceProjection, sizeof(Projection.vSourceProjection))))
+        return Fail_RenderOperation("Kouku source decal plane binding failed.", E_FAIL);
 	hResult = m_pDecalShader->Bind_Matrix(
 		"g_DecalWorldInverse", &InverseDecal);
 	if (FAILED(hResult))
@@ -20482,6 +20537,26 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		}
 		iPass = Adapter.iPassIndex;
 	}
+	if (341u == pResource->iSourceMaterialProfile || 361u == pResource->iSourceMaterialProfile)
+	{
+		// Native FMaterialShaderParameters binds BatchElement.WorldToLocal.
+		// The batch uses emitter space only for local-space particles; Playback
+		// carries that exact transform separately from the billboard instance.
+		const matrix_t EmitterWorld = XMLoadFloat4x4(&Particles.front().SourceEmitterWorld);
+		const f32_t Determinant = XMVectorGetX(XMMatrixDeterminant(EmitterWorld));
+		if (!std::isfinite(Determinant) || std::abs(Determinant) <= 0.00000001f)
+			return Fail_RenderOperation("Native particle emitter transform is singular.", E_INVALIDARG, true);
+		const matrix_t ClientToSource = XMMatrixRotationX(XM_PIDIV2);
+		float4x4_t SourceInverse{};
+		XMStoreFloat4x4(&SourceInverse, XMMatrixTranspose(ClientToSource) *
+			XMMatrixInverse(nullptr, EmitterWorld) * ClientToSource);
+		const f32_t* Values = &SourceInverse._11;
+		if (!std::all_of(Values, Values + 12u, [](f32_t Value) { return std::isfinite(Value); }))
+			return Fail_RenderOperation("Native particle inverse is non-finite.", E_INVALIDARG, true);
+		hResult = pDrawShader->Bind_RawValue("g_SDSourceWorldToLocal", Values, sizeof(float4_t) * 3u);
+		if (FAILED(hResult))
+			return Fail_RenderOperation("Native particle WorldToLocal binding failed.", hResult, true);
+	}
 	hResult = Bind_Common(pDrawShader, Source, CommonColor,
 		LocalTime, Normalized, *pResource, 1.f, nullptr, pShaderProgram);
 	if (FAILED(hResult))
@@ -20569,6 +20644,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	Record_TestDrawSelection(
 		EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE, iPass);
 #endif
+	std::optional<CReconstructedPipelineStateGuard> NativeOneLayerGuard;
+	if (nullptr != pResource->pNativeOneLayerBlend)
+	{
+		NativeOneLayerGuard.emplace(m_pContext.Get());
+		const FLOAT BlendFactor[4]{};
+		m_pContext->OMSetBlendState(pResource->pNativeOneLayerBlend.Get(), BlendFactor, 0xffffffffu);
+	}
 	hResult = m_pParticleBuffer->Render();
 	if (S_OK != hResult)
 		return Fail_RenderOperation(
@@ -20847,8 +20929,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const f32_t U = fTilingDistance > 0.f ?
 					Point.fCumulativeDistance / fTilingDistance :
 					static_cast<f32_t>(iPair);
-				const float4_t Color = bRuntimeMaterialV2Ribbon ?
-					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
+                const bool bKoukuNativeTrail = pResource->iSourceMaterialProfile >= 2304u &&
+                    pResource->iSourceMaterialProfile <= 2341u;
+                if (bKoukuNativeTrail && Point.iSourceColorComponentMask != 0x0fu)
+                    return Fail_RenderOperation("Kouku source trail color payload is incomplete.", E_INVALIDARG, true);
+                const float4_t Color = bKoukuNativeTrail ? Point.vSourceColor : bRuntimeMaterialV2Ribbon ?
+                    float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
 					float4_t(1.f, 1.f, 1.f, 1.f - Point.fNormalizedAge);
 				Vertices.push_back({ Pair.vFirstEdgeWorld, float2_t(U, 0.f),
 					Color, Point.vDynamicParameter });
@@ -21054,9 +21140,27 @@ bool_t Client::CEffectDocumentRenderer::Has_WorldMarkElements() const
 	return std::ranges::any_of(Document.Elements,
 		[](const EFFECT_ELEMENT_DESC& Element)
 		{
-			return Element.bVisible && Element.eCompositionLayer ==
-				EFFECT_COMPOSITION_LAYER::WORLD_MARK;
+			return Element.bVisible && (Element.eCompositionLayer ==
+                EFFECT_COMPOSITION_LAYER::WORLD_MARK || Element.eCompositionLayer ==
+                EFFECT_COMPOSITION_LAYER::SCENE_BACKDROP);
 		});
+}
+
+bool_t Client::CEffectDocumentRenderer::Has_ActiveSceneBackdrop(
+    const EFFECT_EVALUATED_FRAME& Frame) const
+{
+    return std::ranges::any_of(Frame.Elements, [this](const auto& evaluated)
+        {
+            const EFFECT_ELEMENT_DESC* element = evaluated.pElement;
+            if (!element || !element->bVisible ||
+                element->eCompositionLayer != EFFECT_COMPOSITION_LAYER::SCENE_BACKDROP ||
+                !Is_EffectSceneBackdropCarrier(*element) ||
+                !Should_SubmitPreviewOccurrence(*element, Resolve_GpuRenderFamily(*element)))
+                return false;
+            const ELEMENT_RESOURCE* resource = Find_Resource(element->strElementId);
+            return resource && !resource->bSourceMaterialFallbackBlocked &&
+                !resource->bOccurrenceVisualSuppressed;
+        });
 }
 
 HRESULT Client::CEffectDocumentRenderer::Render_NonBlendModelCues(
@@ -22114,7 +22218,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_CompositionPhase(
 		const bool_t bHasGpuFamily =
 			EFFECT_GPU_RENDER_FAMILY::END != eFamily;
 		const bool_t bOwnsPhase =
-			DocumentElement.eCompositionLayer == ePhase;
+			DocumentElement.eCompositionLayer == ePhase ||
+            (ePhase == EFFECT_COMPOSITION_LAYER::WORLD_MARK &&
+             DocumentElement.eCompositionLayer == EFFECT_COMPOSITION_LAYER::SCENE_BACKDROP);
 		EFFECT_GPU_RENDER_FAMILY_STATS* pFamilyStats =
 			!bHasGpuFamily || !bOwnsPhase ? nullptr :
 				&m_LastRenderSubmissionStats.Families[
@@ -22179,6 +22285,32 @@ HRESULT Client::CEffectDocumentRenderer::Render_CompositionPhase(
 			nullptr != pGpuOccurrence && pGpuOccurrence->bActive;
 		bool_t bOccurrenceSubmitted = false;
 		bool_t bOccurrenceSuppressed = false;
+		const auto HasOccurrenceRow = [&strElementId](const auto& Rows, const size_t iRow)
+		{
+			return iRow < Rows.size() && nullptr != Rows[iRow].pElement &&
+				Rows[iRow].pElement->strElementId == strElementId;
+		};
+		if (bSubmitPreviewOccurrence &&
+			(HasOccurrenceRow(Frame.Elements, iElement) ||
+			 HasOccurrenceRow(Frame.Particles, iParticle) ||
+			 HasOccurrenceRow(Frame.Trails, iTrail) ||
+			 HasOccurrenceRow(Frame.AfterImages, iAfterImage)))
+		{
+			const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
+			if (nullptr != pResource && !pResource->bSourceMaterialFallbackBlocked &&
+				!pResource->bOccurrenceVisualSuppressed &&
+				(pResource->bSourceRequiresSceneColor ||
+				 pResource->iSourceMaterialProfile == 42u ||
+				 pResource->iSourceMaterialProfile == 69u))
+			{
+				// Include earlier translucent occurrences; all particles/material slots
+				// of this occurrence share one snapshot without sampling their own draw.
+				const HRESULT hSnapshot = CGameInstance::Get().Refresh_SceneColorSnapshot();
+				if (FAILED(hSnapshot))
+					return FailFrame("Effect scene-color refresh failed: " + strElementId,
+						hSnapshot, true);
+			}
+		}
 		const size_t iAfterImageBegin = iAfterImage;
 		while (iAfterImage < Frame.AfterImages.size() &&
 			nullptr != Frame.AfterImages[iAfterImage].pElement &&

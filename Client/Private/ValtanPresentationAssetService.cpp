@@ -96,23 +96,25 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	if (nullptr == pActor || bodyTag.empty() || weaponTag.empty())
 		return RejectAsset(archetypeId, "no supported boss catalog definition");
 
-	const std::filesystem::path bodyPath =
-		CRuntimeAssetRoot::Resolve(pActor->bodyModel);
-	const std::filesystem::path weaponPath =
-		CRuntimeAssetRoot::Resolve(pActor->weaponModel);
+	Engine::MODEL_ASSET_LOAD_DESC bodyLoad;
+	Engine::MODEL_ASSET_LOAD_DESC weaponLoad;
+	std::string materialStatus;
+	if (!CActorCatalog::Build_ModelLoadDescription(pActor->bodyModel, bodyLoad, materialStatus))
+		return RejectAsset(archetypeId, "body material input failed: " + materialStatus);
+	if (!CActorCatalog::Build_ModelLoadDescription(pActor->weaponModel, weaponLoad, materialStatus))
+		return RejectAsset(archetypeId, "weapon material input failed: " + materialStatus);
 	const std::filesystem::path animSetPath =
 		CRuntimeAssetRoot::Resolve(pActor->animationSetId);
-	if (bodyPath.empty() || weaponPath.empty() || animSetPath.empty())
-		return RejectAsset(archetypeId, "invalid Resources-relative model path");
-	std::vector<std::pair<uint32_t, std::filesystem::path>> armorAssets;
+	if (animSetPath.empty())
+		return RejectAsset(archetypeId, "invalid Resources-relative animation path");
+	std::vector<std::pair<uint32_t, Engine::MODEL_ASSET_LOAD_DESC>> armorAssets;
 	armorAssets.reserve(pActor->armorParts.size());
 	for (const BOSS_ARMOR_PART_ENTRY& armorPart : pActor->armorParts)
 	{
-		std::filesystem::path armorPath =
-			CRuntimeAssetRoot::Resolve(armorPart.modelAssetId);
-		if (armorPath.empty())
-			return RejectAsset(archetypeId, "invalid armor model path");
-		armorAssets.emplace_back(armorPart.stateMask, std::move(armorPath));
+		Engine::MODEL_ASSET_LOAD_DESC armorLoad;
+		if (!CActorCatalog::Build_ModelLoadDescription(armorPart.modelAssetId, armorLoad, materialStatus))
+			return RejectAsset(archetypeId, "armor material input failed: " + materialStatus);
+		armorAssets.emplace_back(armorPart.stateMask, std::move(armorLoad));
 	}
 	std::error_code animSetFileError;
 	const bool_t hasAnimSetFile = std::filesystem::is_regular_file(
@@ -140,7 +142,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	const float bodyScale = pActor->bodyModelPreScale;
 	const float weaponScale = pActor->weaponModelPreScale;
 	unique_ptr<CModel> bodyModel = CModel::Create(
-		pDevice, pContext, MODEL::ANIM, bodyPath.string().c_str(),
+		pDevice, pContext, MODEL::ANIM, bodyLoad,
 		XMMatrixScaling(bodyScale, bodyScale, bodyScale));
 	if (nullptr == bodyModel || 0u == bodyModel->Get_NumMeshes() ||
 		0u == bodyModel->Get_SkeletonHash() ||
@@ -183,22 +185,22 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	/* v8 catalog rows carry a socket pre-rotation; Valtan's is zero today. */
 	const float3_t& weaponRotation = pActor->weaponModelPreRotationDegrees;
 	staged.emplace_back(weaponTag,
-		CModel::Create(pDevice, pContext, MODEL::NONANIM, weaponPath.string().c_str(),
+		CModel::Create(pDevice, pContext, MODEL::NONANIM, weaponLoad,
 			XMMatrixRotationRollPitchYaw(
 				XMConvertToRadians(weaponRotation.x),
 				XMConvertToRadians(weaponRotation.y),
 				XMConvertToRadians(weaponRotation.z)) *
 			XMMatrixScaling(weaponScale, weaponScale, weaponScale)));
-	for (const auto& [stateMask, armorPath] : armorAssets)
+	for (const auto& [stateMask, armorLoad] : armorAssets)
 	{
 		unique_ptr<CModel> armorModel = CModel::Create(
-			pDevice, pContext, MODEL::ANIM, armorPath.string().c_str(),
+			pDevice, pContext, MODEL::ANIM, armorLoad,
 			XMMatrixScaling(bodyScale, bodyScale, bodyScale));
 		/* Keep the established isolated-plate failure policy for ordinary Valtan. */
 		if (nullptr == armorModel)
 		{
 			OutputDebugStringA(("[Client][Valtan] armour plate rejected: " +
-				armorPath.string() + " | " +
+				armorLoad.meshPath.string() + " | " +
 				CModelDecoderRegistry::Get().Get_LastReport().error + "\n").c_str());
 			continue;
 		}

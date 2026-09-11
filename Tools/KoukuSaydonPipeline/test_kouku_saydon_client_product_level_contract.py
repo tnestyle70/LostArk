@@ -106,9 +106,12 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
             ),
         )
         self.assertIn('"BOSS_KAKULSAYDON_G1_KOUKU"', body)
+        self.assertEqual(1, body.count("Ready_DeployPropArea"))
+        self.assertLess(body.index("Ready_DeployPropArea"), body.index("rollback.Commit()"))
+        self.assertNotIn("CDeployPropRuntime::Ensure_AreaPrototypes", self.level_cpp)
+        self.assertIn("m_DeployRuntime.Load_Area", self.level_cpp)
         for forbidden in (
             "Ready_ValtanPresentation",
-            "Ready_DeployPropArea",
             "SpawnWorldEntity",
             "Play_Pattern",
         ):

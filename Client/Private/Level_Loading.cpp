@@ -129,7 +129,8 @@ HRESULT CLevel_Loading::Initialize(
 
 	const bool_t bUsesEffectLoadJob =
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-		LEVEL::VALTAN_ARENA == m_eNextLevelID;
+		LEVEL::VALTAN_ARENA == m_eNextLevelID ||
+		LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID;
 	uint64_t iEffectCatalogRevision = 0u;
 	if (bUsesEffectLoadJob)
 	{
@@ -177,7 +178,8 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 
 	bool_t bTargetPresentationReady = true;
 	if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-		 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
+		 LEVEL::VALTAN_ARENA == m_eNextLevelID ||
+		 LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID) &&
 		!m_isActivationRequested)
 	{
 		bTargetPresentationReady =
@@ -530,7 +532,8 @@ void CLevel_Loading::Render_LoadingProgressDiagnostics()
 	{
 		ImGui::TextUnformatted(loadingStatus.c_str());
 		if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-			 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
+			 LEVEL::VALTAN_ARENA == m_eNextLevelID ||
+			 LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID) &&
 			!m_strEffectPreparationStatus.empty())
 		{
 			const std::string EffectStatus =
@@ -568,12 +571,14 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 	const bool_t bCharacterSelect =
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID;
 	const bool_t bValtanArena = LEVEL::VALTAN_ARENA == m_eNextLevelID;
-	if (!bCharacterSelect && !bValtanArena)
+	const bool_t bKoukuArena = LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID;
+	if (!bCharacterSelect && !bValtanArena && !bKoukuArena)
 	{
 		return true;
 	}
 	const std::string TargetLabel =
-		bCharacterSelect ? "CHARACTER SELECT" : "VALTAN ARENA";
+		bCharacterSelect ? "CHARACTER SELECT" :
+		(bValtanArena ? "VALTAN ARENA" : "KOUKUSAYDON ARENA");
 
 	const auto IsolateFailure = [this, &TargetLabel](const std::string& Status)
 	{
