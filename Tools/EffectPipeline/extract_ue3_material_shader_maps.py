@@ -2022,7 +2022,9 @@ def extract_selected_shader_objects(
     }
 
 
-def parse_dxbc_declaration_closure(disassembly: dict[str, Any]) -> dict[str, Any]:
+def parse_dxbc_declaration_closure(
+    disassembly: dict[str, Any], *, allow_textureless: bool = False
+) -> dict[str, Any]:
     """Project the DXBC declarations and sample pairs needed by native wires."""
 
     profile = str(disassembly.get("profile", ""))
@@ -2061,7 +2063,10 @@ def parse_dxbc_declaration_closure(disassembly: dict[str, Any]) -> dict[str, Any
         require(len(registers) == 2, "DXBC sample register pair is ambiguous")
         pair = f"{registers[0].casefold()}/{registers[1].casefold()}"
         sample_pair_counts[pair] = sample_pair_counts.get(pair, 0) + 1
-    require(sample_pair_counts, "DXBC contains no texture/sampler sample pair")
+    require(
+        sample_pair_counts or (allow_textureless and not declared_textures and not declared_samplers),
+        "DXBC contains no texture/sampler sample pair",
+    )
     sampled_textures = sorted(
         {int(pair.split("/")[0][1:]) for pair in sample_pair_counts}
     )
@@ -2134,6 +2139,8 @@ def scan_native_binding_array_candidates(
     object_logical_offset: int,
     uniform_counts: dict[str, int],
     dxbc_closure: dict[str, Any],
+    *,
+    required_vector_expression_indices: set[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Find every three-array wire triple satisfying native+DXBC closure."""
 
@@ -2141,14 +2148,23 @@ def scan_native_binding_array_candidates(
     vector_count = int(uniform_counts["pixelVectorExpressions"])
     texture_count = int(uniform_counts["pixelTexture2DExpressions"])
     scalar_group_count = math.ceil(scalar_count / 4)
+    required_vectors = set(required_vector_expression_indices or ())
     require(
-        vector_count > 0 and texture_count > 0,
-        "G03-3 requires non-empty vector/texture expression denominators",
+        required_vectors.issubset(range(vector_count)),
+        "required source vector binding index is outside the uniform expressions",
     )
     cb0_size = int(dxbc_closure["declaredConstantBuffer0Float4Count"])
     declared_textures = set(dxbc_closure["declaredTextureRegisters"])
     declared_samplers = set(dxbc_closure["declaredSamplerRegisters"])
     observed_pairs = set(dxbc_closure["observedSamplePairCounts"])
+    textureless_shader = not (declared_textures or declared_samplers or observed_pairs)
+    # A cooked PS can eliminate every texture expression while the material map
+    # still retains its source texture denominator. Only a DXBC closure with no
+    # texture/sampler declarations and no samples admits an empty native array.
+    require(
+        vector_count > 0 and (texture_count > 0 or textureless_shader),
+        "G03-3 requires non-empty vector/texture expression denominators",
+    )
     candidates = []
     for start in range(48, max(48, len(object_bytes) - 11)):
         try:
@@ -2178,6 +2194,7 @@ def scan_native_binding_array_candidates(
                 None,
                 texture_count,
                 object_logical_offset,
+                allow_empty=textureless_shader,
             )
 
             scalar_keys = [row["expressionIndexOrGroup"] for row in scalar_rows]
@@ -2192,6 +2209,10 @@ def scan_native_binding_array_candidates(
                 len(set(vector_keys)) == len(vector_keys)
                 and set(vector_keys).issubset(range(vector_count)),
                 "vector keys do not close over uniform expressions",
+            )
+            require(
+                required_vectors.issubset(vector_keys),
+                "required source vector expression has no native binding",
             )
             require(
                 len(set(texture_keys)) == len(texture_keys)
@@ -2332,12 +2353,15 @@ def select_unique_native_binding_arrays(
     object_logical_offset: int,
     uniform_counts: dict[str, int],
     dxbc_closure: dict[str, Any],
+    *,
+    required_vector_expression_indices: set[int] | None = None,
 ) -> dict[str, Any]:
     candidates = scan_native_binding_array_candidates(
         object_bytes,
         object_logical_offset,
         uniform_counts,
         dxbc_closure,
+        required_vector_expression_indices=required_vector_expression_indices,
     )
     require(
         len(candidates) == 1,

@@ -8,6 +8,7 @@
 NS_BEGIN(Engine)
 
 struct PRESENTATION_SCREEN_POST_DESC;
+struct PRESENTATION_SCREEN_OVERLAY_DESC;
 
 class CRenderer final 
 {
@@ -22,12 +23,16 @@ public:
 	HRESULT Draw();
 	// A visible refractive occurrence requests the pre-translucency colour once.
 	void Request_SceneColorSnapshot() { m_bSceneColorSnapshotRequested = true; }
+	HRESULT Refresh_SceneColorSnapshot();
+    void Request_SceneEnvironmentReplacement() { m_bSceneEnvironmentReplaced = true; }
+    bool_t Is_SceneEnvironmentReplaced() const { return m_bSceneEnvironmentReplaced; }
 	const RENDER_QUALITY_SETTINGS& Get_RenderQualitySettings() const { return m_RenderQualitySettings; }
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 	const MATERIAL_RENDER_SETTINGS& Get_MaterialRenderSettings() const { return m_MaterialRenderSettings; }
 	HRESULT Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings);
 	const HEIGHT_FOG_SETTINGS& Get_HeightFogSettings() const { return m_HeightFogSettings; }
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
+	HRESULT Bind_HeightFog(class CShader* shader) const;
 	HRESULT Stage_RenderEnvironment(const wstring_t& cubePath, const float4_t& color,
 		const float4_t& rotationIntensity, RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload = false) const;
 	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
@@ -74,6 +79,7 @@ private:
 	RENDER_ENVIRONMENT_STATE m_RenderEnvironment;
 	HEIGHT_FOG_SETTINGS				m_HeightFogSettings = {};
 	bool_t m_bSceneColorSnapshotRequested = false;
+    bool_t m_bSceneEnvironmentReplaced = false;
 	f32_t							m_fPresentationClock = 0.f;
 
 #ifdef _DEBUG
@@ -92,6 +98,8 @@ private:
 	HRESULT Render_Blend();
 	HRESULT Capture_SceneColorSnapshot();
 	HRESULT Render_ScreenPosts();
+	HRESULT Render_DisplayOverlays();
+	HRESULT Render_ScreenOverlay(const PRESENTATION_SCREEN_OVERLAY_DESC& Overlay);
 	HRESULT Render_ScreenPostPass(
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV,
 		ComPtr<ID3D11RenderTargetView> pDestinationRTV,

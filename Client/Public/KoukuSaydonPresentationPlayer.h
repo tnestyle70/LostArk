@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 namespace Engine { class CModel; }
@@ -25,6 +26,7 @@ class EFFECT_V2_PIVOT_HISTORY;
 struct EFFECT_V2_TARGET;
 struct EFFECT_V2_TARGET_VIEW;
 struct ANIMATION_MODEL_TARGET_VIEW;
+struct EFFECT_DOCUMENT_DESC;
 
 struct KOUKU_BOSS_PRESENTATION_VIEW final
 {
@@ -79,6 +81,12 @@ public:
     void Sample_ModelReferencePreview(std::uint32_t clockMs, bool paused);
     bool Resolve_ModelReferenceTarget(const std::string& memberId,
         EFFECT_V2_TARGET& target, EFFECT_V2_TARGET_VIEW& view) const;
+    // Source sockets use the same CNpc/CModel as the selected animation target.
+    static bool Resolve_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
+        const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root,
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
+    using V1_SOURCE_ANCHOR_SAMPLER = std::function<bool(float, const float4x4_t&,
+        std::unordered_map<std::string, float4x4_t>&, std::string&)>;
     bool Preview_IsModelReference() const { return m_bModelReferencePreview; }
     std::uint64_t Preview_Generation() const { return m_iPreviewGeneration; }
     bool Preview_IsBundle() const { return !m_PreviewBundleId.empty(); }
@@ -112,6 +120,7 @@ private:
         std::uint32_t effectHandle = 0;
         std::uint64_t v1EffectHandle = 0;
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> effectPivotHistory;
+        V1_SOURCE_ANCHOR_SAMPLER sourceAnchorSampler;
         std::uint64_t soundHandle = 0;
         float lastAge = -1.f;
         float startMs = 0.f;

@@ -1,6 +1,7 @@
 
 #include "Engine_Shader_Defines.hlsli"
 #include "Shader_SourceStoneSurface.hlsli"
+#include "Shader_SourceFoliageSurface.hlsli"
 
 float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 float4x4    g_CameraViewMatrix, g_CameraProjMatrix;
@@ -15,6 +16,8 @@ texture2D   g_GeometricNormalTexture;
 Texture2D g_CharacterSurfaceTexture;
 Texture2D g_CharacterGeometryTexture;
 float4x4 g_SourceCharacterViewMatrix, g_SourceCharacterProjMatrix;
+uint g_ApplyStaticShadow = 0u;
+uint g_LightReceiver = 0u; // ALL=0, SOURCE_CHARACTER=1; baked map diffuse stays in RNM.
 #define SOURCE_CHARACTER_LIGHT_PASS
 #include "Shader_SourceCharacterMaterial.hlsli"
 
@@ -125,23 +128,7 @@ vector      g_vCamPosition;
 
 /* Height fog. The combine step already owns the depth target, so one screen
    space term covers terrain, buildings and characters at once. */
-uint        g_iHeightFogEnabled = 0u;
-float4      g_vHeightFogColor = float4(0.55f, 0.62f, 0.72f, 1.f);
-float       g_fHeightFogDensity = 0.35f;
-float       g_fHeightFogFalloff = 0.08f;
-float       g_fHeightFogTopHeight = 24.f;
-float       g_fHeightFogStartDistance = 0.f;
-float       g_fHeightFogMaximumOpacity = 0.9f;
-float       g_fHeightFogDriftSpeed = 0.f;
-float       g_fHeightFogDriftHeight = 0.f;
-float       g_fHeightFogDriftDensity = 0.f;
-float       g_fPresentationClock = 0.f;
-float       g_fFogCoverage = 1.f;
-float2      g_vFogWindDirection = float2(1.f, 0.f);
-float       g_fFogWindSpeed = 0.f;
-float       g_fFogPatchScale = 0.01f;
-float       g_fFogPatchSoftness = 0.15f;
-
+#include "Shader_SceneHeightFog.hlsli"
 
 
 vector      g_vLightDir;
@@ -395,8 +382,46 @@ PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
         (saturate(dot(n, l)) * directShadow + ambient), 0.f);
     // Native Blinn lobe has an RGB cap of 2 after shadow multiplication and
     // uses the same incoming color as diffuse. It has no extra NoL factor.
-    output.vSpecular = float4(g_vLightDiffuse.rgb * attenuation *
-        clamp(material.rgb * lobe * directShadow, 0.f, 2.f), 0.f);
+    float3 specular = material.rgb * lobe * directShadow;
+    if (g_DepthTexture.Load(pixel).w == 8.f)
+    {
+        const uint flags = (uint)round(g_CharacterSurfaceTexture.Load(pixel).w);
+        if ((flags & 256u) != 0u) specular = saturate(specular);
+        else if ((flags & 512u) != 0u) specular = clamp(specular, 0.f, 2.f);
+        // Native BG rim is a view-shaped term lit only from behind the
+        // geometric surface. It is independent of the perturbed normal lobe.
+        specular += g_CharacterSurfaceTexture.Load(pixel).rgb * directShadow *
+            saturate(-dot(Decode_MapPBRGeometricNormal(pixel), l));
+    }
+    else if (g_DepthTexture.Load(pixel).w == 11.f) { /* Native ice does not cap RGB specular. */ }
+    else if (g_DepthTexture.Load(pixel).w == 13.f)
+        specular = clamp(material.rgb * lobe, 0.f, 2.f) * directShadow;
+    else
+    {
+        specular = clamp(specular, 0.f, 2.f);
+        if (g_DepthTexture.Load(pixel).w == 12.f)
+            specular += g_CharacterSurfaceTexture.Load(pixel).rgb *
+                saturate(-dot(Decode_MapPBRGeometricNormal(pixel), l));
+    }
+    output.vSpecular = float4(g_vLightDiffuse.rgb * attenuation * specular, 0.f);
+    return output;
+}
+
+PS_OUT_LIGHT Resolve_MapSourceFoliageLight(PS_IN input, float3 worldPosition,
+    float3 lightDirection, float attenuation, float directShadow)
+{
+    PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    const float4 depth = g_DepthTexture.Load(pixel);
+    const bool grass = depth.w == 10.f;
+    const float3 normal = SourceFoliageUnit(g_NormalTexture.Load(pixel).xyz * 2.f - 1.f);
+    const float3 light = SourceFoliageUnit(lightDirection);
+    const float3 transmission = g_CharacterSurfaceTexture.Load(pixel).rgb;
+    const float4 material = g_MaterialSpecularTexture.Load(pixel);
+    const float3 weight = SourceFoliageDirectWeight(dot(normal, light), transmission, grass);
+    output.vShade = float4(g_vLightDiffuse.rgb * attenuation * material.a * weight * directShadow, 0.f);
+    output.vSpecular = float4(g_vLightDiffuse.rgb * attenuation * SourceFoliageDirectSpecular(
+        normal, g_vCamPosition.xyz - worldPosition, light, material.rgb, depth.z, directShadow.xxx, grass), 0.f);
     return output;
 }
 
@@ -452,7 +477,10 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     output.vSpecular = float4(native.targets[0].rgb * (attenuation * shadowAdapter), 0.f);
     // Engine-owned source SH/cube values are not authored in these MICs. Keep
     // the scene's explicit ambient approximation separate from recovered direct.
-    output.vShade = g_vLightDiffuse * g_vLightAmbient * g_vMtrlAmbient *
+    const bool nativeMapBaked = g_SourceCharacterProgram >= 80u &&
+        g_SourceCharacterProgram <= 83u && g_SourceMapMonsterBakedEnabled != 0u &&
+        g_MaterialSpecularTexture.Load(pixel).w > .5f;
+    output.vShade = nativeMapBaked ? 0.f : g_vLightDiffuse * g_vLightAmbient * g_vMtrlAmbient *
         (attenuation * Resolve_AmbientOcclusion(input.vTexcoord));
     output.vShade.a = 0.f;
     return output;
@@ -460,6 +488,7 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
 
 PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 {
+    if (g_LightReceiver == 1u && g_SourceCharacterRow == 0u) return (PS_OUT_LIGHT)0;
     PS_OUT_LIGHT Out;
     
     vector          vNormalDesc = g_NormalTexture.Sample(LinearSampler, In.vTexcoord);
@@ -494,15 +523,20 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 
     const float fDirectDiffuse = saturate(dot(
         normalize(g_vLightDir) * -1.f, normalize(vNormal)));
-    const float fDirectionalShadow = Resolve_DirectionalShadow(
-        vWorldPos, vNormal.xyz);
     const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
+    const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
+    const float staticShadow = g_ApplyStaticShadow != 0u && shadowChannel == g_ApplyStaticShadow ?
+        1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
+    const float fDirectionalShadow = Resolve_DirectionalShadow(
+        vWorldPos, vNormal.xyz) * staticShadow;
     if (g_SourceCharacterRow != 0u)
         return Resolve_SourceCharacterLight(In, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
     if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
     if (sourceDepth.w == 7.f)
         return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
-    if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 4.f)
+    if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
+        return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
+    if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
         return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -g_vLightDir.xyz,
             1.f, fDirectionalShadow);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
@@ -540,6 +574,7 @@ float Resolve_PointLightAttenuation(float fDistance)
 
 PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
 {
+    if (g_LightReceiver == 1u && g_SourceCharacterRow == 0u) return (PS_OUT_LIGHT)0;
     PS_OUT_LIGHT Out;
     
     vector vNormalDesc = g_NormalTexture.Sample(LinearSampler, In.vTexcoord);
@@ -588,15 +623,21 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
     }
     
     const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
+    const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
+    const float staticShadow = g_ApplyStaticShadow != 0u && shadowChannel == g_ApplyStaticShadow ?
+        1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
+
     if (g_SourceCharacterRow != 0u)
-        return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, 1.f);
+        return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, staticShadow);
     if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
     if (sourceDepth.w == 7.f)
-        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
-    if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 4.f)
-        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
+    if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
+        return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
+    if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
+        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
-        return Resolve_MapPBRLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
+        return Resolve_MapPBRLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
     float fAmbientOcclusion = Resolve_AmbientOcclusion(In.vTexcoord);
     Out.vShade = (g_vLightDiffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))
     + (g_vLightAmbient * g_vMtrlAmbient) * fAmbientOcclusion)) * fAtt;
@@ -815,41 +856,6 @@ PS_OUT_BACKBUFFER PS_MAIN_SSAO_BLUR(PS_IN In)
    Emissive is added after this call so glowing sources survive the fog. */
 /* Value noise keeps the cloud banks procedural, so no extra texture has to
    be authored, streamed or kept in sync with an Area. */
-float Fog_Hash(float2 vPoint)
-{
-    vPoint = frac(vPoint * float2(127.1f, 311.7f));
-    vPoint += dot(vPoint, vPoint + 34.23f);
-    return frac(vPoint.x * vPoint.y);
-}
-
-float Fog_ValueNoise(float2 vPoint)
-{
-    const float2 vCell = floor(vPoint);
-    const float2 vLocal = frac(vPoint);
-    const float2 vWeight = vLocal * vLocal * (3.f - 2.f * vLocal);
-    const float fA = Fog_Hash(vCell);
-    const float fB = Fog_Hash(vCell + float2(1.f, 0.f));
-    const float fC = Fog_Hash(vCell + float2(0.f, 1.f));
-    const float fD = Fog_Hash(vCell + float2(1.f, 1.f));
-    return lerp(lerp(fA, fB, vWeight.x), lerp(fC, fD, vWeight.x), vWeight.y);
-}
-
-/* Three octaves read as cloud rather than as a grid and stay cheap enough for
-   a full screen pass. */
-float Fog_PatchNoise(float2 vPoint)
-{
-    float fValue = 0.f;
-    float fAmplitude = 0.5f;
-    [unroll]
-    for (int i = 0; i < 3; ++i)
-    {
-        fValue += Fog_ValueNoise(vPoint) * fAmplitude;
-        vPoint *= 2.03f;
-        fAmplitude *= 0.5f;
-    }
-    return saturate(fValue / 0.875f);
-}
-
 float3 Resolve_HeightFog(float3 vLitColor, float2 vTexcoord)
 {
     if (0u == g_iHeightFogEnabled)
@@ -858,6 +864,9 @@ float3 Resolve_HeightFog(float3 vLitColor, float2 vTexcoord)
     const vector vDepthDesc = g_DepthTexture.Sample(LinearSampler, vTexcoord);
     /* An untouched depth texel is empty background, not a fogged surface. */
     if (vDepthDesc.y <= 0.f)
+        return vLitColor;
+    // Native black blocker disables fog; row -1 has no character light owner.
+    if (vDepthDesc.w == 5.f && vDepthDesc.z == -1.f)
         return vLitColor;
 
     const float fViewZ = vDepthDesc.y * 1000.f;
@@ -870,39 +879,8 @@ float3 Resolve_HeightFog(float3 vLitColor, float2 vTexcoord)
     vWorldPos = mul(vWorldPos, g_ProjMatrixInverse);
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
 
-    const float fDrift = sin(g_fPresentationClock * g_fHeightFogDriftSpeed);
-    const float fCeiling =
-        g_fHeightFogTopHeight + fDrift * g_fHeightFogDriftHeight;
-    const float fDensity = max(0.f,
-        g_fHeightFogDensity + fDrift * g_fHeightFogDriftDensity);
-
-    const float fBelowCeiling = max(0.f, fCeiling - vWorldPos.y);
-    const float fHeightTerm =
-        1.f - exp(-fBelowCeiling * g_fHeightFogFalloff);
-
-    const float fDistance = max(0.f,
-        length(vWorldPos.xyz - g_vCamPosition.xyz) - g_fHeightFogStartDistance);
-    const float fDistanceTerm = 1.f - exp(-fDistance * fDensity * 0.02f);
-
-    /* Coverage thins the blanket into banks whose share of the map matches
-       the authored percentage, and the wind vector walks the pattern through
-       world XZ so the banks travel on the same clock the drift uses. */
-    float fCoverage = 1.f;
-    if (g_fFogCoverage < 0.999f)
-    {
-        const float fWindLength = max(length(g_vFogWindDirection), 0.0001f);
-        const float2 vTravel = (g_vFogWindDirection / fWindLength) *
-            (g_fPresentationClock * g_fFogWindSpeed);
-        const float fNoise = Fog_PatchNoise(
-            (vWorldPos.xz + vTravel) * g_fFogPatchScale);
-        const float fThreshold = 1.f - g_fFogCoverage;
-        fCoverage = smoothstep(fThreshold - g_fFogPatchSoftness,
-            fThreshold + g_fFogPatchSoftness, fNoise);
-    }
-
-    const float fFog = saturate(fHeightTerm * fDistanceTerm * fCoverage) *
-        g_fHeightFogMaximumOpacity;
-    return lerp(vLitColor, g_vHeightFogColor.rgb, fFog);
+    const float4 transfer = EvaluateSceneFog(vWorldPos.xyz, g_vCamPosition.xyz);
+    return vLitColor * transfer.w + transfer.rgb;
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
@@ -1141,18 +1119,15 @@ float Select_PresentationOverlayCoverage(float4 vSample)
 	return fCoverage;
 }
 
-PS_OUT_BACKBUFFER PS_MAIN_TEXTURED_OVERLAY(PS_IN In)
+float4 Resolve_PresentationOverlay(float2 texcoord)
 {
-    PS_OUT_BACKBUFFER Out;
-    float3 vSource = Sanitize_HDR(g_PostProcessTexture.Sample(
-        PostProcessSampler, In.vTexcoord).rgb);
     float fRotation = radians(-(
         g_fPresentationOverlayRotationDegrees +
         g_fPresentationOverlayAngularVelocityDegreesPerSecond *
             g_fPresentationTime));
     float fCos = cos(fRotation);
     float fSin = sin(fRotation);
-    float2 vCentered = In.vTexcoord - g_vPresentationOverlayPosition;
+    float2 vCentered = texcoord - g_vPresentationOverlayPosition;
     float2 vRotated = float2(
         vCentered.x * fCos - vCentered.y * fSin,
         vCentered.x * fSin + vCentered.y * fCos);
@@ -1162,8 +1137,7 @@ PS_OUT_BACKBUFFER PS_MAIN_TEXTURED_OVERLAY(PS_IN In)
         all(vCard <= float2(1.f, 1.f));
     if (!bInside)
     {
-        Out.vBackBuffer = float4(vSource, 1.f);
-        return Out;
+        return float4(0.f, 0.f, 0.f, 0.f);
     }
     float2 vOverlayUv = vCard +
         g_vPresentationOverlayUvDriftPerSecond * g_fPresentationTime;
@@ -1174,8 +1148,33 @@ PS_OUT_BACKBUFFER PS_MAIN_TEXTURED_OVERLAY(PS_IN In)
         g_fPresentationOverlayAlpha * g_vPresentationOverlayTint.a);
     float3 vRadiance = Sanitize_HDR(
         vOverlay.rgb * g_vPresentationOverlayTint.rgb);
-    Out.vBackBuffer = float4(Sanitize_HDR(
-        lerp(vSource, vRadiance, fAlpha)), 1.f);
+    return float4(vRadiance, fAlpha);
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_TEXTURED_OVERLAY(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float3 source = Sanitize_HDR(g_PostProcessTexture.Sample(
+        PostProcessSampler, In.vTexcoord).rgb);
+    float4 overlay = Resolve_PresentationOverlay(In.vTexcoord);
+    Out.vBackBuffer = float4(Sanitize_HDR(lerp(source, overlay.rgb, overlay.a)), 1.f);
+    return Out;
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_DISPLAY_OVERLAY(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float4 overlay = Resolve_PresentationOverlay(In.vTexcoord);
+    // SRGB texture views already decode into linear values. Encode the display
+    // image once, without the scene's exposure, film curve, bloom or gamma setting.
+    float3 linearColor = saturate(overlay.rgb);
+    float3 low = linearColor * 12.92f;
+    float3 high = 1.055f * pow(linearColor, 1.f / 2.4f) - 0.055f;
+    float3 displayColor = float3(
+        linearColor.r <= 0.0031308f ? low.r : high.r,
+        linearColor.g <= 0.0031308f ? low.g : high.g,
+        linearColor.b <= 0.0031308f ? low.b : high.b);
+    Out.vBackBuffer = float4(displayColor, overlay.a);
     return Out;
 }
 
@@ -1295,7 +1294,7 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
             Out.vBackBuffer = float4(color, 1.f);
             return Out;
         }
-        if (marker == 1.f || marker == 2.f || marker == 3.f || marker == 4.f)
+        if (marker == 1.f || marker == 2.f || marker == 3.f || (marker == 4.f || marker == 8.f || marker == 9.f || marker == 10.f || (marker >= 11.f && marker <= 13.f)))
         {
             if (g_MaterialDebugView == 2u)
                 color = g_NormalTexture.Load(pixel).rgb;
@@ -1317,7 +1316,7 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
             {
                 color = g_MaterialDebugView == 3u ?
                     g_SpecularTexture.Load(pixel).rgb : g_DiffuseTexture.Load(pixel).rgb;
-                if (marker == 4.f && g_MaterialDebugView != 3u)
+                if ((marker == 4.f || marker == 8.f || marker == 9.f || marker == 10.f || (marker >= 11.f && marker <= 13.f)) && g_MaterialDebugView != 3u)
                     color *= g_MaterialSpecularTexture.Load(pixel).a;
                 // Source contributions bypass scene exposure, Bloom and FXAA.
                 // Specular can be HDR; compress only this diagnostic display.
@@ -1507,6 +1506,16 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SPOT();
+    }
+
+    pass PresentationDisplayOverlay
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_DISPLAY_OVERLAY();
     }
 
 }

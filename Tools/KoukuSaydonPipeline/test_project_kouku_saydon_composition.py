@@ -32,6 +32,26 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    def test_v1_source_anchor_animation_times_follow_stage_boundaries(self):
+        document = {"presentationResources": [{"resourceId": "fx", "kind": "EFFECT",
+            "resourceKind": "V1_EFFECT", "assetId": "effect.kouku.test.restore", "durationMs": 5000}]}
+        pattern = {"patternId": "test", "gateId": "GATE1", "targetBossPlacementId": "test.boss",
+            "actorProfileId": "MN_RPCT_05", "presentationOccurrences": [
+                {"occurrenceId": "fx.1", "resourceId": "fx", "startMs": 0, "durationMs": 5000}],
+            "stages": [{"durationMs": 1667, "animationOccurrences": [{"runtimeClip": "attack1",
+                "startOffsetMs": 0, "sourceStartMs": 20, "playMs": 1500, "playRate": 1.1, "endPolicy": "EXACT"}]},
+                {"durationMs": 3333, "animationOccurrences": [{"runtimeClip": "attack2", "startOffsetMs": 30,
+                    "sourceStartMs": 40, "playMs": 3000, "playRate": 1.0, "endPolicy": "LOOP_TO_WINDOW", "blendInMs": 100}]}]}
+        original = copy.deepcopy(pattern)
+        result = subject._project_pattern_presentation(document, pattern)
+        self.assertEqual([0, 1697], [row["startOffsetMs"] for row in result["sourceAnchorAnimations"]])
+        self.assertEqual([0, 100], [row["blendInMs"] for row in result["sourceAnchorAnimations"]])
+        self.assertEqual(40, result["sourceAnchorAnimations"][1]["sourceStartMs"])
+        self.assertEqual("LOOP_TO_WINDOW", result["sourceAnchorAnimations"][1]["endPolicy"])
+        self.assertEqual(original, pattern)
+        document["presentationResources"][0]["resourceKind"] = "LEAF"
+        self.assertNotIn("sourceAnchorAnimations", subject._project_pattern_presentation(document, pattern))
+
     @classmethod
     def setUpClass(cls):
         cls.hierarchy_document = subject.load_json(ROOT / subject.SOURCE_PATH)
@@ -2211,6 +2231,17 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                                    "lights": f"Client/Bin/DataFiles/Map/{subject.AREA_ID}.maplights.json"}]}
             (root / "Data/Maps/MapCatalog.json").write_bytes(subject.serialize_json(catalog))
             self.assertEqual(1, subject.project_presentation(document, root)["lightResourceRevision"])
+            template = copy.deepcopy(map_document["lights"][0])
+            map_document["lights"].extend(
+                {**copy.deepcopy(template), "lightId": f"light.map.extra.{ordinal}"}
+                for ordinal in range(1, 512)
+            )
+            (root / map_path).write_bytes(subject.serialize_json(map_document))
+            self.assertEqual(1, subject.project_presentation(document, root)["lightResourceRevision"])
+            map_document["lights"].append({**template, "lightId": "light.map.overflow"})
+            (root / map_path).write_bytes(subject.serialize_json(map_document))
+            with self.assertRaisesRegex(subject.CompositionError, "0 to 512 entries"):
+                subject.project_presentation(document, root)
             map_document["lights"] = []
             (root / map_path).write_bytes(subject.serialize_json(map_document))
             with self.assertRaisesRegex(subject.CompositionError, "missing Light Resources"):
@@ -2591,6 +2622,28 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             anchorKind="BOSS", followBoss=True)]
         return document
 
+    def test_elliptic_reverse_sector_and_forward_push_project_exact_axes(self):
+        document = self.reenter_damage_document()
+        resource = document["presentationResources"][-1]
+        box = self.first_product(document)["presentationOccurrences"][0]
+        box.update(scale=[0.2, 1, 4], rotationDegrees=[0, 725, 0])
+        document["logics"][-1]["pushDirection"] = "BOSS_FORWARD"
+        for shape, angle in (("SECTOR", 135), ("REVERSE_SECTOR", 0), ("REVERSE_SECTOR", 45), ("REVERSE_SECTOR", 180)):
+            with self.subTest(shape=shape, halfAngle=angle):
+                resource.update(shape=shape, halfAngleDegrees=angle)
+                self.validate(document)
+                window = self.first_product(subject.project_encounter(document))["logicWindows"][0]
+                region = window["cardRegions"][0]
+                self.assertEqual((shape, 725, angle), (region["shape"], region["yawDegrees"], region["halfAngleDegrees"]))
+                self.assertAlmostEqual(.6, region["radiusXM"])
+                self.assertEqual(12, region["radiusZM"])
+                self.assertEqual("BOSS_FORWARD", window["onSuccess"][0]["pushDirection"])
+        for invalid in ("PLAYER_FORWARD", "boss_forward", 1, None):
+            document["logics"][-1]["pushDirection"] = invalid
+            with self.subTest(direction=invalid), self.assertRaises(subject.CompositionError): self.validate(document)
+        document["logics"][-1].update(pushDirection="BOSS_FORWARD", pushRangeM=0, pushMs=0)
+        with self.assertRaises(subject.CompositionError): self.validate(document)
+
     def test_enter_area_rearm_and_damage_push_project_without_changing_legacy_defaults(self):
         document = self.reenter_damage_document()
         self.validate(document)
@@ -2687,6 +2740,26 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertEqual(8, len(push))
             self.assertEqual(["SUCCESS", "0", "2", "242"], push[-4:])
             self.assertEqual(rearm[1:4], push[1:4])
+            forward = copy.deepcopy(projected)
+            forward_window = forward["logicWindows"][0]
+            forward_window["onSuccess"][0]["pushDirection"] = "BOSS_FORWARD"
+            forward_region = forward_window["cardRegions"][0]
+            forward_region.update(shape="REVERSE_SECTOR", halfAngleDegrees=0, radiusXM=.6, radiusZM=12)
+            response = run(forward)
+            self.assertEqual(0, response.returncode, response.stderr)
+            forward_rows = [row.split("\t") for row in json.loads(response.stdout)]
+            self.assertEqual("BOSS_FORWARD", next(row for row in forward_rows if row[0] == "PATTERNLOGICPUSH")[-1])
+            self.assertEqual(9, len(next(row for row in forward_rows if row[0] == "PATTERNLOGICPUSH")))
+            self.assertEqual(["0.6", "12"], next(row for row in forward_rows if row[0] == "PATTERNLOGICREGION")[-2:])
+            self.assertEqual(21, len(next(row for row in forward_rows if row[0] == "PATTERNLOGICREGION")))
+            for field, value in (("radiusXM", 0), ("radiusZM", -1), ("shape", "CIRCLE"), ("halfAngleDegrees", 180.1)):
+                invalid = copy.deepcopy(forward)
+                invalid["logicWindows"][0]["cardRegions"][0][field] = value
+                with self.subTest(field=field): self.assertNotEqual(0, run(invalid).returncode)
+            for value in ("PLAYER_FORWARD", 1, None):
+                invalid = copy.deepcopy(forward)
+                invalid["logicWindows"][0]["onSuccess"][0]["pushDirection"] = value
+                with self.subTest(direction=value): self.assertNotEqual(0, run(invalid).returncode)
             for field, value in (("pushRangeM", -1), ("pushRangeM", 20.01), ("pushRangeM", 0),
                                  ("pushMs", 0), ("pushMs", 600001), ("pushMs", 0.5),
                                  ("kind", "MADNESS_GAUGE_ADD_PERCENT")):

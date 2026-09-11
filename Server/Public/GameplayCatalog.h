@@ -627,6 +627,8 @@ namespace LostArk::Server
 		std::string strMotionInstanceId;
 	};
 
+	enum class BOSS_LOGIC_PUSH_DIRECTION : std::uint8_t { AWAY_FROM_BOSS, BOSS_FORWARD };
+
 	struct BOSS_PATTERN_LOGIC_RESULT final
 	{
 		BOSS_PATTERN_LOGIC_RESULT_KIND eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::NONE;
@@ -643,6 +645,7 @@ namespace LostArk::Server
         std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
 		float fPushRangeM = 0.f;
 		std::uint32_t iPushMs = 0u;
+		BOSS_LOGIC_PUSH_DIRECTION ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS;
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
@@ -673,12 +676,14 @@ namespace LostArk::Server
 		std::string strRegionId;
 		BOSS_LOGIC_REGION_ANCHOR eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD;
 		bool bSector = false;
+		bool bReverseSector = false;
 		bool bCircle = false;
 		BOSS_LOGIC_WORLD_TRANSFORM_TRACK WorldTrack;
 		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
 		float fYawDegrees = 0.f;
 		float fHalfX = 1.f, fHalfY = 1.f, fHalfZ = 1.f;
 		float fRadiusM = 1.f, fHalfAngleDegrees = 45.f;
+		float fRadiusXM = 0.f, fRadiusZM = 0.f; // Optional sector axes; zero retains legacy radius.
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardSymbol = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 		LostArk::Shared::MECHANIC_CARD_COLOR eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
 	};

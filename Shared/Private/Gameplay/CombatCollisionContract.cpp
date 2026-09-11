@@ -118,6 +118,118 @@ namespace
 		return DistanceSquared(point, closest);
 	}
 
+	using POLYNOMIAL = std::array<double, 5>;
+	using POLYNOMIAL_ROOTS = std::array<double, 4>;
+
+	double EvaluatePolynomial(const POLYNOMIAL& coefficients, int degree,
+		const double value) noexcept
+	{
+		double result = coefficients[degree];
+		while (degree > 0)
+			result = result * value + coefficients[--degree];
+		return result;
+	}
+
+	// A polynomial is monotone between consecutive roots of its derivative.
+	// Recursing down to degree one isolates every real quartic root, including
+	// double roots, without sampling an arc or allocating during a combat tick.
+	int FindPolynomialRoots(const POLYNOMIAL& coefficients, int degree,
+		const double low, const double high, POLYNOMIAL_ROOTS& roots) noexcept
+	{
+		while (degree > 0 && coefficients[degree] == 0.0)
+			--degree;
+		if (degree == 0)
+			return 0;
+		if (degree == 1)
+		{
+			const double root = -coefficients[0] / coefficients[1];
+			if (root < low || root > high)
+				return 0;
+			roots[0] = root;
+			return 1;
+		}
+		POLYNOMIAL derivative{};
+		for (int i = 1; i <= degree; ++i)
+			derivative[i - 1] = coefficients[i] * i;
+		POLYNOMIAL_ROOTS criticalPoints{};
+		const int criticalCount = FindPolynomialRoots(
+			derivative, degree - 1, low, high, criticalPoints);
+		int count = 0;
+		const auto append = [&](const double root)
+		{
+			if (count < degree && (count == 0 ||
+				std::abs(roots[count - 1] - root) > 1.e-12))
+				roots[count++] = root;
+		};
+		double left = low;
+		double leftValue = EvaluatePolynomial(coefficients, degree, left);
+		if (std::abs(leftValue) <= 1.e-14)
+			append(left);
+		for (int i = 0; i <= criticalCount; ++i)
+		{
+			const double right = i == criticalCount ? high : criticalPoints[i];
+			const double rightValue = EvaluatePolynomial(coefficients, degree, right);
+			if ((leftValue < 0.0 && rightValue > 0.0) ||
+				(leftValue > 0.0 && rightValue < 0.0))
+			{
+				double a = left, b = right, valueA = leftValue;
+				for (int iteration = 0; iteration < 48; ++iteration)
+				{
+					const double midpoint = (a + b) * 0.5;
+					const double value = EvaluatePolynomial(coefficients, degree, midpoint);
+					if ((valueA < 0.0) == (value < 0.0))
+					{
+						a = midpoint;
+						valueA = value;
+					}
+					else
+						b = midpoint;
+				}
+				append((a + b) * 0.5);
+			}
+			if (std::abs(rightValue) <= 1.e-14)
+				append(right);
+			left = right;
+			leftValue = rightValue;
+		}
+		return count;
+	}
+
+	double DistanceSquaredToEllipseArc(const VECTOR2& point,
+		const double radiusX, const double radiusZ,
+		const double startAngle, const double endAngle) noexcept
+	{
+		// Reflect each quadrant into [0, pi/2], so t = tan(theta/2) stays
+		// in [0,1]. Distance extrema on (a sin(theta), b cos(theta)) satisfy
+		// a*x*t^4 + 2*(b*z-a^2+b^2)*t^3 + 2*(a^2-b^2+b*z)*t-a*x=0.
+		const double ax = radiusX * point.x;
+		const double bz = radiusZ * point.z;
+		const double difference = radiusX * radiusX - radiusZ * radiusZ;
+		POLYNOMIAL coefficients{
+			-ax, 2.0 * (difference + bz), 0.0,
+			2.0 * (bz - difference), ax };
+		double scale = 0.0;
+		for (const double value : coefficients)
+			scale = (std::max)(scale, std::abs(value));
+		if (scale > 0.0)
+			for (double& value : coefficients)
+				value /= scale;
+		const double low = std::tan(startAngle * 0.5);
+		const double high = std::tan(endAngle * 0.5);
+		const auto distanceAt = [&](const double t)
+		{
+			const double divisor = 1.0 + t * t;
+			return DistanceSquared(point,
+				{ radiusX * 2.0 * t / divisor, radiusZ * (1.0 - t * t) / divisor });
+		};
+		double minimum = (std::min)(distanceAt(low), distanceAt(high));
+		POLYNOMIAL_ROOTS roots{};
+		const int count = FindPolynomialRoots(coefficients, 4, low, high, roots);
+		for (int i = 0; i < count; ++i)
+			minimum = (std::min)(minimum, distanceAt(roots[i]));
+		return minimum;
+	}
+
 	bool BodiesOverlap(
 		const double leftX,
 		const double leftZ,
@@ -389,4 +501,60 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsCone(
 			minimumDistanceSquared, radialDistance * radialDistance);
 	}
 	return WithinInclusiveRadius(minimumDistanceSquared, target.fRadius);
+}
+
+bool LostArk::Shared::CombatCollision::Circle_IntersectsEllipticSector(
+	const BODY_CIRCLE_XZ& target,
+	const float originX, const float originZ,
+	const float forwardX, const float forwardZ,
+	const float radiusX, const float radiusZ,
+	const float angleDegrees, const bool reverse) noexcept
+{
+	VECTOR2 forward{}, right{};
+	if (!Is_Valid(target) || !IsFinite(originX) || !IsFinite(originZ) ||
+		!IsPositiveFinite(radiusX) || !IsPositiveFinite(radiusZ) ||
+		!IsFinite(angleDegrees) || angleDegrees < 0.f || angleDegrees > 360.f ||
+		!NormalizeDirection(forwardX, forwardZ, forward, right))
+		return false;
+	const double angle = reverse ? 360.0 - angleDegrees : angleDegrees;
+	if (angle == 0.0)
+		return false;
+	const VECTOR2 delta{
+		static_cast<double>(target.fCenterX) - originX,
+		static_cast<double>(target.fCenterZ) - originZ };
+	if (!WithinInclusiveRadius(LengthSquared(delta),
+		(std::max)(radiusX, radiusZ) + static_cast<double>(target.fRadius)))
+		return false;
+	const double directionSign = reverse ? -1.0 : 1.0;
+	const VECTOR2 point{
+		(delta.x * right.x + delta.z * right.z) * directionSign,
+		(delta.x * forward.x + delta.z * forward.z) * directionSign };
+	const double halfAngle = angle * 0.5 * DEGREES_TO_RADIANS;
+	const VECTOR2 normalized{ point.x / radiusX, point.z / radiusZ };
+	if (LengthSquared(normalized) <= 1.0 &&
+		std::abs(std::atan2(normalized.x, normalized.z)) <= halfAngle)
+		return true;
+
+	double minimum = std::numeric_limits<double>::infinity();
+	if (angle < 360.0)
+	{
+		const double x = radiusX * std::sin(halfAngle);
+		const double z = radiusZ * std::cos(halfAngle);
+		minimum = (std::min)(
+			DistanceSquaredToSegment(point, {}, { x, z }),
+			DistanceSquaredToSegment(point, {}, { -x, z }));
+	}
+	// The body remains a circle in metres. Scaling its radius in normalized
+	// ellipse space would produce false hits along the narrow axis.
+	for (const double xSign : { -1.0, 1.0 })
+	{
+		minimum = (std::min)(minimum, DistanceSquaredToEllipseArc(
+			{ point.x * xSign, point.z }, radiusX, radiusZ,
+			0.0, (std::min)(halfAngle, PI * 0.5)));
+		if (halfAngle > PI * 0.5)
+			minimum = (std::min)(minimum, DistanceSquaredToEllipseArc(
+				{ point.x * xSign, -point.z }, radiusX, radiusZ,
+				PI - halfAngle, PI * 0.5));
+	}
+	return WithinInclusiveRadius(minimum, target.fRadius);
 }

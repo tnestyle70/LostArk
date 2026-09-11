@@ -83,4 +83,18 @@ namespace LostArk::Shared::CombatCollision
 		float forwardZ,
 		float length,
 		float angleDegrees) noexcept;
+
+	// X is right and Z is forward. The angle is measured before scaling the
+	// unit sector by the two radii. Reverse selects the rest of the same ellipse.
+	// Zero degrees is empty and 360 degrees is the full ellipse (before reverse).
+	[[nodiscard]] bool Circle_IntersectsEllipticSector(
+		const BODY_CIRCLE_XZ& target,
+		float originX,
+		float originZ,
+		float forwardX,
+		float forwardZ,
+		float radiusX,
+		float radiusZ,
+		float angleDegrees,
+		bool reverse = false) noexcept;
 }

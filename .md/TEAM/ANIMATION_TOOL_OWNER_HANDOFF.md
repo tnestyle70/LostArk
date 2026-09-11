@@ -273,6 +273,23 @@ Animation inventory는 WModel metadata를 읽고 기존 CharacterPreviewPanel에
 clip 클릭은 Animation Tool의 창 열기 요청을 보내지 않는다. generated resolved Product를 재생하는 두 번째
 runtime이나 모든 보스/owner를 저장하는 거대 writer를 추가하지 않는다.
 
+Valtan의 Boss Pattern 목록은 실제 Product 전체를 표시하며, 관리 패턴만 기존 split writer와
+Server Play로 편집·실행한다. compatibility 항목은 참조와 기존 local Preview로 구분한다.
+`World Objects` 탭과 타임라인은 독립 combat object의 소유 Pattern/Stage를 선택하고 기존
+ring/axe 수치 편집 및 Pattern Play로 연결한다. 도넛은 Server가 생성 위치를 소유하는 독립
+오브젝트이며, 이 목록에서 임의 mesh를 새로운 Server archetype으로 생성하지 않는다.
+
+V2 box는 stable `bindingId`로 선택한다. animation occurrence clock은 해당 clip source 구간을
+Stage 시간으로 환산해 표시하며 저장 clock을 Stage로 바꾸지 않는다. 상세의 `Apply V2 Binding`은
+clock/occurrence, anchor/follow/rotation basis, local TRS와 repeat/stop 수정분을 현재 draft에
+반영한다. `Save`가 기존 owner transaction으로 저장하며 잘못된 입력이나 변경된 원본은 기존
+snapshot과 파일을 유지한다. Group의 child body는 계속 Effect Tool V2에서 수정한다.
+
+Valtan 전체 Effect/Sound/Camera/World 검증은 `Server Playback → Play on Server`를 사용한다.
+일반 `Play`는 지원 Animation/Effect의 local preview다. Server submit 성공 시 기존 발탄 preview
+clone을 해제하고 자동 재생성을 억제하며, 명시적 local Stage/Retry와 Level 변경에서 다시 허용한다.
+submit 실패 시 기존 preview와 dirty 문서는 유지한다.
+
 ## 8. Character Preview Panel이 소유하는 것
 
 공용 Character Preview Panel은 다음을 소유한다.
@@ -1162,6 +1179,17 @@ SECTOR collider 2개를 STAGGER_WINDOW Logic에 연결하며 Server가 반사 �
 자기 instance만 정리한다. Scene Profile은 즉시 적용/복원한다. blendMs 시간 보간은 현재 범위가 아니다.
 G1 카드 8종은 Server의 문양·색 snapshot을 따라 머리 위에 지속 표시하고 NONE/owner 종료 때 정리한다.
 
+V1_EFFECT/V1_ELEMENT는 기존 `CEffectPresentationService::Spawn_LevelPlacement/Seek_WorldRoot`를
+사용한다. V1을 포함한 pattern의 파생 `sourceAnchorAnimations`는 stage를 합산한 pattern 시작 시각,
+원본 clip/sourceStartMs/playMs/playRate/endPolicy/blendInMs를 보존한다. Composition 정본의 새
+편집 데이터가 아니라 publish 출력의 optional field다. 원본 외부 follow socket은 실제 보스 CModel의
+요청 시각 pose를 읽기 전용으로 샘플해 고정 시간 provider의 `SourceAnchorWorlds`로 공급한다.
+missing clip/bone과 잘못된 matrix는 해당 occurrence를 격리하며 현재 pose를 과거 위치로 대체하지 않는다.
+본 source local 값의 cm→m 변환과 actor 표현 배율은 별도로 유지한다. `followBoss=false`는 occurrence의
+시작 root를 고정하되 원본 follow socket 애니메이션을 멈추지 않는다. 실제 과거 root 기록이 없는 움직이는
+보스의 `followBoss=true` seek는 지원 완료로 취급하지 않는다. Product camera-view source attachment도
+과거 카메라 기록이 없으면 거절한다. model-cue attachment는 기존 Effect renderer가 계속 소유한다.
+
 룰렛 Collider는 `ROULETTE_CARD_REGION`으로 정의한다. 각 box의 `logicOccurrenceId`로 한 판정 창의
 8개 지역을 기존 DURATION에 연결하고 RESULT를 공유한다. 3회차의 24 box에서 각 창과 문양·색은
 배치가 소유한다. `anchorKind=WORLD`는 worldId로 실제 sequence instance를 resolve하고 Product의
@@ -1248,6 +1276,11 @@ Effect는 저장 V1 document 또는 V2 GROUP/LEAF 전체를 하나의 박스로 
 Detail의 값 변경은 같은 scope와 cursor에서 미리보기를 갱신하며 지연·수명 변경도 행 길이에 반영한다.
 `Stop`은 임시 행을 닫고 기존 저장행을 다시 표시한다. 선택 element 행은 미리보기 전용이므로
 Append/Save할 수 없다. 전체 Effect를 저장행에 추가하려면 Stop 또는 전체 Preview 후 Append한다.
+
+쿠크 `.restore`의 Play All/Current Effect Play/Solo는 저장된 Composition의 V1 resource와 유일한
+pattern 연결로 모델과 원본 animation을 선택한다. 같은 `CEffectCompositionModelPreview`가 실제
+CNpc/CModel을 제공하고, Sequencer는 원본 소켓의 60Hz 과거 pose를 기록한 뒤 현재 cursor를 복구한다.
+패턴 연결이 없거나 여러 pattern이 모호하게 공유하면 임의 캐릭터로 대체하지 않고 상태 메시지를 표시한다.
 
 상단 시간 눈금의 원하는 지점을 누르거나 drag하면 노란 커서로 여섯 트랙을 함께 seek한다.
 박스 본체는 이동, 양 끝은 trim이며 mouse release 때 유효한 값을 적용한다. 겹치는 박스는 같은

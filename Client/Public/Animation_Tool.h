@@ -382,6 +382,9 @@ public:
 		bool_t bPause,
 		std::string& strOutStatus);
 	void Stop_ValtanCompositionPattern(std::string& strOutStatus);
+	/* A submitted Server replay retires the local clone without discarding drafts.
+	   Explicit local staging re-enables preview creation. */
+	void Release_ValtanCompositionPreviewForServerPlayback();
 	COMPOSITION_PREVIEW_STATE Get_ValtanCompositionPreviewState() const;
 	bool_t Get_ValtanCompositionSequences(
 		std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
@@ -990,6 +993,7 @@ private:
 	bool_t m_bValtanWorkspaceTabInitialized = false;
 	uint64_t m_iValtanAutoPreviewAttemptGeneration = 0u;
 	uint64_t m_iValtanAutoPreviewSuccessGeneration = 0u;
+	bool_t m_bValtanAutoPreviewSuppressedForServerPlayback = false;
 
 	std::vector<ANIM_EVENT> m_Events;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */

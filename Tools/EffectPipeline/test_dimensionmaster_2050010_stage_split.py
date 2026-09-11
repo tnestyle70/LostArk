@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 
-class DimensionMaster2050010FourStageTests(unittest.TestCase):
+class DimensionMaster2050010ThreeClickTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.repository_root = Path(__file__).resolve().parents[2]
@@ -18,14 +18,13 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
             f"effect.dimensionmaster.skill.2050010.ba{stage}.{suffix}.effect.json"
         )
 
-    def test_four_source_clips_match_server_wall_durations(self) -> None:
+    def test_three_clicks_preserve_first_clip_double_thrust_and_final_slashes(self) -> None:
         bindings = self.load_json(
             "Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json"
         )["bindings"]
         binding = next(row for row in bindings if row["skillId"] == 2050010)
         self.assertEqual(binding["clips"], [
             [{"clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 1400}],
-            ["pc_sp_m_00_sk_att_battle_1_02"],
             ["pc_sp_m_00_sk_att_battle_1_03"],
             ["pc_sp_m_00_sk_att_battle_1_04"],
         ])
@@ -33,15 +32,23 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
                      if row["skillId"] == 2050010)
         stages = skill["comboStages"]
         self.assertEqual((skill["actionDurationMs"], skill["hitTimeMs"]), (1400, 100))
-        self.assertEqual([s["actionDurationMs"] for s in stages], [1400, 1500, 1067, 1700])
-        self.assertEqual([s["hitTimeMs"] for s in stages], [100, 43, 28, 335])
+        self.assertEqual([s["actionDurationMs"] for s in stages], [1400, 1067, 1700])
+        self.assertEqual([s["hitTimeMs"] for s in stages], [100, 28, 335])
         self.assertEqual([(s["inputOpenMs"], s["inputCloseMs"]) for s in stages],
-                         [(100, 510), (0, 410), (93, 494), (0, 0)])
+                         [(100, 1400), (93, 1067), (0, 0)])
         for s in stages:
             self.assertEqual(s["comboAdvanceMs"], s["actionDurationMs"])
         # The existing server interprets a nonfinal 0/0 window as automatic.
         # Every nonfinal BA must instead require another click or hold repeat.
         self.assertTrue(all(s["inputCloseMs"] > s["inputOpenMs"] for s in stages[:-1]))
+        notify = (self.repository_root / "Data/Animation/Reference/DimensionMaster/"
+                  "DimensionMaster.animnotify").read_text(encoding="utf-8")
+        first_clip = notify.split('"pc_sp_m_00_sk_att_battle_1_01"', 1)[1].split(
+            '"pc_sp_m_00_sk_att_battle_1_02"', 1)[0]
+        thrust_rows = [line for line in first_clip.splitlines()
+                       if 'asset="FX_PC_SWP_00.Par_J_SWP_NormalAtk_0_1"' in line]
+        self.assertEqual([float(line.split("t=", 1)[1].split()[0]) for line in thrust_rows], [.2, .4])
+        self.assertIn('t=1.4000 d=2.6000 kind=CANCEL', first_clip)
 
     def test_product_cues_connect_each_clip_to_its_own_full_effect(self) -> None:
         lines = (self.repository_root / "Data/Animation/Authored/DimensionMaster/"
@@ -102,8 +109,8 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
 
     def test_full_documents_preserve_admitted_native_occurrences(self) -> None:
         all_ids = []
-        # G33 removed 16 confirmed unsupported/hidden rows before this Product switch.
-        for stage, count in enumerate([15, 12, 7, 25]):
+        # Native material programs close the 16 previously omitted source rows.
+        for stage, count in enumerate([18, 14, 9, 34]):
             effect = self.load_effect(stage, True)
             self.assertEqual(len(effect["elements"]), count)
             for e in effect["elements"]:
@@ -114,17 +121,29 @@ class DimensionMaster2050010FourStageTests(unittest.TestCase):
                     path = self.repository_root / "Client/Bin/Resources" / resource["assetId"]
                     self.assertTrue(path.is_file(), resource["assetId"])
                 if e["kind"] == "light":
-                    self.assertFalse(e["visible"])
+                    self.assertTrue(e["visible"])
+                    self.assertTrue(e["detail"]["light"]["enabled"])
+                    self.assertEqual(e["detail"]["light"]["range"], 2)
+                    self.assertEqual(e["detail"]["light"]["intensity"], 10)
+                else:
+                    profile = e["material"]["sourceProfile"]
+                    self.assertTrue(profile["enabled"])
+                    self.assertIn("native.v1", profile["runtimeShaderProfileId"])
+                    for texture in profile["textures"]:
+                        self.assertTrue((self.repository_root / "Client/Bin/Resources" /
+                                         texture["assetId"]).is_file(), texture["assetId"])
+                    self.assertEqual(e["detail"]["uv"]["speed"], [0, 0])
+                    self.assertEqual(e["detail"]["color"]["emissiveIntensity"], 1)
         self.assertEqual(len(all_ids), len(set(all_ids)))
 
-    def test_root_motion_matches_four_source_windows_without_retiming_second_clip(self) -> None:
+    def test_root_motion_follows_the_same_three_selected_clips_without_retiming(self) -> None:
         skill = next(row for row in self.load_json(
             "Data/Animation/RootMotion/DimensionMaster.rootmotion.json")["skills"]
                      if row["skillId"] == 2050010)
         stages = skill["stages"]
-        self.assertEqual([s["durationMs"] for s in stages], [1400, 1500, 1067, 1700])
-        self.assertEqual([len(s["samples"]) for s in stages], [43, 46, 33, 52])
-        for index, (stage, forward) in enumerate(zip(stages, [.8418, .5131, .2802, 1.0404])):
+        self.assertEqual([s["durationMs"] for s in stages], [1400, 1067, 1700])
+        self.assertEqual([len(s["samples"]) for s in stages], [43, 33, 52])
+        for index, (stage, forward) in enumerate(zip(stages, [.8418, .2802, 1.0404])):
             self.assertEqual(stage["stageIndex"], index)
             times = [s["timeMs"] for s in stage["samples"]]
             self.assertEqual((times[0], times[-1]), (0, stage["durationMs"]))

@@ -8,6 +8,7 @@
 NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
+struct MODEL_MATERIAL_SOURCE;
 struct MODEL_MESH_DATA;
 struct MODEL_ASSET_LOAD_DESC;
 struct MODEL_COLOR_TINT;
@@ -130,6 +131,11 @@ public:
 		f32_t durationSeconds = 0.f, elapsedSeconds = 0.f, playRate = 1.f;
 	};
 	bool_t Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose);
+	// The same explicit transition, sampled without changing the live actor pose.
+	bool_t Sample_AnimationTransitionBoneCombinedMatrices(
+		const ANIMATION_TRANSITION_POSE& pose,
+		std::span<const uint32_t> BoneIndices,
+		std::span<float4x4_t> OutCombinedMatrices) const;
 	const ANIMATION_TRANSITION_POSE* Get_AnimationTransitionPose() const
 	{ return m_bExplicitAnimationPose ? &m_ExplicitAnimationPose : nullptr; }
 	void Clear_AnimationTransitionPose() { m_bExplicitAnimationPose = false; }
@@ -260,6 +266,7 @@ public:
 	/* Null when the mesh or its material is out of range; identity tint (its
 	isEnabled false) when the material simply has no colour mask. */
 	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
+	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	const MODEL_SURFACE_PARAMETERS* Get_MaterialSurface(uint32_t iMeshIndex) const;
@@ -308,6 +315,7 @@ private:
 	MODEL								m_eType = { MODEL::END };
 	uint32_t							m_iNumMeshes = {};
 	vector<shared_ptr<class CMesh>>		m_Meshes;
+	shared_ptr<const MODEL_MATERIAL_SOURCE> m_pMaterialSource;
 	float4x4_t							m_PreTransformMatrix = {};
 	bool_t m_bRetainOrderedStaticGeometry = false;
 	shared_ptr<const vector<MODEL_MESH_DATA>> m_pOrderedStaticGeometrySource;
@@ -380,6 +388,7 @@ private:
 	HRESULT Ready_Animations();
 	HRESULT Ready_BinaryModel(const char_t* pModelFilePath);
 	HRESULT Ready_BinaryModel(const MODEL_ASSET_LOAD_DESC& loadDesc);
+	HRESULT Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& source, const MODEL_ASSET_LOAD_DESC& loadDesc);
 	HRESULT Ready_Meshes(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Materials(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Bones(const MODEL_ASSET_DATA& asset);
@@ -397,6 +406,10 @@ public:
 		const MODEL_ASSET_LOAD_DESC& loadDesc,
 		fmatrix_t PreTransformMatrix,
 		bool_t bRetainOrderedStaticGeometry = false);
+    // Reuses immutable static GPU geometry and stages independent materials.
+    // Load identity must match the prototype; this cannot retarget geometry.
+    static unique_ptr<CModel> Create_MaterialVariant(const CModel& prototype,
+        const MODEL_ASSET_LOAD_DESC& loadDesc);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 	void Free();
 };

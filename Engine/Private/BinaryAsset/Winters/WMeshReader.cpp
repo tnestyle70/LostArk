@@ -153,14 +153,17 @@ namespace
 
 		const bool_t hasColor0 = 0 != (vertexFormatFlags & VF_COLOR0);
 		const bool_t hasUV1 = 0 != (vertexFormatFlags & VF_TEXCOORD1);
+		const bool_t hasUV2 = 0 != (vertexFormatFlags & VF_TEXCOORD2);
 		const bool_t reconstructed = 0 != (source.evidenceFlags & MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED);
 		const uint32_t required = reconstructed ?
 			(MGEF_REQUIRED_PAYLOAD & ~MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF) : MGEF_REQUIRED_PAYLOAD;
 		if (0 != (source.evidenceFlags & ~MGEF_KNOWN) ||
 			(source.evidenceFlags & required) != required ||
+			(0 != (source.evidenceFlags & MGEF_NATIVE_PARALLEL_BASIS_PRESERVED) && (!hasUV1 || reconstructed)) ||
 			(reconstructed && (fileVersionMinor < WINT_UV1_VERSION_MINOR ||
 				0 != (source.evidenceFlags & MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF))) ||
 			hasUV1 != (0 != (source.evidenceFlags & MGEF_TEXCOORD1_PRESERVED_FROM_GLTF)) ||
+			hasUV2 != (0 != (source.evidenceFlags & MGEF_TEXCOORD2_PRESERVED_FROM_GLTF)) ||
 			0 != (source.evidenceFlags & MGEF_PRODUCT_PROVENANCE) ||
 			hasColor0 != (0 != (source.evidenceFlags & MGEF_COLOR0_PRESERVED_FROM_GLTF)))
 		{
@@ -329,8 +332,10 @@ namespace
 
 	bool_t MakeStaticVertex(const uint8_t* pSource,
 		bool_t strictHandedness,
+		bool_t preserveNativeParallelBasis,
 		bool_t hasColor0,
 		bool_t hasUV1,
+		bool_t hasUV2,
 		VTXMESH& outVertex,
 		f32_t& outTangentHandedness,
 		uint32_t& outColor0Rgba8)
@@ -361,15 +366,31 @@ namespace
 				return false;
 		}
 
+		outVertex.vTexcoord2 = {};
+		if (hasUV2)
+		{
+			memcpy(&outVertex.vTexcoord2, pSource +
+				(hasColor0 ? STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + sizeof(float2_t), sizeof(float2_t));
+			if (!isfinite(outVertex.vTexcoord2.x) || !isfinite(outVertex.vTexcoord2.y)) return false;
+		}
+
 		vector_t normal{};
 		vector_t tangent{};
 		vector_t unitBinormal{};
 		if (strictHandedness)
 		{
 			if (!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vNormal), normal) ||
-				!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vTangent), tangent) ||
-				!TryNormalizeGeometryBasis(XMVector3Cross(normal, tangent), unitBinormal))
+				!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vTangent), tangent))
 				return false;
+			const vector_t cross = XMVector3Cross(normal, tangent);
+			if (!TryNormalizeGeometryBasis(cross, unitBinormal))
+			{
+				// Native packed parallel N/T have no bitangent. Preserve zero instead
+				// of inventing an axis; unmarked or merely near-parallel data fail.
+				if (!preserveNativeParallelBasis || XMVectorGetX(XMVector3LengthSq(cross)) != 0.f)
+					return false;
+				unitBinormal = XMVectorZero();
+			}
 		}
 		else
 		{
@@ -472,7 +493,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-			fileHeader.versionMinor > WINT_SKINNED_UV_VERSION_MINOR ||
+			fileHeader.versionMinor > WINT_STATIC_UV2_VERSION_MINOR ||
 			0 != fileHeader.flags ||
 			fileHeader.contentSize != fileReader.Remaining())
 		{
@@ -481,8 +502,9 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		}
 
 		const bool_t geometryContract =
-			WINT_GEOMETRY_VERSION_MINOR <= fileHeader.versionMinor &&
-			fileHeader.versionMinor <= WINT_UV1_VERSION_MINOR;
+			(WINT_GEOMETRY_VERSION_MINOR <= fileHeader.versionMinor &&
+			fileHeader.versionMinor <= WINT_UV1_VERSION_MINOR) ||
+			fileHeader.versionMinor == WINT_STATIC_UV2_VERSION_MINOR;
 		const bool_t skinnedUVContract =
 			fileHeader.versionMinor == WINT_SKINNED_UV_VERSION_MINOR;
 		const uint8_t* pContent = fileReader.Peek();
@@ -491,19 +513,21 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const bool_t skinned = 0 != (meshHeader.vertexFormatFlags & VF_BONE_WEIGHT);
 		const bool_t hasColor0 = 0 != (meshHeader.vertexFormatFlags & VF_COLOR0);
 		const bool_t hasUV1 = 0 != (meshHeader.vertexFormatFlags & VF_TEXCOORD1);
+		const bool_t hasUV2 = 0 != (meshHeader.vertexFormatFlags & VF_TEXCOORD2);
 		const uint32_t expectedStride = (hasColor0 ?
-			STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + (hasUV1 ? sizeof(float2_t) : 0);
+			STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + (hasUV1 ? sizeof(float2_t) : 0) + (hasUV2 ? sizeof(float2_t) : 0);
 		const bool_t versionedFlagsValid = skinnedUVContract ?
 			(skinned && hasUV1 &&
 				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 == (meshHeader.vertexFormatFlags &
 					~(VF_STATIC_BASE | VF_BONE_WEIGHT | VF_TEXCOORD1 | VF_TEXCOORD2))) : geometryContract ?
 			(!skinned &&
-				(hasUV1 == (fileHeader.versionMinor == WINT_UV1_VERSION_MINOR)) &&
+				(hasUV1 == (fileHeader.versionMinor >= WINT_UV1_VERSION_MINOR)) &&
+				(hasUV2 == (fileHeader.versionMinor == WINT_STATIC_UV2_VERSION_MINOR)) &&
 				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 != (meshHeader.vertexFormatFlags & VF_TANGENT_HANDEDNESS) &&
 				0 == (meshHeader.vertexFormatFlags &
-					~(VF_STATIC_BASE | VF_TANGENT_HANDEDNESS | VF_COLOR0 | VF_TEXCOORD1))) :
+					~(VF_STATIC_BASE | VF_TANGENT_HANDEDNESS | VF_COLOR0 | VF_TEXCOORD1 | VF_TEXCOORD2))) :
 			((meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 == (meshHeader.vertexFormatFlags &
 					~(VF_STATIC_BASE | VF_BONE_WEIGHT)));
@@ -739,8 +763,8 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			mesh.hasColor0 = geometryContract && hasColor0;
 			mesh.hasTexcoord1 = (geometryContract && hasUV1) ||
 				(skinnedUVContract && 0 != (skinnedUVFlags[submeshIndex] & VF_TEXCOORD1));
-			mesh.hasTexcoord2 = skinnedUVContract &&
-				0 != (skinnedUVFlags[submeshIndex] & VF_TEXCOORD2);
+			mesh.hasTexcoord2 = (geometryContract && hasUV2) || (skinnedUVContract &&
+				0 != (skinnedUVFlags[submeshIndex] & VF_TEXCOORD2));
 			mesh.indices.resize(sourceMesh.indexCount);
 
 			const uint8_t* pVertices = pVertexBlob + sourceMesh.vertexOffset;
@@ -775,8 +799,10 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 					if (!MakeStaticVertex(
 						pVertices + static_cast<size_t>(i) * meshHeader.vertexStride,
 						geometryContract,
+						geometryContract && 0 != (outMesh.geometryMetadata.evidenceFlags & MGEF_NATIVE_PARALLEL_BASIS_PRESERVED),
 						hasColor0,
 						hasUV1,
+						hasUV2,
 						mesh.vertices[i],
 						tangentHandedness,
 						color0Rgba8))

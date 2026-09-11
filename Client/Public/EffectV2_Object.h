@@ -211,6 +211,7 @@ public:
 		f32_t fOverlayEnterEnd = 0.25f;
 		f32_t fOverlayExitStart = 0.75f;
 		f32_t fOverlayRotationDegrees = 0.f;
+		bool_t bDisplaySpace = false; // Composite after scene tone mapping.
 
 		float2_t Evaluate_OverlayPosition(const f32_t fLifeRatio) const
 		{

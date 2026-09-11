@@ -870,11 +870,12 @@ namespace
 			finite(value.RotationDegrees, -36000.0, 36000.0) && finite(value.Scale, 0.001, 10000.0);
 	}
 
-	bool Valid_GameplaySectorScale(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
+	bool Valid_GameplayColliderScale(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
 		const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value)
 	{
-		return resource.eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || resource.strShape != "SECTOR" ||
-			value.strLogicOccurrenceId.empty() || std::abs(value.Scale[0] - value.Scale[2]) <= 0.0001;
+		return resource.eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
+			std::all_of(value.Scale.begin(), value.Scale.end(), [](double scale) {
+				return std::isfinite(scale) && scale >= .001 && scale <= 10000.0; });
 	}
 
 	void Copy_PresentationGeometry(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& source,
@@ -984,9 +985,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 			}
 			auto geometry = *source;
 			Copy_PresentationGeometry(edit.Occurrence, geometry);
-			if (!Valid_GameplaySectorScale(*resource, geometry))
+			if (!Valid_GameplayColliderScale(*resource, geometry))
 			{
-				outStatus = m_strStatus = "Save rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m) for " +
+				outStatus = m_strStatus = "Save rejected: Collider scale must be finite and positive. Adjust Scale / size for " +
 					edit.Occurrence.strOccurrenceId + ". Pending edits and previous source are preserved.";
 				return false;
 			}
@@ -3210,7 +3211,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 	}
 	const auto matches = [&](const auto& pattern) { return pattern.strGateId == m_strSelectedGateId && (m_strModelViewProfile.empty() || pattern.strActorProfileId == m_strModelViewProfile); };
 	const auto bundleMatches = [&](const auto& bundle) { return m_strModelViewProfile.empty() || std::any_of(bundle.Members.begin(), bundle.Members.end(), [&](const auto& member) { const auto* p = Find_Pattern(m_Draft, member.strPatternId); return p && matches(*p); }); };
-	if (ImGui::BeginChild("##KoukuPatternList", ImVec2(0.f, 240.f), ImGuiChildFlags_Borders))
+	if (ImGui::BeginChild("##KoukuPatternList", ImVec2(0.f, 480.f), ImGuiChildFlags_Borders))
 	{
 		if (ImGui::Selectable(Gate_Label(m_strSelectedGateId), m_ePatternSelection == KOUKU_PATTERN_SELECTION::GATE)) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, m_strSelectedGateId);
 		for (const auto& folder : m_Draft.Folders)
@@ -3390,7 +3391,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_BundlePreview(const std::uin
 		if (!source || source->strResourceId != edit.Occurrence.strResourceId || !resource) continue;
 		KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST request{ edit.strPatternId, *source };
 		Copy_PresentationGeometry(edit.Occurrence, request.Occurrence);
-		if (Valid_GameplaySectorScale(*resource, request.Occurrence))
+		if (Valid_GameplayColliderScale(*resource, request.Occurrence))
 			m_PendingPresentationGeometryPreviews.push_back(std::move(request));
 	}
 	m_iPendingPreviewStartMs = paused ? (std::min)(clockMs, Bundle_DurationMs(m_Draft, *bundle)) :
@@ -4033,7 +4034,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PatternPreview(
 					const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
 					auto geometry = box;
 					Copy_PresentationGeometry(edit.Occurrence, geometry);
-					if (resource && Valid_GameplaySectorScale(*resource, geometry)) box = std::move(geometry);
+					if (resource && Valid_GameplayColliderScale(*resource, geometry)) box = std::move(geometry);
 					break;
 				}
 	m_strPendingPreviewTargetAsset.clear();
@@ -4132,8 +4133,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 		return reject("Geometry requires a finite position, rotation and positive scale. Save keeps the last applied source until corrected.");
 	auto geometry = *source;
 	Copy_PresentationGeometry(value, geometry);
-	if (!Valid_GameplaySectorScale(*resource, geometry))
-		return reject("Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous source are preserved.");
+	if (!Valid_GameplayColliderScale(*resource, geometry))
+		return reject("Collider scale must be finite and positive. Adjust Scale / size; pending edits and previous source are preserved.");
 
 	// Other unapplied Detail fields must not change timing, anchors or Logic during a drag.
 	KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST request{ std::string(patternId), *source };
@@ -4588,8 +4589,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 				if (!Valid_PresentationGeometry(pending.Occurrence)) return reject("Correct or revert the selected presentation geometry before Duplicate.");
 				Copy_PresentationGeometry(pending.Occurrence, row);
 				const auto* resource = Find_PresentationResource(candidate, row.strResourceId);
-				if (resource && !Valid_GameplaySectorScale(*resource, row))
-					return reject("Circular SECTOR requires equal X/Z scale. Adjust Radius (m) before Duplicate.");
+				if (resource && !Valid_GameplayColliderScale(*resource, row))
+					return reject("Collider scale must be finite and positive. Adjust Scale / size before Duplicate.");
 			}
 	}
 	// Copy-on-write for typed references in reusable Logic definitions. Shared
@@ -7039,11 +7040,21 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PresentationBox(
 		[&](const auto& row) { return row.strOccurrenceId == value.strOccurrenceId; });
 	if (found == pattern->PresentationOccurrences.end() || found->strResourceId != value.strResourceId)
 	{ outStatus = m_strStatus = "Presentation box identity changed; previous row preserved."; return false; }
+	const auto previousWindowId = found->strLogicOccurrenceId;
 	*found = value;
-	const auto* resource = Find_PresentationResource(candidate, found->strResourceId);
-	if (resource && !Valid_GameplaySectorScale(*resource, *found))
+	if (!previousWindowId.empty() && value.strLogicOccurrenceId.empty() &&
+		std::none_of(pattern->PresentationOccurrences.begin(), pattern->PresentationOccurrences.end(),
+			[&](const auto& row) { return row.strLogicOccurrenceId == previousWindowId; }))
 	{
-		outStatus = m_strStatus = "Apply rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous draft are preserved.";
+		const auto* previous = Find_LogicBox(*pattern, previousWindowId);
+		const auto* logic = previous ? Find_Logic(candidate, previous->strLogicId) : nullptr;
+		if (logic && logic->strTriggerKind == "ENTER_AREA")
+			std::erase_if(pattern->LogicOccurrences, [&](const auto& row) { return row.strOccurrenceId == previousWindowId; });
+	}
+	const auto* resource = Find_PresentationResource(candidate, found->strResourceId);
+	if (resource && !Valid_GameplayColliderScale(*resource, *found))
+	{
+		outStatus = m_strStatus = "Apply rejected: Collider scale must be finite and positive. Adjust Scale / size; pending edits and previous draft are preserved.";
 		return false;
 	}
 	if (!value.strLogicOccurrenceId.empty())
@@ -7147,8 +7158,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderLogicValues(
 	*collider = occurrence;
 	collider->strLogicOccurrenceId = window->strOccurrenceId;
 	collider->iStartMs = window->iStartMs; collider->iDurationMs = window->iDurationMs;
-	if (!Valid_GameplaySectorScale(*resource, *collider))
-		return reject("Apply rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous draft are preserved.");
+	if (!Valid_GameplayColliderScale(*resource, *collider))
+		return reject("Apply rejected: Collider scale must be finite and positive. Adjust Scale / size; pending edits and previous draft are preserved.");
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate), "Applied Collider values, Logic definition and window link together. Save keeps the connection.", outStatus)) return false;
 	m_strColliderExecutionEditId.clear();
@@ -7182,8 +7193,17 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PresentationBoxDebugRender(
 
 bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	const std::string& patternId, const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
-	const std::uint32_t percent, std::string& outStatus)
+	const KOUKU_COLLIDER_DAMAGE_SETTINGS& settings, std::string& outStatus)
 {
+	const auto percent = static_cast<std::uint32_t>(settings.iPercent);
+	if (settings.iPercent < 1 || settings.iPercent > 100 ||
+		(settings.bRearmOnExit && settings.bRepeatAfterKnockback) ||
+		(settings.bRepeatAfterKnockback && settings.fPushRangeM <= 0.0) ||
+		!std::isfinite(settings.fPushRangeM) || settings.fPushRangeM < 0.0 || settings.fPushRangeM > 20.0 ||
+		settings.iPushMs > MAX_EDITOR_TIME_MS || ((settings.fPushRangeM == 0.0) != (settings.iPushMs == 0u)) ||
+		(settings.strPushDirection != "AWAY_FROM_BOSS" && settings.strPushDirection != "BOSS_FORWARD") ||
+		(settings.strPushDirection == "BOSS_FORWARD" && settings.fPushRangeM == 0.0))
+	{ outStatus = m_strStatus = "Damage settings require bounded paired push values and one repeat policy."; return false; }
 	auto candidate = m_Draft;
 	auto* pattern = Find_Pattern(candidate, patternId);
 	const auto* resource = Find_PresentationResource(candidate, occurrence.strResourceId);
@@ -7203,8 +7223,12 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	if (nullptr == linkedLogic || linkedLogic->strLogicType != "TRIGGER" || linkedLogic->strTriggerKind != "ENTER_AREA")
 	{
 		// Reuse the typed definition, but unrelated boxes get independent windows.
-		auto logic = std::find_if(candidate.Logics.begin(), candidate.Logics.end(), [](const auto& row) {
-			return row.strLogicType == "TRIGGER" && row.strTriggerKind == "ENTER_AREA" && row.fBossChargeDistanceM == 0.0; });
+		auto logic = std::find_if(candidate.Logics.begin(), candidate.Logics.end(), [&](const auto& row) {
+			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION desired;
+			desired.strLogicId = row.strLogicId; desired.strDisplayName = row.strDisplayName;
+			desired.strLogicType = "TRIGGER"; desired.strTriggerKind = "ENTER_AREA";
+			desired.bRearmOnExit = settings.bRearmOnExit; desired.bRepeatAfterKnockback = settings.bRepeatAfterKnockback;
+			return row == desired; });
 		if (logic == candidate.Logics.end())
 		{
 			if (candidate.iNextLogicOrdinal >= 1000000u)
@@ -7213,6 +7237,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 			created.strLogicId = "kakulsaydon.g1.logic." + std::to_string(candidate.iNextLogicOrdinal++);
 			created.strDisplayName = resource->strDisplayName + " Enter Area";
 			created.strLogicType = "TRIGGER"; created.strTriggerKind = "ENTER_AREA";
+			created.bRearmOnExit = settings.bRearmOnExit; created.bRepeatAfterKnockback = settings.bRepeatAfterKnockback;
 			candidate.Logics.push_back(std::move(created));
 			logic = std::prev(candidate.Logics.end());
 		}
@@ -7223,6 +7248,20 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 		window.strLogicId = logic->strLogicId;
 		pattern->LogicOccurrences.push_back(std::move(window));
 		linked = &pattern->LogicOccurrences.back();
+	}
+	// Changing this box never mutates a shared Trigger definition.
+	const auto* currentTrigger = Find_Logic(candidate, linked->strLogicId);
+	if (!currentTrigger) { outStatus = m_strStatus = "Damage Trigger is missing."; return false; }
+	if (currentTrigger->bRearmOnExit != settings.bRearmOnExit || currentTrigger->bRepeatAfterKnockback != settings.bRepeatAfterKnockback)
+	{
+		if (candidate.iNextLogicOrdinal >= 1000000u) { outStatus = m_strStatus = "Logic IDs are exhausted."; return false; }
+		auto changed = *currentTrigger;
+		changed.strLogicId = "kakulsaydon.g1.logic." + std::to_string(candidate.iNextLogicOrdinal++);
+		changed.strDisplayName = resource->strDisplayName + " Damage contact";
+		changed.bRearmOnExit = settings.bRearmOnExit;
+		changed.bRepeatAfterKnockback = settings.bRepeatAfterKnockback;
+		linked->strLogicId = changed.strLogicId;
+		candidate.Logics.push_back(std::move(changed));
 	}
 	const auto windowId = linked->strOccurrenceId;
 	auto damageSlot = linked->OnSuccessLogicIds.end();
@@ -7237,7 +7276,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	if (damageSlot == linked->OnSuccessLogicIds.end() && linked->OnSuccessLogicIds.size() >= 4u)
 	{ outStatus = m_strStatus = "Success already has four Results; remove one before adding damage."; return false; }
 	auto damage = std::find_if(candidate.Logics.begin(), candidate.Logics.end(), [&](const auto& row) {
-		return row.strLogicType == "RESULT" && row.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && row.iPercent == percent; });
+		return row.strLogicType == "RESULT" && row.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && row.iPercent == percent &&
+			row.fPushRangeM == settings.fPushRangeM && row.iPushMs == settings.iPushMs && row.strPushDirection == settings.strPushDirection; });
 	if (damage == candidate.Logics.end())
 	{
 		if (candidate.iNextLogicOrdinal >= 1000000u)
@@ -7246,6 +7286,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 		result.strLogicId = "kakulsaydon.g1.logic." + std::to_string(candidate.iNextLogicOrdinal++);
 		result.strDisplayName = resource->strDisplayName + " Damage " + std::to_string(percent) + "% max HP";
 		result.strLogicType = "RESULT"; result.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; result.iPercent = percent;
+		result.fPushRangeM = settings.fPushRangeM; result.iPushMs = settings.iPushMs; result.strPushDirection = settings.strPushDirection;
 		candidate.Logics.push_back(std::move(result));
 		damage = std::prev(candidate.Logics.end());
 	}
@@ -7256,9 +7297,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	linked->iDurationMs = occurrence.iDurationMs;
 	*collider = occurrence;
 	collider->strLogicOccurrenceId = windowId;
-	if (!Valid_GameplaySectorScale(*resource, *collider))
+	if (!Valid_GameplayColliderScale(*resource, *collider))
 	{
-		outStatus = m_strStatus = "Apply rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous draft are preserved.";
+		outStatus = m_strStatus = "Apply rejected: Collider scale must be finite and positive. Adjust Scale / size; pending edits and previous draft are preserved.";
 		return false;
 	}
 	for (auto& other : pattern->PresentationOccurrences)
@@ -7471,19 +7512,19 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOU
 	}
 	if (kind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
 	{
-		for (int i = 0; i < 5; ++i)
+		for (int i = 0; i < 6; ++i)
 		{
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE preset;
 			preset.eKind = kind;
 			preset.strResourceId = "preset.collider." + std::to_string(i);
-			preset.strDisplayName = i == 0 ? "Rectangle" : i == 1 ? "Semicircle" : i == 2 ? "Sector" : i == 3 ? "Roulette Card Region" : "Circle";
-			preset.strShape = i == 0 ? "BOX" : i == 4 ? "CIRCLE" : "SECTOR";
+			preset.strDisplayName = i == 0 ? "Rectangle" : i == 1 ? "Semicircle" : i == 2 ? "Sector" : i == 3 ? "Roulette Card Region" : i == 4 ? "Circle" : "Reverse Sector";
+			preset.strShape = i == 0 ? "BOX" : i == 4 ? "CIRCLE" : i == 5 ? "REVERSE_SECTOR" : "SECTOR";
 			preset.fHalfAngleDegrees = i == 1 ? 90.0 : i == 3 ? 22.5 : 45.0;
 			preset.strColliderKind = i == 3 ? "ROULETTE_CARD_REGION" : "GEOMETRY";
 			preset.strResourceKind.clear();
 			sources.push_back(preset);
 		}
-		ImGui::TextDisabled("Region authoring and visual preview. Gameplay outcomes remain in explicit Logic definitions.");
+		ImGui::TextDisabled("Box Detail supports a general region or direct damage settings. Advanced Logic remains available.");
 	}
 	const auto sourceId = [](const auto& item) {
 		return std::to_string(static_cast<int>(item.eKind)) + ":" + item.strResourceKind + ":" +
@@ -7752,7 +7793,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	};
 	bool geometryChanged = vectorControl("Position offset (m)##PresentationBox", edit.PositionOffset, -100000.f, 100000.f);
 	const bool gameplayCollider = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
-		(!edit.strLogicOccurrenceId.empty() || !m_strColliderLogicDefinitionId.empty());
+		(!edit.strLogicOccurrenceId.empty() || !m_strColliderLogicDefinitionId.empty() || (m_strColliderExecutionEditId == occurrenceId && m_bColliderDamageMode));
 	if (gameplayCollider)
 	{
 		float yaw = static_cast<float>(edit.RotationDegrees[1]);
@@ -7767,16 +7808,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	}
 	else if (!cameraBox) geometryChanged |= vectorControl("Rotation (degrees)##PresentationBox", edit.RotationDegrees, -36000.f, 36000.f);
 	const bool light = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT;
-	const bool gameplaySector = gameplayCollider && definition.strShape == "SECTOR";
-	if (!light && !cameraBox && !gameplaySector) geometryChanged |= vectorControl("Scale / size##PresentationBox", edit.Scale, 0.001f, 10000.f);
-	if (gameplaySector)
-	{
-		float heightScale = static_cast<float>(edit.Scale[1]);
-		if (ImGui::DragFloat("Height scale##PresentationBox", &heightScale, 0.05f, 0.001f, 10000.f, "%.3f"))
-		{ edit.Scale[1] = heightScale; geometryChanged = true; }
-		if (std::abs(edit.Scale[0] - edit.Scale[2]) > 0.0001)
-			ImGui::TextWrapped("Circular SECTOR requires equal X/Z scale (X %.3f, Z %.3f). Adjust Radius (m) below to set both together; existing values are preserved until you edit them.", edit.Scale[0], edit.Scale[2]);
-	}
+	if (!light && !cameraBox) geometryChanged |= vectorControl("Scale / size##PresentationBox", edit.Scale, 0.001f, 10000.f);
 	const auto previewGeometry = [&]() {
 		std::string status;
 		(void)Request_PresentationGeometryPreview(patternId, edit, status);
@@ -7837,98 +7869,172 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			m_strColliderExecutionEditId = occurrenceId;
 			m_strColliderExecutionType = nullptr == linkedLogic ? "DURATION" : linkedLogic->strLogicType;
 			m_strColliderLogicDefinitionId = nullptr == linkedLogic ? "" : linkedLogic->strLogicId;
-			m_iColliderDamagePercent = 10;
+			m_ColliderDamageSettings = {};
+			m_bColliderDamageMode = false; m_bColliderDetachDamage = false;
+			if (linkedLogic)
+			{
+				m_ColliderDamageSettings.bRearmOnExit = linkedLogic->bRearmOnExit;
+				m_ColliderDamageSettings.bRepeatAfterKnockback = linkedLogic->bRepeatAfterKnockback;
+			}
 			m_bColliderDamageDirty = false;
 			if (nullptr != linkedBox)
 				for (const auto& id : linkedBox->OnSuccessLogicIds)
 					if (const auto* result = Find_Logic(m_Draft, id); result && result->strOutcomeKind == "MAX_HP_PERCENT_DAMAGE")
-					{ m_iColliderDamagePercent = static_cast<int32_t>(result->iPercent); break; }
+					{
+						m_ColliderDamageSettings.iPercent = static_cast<int32_t>(result->iPercent);
+						m_ColliderDamageSettings.fPushRangeM = result->fPushRangeM;
+						m_ColliderDamageSettings.iPushMs = result->iPushMs;
+						m_ColliderDamageSettings.strPushDirection = result->strPushDirection;
+						m_bColliderDamageMode = linkedLogic && linkedLogic->strTriggerKind == "ENTER_AREA";
+						break;
+					}
 		}
-		if (ImGui::BeginCombo("Execution", m_strColliderExecutionType.c_str()))
+		int purpose = m_bColliderDamageMode ? 1 : 0;
+		ImGui::BeginDisabled(definition.strColliderKind != "GEOMETRY");
+		if (ImGui::Combo("Collider purpose", &purpose, "General region\0Damage collider\0"))
 		{
-			for (const char* type : { "DURATION", "TRIGGER" })
-				if (ImGui::Selectable(type, m_strColliderExecutionType == type))
-				{
-					m_strColliderExecutionType = type;
-					m_strColliderLogicDefinitionId.clear();
-					m_bColliderDamageDirty = false;
-				}
-			ImGui::EndCombo();
-		}
-		const auto compatibleWindowCount = std::count_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
-			[&](const auto& window) {
-				const auto* logic = Find_Logic(m_Draft, window.strLogicId);
-				return logic && logic->strLogicType == m_strColliderExecutionType &&
-					(Kouku_LogicAcceptsColliders(*logic) || (logic->strLogicType == "TRIGGER" && logic->strTriggerKind.empty()));
-			});
-		if (ImGui::BeginCombo("Shared Logic window", nullptr == linkedBox ? "(none)" : linkedBox->strOccurrenceId.c_str()))
-		{
-			if (ImGui::Selectable("(none)", edit.strLogicOccurrenceId.empty()))
-			{ edit.strLogicOccurrenceId.clear(); m_strColliderLogicDefinitionId.clear(); m_bColliderDamageDirty = false; }
-			for (const auto& window : pattern.LogicOccurrences)
-			{
-				const auto* logic = Find_Logic(m_Draft, window.strLogicId);
-				const bool nameOnlyTrigger = logic && logic->strLogicType == "TRIGGER" && logic->strTriggerKind.empty();
-				if (nullptr == logic || logic->strLogicType != m_strColliderExecutionType ||
-					(!Kouku_LogicAcceptsColliders(*logic) && !nameOnlyTrigger)) continue;
-				const auto label = logic->strDisplayName + (nameOnlyTrigger ? " (set Trigger kind)" : "") + " | " + window.strOccurrenceId;
-				if (ImGui::Selectable(label.c_str(), edit.strLogicOccurrenceId == window.strOccurrenceId))
-				{
-					edit.strLogicOccurrenceId = window.strOccurrenceId;
-					m_strColliderLogicDefinitionId = window.strLogicId;
-					m_bColliderDamageDirty = false;
-					edit.iStartMs = window.iStartMs;
-					edit.iDurationMs = window.iDurationMs;
-				}
-			}
-			ImGui::EndCombo();
-		}
-		if (m_strColliderExecutionType == "TRIGGER" && compatibleWindowCount == 0)
-			ImGui::TextWrapped("No reusable Trigger window is placed yet. Choose a Logic definition below and Apply Values to create its window and connect this Collider.");
-		if (m_strColliderExecutionType == "TRIGGER")
-			ImGui::TextWrapped("ENTER_AREA detects players entering this Collider, including a following boss-body region. OBJECT_CONTACT detects authored World card placements for hammer reactions.");
-		const auto* definitionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
-		std::string definitionLabel = definitionLogic ? definitionLogic->strDisplayName : "(select Logic)";
-		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && definitionLogic->strTriggerKind.empty())
-			definitionLabel += " (set Trigger kind)";
-		if (ImGui::BeginCombo("Logic definition", definitionLabel.c_str()))
-		{
-			for (const auto& logic : m_Draft.Logics)
-			{
-				const bool nameOnlyTrigger = logic.strLogicType == "TRIGGER" && logic.strTriggerKind.empty();
-				if (logic.strLogicType != m_strColliderExecutionType ||
-					(!Kouku_LogicAcceptsColliders(logic) && !nameOnlyTrigger)) continue;
-				const std::string label = logic.strDisplayName + (nameOnlyTrigger ? " (set Trigger kind)" : "") + "##" + logic.strLogicId;
-				if (ImGui::Selectable(label.c_str(), m_strColliderLogicDefinitionId == logic.strLogicId))
-				{ m_strColliderLogicDefinitionId = logic.strLogicId; m_bColliderDamageDirty = false; }
-			}
-			ImGui::EndCombo();
-		}
-		// A selection above may have changed the definition in this same frame.
-		definitionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
-		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER")
-		{
-			const auto definitionCopy = *definitionLogic;
-			const auto pendingPresentation = edit;
-			const auto generation = m_iDraftGeneration;
-			Render_LogicDefinitionValues(definitionCopy, patternId, &pendingPresentation);
-			// One Apply commits the edited definition, interval and Collider link.
-			if (generation != m_iDraftGeneration) return;
-			m_PresentationBoxEdit = pendingPresentation;
-		}
-		const auto* connectionLogic = definitionLogic;
-		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && m_strColliderLogicValueDraftId == definitionLogic->strLogicId)
-			connectionLogic = &m_ColliderLogicValueDraft;
-		ImGui::BeginDisabled(!connectionLogic || !Kouku_LogicAcceptsColliders(*connectionLogic));
-		if (ImGui::Button("Append / reuse Logic window"))
-		{
-			std::string status;
-			const auto value = edit;
-			(void)Set_ColliderLogicValues(patternId, value, *connectionLogic, status);
-			ImGui::EndDisabled();
-			return;
+			m_bColliderDamageMode = purpose == 1;
+			m_bColliderDetachDamage = purpose == 0;
+			m_bColliderDamageDirty = true;
 		}
 		ImGui::EndDisabled();
+		if (m_bColliderDamageMode)
+		{
+			auto& damage = m_ColliderDamageSettings;
+			if (ImGui::InputInt("Damage (% max HP)", &damage.iPercent, 1, 10))
+			{ damage.iPercent = std::clamp(damage.iPercent, 1, 100); m_bColliderDamageDirty = true; }
+			int repeat = damage.bRepeatAfterKnockback ? 2 : damage.bRearmOnExit ? 1 : 0;
+			if (ImGui::Combo("Repeat hits", &repeat, "Once per box\0On exit and re-entry\0After knockback finishes\0"))
+			{
+				damage.bRearmOnExit = repeat == 1; damage.bRepeatAfterKnockback = repeat == 2;
+				if (repeat == 2 && damage.fPushRangeM == 0.0) { damage.fPushRangeM = 2.0; damage.iPushMs = 242u; }
+				m_bColliderDamageDirty = true;
+			}
+			bool push = damage.fPushRangeM > 0.0;
+			if (ImGui::Checkbox("Push on hit", &push))
+			{
+				damage.fPushRangeM = push ? 2.0 : 0.0; damage.iPushMs = push ? 242u : 0u;
+				if (!push) { damage.strPushDirection = "AWAY_FROM_BOSS"; damage.bRepeatAfterKnockback = false; }
+				m_bColliderDamageDirty = true;
+			}
+			if (push)
+			{
+				float distance = static_cast<float>(damage.fPushRangeM); int time = static_cast<int>(damage.iPushMs);
+				if (ImGui::DragFloat("Push distance (m)", &distance, .05f, .01f, 20.f))
+				{ damage.fPushRangeM = std::clamp(distance, .01f, 20.f); m_bColliderDamageDirty = true; }
+				if (ImGui::InputInt("Push time (ms)", &time, 10, 100))
+				{ damage.iPushMs = static_cast<std::uint32_t>(std::clamp(time, 1, static_cast<int>(MAX_EDITOR_TIME_MS))); m_bColliderDamageDirty = true; }
+				int direction = damage.strPushDirection == "BOSS_FORWARD" ? 1 : 0;
+				if (ImGui::Combo("Push direction", &direction, "Away from boss\0Boss current forward\0"))
+				{ damage.strPushDirection = direction == 1 ? "BOSS_FORWARD" : "AWAY_FROM_BOSS"; m_bColliderDamageDirty = true; }
+			}
+			ImGui::TextDisabled("Apply saves contact, damage and push together for this box.");
+		}
+		if (ImGui::CollapsingHeader("Advanced Logic / conditions"))
+		{
+			if (ImGui::BeginCombo("Execution", m_strColliderExecutionType.c_str()))
+			{
+				for (const char* type : { "DURATION", "TRIGGER" })
+					if (ImGui::Selectable(type, m_strColliderExecutionType == type))
+					{
+						m_strColliderExecutionType = type;
+						m_strColliderLogicDefinitionId.clear();
+						m_bColliderDamageDirty = false;
+					}
+				ImGui::EndCombo();
+			}
+			const auto compatibleWindowCount = std::count_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
+				[&](const auto& window) {
+					const auto* logic = Find_Logic(m_Draft, window.strLogicId);
+					return logic && logic->strLogicType == m_strColliderExecutionType &&
+						(Kouku_LogicAcceptsColliders(*logic) || (logic->strLogicType == "TRIGGER" && logic->strTriggerKind.empty()));
+				});
+			if (ImGui::BeginCombo("Shared Logic window", nullptr == linkedBox ? "(none)" : linkedBox->strOccurrenceId.c_str()))
+			{
+				if (ImGui::Selectable("(none)", edit.strLogicOccurrenceId.empty()))
+				{ edit.strLogicOccurrenceId.clear(); m_strColliderLogicDefinitionId.clear(); m_bColliderDamageDirty = false; }
+				for (const auto& window : pattern.LogicOccurrences)
+				{
+					const auto* logic = Find_Logic(m_Draft, window.strLogicId);
+					const bool nameOnlyTrigger = logic && logic->strLogicType == "TRIGGER" && logic->strTriggerKind.empty();
+					if (nullptr == logic || logic->strLogicType != m_strColliderExecutionType ||
+						(!Kouku_LogicAcceptsColliders(*logic) && !nameOnlyTrigger)) continue;
+					const auto label = logic->strDisplayName + (nameOnlyTrigger ? " (set Trigger kind)" : "") + " | " + window.strOccurrenceId;
+					if (ImGui::Selectable(label.c_str(), edit.strLogicOccurrenceId == window.strOccurrenceId))
+					{
+						edit.strLogicOccurrenceId = window.strOccurrenceId;
+						m_strColliderLogicDefinitionId = window.strLogicId;
+						m_bColliderDamageDirty = false;
+						edit.iStartMs = window.iStartMs;
+						edit.iDurationMs = window.iDurationMs;
+					}
+				}
+				ImGui::EndCombo();
+			}
+			if (m_strColliderExecutionType == "TRIGGER" && compatibleWindowCount == 0)
+				ImGui::TextWrapped("No reusable Trigger window is placed yet. Choose a Logic definition below and Apply Values to create its window and connect this Collider.");
+			if (m_strColliderExecutionType == "TRIGGER")
+				ImGui::TextWrapped("ENTER_AREA detects players entering this Collider, including a following boss-body region. OBJECT_CONTACT detects authored World card placements for hammer reactions.");
+			const auto* definitionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
+			std::string definitionLabel = definitionLogic ? definitionLogic->strDisplayName : "(select Logic)";
+			if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && definitionLogic->strTriggerKind.empty())
+				definitionLabel += " (set Trigger kind)";
+			if (ImGui::BeginCombo("Logic definition", definitionLabel.c_str()))
+			{
+				for (const auto& logic : m_Draft.Logics)
+				{
+					const bool nameOnlyTrigger = logic.strLogicType == "TRIGGER" && logic.strTriggerKind.empty();
+					if (logic.strLogicType != m_strColliderExecutionType ||
+						(!Kouku_LogicAcceptsColliders(logic) && !nameOnlyTrigger)) continue;
+					const std::string label = logic.strDisplayName + (nameOnlyTrigger ? " (set Trigger kind)" : "") + "##" + logic.strLogicId;
+					if (ImGui::Selectable(label.c_str(), m_strColliderLogicDefinitionId == logic.strLogicId))
+					{ m_strColliderLogicDefinitionId = logic.strLogicId; m_bColliderDamageDirty = false; }
+				}
+				ImGui::EndCombo();
+			}
+			// A selection above may have changed the definition in this same frame.
+			definitionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
+			if (definitionLogic && definitionLogic->strLogicType == "TRIGGER")
+			{
+				const auto definitionCopy = *definitionLogic;
+				const auto pendingPresentation = edit;
+				const auto generation = m_iDraftGeneration;
+				Render_LogicDefinitionValues(definitionCopy, patternId, &pendingPresentation);
+				// One Apply commits the edited definition, interval and Collider link.
+				if (generation != m_iDraftGeneration) return;
+				m_PresentationBoxEdit = pendingPresentation;
+			}
+			const auto* connectionLogic = definitionLogic;
+			if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && m_strColliderLogicValueDraftId == definitionLogic->strLogicId)
+				connectionLogic = &m_ColliderLogicValueDraft;
+			ImGui::BeginDisabled(!connectionLogic || !Kouku_LogicAcceptsColliders(*connectionLogic));
+			if (ImGui::Button("Append / reuse Logic window"))
+			{
+				std::string status;
+				const auto value = edit;
+				(void)Set_ColliderLogicValues(patternId, value, *connectionLogic, status);
+				ImGui::EndDisabled();
+				return;
+			}
+			ImGui::EndDisabled();
+			ImGui::TextWrapped("Apply keeps this Collider's 3D size and synchronizes its start/lifetime with the current Logic window and linked Colliders. Selecting a different Shared Logic window first adopts that window's time. Result slots remain shared.");
+			if (nullptr != linkedLogic && linkedLogic->strJudgementKind == "AREA_OVERLAP" &&
+				ImGui::BeginCombo("Inside outcome##ColliderBox", linkedLogic->strInsideOutcome.c_str()))
+			{
+				for (const char* outcome : { "SUCCESS", "FAIL" })
+					if (ImGui::Selectable(outcome, linkedLogic->strInsideOutcome == outcome))
+					{
+						auto value = *linkedLogic;
+						value.strInsideOutcome = outcome;
+						std::string status;
+						(void)Set_LogicDefinitionValues(value.strLogicId, value, status);
+						ImGui::EndCombo();
+						return;
+					}
+				ImGui::EndCombo();
+			}
+			if (!box->strLogicOccurrenceId.empty() && Render_LogicOutcomeSlots(patternId, box->strLogicOccurrenceId)) return;
+		}
 		bool debugRender = edit.bDebugRender;
 		if (ImGui::Checkbox("Debug Render##ColliderBox", &debugRender))
 		{
@@ -7936,40 +8042,6 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			(void)Set_PresentationBoxDebugRender(patternId, occurrenceId, debugRender, status);
 			return;
 		}
-		ImGui::TextWrapped("Apply keeps this Collider's 3D size and synchronizes its start/lifetime with the current Logic window and linked Colliders. Selecting a different Shared Logic window first adopts that window's time. Result slots remain shared.");
-		const auto* executionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
-		if (m_strColliderExecutionType == "TRIGGER" && executionLogic && executionLogic->strTriggerKind == "ENTER_AREA")
-		{
-			if (ImGui::InputInt("Damage (% max HP)", &m_iColliderDamagePercent, 1, 10))
-			{ m_iColliderDamagePercent = std::clamp(m_iColliderDamagePercent, 1, 100); m_bColliderDamageDirty = true; }
-			ImGui::BeginDisabled(definition.strColliderKind != "GEOMETRY");
-			if (ImGui::Button("Create / update Trigger damage"))
-			{
-				std::string status;
-				const auto value = edit;
-				(void)Set_ColliderTriggerDamage(patternId, value, static_cast<std::uint32_t>(m_iColliderDamagePercent), status);
-				ImGui::EndDisabled();
-				return;
-			}
-			ImGui::EndDisabled();
-			ImGui::TextWrapped("Creates or reuses ENTER_AREA and a max-HP damage Result together. Entry runs Success per player; the Trigger re-entry setting controls later hits. No entry runs Timeout. Other Result slots are preserved.");
-		}
-		if (nullptr != linkedLogic && linkedLogic->strJudgementKind == "AREA_OVERLAP" &&
-			ImGui::BeginCombo("Inside outcome##ColliderBox", linkedLogic->strInsideOutcome.c_str()))
-		{
-			for (const char* outcome : { "SUCCESS", "FAIL" })
-				if (ImGui::Selectable(outcome, linkedLogic->strInsideOutcome == outcome))
-				{
-					auto value = *linkedLogic;
-					value.strInsideOutcome = outcome;
-					std::string status;
-					(void)Set_LogicDefinitionValues(value.strLogicId, value, status);
-					ImGui::EndCombo();
-					return;
-				}
-			ImGui::EndCombo();
-		}
-		if (!box->strLogicOccurrenceId.empty() && Render_LogicOutcomeSlots(patternId, box->strLogicOccurrenceId)) return;
 		std::string colliderKind = definition.strColliderKind;
 		if (ImGui::BeginCombo("Collider kind", colliderKind.c_str()))
 		{
@@ -8020,13 +8092,35 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		}
 		else
 		{
-			float radius = static_cast<float>(definition.fRadiusM * edit.Scale[0]);
-			if (ImGui::DragFloat("Radius (m)", &radius, 0.05f, 0.01f, 10000.f))
+			if (definition.strShape == "CIRCLE")
 			{
-				edit.Scale[0] = edit.Scale[2] = radius / definition.fRadiusM;
-				previewGeometry();
+				float radius = static_cast<float>(definition.fRadiusM * (std::max)(edit.Scale[0], edit.Scale[2]));
+				if (ImGui::DragFloat("Radius (m)", &radius, .05f, .01f, 10000.f))
+				{ edit.Scale[0] = edit.Scale[2] = radius / definition.fRadiusM; previewGeometry(); }
 			}
-			if (definition.strShape == "SECTOR") ImGui::Text("Sector angle: %.1f degrees", 2.0 * definition.fHalfAngleDegrees);
+			else
+			{
+				float axes[2] = { static_cast<float>(definition.fRadiusM * edit.Scale[0]), static_cast<float>(definition.fRadiusM * edit.Scale[2]) };
+				if (ImGui::DragFloat2("Radius X / Z (m)", axes, .05f, .01f, 10000.f))
+				{ edit.Scale[0] = axes[0] / definition.fRadiusM; edit.Scale[2] = axes[1] / definition.fRadiusM; previewGeometry(); }
+				float angle = static_cast<float>(definition.fHalfAngleDegrees * 2.0);
+				if (ImGui::DragFloat(definition.strShape == "REVERSE_SECTOR" ? "Safe angle (degrees)" : "Sector angle (degrees)",
+					&angle, .1f, definition.strShape == "REVERSE_SECTOR" ? 0.f : .002f, 360.f))
+				{
+					auto candidate = m_Draft;
+					for (auto& item : candidate.PresentationResources)
+						if (item.strResourceId == definition.strResourceId) item.fHalfAngleDegrees = std::clamp(angle, definition.strShape == "REVERSE_SECTOR" ? 0.f : .002f, 360.f) * .5;
+					for (auto& affected : candidate.Patterns)
+						if (std::any_of(affected.PresentationOccurrences.begin(), affected.PresentationOccurrences.end(),
+							[&](const auto& row) { return row.strResourceId == definition.strResourceId; })) Mark_Draft(candidate, affected);
+					std::string status;
+					const auto pending = edit;
+					(void)Commit_Candidate(std::move(candidate), "Updated shared Collider angle.", status);
+					m_PresentationBoxEdit = pending;
+					return;
+				}
+				if (definition.strShape == "REVERSE_SECTOR") ImGui::TextDisabled("Safe angle 0 = full ellipse; 360 = empty. X/Z scale changes each axis independently.");
+			}
 		}
 		ImGui::TextDisabled("Dimensions affect this box. Rotation sets the region direction.");
 	}
@@ -8035,9 +8129,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		std::string status;
 		const auto value = edit;
 		if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
-			m_strColliderExecutionType == "TRIGGER" && m_bColliderDamageDirty &&
-			(!Find_Logic(m_Draft, m_strColliderLogicDefinitionId) || Find_Logic(m_Draft, m_strColliderLogicDefinitionId)->strTriggerKind == "ENTER_AREA"))
-			(void)Set_ColliderTriggerDamage(patternId, value, static_cast<std::uint32_t>(m_iColliderDamagePercent), status);
+			m_bColliderDamageMode)
+			(void)Set_ColliderTriggerDamage(patternId, value, m_ColliderDamageSettings, status);
+		else if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && m_bColliderDetachDamage)
+		{
+			auto general = value;
+			general.strLogicOccurrenceId.clear();
+			(void)Set_PresentationBox(patternId, general, status);
+			m_strColliderExecutionEditId.clear();
+		}
 		else if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && !m_strColliderLogicDefinitionId.empty())
 		{
 			const auto* selected = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
@@ -8653,6 +8753,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			{
 				draft.fPushRangeM = knockback ? 2.0 : 0.0;
 				draft.iPushMs = knockback ? 242u : 0u;
+				if (!knockback) draft.strPushDirection = "AWAY_FROM_BOSS";
 			}
 			if (knockback)
 			{
@@ -8662,7 +8763,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					draft.fPushRangeM = std::clamp(distance, .01f, 20.f);
 				if (ImGui::InputInt("Knockback time (ms)", &timeMs, 10, 100))
 					draft.iPushMs = static_cast<std::uint32_t>(std::clamp(timeMs, 1, static_cast<int>(MAX_EDITOR_TIME_MS)));
-				ImGui::TextWrapped("Pushes the hit player away from this boss using the Server hit reaction and collision rules.");
+				int direction = draft.strPushDirection == "BOSS_FORWARD" ? 1 : 0;
+				if (ImGui::Combo("Push direction##Logic", &direction, "Away from boss\0Boss current forward\0"))
+					draft.strPushDirection = direction == 1 ? "BOSS_FORWARD" : "AWAY_FROM_BOSS";
+				ImGui::TextWrapped("Uses the Server hit reaction, navigation and collision rules.");
 			}
 		}
 		if ("CLOWN_TRANSFORM" == draft.strOutcomeKind)

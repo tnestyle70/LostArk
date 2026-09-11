@@ -1430,6 +1430,16 @@
       "effectAssetId": "effect.dimensionmaster.skill.2050540.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.4219877.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.4219877.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.4219801.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.4219801.full.restore.effect.json"
     }
   ]
 }

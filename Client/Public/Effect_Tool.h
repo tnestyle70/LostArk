@@ -108,7 +108,8 @@ enum class EFFECT_DOCUMENT_SOURCE : uint8_t
 enum class EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND : uint8_t
 {
 	PLAYER_CLASS,
-	VALTAN_BOSS
+	VALTAN_BOSS,
+	KOUKU_BOSS
 };
 
 struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
@@ -120,7 +121,7 @@ struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
 	std::string_view strLabel;
 };
 
-inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
+inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 8u>
 	EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS = {{
 		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
@@ -142,7 +143,10 @@ inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
 			"Warlord" },
 		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS,
 			LostArk::Shared::CHARACTER_CLASS_ID::END,
-			"Valtan" }
+			"Valtan" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::KOUKU_BOSS,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"KoukuSaydon" }
 	}};
 
 /* Valtan Boss Tool transfers only stable Product identity. Effect Tool re-resolves
@@ -581,6 +585,7 @@ private:
     void Render_EffectDetailWindow();
     void Render_AuthoringSessionBar();
     void Render_AllEffectsWindow();
+	void Render_KoukuAuthoredEffectSection(const std::string& strSearch);
 	void Render_ActiveAuthoredEffectTree();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
@@ -1306,6 +1311,7 @@ private:
     LostArk::Shared::CHARACTER_CLASS_ID m_eAllEffectsClass =
         LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
 	bool_t m_bAllEffectsValtanBossSelected = false;
+	bool_t m_bAllEffectsKoukuBossSelected = false;
     EFFECT_PREVIEW_FILTER m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     EFFECT_DOCUMENT_SOURCE m_eActiveDocumentSource =
         EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;

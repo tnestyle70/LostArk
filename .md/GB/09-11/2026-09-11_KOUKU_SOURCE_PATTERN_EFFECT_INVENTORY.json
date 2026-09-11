@@ -1,0 +1,1319 @@
+{
+  "summary": {
+    "generatedDate": "2026-09-11",
+    "authority": "RESEARCH_ONLY",
+    "compositionRevision": 322,
+    "profileCount": 4,
+    "sourceActionCount": 349,
+    "sourceStageCount": 4072,
+    "sourceNotifyCount": 30980,
+    "sourceAnimationNotifyCount": 3916,
+    "uniqueDirectParticleSystemCount": 327,
+    "directParticleGraphMatchedCount": 327,
+    "directParticleGraphMissingCount": 0,
+    "enumeratedParticleSystems": 1008,
+    "currentSourceActionReferences": 31,
+    "notifyTypeCounts": {
+      "Condition": 100,
+      "Anim": 3916,
+      "AKEvent": 6039,
+      "Down": 20,
+      "SoundSetDownMid": 12,
+      "ViewShake": 433,
+      "SoundSetSpringBound": 4,
+      "PawnMaterialChange": 40,
+      "DefaultParticle": 60,
+      "PawnMaterialParam": 1574,
+      "SuperArmor": 28,
+      "Rotate": 88,
+      "PlayParticleEffect": 8031,
+      "TrailGhostEffect": 401,
+      "LookTarget": 130,
+      "Effect": 6142,
+      "ToggleCollision": 71,
+      "MonsterMoveNextStage": 2136,
+      "MonsterMoveNextStageConditionProbability": 454,
+      "MonsterMoveNextStageConditionCheckArea": 10,
+      "CounterAttack": 39,
+      "NPCSkillMove": 67,
+      "PlayDecalEffect": 144,
+      "HidePawn": 376,
+      "Paralyzation": 118,
+      "MaintainHidePawn": 31,
+      "DominantDirectionalLight_Control": 20,
+      "NpcDirectionGuideFx": 3,
+      "EmitTriggerSignal": 37,
+      "MonsterMoveNextStageConditionSkillEffectHit": 280,
+      "Footstep": 4,
+      "Trails": 72,
+      "ToggleNpcDirectionGuideFx": 43,
+      "MonsterMoveNextStageConditionMultipleProbability": 1,
+      "SendNpcSignal": 6,
+      "PlayProjectileDecalEffect": 14,
+      "MonsterMoveNextStageConditionChangeTarget": 30,
+      "MonsterMoveNextStageConditionStatusEffect": 1,
+      "MemoryPos": 2,
+      "GameNote": 2,
+      "InterceptParticleEffect": 1
+    },
+    "notifyExtendingBeyondDeclaredAnimationCounts": {
+      "PlayParticleEffect": 1492,
+      "AKEvent": 1070,
+      "NPCSkillMove": 13,
+      "Effect": 1102,
+      "MonsterMoveNextStage": 627,
+      "HidePawn": 29,
+      "Paralyzation": 40,
+      "LookTarget": 12,
+      "NpcDirectionGuideFx": 1,
+      "EmitTriggerSignal": 12,
+      "PawnMaterialParam": 378,
+      "PlayDecalEffect": 30,
+      "MonsterMoveNextStageConditionSkillEffectHit": 168,
+      "MonsterMoveNextStageConditionProbability": 52,
+      "ViewShake": 11,
+      "MonsterMoveNextStageConditionChangeTarget": 10,
+      "TrailGhostEffect": 24,
+      "InterceptParticleEffect": 1
+    },
+    "missingParticleGraphs": [],
+    "scope": "All four available boss Action LOA extracts; all particle systems in extracted RPCT/RPCZ packages plus direct Action referenced shared package systems. Not an assertion of complete shipping game or semantic pattern/phase identification.",
+    "analystCategoryCounts": {
+      "COMMON": 35,
+      "SYSTEM": 14,
+      "NORMAL": 144,
+      "MECHANIC": 156
+    },
+    "overlappingNameTagCounts": {
+      "TEST_OR_UNUSED": 10,
+      "MOVEMENT_OR_CONTROL": 47,
+      "EASY": 12,
+      "SUCCESS_OR_FAILURE": 8,
+      "SUMMON_OR_REQUEST": 31,
+      "CLONE_OR_FAKE": 15,
+      "REHEARSAL": 13,
+      "HELL": 6,
+      "SINGLE": 4
+    },
+    "notifyDetailCompanion": "2026-09-11_KOUKU_SOURCE_PATTERN_EFFECT_INVENTORY_NOTIFIES.csv",
+    "particleModuleDetailPolicy": "Original particle graph files remain authoritative for ordered emitters/LOD/modules and property values; PARTCLES CSV records reached graph references.",
+    "unresolvedSourceNotifyCount": 221,
+    "unresolvedSourceNotifyTypeCounts": {
+      "DefaultParticle": 60,
+      "PlayDecalEffect": 144,
+      "PlayParticleEffect": 17
+    },
+    "unresolvedSourceNotifyReasonCounts": {
+      "NOTIFY_HAS_NO_EXPLICIT_OBJECT_REFERENCE": 221
+    }
+  },
+  "sourceProfiles": [
+    {
+      "profileId": "MN_RPCZ_00",
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\RemainingCharacterExtraction-20260829\\ActionNameSources\\MN_RPCZ_00.action-effects.json",
+      "source": {
+        "path": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/CanonicalSource/Sound/Lpk/EFGame_Extra/ClientData/XmlData/Action/MN_RPCZ_00.loa",
+        "byteSize": 2058430,
+        "sha256": "7d9181204bdf986cb5fb49e565d651ec743d03091cfa90259dd13c90683ce4f5",
+        "evidenceGrade": "OFFICIAL_EXTRACTED"
+      },
+      "summary": {
+        "sourceActionObjectCount": 85,
+        "selectedActionObjectCount": 85,
+        "selectedStageCount": 672,
+        "selectedAnimationClipOccurrenceCount": 634,
+        "selectedNotifyCount": 6057,
+        "uniqueParticleSystemCount": 96,
+        "uniqueDirectMeshCount": 0,
+        "uniqueDirectMaterialCount": 0,
+        "uniqueDirectTextureCount": 0,
+        "unsupportedUnresolvedCount": 70,
+        "notifyTypeCounts": {
+          "AKEvent": 1422,
+          "Anim": 634,
+          "Condition": 25,
+          "CounterAttack": 24,
+          "DefaultParticle": 15,
+          "DominantDirectionalLight_Control": 4,
+          "Down": 5,
+          "Effect": 1362,
+          "EmitTriggerSignal": 12,
+          "HidePawn": 97,
+          "LookTarget": 19,
+          "MaintainHidePawn": 5,
+          "MonsterMoveNextStage": 312,
+          "MonsterMoveNextStageConditionCheckArea": 9,
+          "MonsterMoveNextStageConditionProbability": 50,
+          "MonsterMoveNextStageConditionSkillEffectHit": 3,
+          "NPCSkillMove": 9,
+          "NpcDirectionGuideFx": 3,
+          "Paralyzation": 40,
+          "PawnMaterialChange": 10,
+          "PawnMaterialParam": 97,
+          "PlayDecalEffect": 42,
+          "PlayParticleEffect": 1548,
+          "Rotate": 4,
+          "SoundSetDownMid": 3,
+          "SoundSetSpringBound": 1,
+          "SuperArmor": 7,
+          "ToggleCollision": 71,
+          "TrailGhostEffect": 163,
+          "ViewShake": 61
+        },
+        "categoryCounts": {
+          "animation": 634,
+          "camera": 61,
+          "decal": 42,
+          "gameplay_reference": 1398,
+          "light": 4,
+          "material": 107,
+          "other": 566,
+          "particle": 1563,
+          "sound": 1422,
+          "trail": 163,
+          "visibility": 97
+        }
+      },
+      "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745"
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\RemainingCharacterExtraction-20260829\\ActionNameSources\\MN_RPCT_05.action-effects.json",
+      "source": {
+        "path": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/CanonicalSource/Sound/Lpk/EFGame_Extra/ClientData/XmlData/Action/MN_RPCT_05.loa",
+        "byteSize": 6210213,
+        "sha256": "0c389596c04faba0078810851a47ba02fb9a1c7f6203440801a8e306e5c7936d",
+        "evidenceGrade": "OFFICIAL_EXTRACTED"
+      },
+      "summary": {
+        "sourceActionObjectCount": 115,
+        "selectedActionObjectCount": 115,
+        "selectedStageCount": 2477,
+        "selectedAnimationClipOccurrenceCount": 2421,
+        "selectedNotifyCount": 17039,
+        "uniqueParticleSystemCount": 154,
+        "uniqueDirectMeshCount": 0,
+        "uniqueDirectMaterialCount": 0,
+        "uniqueDirectTextureCount": 0,
+        "unsupportedUnresolvedCount": 44,
+        "notifyTypeCounts": {
+          "AKEvent": 3389,
+          "Anim": 2421,
+          "Condition": 25,
+          "CounterAttack": 9,
+          "DefaultParticle": 15,
+          "DominantDirectionalLight_Control": 4,
+          "Down": 5,
+          "Effect": 2627,
+          "EmitTriggerSignal": 17,
+          "Footstep": 4,
+          "HidePawn": 164,
+          "LookTarget": 46,
+          "MaintainHidePawn": 18,
+          "MonsterMoveNextStage": 1501,
+          "MonsterMoveNextStageConditionChangeTarget": 5,
+          "MonsterMoveNextStageConditionMultipleProbability": 1,
+          "MonsterMoveNextStageConditionProbability": 350,
+          "MonsterMoveNextStageConditionSkillEffectHit": 251,
+          "NPCSkillMove": 31,
+          "Paralyzation": 18,
+          "PawnMaterialChange": 10,
+          "PawnMaterialParam": 1196,
+          "PlayDecalEffect": 27,
+          "PlayParticleEffect": 4507,
+          "PlayProjectileDecalEffect": 6,
+          "Rotate": 74,
+          "SendNpcSignal": 6,
+          "SoundSetDownMid": 3,
+          "SoundSetSpringBound": 1,
+          "SuperArmor": 7,
+          "ToggleNpcDirectionGuideFx": 43,
+          "TrailGhostEffect": 101,
+          "Trails": 27,
+          "ViewShake": 130
+        },
+        "categoryCounts": {
+          "animation": 2421,
+          "camera": 130,
+          "decal": 27,
+          "gameplay_reference": 2648,
+          "light": 4,
+          "material": 1206,
+          "other": 2400,
+          "particle": 4522,
+          "sound": 3389,
+          "trail": 128,
+          "visibility": 164
+        }
+      },
+      "referenceRevision": "86692c07ed139cb9dd6957b079c4e1ac763e7a02d65ca2d8393b85d4df7959ae"
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\RemainingCharacterExtraction-20260829\\ActionNameSources\\MN_RPCT_06.action-effects.json",
+      "source": {
+        "path": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/CanonicalSource/Sound/Lpk/EFGame_Extra/ClientData/XmlData/Action/MN_RPCT_06.loa",
+        "byteSize": 512781,
+        "sha256": "458cda6c4ded460639c0540b3827762d075e9b0519283e275748b9572439996c",
+        "evidenceGrade": "OFFICIAL_EXTRACTED"
+      },
+      "summary": {
+        "sourceActionObjectCount": 47,
+        "selectedActionObjectCount": 47,
+        "selectedStageCount": 221,
+        "selectedAnimationClipOccurrenceCount": 193,
+        "selectedNotifyCount": 1260,
+        "uniqueParticleSystemCount": 59,
+        "uniqueDirectMeshCount": 0,
+        "uniqueDirectMaterialCount": 0,
+        "uniqueDirectTextureCount": 0,
+        "unsupportedUnresolvedCount": 51,
+        "notifyTypeCounts": {
+          "AKEvent": 212,
+          "Anim": 193,
+          "Condition": 25,
+          "DefaultParticle": 15,
+          "DominantDirectionalLight_Control": 1,
+          "Down": 5,
+          "Effect": 250,
+          "HidePawn": 3,
+          "LookTarget": 14,
+          "MonsterMoveNextStage": 43,
+          "MonsterMoveNextStageConditionSkillEffectHit": 2,
+          "Paralyzation": 4,
+          "PawnMaterialChange": 10,
+          "PawnMaterialParam": 14,
+          "PlayDecalEffect": 36,
+          "PlayParticleEffect": 341,
+          "Rotate": 1,
+          "SoundSetDownMid": 3,
+          "SoundSetSpringBound": 1,
+          "SuperArmor": 7,
+          "ViewShake": 80
+        },
+        "categoryCounts": {
+          "animation": 193,
+          "camera": 80,
+          "decal": 36,
+          "gameplay_reference": 262,
+          "light": 1,
+          "material": 24,
+          "other": 93,
+          "particle": 356,
+          "sound": 212,
+          "visibility": 3
+        }
+      },
+      "referenceRevision": "1a9f70ab5bd4892c034edd1d9368a1346e1ed5395738eaf248ceef97b08b7061"
+    },
+    {
+      "profileId": "MN_RPCT_07",
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\RemainingCharacterExtraction-20260829\\ActionNameSources\\MN_RPCT_07.action-effects.json",
+      "source": {
+        "path": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/CanonicalSource/Sound/Lpk/EFGame_Extra/ClientData/XmlData/Action/MN_RPCT_07.loa",
+        "byteSize": 2338264,
+        "sha256": "815959aa8ef30d8500eeec74b87adf44682380f115526ddc48ca04ad323f91f7",
+        "evidenceGrade": "OFFICIAL_EXTRACTED"
+      },
+      "summary": {
+        "sourceActionObjectCount": 102,
+        "selectedActionObjectCount": 102,
+        "selectedStageCount": 702,
+        "selectedAnimationClipOccurrenceCount": 668,
+        "selectedNotifyCount": 6624,
+        "uniqueParticleSystemCount": 140,
+        "uniqueDirectMeshCount": 0,
+        "uniqueDirectMaterialCount": 0,
+        "uniqueDirectTextureCount": 0,
+        "unsupportedUnresolvedCount": 56,
+        "notifyTypeCounts": {
+          "AKEvent": 1016,
+          "Anim": 668,
+          "Condition": 25,
+          "CounterAttack": 6,
+          "DefaultParticle": 15,
+          "DominantDirectionalLight_Control": 11,
+          "Down": 5,
+          "Effect": 1903,
+          "EmitTriggerSignal": 8,
+          "GameNote": 2,
+          "HidePawn": 112,
+          "InterceptParticleEffect": 1,
+          "LookTarget": 51,
+          "MaintainHidePawn": 8,
+          "MemoryPos": 2,
+          "MonsterMoveNextStage": 280,
+          "MonsterMoveNextStageConditionChangeTarget": 25,
+          "MonsterMoveNextStageConditionCheckArea": 1,
+          "MonsterMoveNextStageConditionProbability": 54,
+          "MonsterMoveNextStageConditionSkillEffectHit": 24,
+          "MonsterMoveNextStageConditionStatusEffect": 1,
+          "NPCSkillMove": 27,
+          "Paralyzation": 56,
+          "PawnMaterialChange": 10,
+          "PawnMaterialParam": 267,
+          "PlayDecalEffect": 39,
+          "PlayParticleEffect": 1635,
+          "PlayProjectileDecalEffect": 8,
+          "Rotate": 9,
+          "SoundSetDownMid": 3,
+          "SoundSetSpringBound": 1,
+          "SuperArmor": 7,
+          "TrailGhostEffect": 137,
+          "Trails": 45,
+          "ViewShake": 162
+        },
+        "categoryCounts": {
+          "animation": 668,
+          "camera": 162,
+          "decal": 39,
+          "gameplay_reference": 1921,
+          "light": 11,
+          "material": 277,
+          "other": 586,
+          "particle": 1650,
+          "sound": 1016,
+          "trail": 182,
+          "visibility": 112
+        }
+      },
+      "referenceRevision": "6c04775d1325013e0ae83ba1dd33edcda5da3e765ff9698c538617a30cd7c98c"
+    }
+  ],
+  "graphSources": [
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_BS_00.particle-graph.json",
+      "package": "FX_BS_00",
+      "summary": {
+        "graphObjectCount": 23558,
+        "particleSystemCount": 423,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 2700,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 24389,
+        "decodedInterpCurveCount": 50,
+        "decodedInterpCurvePointCount": 132,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_BS_01.particle-graph.json",
+      "package": "FX_BS_01",
+      "summary": {
+        "graphObjectCount": 5379,
+        "particleSystemCount": 243,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 487,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 5429,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 3,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_BS_04.particle-graph.json",
+      "package": "FX_BS_04",
+      "summary": {
+        "graphObjectCount": 14108,
+        "particleSystemCount": 354,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 2093,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 5,
+        "pointLightComponentReferenceCount": 5,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 11653,
+        "decodedInterpCurveCount": 84,
+        "decodedInterpCurvePointCount": 355,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_BS_08.particle-graph.json",
+      "package": "FX_BS_08",
+      "summary": {
+        "graphObjectCount": 41313,
+        "particleSystemCount": 784,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 6165,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 23,
+        "pointLightComponentReferenceCount": 23,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 35018,
+        "decodedInterpCurveCount": 178,
+        "decodedInterpCurvePointCount": 527,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_BS_10.particle-graph.json",
+      "package": "FX_BS_10",
+      "summary": {
+        "graphObjectCount": 6282,
+        "particleSystemCount": 92,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 643,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 7498,
+        "decodedInterpCurveCount": 11,
+        "decodedInterpCurvePointCount": 33,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_CM_00.particle-graph.json",
+      "package": "FX_CM_00",
+      "summary": {
+        "graphObjectCount": 8470,
+        "particleSystemCount": 200,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 796,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 3,
+        "pointLightComponentReferenceCount": 3,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 8886,
+        "decodedInterpCurveCount": 18,
+        "decodedInterpCurvePointCount": 55,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_CM_01.particle-graph.json",
+      "package": "FX_CM_01",
+      "summary": {
+        "graphObjectCount": 25044,
+        "particleSystemCount": 417,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 2841,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 3,
+        "pointLightComponentReferenceCount": 3,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 23856,
+        "decodedInterpCurveCount": 85,
+        "decodedInterpCurvePointCount": 237,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_CM_02.particle-graph.json",
+      "package": "FX_CM_02",
+      "summary": {
+        "graphObjectCount": 7046,
+        "particleSystemCount": 194,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 636,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 32,
+        "pointLightComponentReferenceCount": 32,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 6908,
+        "decodedInterpCurveCount": 47,
+        "decodedInterpCurvePointCount": 151,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_CM_03.particle-graph.json",
+      "package": "FX_CM_03",
+      "summary": {
+        "graphObjectCount": 8847,
+        "particleSystemCount": 204,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 851,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 3,
+        "pointLightComponentReferenceCount": 3,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 8669,
+        "decodedInterpCurveCount": 31,
+        "decodedInterpCurvePointCount": 85,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_BOEH_00.particle-graph.json",
+      "package": "FX_MN_BOEH_00",
+      "summary": {
+        "graphObjectCount": 13846,
+        "particleSystemCount": 164,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1211,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 7,
+        "pointLightComponentReferenceCount": 7,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 14995,
+        "decodedInterpCurveCount": 127,
+        "decodedInterpCurvePointCount": 391,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_CDMD_00.particle-graph.json",
+      "package": "FX_MN_CDMD_00",
+      "summary": {
+        "graphObjectCount": 1173,
+        "particleSystemCount": 14,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 107,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 1314,
+        "decodedInterpCurveCount": 12,
+        "decodedInterpCurvePointCount": 30,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_PTCK_00.particle-graph.json",
+      "package": "FX_MN_PTCK_00",
+      "summary": {
+        "graphObjectCount": 13084,
+        "particleSystemCount": 155,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1139,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 4,
+        "pointLightComponentReferenceCount": 4,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 13953,
+        "decodedInterpCurveCount": 70,
+        "decodedInterpCurvePointCount": 221,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPBF_00_N.particle-graph.json",
+      "package": "FX_MN_RPBF_00_N",
+      "summary": {
+        "graphObjectCount": 7430,
+        "particleSystemCount": 86,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 668,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 1,
+        "pointLightComponentReferenceCount": 1,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 8031,
+        "decodedInterpCurveCount": 40,
+        "decodedInterpCurvePointCount": 122,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_03.particle-graph.json",
+      "package": "FX_MN_RPCT_03",
+      "summary": {
+        "graphObjectCount": 5215,
+        "particleSystemCount": 69,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 505,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 5128,
+        "decodedInterpCurveCount": 6,
+        "decodedInterpCurvePointCount": 14,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_05_G.particle-graph.json",
+      "package": "FX_MN_RPCT_05_G",
+      "summary": {
+        "graphObjectCount": 6720,
+        "particleSystemCount": 72,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 570,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 7775,
+        "decodedInterpCurveCount": 24,
+        "decodedInterpCurvePointCount": 69,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_05_L.particle-graph.json",
+      "package": "FX_MN_RPCT_05_L",
+      "summary": {
+        "graphObjectCount": 18081,
+        "particleSystemCount": 196,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1817,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 6,
+        "pointLightComponentReferenceCount": 6,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 18600,
+        "decodedInterpCurveCount": 96,
+        "decodedInterpCurvePointCount": 260,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_05_X.particle-graph.json",
+      "package": "FX_MN_RPCT_05_X",
+      "summary": {
+        "graphObjectCount": 4990,
+        "particleSystemCount": 76,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 539,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 4469,
+        "decodedInterpCurveCount": 3,
+        "decodedInterpCurvePointCount": 9,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_06_X.particle-graph.json",
+      "package": "FX_MN_RPCT_06_X",
+      "summary": {
+        "graphObjectCount": 5584,
+        "particleSystemCount": 81,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 482,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 3,
+        "pointLightComponentReferenceCount": 3,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 5920,
+        "decodedInterpCurveCount": 22,
+        "decodedInterpCurvePointCount": 63,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_07_D.particle-graph.json",
+      "package": "FX_MN_RPCT_07_D",
+      "summary": {
+        "graphObjectCount": 1051,
+        "particleSystemCount": 30,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 159,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 902,
+        "decodedInterpCurveCount": 2,
+        "decodedInterpCurvePointCount": 8,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCT_07_V.particle-graph.json",
+      "package": "FX_MN_RPCT_07_V",
+      "summary": {
+        "graphObjectCount": 20203,
+        "particleSystemCount": 232,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1935,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 4,
+        "pointLightComponentReferenceCount": 4,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 21083,
+        "decodedInterpCurveCount": 110,
+        "decodedInterpCurvePointCount": 298,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCZ_00_G.particle-graph.json",
+      "package": "FX_MN_RPCZ_00_G",
+      "summary": {
+        "graphObjectCount": 9285,
+        "particleSystemCount": 85,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 790,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 1,
+        "pointLightComponentReferenceCount": 1,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 10842,
+        "decodedInterpCurveCount": 57,
+        "decodedInterpCurvePointCount": 162,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_MN_RPCZ_00_U.particle-graph.json",
+      "package": "FX_MN_RPCZ_00_U",
+      "summary": {
+        "graphObjectCount": 10575,
+        "particleSystemCount": 128,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 973,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 11616,
+        "decodedInterpCurveCount": 67,
+        "decodedInterpCurvePointCount": 144,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_POST.particle-graph.json",
+      "package": "FX_POST",
+      "summary": {
+        "graphObjectCount": 660,
+        "particleSystemCount": 61,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 78,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 0,
+        "pointLightComponentReferenceCount": 0,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 503,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 3,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "path": "C:\\LostArkExtract\\LV_LUT_MIDNIGHTC_ED_20260829\\CanonicalSource\\Effect\\Graphs\\LV_LUT_MIDNIGHTC_ED.particle-graph.json\\FX_U_W_01.particle-graph.json",
+      "package": "FX_U_W_01",
+      "summary": {
+        "graphObjectCount": 57739,
+        "particleSystemCount": 510,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 5003,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 6,
+        "pointLightComponentReferenceCount": 6,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 66489,
+        "decodedInterpCurveCount": 269,
+        "decodedInterpCurvePointCount": 811,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    }
+  ],
+  "csvCompanions": [
+    {
+      "path": "2026-09-11_KOUKU_SOURCE_PATTERN_EFFECT_INVENTORY_ACTIONS.csv",
+      "rowCount": 349,
+      "encoding": "utf-8-sig",
+      "sha256": "b0abdf36af89d8ccbdaf07feae89a6244615a78021d53a4f2878908b31e7b690",
+      "byteSize": 329893
+    },
+    {
+      "path": "2026-09-11_KOUKU_SOURCE_PATTERN_EFFECT_INVENTORY_NOTIFIES.csv",
+      "rowCount": 30980,
+      "encoding": "utf-8-sig",
+      "sha256": "28a31f19438cc9ea5f6e0dd5793c4c0bc8688925dcdfea57773555578548ec59",
+      "byteSize": 9479928
+    },
+    {
+      "path": "2026-09-11_KOUKU_SOURCE_PATTERN_EFFECT_INVENTORY_PARTICLES.csv",
+      "rowCount": 1008,
+      "encoding": "utf-8-sig",
+      "sha256": "201882510ac2c3889962783100d8802215a9ee9e805c565e272352f0121a246f",
+      "byteSize": 1725041
+    }
+  ],
+  "joinMethods": {
+    "currentActionUse": "Exact (animationOccurrence.profileId, sourceActionId) in Composition322; includes partial stage use and DRAFT, not implementation/visual proof.",
+    "particleGraph": "Case-insensitive exact package.objectPath match; no locale suffix removal or fuzzy aliases.",
+    "graphTraversal": "Follow positive packageIndex as exportIndex+1 within graph; preserve negative external refs as material/mesh/etc paths. No inferred default property values.",
+    "classification": "2026-09-05 survey grouping joined by exact profile/action ID after dropping old gate authority. Name tags are overlapping lexical flags, not source gameplay categories.",
+    "normalCandidates": "144 NORMAL-labeled action rows include attack, movement/control, difficulty variants; only6 currently referenced. Not144 unique minor patterns.",
+    "scope": "Full current four boss action extracts and available graph packages; Skill/SkillEffect/NPC definitions absent, source transition semantics unverified."
+  },
+  "currentActionReferences": [
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 0,
+      "displayName": "STAND",
+      "analystCategory": "COMMON",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_12",
+          "displayName": "쿠크_조커찾기",
+          "gateId": "GATE2",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219708,
+      "displayName": "쿠크_뿅망치_액션_휠윈드",
+      "analystCategory": "NORMAL",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_24",
+          "displayName": "쿠크_휠윈드",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219714,
+      "displayName": "쿠크_나팔_액션_피자",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_23",
+          "displayName": "쿠크_팡파레",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219719,
+      "displayName": "쿠크_융단폭격A",
+      "analystCategory": "NORMAL",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_8",
+          "displayName": "쿠크_세이튼등장",
+          "gateId": "GATE2",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219728,
+      "displayName": "쿠크_마법진 푸른색 안전지대",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_10",
+          "displayName": "쿠크_파1빨2",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219740,
+      "displayName": "쿠크_바주카포_액션_1",
+      "analystCategory": "NORMAL",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_21",
+          "displayName": "쿠크_레이저",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219751,
+      "displayName": "쿠크_나팔_액션_2",
+      "analystCategory": "NORMAL",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_28",
+          "displayName": "쿠크_카드미로연출",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219763,
+      "displayName": "쿠크_그로기",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_22",
+          "displayName": "쿠크_그로기",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219769,
+      "displayName": "쿠크_대폭발_반시계_시계_반시계",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_25",
+          "displayName": "쿠크_피자",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCZ_00",
+      "sourceActionId": 4219776,
+      "displayName": "쿠크_돌진",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_15",
+          "displayName": "쿠크_거미카운터",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219811,
+      "displayName": "세이튼_서커스 룰렛 시작",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_7",
+          "displayName": "세이튼_룰렛",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219823,
+      "displayName": "세이튼_순간이동 사라지기",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_2",
+          "displayName": "세이튼_진짜세이튼찾기",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219824,
+      "displayName": "세이튼_순간이동 나타나기",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_2",
+          "displayName": "세이튼_진짜세이튼찾기",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219813,
+      "displayName": "세이튼_서커스 룰렛 춤A",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_7",
+          "displayName": "세이튼_룰렛",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219842,
+      "displayName": "세이튼_진짜를 찾아봐_총잡이셋트_진짜 공격",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_2",
+          "displayName": "세이튼_진짜세이튼찾기",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219857,
+      "displayName": "세이튼_순간이동 센터로 이동",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_5",
+          "displayName": "세이튼_가짜세이튼",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219891,
+      "displayName": "세이튼_진짜를 찾아봐_총잡이셋트_가짜 공격_리허설",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_5",
+          "displayName": "세이튼_가짜세이튼",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219895,
+      "displayName": "쿠크세이튼_쿠크세이튼과 함께 춤을_4초_리허설",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_6",
+          "displayName": "세이튼_댄스타임",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_05",
+      "sourceActionId": 4219897,
+      "displayName": "쿠크세이튼_쿠크세이튼과 함께 춤을_2초_리허설",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_6",
+          "displayName": "세이튼_댄스타임",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 0,
+      "displayName": "STAND",
+      "analystCategory": "COMMON",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_9",
+          "displayName": "대형세이튼_세이튼등장",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        },
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_11",
+          "displayName": "대형세이튼_파1빨2",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 15,
+      "displayName": "SPAWN",
+      "analystCategory": "COMMON",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_9",
+          "displayName": "대형세이튼_세이튼등장",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221809,
+      "displayName": "대형 세이튼_불뿜기_B",
+      "analystCategory": "NORMAL",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_27",
+          "displayName": "대형세이튼_불뿜기",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221810,
+      "displayName": "대형 세이튼_잡기",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_17",
+          "displayName": "대형세이튼_잡기",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221813,
+      "displayName": "대형 세이튼_번뜩이는 공포",
+      "analystCategory": "NORMAL",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_11",
+          "displayName": "대형세이튼_파1빨2",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221816,
+      "displayName": "대형 세이튼_조커 카드를 찾아라 성공!",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_14",
+          "displayName": "대형세이튼_조커찾기_성공",
+          "gateId": "GATE2",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221818,
+      "displayName": "대형 세이튼_기모아서 내려찍기_카드 찾기",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_13",
+          "displayName": "대형세이튼_조커찾기",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221820,
+      "displayName": "대형 세이튼_카드뒤집기_중거리",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_13",
+          "displayName": "대형세이튼_조커찾기",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_06",
+      "sourceActionId": 4221821,
+      "displayName": "대형 세이튼_카드뒤집기_타겟팅",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_13",
+          "displayName": "대형세이튼_조커찾기",
+          "gateId": "GATE2",
+          "authoringStatus": "DRAFT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_07",
+      "sourceActionId": 0,
+      "displayName": "STAND",
+      "analystCategory": "COMMON",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_18",
+          "displayName": "3관문_외곽불회전_갈고리대각선_시각테스트",
+          "gateId": "GATE3",
+          "authoringStatus": "PRODUCT"
+        },
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_19",
+          "displayName": "3관문_갈고리만_확인용_불없음",
+          "gateId": "GATE3",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_07",
+      "sourceActionId": 4219945,
+      "displayName": "쿠크세이튼_무력화 시작",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_1",
+          "displayName": "세이튼_무력화 시작",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    },
+    {
+      "profileId": "MN_RPCT_07",
+      "sourceActionId": 4219946,
+      "displayName": "쿠크세이튼_무력화 성공",
+      "analystCategory": "MECHANIC",
+      "currentAnimationUses": [
+        {
+          "patternId": "KAKULSAYDON_G1_PATTERN_4",
+          "displayName": "세이튼_무력화성공",
+          "gateId": "GATE1",
+          "authoringStatus": "PRODUCT"
+        }
+      ]
+    }
+  ],
+  "timingCounterexample": {
+    "profileId": "MN_RPCZ_00",
+    "sourceActionId": 42197100,
+    "stageIndex": 1,
+    "clipName": "Att_Battle_14_02",
+    "declaredClipLengthSeconds": 0.6666669845581055,
+    "particleSystem": "fx_mn_rpcz_00_u.Par_U_RPCZ_EnergyBalloon_01_LOC_INT",
+    "particleStartSeconds": 0.0,
+    "particleDurationSeconds": 2.5999999046325684,
+    "pawnMaterialParam": "TransColor",
+    "pawnMaterialDurationSeconds": 2.5999999046325684,
+    "laterParalyzationStartSeconds": 2.4000000953674316,
+    "interpretation": "Separate stage/notify clock required; does not prove current runtime clipping or missing visual cause."
+  },
+  "validation": {
+    "csvReparse": "PASS",
+    "expectedRowCounts": "PASS",
+    "actionParticleGraphJoin": "327/327",
+    "cppBuild": "NOT_RUN_NO_CPP_CHANGES",
+    "publisher": "NOT_RUN_RESEARCH_ONLY",
+    "clientUiOrScreenshot": "NOT_RUN",
+    "visualFidelity": "USER_ONLY_NOT_ADJUDICATED"
+  }
+}

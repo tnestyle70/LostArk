@@ -1341,6 +1341,8 @@ void CWorldObjectTool::Render_Detail()
         if (motion.intervalMs > maxInterval) { motion.intervalMs = maxInterval; changed = true; }
         changed |= EditUInt("Creation Interval (ms)", motion.intervalMs, maxInterval);
         changed |= ImGui::DragFloat(sequence->effectTracks.empty() ? "Spread (deg)" : "Horizontal Spread (deg)", &motion.spreadDegrees, .5f, 0.f, sequence->effectTracks.empty() ? 180.f : 360.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::DragFloat3("Spawn Half Extents (m)", &motion.spawnHalfExtents.x, .05f, 0.f, 100000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::TextDisabled("Width / height / depth = twice these values. Set Y to 0 for a ground rectangle.");
         changed |= EditUInt("Seed", motion.seed, INT_MAX);
     }
     if (changed) Mark_Dirty();

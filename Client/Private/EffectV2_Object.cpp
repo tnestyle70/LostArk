@@ -1663,6 +1663,7 @@ HRESULT Client::CEffectV2Object::Submit_Presentation()
 			(std::max)(0.001f, std::fabs(S.vOverlayScale.x * scale.x) * envelope),
 			(std::max)(0.001f, std::fabs(S.vOverlayScale.y * scale.y) * envelope) };
 		Overlay.fRotationDegrees = S.fOverlayRotationDegrees;
+		Overlay.bDisplaySpace = S.bDisplaySpace;
 		Overlay.vTint = S.vTint;
 		Overlay.fAlpha = Saturate(ScreenPost_Intensity()) * Alpha_Envelope();
 		Overlay.eColorSpace = m_Params.bColorTexturesSRGB ?

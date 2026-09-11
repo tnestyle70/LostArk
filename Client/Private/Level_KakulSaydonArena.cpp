@@ -798,25 +798,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
-	/* The product loader contract for this arena stages only the map and the
-	   server player bundle, so the deploy models Load_Area clones are admitted
-	   here through the same CDeployPropRuntime entry the loader uses for every
-	   other Area. Failing closed keeps the arena out rather than entering it
-	   with levers and bridges that can never appear. */
-	std::string deployPrototypeStatus;
-	if (!CDeployPropRuntime::Ensure_AreaPrototypes(
-		m_pDevice,
-		m_pContext,
-		ETOUI(LEVEL::KAKULSAYDON_ARENA),
-		pEntry->pMapAreaId,
-		deployPrototypeStatus))
-	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][DeployProp] " +
-			deployPrototypeStatus + "\n").c_str());
-		m_MapRuntime.Clear();
-		return E_FAIL;
-	}
+	/* Loader admits this Area's deploy prototypes before activation. Clone the
+	   prepared models here; repeating admission would both stall this frame
+	   and reject the duplicate prototype tags. */
 	if (!m_DeployRuntime.Load_Area(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA),
 		pEntry->pMapAreaId))

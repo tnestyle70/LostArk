@@ -542,8 +542,20 @@ namespace
 		std::string bossSchema;
 		std::uint64_t bossVersion = 0u;
 		const DATA_JSON_VALUE* bosses = bossCatalog.Find("bosses");
-		if (!Has_ExactProperties(bossCatalog,
-				{ "schema", "formatVersion", "bosses" }) ||
+		const DATA_JSON_VALUE* materialOverrides =
+			bossCatalog.Find("modelMaterialOverrides");
+		/* ActorCatalog owns each material row; this closure reader admits its
+		   optional catalog array without blocking the same boss's animation,
+		   Effect and Sound lanes. Unknown root fields still fail closed. */
+		const bool hasCatalogFields = nullptr == materialOverrides ?
+			Has_ExactProperties(bossCatalog,
+				{ "schema", "formatVersion", "bosses" }) :
+			Has_ExactProperties(bossCatalog,
+				{ "schema", "formatVersion", "bosses", "modelMaterialOverrides" });
+		if (!hasCatalogFields ||
+			(nullptr != materialOverrides &&
+			 (!materialOverrides->Is_Array() ||
+			  materialOverrides->Get_Array().size() > 128u)) ||
 			!Read_String(bossCatalog, "schema", bossSchema) ||
 			"lostark.boss-catalog" != bossSchema ||
 			!Read_Unsigned(bossCatalog, "formatVersion", bossVersion) ||

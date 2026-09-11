@@ -170,12 +170,26 @@ bool_t Client::CMapLightDocument::Parse(
 		{ outStatus = "Map lights v2 header is invalid"; return false; }
 		std::vector<MAP_POINT_LIGHT_RECORD> staged;
 		std::unordered_set<std::string> ids;
-		for (const auto& row : rows->Get_Array())
-		{
+        for (const auto& sourceRow : rows->Get_Array())
+        {
+            if (!sourceRow.Is_Object()) { outStatus = "Map light row must be an object"; return false; }
+            auto fields = sourceRow.Get_Object(); fields.erase("staticShadowChannel");
+            const auto row = DATA_JSON_VALUE::Object(std::move(fields));
 			if (!IsExactObject(row,{"lightId","displayName","kind","groupId","enabled","position","rotationDegrees",
-				"rangeMeters","falloffExponent","innerConeDegrees","outerConeDegrees","color","brightness"}))
+				"rangeMeters","falloffExponent","innerConeDegrees","outerConeDegrees","color","brightness"}) &&
+				!IsExactObject(row,{"lightId","displayName","kind","groupId","enabled","position","rotationDegrees",
+				"rangeMeters","falloffExponent","innerConeDegrees","outerConeDegrees","color","brightness","receiver"}))
 			{ outStatus = "Map lights v2 row has unexpected fields"; return false; }
 			MAP_POINT_LIGHT_RECORD record; std::string kind;
+            if (const auto* channel = sourceRow.Find("staticShadowChannel"))
+            {
+                if (!channel->Is_Number() || !std::isfinite(channel->Get_Number()) ||
+                    channel->Get_Number() < 1.0 || channel->Get_Number() > 15.0 ||
+                    std::floor(channel->Get_Number()) != channel->Get_Number())
+                { outStatus = "Invalid static shadow light channel"; return false; }
+                record.staticShadowChannel = static_cast<uint32_t>(channel->Get_Number());
+            }
+
 			std::vector<f32_t> pos, rot, color; const auto* enabled=row.Find("enabled");
 			if (!ReadString(row,"lightId",record.lightId) || !IsStableToken(record.lightId,128,false) ||
 				!ReadString(row,"displayName",record.displayName) || record.displayName.size()>256 ||
@@ -189,10 +203,16 @@ bool_t Client::CMapLightDocument::Parse(
 				!ReadFinite(row,"innerConeDegrees",0,89.9,record.innerConeDegrees) || !ReadFinite(row,"outerConeDegrees",0,89.9,record.outerConeDegrees) ||
 				!ids.insert(record.lightId).second)
 			{ outStatus="Map light v2 field is invalid or duplicated: "+record.lightId;return false; }
-			if ((kind=="SPOT" && (record.innerConeDegrees<=0 || record.innerConeDegrees>record.outerConeDegrees)) ||
+			if ((kind=="SPOT" && (record.outerConeDegrees<=0 || record.innerConeDegrees>record.outerConeDegrees)) ||
 				(kind!="SPOT" && (record.innerConeDegrees!=0 || record.outerConeDegrees!=0)) ||
 				(kind=="DIRECTIONAL" && (record.radiusMeters!=0 || pos[0]!=0 || pos[1]!=0 || pos[2]!=0)))
 			{outStatus="Map light kind/cone/range conflict: "+record.lightId;return false;}
+			if (const auto* receiver = row.Find("receiver"))
+			{
+				if (!receiver->Is_String() || (receiver->Get_String() != "ALL" && receiver->Get_String() != "SOURCE_CHARACTER"))
+				{ outStatus="Map light receiver is invalid: "+record.lightId; return false; }
+				record.receiver=receiver->Get_String()=="ALL"?LIGHT_RECEIVER::ALL:LIGHT_RECEIVER::SOURCE_CHARACTER;
+			}
 			record.kind=kind=="POINT"?LIGHT::POINT:kind=="SPOT"?LIGHT::SPOT:LIGHT::DIRECTIONAL;
 			record.enabled=enabled->Get_Boolean();record.position={pos[0],pos[1],pos[2]};
 			record.rotationDegrees={rot[0],rot[1],rot[2]};record.color={color[0],color[1],color[2],color[3]};
@@ -316,7 +336,11 @@ std::string Client::CMapLightDocument::Serialize() const
 		 <<"\", \"kind\": \""<<kind<<"\", \"groupId\": \""<<CDataJson::Escape(r.groupId)<<"\", \"enabled\": "<<(r.enabled?"true":"false")
 		 <<", \"position\": ["<<r.position.x<<","<<r.position.y<<","<<r.position.z<<"], \"rotationDegrees\": ["<<r.rotationDegrees.x<<","<<r.rotationDegrees.y<<","<<r.rotationDegrees.z
 		 <<"], \"rangeMeters\": "<<r.radiusMeters<<", \"falloffExponent\": "<<r.falloffExponent<<", \"innerConeDegrees\": "<<r.innerConeDegrees<<", \"outerConeDegrees\": "<<r.outerConeDegrees
-		 <<", \"color\": ["<<r.color.x<<","<<r.color.y<<","<<r.color.z<<","<<r.color.w<<"], \"brightness\": "<<r.brightness<<"}";
+		 <<", \"color\": ["<<r.color.x<<","<<r.color.y<<","<<r.color.z<<","<<r.color.w<<"], \"brightness\": "<<r.brightness;
+        if (r.staticShadowChannel != 0u) o<<", \"staticShadowChannel\": "<<r.staticShadowChannel;
+		if (r.receiver != LIGHT_RECEIVER::ALL)
+			o<<", \"receiver\": \""<<(r.receiver==LIGHT_RECEIVER::SOURCE_CHARACTER?"SOURCE_CHARACTER":"INVALID")<<"\"";
+		o<<"}";
 	}
 	o<<"\n  ]\n}\n";return o.str();
 }

@@ -23,6 +23,7 @@ namespace Client
 {
 class CEffectObject;
 class DATA_JSON_VALUE;
+struct EFFECT_DOCUMENT_DESC;
 
 // One editor clock. The resource owners retain their codecs and prepare each
 // independent occurrence; this adapter owns only its lifetime and sampling.
@@ -45,12 +46,15 @@ public:
     void Set_Camera(const std::shared_ptr<Engine::CCamera>& camera);
     void Set_V1Callbacks(V1_FACTORY factory, V1_RELEASE release);
     void Set_V1AnchorProvider(V1_ANCHOR_PROVIDER provider);
+    bool Resolve_KoukuSourceAnchors(const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root,
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error) const;
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
     void Render_ModelView(); // Contents inside the existing Model View window.
     void Render_Sequencer(const char* title = "Sequencer##EffectAuthoring"); // The existing Effect Tool calls this panel.
     void Update(float dt, bool active);
     bool Select_CharacterSkill(const std::string& asset, std::uint32_t skillId,
         std::optional<std::uint32_t> stageIndex = std::nullopt);
+    bool Select_KoukuEffect(const std::string& assetId);
     bool Preview(const EFFECT_RESOURCE_KEY& key, std::uint32_t durationMs = 3000u);
     bool Preview_Element(const EFFECT_RESOURCE_KEY& key, const std::string& elementId,
         const std::string& label, std::uint32_t durationMs, std::uint32_t focusMs);

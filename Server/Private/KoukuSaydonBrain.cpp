@@ -326,6 +326,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 			{
 				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > 20.f ||
+					(result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD) ||
+					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.fPushRangeM <= 0.f) ||
 					result.iPushMs > 600000u || ((result.fPushRangeM > 0.f) != (result.iPushMs > 0u)) ||
 					(result.fPushRangeM > 0.f && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE))
 					return false;

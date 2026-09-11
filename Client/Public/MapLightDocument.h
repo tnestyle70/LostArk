@@ -17,6 +17,8 @@ struct MAP_POINT_LIGHT_RECORD final
 	std::string displayName;
 	std::string groupId = "default";
 	LIGHT kind = LIGHT::POINT;
+	LIGHT_RECEIVER receiver = LIGHT_RECEIVER::ALL;
+    uint32_t staticShadowChannel = 0u;
 	bool_t enabled = true;
 	float3_t rotationDegrees = {};
 	f32_t innerConeDegrees = 0.f;
@@ -34,7 +36,7 @@ struct MAP_POINT_LIGHT_RECORD final
 class CMapLightDocument final
 {
 public:
-	static constexpr size_t MAX_LIGHT_COUNT = 64u;
+	static constexpr size_t MAX_LIGHT_COUNT = 512u;
 
 public:
 	bool_t Load(

@@ -8,6 +8,7 @@
 #include "EffectV2_Catalog.h"
 #include "Effect_PresentationService.h"
 #include "Effect_Catalog.h"
+#include "Effect_Playback.h"
 #include "NetworkManager.h"
 #include "EffectV2_Object.h"
 #include "EffectV2_Runtime.h"
@@ -139,10 +140,10 @@ RESOURCE Read_Resource(const DATA_JSON_VALUE& row)
     resource.strShape = Text(row, "shape");
     resource.HalfExtents = Vector(row, "halfExtents", 0.001, 100000.0);
     resource.fRadiusM = Number(row, "radiusM", 0.001, 100000.0);
-    resource.fHalfAngleDegrees = Number(row, "halfAngleDegrees", 0.001, 180.0);
+    resource.fHalfAngleDegrees = Number(row, "halfAngleDegrees", resource.strShape == "REVERSE_SECTOR" ? 0.0 : 0.001, 180.0);
     const bool v1 = resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT";
     if ((resource.eKind == KIND::EFFECT && resource.strResourceKind != "GROUP" && resource.strResourceKind != "LEAF" && !v1) ||
-        (resource.strShape != "BOX" && resource.strShape != "SECTOR" && resource.strShape != "CIRCLE"))
+        (resource.strShape != "BOX" && resource.strShape != "SECTOR" && resource.strShape != "REVERSE_SECTOR" && resource.strShape != "CIRCLE"))
         throw std::runtime_error("Invalid presentation resource type: " + resource.strResourceId);
     if (resource.eKind == KIND::EFFECT &&
         !CEffectV2Document::Is_ValidEffectId(resource.strAssetId))
@@ -335,17 +336,209 @@ CEffectV2Object::PIVOT_SAMPLER Effect_PivotSampler(const OCCURRENCE& box,
     };
 }
 
+using SOURCE_ATTACHMENTS = std::vector<EFFECT_ACTION_CUE_ATTACHMENT_DESC>;
+using SOURCE_BONES = std::unordered_map<std::string, float4x4_t>;
+using ANCHOR_ANIMATION = KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE;
+
+SOURCE_ATTACHMENTS Source_Attachments(const EFFECT_DOCUMENT_DESC& document, const std::string& elementId = {})
+{
+    SOURCE_ATTACHMENTS result;
+    for (const auto& element : document.Elements)
+    {
+        const auto& attachment = element.ActionCueAttachment;
+        if (element.bVisible && (elementId.empty() || element.strElementId == elementId) &&
+            attachment.bEnabled && attachment.bFollow && attachment.strModelCueId.empty())
+            result.push_back(attachment);
+    }
+    return result;
+}
+
+bool Valid_SourceMatrix(const matrix_t& value)
+{
+    const float determinant = XMVectorGetX(XMMatrixDeterminant(value));
+    return !XMMatrixIsNaN(value) && !XMMatrixIsInfinite(value) &&
+        std::isfinite(determinant) && std::abs(determinant) > 1.e-12f;
+}
+
+bool Build_SourceAnchorWorlds(const SOURCE_ATTACHMENTS& attachments,
+    const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root, const SOURCE_BONES& bones,
+    SOURCE_BONES& anchors, std::string& error)
+{
+    SOURCE_BONES staged;
+    float4x4_t ownerPivot;
+    const bool needsBones = std::any_of(attachments.begin(), attachments.end(), [](const auto& value)
+        { return value.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; });
+    matrix_t delta = XMMatrixIdentity();
+    if (needsBones)
+    {
+        if (!CEffectV2Object::Resolve_TargetPivot(view, "", CEffectV2Object::PIVOT_ROTATION::TARGET_YAW, ownerPivot) ||
+            !Valid_SourceMatrix(XMLoadFloat4x4(&ownerPivot)) || !Valid_SourceMatrix(XMLoadFloat4x4(&root)))
+        { error = "Kouku source attachment owner root is unavailable or singular."; return false; }
+        delta = XMMatrixInverse(nullptr, XMLoadFloat4x4(&ownerPivot)) * XMLoadFloat4x4(&root);
+    }
+    for (const auto& attachment : attachments)
+    {
+        if (attachment.strRuntimeAnchorSlotId.empty())
+        { error = "Kouku source attachment has no runtime slot."; return false; }
+        matrix_t anchor;
+        if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW)
+        {
+            const auto* camera = CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+            if (!camera) { error = "Kouku source camera anchor is unavailable."; return false; }
+            anchor = XMLoadFloat4x4(camera);
+        }
+        else
+        {
+            const auto bone = bones.find(attachment.strRuntimeBoneName);
+            if (bone == bones.end())
+            { error = "Kouku source bone is unavailable: " + attachment.strRuntimeBoneName; return false; }
+            matrix_t raw = XMLoadFloat4x4(&bone->second);
+            // Source socket/particle local positions are already cm -> m.
+            // Preserve the mesh's actual 0.017 pre-scale (1.7 in metres),
+            // animated scale and bone translation; undo only the source unit.
+            for (size_t axis = 0u; axis < 3u; ++axis) raw.r[axis] = XMVectorScale(raw.r[axis], 100.f);
+            if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::BONE)
+                anchor = raw * XMLoadFloat4x4(&view.BoneRoot);
+            else if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
+            {
+                float4x4_t normalizedBone, yawAnchor;
+                XMStoreFloat4x4(&normalizedBone, raw);
+                if (!CEffectPlayback::Build_OwnerYawBoneAnchorWorld(normalizedBone, view.BoneRoot, view.YawBasis, yawAnchor))
+                { error = "Kouku source owner-yaw anchor is invalid."; return false; }
+                anchor = XMLoadFloat4x4(&yawAnchor);
+            }
+            else { error = "Unsupported Kouku source attachment orientation."; return false; }
+        }
+        const auto& local = attachment.SocketLocalTransform;
+        matrix_t world = XMMatrixScaling(local.vScale.x, local.vScale.y, local.vScale.z) *
+            XMMatrixRotationRollPitchYaw(XMConvertToRadians(local.vRotationDegrees.x),
+                XMConvertToRadians(local.vRotationDegrees.y), XMConvertToRadians(local.vRotationDegrees.z)) *
+            XMMatrixTranslation(local.vPosition.x, local.vPosition.y, local.vPosition.z) * anchor;
+        if (attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW) world *= delta;
+        if (!Valid_SourceMatrix(world))
+        { error = "Kouku source attachment matrix is invalid: " + attachment.strRuntimeAnchorSlotId; return false; }
+        float4x4_t value;
+        XMStoreFloat4x4(&value, world);
+        const auto [found, inserted] = staged.emplace(attachment.strRuntimeAnchorSlotId, value);
+        if (!inserted)
+            for (size_t r = 0u; r < 4u; ++r) for (size_t c = 0u; c < 4u; ++c)
+                if (std::abs(found->second.m[r][c] - value.m[r][c]) > 0.0001f)
+                { error = "Conflicting Kouku source attachment slot: " + attachment.strRuntimeAnchorSlotId; return false; }
+    }
+    anchors = std::move(staged);
+    error.clear();
+    return true;
+}
+
+bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
+    const std::vector<ANCHOR_ANIMATION>& animations, float sampleMs,
+    const std::vector<std::string>& names, SOURCE_BONES& bones, std::string& error)
+{
+    if (names.empty()) return true;
+    if (!model) { error = "Kouku source animation model was released."; return false; }
+    const ANCHOR_ANIMATION* animation = nullptr;
+    const ANCHOR_ANIMATION* previous = nullptr;
+    for (const auto& value : animations)
+        if (sampleMs >= value.iStartOffsetMs) { previous = animation; animation = &value; }
+    if (!animation) { error = "Kouku source attachment has no animation at its requested time."; return false; }
+    const auto clipIndex = [&](const std::string& name) {
+        uint32_t found = UINT32_MAX;
+        for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+            if (const auto* value = model->Get_AnimationName(index); value && name == value)
+            { if (found != UINT32_MAX) return UINT32_MAX; found = index; }
+        return found;
+    };
+    const uint32_t index = clipIndex(animation->strRuntimeClip);
+    float cursor = 0.f, duration = 0.f;
+    if (index == UINT32_MAX || !model->Get_AnimationProgress(index, cursor, duration))
+    { error = "Kouku source animation clip is unavailable: " + animation->strRuntimeClip; return false; }
+    const float age = sampleMs - animation->iStartOffsetMs;
+    const bool loop = animation->strEndPolicy == "LOOP_TO_WINDOW";
+    const float elapsed = loop ? age : (std::min)(age, float(animation->iPlayMs));
+    float ticks = (animation->iSourceStartMs + elapsed * animation->fPlayRate) * model->Get_AnimationTickPerSecond(index) / 1000.f;
+    ticks = loop && duration > 0.f ? std::fmod(ticks, duration) : (std::min)(ticks, duration);
+    std::vector<uint32_t> indices;
+    for (const auto& name : names)
+    {
+        const auto bone = model->Find_BoneIndex(name.c_str());
+        if (bone < 0) { error = "Kouku source bone is unavailable: " + name; return false; }
+        indices.push_back(static_cast<uint32_t>(bone));
+    }
+    std::vector<float4x4_t> sampled(indices.size());
+    bool sampledPose = false;
+    if (previous && animation->iBlendInMs && age < animation->iBlendInMs)
+    {
+        CModel::ANIMATION_TRANSITION_POSE pose;
+        pose.sourceIndex = clipIndex(previous->strRuntimeClip);
+        pose.targetIndex = index; pose.targetTicks = ticks;
+        pose.durationSeconds = animation->iBlendInMs * .001f;
+        pose.elapsedSeconds = age * .001f; pose.playRate = animation->fPlayRate;
+        float previousDuration = 0.f;
+        if (pose.sourceIndex == UINT32_MAX || !model->Get_AnimationProgress(pose.sourceIndex, cursor, previousDuration))
+        { error = "Kouku source animation blend clip is unavailable."; return false; }
+        pose.sourceTicks = (std::min)(previousDuration,
+            (previous->iSourceStartMs + previous->iPlayMs * previous->fPlayRate) *
+            model->Get_AnimationTickPerSecond(pose.sourceIndex) / 1000.f);
+        sampledPose = model->Sample_AnimationTransitionBoneCombinedMatrices(pose, indices, sampled);
+    }
+    else sampledPose = model->Sample_AnimationBoneCombinedMatrices(animation->strRuntimeClip.c_str(), ticks, indices, sampled);
+    if (!sampledPose) { error = "Kouku source animation pose sample failed."; return false; }
+    for (size_t i = 0u; i < names.size(); ++i) bones.emplace(names[i], sampled[i]);
+    return true;
+}
+
+CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSampler(
+    const RESOURCE& resource, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+    const std::shared_ptr<CModel>& model, const float4x4_t& ownerRoot, uint32_t startMs)
+{
+    const auto document = CEffectCatalog::Find_Loaded(resource.strAssetId);
+    if (!document) return [](float, const float4x4_t&, SOURCE_BONES&, std::string& error)
+        { error = "Prepared Kouku source Effect document is unavailable."; return false; };
+    auto attachments = Source_Attachments(*document, resource.strElementId);
+    if (attachments.empty()) return {};
+    std::vector<ANCHOR_ANIMATION> animations;
+    uint32_t stageStart = 0u;
+    for (const auto& stage : pattern.Stages)
+    {
+        for (auto animation : stage.AnimationOccurrences)
+        { animation.iStartOffsetMs += stageStart; animations.push_back(std::move(animation)); }
+        stageStart += stage.iDurationMs;
+    }
+    std::stable_sort(animations.begin(), animations.end(), [](const auto& a, const auto& b)
+        { return a.iStartOffsetMs < b.iStartOffsetMs; });
+    std::vector<std::string> names;
+    for (const auto& attachment : attachments)
+        if (attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
+            std::find(names.begin(), names.end(), attachment.strRuntimeBoneName) == names.end())
+            names.push_back(attachment.strRuntimeBoneName);
+    return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
+        weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs]
+        (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
+    {
+        if (!std::isfinite(seconds) || seconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
+        if (std::any_of(attachments.begin(), attachments.end(), [](const auto& value)
+            { return value.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; }))
+        { error = "Kouku Product camera-view source attachment requires recorded camera history."; return false; }
+        EFFECT_V2_TARGET_VIEW view;
+        view.pModel = weakModel.lock(); view.BoneRoot = ownerRoot; view.YawBasis = ownerRoot;
+        SOURCE_BONES bones;
+        return Sample_SourceBones(view.pModel, animations, startMs + seconds * 1000.f, names, bones, error) &&
+            Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
+    };
+}
+
 EFFECT_FIXED_STEP_TRANSFORM_PROVIDER Effect_V1TransformProvider(const OCCURRENCE& box,
     const float4x4_t& frozenPivot, const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
-    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory)
+    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory,
+    CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER sourceAnchors)
 {
-    return [sampler = Effect_PivotSampler(box, rootHistory, anchorHistory), frozenPivot]
+    return [sampler = Effect_PivotSampler(box, rootHistory, anchorHistory), frozenPivot, sourceAnchors = std::move(sourceAnchors)]
         (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error)
     {
-        // V1 and V2 consume the same recorded owner/bone poses and authored
-        // placement. The V1 playback adds its existing model-cue anchors.
-        if (sampler) return sampler(seconds, output.RootWorld, error);
         output.RootWorld = frozenPivot;
+        output.SourceAnchorWorlds.clear();
+        if (sampler && !sampler(seconds, output.RootWorld, error)) return false;
+        if (sourceAnchors && !sourceAnchors(seconds, output.RootWorld, output.SourceAnchorWorlds, error)) return false;
         error.clear();
         return true;
     };
@@ -370,6 +563,13 @@ HIT_AREA_SHAPE Collider_Wire(const RESOURCE& resource, const OCCURRENCE& box)
         shape.iAreaRange = static_cast<int32_t>((std::min)(
             resource.fRadiusM * (std::max)(box.Scale[0], box.Scale[2]) * 100.0, 1000000000.0));
         shape.iAreaAngle = static_cast<int32_t>(resource.fHalfAngleDegrees * 2.0);
+        if (shape.iAreaType == 3)
+        {
+            shape.fSectorRadiusXM = static_cast<float>(resource.fRadiusM * box.Scale[0]);
+            shape.fSectorRadiusZM = static_cast<float>(resource.fRadiusM * box.Scale[2]);
+            shape.fSectorAngleDegrees = static_cast<float>(resource.fHalfAngleDegrees * 2.0);
+            shape.bReverseSector = resource.strShape == "REVERSE_SECTOR";
+        }
     }
     return shape;
 }
@@ -543,6 +743,25 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
             m_strStatus = "Light frame provider registration failed.";
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Resolve_SourceAnchorWorlds(
+    const EFFECT_DOCUMENT_DESC& document, const EFFECT_V2_TARGET_VIEW& view,
+    const float4x4_t& root, std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
+{
+    const auto attachments = Source_Attachments(document);
+    SOURCE_BONES bones;
+    for (const auto& attachment : attachments)
+    {
+        if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW ||
+            bones.contains(attachment.strRuntimeBoneName)) continue;
+        if (!view.pModel || !view.pModel->Has_Bone(attachment.strRuntimeBoneName.c_str()))
+        { error = "Selected Kouku model has no source bone: " + attachment.strRuntimeBoneName; return false; }
+        float4x4_t value;
+        XMStoreFloat4x4(&value, view.pModel->Get_BoneMatrix(attachment.strRuntimeBoneName.c_str()));
+        bones.emplace(attachment.strRuntimeBoneName, value);
+    }
+    return Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
+}
+
 Client::CKoukuSaydonPresentationPlayer::CKoukuSaydonPresentationPlayer(
     ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
     CRenderingProfileService& profiles)
@@ -638,6 +857,32 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
             if (value.Find("targetBossPlacementId")) item.pattern.strTargetBossPlacementId = Text(value, "targetBossPlacementId");
             if (value.Find("actorProfileId")) item.pattern.strActorProfileId = Text(value, "actorProfileId");
             item.durationMs = UInt(value, "durationMs", 1u, MAX_TIMELINE_MS);
+            if (const auto* animations = value.Find("sourceAnchorAnimations"))
+            {
+                if (!animations->Is_Array() || animations->Get_Array().empty() || animations->Get_Array().size() > 4096u)
+                    throw std::runtime_error("Product source anchor animations require a bounded nonempty array.");
+                KOUKU_SAYDON_COMPOSITION_STAGE stage;
+                stage.iDurationMs = item.durationMs;
+                for (const auto& source : animations->Get_Array())
+                {
+                    ANCHOR_ANIMATION animation;
+                    animation.strRuntimeClip = Text(source, "runtimeClip");
+                    animation.iStartOffsetMs = UInt(source, "startOffsetMs", 0u, item.durationMs - 1u);
+                    animation.iSourceStartMs = UInt(source, "sourceStartMs", 0u, MAX_TIMELINE_MS);
+                    animation.iPlayMs = UInt(source, "playMs", 1u, MAX_TIMELINE_MS);
+                    animation.iBlendInMs = UInt(source, "blendInMs", 0u, 1000u);
+                    animation.fPlayRate = float(Number(source, "playRate", 0.01, 100.0));
+                    animation.strEndPolicy = Text(source, "endPolicy");
+                    if (animation.strEndPolicy != "EXACT" && animation.strEndPolicy != "HOLD_LAST_POSE" &&
+                        animation.strEndPolicy != "LOOP_TO_WINDOW")
+                        throw std::runtime_error("Unsupported source anchor animation end policy.");
+                    if (!stage.AnimationOccurrences.empty() &&
+                        animation.iStartOffsetMs <= stage.AnimationOccurrences.back().iStartOffsetMs)
+                        throw std::runtime_error("Source anchor animations must have distinct increasing pattern times.");
+                    stage.AnimationOccurrences.push_back(std::move(animation));
+                }
+                item.pattern.Stages.push_back(std::move(stage));
+            }
             if (value.Find("animationRootVerticalScale"))
                 item.pattern.fAnimationRootVerticalScale = Number(value, "animationRootVerticalScale", 0.0, 1.0);
             if (const auto* source = value.Find("bossMotion"))
@@ -1141,6 +1386,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     if (preparation.iFailedCount || preparation.iUnavailableCount)
                     { row.failed = true; m_strStatus = "V1 Effect preparation failed: " + resource.strAssetId; break; }
                     if (!preparation.bCatalogRevisionCurrent || !preparation.bSettled) break;
+                    row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
                     spawn.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
                     spawn.strPlacementId = "kouku:" + session.key + ":" + box.strOccurrenceId;
@@ -1234,7 +1480,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         {
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
                 !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, age,
-                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory)))
+                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler)))
             {
                 CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
                 row.v1EffectHandle = 0u;
@@ -2023,7 +2269,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             float oldTicks = 0.f, clipTicks = 0.f;
             model->Get_AnimationProgress(animationIndex, oldTicks, clipTicks);
             const float tps = model->Get_AnimationTickPerSecond(animationIndex);
-            const float age = (std::min)(sampleMs - animation->iStartOffsetMs, float(animation->iPlayMs));
+            const float age = animation->strEndPolicy == "LOOP_TO_WINDOW" ? sampleMs - animation->iStartOffsetMs :
+                (std::min)(sampleMs - animation->iStartOffsetMs, float(animation->iPlayMs));
             ticks = (animation->iSourceStartMs + age * animation->fPlayRate) * tps / 1000.f;
             if (animation->strEndPolicy == "LOOP_TO_WINDOW" && clipTicks > 0.f) ticks = std::fmod(ticks, clipTicks);
             else ticks = (std::min)(ticks, clipTicks);
@@ -2653,7 +2900,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
                 (!CEffectPresentationService::Update_WorldRoot({active->second.v1EffectHandle}, pivot) ||
                  !CEffectPresentationService::Seek_WorldRoot({active->second.v1EffectHandle},
                     (std::max)(0.f, active->second.lastAge), Effect_V1TransformProvider(edited, pivot,
-                        session.rootHistory, active->second.effectPivotHistory), true)))
+                        session.rootHistory, active->second.effectPivotHistory, active->second.sourceAnchorSampler), true)))
             {
                 m_strStatus = "V1 Effect geometry preview lost its active handle: " +
                     CEffectPresentationService::Get_Status();

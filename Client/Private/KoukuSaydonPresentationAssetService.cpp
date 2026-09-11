@@ -453,14 +453,15 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
 	auto& ready = g_ReadyByLevel[iLevelIndex];
 	if (ready.contains(std::string(CLOWN_READY_KEY)))
 		return S_FALSE;
-	const std::filesystem::path bodyPath = CRuntimeAssetRoot::Resolve(CLOWN_BODY_ASSET);
-	if (bodyPath.empty())
-		return Reject("KoukuSaydon clown body asset path is invalid.");
+    Engine::MODEL_ASSET_LOAD_DESC bodyLoad;
+    std::string materialStatus;
+    if (!CActorCatalog::Build_ModelLoadDescription(CLOWN_BODY_ASSET, bodyLoad, materialStatus))
+        return Reject("KoukuSaydon clown material input failed: " + materialStatus);
 	/* CCharacter turns every playable body with the same -90 degree admission
 	yaw (see CPlayableCharacterAssetService); the avatar follows that so it
 	faces where the class body faced. */
 	unique_ptr<Engine::CModel> body = Engine::CModel::Create(
-		pDevice, pContext, MODEL::ANIM, bodyPath.string().c_str(),
+		pDevice, pContext, MODEL::ANIM, bodyLoad,
 		XMMatrixScaling(CLOWN_BODY_PRE_SCALE, CLOWN_BODY_PRE_SCALE, CLOWN_BODY_PRE_SCALE) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f)));
 	if (nullptr == body || 0u == body->Get_NumMeshes() ||
@@ -506,14 +507,14 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	{
 		return Reject("No exact embedded-body KoukuSaydon boss catalog row exists.");
 	}
-	const std::filesystem::path bodyPath =
-		CRuntimeAssetRoot::Resolve(actor->bodyModel);
-	if (bodyPath.empty())
-		return Reject("KoukuSaydon body asset path is invalid.");
+    Engine::MODEL_ASSET_LOAD_DESC bodyLoad;
+    std::string materialStatus;
+    if (!CActorCatalog::Build_ModelLoadDescription(actor->bodyModel, bodyLoad, materialStatus))
+        return Reject("KoukuSaydon body material input failed: " + materialStatus);
 
 	const f32_t scale = actor->bodyModelPreScale;
 	unique_ptr<Engine::CModel> body = Engine::CModel::Create(
-		pDevice, pContext, MODEL::ANIM, bodyPath.string().c_str(),
+		pDevice, pContext, MODEL::ANIM, bodyLoad,
 		XMMatrixScaling(scale, scale, scale));
 	if (nullptr == body || 0u == body->Get_NumMeshes() ||
 		0u == body->Get_SkeletonHash() || !body->Has_Animations())
@@ -531,17 +532,16 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	{
 		if (!body->Has_Bone(KOUKU_WEAPON_SOCKET_BONE))
 			return Reject("KoukuSaydon body has no weapon socket bone for its catalog weapon.");
-		const std::filesystem::path weaponPath =
-			CRuntimeAssetRoot::Resolve(actor->weaponModel);
-		if (weaponPath.empty())
-			return Reject("KoukuSaydon weapon asset path is invalid.");
+        Engine::MODEL_ASSET_LOAD_DESC weaponLoad;
+        if (!CActorCatalog::Build_ModelLoadDescription(actor->weaponModel, weaponLoad, materialStatus))
+            return Reject("KoukuSaydon weapon material input failed: " + materialStatus);
 		/* The catalog rotation turns the weapon's authored axes onto the
 		socket's before the scale; the scale is uniform, so the order only
 		documents the intent. */
 		const f32_t weaponScale = actor->weaponModelPreScale;
 		const float3_t& weaponRotation = actor->weaponModelPreRotationDegrees;
 		weapon = Engine::CModel::Create(
-			pDevice, pContext, MODEL::ANIM, weaponPath.string().c_str(),
+			pDevice, pContext, MODEL::ANIM, weaponLoad,
 			XMMatrixRotationRollPitchYaw(
 				XMConvertToRadians(weaponRotation.x),
 				XMConvertToRadians(weaponRotation.y),

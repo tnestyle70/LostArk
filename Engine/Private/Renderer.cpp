@@ -67,7 +67,8 @@ namespace
 	static_assert(13u == ETOUI(DEFERRED::SSAO_BLUR));
 	static_assert(15u == DEFERRED_PASS_CHROMATIC_ABERRATION);
 	static_assert(16u == ETOUI(DEFERRED::SPOT));
-	static_assert(17u == ETOUI(DEFERRED::END));
+	static_assert(17u == ETOUI(DEFERRED::PRESENTATION_DISPLAY_OVERLAY));
+	static_assert(18u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)
@@ -354,7 +355,17 @@ namespace
 			finite(Settings.fPatchScale) && Settings.fPatchScale > 0.f &&
 			finite(Settings.fPatchSoftness) &&
 			Settings.fPatchSoftness > 0.f &&
-			Settings.fPatchSoftness <= 0.5f;
+			Settings.fPatchSoftness <= 0.5f &&
+            finite(Settings.vInscatteringColor.x) && Settings.vInscatteringColor.x >= 0.f &&
+            finite(Settings.vInscatteringColor.y) && Settings.vInscatteringColor.y >= 0.f &&
+            finite(Settings.vInscatteringColor.z) && Settings.vInscatteringColor.z >= 0.f &&
+            finite(Settings.vFogLightDirection.x) && finite(Settings.vFogLightDirection.y) &&
+            finite(Settings.vFogLightDirection.z) && finite(Settings.vFogLightDirection.w) &&
+            Settings.vFogLightDirection.w >= -1.f && Settings.vFogLightDirection.w <= 1.f &&
+            (!Settings.bSourceExponential ||
+                Settings.vFogLightDirection.x * Settings.vFogLightDirection.x +
+                Settings.vFogLightDirection.y * Settings.vFogLightDirection.y +
+                Settings.vFogLightDirection.z * Settings.vFogLightDirection.z > 0.000001f);
 	}
 }
 
@@ -409,6 +420,55 @@ RENDER_ENVIRONMENT_STATE CRenderer::Get_RenderEnvironment() const
     return m_RenderEnvironment;
 }
 
+HRESULT CRenderer::Bind_HeightFog(CShader* shader) const
+{
+    if (!shader) return E_INVALIDARG;
+	const uint32_t iFogEnabled = m_HeightFogSettings.bEnabled ? 1u : 0u;
+	const float2_t vFogWind(
+		m_HeightFogSettings.fWindDirectionX,
+		m_HeightFogSettings.fWindDirectionZ);
+    const uint32_t sourceModel = m_HeightFogSettings.bSourceExponential ? 1u : 0u;
+    if (FAILED(shader->Bind_RawValue("g_iSourceExponentialFog", &sourceModel, sizeof(sourceModel))) ||
+        FAILED(shader->Bind_RawValue("g_vFogInscatteringColor", &m_HeightFogSettings.vInscatteringColor, sizeof(float4_t))) ||
+        FAILED(shader->Bind_RawValue("g_vFogLightDirection", &m_HeightFogSettings.vFogLightDirection, sizeof(float4_t))) ||
+		FAILED(shader->Bind_RawValue("g_iHeightFogEnabled",
+			&iFogEnabled, sizeof(iFogEnabled))) ||
+		FAILED(shader->Bind_RawValue("g_vHeightFogColor",
+			&m_HeightFogSettings.vColor, sizeof(float4_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogDensity",
+			&m_HeightFogSettings.fDensity, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogFalloff",
+			&m_HeightFogSettings.fHeightFalloff, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogTopHeight",
+			&m_HeightFogSettings.fTopHeight, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogStartDistance",
+			&m_HeightFogSettings.fStartDistance, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogMaximumOpacity",
+			&m_HeightFogSettings.fMaximumOpacity, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogDriftSpeed",
+			&m_HeightFogSettings.fDriftSpeed, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogDriftHeight",
+			&m_HeightFogSettings.fDriftHeightAmplitude, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fHeightFogDriftDensity",
+			&m_HeightFogSettings.fDriftDensityAmplitude, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fFogCoverage",
+			&m_HeightFogSettings.fCoveragePercent, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_vFogWindDirection",
+			&vFogWind, sizeof(vFogWind))) ||
+		FAILED(shader->Bind_RawValue("g_fFogWindSpeed",
+			&m_HeightFogSettings.fWindSpeed, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fFogPatchScale",
+			&m_HeightFogSettings.fPatchScale, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fFogPatchSoftness",
+			&m_HeightFogSettings.fPatchSoftness, sizeof(f32_t))) ||
+		FAILED(shader->Bind_RawValue("g_fPresentationClock",
+			&m_fPresentationClock, sizeof(m_fPresentationClock))))
+	{
+		return E_FAIL;
+	}
+    return S_OK;
+}
+
 HRESULT CRenderer::Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings)
 {
 	if (!IsValidHeightFogSettings(Settings))
@@ -432,13 +492,16 @@ void CRenderer::Advance_PresentationClock(f32_t fTimeDelta)
 
 HRESULT CRenderer::Draw()
 {
+    // Priority sky and later forward water share this frame clock.
+    CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	auto FailFrame = [this, &Presentation](
 		const char* stage, const HRESULT hResult) -> HRESULT
 	{
 		WriteRendererFailure(stage, hResult);
-        CMaterial::Reset_SourceCharacterFrame();
+        CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 		m_bSceneColorSnapshotRequested = false;
+        m_bSceneEnvironmentReplaced = false;
 		Presentation.Clear_Frame();
 		for (auto& RenderGroup : m_RenderObjects)
 			RenderGroup.clear();
@@ -547,6 +610,13 @@ HRESULT CRenderer::Draw()
 	if (FAILED(hResult))
 		return FailFrame("Render_Final", hResult);
 
+	{
+		CProfilerScope scope(pProfiler, "Render.DisplayOverlays");
+		hResult = Render_DisplayOverlays();
+	}
+	if (FAILED(hResult))
+		return FailFrame("Render_DisplayOverlays", hResult);
+
 	/* UI is authored in display space, so it stays out of the HDR target. */
 	{
 		CProfilerScope scope(pProfiler, "Render.UI");
@@ -565,6 +635,7 @@ HRESULT CRenderer::Draw()
 #endif
 
 	m_bSceneColorSnapshotRequested = false;
+    m_bSceneEnvironmentReplaced = false;
 	Presentation.Clear_Frame();
 	return S_OK;
 }
@@ -584,7 +655,7 @@ HRESULT CRenderer::Render_Priority()
 	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)])
 	{
 		if (nullptr != pRenderObject)
-			pRenderObject->Render();
+			pRenderObject->Render_Group(RENDERGROUP::PRIORITY);
 	}
 
 	m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)].clear();
@@ -658,7 +729,7 @@ HRESULT CRenderer::Render_NonBlend()
 	for (auto& pRenderObject : NonBlendObjects)
 	{
 		if (nullptr != pRenderObject)
-			pRenderObject->Render();
+			pRenderObject->Render_Group(RENDERGROUP::NONBLEND);
 	}
 
 	/* Deferred overlays must run after every opaque object while the complete
@@ -794,6 +865,7 @@ HRESULT CRenderer::Render_Lights()
         FAILED(m_pShader->Bind_RawValue("g_SourceCharacterRow", &noSourceCharacter, sizeof(noSourceCharacter))) ||
         FAILED(m_pShader->Bind_Matrix("g_SourceCharacterViewMatrix", CGameInstance::Get().Get_Transform(D3DTS::VIEW))) ||
         FAILED(m_pShader->Bind_Matrix("g_SourceCharacterProjMatrix", CGameInstance::Get().Get_Transform(D3DTS::PROJ))) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Emissive"), m_pShader, "g_EmissiveTexture")) ||
         FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterSurface"), m_pShader, "g_CharacterSurfaceTexture")) ||
         FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterGeometry"), m_pShader, "g_CharacterGeometryTexture")) ||
         FAILED(hBindAO) ||
@@ -829,13 +901,13 @@ HRESULT CRenderer::Render_Lights()
     for (uint32_t index = 0u; SUCCEEDED(hResult) && index < sourceCount; ++index)
     {
         if (FAILED(CMaterial::Bind_SourceCharacterLight(m_pShader, index)) ||
-            FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer, bShadowEnabled)))
+            FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer, bShadowEnabled, LIGHT_RECEIVER::SOURCE_CHARACTER)))
             hResult = E_FAIL;
     }
     if (FAILED(m_pShader->Bind_RawValue("g_SourceCharacterProgram", &noSourceCharacter, sizeof(noSourceCharacter))) ||
         FAILED(m_pShader->Bind_RawValue("g_SourceCharacterRow", &noSourceCharacter, sizeof(noSourceCharacter))))
         hResult = E_FAIL;
-    CMaterial::Reset_SourceCharacterFrame();
+    CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 
 	/* Always restore the back buffer even when a light bind or draw fails. */
 	if (FAILED(CGameInstance::Get().End_MRT()))
@@ -864,10 +936,6 @@ HRESULT CRenderer::Render_Combined()
 	/* Height fog reuses the world position the combine step can rebuild from
 	   the depth target, so it needs the same inverse matrices and camera the
 	   lighting pass already binds. */
-	const uint32_t iFogEnabled = m_HeightFogSettings.bEnabled ? 1u : 0u;
-	const float2_t vFogWind(
-		m_HeightFogSettings.fWindDirectionX,
-		m_HeightFogSettings.fWindDirectionZ);
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(
 			TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
 		FAILED(m_pShader->Bind_Matrix("g_ViewMatrixInverse",
@@ -876,41 +944,7 @@ HRESULT CRenderer::Render_Combined()
 			CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ))) ||
 		FAILED(m_pShader->Bind_RawValue("g_vCamPosition",
 			CGameInstance::Get().Get_CamPosition(), sizeof(float4_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_iHeightFogEnabled",
-			&iFogEnabled, sizeof(iFogEnabled))) ||
-		FAILED(m_pShader->Bind_RawValue("g_vHeightFogColor",
-			&m_HeightFogSettings.vColor, sizeof(float4_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDensity",
-			&m_HeightFogSettings.fDensity, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogFalloff",
-			&m_HeightFogSettings.fHeightFalloff, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogTopHeight",
-			&m_HeightFogSettings.fTopHeight, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogStartDistance",
-			&m_HeightFogSettings.fStartDistance, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogMaximumOpacity",
-			&m_HeightFogSettings.fMaximumOpacity, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDriftSpeed",
-			&m_HeightFogSettings.fDriftSpeed, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDriftHeight",
-			&m_HeightFogSettings.fDriftHeightAmplitude, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fHeightFogDriftDensity",
-			&m_HeightFogSettings.fDriftDensityAmplitude, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fFogCoverage",
-			&m_HeightFogSettings.fCoveragePercent, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_vFogWindDirection",
-			&vFogWind, sizeof(vFogWind))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fFogWindSpeed",
-			&m_HeightFogSettings.fWindSpeed, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fFogPatchScale",
-			&m_HeightFogSettings.fPatchScale, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fFogPatchSoftness",
-			&m_HeightFogSettings.fPatchSoftness, sizeof(f32_t))) ||
-		FAILED(m_pShader->Bind_RawValue("g_fPresentationClock",
-			&m_fPresentationClock, sizeof(m_fPresentationClock))))
-	{
-		return E_FAIL;
-	}
+		FAILED(Bind_HeightFog(m_pShader.get()))) return E_FAIL;
 
 	if (FAILED(m_pShader->Begin(ETOUI(DEFERRED::COMBINED))))
 		return E_FAIL;
@@ -931,7 +965,7 @@ HRESULT CRenderer::Render_NonLight()
 	{
 		if (nullptr != pRenderObject)
 		{
-			const HRESULT hResult = pRenderObject->Render();
+			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::NONLIGHT);
 			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
 			{
 				WriteRendererFailure(
@@ -946,6 +980,15 @@ HRESULT CRenderer::Render_NonLight()
 	m_RenderObjects[ETOUI(RENDERGROUP::NONLIGHT)].clear();
 
 	return hFirstFailure;
+}
+
+HRESULT CRenderer::Refresh_SceneColorSnapshot()
+{
+	if (CRenderOutputContract::Get_Active() !=
+			RENDER_OUTPUT_CONTRACT::SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION ||
+		!CRenderOutputContract::Matches_ActiveRenderTargets(m_pContext.Get()))
+		return E_INVALIDARG;
+	return Capture_SceneColorSnapshot();
 }
 
 HRESULT CRenderer::Capture_SceneColorSnapshot()
@@ -977,6 +1020,14 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
 	ComPtr<ID3D11DepthStencilView> depth;
 	m_pContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
 		outputs, depth.GetAddressOf());
+	ComPtr<ID3D11Resource> activeSceneResource;
+	if (outputs[0]) outputs[0]->GetResource(activeSceneResource.GetAddressOf());
+	if (activeSceneResource.Get() != sourceResource.Get())
+	{
+		for (auto* output : outputs)
+			if (output) output->Release();
+		return E_INVALIDARG;
+	}
 	m_pContext->OMSetRenderTargets(0, nullptr, nullptr);
 	ID3D11ShaderResourceView* emptySRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
 	m_pContext->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, emptySRVs);
@@ -1042,7 +1093,7 @@ HRESULT CRenderer::Render_Blend()
 			SortedBlendObjects)
 		{
 			UNREFERENCED_PARAMETER(fDistanceSquared);
-			const HRESULT hResult = pRenderObject->Render();
+			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::BLEND);
 			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
 			{
 				WriteRendererFailure(
@@ -1060,7 +1111,7 @@ HRESULT CRenderer::Render_Blend()
 	{
 		if (nullptr != pRenderObject)
 		{
-			const HRESULT hResult = pRenderObject->Render();
+			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::BLEND);
 			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
 			{
 				WriteRendererFailure(
@@ -1226,14 +1277,17 @@ HRESULT CRenderer::Render_ScreenPosts()
 	}
 	const vector<PRESENTATION_SCREEN_OVERLAY_DESC>& ScreenOverlays =
 		Presentation.Get_ScreenOverlays();
+	size_t hdrOverlayCount = 0u;
 	for (size_t iOverlay = 0u;
 		SUCCEEDED(hResult) && iOverlay < ScreenOverlays.size(); ++iOverlay)
 	{
 		const PRESENTATION_SCREEN_OVERLAY_DESC& Overlay =
 			ScreenOverlays[iOverlay];
+		if (Overlay.bDisplaySpace)
+			continue;
 		const PRESENTATION_SCREEN_POST_PLAN_STEP Step =
 			Build_PresentationScreenOverlayPlanStep(
-				ScreenPosts.size(), iOverlay);
+				ScreenPosts.size(), hdrOverlayCount++);
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV =
 			m_pScenePostSRVs[Step.iSourceTarget];
 		ComPtr<ID3D11RenderTargetView> pDestinationRTV =
@@ -1267,65 +1321,12 @@ HRESULT CRenderer::Render_ScreenPosts()
 		m_pContext->OMSetRenderTargets(1u, &pDestination, nullptr);
 		const float4_t vClear{};
 		m_pContext->ClearRenderTargetView(pDestination, &vClear.x);
-		const uint32_t iCoverageChannel =
-			static_cast<uint32_t>(Overlay.eCoverageChannel);
-		const uint32_t iFilter = static_cast<uint32_t>(Overlay.eFilter);
-		const uint32_t iAddress = static_cast<uint32_t>(Overlay.eAddress);
-		if (FAILED(m_pShader->Bind_Texture(
-				"g_PostProcessTexture", pSourceSRV)) ||
-			FAILED(m_pShader->Bind_Texture(
-				"g_PresentationOverlayTexture", Overlay.pTexture)) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_fPresentationTime", &Overlay.fSampleTimeSeconds,
-				sizeof(Overlay.fSampleTimeSeconds))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_vPresentationOverlayPosition", &Overlay.vPosition,
-				sizeof(Overlay.vPosition))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_vPresentationOverlayScale", &Overlay.vScale,
-				sizeof(Overlay.vScale))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_fPresentationOverlayRotationDegrees",
-				&Overlay.fRotationDegrees,
-				sizeof(Overlay.fRotationDegrees))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_fPresentationOverlayAngularVelocityDegreesPerSecond",
-				&Overlay.fAngularVelocityDegreesPerSecond,
-				sizeof(Overlay.fAngularVelocityDegreesPerSecond))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_vPresentationOverlayUvDriftPerSecond",
-				&Overlay.vUvDriftPerSecond,
-				sizeof(Overlay.vUvDriftPerSecond))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_vPresentationOverlayTint", &Overlay.vTint,
-				sizeof(Overlay.vTint))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_fPresentationOverlayAlpha", &Overlay.fAlpha,
-				sizeof(Overlay.fAlpha))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_iPresentationOverlayCoverageChannel",
-				&iCoverageChannel, sizeof(iCoverageChannel))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_iPresentationOverlayFilter", &iFilter,
-				sizeof(iFilter))) ||
-			FAILED(m_pShader->Bind_RawValue(
-				"g_iPresentationOverlayAddress", &iAddress,
-				sizeof(iAddress))) ||
-			FAILED(m_pShader->Bind_Matrix(
-				"g_WorldMatrix", &m_WorldMatrix)) ||
-			FAILED(m_pShader->Bind_Matrix(
-				"g_ViewMatrix", &m_ViewMatrix)) ||
-			FAILED(m_pShader->Bind_Matrix(
-				"g_ProjMatrix", &m_ProjMatrix)) ||
-			FAILED(m_pShader->Begin(DEFERRED_PASS_TEXTURED_OVERLAY)) ||
-			FAILED(m_pVIBuffer->Bind_Resources()) ||
-			FAILED(m_pVIBuffer->Render()))
-		{
+		if (FAILED(m_pShader->Bind_Texture("g_PostProcessTexture", pSourceSRV)) ||
+			FAILED(Render_ScreenOverlay(Overlay)))
 			hResult = E_FAIL;
-		}
 	}
 	m_iScenePostFinalTarget = PresentationScreenCompositionFinalTarget(
-		ScreenPosts.size(), ScreenOverlays.size());
+		ScreenPosts.size(), hdrOverlayCount);
 
 	ID3D11ShaderResourceView* pNullSRVs[
 		D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
@@ -1341,8 +1342,91 @@ HRESULT CRenderer::Render_ScreenPosts()
 	else
 		m_pContext->RSSetViewports(0u, nullptr);
 	Presentation.Clear_ScreenPosts();
-	Presentation.Clear_ScreenOverlays();
 	return hResult;
+}
+
+HRESULT CRenderer::Render_ScreenOverlay(
+	const PRESENTATION_SCREEN_OVERLAY_DESC& Overlay)
+{
+	const uint32_t iCoverageChannel =
+		static_cast<uint32_t>(Overlay.eCoverageChannel);
+	const uint32_t iFilter = static_cast<uint32_t>(Overlay.eFilter);
+	const uint32_t iAddress = static_cast<uint32_t>(Overlay.eAddress);
+	if (FAILED(m_pShader->Bind_Texture(
+			"g_PresentationOverlayTexture", Overlay.pTexture)) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fPresentationTime", &Overlay.fSampleTimeSeconds,
+			sizeof(Overlay.fSampleTimeSeconds))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vPresentationOverlayPosition", &Overlay.vPosition,
+			sizeof(Overlay.vPosition))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vPresentationOverlayScale", &Overlay.vScale,
+			sizeof(Overlay.vScale))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fPresentationOverlayRotationDegrees",
+			&Overlay.fRotationDegrees,
+			sizeof(Overlay.fRotationDegrees))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fPresentationOverlayAngularVelocityDegreesPerSecond",
+			&Overlay.fAngularVelocityDegreesPerSecond,
+			sizeof(Overlay.fAngularVelocityDegreesPerSecond))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vPresentationOverlayUvDriftPerSecond",
+			&Overlay.vUvDriftPerSecond,
+			sizeof(Overlay.vUvDriftPerSecond))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vPresentationOverlayTint", &Overlay.vTint,
+			sizeof(Overlay.vTint))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fPresentationOverlayAlpha", &Overlay.fAlpha,
+			sizeof(Overlay.fAlpha))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_iPresentationOverlayCoverageChannel",
+			&iCoverageChannel, sizeof(iCoverageChannel))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_iPresentationOverlayFilter", &iFilter,
+			sizeof(iFilter))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_iPresentationOverlayAddress", &iAddress,
+			sizeof(iAddress))) ||
+		FAILED(m_pShader->Bind_Matrix(
+			"g_WorldMatrix", &m_WorldMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix(
+			"g_ViewMatrix", &m_ViewMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix(
+			"g_ProjMatrix", &m_ProjMatrix)) ||
+		FAILED(m_pShader->Begin(Overlay.bDisplaySpace ?
+			ETOUI(DEFERRED::PRESENTATION_DISPLAY_OVERLAY) :
+			DEFERRED_PASS_TEXTURED_OVERLAY)) ||
+		FAILED(m_pVIBuffer->Bind_Resources()) ||
+		FAILED(m_pVIBuffer->Render()))
+	{
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT CRenderer::Render_DisplayOverlays()
+{
+	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
+	HRESULT result = S_OK;
+	for (const auto& overlay : Presentation.Get_ScreenOverlays())
+	{
+		if (!overlay.bDisplaySpace)
+			continue;
+		// No scene SRV is sampled: alpha blend directly over the final display.
+		if (FAILED(m_pShader->Bind_Texture("g_PostProcessTexture", nullptr)) ||
+			FAILED(Render_ScreenOverlay(overlay)))
+		{
+			result = E_FAIL;
+			break;
+		}
+	}
+	ID3D11ShaderResourceView* nullSrvs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+	m_pContext->PSSetShaderResources(0u, _countof(nullSrvs), nullSrvs);
+	Presentation.Clear_ScreenOverlays();
+	return result;
 }
 
 HRESULT CRenderer::Render_Bloom()
@@ -1512,7 +1596,7 @@ HRESULT CRenderer::Render_UI()
 	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::UI)])
 	{
 		if (nullptr != pRenderObject)
-			pRenderObject->Render();
+			pRenderObject->Render_Group(RENDERGROUP::UI);
 	}
 
 	m_RenderObjects[ETOUI(RENDERGROUP::UI)].clear();

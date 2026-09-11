@@ -15,6 +15,15 @@ namespace Client
 {
 	/* One-shot transport command for the local composition preview. MainApp
 	   consumes it and forwards it to the real-CModel preview owner. */
+	struct KOUKU_COLLIDER_DAMAGE_SETTINGS final
+	{
+		int32_t iPercent = 10;
+		bool_t bRearmOnExit = false, bRepeatAfterKnockback = false;
+		double fPushRangeM = 0.0;
+		std::uint32_t iPushMs = 0u;
+		std::string strPushDirection = "AWAY_FROM_BOSS";
+	};
+
 	enum class KOUKU_PATTERN_SELECTION : std::uint8_t { GATE, FOLDER, BUNDLE, PATTERN };
 
 	enum class KOUKU_PREVIEW_TRANSPORT : std::uint8_t
@@ -413,7 +422,15 @@ namespace Client
 		// Atomically connect ENTER_AREA and a damage RESULT while retaining other outcome slots.
 		bool_t Set_ColliderTriggerDamage(const std::string& patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
-			std::uint32_t percent, std::string& outStatus);
+			const KOUKU_COLLIDER_DAMAGE_SETTINGS& settings, std::string& outStatus);
+		bool_t Set_ColliderTriggerDamage(const std::string& patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
+			std::uint32_t percent, std::string& outStatus)
+		{
+			KOUKU_COLLIDER_DAMAGE_SETTINGS settings;
+			settings.iPercent = percent <= 100u ? static_cast<int32_t>(percent) : 101;
+			return Set_ColliderTriggerDamage(patternId, occurrence, settings, outStatus);
+		}
 
 		/* Summon catalog. A definition is only a name today; a box places it on
 		   one Pattern with spawn time (startMs) and lifetime (durationMs). */
@@ -675,7 +692,9 @@ namespace Client
 		std::string m_strColliderExecutionType = "DURATION";
 		std::string m_strColliderExecutionEditId;
 		std::string m_strColliderLogicDefinitionId;
-		int32_t m_iColliderDamagePercent = 10;
+		KOUKU_COLLIDER_DAMAGE_SETTINGS m_ColliderDamageSettings;
+		bool_t m_bColliderDamageMode = false;
+		bool_t m_bColliderDetachDamage = false;
 		bool_t m_bColliderDamageDirty = false;
 
 		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_PendingPresentationGeometryPreviews;

@@ -1,4 +1,7 @@
 #include "Material.h"
+
+#include <mutex>
+#include <unordered_map>
 #include "BinaryAsset/ModelAssetData.h"
 #include "Shader.h"
 #include "GameInstance.h"
@@ -268,7 +271,44 @@ namespace
 			nullptr, &pSRV);
 	}
 
+    HRESULT LoadSharedTexture(ComPtr<ID3D11Device> device,
+        vector<shared_ptr<ComPtr<ID3D11ShaderResourceView>>>& owners,
+        const filesystem::path& path, bool_t srgb,
+        ComPtr<ID3D11ShaderResourceView>& view, bool_t forceLinear = false)
+    {
+        if (path.empty()) return E_INVALIDARG;
+        std::error_code error;
+        const auto size = filesystem::file_size(path, error);
+        if (error) return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+        const auto modified = filesystem::last_write_time(path, error);
+        if (error) return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+        std::wstring normalized = path.lexically_normal().wstring();
+        std::transform(normalized.begin(), normalized.end(), normalized.begin(), towlower);
+        const std::wstring key = std::to_wstring(reinterpret_cast<uintptr_t>(device.Get())) + L":" +
+            normalized + L":" + std::to_wstring(srgb) + L":" + std::to_wstring(forceLinear) + L":" +
+            std::to_wstring(size) + L":" + std::to_wstring(modified.time_since_epoch().count());
+        static std::mutex mutex;
+        static std::unordered_map<std::wstring, std::weak_ptr<ComPtr<ID3D11ShaderResourceView>>> cache;
+        static size_t insertions = 0u;
+        std::lock_guard<std::mutex> lock(mutex);
+        const auto found = cache.find(key);
+        auto shared = found == cache.end() ? nullptr : found->second.lock();
+        if (!shared)
+        {
+            shared = std::make_shared<ComPtr<ID3D11ShaderResourceView>>();
+            const HRESULT result = LoadTexture(device, path, srgb, *shared, forceLinear);
+            if (FAILED(result)) return result;
+            if ((++insertions % 256u) == 0u)
+                std::erase_if(cache, [](const auto& pair) { return pair.second.expired(); });
+            cache[key] = shared;
+        }
+        view = *shared;
+        owners.push_back(std::move(shared));
+        return S_OK;
+    }
+
 	HRESULT AddTexture(ComPtr<ID3D11Device> pDevice,
+        vector<shared_ptr<ComPtr<ID3D11ShaderResourceView>>>& owners,
 		const filesystem::path& path,
 		aiTextureType type,
 		vector<ComPtr<ID3D11ShaderResourceView>> (&textures)[AI_TEXTURE_TYPE_MAX])
@@ -276,8 +316,8 @@ namespace
 		if (path.empty())
 			return S_OK;
 		ComPtr<ID3D11ShaderResourceView> resource;
-		const HRESULT result = LoadTexture(
-			pDevice, path, IsColorTextureSlot(type), resource);
+		const HRESULT result = LoadSharedTexture(
+			pDevice, owners, path, IsColorTextureSlot(type), resource);
 		if (FAILED(result))
 		{
 			wstring message = L"[CMaterial] Texture load failed: ";
@@ -404,31 +444,31 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 			aiTextureType_DIFFUSE, m_Textures)))
 			return E_FAIL;
 	}
-	else if (FAILED(AddTexture(m_pDevice, compatibleDiffusePath,
+	else if (FAILED(AddTexture(m_pDevice, m_SharedTextureViews, compatibleDiffusePath,
 		aiTextureType_DIFFUSE, m_Textures)))
 		return E_FAIL;
 
-	if (FAILED(AddTexture(m_pDevice, material.normalPath,
+	if (FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.normalPath,
 			aiTextureType_NORMALS, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.specularPath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.specularPath,
 			aiTextureType_SPECULAR, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.emissivePath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.emissivePath,
 			aiTextureType_EMISSIVE, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.opacityPath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.opacityPath,
 			aiTextureType_OPACITY, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.ormPath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.ormPath,
 			aiTextureType_UNKNOWN, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.metallicPath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.metallicPath,
 			aiTextureType_METALNESS, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.roughnessPath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.roughnessPath,
 			aiTextureType_DIFFUSE_ROUGHNESS, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.ambientOcclusionPath,
+		FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.ambientOcclusionPath,
 			aiTextureType_AMBIENT_OCCLUSION, m_Textures)))
 		return E_FAIL;
 
 	/* The colour mask samples as data, not colour: aiTextureType_BASE_COLOR
 	is outside IsColorTextureSlot, so it loads without the sRGB flag. */
-	if (FAILED(AddTexture(m_pDevice, material.colorMaskPath,
+	if (FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.colorMaskPath,
 		aiTextureType_BASE_COLOR, m_Textures)))
 		return E_FAIL;
 	m_ColorTint = material.colorTint;
@@ -446,11 +486,30 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
         {
             if ((mask & (1u << index)) == 0u) continue;
             const auto& input = material.sourceCharacterTextures[index];
-            if (FAILED(LoadTexture(m_pDevice, input.path, input.srgb,
+            if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, input.path, input.srgb,
                 m_SourceCharacterTextures[index], true))) return E_FAIL;
             D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
             m_SourceCharacterTextures[index]->GetDesc(&desc);
             if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
+        }
+        if (m_Surface.hasStaticShadow)
+        {
+            if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.staticShadowPath, false, m_StaticShadow, true))) return E_FAIL;
+            D3D11_SHADER_RESOURCE_VIEW_DESC shadow{}; m_StaticShadow->GetDesc(&shadow);
+            if (shadow.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D || shadow.Format != DXGI_FORMAT_R8_UNORM) return E_INVALIDARG;
+        }
+        if (m_Surface.hasBakedLighting)
+        {
+            const uint32_t program = m_Surface.sourceCharacter.program;
+            const bool supportsBaked = (program >= 80u && program <= 83u) ||
+                (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u);
+            if (!supportsBaked ||
+                FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedAveragePath, m_Surface.bakedLightingSRGB, m_BakedAverage, true)) ||
+                FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedDirectionalPath, m_Surface.bakedLightingSRGB, m_BakedDirectional, true))) return E_FAIL;
+            D3D11_SHADER_RESOURCE_VIEW_DESC average{}, directional{};
+            m_BakedAverage->GetDesc(&average); m_BakedDirectional->GetDesc(&directional);
+            if (average.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D ||
+                directional.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
         }
         m_AuthoredSourceCharacter = m_Surface.sourceCharacter;
         return S_OK;
@@ -458,8 +517,11 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 	if (m_Surface.hasEmissive)
 	{
 		if ((m_Surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
-			m_Surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE) ||
-			FAILED(LoadTexture(m_pDevice, material.surfaceEmissivePath,
+			m_Surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+            m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED) ||
+			FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceEmissivePath,
 				m_Surface.emissiveSRGB, m_SurfaceEmissive, true)))
 		{
 			OutputDebugStringA(("[CMaterial] Source emissive input load failed: " +
@@ -473,14 +535,25 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 	}
 	if (MODEL_SURFACE_FAMILY::LEGACY != m_Surface.family)
 	{
+        const bool sourceSpecial = m_Surface.family >= MODEL_SURFACE_FAMILY::SOURCE_SNOWICE_OPAQUE &&
+            m_Surface.family <= MODEL_SURFACE_FAMILY::SOURCE_WET_OPAQUE;
 		const auto& diffuse = material.surfaceDiffusePath.empty() ? material.diffusePath : material.surfaceDiffusePath;
 		if (diffuse.empty() ||
-            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE && material.normalPath.empty()) ||
-            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE && material.reflectionPath.empty()) ||
-			FAILED(LoadTexture(m_pDevice, diffuse,
+            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial && material.normalPath.empty()) ||
+            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial && material.reflectionPath.empty()) ||
+			FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, diffuse,
 				m_Surface.diffuseSRGB, m_SurfaceDiffuse, true)) ||
             (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
-                FAILED(LoadTexture(m_pDevice, material.reflectionPath,
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial &&
+                FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.reflectionPath,
                     m_Surface.reflectionSRGB, m_SurfaceReflection, true))))
 		{
 			OutputDebugStringA(("[CMaterial] Source surface texture load failed: " +
@@ -490,37 +563,98 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 		if (m_Surface.family == MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE ||
 			m_Surface.family == MODEL_SURFACE_FAMILY::PBR_OPAQUE)
 		{
-			if (FAILED(LoadTexture(m_pDevice, material.surfaceNormalPath, false, m_SurfaceNormal, true)) ||
-				FAILED(LoadTexture(m_pDevice, material.detailNormalPath, false, m_SurfaceDetailNormal, true)) ||
-				FAILED(LoadTexture(m_pDevice, material.surfaceORMPath, m_Surface.ormSRGB, m_SurfaceORM, true)))
+			if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceNormalPath, false, m_SurfaceNormal, true)) ||
+				FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.detailNormalPath, false, m_SurfaceDetailNormal, true)) ||
+				FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceORMPath, m_Surface.ormSRGB, m_SurfaceORM, true)))
 			{
 				OutputDebugStringA(("[CMaterial] PBR input load failed: " + m_strName + "\n").c_str());
 				return E_FAIL;
 			}
 		}
+        if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
+            m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED)
+        {
+            const uint32_t flags = m_Surface.sourceFoliageFlags;
+            if (((flags & 1u) && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceNormalPath, false, m_SurfaceNormal, true))) ||
+                ((flags & 8u) && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceSpecularPath, m_Surface.specularSRGB, m_SurfaceSpecular, true))) ||
+                (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+                    FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.sourceFoliageMaskPath, m_Surface.sourceFoliageMaskSRGB, m_SourceFoliageMask, true)))) return E_FAIL;
+            for (const auto& texture : { m_SurfaceDiffuse, m_SurfaceNormal, m_SurfaceSpecular, m_SourceFoliageMask })
+            {
+                if (!texture) continue;
+                D3D11_SHADER_RESOURCE_VIEW_DESC desc{}; texture->GetDesc(&desc);
+                if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
+            }
+        }
+        if (sourceSpecial)
+        {
+            const auto& special = m_Surface.sourceSpecial;
+            const bool ice = m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_SNOWICE_OPAQUE;
+            const bool blend = m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_VERTEXBLEND_OPAQUE;
+            const auto load = [&](bool required, const filesystem::path& path, bool srgb,
+                ComPtr<ID3D11ShaderResourceView>& texture) -> HRESULT
+            {
+                if (!required) return S_OK;
+                const auto hr = LoadSharedTexture(m_pDevice, m_SharedTextureViews, path, srgb, texture, true);
+                if (FAILED(hr)) return hr;
+                D3D11_SHADER_RESOURCE_VIEW_DESC desc{}; texture->GetDesc(&desc);
+                return desc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2D ? S_OK : E_INVALIDARG;
+            };
+            if (FAILED(load(true, material.surfaceNormalPath, false, m_SurfaceNormal)) ||
+                FAILED(load(!blend, material.reflectionPath, m_Surface.reflectionSRGB, m_SurfaceReflection)) ||
+                FAILED(load(!blend && (!ice || (special.flags & 2u)), material.surfaceSpecularPath, m_Surface.specularSRGB, m_SurfaceSpecular)) ||
+                FAILED(load(blend || (ice && (special.flags & 1u)), material.detailNormalPath, false, m_SurfaceDetailNormal)) ||
+                FAILED(load(blend, material.overlayDiffusePath, m_Surface.overlaySRGB, m_SurfaceOverlayDiffuse)) ||
+                FAILED(load(blend, material.overlayNormalPath, false, m_SurfaceOverlayNormal)) ||
+                FAILED(load(ice, material.sourceSpecialMaskPath, special.maskSRGB, m_SourceSpecialMask)) ||
+                FAILED(load(blend && (special.flags & 1u), material.sourceBlendDiffuseGPath, special.blendGSRGB, m_SourceBlendDiffuseG)) ||
+                FAILED(load(blend && (special.flags & 1u), material.sourceBlendNormalGPath, false, m_SourceBlendNormalG)) ||
+                FAILED(load(blend && (special.flags & 2u), material.sourceBlendDiffuseBPath, special.blendBSRGB, m_SourceBlendDiffuseB)) ||
+                FAILED(load(blend && (special.flags & 2u), material.sourceBlendNormalBPath, false, m_SourceBlendNormalB))) return E_FAIL;
+        }
+        if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED)
+        {
+            const uint32_t flags = m_Surface.sourceBgFlags;
+            if ((flags & 32768u) && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews,
+                material.detailNormalPath, false, m_SurfaceDetailNormal, true))) return E_FAIL;
+            if (((flags & 1u) && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceNormalPath, false, m_SurfaceNormal, true))) ||
+                ((flags & 8u) && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceSpecularPath, m_Surface.specularSRGB, m_SurfaceSpecular, true))) ||
+                ((flags & 16u) && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.reflectionPath, m_Surface.reflectionSRGB, m_SurfaceReflection, true))))
+                return E_FAIL;
+        }
         if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE &&
-            (FAILED(LoadTexture(m_pDevice, material.surfaceNormalPath, false, m_SurfaceNormal, true)) ||
-             FAILED(LoadTexture(m_pDevice, material.surfaceSpecularPath, m_Surface.specularSRGB, m_SurfaceSpecular, true))))
+            (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceNormalPath, false, m_SurfaceNormal, true)) ||
+             FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceSpecularPath, m_Surface.specularSRGB, m_SurfaceSpecular, true))))
         {
             OutputDebugStringA(("[CMaterial] Source opaque inputs failed: " + m_strName + "\n").c_str());
             return E_FAIL;
         }
         if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
         {
-            if (FAILED(LoadTexture(m_pDevice, material.surfaceNormalPath, false, m_SurfaceNormal, true)) ||
-                FAILED(LoadTexture(m_pDevice, material.overlayDiffusePath, m_Surface.overlaySRGB, m_SurfaceOverlayDiffuse, true)) ||
-                FAILED(LoadTexture(m_pDevice, material.overlayNormalPath, false, m_SurfaceOverlayNormal, true))) return E_FAIL;
+            if (m_Surface.overlaySeparateSpecular && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews,
+                material.surfaceSpecularPath, m_Surface.specularSRGB, m_SurfaceSpecular, true))) return E_FAIL;
+            if (((m_Surface.sourceOverlayFlags & 1u) != 0u && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.surfaceNormalPath, false, m_SurfaceNormal, true))) ||
+                FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.overlayDiffusePath, m_Surface.overlaySRGB, m_SurfaceOverlayDiffuse, true)) ||
+                ((m_Surface.sourceOverlayFlags & 2u) != 0u && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.overlayNormalPath, false, m_SurfaceOverlayNormal, true))) ||
+                ((m_Surface.sourceOverlayFlags & 32u) != 0u && FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.detailNormalPath, false, m_SurfaceDetailNormal, true)))) return E_FAIL;
             for (const auto& input : { m_SurfaceDiffuse, m_SurfaceNormal, m_SurfaceOverlayDiffuse, m_SurfaceOverlayNormal })
             {
+                if (!input) continue;
                 D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
                 input->GetDesc(&desc);
                 if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
             }
         }
+        if (m_Surface.hasStaticShadow)
+        {
+            if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.staticShadowPath, false, m_StaticShadow, true))) return E_FAIL;
+            D3D11_SHADER_RESOURCE_VIEW_DESC shadow{}; m_StaticShadow->GetDesc(&shadow);
+            if (shadow.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D || shadow.Format != DXGI_FORMAT_R8_UNORM) return E_INVALIDARG;
+        }
         if (m_Surface.hasBakedLighting)
         {
-            if (FAILED(LoadTexture(m_pDevice, material.bakedAveragePath, m_Surface.bakedLightingSRGB, m_BakedAverage, true)) ||
-                FAILED(LoadTexture(m_pDevice, material.bakedDirectionalPath, m_Surface.bakedLightingSRGB, m_BakedDirectional, true)))
+            if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedAveragePath, m_Surface.bakedLightingSRGB, m_BakedAverage, true)) ||
+                FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedDirectionalPath, m_Surface.bakedLightingSRGB, m_BakedDirectional, true)))
                 return E_FAIL;
             D3D11_SHADER_RESOURCE_VIEW_DESC average{}, directional{};
             m_BakedAverage->GetDesc(&average); m_BakedDirectional->GetDesc(&directional);
@@ -529,8 +663,8 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
         }
         if (m_Surface.hasEnvironmentCube)
         {
-            if (FAILED(LoadTexture(m_pDevice, material.environmentCubePath, false, m_EnvironmentCube, true)) ||
-                FAILED(LoadTexture(m_pDevice, material.environmentBRDFPath, false, m_EnvironmentBRDF, true)))
+            if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.environmentCubePath, false, m_EnvironmentCube, true)) ||
+                FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.environmentBRDFPath, false, m_EnvironmentBRDF, true)))
                 return E_FAIL;
             D3D11_SHADER_RESOURCE_VIEW_DESC cube{};
             m_EnvironmentCube->GetDesc(&cube);
@@ -540,7 +674,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
                 brdf.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
         }
 		if (MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION == m_Surface.family &&
-			FAILED(LoadTexture(m_pDevice, material.specularPath,
+			FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.specularPath,
 				m_Surface.specularSRGB, m_SurfaceSpecular, true)))
 		{
 			OutputDebugStringA(("[CMaterial] Source specular load failed: " +
@@ -712,8 +846,13 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
 {
     if (!shader) return E_INVALIDARG;
     const auto& source = m_Surface.sourceCharacter;
+    const uint32_t hasBaked = m_Surface.hasBakedLighting ? 1u : 0u;
+    if (FAILED(shader->Bind_RawValue("g_SourceMapMonsterBakedEnabled", &hasBaked, sizeof(hasBaked)))) return E_FAIL;
     if (!lightPass)
     {
+        if (source.program >= 80u && source.program <= 83u && FAILED(Bind_StaticShadow(shader))) return E_FAIL;
+        if (hasBaked && (FAILED(shader->Bind_Texture("g_SourceMapMonsterAverageTexture", m_BakedAverage)) ||
+            FAILED(shader->Bind_Texture("g_SourceMapMonsterDirectionalTexture", m_BakedDirectional)))) return E_FAIL;
         const auto environment = CGameInstance::Get().Get_RenderEnvironment();
         const uint32_t enabled = environment.pCube ? 1u : 0u;
         if (FAILED(shader->Bind_RawValue("g_SourceCharacterEnvironmentEnabled", &enabled, sizeof(enabled))) ||
@@ -721,8 +860,12 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
             FAILED(shader->Bind_RawValue("g_SourceCharacterEnvironmentRotation", &environment.vRotationIntensity, sizeof(float4_t))) ||
             FAILED(shader->Bind_Texture("g_SourceCharacterEnvironmentCube", environment.pCube))) return E_FAIL;
     }
+    const bool forward = source.program >= 38u && source.program <= 63u;
+    if (!lightPass && forward && FAILED(shader->Bind_RawValue("g_SourceCharacterLightConstants",
+        source.lightConstants.data(), sizeof(source.lightConstants)))) return E_FAIL;
     const auto& constants = lightPass ? source.lightConstants : source.baseConstants;
-    const uint32_t mask = lightPass ? source.lightTextureMask : source.baseTextureMask;
+    const uint32_t mask = lightPass ? source.lightTextureMask :
+        source.baseTextureMask | (forward ? source.lightTextureMask : 0u);
     if (FAILED(shader->Bind_RawValue("g_SourceCharacterTime", &g_SourceCharacterTime, sizeof(g_SourceCharacterTime))) ||
         FAILED(shader->Bind_RawValue("g_SourceCharacterProgram", &source.program, sizeof(source.program))) ||
         FAILED(shader->Bind_RawValue("g_SourceCharacterRow", &row, sizeof(row))) ||
@@ -744,6 +887,9 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
 HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
 {
     if (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return S_FALSE;
+    const uint32_t program = m_Surface.sourceCharacter.program;
+    if (program >= 33u && program <= 65u)
+        return Bind_SourceCharacterInputs(shader, false, 0u);
     auto found = std::find_if(g_SourceCharacterFrame.begin(), g_SourceCharacterFrame.end(),
         [this](const auto& entry) { return entry.get() == this; });
     if (found == g_SourceCharacterFrame.end())
@@ -763,9 +909,58 @@ HRESULT CMaterial::Bind_SourceCharacterLight(shared_ptr<CShader> shader, uint32_
     return g_SourceCharacterFrame[index]->Bind_SourceCharacterInputs(shader, true, index + 1u);
 }
 
+HRESULT CMaterial::Bind_StaticShadow(shared_ptr<CShader> shader)
+{
+    if (!shader) return E_INVALIDARG;
+    const uint32_t enabled = m_Surface.hasStaticShadow ? 1u : 0u;
+    if (FAILED(shader->Bind_RawValue("g_HasStaticShadow", &enabled, sizeof(enabled))) ||
+        FAILED(shader->Bind_RawValue("g_StaticShadowChannel", &m_Surface.staticShadowChannel, sizeof(m_Surface.staticShadowChannel))) ||
+        FAILED(shader->Bind_RawValue("g_StaticShadowTransfer", &m_Surface.staticShadowTransfer, sizeof(m_Surface.staticShadowTransfer))) ||
+        (enabled && FAILED(shader->Bind_Texture("g_StaticShadowTexture", m_StaticShadow)))) return E_FAIL;
+    return S_OK;
+}
+
+HRESULT CMaterial::Bind_SourceSpecialSurface(shared_ptr<CShader> shader)
+{
+    if (!shader || m_Surface.family < MODEL_SURFACE_FAMILY::SOURCE_SNOWICE_OPAQUE ||
+        m_Surface.family > MODEL_SURFACE_FAMILY::SOURCE_WET_OPAQUE) return E_INVALIDARG;
+    const auto& special = m_Surface.sourceSpecial;
+    const bool ice = m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_SNOWICE_OPAQUE;
+    const bool blend = m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_VERTEXBLEND_OPAQUE;
+    if (FAILED(shader->Bind_RawValue("g_SourceSpecialFlags", &special.flags, sizeof(special.flags)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceNormalTiling", &special.normalTiling, sizeof(special.normalTiling)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceIceCoreColor", &special.iceCoreColor, sizeof(special.iceCoreColor)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceIceOuterColor", &special.iceOuterColor, sizeof(special.iceOuterColor)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceIceBlend", &special.iceBlend, sizeof(special.iceBlend)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceIceBumpOffset", &special.iceBumpOffset, sizeof(special.iceBumpOffset)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceWetParameters", &special.wetParameters, sizeof(special.wetParameters)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceWetSpecularPower", &special.wetSpecularPower, sizeof(special.wetSpecularPower)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceBlendSharpness", &special.blendSharpness, sizeof(special.blendSharpness)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceBlendDiffuse", special.blendDiffuse.data(), sizeof(special.blendDiffuse)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceBlendSpecular", special.blendSpecular.data(), sizeof(special.blendSpecular)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceBlendLayers", special.blendLayers.data(), sizeof(special.blendLayers)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &m_Surface.uvTiling, sizeof(m_Surface.uvTiling)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalIntensity", &m_Surface.detailNormalIntensity, sizeof(m_Surface.detailNormalIntensity)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalTiling", &m_Surface.detailNormalTiling, sizeof(m_Surface.detailNormalTiling)))) return E_FAIL;
+    if (FAILED(shader->Bind_RawValue("g_SourceBgRimlight", &m_Surface.sourceBgRimlight, sizeof(m_Surface.sourceBgRimlight)))) return E_FAIL;
+    if (FAILED(shader->Bind_Texture("g_NormalTexture", m_SurfaceNormal)) ||
+        (!blend && FAILED(shader->Bind_Texture("g_ReflectionTexture", m_SurfaceReflection))) ||
+        (!blend && (!ice || (special.flags & 2u)) && FAILED(shader->Bind_Texture("g_SpecularTexture", m_SurfaceSpecular))) ||
+        ((blend || (ice && (special.flags & 1u))) && FAILED(shader->Bind_Texture("g_DetailNormalTexture", m_SurfaceDetailNormal))) ||
+        (blend && (FAILED(shader->Bind_Texture("g_SurfaceOverlayDiffuseTexture", m_SurfaceOverlayDiffuse)) ||
+            FAILED(shader->Bind_Texture("g_SurfaceOverlayNormalTexture", m_SurfaceOverlayNormal)))) ||
+        (ice && FAILED(shader->Bind_Texture("g_SourceSpecialMaskTexture", m_SourceSpecialMask))) ||
+        (blend && (special.flags & 1u) && (FAILED(shader->Bind_Texture("g_SourceBlendDiffuseGTexture", m_SourceBlendDiffuseG)) ||
+            FAILED(shader->Bind_Texture("g_SourceBlendNormalGTexture", m_SourceBlendNormalG)))) ||
+        (blend && (special.flags & 2u) && (FAILED(shader->Bind_Texture("g_SourceBlendDiffuseBTexture", m_SourceBlendDiffuseB)) ||
+            FAILED(shader->Bind_Texture("g_SourceBlendNormalBTexture", m_SourceBlendNormalB))))) return E_FAIL;
+    return S_OK;
+}
+
 HRESULT CMaterial::Bind_SurfaceLighting(shared_ptr<CShader> shader)
 {
     if (!shader) return E_INVALIDARG;
+    if (FAILED(Bind_StaticShadow(shader))) return E_FAIL;
     if (m_Surface.hasBakedLighting &&
         (FAILED(shader->Bind_Texture("g_BakedAverageTexture", m_BakedAverage)) ||
          FAILED(shader->Bind_Texture("g_BakedDirectionalTexture", m_BakedDirectional)))) return E_FAIL;
@@ -802,6 +997,7 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 	case aiTextureType_HEIGHT: texture = m_SurfaceDetailNormal; break;
 	case aiTextureType_UNKNOWN: texture = m_SurfaceORM; break;
 	case aiTextureType_EMISSIVE: texture = m_SurfaceEmissive; break;
+    case aiTextureType_TRANSMISSION: texture = m_SourceFoliageMask; break;
     // Surface-only roles, separate from the legacy color-mask texture array.
     case aiTextureType_BASE_COLOR: texture = m_SurfaceOverlayDiffuse; break;
     case aiTextureType_NORMAL_CAMERA: texture = m_SurfaceOverlayNormal; break;

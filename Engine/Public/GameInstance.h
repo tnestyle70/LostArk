@@ -94,12 +94,16 @@ public: /* For.Object_Manager */
 public: /* Renderer */
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<class CGameObject> pRenderObject);
 	void Request_SceneColorSnapshot();
+    void Request_SceneEnvironmentReplacement();
+    bool_t Is_SceneEnvironmentReplaced() const;
+	HRESULT Refresh_SceneColorSnapshot();
 	RENDER_QUALITY_SETTINGS Get_RenderQualitySettings() const;
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 	MATERIAL_RENDER_SETTINGS Get_MaterialRenderSettings() const;
 	HRESULT Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings);
 	HEIGHT_FOG_SETTINGS Get_HeightFogSettings() const;
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
+	HRESULT Bind_HeightFog(class CShader* shader) const;
 	HRESULT Stage_RenderEnvironment(const wstring_t& cubePath, const float4_t& color,
 		const float4_t& rotationIntensity, RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload = false) const;
 	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
@@ -125,7 +129,8 @@ public: /* For.Light */
 	const vector<LIGHT_DESC>& Get_SceneLights() const;
 	HRESULT Render_Lights(shared_ptr<class CShader> pShader,
 		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-		bool_t bEnableSceneDirectionalShadow);
+		bool_t bEnableSceneDirectionalShadow,
+        LIGHT_RECEIVER ePassReceiver = LIGHT_RECEIVER::ALL);
 
 
 public: /* For.Font_Manager */

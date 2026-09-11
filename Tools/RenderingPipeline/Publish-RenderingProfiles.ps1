@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
@@ -18,6 +18,13 @@ if ([string]::IsNullOrWhiteSpace($DestinationPath)) {
 }
 $SourcePath = [IO.Path]::GetFullPath($SourcePath)
 $DestinationPath = [IO.Path]::GetFullPath($DestinationPath)
+
+function Assert-SourceFog([object]$Value) {
+    Assert-Color $Value.inscatteringColor 'sourceFog inscatteringColor'
+    Assert-Vector4 $Value.lightDirection -1 1 'sourceFog lightDirection'
+    $d = $Value.lightDirection
+    if ([Math]::Abs($d[0]*$d[0]+$d[1]*$d[1]+$d[2]*$d[2]-1) -gt .001) { throw 'Source fog light direction is not normalized.' }
+}
 
 function Assert-ExactProperties(
     [object]$Value,
@@ -263,6 +270,38 @@ function Assert-RenderingProfileDocument([object]$Document) {
             Assert-RenderingQuality $profile.qualityOverride
             $quality = $profile.qualityOverride
         }
+        if ($null -ne $profile.PSObject.Properties['environmentRegions']) {
+            $profileFields += 'environmentRegions'
+            $regions = @($profile.environmentRegions)
+            if ($regions.Count -lt 1 -or $regions.Count -gt 64) { throw 'environmentRegions requires 1 to 64 volumes.' }
+            $regionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($region in $regions) {
+                Assert-ExactProperties $region @('regionId','boundsMinimum','boundsMaximum','planes','fog','directionalColor','ambientColor','blendTimeIn','blendTimeOut') 'environmentRegion'
+                if ($region.regionId -isnot [string] -or $region.regionId -cnotmatch '^[A-Za-z0-9_.-]{1,128}$' -or !$regionIds.Add($region.regionId)) { throw 'Invalid or duplicate environment region ID.' }
+                foreach ($bound in @('boundsMinimum','boundsMaximum')) {
+                    if (@($region.$bound).Count -ne 3) { throw 'Environment bound requires 3 numbers.' }
+                    foreach ($number in $region.$bound) { Assert-FiniteRange $number -100000 100000 'environment bound' }
+                }
+                for ($axis=0;$axis -lt 3;$axis++) { if ($region.boundsMinimum[$axis] -ge $region.boundsMaximum[$axis]) { throw 'Empty environment volume bounds.' } }
+                $planes = @($region.planes)
+                if ($planes.Count -lt 4 -or $planes.Count -gt 64) { throw 'Environment volume requires 4 to 64 planes.' }
+                foreach ($plane in $planes) {
+                    Assert-Vector4 $plane -100000 100000 'environment plane'
+                    if ([Math]::Abs($plane[0]*$plane[0]+$plane[1]*$plane[1]+$plane[2]*$plane[2]-1) -gt .001) { throw 'Environment plane normal is not normalized.' }
+                }
+                Assert-FiniteRange $region.blendTimeIn 0 60 'environment blendTimeIn'
+                Assert-FiniteRange $region.blendTimeOut 0 60 'environment blendTimeOut'
+                Assert-Color $region.directionalColor 'environment directionalColor'
+                Assert-Color $region.ambientColor 'environment ambientColor'
+                $regionFog = $region.fog
+                Assert-ExactProperties $regionFog @('density','heightFalloff','topHeight','startDistance','maximumOpacity','color','inscatteringColor','lightDirection') 'environment fog'
+                foreach ($v in @(@('density',0,8),@('heightFalloff',.0001,4),@('topHeight',-10000,10000),@('startDistance',0,100000),@('maximumOpacity',0,1))) {
+                    Assert-FiniteRange $regionFog.($v[0]) $v[1] $v[2] ('environment '+$v[0])
+                }
+                Assert-Color $regionFog.color 'environment color'
+                Assert-SourceFog $regionFog
+            }
+        }
         Assert-ExactProperties $profile $profileFields 'profile'
 		if ($profile.profileId -isnot [string]) {
 			throw 'profile.profileId must be a string.'
@@ -329,13 +368,19 @@ function Assert-RenderingProfileDocument([object]$Document) {
             "$profileId.shadow.strength"
 
         $fog = $profile.fog
-        Assert-ExactProperties $fog @(
+        $fogFields = @(
             'enabled', 'color', 'density', 'heightFalloff',
             'topHeight', 'startDistance', 'maximumOpacity',
             'driftSpeed', 'driftHeightAmplitude',
             'driftDensityAmplitude', 'coveragePercent',
             'windDirectionX', 'windDirectionZ', 'windSpeed',
-            'patchScale', 'patchSoftness') "$profileId.fog"
+            'patchScale', 'patchSoftness')
+        if ($null -ne $fog.PSObject.Properties['sourceExponential']) {
+            $fogFields += 'sourceExponential'
+            Assert-ExactProperties $fog.sourceExponential @('inscatteringColor','lightDirection') 'sourceExponential fog'
+            Assert-SourceFog $fog.sourceExponential
+        }
+        Assert-ExactProperties $fog $fogFields "$profileId.fog"
         if ($fog.enabled -isnot [bool]) {
             throw "$profileId.fog.enabled must be boolean."
         }

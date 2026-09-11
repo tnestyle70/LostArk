@@ -1,0 +1,514 @@
+{
+  "scope": "Static audit of current source/data, no Client or GPU execution",
+  "characterCuePolicies": [
+    {
+      "asset": "Artist",
+      "path": "Data/Animation/Authored/Artist/Artist.animevents",
+      "cueCount": 18,
+      "policies": {
+        "natural": 17,
+        "cue_end": 1
+      },
+      "boundedCues": [
+        {
+          "line": 1035,
+          "text": "\"sdm_sk_super_pungnyudo_01\" EFFECT startms=0 endms=6000 payload=\"effect.artist.skill.31930.full.restore\" effectref=asset anchor=\"root\" follow=follow stop=cue_end px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1"
+        }
+      ]
+    },
+    {
+      "asset": "DimensionMaster",
+      "path": "Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents",
+      "cueCount": 15,
+      "policies": {
+        "natural": 15
+      },
+      "boundedCues": []
+    },
+    {
+      "asset": "Warlord",
+      "path": "Data/Animation/Authored/Warlord/Warlord.animevents",
+      "cueCount": 26,
+      "policies": {
+        "natural": 26
+      },
+      "boundedCues": []
+    },
+    {
+      "asset": "LanceMaster",
+      "path": "Data/Animation/Authored/LanceMaster/LanceMaster.animevents",
+      "cueCount": 46,
+      "policies": {
+        "natural": 46
+      },
+      "boundedCues": []
+    }
+  ],
+  "dimensionMasterAltVLateBursts": [
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_40",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_40",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 1,
+      "lateBurstRowCount": 1,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_37",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_37",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 1,
+      "lateBurstRowCount": 1,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.150000006,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_7",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_7",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 7,
+      "lateBurstRowCount": 6,
+      "allBurstsAfterEmissionWindow": false,
+      "bursts": [
+        {
+          "timeSeconds": 0,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.150000006,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.449999988,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.75,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_9",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_9",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0.100000001,
+      "burstRowCount": 7,
+      "lateBurstRowCount": 6,
+      "allBurstsAfterEmissionWindow": false,
+      "bursts": [
+        {
+          "timeSeconds": 0,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.150000006,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.449999988,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.75,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_10",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_10",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 7,
+      "lateBurstRowCount": 6,
+      "allBurstsAfterEmissionWindow": false,
+      "bursts": [
+        {
+          "timeSeconds": 0,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.150000006,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.449999988,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.75,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_47",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_47",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 1,
+      "lateBurstRowCount": 1,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.150000006,
+          "countMinimum": 2,
+          "countMaximum": 2
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_exp_01.particlespriteemitter_51",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_exp_01|FX_PC_SWP_04.par_m_swp_tw_exp_01.particlespriteemitter_51",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 1,
+      "lateBurstRowCount": 1,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.150000006,
+          "countMinimum": 2,
+          "countMaximum": 2
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_expground_01.particlespriteemitter_114",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_expground_01|FX_PC_SWP_04.par_m_swp_tw_expground_01.particlespriteemitter_114",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 4,
+      "lateBurstRowCount": 2,
+      "allBurstsAfterEmissionWindow": false,
+      "bursts": [
+        {
+          "timeSeconds": 0,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.100000001,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.200000003,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_26",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01|FX_PC_SWP_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_26",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 3,
+      "lateBurstRowCount": 3,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_27",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01|FX_PC_SWP_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_27",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 3,
+      "lateBurstRowCount": 3,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_28",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01|FX_PC_SWP_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_28",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 3,
+      "lateBurstRowCount": 3,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json",
+      "elementId": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_29",
+      "sourceNode": "fx_pc_swp_04.par_m_swp_tw_local_boxshockwave_01|FX_PC_SWP_04.par_m_swp_tw_local_boxshockwave_01.particlespriteemitter_29",
+      "sourceEmitterDurationSeconds": 0,
+      "fallbackTimingLifeSeconds": 0.100000001,
+      "emitterLoopCount": 1,
+      "sourceDelaySeconds": 0,
+      "burstRowCount": 3,
+      "lateBurstRowCount": 3,
+      "allBurstsAfterEmissionWindow": true,
+      "bursts": [
+        {
+          "timeSeconds": 0.300000012,
+          "countMinimum": 2,
+          "countMaximum": 2
+        },
+        {
+          "timeSeconds": 0.600000024,
+          "countMinimum": 1,
+          "countMaximum": 1
+        },
+        {
+          "timeSeconds": 0.899999976,
+          "countMinimum": 1,
+          "countMaximum": 1
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "assetCues": 105,
+    "natural": 104,
+    "cueEnd": 1,
+    "lateBurstElements": 12,
+    "allBurstsLateElements": 8,
+    "lateBurstRows": 36
+  },
+  "sourceIndependentClockExample": {
+    "path": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/RemainingCharacterExtraction-20260829/ActionNameSources/MN_RPCZ_00.action-effects.json",
+    "profile": "MN_RPCZ_00",
+    "actionId": 42197100,
+    "displayName": "쿠크_응집된 에너지 발산",
+    "stageIndex": 1,
+    "animationClips": [
+      {
+        "clipName": "Att_Battle_14_02",
+        "lengthSeconds": 0.6666669845581055,
+        "notifyId": "action-42197100/stage-001/notify-000"
+      }
+    ],
+    "notifies": [
+      {
+        "notifyId": "action-42197100/stage-001/notify-000",
+        "sourceType": "Anim",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 0.6666669845581055,
+        "assetReferences": [],
+        "clipName": "Att_Battle_14_02",
+        "sourceOffset": 2043020
+      },
+      {
+        "notifyId": "action-42197100/stage-001/notify-001",
+        "sourceType": "PawnMaterialParam",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 2.5999999046325684,
+        "assetReferences": [],
+        "sourceOffset": 2043312
+      },
+      {
+        "notifyId": "action-42197100/stage-001/notify-002",
+        "sourceType": "PlayParticleEffect",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 2.5999999046325684,
+        "assetReferences": [
+          {
+            "className": "ParticleSystem",
+            "objectPath": "fx_mn_rpcz_00_u.Par_U_RPCZ_EnergyBalloon_01_LOC_INT"
+          }
+        ],
+        "sourceOffset": 2043736
+      },
+      {
+        "notifyId": "action-42197100/stage-001/notify-003",
+        "sourceType": "AKEvent",
+        "localTimeSeconds": 0.0010000000474974513,
+        "durationSeconds": 1.2999999523162842,
+        "assetReferences": [
+          {
+            "className": "AkEvent",
+            "objectPath": "S_Mob_G_KouKu1.G_KouKu1_Attack14_Shot2"
+          }
+        ],
+        "sourceOffset": 2044345
+      },
+      {
+        "notifyId": "action-42197100/stage-001/notify-004",
+        "sourceType": "Paralyzation",
+        "localTimeSeconds": 0.20000000298023224,
+        "durationSeconds": 0.10000000149011612,
+        "assetReferences": [],
+        "sourceOffset": 2044546
+      },
+      {
+        "notifyId": "action-42197100/stage-001/notify-005",
+        "sourceType": "Effect",
+        "localTimeSeconds": 0.30000001192092896,
+        "durationSeconds": 0.20000000298023224,
+        "assetReferences": [],
+        "sourceOffset": 2044650
+      },
+      {
+        "notifyId": "action-42197100/stage-001/notify-006",
+        "sourceType": "Paralyzation",
+        "localTimeSeconds": 2.4000000953674316,
+        "durationSeconds": 0.10000000149011612,
+        "assetReferences": [],
+        "sourceOffset": 2044800
+      }
+    ],
+    "limitation": "Raw action stage transitions are not verified; duration overlap does not prove the exact in-game stage wall clock."
+  }
+}

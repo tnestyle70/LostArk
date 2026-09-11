@@ -42330,10 +42330,10 @@
                 "sourceClass": "distributionvectoruniformrange",
                 "sourceObjectPath": "FX_PC_SWP_02.par_r_swp_momentaryrift_00_03.particlemodulesize_11.distributionvectoruniformrange_2",
                 "componentCount": 3,
-                "operation": 2,
+                "operation": 4,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 12,
+                "lookupTableNumElements": 4,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -42348,7 +42348,22 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  -190.0,
+                  300.0,
+                  120.0,
+                  120.0,
+                  0.0,
+                  190.0,
+                  300.0,
+                  0.0,
+                  -120.0,
+                  -120.0,
+                  0.0,
+                  -190.0,
+                  -150.0,
+                  0.0
+                ],
                 "keys": []
               }
             ]
@@ -43645,10 +43660,10 @@
                 "sourceClass": "distributionvectoruniformrange",
                 "sourceObjectPath": "FX_PC_SWP_02.par_r_swp_momentaryrift_00_03.particlemodulesize_11.distributionvectoruniformrange_2",
                 "componentCount": 3,
-                "operation": 2,
+                "operation": 4,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 12,
+                "lookupTableNumElements": 4,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -43663,7 +43678,22 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  -190.0,
+                  300.0,
+                  120.0,
+                  120.0,
+                  0.0,
+                  190.0,
+                  300.0,
+                  0.0,
+                  -120.0,
+                  -120.0,
+                  0.0,
+                  -190.0,
+                  -150.0,
+                  0.0
+                ],
                 "keys": []
               }
             ]

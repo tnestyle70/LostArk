@@ -1,4 +1,5 @@
 #include "WorldSequencePlayer.h"
+#include "ActorCatalog.h"
 #include "WorldSequenceObject.h"
 #include "DeployPropObject.h"
 #include "GameInstance.h"
@@ -132,13 +133,16 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             if (path.empty())
             { m_Status = "World Object model path is invalid: " + resource->modelAssetId; return false; }
             MODEL_ASSET_LOAD_DESC load;
-            load.assetRoot = CRuntimeAssetRoot::Get_ResourceRoot();
-            load.meshPath = path;
+            if (!CActorCatalog::Build_ModelLoadDescription(resource->modelAssetId, load, m_Status))
+                return false;
             if (resource->materialProfile)
             {
                 MODEL_MATERIAL_OVERRIDE material;
                 if (!CWorldSequenceDocument::Build_MaterialOverride(*resource->materialProfile, load.assetRoot, material))
                 { m_Status = "World Object material admission failed: " + resource->objectId; return false; }
+                std::erase_if(load.materialOverrides, [&](const MODEL_MATERIAL_OVERRIDE& prior) {
+                    return prior.materialName == material.materialName;
+                });
                 load.materialOverrides.push_back(std::move(material));
             }
             staged.model = CModel::Create(targets.device, targets.context,
@@ -286,12 +290,18 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
         XMMatrixRotationRollPitchYaw((randomUnit() - .5f) * spread, (randomUnit() - .5f) * spread * 2.f, 0.f) :
         XMMatrixRotationY((randomUnit() - .5f) * spread);
     const vector_t velocity = XMVector3TransformNormal(XMLoadFloat3(&motion.velocity), direction);
+    // Sample after the existing velocity draws so zero extents preserve old paths.
+    // Seed + emitter remain stable across every age sample and attached Effect.
+    const float spawnX = (randomUnit() * 2.f - 1.f) * motion.spawnHalfExtents.x;
+    const float spawnY = (randomUnit() * 2.f - 1.f) * motion.spawnHalfExtents.y;
+    const float spawnZ = (randomUnit() * 2.f - 1.f) * motion.spawnHalfExtents.z;
+    const vector_t spawnOffset = XMVectorSet(spawnX, spawnY, spawnZ, 0.f);
     const matrix_t revolution = XMMatrixRotationRollPitchYaw(
         XMConvertToRadians(motion.revolutionDegreesPerSecond.x * seconds),
         XMConvertToRadians(motion.revolutionDegreesPerSecond.y * seconds),
         XMConvertToRadians(motion.revolutionDegreesPerSecond.z * seconds));
     const vector_t orbit = XMLoadFloat3(&motion.revolutionOffset);
-    const vector_t position = (((active.placement && instance.anchorKind == "WORLD") || anchor.emissionOverride) ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) +
+    const vector_t position = (((active.placement && instance.anchorKind == "WORLD") || anchor.emissionOverride) ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) + spawnOffset +
         velocity * seconds + XMLoadFloat3(&motion.acceleration) * (.5f * seconds * seconds) +
         XMVector3TransformNormal(orbit, revolution) - orbit;
     const vector_t scale = XMLoadFloat3(&resource.scale) * XMLoadFloat3(&key.scaleMultiplier);
