@@ -66,14 +66,6 @@ public:
 		END
 	};
 
-	enum class UV_MODE : int32_t
-	{
-		PLANAR,
-		POLAR_RAYS,
-		POLAR_RINGS,
-		END
-	};
-
 	enum class TEXTURE_INPUT : int32_t
 	{
 		BASE,
@@ -266,7 +258,6 @@ public:
 		float2_t vUVStart = { 0.f, 0.f };
 		float2_t vUVSpeed = { 0.f, 0.f };
 		float2_t vUVTileCount = { 1.f, 1.f };
-		UV_MODE eUVMode = UV_MODE::PLANAR;
 		f32_t fNoiseStrength = 0.f;
 		f32_t fNoiseScale = 1.f;
 		float2_t vNoisePan = { 0.f, 0.f };

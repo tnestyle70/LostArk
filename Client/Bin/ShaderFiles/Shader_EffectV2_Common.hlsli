@@ -24,8 +24,6 @@ float g_DistortionIntensity = 0.f;
 float2 g_UVStart = float2(0.f, 0.f);
 float2 g_UVSpeed = float2(0.f, 0.f);
 float2 g_UVTileCount = float2(1.f, 1.f);
-/* 0 Planar, 1 PolarRays (u = radius, v = angle), 2 PolarRings (u = angle, v = radius). */
-uint g_UVMode = 0;
 float g_NoiseStrength = 0.f;
 float g_NoiseScale = 1.f;
 float2 g_NoisePan = float2(0.f, 0.f);
@@ -208,19 +206,9 @@ BlendState BS_EffectV2Multiply
 	RenderTargetWriteMask[1] = 0x03;
 };
 
-/* Polar modes remap the quad so a horizontally tiling streak texture wraps
-   around the centre. Tile count and speed then act on (radius, angle). */
 float2 Effect_UV(float2 texcoord)
 {
-	float2 tc = texcoord;
-	if (0 != g_UVMode)
-	{
-		const float2 centered = texcoord - 0.5f;
-		const float angle = atan2(centered.y, centered.x) * (0.5f / 3.14159265f) + 0.5f;
-		const float radius = saturate(length(centered) * 2.f);
-		tc = (1 == g_UVMode) ? float2(radius, angle) : float2(angle, radius);
-	}
-	return tc * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+	return texcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
 }
 
 struct PS_EFFECT_IN

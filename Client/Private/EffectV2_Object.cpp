@@ -1726,7 +1726,6 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 	const f32_t fDissolveAmount = Dissolve_Amount();
 	const uint32_t iDissolveWarp = P.bDissolveWarp ? 1u : 0u;
 	const uint32_t iMaskWarp = P.bMaskWarp ? 1u : 0u;
-	const uint32_t iUVMode = static_cast<uint32_t>(P.eUVMode);
 	const f32_t fLifeRatio = Life_Ratio();
 	float4_t vColorMul = P.vColorMul;
 	float4_t vColorOffset = P.vColorOffset;
@@ -1758,7 +1757,6 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_UVStart", &P.vUVStart, sizeof(P.vUVStart))) ||
 		FAILED(pShader->Bind_RawValue("g_UVSpeed", &P.vUVSpeed, sizeof(P.vUVSpeed))) ||
 		FAILED(pShader->Bind_RawValue("g_UVTileCount", &P.vUVTileCount, sizeof(P.vUVTileCount))) ||
-		FAILED(pShader->Bind_RawValue("g_UVMode", &iUVMode, sizeof(iUVMode))) ||
 		FAILED(pShader->Bind_RawValue("g_NoiseStrength", &P.fNoiseStrength, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_NoiseScale", &P.fNoiseScale, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_NoisePan", &P.vNoisePan, sizeof(P.vNoisePan))) ||
