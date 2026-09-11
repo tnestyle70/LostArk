@@ -166,6 +166,10 @@ namespace LostArk::Server
 			if (0u != iMarioStage)
 			{
 				eMadnessForm = ePreMarioForm;
+				/* The stage owns the arena HUD mode the same way it owns the
+				form, so leaving hands both back. Clear_KoukuInteractionState
+				is not used here: it would also drop a Debug override. */
+				eKoukuAreaHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 				hasMoveGoal = false;
 				MovePath.clear();
 				iMovePathIndex = 0u;

@@ -771,7 +771,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	/* The temporary team LAN endpoint is the direct-launch fallback. The
 	   process-local environment still wins so isolated tests can name loopback. */
-	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.1";
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.14";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(

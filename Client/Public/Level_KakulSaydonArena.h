@@ -217,7 +217,7 @@ public:
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
-		std::string_view occurrenceId = {}) const;
+		std::string_view occurrenceId = {}, std::uint32_t emissionIndex = 0u) const;
     bool_t Create_CompositionPreviewActor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
         std::shared_ptr<CNpc>& outActor, std::string& status);
     void Release_CompositionPreviewActor(const std::shared_ptr<CNpc>& actor);
@@ -232,7 +232,7 @@ public:
     bool_t Can_StartCompositionWorld(const std::string& instanceId, std::string& status,
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
-		const std::string& sequenceId, const std::string& cueId, float4x4_t& out) const;
+		const std::string& sequenceId, const std::string& cueId, float4x4_t& out, std::uint32_t emissionIndex = 0u) const;
 	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG
@@ -305,6 +305,18 @@ private:
 	f32_t m_fMarioBallBounceSnapshotSeconds = 0.f;
 	bool_t m_bMarioBallBounceRunning = false;
 	bool_t m_bMarioBallBounceFailed = false;
+	/* Server-popped source balls of the current layout: a newly set slot bit
+	   hides that binding through the sequence player and plays the ball's
+	   smoke leaf once; a newly set curse bit queues the centred notice. */
+	void Update_MarioBallPresentation(f32_t timeDelta);
+	std::string m_strMarioBallLayoutInstance;
+	std::uint16_t m_iMarioPoppedBallsSeen = 0u;
+	std::uint8_t m_iMarioCurseSeen = 0u;
+	std::uint8_t m_iMarioCurseNoticeQueue = 0u;
+	std::int32_t m_iMarioCurseNoticeColor = -1;
+	f32_t m_fMarioCurseNoticeSeconds = 0.f;
+	std::array<std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>, 3u> m_MarioBallSmoke;
+	std::array<bool_t, 3u> m_bMarioBallSmokeFailed = {};
 	// Presentation-only launch markers use published world positions and the existing object player.
 	struct MARIO_BOMB_EMITTER
 	{

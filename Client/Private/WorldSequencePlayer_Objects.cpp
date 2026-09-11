@@ -182,13 +182,31 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
     active.objects.clear();
 }
 
-bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out) const
+bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out,
+    const uint32_t emissionIndex) const
 {
     const auto active = std::find_if(m_Active.begin(), m_Active.end(),
         [&](const auto& value) { return value.instanceId == instanceId; });
-    if (active == m_Active.end() || active->objects.size() != 1 || !active->objects.front().object ||
-        !active->objects.front().object->Is_Visible()) return false;
-    out = active->objects.front().object->Get_SampledWorld();
+    if (active == m_Active.end()) return false;
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    const auto* sequence = nullptr != instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (nullptr == sequence || sequence->objectMotion.emissions.empty())
+    {
+        if (0u != emissionIndex || active->objects.size() != 1 || !active->objects.front().object ||
+            !active->objects.front().object->Is_Visible()) return false;
+        out = active->objects.front().object->Get_SampledWorld();
+        return true;
+    }
+    // An authored row is one clone per anchor; a WORLD motion has exactly one anchor.
+    const CWorldSequenceObject* found = nullptr;
+    for (const auto& entry : active->objects)
+    {
+        if (entry.emissionIndex != emissionIndex || !entry.object) continue;
+        if (found) return false;
+        found = entry.object.get();
+    }
+    if (!found || !found->Is_Visible()) return false;
+    out = found->Get_SampledWorld();
     return true;
 }
 
@@ -262,7 +280,7 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
         XMConvertToRadians(motion.revolutionDegreesPerSecond.y * seconds),
         XMConvertToRadians(motion.revolutionDegreesPerSecond.z * seconds));
     const vector_t orbit = XMLoadFloat3(&motion.revolutionOffset);
-    const vector_t position = ((active.placement || anchor.emissionOverride) ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) +
+    const vector_t position = XMLoadFloat3(&key.positionOffset) +
         velocity * seconds + XMLoadFloat3(&motion.acceleration) * (.5f * seconds * seconds) +
         XMVector3TransformNormal(orbit, revolution) - orbit;
     const vector_t scale = XMLoadFloat3(&resource.scale) * XMLoadFloat3(&key.scaleMultiplier);
@@ -279,6 +297,16 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
             XMConvertToRadians(motion.angularVelocityDegrees.y * seconds),
             XMConvertToRadians(motion.angularVelocityDegrees.z * seconds));
     matrix_t world = XMMatrixScalingFromVector(scale) * rotation * XMMatrixTranslationFromVector(position);
+    /* An authored row turns the whole local motion, orbit included, so one row
+       set fans a path into lanes or lays a ring of copies orbiting one centre. */
+    if (!motion.emissions.empty())
+    {
+        const auto& emission = motion.emissions[(std::min)(static_cast<size_t>(emitter), motion.emissions.size() - 1u)];
+        world *= XMMatrixRotationY(XMConvertToRadians(emission.yawDegrees)) *
+            XMMatrixTranslationFromVector(XMLoadFloat3(&emission.positionOffset));
+    }
+    if (!(active.placement || anchor.emissionOverride))
+        world *= XMMatrixTranslationFromVector(XMLoadFloat3(&instance.position));
     if (!anchor.emissionOverride) world *= basis;
     if (active.placement)
     {
@@ -329,11 +357,12 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
         if (!resource || model == m_ObjectModels.end())
         { m_Status = "World Object model was not prepared: " + binding.targetId; return false; }
         for (const auto& anchor : anchors)
-            for (uint32_t emitter = 0; emitter < motion.count; ++emitter)
+            for (uint32_t emitter = 0; emitter < motion.EmissionCount(); ++emitter)
             {
-                const f32_t ageMs = localMs - static_cast<f32_t>(emitter) * motion.intervalMs;
+                const f32_t delayMs = static_cast<f32_t>(motion.EmissionDelayMs(emitter));
+                const f32_t ageMs = localMs - delayMs;
                 if (ageMs < 0.f || (!holdFinalPose && !sequence.effectTracks.empty() && ageMs >= sequence.durationMs)) continue;
-                const f32_t birthMs = emissionStartMs + emitter * static_cast<f32_t>(motion.intervalMs) / emissionRate;
+                const f32_t birthMs = emissionStartMs + delayMs / emissionRate;
                 if (!sequence.effectTracks.empty() && active.durationMs && birthMs >= active.durationMs) continue;
                 PLAYER_ANCHOR emissionAnchor;
                 const auto emissionKey = emissionMotionId + ":" + std::to_string(emissionStartMs) + ":" + std::to_string(emitter);
@@ -415,9 +444,9 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                 if (snapshot == m_EffectSnapshots.end())
                 { m_Status = "World Object effect was not prepared: " + effect.resourceId; return false; }
                 const f32_t trigger = static_cast<f32_t>(sequence->EffectStartMs(effect));
-                for (uint32_t emitter = 0; emitter < sequence->objectMotion.count; ++emitter)
+                for (uint32_t emitter = 0; emitter < sequence->objectMotion.EmissionCount(); ++emitter)
                 {
-                    const f32_t birth = emitter * static_cast<f32_t>(sequence->objectMotion.intervalMs) + trigger;
+                    const f32_t birth = static_cast<f32_t>(sequence->objectMotion.EmissionDelayMs(emitter)) + trigger;
                     if (localMs < birth) continue;
                     const bool loop = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP;
                     const uint64_t last = loop ? static_cast<uint64_t>(std::floor((localMs - birth) / period)) : 0u;
@@ -500,9 +529,12 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
     return true;
 }
 
-bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out) const
+bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out,
+ const uint32_t emissionIndex) const
 {
- if (Try_GetObjectPivot(instanceId, out)) return true;
+ if (Try_GetObjectPivot(instanceId, out, emissionIndex)) return true;
+ // Placed map aliases have no emission rows; only row 0 can name them.
+ if (0u != emissionIndex) return false;
  const auto* instance = Get_Document().Find_Instance(instanceId);
  if (!instance) return false;
  const WORLD_SEQUENCE_BINDING* binding = nullptr;

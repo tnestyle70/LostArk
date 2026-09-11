@@ -3,6 +3,7 @@
 #include "ServerCombatHitRuntime.h"
 #include "KoukuSaydonBrain.h"
 #include "ServerCollisionSystem.h"
+#include "ServerNavigation.h"
 #include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
@@ -284,7 +285,8 @@ namespace
 		const LostArk::Server::BOSS_LOGIC_REGION& region,
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss, const std::uint32_t patternElapsedTicks,
 		const std::uint32_t windowIndex, const std::uint32_t regionIndex,
-		const std::uint32_t releaseTick, const std::uint32_t serverTick) noexcept
+		const std::uint32_t releaseTick, const std::uint32_t serverTick,
+		const LostArk::Server::CServerNavigation* navigation) noexcept
 	{
 		using namespace LostArk::Shared;
 		LOGIC_REGION_TRANSFORM transform;
@@ -294,14 +296,21 @@ namespace
 			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))
 			return false;
+		/* The hook lanes cross cells this Area never baked as walkable, so a
+		navigation refusal must not cancel the catch. Sample the floor when the
+		grid can answer and otherwise keep the height the runner already had. */
+		LostArk::Server::SERVER_NAV_POINT ground{};
+		const bool hasGround = nullptr != navigation &&
+			navigation->Resolve_TraversalStep(player.fPositionX, player.fPositionZ,
+				transform.centerX, transform.centerZ, ground);
 		player.iAttachmentOwnerNetEntityId = boss.iNetEntityId;
 		player.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
 		player.iAttachmentPatternSequence = boss.iPatternSequence;
 		player.fAttachmentLocalOffsetX = 0.f;
 		player.fAttachmentLocalOffsetY = 0.f;
 		player.fAttachmentLocalOffsetZ = 0.f;
-		// Caught facing whatever way they were running: keep that on the hook.
-		player.fAttachmentYawOffsetDegrees = Wrap180(player.fYawDegrees - transform.yaw);
+		// Hook travels on local +X; player animations face local +Z.
+		player.fAttachmentYawOffsetDegrees = 90.f;
 		player.iAttachmentWindowIndex = windowIndex;
 		player.iAttachmentRegionIndex = regionIndex;
 		player.iAttachmentReleaseTick = releaseTick;
@@ -319,7 +328,9 @@ namespace
 		player.iMovePathIndex = 0u;
 		player.isCombatReady = false;
 		player.fPositionX = transform.centerX;
+		if (hasGround) player.fPositionY = ground.y;
 		player.fPositionZ = transform.centerZ;
+		player.fYawDegrees = Wrap180(transform.yaw + 90.f);
 		return true;
 	}
 
@@ -328,14 +339,24 @@ namespace
 	bool Drag_HookedPlayer(LostArk::Server::SERVER_PLAYER& player,
 		const LostArk::Server::BOSS_LOGIC_REGION& region,
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
-		const std::uint32_t patternElapsedTicks) noexcept
+		const std::uint32_t patternElapsedTicks,
+		const LostArk::Server::CServerNavigation* navigation) noexcept
 	{
 		LOGIC_REGION_TRANSFORM transform;
 		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
 			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))
 			return false;
+		/* The caught body rides the hook, so it follows the authored path even
+		where the grid has no walkable cell to offer. The path already ends
+		inside the arena and its last key is invisible, which is what ends the
+		drag above; a missing cell must not strand the player behind the hook. */
+		LostArk::Server::SERVER_NAV_POINT ground{};
+		const bool hasGround = nullptr != navigation &&
+			navigation->Resolve_TraversalStep(player.fPositionX, player.fPositionZ,
+				transform.centerX, transform.centerZ, ground);
 		player.fPositionX = transform.centerX;
+		if (hasGround) player.fPositionY = ground.y;
 		player.fPositionZ = transform.centerZ;
 		player.fYawDegrees = Wrap180(transform.yaw + player.fAttachmentYawOffsetDegrees);
 		player.hasMoveGoal = false;
@@ -759,7 +780,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		if (hanging.iAttachmentRegionIndex >= carrier.CardRegions.size())
 			continue;
 		if (!Drag_HookedPlayer(hanging, carrier.CardRegions[hanging.iAttachmentRegionIndex],
-			boss, serverTick - ledger.iPatternStartTick))
+			boss, serverTick - ledger.iPatternStartTick, navigation))
 			hanging.iAttachmentReleaseTick = serverTick;
 	}
 	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.MechanicTriggers)
@@ -1077,7 +1098,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					(void)Hang_PlayerOnRegion(player, *caught, boss,
 						serverTick - ledger.iPatternStartTick, state.iWindowIndex,
 						static_cast<std::uint32_t>(caught - window.CardRegions.begin()),
-						state.iEndTick, serverTick);
+						state.iEndTick, serverTick, navigation);
 			}
 			if (reachedEnd) Close_Window(boss, window, state, players);
 			break;

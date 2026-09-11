@@ -15,6 +15,16 @@ namespace
 	/* The player's madness doll uses the Polymorph 4134 MN_RPCZ_00-1 body,
 	material and animation set. It keeps the wearer's class identity through
 	CHARACTER_DESC while the Server owns its interaction actions. */
+	/* The Mario-1 monster's hammer, cooked in that monster's right-hand frame
+	and socketed to the doll's right hand -- both rigs are Biped, so the grip
+	carries over. Same part tag the playable classes use, so the existing
+	static weapon-part path carries it. */
+	constexpr WEAPON_PART_SPEC Weapons[] =
+	{
+		{ TEXT("Part_90_Weapon_R"),
+		  KOUKU_CLOWN_HAMMER_PROTOTYPE_TAG, KOUKU_CLOWN_HAMMER_SOCKET_BONE },
+	};
+
 	const CHARACTER_SPEC Spec_KoukuSaydonClown =
 	{
 		"KoukuSaydonClown",
@@ -27,8 +37,8 @@ namespace
 		0u,
 
 		TEXT("Prototype_Component_Shader_VtxMeshBinary"),
-		nullptr,
-		0u,
+		Weapons,
+		static_cast<uint32_t>(size(Weapons)),
 
 		nullptr,
 		0u,

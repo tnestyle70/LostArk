@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 230,
+  "sourceRevision": 234,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -15069,7 +15069,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.1",
           "kind": "ENTER_AREA",
           "startMs": 1000,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -15106,7 +15106,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   22.643896,
-                  1.2,
+                  1.263,
                   933.177546
                 ],
                 "baselineYawDegrees": 192.0,
@@ -15119,9 +15119,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15135,9 +15135,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15149,11 +15149,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15167,9 +15167,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15183,9 +15183,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15221,7 +15221,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.2",
           "kind": "ENTER_AREA",
           "startMs": 1175,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -15258,7 +15258,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   3.612182,
-                  1.2,
+                  1.263,
                   918.018593
                 ],
                 "baselineYawDegrees": 252.0,
@@ -15271,9 +15271,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15287,9 +15287,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15301,11 +15301,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15319,9 +15319,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15335,9 +15335,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15373,7 +15373,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.3",
           "kind": "ENTER_AREA",
           "startMs": 1350,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -15410,7 +15410,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   23.475542,
-                  1.2,
+                  1.263,
                   937.090136
                 ],
                 "baselineYawDegrees": 192.0,
@@ -15423,9 +15423,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15439,9 +15439,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15453,11 +15453,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15471,9 +15471,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15487,9 +15487,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15525,7 +15525,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.4",
           "kind": "ENTER_AREA",
           "startMs": 1525,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -15562,7 +15562,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   7.416408,
-                  1.2,
+                  1.263,
                   919.254661
                 ],
                 "baselineYawDegrees": 252.0,
@@ -15575,9 +15575,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15591,9 +15591,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15605,11 +15605,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15623,9 +15623,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15639,9 +15639,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15677,7 +15677,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.5",
           "kind": "ENTER_AREA",
           "startMs": 1700,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -15714,7 +15714,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   24.307189,
-                  1.2,
+                  1.263,
                   941.002727
                 ],
                 "baselineYawDegrees": 192.0,
@@ -15727,9 +15727,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15743,9 +15743,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15757,11 +15757,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15775,9 +15775,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15791,9 +15791,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15829,7 +15829,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.6",
           "kind": "ENTER_AREA",
           "startMs": 1875,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -15866,7 +15866,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   11.220634,
-                  1.2,
+                  1.263,
                   920.490729
                 ],
                 "baselineYawDegrees": 252.0,
@@ -15879,9 +15879,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15895,9 +15895,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15909,11 +15909,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15927,9 +15927,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15943,9 +15943,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -15981,7 +15981,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.7",
           "kind": "ENTER_AREA",
           "startMs": 10000,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16018,7 +16018,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   22.643896,
-                  1.2,
+                  1.263,
                   933.177546
                 ],
                 "baselineYawDegrees": 192.0,
@@ -16031,9 +16031,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16047,9 +16047,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16061,11 +16061,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16079,9 +16079,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16095,9 +16095,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16133,7 +16133,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.8",
           "kind": "ENTER_AREA",
           "startMs": 10175,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16170,7 +16170,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   3.612182,
-                  1.2,
+                  1.263,
                   918.018593
                 ],
                 "baselineYawDegrees": 252.0,
@@ -16183,9 +16183,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16199,9 +16199,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16213,11 +16213,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16231,9 +16231,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16247,9 +16247,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16285,7 +16285,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.9",
           "kind": "ENTER_AREA",
           "startMs": 10350,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16322,7 +16322,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   23.475542,
-                  1.2,
+                  1.263,
                   937.090136
                 ],
                 "baselineYawDegrees": 192.0,
@@ -16335,9 +16335,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16351,9 +16351,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16365,11 +16365,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16383,9 +16383,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16399,9 +16399,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16437,7 +16437,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.10",
           "kind": "ENTER_AREA",
           "startMs": 10525,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16474,7 +16474,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   7.416408,
-                  1.2,
+                  1.263,
                   919.254661
                 ],
                 "baselineYawDegrees": 252.0,
@@ -16487,9 +16487,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16503,9 +16503,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16517,11 +16517,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16535,9 +16535,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16551,9 +16551,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16589,7 +16589,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.11",
           "kind": "ENTER_AREA",
           "startMs": 10700,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16626,7 +16626,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   24.307189,
-                  1.2,
+                  1.263,
                   941.002727
                 ],
                 "baselineYawDegrees": 192.0,
@@ -16639,9 +16639,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16655,9 +16655,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16669,11 +16669,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16687,9 +16687,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16703,9 +16703,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16741,7 +16741,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.12",
           "kind": "ENTER_AREA",
           "startMs": 10875,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16778,7 +16778,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   11.220634,
-                  1.2,
+                  1.263,
                   920.490729
                 ],
                 "baselineYawDegrees": 252.0,
@@ -16791,9 +16791,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16807,9 +16807,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16821,11 +16821,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16839,9 +16839,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16855,9 +16855,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16893,7 +16893,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.13",
           "kind": "ENTER_AREA",
           "startMs": 19000,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -16930,7 +16930,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   22.643896,
-                  1.2,
+                  1.263,
                   933.177546
                 ],
                 "baselineYawDegrees": 192.0,
@@ -16943,9 +16943,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16959,9 +16959,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16973,11 +16973,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -16991,9 +16991,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17007,9 +17007,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17045,7 +17045,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.14",
           "kind": "ENTER_AREA",
           "startMs": 19175,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -17082,7 +17082,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   3.612182,
-                  1.2,
+                  1.263,
                   918.018593
                 ],
                 "baselineYawDegrees": 252.0,
@@ -17095,9 +17095,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17111,9 +17111,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17125,11 +17125,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17143,9 +17143,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17159,9 +17159,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17197,7 +17197,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.15",
           "kind": "ENTER_AREA",
           "startMs": 19350,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -17234,7 +17234,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   23.475542,
-                  1.2,
+                  1.263,
                   937.090136
                 ],
                 "baselineYawDegrees": 192.0,
@@ -17247,9 +17247,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17263,9 +17263,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17277,11 +17277,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17295,9 +17295,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17311,9 +17311,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17349,7 +17349,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.16",
           "kind": "ENTER_AREA",
           "startMs": 19525,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -17386,7 +17386,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   7.416408,
-                  1.2,
+                  1.263,
                   919.254661
                 ],
                 "baselineYawDegrees": 252.0,
@@ -17399,9 +17399,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17415,9 +17415,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17429,11 +17429,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17447,9 +17447,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17463,9 +17463,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17501,7 +17501,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.17",
           "kind": "ENTER_AREA",
           "startMs": 19700,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -17538,7 +17538,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   24.307189,
-                  1.2,
+                  1.263,
                   941.002727
                 ],
                 "baselineYawDegrees": 192.0,
@@ -17551,9 +17551,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17567,9 +17567,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17581,11 +17581,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17599,9 +17599,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17615,9 +17615,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17653,7 +17653,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_18.logic.18",
           "kind": "ENTER_AREA",
           "startMs": 19875,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -17690,7 +17690,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   11.220634,
-                  1.2,
+                  1.263,
                   920.490729
                 ],
                 "baselineYawDegrees": 252.0,
@@ -17703,9 +17703,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17719,9 +17719,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17733,11 +17733,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17751,9 +17751,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17767,9 +17767,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -17824,12 +17824,12 @@
           "placement": {
             "position": [
               12.6,
-              0.05,
+              1.3,
               942.08
             ],
             "rotationDegrees": [
               0,
-              90.0,
+              -0.0,
               0
             ],
             "scale": [
@@ -17858,13 +17858,13 @@
           ],
           "placement": {
             "position": [
-              12.530975881640243,
-              0.05,
-              943.3970586371724
+              11.98331211,
+              1.3,
+              945.97361413
             ],
             "rotationDegrees": [
               0,
-              84.0,
+              -18.0,
               0
             ],
             "scale": [
@@ -17893,13 +17893,13 @@
           ],
           "placement": {
             "position": [
-              12.324659769245951,
-              0.05,
-              944.6996873043038
+              11.63590618,
+              1.3167,
+              943.30298302
             ],
             "rotationDegrees": [
               0,
-              78.0,
+              -6.0,
               0
             ],
             "scale": [
@@ -17928,13 +17928,13 @@
           ],
           "placement": {
             "position": [
-              11.983312105318934,
-              0.05,
-              945.9736141291244
+              10.68848185,
+              1.3167,
+              946.83881872
             ],
             "rotationDegrees": [
               0,
-              72.0,
+              -24.0,
               0
             ],
             "scale": [
@@ -17963,13 +17963,13 @@
           ],
           "placement": {
             "position": [
-              11.510672766296771,
-              0.05,
-              947.2048817027551
+              10.56399409,
+              1.3134,
+              944.32544626
             ],
             "rotationDegrees": [
               0,
-              -24.0,
+              -12.0,
               0
             ],
             "scale": [
@@ -17998,13 +17998,13 @@
           ],
           "placement": {
             "position": [
-              10.911920087683928,
-              0.05,
-              948.38
+              9.35307436,
+              1.3134,
+              947.48
             ],
             "rotationDegrees": [
               0,
-              -29.999999999999996,
+              -30.0,
               0
             ],
             "scale": [
@@ -18033,13 +18033,13 @@
           ],
           "placement": {
             "position": [
-              10.193614129124338,
-              0.05,
-              949.4860941788852
+              10.19361413,
+              1.3,
+              949.48609418
             ],
             "rotationDegrees": [
               0,
-              54.0,
+              -36.0,
               0
             ],
             "scale": [
@@ -18068,13 +18068,13 @@
           ],
           "placement": {
             "position": [
-              9.363624801015167,
-              0.05,
-              950.5110456401217
+              7.40609418,
+              1.3,
+              952.27361413
             ],
             "rotationDegrees": [
               0,
-              48.0,
+              -54.0,
               0
             ],
             "scale": [
@@ -18103,13 +18103,13 @@
           ],
           "placement": {
             "position": [
-              8.431045640121614,
-              0.05,
-              951.4436248010152
+              8.69479446,
+              1.3167,
+              949.90882809
             ],
             "rotationDegrees": [
               0,
-              42.0,
+              -42.0,
               0
             ],
             "scale": [
@@ -18138,13 +18138,13 @@
           ],
           "placement": {
             "position": [
-              7.406094178885161,
-              0.05,
-              952.2736141291243
+              5.85,
+              1.3167,
+              952.21249722
             ],
             "rotationDegrees": [
               0,
-              36.0,
+              -60.0,
               0
             ],
             "scale": [
@@ -18173,13 +18173,13 @@
           ],
           "placement": {
             "position": [
-              6.300000000000002,
-              0.05,
-              952.991920087684
+              7.22661055,
+              1.3134,
+              950.10596412
             ],
             "rotationDegrees": [
               0,
-              -59.99999999999999,
+              -48.0,
               0
             ],
             "scale": [
@@ -18208,13 +18208,13 @@
           ],
           "placement": {
             "position": [
-              5.124881702755085,
-              0.05,
-              953.5906727662968
+              4.39275575,
+              1.3134,
+              951.94629094
             ],
             "rotationDegrees": [
               0,
-              -65.99999999999999,
+              -66.0,
               0
             ],
             "scale": [
@@ -18243,13 +18243,13 @@
           ],
           "placement": {
             "position": [
-              3.893614129124338,
-              0.05,
-              954.063312105319
+              3.89361413,
+              1.3,
+              954.06331211
             ],
             "rotationDegrees": [
               0,
-              18.0,
+              -72.0,
               0
             ],
             "scale": [
@@ -18278,13 +18278,13 @@
           ],
           "placement": {
             "position": [
-              2.619687304303766,
-              0.05,
-              954.404659769246
+              0.0,
+              1.3,
+              954.68
             ],
             "rotationDegrees": [
               0,
-              11.999999999999986,
+              -90.0,
               0
             ],
             "scale": [
@@ -18313,13 +18313,13 @@
           ],
           "placement": {
             "position": [
-              1.3170586371724335,
-              0.05,
-              954.6109758816402
+              2.43256678,
+              1.3167,
+              953.52432693
             ],
             "rotationDegrees": [
               0,
-              6.0,
+              -78.0,
               0
             ],
             "scale": [
@@ -18348,13 +18348,13 @@
           ],
           "placement": {
             "position": [
-              3.569289505518227e-15,
-              0.05,
-              954.6800000000001
+              -1.22298302,
+              1.3167,
+              953.71590618
             ],
             "rotationDegrees": [
               0,
-              1.4210854715202004e-14,
+              -96.0,
               0
             ],
             "scale": [
@@ -18383,13 +18383,13 @@
           ],
           "placement": {
             "position": [
-              -1.317058637172432,
-              0.05,
-              954.6109758816403
+              1.1289074,
+              1.3134,
+              952.82083647
             ],
             "rotationDegrees": [
               0,
-              -96.0,
+              -84.0,
               0
             ],
             "scale": [
@@ -18418,9 +18418,9 @@
           ],
           "placement": {
             "position": [
-              -2.619687304303768,
-              0.05,
-              954.404659769246
+              -2.24544626,
+              1.3134,
+              952.64399409
             ],
             "rotationDegrees": [
               0,
@@ -18453,13 +18453,13 @@
           ],
           "placement": {
             "position": [
-              -3.8936141291243365,
-              0.05,
-              954.063312105319
+              -3.89361413,
+              1.3,
+              954.06331211
             ],
             "rotationDegrees": [
               0,
-              -18.0,
+              -108.0,
               0
             ],
             "scale": [
@@ -18488,13 +18488,13 @@
           ],
           "placement": {
             "position": [
-              -5.124881702755081,
-              0.05,
-              953.5906727662968
+              -7.40609418,
+              1.3,
+              952.27361413
             ],
             "rotationDegrees": [
               0,
-              -24.0,
+              -126.0,
               0
             ],
             "scale": [
@@ -18523,13 +18523,13 @@
           ],
           "placement": {
             "position": [
-              -6.299999999999997,
-              0.05,
-              952.991920087684
+              -4.75881872,
+              1.3167,
+              952.76848185
             ],
             "rotationDegrees": [
               0,
-              -29.999999999999986,
+              -114.0,
               0
             ],
             "scale": [
@@ -18558,13 +18558,13 @@
           ],
           "placement": {
             "position": [
-              -7.4060941788851595,
-              0.05,
-              952.2736141291243
+              -7.82882809,
+              1.3167,
+              950.77479446
             ],
             "rotationDegrees": [
               0,
-              -36.0,
+              -132.0,
               0
             ],
             "scale": [
@@ -18593,13 +18593,13 @@
           ],
           "placement": {
             "position": [
-              -8.43104564012161,
-              0.05,
-              951.4436248010152
+              -5.4,
+              1.3134,
+              951.43307436
             ],
             "rotationDegrees": [
               0,
-              -131.99999999999997,
+              -120.0,
               0
             ],
             "scale": [
@@ -18628,9 +18628,9 @@
           ],
           "placement": {
             "position": [
-              -9.363624801015165,
-              0.05,
-              950.5110456401217
+              -8.02596412,
+              1.3134,
+              949.30661055
             ],
             "rotationDegrees": [
               0,
@@ -18663,13 +18663,13 @@
           ],
           "placement": {
             "position": [
-              -10.193614129124336,
-              0.05,
-              949.4860941788852
+              -10.19361413,
+              1.3,
+              949.48609418
             ],
             "rotationDegrees": [
               0,
-              -54.0,
+              -144.0,
               0
             ],
             "scale": [
@@ -18698,13 +18698,13 @@
           ],
           "placement": {
             "position": [
-              -10.911920087683928,
-              0.05,
-              948.38
+              -11.98331211,
+              1.3,
+              945.97361413
             ],
             "rotationDegrees": [
               0,
-              -60.0,
+              -162.0,
               0
             ],
             "scale": [
@@ -18733,13 +18733,13 @@
           ],
           "placement": {
             "position": [
-              -11.510672766296771,
-              0.05,
-              947.2048817027551
+              -10.13249722,
+              1.3167,
+              947.93
             ],
             "rotationDegrees": [
               0,
-              -66.00000000000003,
+              -150.0,
               0
             ],
             "scale": [
@@ -18768,13 +18768,13 @@
           ],
           "placement": {
             "position": [
-              -11.983312105318934,
-              0.05,
-              945.9736141291244
+              -11.44432693,
+              1.3167,
+              944.51256678
             ],
             "rotationDegrees": [
               0,
-              -72.0,
+              -168.0,
               0
             ],
             "scale": [
@@ -18803,13 +18803,13 @@
           ],
           "placement": {
             "position": [
-              -12.324659769245951,
-              0.05,
-              944.6996873043038
+              -9.86629094,
+              1.3134,
+              946.47275575
             ],
             "rotationDegrees": [
               0,
-              -168.0,
+              -156.0,
               0
             ],
             "scale": [
@@ -18838,13 +18838,13 @@
           ],
           "placement": {
             "position": [
-              -12.530975881640245,
-              0.05,
-              943.3970586371724
+              -10.74083647,
+              1.3134,
+              943.2089074
             ],
             "rotationDegrees": [
               0,
-              -174.00000000000003,
+              -174.0,
               0
             ],
             "scale": [
@@ -18874,12 +18874,12 @@
           "placement": {
             "position": [
               -12.6,
-              0.05,
+              1.3,
               942.08
             ],
             "rotationDegrees": [
               0,
-              -89.99999999999997,
+              -180.0,
               0
             ],
             "scale": [
@@ -18908,13 +18908,13 @@
           ],
           "placement": {
             "position": [
-              -12.530975881640245,
-              0.05,
-              940.7629413628276
+              -11.98331211,
+              1.3,
+              938.18638587
             ],
             "rotationDegrees": [
               0,
-              -95.99999999999997,
+              -198.0,
               0
             ],
             "scale": [
@@ -18943,13 +18943,13 @@
           ],
           "placement": {
             "position": [
-              -12.324659769245951,
-              0.05,
-              939.4603126956963
+              -11.63590618,
+              1.3167,
+              940.85701698
             ],
             "rotationDegrees": [
               0,
-              -102.0,
+              -186.0,
               0
             ],
             "scale": [
@@ -18978,13 +18978,13 @@
           ],
           "placement": {
             "position": [
-              -11.983312105318936,
-              0.05,
-              938.1863858708757
+              -10.68848185,
+              1.3167,
+              937.32118128
             ],
             "rotationDegrees": [
               0,
-              -108.0,
+              -204.0,
               0
             ],
             "scale": [
@@ -19013,13 +19013,13 @@
           ],
           "placement": {
             "position": [
-              -11.510672766296771,
-              0.05,
-              936.955118297245
+              -10.56399409,
+              1.3134,
+              939.83455374
             ],
             "rotationDegrees": [
               0,
-              -204.0,
+              -192.0,
               0
             ],
             "scale": [
@@ -19048,9 +19048,9 @@
           ],
           "placement": {
             "position": [
-              -10.911920087683928,
-              0.05,
-              935.7800000000001
+              -9.35307436,
+              1.3134,
+              936.68
             ],
             "rotationDegrees": [
               0,
@@ -19083,13 +19083,13 @@
           ],
           "placement": {
             "position": [
-              -10.193614129124338,
-              0.05,
-              934.6739058211149
+              -10.19361413,
+              1.3,
+              934.67390582
             ],
             "rotationDegrees": [
               0,
-              -126.0,
+              -216.0,
               0
             ],
             "scale": [
@@ -19118,13 +19118,13 @@
           ],
           "placement": {
             "position": [
-              -9.363624801015167,
-              0.05,
-              933.6489543598784
+              -7.40609418,
+              1.3,
+              931.88638587
             ],
             "rotationDegrees": [
               0,
-              -132.0,
+              -234.0,
               0
             ],
             "scale": [
@@ -19153,13 +19153,13 @@
           ],
           "placement": {
             "position": [
-              -8.431045640121617,
-              0.05,
-              932.7163751989849
+              -8.69479446,
+              1.3167,
+              934.25117191
             ],
             "rotationDegrees": [
               0,
-              -138.0,
+              -222.0,
               0
             ],
             "scale": [
@@ -19188,13 +19188,13 @@
           ],
           "placement": {
             "position": [
-              -7.406094178885163,
-              0.05,
-              931.8863858708758
+              -5.85,
+              1.3167,
+              931.94750278
             ],
             "rotationDegrees": [
               0,
-              -144.0,
+              -240.0,
               0
             ],
             "scale": [
@@ -19223,13 +19223,13 @@
           ],
           "placement": {
             "position": [
-              -6.300000000000005,
-              0.05,
-              931.1680799123161
+              -7.22661055,
+              1.3134,
+              934.05403588
             ],
             "rotationDegrees": [
               0,
-              -239.99999999999997,
+              -228.0,
               0
             ],
             "scale": [
@@ -19258,13 +19258,13 @@
           ],
           "placement": {
             "position": [
-              -5.124881702755092,
-              0.05,
-              930.5693272337032
+              -4.39275575,
+              1.3134,
+              932.21370906
             ],
             "rotationDegrees": [
               0,
-              -245.99999999999997,
+              -246.0,
               0
             ],
             "scale": [
@@ -19293,13 +19293,13 @@
           ],
           "placement": {
             "position": [
-              -3.893614129124339,
-              0.05,
-              930.096687894681
+              -3.89361413,
+              1.3,
+              930.09668789
             ],
             "rotationDegrees": [
               0,
-              -162.0,
+              -252.0,
               0
             ],
             "scale": [
@@ -19328,13 +19328,13 @@
           ],
           "placement": {
             "position": [
-              -2.619687304303773,
-              0.05,
-              929.7553402307541
+              -0.0,
+              1.3,
+              929.48
             ],
             "rotationDegrees": [
               0,
-              -168.0,
+              -270.0,
               0
             ],
             "scale": [
@@ -19363,13 +19363,13 @@
           ],
           "placement": {
             "position": [
-              -1.3170586371724433,
-              0.05,
-              929.5490241183599
+              -2.43256678,
+              1.3167,
+              930.63567307
             ],
             "rotationDegrees": [
               0,
-              -173.99999999999994,
+              -258.0,
               0
             ],
             "scale": [
@@ -19398,13 +19398,13 @@
           ],
           "placement": {
             "position": [
-              -2.3145824503884972e-15,
-              0.05,
-              929.48
+              1.22298302,
+              1.3167,
+              930.44409382
             ],
             "rotationDegrees": [
               0,
-              -180.0,
+              -276.0,
               0
             ],
             "scale": [
@@ -19433,13 +19433,13 @@
           ],
           "placement": {
             "position": [
-              1.3170586371724275,
-              0.05,
-              929.5490241183597
+              -1.1289074,
+              1.3134,
+              931.33916353
             ],
             "rotationDegrees": [
               0,
-              -276.0,
+              -264.0,
               0
             ],
             "scale": [
@@ -19468,9 +19468,9 @@
           ],
           "placement": {
             "position": [
-              2.6196873043037687,
-              0.05,
-              929.7553402307541
+              2.24544626,
+              1.3134,
+              931.51600591
             ],
             "rotationDegrees": [
               0,
@@ -19503,13 +19503,13 @@
           ],
           "placement": {
             "position": [
-              3.893614129124335,
-              0.05,
-              930.096687894681
+              3.89361413,
+              1.3,
+              930.09668789
             ],
             "rotationDegrees": [
               0,
-              -198.0,
+              -288.0,
               0
             ],
             "scale": [
@@ -19538,13 +19538,13 @@
           ],
           "placement": {
             "position": [
-              5.124881702755077,
-              0.05,
-              930.5693272337032
+              7.40609418,
+              1.3,
+              931.88638587
             ],
             "rotationDegrees": [
               0,
-              -204.0,
+              -306.0,
               0
             ],
             "scale": [
@@ -19573,13 +19573,13 @@
           ],
           "placement": {
             "position": [
-              6.300000000000002,
-              0.05,
-              931.1680799123161
+              4.75881872,
+              1.3167,
+              931.39151815
             ],
             "rotationDegrees": [
               0,
-              -210.0,
+              -294.0,
               0
             ],
             "scale": [
@@ -19608,13 +19608,13 @@
           ],
           "placement": {
             "position": [
-              7.406094178885159,
-              0.05,
-              931.8863858708758
+              7.82882809,
+              1.3167,
+              933.38520554
             ],
             "rotationDegrees": [
               0,
-              -216.0,
+              -312.0,
               0
             ],
             "scale": [
@@ -19643,13 +19643,13 @@
           ],
           "placement": {
             "position": [
-              8.431045640121617,
-              0.05,
-              932.7163751989849
+              5.4,
+              1.3134,
+              932.72692564
             ],
             "rotationDegrees": [
               0,
-              -312.00000000000006,
+              -300.0,
               0
             ],
             "scale": [
@@ -19678,9 +19678,9 @@
           ],
           "placement": {
             "position": [
-              9.363624801015167,
-              0.05,
-              933.6489543598784
+              8.02596412,
+              1.3134,
+              934.85338945
             ],
             "rotationDegrees": [
               0,
@@ -19713,13 +19713,13 @@
           ],
           "placement": {
             "position": [
-              10.193614129124336,
-              0.05,
-              934.6739058211149
+              10.19361413,
+              1.3,
+              934.67390582
             ],
             "rotationDegrees": [
               0,
-              -234.0,
+              -324.0,
               0
             ],
             "scale": [
@@ -19748,13 +19748,13 @@
           ],
           "placement": {
             "position": [
-              10.911920087683928,
-              0.05,
-              935.7800000000001
+              11.98331211,
+              1.3,
+              938.18638587
             ],
             "rotationDegrees": [
               0,
-              -240.00000000000006,
+              -342.0,
               0
             ],
             "scale": [
@@ -19783,13 +19783,13 @@
           ],
           "placement": {
             "position": [
-              11.510672766296771,
-              0.05,
-              936.955118297245
+              10.13249722,
+              1.3167,
+              936.23
             ],
             "rotationDegrees": [
               0,
-              -246.0,
+              -330.0,
               0
             ],
             "scale": [
@@ -19818,13 +19818,13 @@
           ],
           "placement": {
             "position": [
-              11.983312105318934,
-              0.05,
-              938.1863858708757
+              11.44432693,
+              1.3167,
+              939.64743322
             ],
             "rotationDegrees": [
               0,
-              -252.0,
+              -348.0,
               0
             ],
             "scale": [
@@ -19853,13 +19853,13 @@
           ],
           "placement": {
             "position": [
-              12.324659769245951,
-              0.05,
-              939.4603126956963
+              9.86629094,
+              1.3134,
+              937.68724425
             ],
             "rotationDegrees": [
               0,
-              -348.00000000000006,
+              -336.0,
               0
             ],
             "scale": [
@@ -19888,9 +19888,9 @@
           ],
           "placement": {
             "position": [
-              12.530975881640243,
-              0.05,
-              940.7629413628276
+              10.74083647,
+              1.3134,
+              940.9510926
             ],
             "rotationDegrees": [
               0,
@@ -19924,7 +19924,7 @@
           "placement": {
             "position": [
               22.643896,
-              1.2,
+              1.263,
               933.177546
             ],
             "rotationDegrees": [
@@ -19959,7 +19959,7 @@
           "placement": {
             "position": [
               23.475542,
-              1.2,
+              1.263,
               937.090136
             ],
             "rotationDegrees": [
@@ -19994,7 +19994,7 @@
           "placement": {
             "position": [
               24.307189,
-              1.2,
+              1.263,
               941.002727
             ],
             "rotationDegrees": [
@@ -20029,7 +20029,7 @@
           "placement": {
             "position": [
               3.612182,
-              1.2,
+              1.263,
               918.018593
             ],
             "rotationDegrees": [
@@ -20064,7 +20064,7 @@
           "placement": {
             "position": [
               7.416408,
-              1.2,
+              1.263,
               919.254661
             ],
             "rotationDegrees": [
@@ -20099,7 +20099,7 @@
           "placement": {
             "position": [
               11.220634,
-              1.2,
+              1.263,
               920.490729
             ],
             "rotationDegrees": [
@@ -20134,7 +20134,7 @@
           "placement": {
             "position": [
               22.643896,
-              1.2,
+              1.263,
               933.177546
             ],
             "rotationDegrees": [
@@ -20169,7 +20169,7 @@
           "placement": {
             "position": [
               23.475542,
-              1.2,
+              1.263,
               937.090136
             ],
             "rotationDegrees": [
@@ -20204,7 +20204,7 @@
           "placement": {
             "position": [
               24.307189,
-              1.2,
+              1.263,
               941.002727
             ],
             "rotationDegrees": [
@@ -20239,7 +20239,7 @@
           "placement": {
             "position": [
               3.612182,
-              1.2,
+              1.263,
               918.018593
             ],
             "rotationDegrees": [
@@ -20274,7 +20274,7 @@
           "placement": {
             "position": [
               7.416408,
-              1.2,
+              1.263,
               919.254661
             ],
             "rotationDegrees": [
@@ -20309,7 +20309,7 @@
           "placement": {
             "position": [
               11.220634,
-              1.2,
+              1.263,
               920.490729
             ],
             "rotationDegrees": [
@@ -20344,7 +20344,7 @@
           "placement": {
             "position": [
               22.643896,
-              1.2,
+              1.263,
               933.177546
             ],
             "rotationDegrees": [
@@ -20379,7 +20379,7 @@
           "placement": {
             "position": [
               23.475542,
-              1.2,
+              1.263,
               937.090136
             ],
             "rotationDegrees": [
@@ -20414,7 +20414,7 @@
           "placement": {
             "position": [
               24.307189,
-              1.2,
+              1.263,
               941.002727
             ],
             "rotationDegrees": [
@@ -20449,7 +20449,7 @@
           "placement": {
             "position": [
               3.612182,
-              1.2,
+              1.263,
               918.018593
             ],
             "rotationDegrees": [
@@ -20484,7 +20484,7 @@
           "placement": {
             "position": [
               7.416408,
-              1.2,
+              1.263,
               919.254661
             ],
             "rotationDegrees": [
@@ -20519,7 +20519,7 @@
           "placement": {
             "position": [
               11.220634,
-              1.2,
+              1.263,
               920.490729
             ],
             "rotationDegrees": [
@@ -20817,7 +20817,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.1",
           "kind": "ENTER_AREA",
           "startMs": 1000,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -20854,7 +20854,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   22.643896,
-                  1.2,
+                  1.263,
                   933.177546
                 ],
                 "baselineYawDegrees": 192.0,
@@ -20867,9 +20867,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -20883,9 +20883,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -20897,11 +20897,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -20915,9 +20915,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -20931,9 +20931,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -20969,7 +20969,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.2",
           "kind": "ENTER_AREA",
           "startMs": 1175,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21006,7 +21006,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   3.612182,
-                  1.2,
+                  1.263,
                   918.018593
                 ],
                 "baselineYawDegrees": 252.0,
@@ -21019,9 +21019,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21035,9 +21035,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21049,11 +21049,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21067,9 +21067,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21083,9 +21083,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21121,7 +21121,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.3",
           "kind": "ENTER_AREA",
           "startMs": 1350,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21158,7 +21158,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   23.475542,
-                  1.2,
+                  1.263,
                   937.090136
                 ],
                 "baselineYawDegrees": 192.0,
@@ -21171,9 +21171,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21187,9 +21187,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21201,11 +21201,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21219,9 +21219,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21235,9 +21235,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21273,7 +21273,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.4",
           "kind": "ENTER_AREA",
           "startMs": 1525,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21310,7 +21310,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   7.416408,
-                  1.2,
+                  1.263,
                   919.254661
                 ],
                 "baselineYawDegrees": 252.0,
@@ -21323,9 +21323,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21339,9 +21339,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21353,11 +21353,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21371,9 +21371,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21387,9 +21387,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21425,7 +21425,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.5",
           "kind": "ENTER_AREA",
           "startMs": 1700,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21462,7 +21462,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   24.307189,
-                  1.2,
+                  1.263,
                   941.002727
                 ],
                 "baselineYawDegrees": 192.0,
@@ -21475,9 +21475,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21491,9 +21491,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21505,11 +21505,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21523,9 +21523,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21539,9 +21539,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21577,7 +21577,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.6",
           "kind": "ENTER_AREA",
           "startMs": 1875,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21614,7 +21614,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   11.220634,
-                  1.2,
+                  1.263,
                   920.490729
                 ],
                 "baselineYawDegrees": 252.0,
@@ -21627,9 +21627,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21643,9 +21643,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21657,11 +21657,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21675,9 +21675,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21691,9 +21691,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21729,7 +21729,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.7",
           "kind": "ENTER_AREA",
           "startMs": 10000,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21766,7 +21766,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   22.643896,
-                  1.2,
+                  1.263,
                   933.177546
                 ],
                 "baselineYawDegrees": 192.0,
@@ -21779,9 +21779,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21795,9 +21795,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21809,11 +21809,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21827,9 +21827,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21843,9 +21843,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21881,7 +21881,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.8",
           "kind": "ENTER_AREA",
           "startMs": 10175,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -21918,7 +21918,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   3.612182,
-                  1.2,
+                  1.263,
                   918.018593
                 ],
                 "baselineYawDegrees": 252.0,
@@ -21931,9 +21931,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21947,9 +21947,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21961,11 +21961,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21979,9 +21979,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -21995,9 +21995,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22033,7 +22033,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.9",
           "kind": "ENTER_AREA",
           "startMs": 10350,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22070,7 +22070,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   23.475542,
-                  1.2,
+                  1.263,
                   937.090136
                 ],
                 "baselineYawDegrees": 192.0,
@@ -22083,9 +22083,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22099,9 +22099,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22113,11 +22113,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22131,9 +22131,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22147,9 +22147,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22185,7 +22185,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.10",
           "kind": "ENTER_AREA",
           "startMs": 10525,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22222,7 +22222,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   7.416408,
-                  1.2,
+                  1.263,
                   919.254661
                 ],
                 "baselineYawDegrees": 252.0,
@@ -22235,9 +22235,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22251,9 +22251,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22265,11 +22265,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22283,9 +22283,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22299,9 +22299,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22337,7 +22337,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.11",
           "kind": "ENTER_AREA",
           "startMs": 10700,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22374,7 +22374,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   24.307189,
-                  1.2,
+                  1.263,
                   941.002727
                 ],
                 "baselineYawDegrees": 192.0,
@@ -22387,9 +22387,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22403,9 +22403,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22417,11 +22417,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22435,9 +22435,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22451,9 +22451,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22489,7 +22489,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.12",
           "kind": "ENTER_AREA",
           "startMs": 10875,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22526,7 +22526,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   11.220634,
-                  1.2,
+                  1.263,
                   920.490729
                 ],
                 "baselineYawDegrees": 252.0,
@@ -22539,9 +22539,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22555,9 +22555,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22569,11 +22569,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22587,9 +22587,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22603,9 +22603,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22641,7 +22641,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.13",
           "kind": "ENTER_AREA",
           "startMs": 19000,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22678,7 +22678,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   22.643896,
-                  1.2,
+                  1.263,
                   933.177546
                 ],
                 "baselineYawDegrees": 192.0,
@@ -22691,9 +22691,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22707,9 +22707,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22721,11 +22721,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22739,9 +22739,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22755,9 +22755,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22793,7 +22793,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.14",
           "kind": "ENTER_AREA",
           "startMs": 19175,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22830,7 +22830,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   3.612182,
-                  1.2,
+                  1.263,
                   918.018593
                 ],
                 "baselineYawDegrees": 252.0,
@@ -22843,9 +22843,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22859,9 +22859,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22873,11 +22873,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22891,9 +22891,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22907,9 +22907,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -22945,7 +22945,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.15",
           "kind": "ENTER_AREA",
           "startMs": 19350,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -22982,7 +22982,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   23.475542,
-                  1.2,
+                  1.263,
                   937.090136
                 ],
                 "baselineYawDegrees": 192.0,
@@ -22995,9 +22995,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23011,9 +23011,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23025,11 +23025,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23043,9 +23043,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23059,9 +23059,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23097,7 +23097,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.16",
           "kind": "ENTER_AREA",
           "startMs": 19525,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -23134,7 +23134,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   7.416408,
-                  1.2,
+                  1.263,
                   919.254661
                 ],
                 "baselineYawDegrees": 252.0,
@@ -23147,9 +23147,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23163,9 +23163,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23177,11 +23177,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23195,9 +23195,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23211,9 +23211,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23249,7 +23249,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.17",
           "kind": "ENTER_AREA",
           "startMs": 19700,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -23286,7 +23286,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   24.307189,
-                  1.2,
+                  1.263,
                   941.002727
                 ],
                 "baselineYawDegrees": 192.0,
@@ -23299,9 +23299,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23315,9 +23315,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23329,11 +23329,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23347,9 +23347,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23363,9 +23363,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23401,7 +23401,7 @@
           "windowId": "KAKULSAYDON_G1_PATTERN_19.logic.18",
           "kind": "ENTER_AREA",
           "startMs": 19875,
-          "durationMs": 8000,
+          "durationMs": 5600,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -23438,7 +23438,7 @@
                 "interpolation": "LINEAR",
                 "baselinePosition": [
                   11.220634,
-                  1.2,
+                  1.263,
                   920.490729
                 ],
                 "baselineYawDegrees": 252.0,
@@ -23451,9 +23451,9 @@
                   {
                     "timeMs": 0,
                     "positionOffset": [
-                      0.0,
-                      3.0,
-                      0.0
+                      0,
+                      3,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23467,9 +23467,9 @@
                   {
                     "timeMs": 400,
                     "positionOffset": [
-                      0.0,
-                      0.0,
-                      0.0
+                      0,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23481,11 +23481,11 @@
                     "visible": true
                   },
                   {
-                    "timeMs": 7400,
+                    "timeMs": 5000,
                     "positionOffset": [
-                      48.0,
-                      0.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23499,9 +23499,9 @@
                   {
                     "timeMs": 7999,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23515,9 +23515,9 @@
                   {
                     "timeMs": 8000,
                     "positionOffset": [
-                      48.0,
-                      3.0,
-                      0.0
+                      34.5,
+                      0,
+                      0
                     ],
                     "rotationY": 0.0,
                     "rotationW": 1.0,
@@ -23572,7 +23572,7 @@
           "placement": {
             "position": [
               22.643896,
-              1.2,
+              1.263,
               933.177546
             ],
             "rotationDegrees": [
@@ -23607,7 +23607,7 @@
           "placement": {
             "position": [
               23.475542,
-              1.2,
+              1.263,
               937.090136
             ],
             "rotationDegrees": [
@@ -23642,7 +23642,7 @@
           "placement": {
             "position": [
               24.307189,
-              1.2,
+              1.263,
               941.002727
             ],
             "rotationDegrees": [
@@ -23677,7 +23677,7 @@
           "placement": {
             "position": [
               3.612182,
-              1.2,
+              1.263,
               918.018593
             ],
             "rotationDegrees": [
@@ -23712,7 +23712,7 @@
           "placement": {
             "position": [
               7.416408,
-              1.2,
+              1.263,
               919.254661
             ],
             "rotationDegrees": [
@@ -23747,7 +23747,7 @@
           "placement": {
             "position": [
               11.220634,
-              1.2,
+              1.263,
               920.490729
             ],
             "rotationDegrees": [
@@ -23782,7 +23782,7 @@
           "placement": {
             "position": [
               22.643896,
-              1.2,
+              1.263,
               933.177546
             ],
             "rotationDegrees": [
@@ -23817,7 +23817,7 @@
           "placement": {
             "position": [
               23.475542,
-              1.2,
+              1.263,
               937.090136
             ],
             "rotationDegrees": [
@@ -23852,7 +23852,7 @@
           "placement": {
             "position": [
               24.307189,
-              1.2,
+              1.263,
               941.002727
             ],
             "rotationDegrees": [
@@ -23887,7 +23887,7 @@
           "placement": {
             "position": [
               3.612182,
-              1.2,
+              1.263,
               918.018593
             ],
             "rotationDegrees": [
@@ -23922,7 +23922,7 @@
           "placement": {
             "position": [
               7.416408,
-              1.2,
+              1.263,
               919.254661
             ],
             "rotationDegrees": [
@@ -23957,7 +23957,7 @@
           "placement": {
             "position": [
               11.220634,
-              1.2,
+              1.263,
               920.490729
             ],
             "rotationDegrees": [
@@ -23992,7 +23992,7 @@
           "placement": {
             "position": [
               22.643896,
-              1.2,
+              1.263,
               933.177546
             ],
             "rotationDegrees": [
@@ -24027,7 +24027,7 @@
           "placement": {
             "position": [
               23.475542,
-              1.2,
+              1.263,
               937.090136
             ],
             "rotationDegrees": [
@@ -24062,7 +24062,7 @@
           "placement": {
             "position": [
               24.307189,
-              1.2,
+              1.263,
               941.002727
             ],
             "rotationDegrees": [
@@ -24097,7 +24097,7 @@
           "placement": {
             "position": [
               3.612182,
-              1.2,
+              1.263,
               918.018593
             ],
             "rotationDegrees": [
@@ -24132,7 +24132,7 @@
           "placement": {
             "position": [
               7.416408,
-              1.2,
+              1.263,
               919.254661
             ],
             "rotationDegrees": [
@@ -24167,7 +24167,7 @@
           "placement": {
             "position": [
               11.220634,
-              1.2,
+              1.263,
               920.490729
             ],
             "rotationDegrees": [

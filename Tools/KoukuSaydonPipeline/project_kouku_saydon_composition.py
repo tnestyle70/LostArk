@@ -1875,13 +1875,35 @@ def _validate_world_object_motion_result(result, sequences):
     return motion, templates[motion["templateId"]]
 
 
-def _require_single_static_object_motion(template, context):
+def _object_motion_emission(template, emission_index, context):
+    """Authored emission row a collider follows, or None for a seeded single emitter."""
     motion = template.get("objectMotion", {})
-    if motion.get("count", 1) != 1 or motion.get("spreadDegrees", 0) != 0 or any(
+    emissions = motion.get("emissions", [])
+    index = _integer(emission_index, f"{context} worldEmissionIndex", 0, 127)
+    if not emissions:
+        if index != 0:
+            raise CompositionError(f"{context} names emission row {index} but the Object Motion has no authored emissions")
+        return None
+    if not isinstance(emissions, list) or index >= len(emissions):
+        raise CompositionError(f"{context} emission row {index} is outside the authored emissions")
+    row = emissions[index]
+    _vector3(row["positionOffset"], f"{context} emission positionOffset", -100000, 100000)
+    _number(row["yawDegrees"], f"{context} emission yawDegrees", -36000, 36000)
+    _integer(row["startDelayMs"], f"{context} emission startDelayMs", 0, MAX_TIMELINE_MS)
+    return row
+
+
+def _require_single_static_object_motion(template, context, emission_index=0):
+    motion = template.get("objectMotion", {})
+    emissions = motion.get("emissions", [])
+    single = motion.get("count", 1) == 1 if not emissions else (
+        motion.get("count", 1) == len(emissions) and motion.get("intervalMs", 0) == 0)
+    if not single or motion.get("spreadDegrees", 0) != 0 or any(
         any(float(value) != 0 for value in motion.get(key, [0, 0, 0]))
         for key in ("velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond", "revolutionOffset")
     ):
-        raise CompositionError(f"{context} requires count 1 and zero physical Object Motion")
+        raise CompositionError(f"{context} requires count 1 (or one authored emission row) and zero physical Object Motion")
+    _object_motion_emission(template, emission_index, context)
 
 
 def _validate_fixed_target_motion_chain(result, sequences, target_pose, slot_id):
@@ -2061,7 +2083,7 @@ def _project_object_contact_targets(document, pattern, box, logic, logics, seque
             "contactPriority": logic.get("contactPriority", 0)}
 
 
-def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any], cue=None):
+def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any], cue=None, emission_index=0):
     instance = next((r for r in sequences["instances"] if r["instanceId"] == world["sequenceInstanceId"]), None)
     if instance is None or len(instance.get("bindings", [])) != 1:
         raise CompositionError("Collider WORLD anchor needs exactly one bound placement")
@@ -2071,7 +2093,8 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
     if track is None or not track["keys"]:
         raise CompositionError("Collider WORLD has no transform track")
     if binding["targetKind"] == "OBJECT_RESOURCE":
-        _require_single_static_object_motion(template, "Collider WORLD source")
+        _require_single_static_object_motion(template, "Collider WORLD source", emission_index)
+        emission = _object_motion_emission(template, emission_index, "Collider WORLD source")
         resource = next((r for r in sequences.get("objectResources", []) if r["objectId"] == binding["targetId"]), None)
         if resource is None or instance.get("anchorKind", "WORLD") != "WORLD" or resource.get("anchorKind", "WORLD") != "WORLD":
             raise CompositionError("Collider World Object must have a fixed WORLD anchor")
@@ -2079,12 +2102,20 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
         _vector3(position, "Collider World Object position", -100000, 100000)
         scale = resource.get("scale", [1,1,1])
         _vector3(scale, "Collider World Object scale", .0001, 10000)
+        yaw = 0.0
         if cue is not None and "placement" in cue:
             placement = _validate_world_occurrence_placement(cue, world, sequences)
             if placement["rotationDegrees"][0] != 0 or placement["rotationDegrees"][2] != 0 or abs(placement["scale"][0] - placement["scale"][2]) > .0001:
                 raise CompositionError("XZ WORLD Collider placement needs yaw-only rotation and uniform X/Z scale")
-            return instance, template, track, list(placement["position"]), placement["rotationDegrees"][1], [a*b for a,b in zip(scale,placement["scale"])]
-        return instance, template, track, position, 0.0, scale
+            position, yaw, scale = list(placement["position"]), placement["rotationDegrees"][1], [a*b for a,b in zip(scale,placement["scale"])]
+        if emission is not None:
+            # The Client applies the row after the local motion and before the box TRS,
+            # so only the placement scale reaches the offset and the row yaw adds to the baseline.
+            placement_scale = placement["scale"] if cue is not None and "placement" in cue else [1, 1, 1]
+            offset = _rotate_y([a*b for a,b in zip(emission["positionOffset"], placement_scale)], yaw)
+            position = [a+b for a,b in zip(position, offset)]
+            yaw += float(emission["yawDegrees"])
+        return instance, template, track, position, yaw, scale
     if binding["targetKind"] != "MAP_PLACEMENT":
         raise CompositionError("Collider WORLD requires a placement or World Object")
     placement = None
@@ -2174,8 +2205,18 @@ def _slerp_yaw(first, second, factor):
     return _quaternion_yaw_degrees([v/length for v in q])
 
 
-def _project_region_world_track(root, area, sequences, world, box):
-    instance, template, track, position, yaw, scale = _load_region_world(root,area,sequences,world,box)
+def _project_region_world_track(root, area, sequences, world, box, emission_index=0):
+    instance, template, track, position, yaw, scale = _load_region_world(root,area,sequences,world,box,emission_index)
+    emission = _object_motion_emission(template, emission_index, "WORLD Trigger")
+    speed = float(box["playbackSpeed"]) * float(instance.get("playbackSpeed", 1))
+    emission_delay = 0.0
+    if emission is not None and int(emission["startDelayMs"]):
+        if speed <= 0:
+            raise CompositionError("WORLD Trigger playback speed must be positive")
+        emission_delay = int(emission["startDelayMs"]) / speed
+        if abs(emission_delay - round(emission_delay)) > 1e-9:
+            raise CompositionError("WORLD Trigger emission delay must divide evenly by its playback speed")
+        emission_delay = round(emission_delay)
     if not instance.get("enabled", True):
         raise CompositionError("WORLD Trigger anchor instance is disabled")
     if min(scale) <= 0 or abs(scale[0]-scale[2]) > 0.0001:
@@ -2206,18 +2247,21 @@ def _project_region_world_track(root, area, sequences, world, box):
         keys.append({"timeMs":time,"positionOffset":key_position,
                      "rotationY":q[1]/length,"rotationW":q[3]/length,
                      "scaleMultiplier":list(key["scaleMultiplier"]),"visible":_boolean(key.get("visible",True),"WORLD Trigger visible")})
-    return {"startMs":box["startMs"],"startDelayMs":instance.get("startDelayMs",0),"durationMs":template["durationMs"],
+    return {"startMs":box["startMs"],"startDelayMs":instance.get("startDelayMs",0)+int(emission_delay),"durationMs":template["durationMs"],
             "playbackSpeed":float(box["playbackSpeed"])*float(instance.get("playbackSpeed",1)),
             "interpolation":template.get("interpolation","LINEAR"),"baselinePosition":position,
             "baselineYawDegrees":yaw,"baselineScale":scale,"keys":keys}
 
 
 def _sample_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any],
-                         box: dict[str, Any], end_ms: int) -> tuple[list[float], float, list[float]]:
-    instance, template, track, position, base_yaw, scale = _load_region_world(root,area,sequences,world,box)
+                         box: dict[str, Any], end_ms: int, emission_index=0) -> tuple[list[float], float, list[float]]:
+    instance, template, track, position, base_yaw, scale = _load_region_world(root,area,sequences,world,box,emission_index)
+    emission = _object_motion_emission(template, emission_index, "Collider WORLD sample")
+    emission_delay = int(emission["startDelayMs"]) if emission is not None else 0
     # Same ceil-to-fixed-tick edges as LogicRuntime and World cue admission.
+    # The row delay is subtracted after the rate, exactly as the Client does.
     local = ((math.ceil(end_ms*30/1000)-math.ceil(box["startMs"]*30/1000))*1000/30
-             - instance.get("startDelayMs", 0)) * box["playbackSpeed"] * instance.get("playbackSpeed", 1)
+             - instance.get("startDelayMs", 0)) * box["playbackSpeed"] * instance.get("playbackSpeed", 1) - emission_delay
     local = max(0, min(local, template["durationMs"]))
     keys = track["keys"]
     first, second, factor = keys[-1], keys[-1], 0.0
@@ -2595,10 +2639,11 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             end = logic_box["startMs"]+logic_box["durationMs"]
             if world_box["startMs"] > logic_box["startMs"] or world_box["startMs"]+world_box["durationMs"] < end:
                 raise CompositionError("Collider judgement must remain inside its WORLD box lifetime")
+            emission_index = row.get("worldEmissionIndex", 0)
             if kind in {"ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT"}:
-                world_track = _project_region_world_track(root,document["areaId"],sequences,world,world_box)
+                world_track = _project_region_world_track(root,document["areaId"],sequences,world,world_box,emission_index)
             else:
-                origin, world_yaw, world_scale = _sample_region_world(root,document["areaId"],sequences,world,world_box,end)
+                origin, world_yaw, world_scale = _sample_region_world(root,document["areaId"],sequences,world,world_box,end,emission_index)
                 position = [a+b for a,b in zip(origin,_rotate_y([a*b for a,b in zip(position,world_scale)],world_yaw))]
                 yaw += world_yaw
                 scale = [a*b for a,b in zip(scale,world_scale)]
@@ -2857,6 +2902,7 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "volume": 1.0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
+    "worldEmissionIndex": 0,
 }
 
 
@@ -2960,6 +3006,9 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
                 raise CompositionError("WORLD Collider occurrenceId must match its World definition and anchor")
         if resources[box["resourceId"]]["kind"] == "COLLIDER" and normalized["anchorKind"] == "WORLD":
             _resolve_collider_world_occurrence(pattern, normalized)
+        emission_index = _integer(normalized["worldEmissionIndex"], "presentation worldEmissionIndex", 0, 127)
+        if emission_index and not (resources[box["resourceId"]]["kind"] == "COLLIDER" and normalized["anchorKind"] == "WORLD"):
+            raise CompositionError("worldEmissionIndex belongs only to a WORLD-anchored Collider")
         if normalized["cardSymbol"] not in {"NONE", *CARD_SYMBOLS} or normalized["cardColor"] not in {"NONE", "RED", "BLACK"}:
             raise CompositionError("collider card mapping is invalid")
         light = resources[box["resourceId"]]["kind"] == "LIGHT"

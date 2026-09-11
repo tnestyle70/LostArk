@@ -35,6 +35,13 @@ Valtan's armour prototype or joined presentation graph. */
 Shared with the clown CHARACTER_SPEC so the spec and the admission agree. */
 inline constexpr const wchar_t* KOUKU_CLOWN_BODY_PROTOTYPE_TAG =
 	L"Prototype_Component_Model_KoukuSaydonClown";
+/* The toy hammer that same doll swings: the one the Mario-1 monster carries
+(WP_MN_RHKP_07, lifted out of REUP.wmodel as a static cook in the monster's
+right-hand frame). Socketed to the same Biped bone on the doll, so the grip
+is the monster's. Shared with the clown CHARACTER_SPEC. */
+inline constexpr const wchar_t* KOUKU_CLOWN_HAMMER_PROTOTYPE_TAG =
+	L"Prototype_Component_Model_KoukuSaydonClownHammer";
+inline constexpr const char* KOUKU_CLOWN_HAMMER_SOCKET_BONE = "bip001-r-hand";
 
 class CKoukuSaydonPresentationAssetService final
 {

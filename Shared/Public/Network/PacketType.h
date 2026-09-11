@@ -71,7 +71,7 @@ namespace LostArk::Shared
 	78 combines the v77 snapshot with Server-owned fear state, deadline and
 	presentation identity. The independent v73 fear branch and v77 main are
 	both incompatible with this combined layout. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 78;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 79;
 
 	enum class WORLD_ID : std::uint16_t
 	{

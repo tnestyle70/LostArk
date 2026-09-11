@@ -623,6 +623,19 @@ bool_t CWorldSequencePlayer::Apply_ObjectMotion(const std::string& targetInstanc
 	return true;
 }
 
+void CWorldSequencePlayer::Set_PlacementSuppressed(const uint64_t placementId, const bool_t suppressed)
+{
+	if (suppressed)
+		m_SuppressedPlacements.insert(placementId);
+	else
+		m_SuppressedPlacements.erase(placementId);
+}
+
+bool_t CWorldSequencePlayer::Is_PlacementSuppressed(const uint64_t placementId) const
+{
+	return m_SuppressedPlacements.contains(placementId);
+}
+
 bool_t CWorldSequencePlayer::Is_Playing(const std::string& instanceId) const
 {
 	return m_Active.end() != std::find_if(m_Active.begin(), m_Active.end(),
@@ -678,7 +691,8 @@ void CWorldSequencePlayer::Stop_Instance(
 			if (auto* entry = Find_Placement(*targets.pPlacements, baseline.placementId))
 			{
 				auto record = baseline.record;
-				record.visible = baseline.restoreRuntimeVisible;
+				record.visible = baseline.restoreRuntimeVisible &&
+					!m_SuppressedPlacements.contains(baseline.placementId);
 				(void)Apply_RuntimeRecord(targets, m_ModelCache, *entry, record);
 			}
 	Release_DeployPreviews(*found, targets);
@@ -788,9 +802,9 @@ f32_t CWorldSequencePlayer::Get_InstanceElapsedSpanMs(const std::string& instanc
         double tail = sequence->durationMs;
         for (const auto& effect : sequence->effectTracks)
             tail = (std::max)(tail, static_cast<double>(sequence->EffectStartMs(effect) + effect.durationMs));
-        for (uint32_t emitter = 0; emitter < sequence->objectMotion.count; ++emitter)
+        for (uint32_t emitter = 0; emitter < sequence->objectMotion.EmissionCount(); ++emitter)
         {
-            double birth = start + static_cast<double>(emitter) * sequence->objectMotion.intervalMs / rate;
+            double birth = start + static_cast<double>(sequence->objectMotion.EmissionDelayMs(emitter)) / rate;
             if (birth >= cutoff) continue;
             if (loop) birth += (std::max)(0., std::ceil((cutoff - birth) / period) - 1.) * period;
             span = (std::max)(span, birth + tail / rate);
@@ -1055,6 +1069,8 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			sampled.position.y += active.positionOffset.y;
 			sampled.position.z += active.positionOffset.z;
 		}
+		if (m_SuppressedPlacements.contains(targetId))
+			sampled.visible = false;
 		if (!Apply_RuntimeRecord(targets, m_ModelCache, *entry, sampled))
 			return APPLY_RESULT::FAILED;
 		active.sampledPlacements[targetId] = std::move(sampled);

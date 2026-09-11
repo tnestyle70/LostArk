@@ -553,3 +553,176 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(json.dumps(build(args.repository_root.resolve()), ensure_ascii=False, separators=(",", ":"), allow_nan=False))
 ```
+
+
+# G09. 2026-09-10 첨부 영상의 외곽 불 색·면 방향 수정
+
+이 절은 위의 초기 불 방향 설명을 대체한다. 갈고리 및 패턴 19는 수정하지 않는다.
+
+실제 설치된 D/E/F WMSH는 모두 X 두께 0.01625m, 넓은 축 Z다. D/E 40개의 yaw에서 90도를 빼고 D/E CW/CCW 4개 motion의 revolutionOffset을 [0,0,12.6]에서 [12.6,0,0]으로 동시에 바꾼다. 회전축 중심, 반경12.6, 속도±24도/초, 수60, 크기와 현재 바닥 높이는 유지한다. Composition revision231→232, sequence revision426→427.
+
+세 WModel의 WMA2 slot0에는 실제 diffuse가 아니라 t_tds_specular04가 emissivePath에 들어 있다. 텍스처 픽셀은 노랑/보라 반사광이며 현재 PS_MAIN은 그 RGB를 발광 버퍼에 더한다. 아래 좁은 수리 도구는 이 520바이트 경로 필드만 비운다. 원본 게임 파일이나 DDS, geometry/UV/다른 material slot을 수정하지 않는다. 이는 관찰된 오접속 수정이며 원본 material equation 전체 복원 주장도, visual PASS도 아니다.
+
+적용 파일: Tools/KoukuSaydonPipeline/repair_gate3_fire_materials.py 신규, 기존 author_gate3_fire_hook_fragments.py의 FIRE_ASSETS 축·측정 주석·FIRE_ORIGIN_Y 동기화, 저장 Composition40 yaw와 WorldSequence4 offset. 새 C++/project/filter 등록 없음.
+
+## G09-1. 신규 수리 도구 전체 코드
+
+```python
+#!/usr/bin/env python3
+"""Remove the observed reflection-lookup-as-emission error from three fire assets.
+
+This is a narrowly scoped repair of installed WMA2 metadata, not an original
+material reconstruction. Geometry, UVs, diffuse, normal and specular are preserved.
+Run without --apply to inspect. Originals are retained under out before writes.
+"""
+import argparse
+import hashlib
+from pathlib import Path
+import struct
+
+ASSETS = {
+    'MAP_CFEDE8067300_BG_RAD_KOUKUSATON_DECO24D_SM_KHB':
+        ('SLOT_000_bg_rad_koukusaton_deco24_mi_khb',
+         'textures/79e70292f4fc_bg_rad_koukusaton_deco24_d_khb.dds'),
+    'MAP_B71A2EC9D778_BG_RAD_KOUKUSATON_DECO24E_SM_KHB':
+        ('SLOT_000_bg_rad_koukusaton_deco24a_mi_khb',
+         'textures/cd58264db472_bg_rad_koukusaton_deco24a_d_khb.dds'),
+    'MAP_7AC8BB3D2FEE_BG_RAD_KOUKUSATON_DECO24F_SM_KHB':
+        ('SLOT_000_bg_rad_koukusaton_deco24a_mi_khb',
+         'textures/cd58264db472_bg_rad_koukusaton_deco24a_d_khb.dds'),
+}
+BAD_EMISSION = 'textures/b2378a8f80d6_t_tds_specular04.dds'
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def corrected(data, material_name, diffuse):
+    require(len(data) > 176, 'Truncated WModel')
+    require(struct.unpack_from('<4sHHII', data) ==
+            (b'WINT', 1, 0, 0, len(data) - 16), 'Unexpected WModel header')
+    require(struct.unpack_from('<4sIII4I', data, 16) ==
+            (b'WMOD', 2, 0, 0, 0, 0, 0, 0), 'Unexpected model section count')
+    sections = [struct.unpack_from('<IIQQ40s', data, 48 + i * 64) for i in range(2)]
+    require(sorted(s[0] for s in sections) == [1, 2], 'Unexpected sections')
+    section = next(s for s in sections if s[0] == 2)
+    start, size = 16 + section[2], section[3]
+    require(start + size == len(data), 'Material section is not last')
+    require(struct.unpack_from('<4sHHII', data, start) ==
+            (b'WINT', 1, 0, 0, size - 16), 'Unexpected material header')
+    require(struct.unpack_from('<4sI', data, start + 16) == (b'WMA2', 2),
+            'Expected two WMA2 material records')
+    require(size == 24 + 2 * (76 + 9 * 520), 'Unexpected WMA2 layout')
+    record = start + 24
+    require(struct.unpack_from('<I', data, record)[0] == 0, 'Wrong material index')
+    require(data[record + 12:record + 76].split(b'\0')[0].decode() == material_name,
+            'Material identity differs')
+    paths = record + 76
+    decode_path = lambda offset: data[offset:offset + 520].decode('utf-16-le').split('\0')[0]
+    require(decode_path(paths) == diffuse, 'Diffuse identity differs')
+    emission_offset = paths + 3 * 520
+    emission = decode_path(emission_offset)
+    require(emission in ('', BAD_EMISSION), 'Unexpected emissive path; inspect instead of overwriting')
+    result = data[:emission_offset] + bytes(520) + data[emission_offset + 520:]
+    require(len(result) == len(data), 'Container size changed')
+    return result, emission
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--repository-root', type=Path, required=True)
+    parser.add_argument('--apply', action='store_true')
+    args = parser.parse_args()
+    root = args.repository_root.resolve(strict=True)
+    resource_root = root / 'Client/Bin/Resources/Map/LV_LUT_MIDNIGHTC_ED'
+    staged = []
+    for asset, (material, diffuse) in ASSETS.items():
+        path = resource_root / asset / (asset + '.wmodel')
+        require(path.resolve().is_relative_to(resource_root.resolve()), 'Resource escaped root')
+        original = path.read_bytes()
+        replacement, emission = corrected(original, material, diffuse)
+        staged.append((path, original, replacement))
+        print(f'{asset}: emissive={emission or "<empty>"}; '
+              f'{"repair" if original != replacement else "already repaired"}')
+    if not args.apply:
+        return
+    backup_root = root / 'out/KoukuGate3FireMaterialBackup'
+    backup_root.mkdir(parents=True, exist_ok=True)
+    # Stage all originals before touching any resource. A concurrent edit aborts.
+    for path, original, replacement in staged:
+        require(path.read_bytes() == original, f'Concurrent resource edit: {path}')
+        if original != replacement:
+            backup = backup_root / (path.stem + '.' + hashlib.sha256(original).hexdigest() + '.wmodel')
+            if backup.exists():
+                require(backup.read_bytes() == original, 'Existing backup differs')
+            else:
+                backup.write_bytes(original)
+    written = []
+    try:
+        for path, original, replacement in staged:
+            require(path.read_bytes() == original, f'Concurrent resource edit: {path}')
+            if original == replacement:
+                continue
+            written.append((path, original))
+            path.write_bytes(replacement)
+            require(path.read_bytes() == replacement, f'Readback failed: {path}')
+    except BaseException:
+        for path, original in reversed(written):
+            path.write_bytes(original)
+        raise
+    print(f'Applied {len(written)} material repairs; backups: {backup_root}')
+
+
+if __name__ == '__main__':
+    main()
+```
+
+## G09-2. 검증 및 사용자 확인
+
+모든 입력의 identity 검사 후 수리하며 원본은 out/KoukuGate3FireMaterialBackup에 보존한다. 수리 재실행은0개 변경이어야 한다. 데이터는 기존 KoukuSaydon publisher로 배포하고 JSON 의미 diff에서 갈고리/다른 패턴/모션 불변을 검사한다. C++/셰이더 변경이 없어 추가 컴파일은 필요하지 않다. Client 자율 실행·캡처는 하지 않는다. 사용자가 Client/Server 재시작 후 3관문_외곽불회전_갈고리대각선_시각테스트를 재생해 붉고 노란 불벽과 공전 모양을 판단한다.
+
+# G10. 2026-09-10 — 불꽃을 앞뒤 간격이 있는 세 줄로 재배치
+
+사용자 새 영상 3관문 불불.mp4에서 수정된 재질의 느낌은 맞지만 한 줄처럼 보인다는 피드백을 받았다.
+원본 아재패턴.mp4와 비교하여 넓은 면을 유지하되 반경이 다른 세 줄로 분리한다.
+이번 숫자는 원본 데이터 추출값이 아닌 영상 피드백에 맞춘 프로젝트 저작값이다.
+
+불60개를 D/E/F 각각20개로 유지한다. D는 반경12.6m/시작0도, E는11.7m/6도,
+F는10.8m/12도다. 줄 간 반경 간격0.9m, 각 줄 시작시 불꽃 간18도다.
+종류별20개를 배치 순서대로 번호0~19에 대응한다.
+position=(radius*cos(angle), 기존Y, 942.08+radius*sin(angle)), yaw=-angle.
+E/F CW/CCW 네 motion의 revolutionOffset만 해당 반경으로 같이 갱신한다.
+최외곽을 확장하지 않으며 불의 수·재질·scale·height·수명·회전속도±24도/초·갈고리는 보존한다.
+
+author_gate3_fire_hook_fragments.py의 RADIUS 선언 바로 아래 추가할 정본:
+
+```python
+FIRE_RING_LAYOUT = {"d": (12.6, 0.0), "e": (11.7, 6.0), "f": (10.8, 12.0)}
+```
+
+FIRE_ASSETS 순회에서 offset 계산:
+
+```python
+radius = FIRE_RING_LAYOUT[suffix][0]
+offset = (radius, 0, 0) if outward == "x" else (0, 0, radius)
+```
+
+기존 for i in range(FIRE_COUNT) 루프의 theta/x/z 계산을 아래로 교체:
+
+```python
+world_index = i % len(fire_worlds)
+suffix = FIRE_ASSETS[world_index // 2][1]
+radius, phase = FIRE_RING_LAYOUT[suffix]
+slot_in_row = (i // len(fire_worlds)) * 2 + world_index % 2
+degrees = slot_in_row * (360.0 / (FIRE_COUNT // len(FIRE_ASSETS))) + phase
+theta = math.radians(degrees)
+x = CENTER[0] + radius * math.cos(theta)
+z = CENTER[1] + radius * math.sin(theta)
+```
+
+저장 패턴18의 fire occurrence position.x/z와 rotationDegrees.y만 위 식으로 갱신한다.
+Composition revision232→233, WorldSequences427→428. 다른 패턴 및 갈고리 의미 diff0,
+60개×721시점에서 세 반경 유지와 법선 방사방향 일치를 검사한 뒤 KoukuSaydon owner publisher로 배포한다.
+C++/Shader/Resources 변경 없음. 실행 화면 판정은 사용자가 같은 패턴을 재생해서 한다.

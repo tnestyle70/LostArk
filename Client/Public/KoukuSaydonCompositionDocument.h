@@ -347,6 +347,8 @@ namespace Client
 		std::string strWorldId;
 		std::string strLogicOccurrenceId;
 		std::string strWorldOccurrenceId;
+		// Row of that World box's authored emission list this box follows; 0 for single emitters.
+		std::uint32_t iWorldEmissionIndex = 0u;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE&) const = default;
 	};
 

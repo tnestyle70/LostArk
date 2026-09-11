@@ -160,6 +160,10 @@ namespace
 			snapshot.iMarioStage <= 4u &&
 			snapshot.iMarioLayoutVariant <= 3u &&
 			(snapshot.iMarioStage != 0u || snapshot.iMarioLayoutVariant == 0u) &&
+			snapshot.iMarioPoppedBallMask <= 0x0FFFu &&
+			snapshot.iMarioCurseReleasedMask <= 7u &&
+			(snapshot.iMarioStage != 0u ||
+			 (snapshot.iMarioPoppedBallMask == 0u && snapshot.iMarioCurseReleasedMask == 0u)) &&
 			snapshot.CardMaze.flags <= 15u &&
 			std::isfinite(snapshot.CardMaze.exitX) && std::isfinite(snapshot.CardMaze.exitY) &&
 			std::isfinite(snapshot.CardMaze.exitZ) &&
@@ -2813,6 +2817,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		}
 		writer.Write_U8(player.iMarioStage);
 		writer.Write_U8(player.iMarioLayoutVariant);
+		writer.Write_U16(player.iMarioPoppedBallMask);
+		writer.Write_U8(player.iMarioCurseReleasedMask);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeRole));
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeSuit));
 		writer.Write_U8(player.iCardMazeKills);
@@ -3061,6 +3067,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
 			!reader.Read_U8(player.iMarioLayoutVariant) || player.iMarioLayoutVariant > 3u ||
 			(player.iMarioStage == 0u && player.iMarioLayoutVariant != 0u) ||
+			!reader.Read_U16(player.iMarioPoppedBallMask) || player.iMarioPoppedBallMask > 0x0FFFu ||
+			!reader.Read_U8(player.iMarioCurseReleasedMask) || player.iMarioCurseReleasedMask > 7u ||
+			(player.iMarioStage == 0u &&
+			 (player.iMarioPoppedBallMask != 0u || player.iMarioCurseReleasedMask != 0u)) ||
 			!reader.Read_U8(rawCardMazeRole) ||
 			rawCardMazeRole >= static_cast<std::uint8_t>(CARD_MAZE_ROLE::END) ||
 			!reader.Read_U8(rawCardMazeSuit) ||

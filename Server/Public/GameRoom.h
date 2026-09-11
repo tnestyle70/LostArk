@@ -1210,6 +1210,7 @@ namespace LostArk::Server
 		void Despawn_CardMazeTargets();
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
+		std::uint8_t Mario_CurseReleasedMask(std::uint8_t stage, std::uint8_t layout) const;
 		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
 		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
 		void Update_CardMaze(std::uint32_t tick);
@@ -1368,6 +1369,8 @@ namespace LostArk::Server
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
 		std::mt19937 m_MarioLayoutRandom{std::random_device{}()};
+		// Popped source-ball slots per Mario stage (index 1..4), bit = bootstrap slot.
+		std::uint16_t m_MarioPoppedBalls[5] = {};
 		CKoukuCardMazeRuntime m_KoukuCardMaze;
 		CKoukuBingoRuntime m_KoukuBingo;
 		std::uint32_t m_iCardMazeMarchStartTick = 0u;

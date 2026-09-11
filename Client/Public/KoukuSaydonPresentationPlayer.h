@@ -231,8 +231,6 @@ private:
     /* Keyed by the Server's bomb slot, so a mark turning into a planted
     bomb replaces the same entry instead of leaving two on screen. */
     std::map<std::int32_t, CARD> m_BingoBombs;
-    /* At most one hammer runs, so it needs no key of its own. */
-    CARD m_BingoHammer;
     std::map<std::string, bool> m_ColliderDebugOverrides;
     std::uint64_t m_iColliderAuthoringGeneration = UINT64_MAX;
     bool m_bProductLoaded = false, m_bProductAttempted = false;

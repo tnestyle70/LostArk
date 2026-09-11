@@ -655,6 +655,13 @@ namespace
 		return nullptr == field || Try_ParseUnsigned(*field, MAX_TIME_MS, value);
 	}
 
+	bool_t Read_PresentationIndex(const DATA_JSON_VALUE& object, const char* key,
+		std::uint32_t& value, const std::uint32_t maximum)
+	{
+		const auto* field = object.Find(key);
+		return nullptr == field || Try_ParseUnsigned(*field, maximum, value);
+	}
+
 	bool_t Read_PresentationNumber(const DATA_JSON_VALUE& object, const char* key,
 		double& value, const double minimum, const double maximum)
 	{
@@ -706,7 +713,8 @@ namespace
 		if (!Has_Properties(value, { "occurrenceId", "resourceId", "startMs", "durationMs" },
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
 			  "dissolveStart", "dissolveEnd", "volume", "followBoss", "bone", "boneTarget",
-			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier" })) return false;
+			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
+			  "worldEmissionIndex" })) return false;
 		const auto* debugRender = value.Find("debugRender");
 		if (nullptr != debugRender)
 		{
@@ -730,6 +738,7 @@ namespace
 			Read_PresentationText(value, "worldId", row.strWorldId) &&
 			Read_PresentationText(value, "logicOccurrenceId", row.strLogicOccurrenceId) &&
 			Read_PresentationText(value, "worldOccurrenceId", row.strWorldOccurrenceId) &&
+			Read_PresentationIndex(value, "worldEmissionIndex", row.iWorldEmissionIndex, 127u) &&
 			Read_PresentationTime(value, "startMs", row.iStartMs) &&
 			Read_PresentationTime(value, "durationMs", row.iDurationMs) &&
 			Read_PresentationTime(value, "fadeInMs", row.iFadeInMs) &&
@@ -3358,7 +3367,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "\", \"cardColor\": \"" << CDataJson::Escape(row.strCardColor)
 				<< "\", \"anchorKind\": \"" << CDataJson::Escape(row.strAnchorKind)
 				<< "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId) << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
-				<< "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\"}"
+				<< "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
+				<< (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{}) << "}"
 				<< (i + 1u < pattern.PresentationOccurrences.size() ? "," : "") << '\n';
 		}
 		output << "      ]\n    }"
@@ -3421,7 +3431,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << "\", \"cardSymbol\": \"" << CDataJson::Escape(row.strCardSymbol) << "\", \"cardColor\": \"" << CDataJson::Escape(row.strCardColor)
                     << "\", \"anchorKind\": \"" << CDataJson::Escape(row.strAnchorKind) << "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId)
                     << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
-                    << "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\"}" << (j + 1 < bundle.PresentationOccurrences.size() ? "," : "") << '\n';
+                    << "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
+                    << (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{}) << "}"
+                    << (j + 1 < bundle.PresentationOccurrences.size() ? "," : "") << '\n';
             }
             output << "]}";
         }

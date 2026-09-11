@@ -1038,7 +1038,17 @@ Physics Y Timeline을 드래그해 같은 Seek로 확인한다. Lifetime을 바�
 원하면 프리셋을 다시 적용한다. 생성 개수와 간격은 유지되며 곡선은 첫 생성 기준이다.
 Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
 count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
-마지막 생성 시각은 그 창보다 작아야 한다. Anchor UI의 Character는 문서의 PLAYER로 저장되어
+마지막 생성 시각은 그 창보다 작아야 한다.
+같은 섹션의 `Authored Emissions` 표는 seed 분산 대신 사본을 직접 저작한다. 행마다 Offset(m), Yaw(deg),
+Start Delay(ms)를 가지며 행 yaw가 그 사본의 로컬 이동과 공전을 함께 돌린다. 행이 하나라도 있으면
+Count/Creation Interval/Spread는 비활성화되고 Count는 행 수를 따른다. `Distribute on Ring`은 Ring Count와
+Ring Start(deg)로 저장 위치를 중심으로 `Revolution Offset` 반경의 원을 만들며 회전 속도는
+`Revolution (deg/s)`가 소유한다. 레인·방향·시차가 다른 배치는 이 표로 저작하고, 같은 원점에서 무작위로
+흩뿌리는 배치는 기존 Count/Interval/Spread를 그대로 쓴다.
+행이 있는 Motion은 `NEXT` 체인에 쓸 수 없다(기존 단일 생성 규칙). Action Workbench의 WORLD Box Detail은
+행이 2개 이상일 때 `Emission index`를 표시하며, Collider는 그 행의 위치·방향·지연을 따라간다.
+Object 하나를 Pattern에 여러 번 Append하는 기존 방식도 그대로 쓸 수 있다. 배치마다 독립 Transform이
+필요하면 박스를, 한 Motion이 소유해 도구에서 함께 보고 편집해야 하면 행을 쓴다. Anchor UI의 Character는 문서의 PLAYER로 저장되어
 살아 있는 복제 플레이어마다 적용되고 Map은 저작 위치에 고정된다. Object Tool의 Preview at Character는
 현재 캐릭터 앞을 초기 Preview 기준으로 삼으며 저장 위치는 바꾸지 않는다. 기존 Map group의 Preview 종료 시 배치도 복구한다.
 

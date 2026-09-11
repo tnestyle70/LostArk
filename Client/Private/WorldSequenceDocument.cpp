@@ -141,6 +141,22 @@ namespace
 		return value.back() != '/' && (!model || extension == ".wmodel");
 	}
 
+	/* Authored rows must agree with the seeded fields they replace, so a
+	   document never carries two different answers for the emission count. */
+	bool_t Is_ValidEmissionList(const WORLD_SEQUENCE_OBJECT_MOTION& motion)
+	{
+		if (motion.emissions.empty()) return true;
+		if (motion.emissions.size() > 128u || motion.count != motion.emissions.size() ||
+			0u != motion.intervalMs || 0.f != motion.spreadDegrees) return false;
+		for (const auto& emission : motion.emissions)
+		{
+			if (!Is_BoundedFloat3(emission.positionOffset) || !std::isfinite(emission.yawDegrees) ||
+				emission.yawDegrees < -36000.f || emission.yawDegrees > 36000.f ||
+				emission.startDelayMs > CWorldSequenceDocument::MAX_DURATION_MS) return false;
+		}
+		return true;
+	}
+
 	bool_t Read_Uint32(
 		const DATA_JSON_VALUE* value,
 		uint32_t& outValue,
@@ -464,9 +480,9 @@ bool_t Client::CWorldSequenceDocument::Load(
 		if (const DATA_JSON_VALUE* motion = templateValue.Find("objectMotion"))
 		{
 			auto& value = parsedTemplate.objectMotion;
-			if (parsedFormatVersion < 3u || !Is_ExactObject(*motion,
+			if (parsedFormatVersion < 3u || !Is_ObjectShape(*motion,
 				{ "velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond",
-				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }) ||
+				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }, { "emissions" }) ||
 				!Read_Float3(motion->Find("velocity"), value.velocity) ||
 				!Read_Float3(motion->Find("acceleration"), value.acceleration) ||
 				!Read_Float3(motion->Find("angularVelocityDegrees"), value.angularVelocityDegrees) ||
@@ -479,6 +495,27 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				outStatus = "World object motion is invalid";
 				return false;
+			}
+			if (const DATA_JSON_VALUE* emissions = motion->Find("emissions"))
+			{
+				if (!emissions->Is_Array() || emissions->Get_Array().size() > 128u)
+				{
+					outStatus = "World object emissions are invalid";
+					return false;
+				}
+				for (const DATA_JSON_VALUE& emissionValue : emissions->Get_Array())
+				{
+					WORLD_SEQUENCE_OBJECT_EMISSION emission;
+					if (!Is_ExactObject(emissionValue, { "positionOffset", "yawDegrees", "startDelayMs" }) ||
+						!Read_Float3(emissionValue.Find("positionOffset"), emission.positionOffset) ||
+						!Read_FiniteFloat(emissionValue.Find("yawDegrees"), emission.yawDegrees) ||
+						!Read_Uint32(emissionValue.Find("startDelayMs"), emission.startDelayMs, MAX_DURATION_MS))
+					{
+						outStatus = "World object emission row is invalid";
+						return false;
+					}
+					value.emissions.push_back(emission);
+				}
 			}
 		}
 
@@ -797,7 +834,21 @@ bool_t Client::CWorldSequenceDocument::Save(
 		writeVector("revolutionDegreesPerSecond", motion.revolutionDegreesPerSecond);
 		writeVector("revolutionOffset", motion.revolutionOffset);
 		output << "        \"count\": " << motion.count << ", \"intervalMs\": " << motion.intervalMs
-			<< ", \"spreadDegrees\": " << motion.spreadDegrees << ", \"seed\": " << motion.seed << "\n      },\n"
+			<< ", \"spreadDegrees\": " << motion.spreadDegrees << ", \"seed\": " << motion.seed;
+		if (!motion.emissions.empty())
+		{
+			output << ",\n        \"emissions\": [";
+			for (size_t emissionIndex = 0; emissionIndex < motion.emissions.size(); ++emissionIndex)
+			{
+				const auto& emission = motion.emissions[emissionIndex];
+				output << (0u == emissionIndex ? "\n" : ",\n")
+					<< "          {\"positionOffset\": [" << emission.positionOffset.x << ", " << emission.positionOffset.y
+					<< ", " << emission.positionOffset.z << "], \"yawDegrees\": " << emission.yawDegrees
+					<< ", \"startDelayMs\": " << emission.startDelayMs << "}";
+			}
+			output << "\n        ]";
+		}
+		output << "\n      },\n"
 			<< "      \"tracks\": [";
 		for (size_t trackIndex = 0; trackIndex < value.tracks.size(); ++trackIndex)
 		{
@@ -990,7 +1041,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			!Is_BoundedFloat3(motion.angularVelocityDegrees) ||
 			!Is_BoundedFloat3(motion.revolutionDegreesPerSecond) || !Is_BoundedFloat3(motion.revolutionOffset) ||
 			motion.count < 1u || motion.count > 128u || motion.intervalMs > MAX_DURATION_MS ||
-			(value.effectTracks.empty() && static_cast<uint64_t>(motion.count - 1u) * motion.intervalMs >= value.durationMs) ||
+			(value.effectTracks.empty() && motion.LastEmissionDelayMs() >= value.durationMs) ||
+			!Is_ValidEmissionList(motion) ||
 			!std::isfinite(motion.spreadDegrees) || motion.spreadDegrees < 0.f || motion.spreadDegrees > (value.effectTracks.empty() ? 180.f : 360.f))
 		{ outStatus = "Invalid object motion in template: " + value.sequenceId; return false; }
 		std::unordered_set<std::string> effectIds;
@@ -1422,9 +1474,16 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			!sameFloat3(left.objectMotion.revolutionDegreesPerSecond, right.objectMotion.revolutionDegreesPerSecond) ||
 			!sameFloat3(left.objectMotion.revolutionOffset, right.objectMotion.revolutionOffset) ||
 			left.objectMotion.count != right.objectMotion.count || left.objectMotion.intervalMs != right.objectMotion.intervalMs ||
-			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed)
+			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed ||
+			left.objectMotion.emissions.size() != right.objectMotion.emissions.size())
 		{
 			return false;
+		}
+		for (size_t index = 0; index < left.objectMotion.emissions.size(); ++index)
+		{
+			const auto& a = left.objectMotion.emissions[index]; const auto& b = right.objectMotion.emissions[index];
+			if (!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat(a.yawDegrees, b.yawDegrees) ||
+				a.startDelayMs != b.startDelayMs) return false;
 		}
 		for (size_t index = 0; index < left.effectTracks.size(); ++index)
 		{

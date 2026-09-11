@@ -1486,7 +1486,9 @@ function Read-WorldSequenceDocument {
         if ([double]$template.durationMs -ne [math]::Floor([double]$template.durationMs)) { throw 'World sequence duration must be integer milliseconds' }
         if ($null -ne $template.PSObject.Properties['objectMotion']) {
             $motion = $template.objectMotion
-            Assert-ExactJsonProperties $motion @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset','count','intervalMs','spreadDegrees','seed') 'World object motion'
+            $motionProperties = @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset','count','intervalMs','spreadDegrees','seed')
+            if ($null -ne $motion.PSObject.Properties['emissions']) { $motionProperties += 'emissions' }
+            Assert-ExactJsonProperties $motion $motionProperties 'World object motion'
             foreach ($field in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
                 Assert-SequenceVector $motion.$field "World object motion $field"
             }
@@ -1494,9 +1496,29 @@ function Read-WorldSequenceDocument {
                 if (-not (Test-JsonNumber $motion.$field) -or [double]$motion.$field -lt 0 -or
                     [double]$motion.$field -gt 4294967295 -or [double]$motion.$field -ne [math]::Floor([double]$motion.$field)) { throw "Invalid object motion $field" }
             }
+            $lastEmissionMs = ([double]$motion.count - 1) * [double]$motion.intervalMs
+            if ($null -ne $motion.PSObject.Properties['emissions']) {
+                # Authored rows own the count; interval and spread are the seeded emitter's and must stay zero.
+                $emissions = @($motion.emissions)
+                if ($motion.emissions -isnot [System.Array] -or $emissions.Count -lt 1 -or $emissions.Count -gt 128 -or
+                    [double]$motion.count -ne $emissions.Count -or [double]$motion.intervalMs -ne 0 -or [double]$motion.spreadDegrees -ne 0) {
+                    throw "World object emissions must be 1..128 rows with count equal to the row count and zero interval/spread: $($template.sequenceId)"
+                }
+                $lastEmissionMs = 0
+                foreach ($emission in $emissions) {
+                    Assert-ExactJsonProperties $emission @('positionOffset','yawDegrees','startDelayMs') 'World object emission'
+                    Assert-SequenceVector $emission.positionOffset 'World object emission positionOffset'
+                    if (-not (Test-JsonNumber $emission.yawDegrees) -or [double]$emission.yawDegrees -lt -36000 -or [double]$emission.yawDegrees -gt 36000 -or
+                        -not (Test-JsonNumber $emission.startDelayMs) -or [double]$emission.startDelayMs -lt 0 -or [double]$emission.startDelayMs -gt 600000 -or
+                        [double]$emission.startDelayMs -ne [math]::Floor([double]$emission.startDelayMs)) {
+                        throw "Invalid World object emission row: $($template.sequenceId)"
+                    }
+                    if ([double]$emission.startDelayMs -gt $lastEmissionMs) { $lastEmissionMs = [double]$emission.startDelayMs }
+                }
+            }
             if ($motion.count -lt 1 -or $motion.count -gt 128 -or $motion.intervalMs -gt 600000 -or
                 (($null -eq $template.PSObject.Properties['effectTracks'] -or @($template.effectTracks).Count -eq 0) -and
-                    ([double]$motion.count - 1) * [double]$motion.intervalMs -ge [double]$template.durationMs) -or
+                    $lastEmissionMs -ge [double]$template.durationMs) -or
                 -not (Test-JsonNumber $motion.spreadDegrees) -or $motion.spreadDegrees -lt 0 -or $motion.spreadDegrees -gt $(if ($null -ne $template.PSObject.Properties['effectTracks'] -and @($template.effectTracks).Count -gt 0) { 360 } else { 180 })) {
                 throw 'World object spawn count, interval or spread exceeds its lifetime'
             }
@@ -1619,6 +1641,12 @@ function Read-WorldSequenceDocument {
             $emissionMs = 0
             if ($null -ne $template.PSObject.Properties['objectMotion']) {
                 $emissionMs = ($template.objectMotion.count - 1) * $template.objectMotion.intervalMs
+                if ($null -ne $template.objectMotion.PSObject.Properties['emissions']) {
+                    $emissionMs = 0
+                    foreach ($emission in @($template.objectMotion.emissions)) {
+                        if ([double]$emission.startDelayMs -gt $emissionMs) { $emissionMs = [double]$emission.startDelayMs }
+                    }
+                }
             }
             foreach ($effect in $template.effectTracks) {
                 Assert-ExactJsonProperties $effect @('effectTrackId','slotId','resourceKind','resourceId','timing','startMs','durationMs','positionOffset','rotationDegrees','scale') 'World Object effect track'

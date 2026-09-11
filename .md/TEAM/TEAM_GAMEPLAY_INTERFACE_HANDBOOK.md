@@ -384,6 +384,14 @@ stage 2/3/4는 authored `MarioN_go` 목적지와 같은 상세 navregion인지 �
 HP·소품 상태·trigger membership은 초기화하지 않는다. 새 요청 순서를 검사하고 중복에는 이전 verdict만 반환한다.
 Release Server는 점프에 `REJECTED_DISABLED`를 반환한다. F1 `Mario Controls (Debug Jump)`에 승인/거절 이유를 표시한다.
 
+마리오의 원본 공은 Q 뿅망치로 터진다. `Publish-WorldGameplay.ps1`이 worldbootstrap v11의 `MARIOBALL`
+행(stage, layout, slot, color, placementId, x, y, z)으로 싣고 slot은 해당 layout WorldSequence의 바인딩
+인덱스와 같은 순서다. Server는 몬스터와 같은 전방 120°·2.4m 원뿔에 공 반지름 0.47m를 더하고 높이 창
+1.2m로 판정해 `iMarioPoppedBallMask` 비트를 세우며, 한 색이 그 layout에서 전부 터지면
+`iMarioCurseReleasedMask`의 해당 비트(0 빨강, 1 파랑, 2 노랑)를 세운다. 공은 엔티티가 아니므로
+damage event를 만들지 않고, 스테이지가 비어 초기화되면 두 마스크도 0으로 돌아간다. Client는 표시만
+담당한다(배치 숨김, `boss.kouku.ball.smoke.<색>_1` 1회, 중앙 문구 3초).
+
 ### 4.3 마리오 원본 배치 선택
 
 Shared protocol 76의 `PLAYER_SNAPSHOT.iMarioLayoutVariant`는 0=미선택, 1–3=원본 색 공 Case다.
@@ -821,8 +829,9 @@ projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 �
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 78로 함께 빌드·재시작한다. FEAR snapshot 상태와
-빙고·마리오·갈고리 attachment wire를 함께 포함하므로 이전73/77 실행 파일과 혼용하지 않는다.
+Server/Shared/Client는 같은 protocol 79로 함께 빌드·재시작한다. FEAR snapshot 상태와
+빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
+`iMarioCurseReleasedMask`(u8)를 함께 포함하므로 이전73/77/78 실행 파일과 혼용하지 않는다.
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
 함께 지정하는 optional `resetBossYawDegrees`는 유한한 -360~360도의 절대 yaw로, 매 재생 같은 방향을 snapshot에 반영한다.
 누락하면 기존 yaw를 유지한다. 이 필드를 배포할 때는 확장된 PATTERNSPAWNRESET을 읽는 Server도 함께 빌드·재시작한다.

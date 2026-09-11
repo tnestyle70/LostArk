@@ -2,6 +2,8 @@
 #include "Character.h"
 #include "CombatHUDViewModel.h"
 #include "DeployPropObject.h"
+#include "EffectV2_Catalog.h"
+#include "EffectV2_Runtime.h"
 #include "KoukuSaydonPresentationPlayer.h"
 #include "Transform.h"
 #include "WorldGameplayDocument.h"
@@ -287,6 +289,97 @@ void CLevel_KakulSaydonArena::Update_MarioBallBouncePresentation(const f32_t tim
         return;
     }
     m_bMarioBallBounceRunning = true;
+}
+
+void CLevel_KakulSaydonArena::Update_MarioBallPresentation(const f32_t timeDelta)
+{
+    constexpr f32_t CURSE_NOTICE_SECONDS = 3.f;
+    constexpr float BALL_CENTRE_HEIGHT_M = .47f;
+    static constexpr const char* SMOKE_LEAVES[3] = {
+        "boss.kouku.ball.smoke.red_1", "boss.kouku.ball.smoke.blue_1", "boss.kouku.ball.smoke.yellow_1" };
+    const auto& player = CCombatHUDViewModel::Get().Get_Player();
+    const auto& document = m_SequencePlayer.Get_Document();
+    // Follows the layout the bounce update chose this frame; empty outside Mario.
+    const bool_t layoutChanged = m_strMarioLayoutInstance != m_strMarioBallLayoutInstance;
+    if (layoutChanged)
+    {
+        /* Hand the previous layout's slots back. Its stop already restored
+           the authored visibility, so nothing is shown here. */
+        if (const auto* previous = document.Find_Instance(m_strMarioBallLayoutInstance))
+            for (const auto& binding : previous->bindings)
+                if (uint64_t placementId = 0u; CWorldSequencePlayer::Try_ParseTargetId(binding, placementId))
+                    m_SequencePlayer.Set_PlacementSuppressed(placementId, false);
+        m_strMarioBallLayoutInstance = m_strMarioLayoutInstance;
+        m_iMarioPoppedBallsSeen = 0u;
+        m_iMarioCurseSeen = 0u;
+        m_iMarioCurseNoticeQueue = 0u;
+        m_iMarioCurseNoticeColor = -1;
+        m_fMarioCurseNoticeSeconds = 0.f;
+    }
+    const auto* layout = m_strMarioBallLayoutInstance.empty() ?
+        nullptr : document.Find_Instance(m_strMarioBallLayoutInstance);
+    const std::uint16_t popped = layout ? player.iMarioPoppedBallMask : std::uint16_t{};
+    const std::uint8_t curse = layout ? player.iMarioCurseReleasedMask : std::uint8_t{};
+    /* Balls popped before this player arrived are hidden silently: the smoke
+       and the notice belong to the pop itself. */
+    const std::uint16_t changed = static_cast<std::uint16_t>(popped ^ m_iMarioPoppedBallsSeen);
+    auto& placements = m_MapRuntime.Get_MutablePlacements();
+    for (size_t slot = 0u; layout && slot < layout->bindings.size() && slot < 16u; ++slot)
+    {
+        const std::uint16_t bit = static_cast<std::uint16_t>(1u << slot);
+        uint64_t placementId = 0u;
+        if (!(changed & bit) || !CWorldSequencePlayer::Try_ParseTargetId(layout->bindings[slot], placementId))
+            continue;
+        const bool_t hidden = 0u != (popped & bit);
+        m_SequencePlayer.Set_PlacementSuppressed(placementId, hidden);
+        auto* entry = CWorldSequencePlayer::Find_Placement(placements, placementId);
+        if (nullptr == entry) continue;
+        (void)CMapPlacementRuntime::Set_RuntimeVisible(*entry, !hidden);
+        if (!hidden || layoutChanged) continue;
+        const std::string& asset = entry->record.assetId;
+        const int color = asset == "MAP_MARIO_RED_STAR_BALL" ? 0 :
+            asset == "MAP_MARIO_BLUE_BALL" ? 1 : asset == "MAP_MARIO_YELLOW_BALL" ? 2 : -1;
+        if (color < 0 || m_bMarioBallSmokeFailed[color]) continue;
+        std::string failure;
+        if (!m_MarioBallSmoke[color] && !CEffectV2Catalog::Get().Load_ResourceSnapshot(
+            EFFECT_V2_RESOURCE_KIND::LEAF, SMOKE_LEAVES[color], m_MarioBallSmoke[color], failure))
+        {
+            m_bMarioBallSmokeFailed[color] = true;
+            OutputDebugStringA(("[MarioBall] " + std::string(SMOKE_LEAVES[color]) + ": " + failure + "\n").c_str());
+            continue;
+        }
+        /* The authored cloud sits at its own local offset (2.3 m up, 1.35 m
+           forward) because it was written for a taller anchor. Cancel that
+           offset so the puff lands on the ball; reading it back keeps this
+           correct if the effect is re-authored. */
+        const auto* document = m_MarioBallSmoke[color]->Find_Document(SMOKE_LEAVES[color]);
+        const float3_t authored = nullptr == document ? float3_t{} :
+            document->Desc.Params.Position.vStart;
+        EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+        XMStoreFloat4x4(&playback.PivotWorld, XMMatrixTranslation(
+            entry->record.position.x - authored.x,
+            entry->record.position.y + BALL_CENTRE_HEIGHT_M - authored.y,
+            entry->record.position.z - authored.z));
+        playback.bProductOwned = true;
+        if (0u == CEffectV2Runtime::Play_Leaf(SMOKE_LEAVES[color], m_MarioBallSmoke[color], playback, m_pDevice, m_pContext))
+            OutputDebugStringA(("[MarioBall] smoke: " + CEffectV2Runtime::Last_Error() + "\n").c_str());
+    }
+    m_iMarioPoppedBallsSeen = popped;
+    if (!layoutChanged)
+        m_iMarioCurseNoticeQueue |= static_cast<std::uint8_t>(curse & ~m_iMarioCurseSeen);
+    m_iMarioCurseSeen = curse;
+    if (m_iMarioCurseNoticeColor >= 0)
+    {
+        m_fMarioCurseNoticeSeconds -= std::isfinite(timeDelta) && timeDelta > 0.f ? timeDelta : 0.f;
+        if (m_fMarioCurseNoticeSeconds <= 0.f) m_iMarioCurseNoticeColor = -1;
+    }
+    for (int color = 0; m_iMarioCurseNoticeColor < 0 && color < 3; ++color)
+        if (m_iMarioCurseNoticeQueue & (1u << color))
+        {
+            m_iMarioCurseNoticeQueue &= static_cast<std::uint8_t>(~(1u << color));
+            m_iMarioCurseNoticeColor = color;
+            m_fMarioCurseNoticeSeconds = CURSE_NOTICE_SECONDS;
+        }
 }
 
 CWorldSequencePlayer::TARGET_SET CLevel_KakulSaydonArena::Make_WorldSequenceTargets()

@@ -3338,7 +3338,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				float3_t(
 					player.fSkillTargetX,
 					player.fSkillTargetY,
-					player.fSkillTargetZ), player.eKoukuHudMode))
+					player.fSkillTargetZ), player.eKoukuHudMode, player.eAttachmentSlot))
 		{
 			allSucceeded = false;
 		}

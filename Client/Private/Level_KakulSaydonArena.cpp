@@ -1158,6 +1158,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	m_SequencePlayer.Update(fTimeDelta, targets);
 	Update_CardMazePresentation(fTimeDelta);
 	Update_MarioBallBouncePresentation(fTimeDelta);
+	Update_MarioBallPresentation(fTimeDelta);
 	Update_MarioBombPresentation(fTimeDelta);
 	if (m_bWorldObjectReloadPending && !m_SequencePlayer.Has_ActiveInstances())
 	{
@@ -1565,6 +1566,26 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			TEXT("Font_YoonGasiIIM"), text.c_str(),
 			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.68f),
 			Colors::White, 0.f, float2_t(mazeSize.x * 0.5f, mazeSize.y * 0.5f), 1.f);
+	}
+	/* Mario: a colour's curse lifts when its last source ball pops. Korean by
+	   universal character names for the same codepage reason as above. */
+	if (m_iMarioCurseNoticeColor >= 0 && m_iMarioCurseNoticeColor < 3)
+	{
+		/* "<ppalgan|paran|noran> inhyeong-ui jeoju haeje": the red/blue/yellow
+		   doll's curse is released. */
+		static constexpr const tchar_t* NOTICES[3] = {
+			TEXT("\uBE68\uAC04 \uC778\uD615\uC758 \uC800\uC8FC \uD574\uC81C"),
+			TEXT("\uD30C\uB780 \uC778\uD615\uC758 \uC800\uC8FC \uD574\uC81C"),
+			TEXT("\uB178\uB780 \uC778\uD615\uC758 \uC800\uC8FC \uD574\uC81C") };
+		const tchar_t* const notice = NOTICES[m_iMarioCurseNoticeColor];
+		const vector_t tint = 0 == m_iMarioCurseNoticeColor ? Colors::Red :
+			1 == m_iMarioCurseNoticeColor ? Colors::DeepSkyBlue : Colors::Gold;
+		const float2_t noticeSize = CGameInstance::Get().Measure_Text(
+			TEXT("Font_YoonGasiIIM"), notice);
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YoonGasiIIM"), notice,
+			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.5f),
+			tint, 0.f, float2_t(noticeSize.x * 0.5f, noticeSize.y * 0.5f), 2.f);
 	}
 	return drawn;
 }
@@ -2768,7 +2789,8 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
- const std::string_view instanceId, float4x4_t& out, const std::string_view occurrenceId) const
+ const std::string_view instanceId, float4x4_t& out, const std::string_view occurrenceId,
+ const std::uint32_t emissionIndex) const
 {
 #ifdef _DEBUG
  if (!m_CompositionWorldPreviewCues.empty())
@@ -2781,10 +2803,10 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
     if (selected) return false;
     selected = playback.player.get();
    }
-  return selected && selected->Try_GetSequencePivot(std::string(instanceId), out);
+  return selected && selected->Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
  }
 #endif
- return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out);
+ return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
@@ -3333,7 +3355,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
     std::uint32_t runEpoch, const std::string& memberId, const std::string& sequenceId,
-    const std::string& cueId, float4x4_t& out) const
+    const std::string& cueId, float4x4_t& out, const std::uint32_t emissionIndex) const
 {
     const OWNED_WORLD_CUE* found = nullptr;
     for (const auto& [id, cue] : m_OwnedWorldCues)
@@ -3343,7 +3365,7 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
             if (found) return false;
             found = &cue;
         }
-    return found && found->player->Try_GetSequencePivot(sequenceId, out);
+    return found && found->player->Try_GetSequencePivot(sequenceId, out, emissionIndex);
 }
 
 

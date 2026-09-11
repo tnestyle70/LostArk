@@ -186,7 +186,13 @@ binding도 유지한다. 모델 path와 별칭 instance를 동시에 지정하�
 `acceleration`(m/s²), `angularVelocityDegrees`·`revolutionDegreesPerSecond`(각 축 deg/s),
 `revolutionOffset`(m), `count`(1..128), `intervalMs`, `spreadDegrees`(0..180), `seed`를 가진다.
 생략하면 1개·추가 이동/회전 없음이다. 마지막 생성 시각 `(count-1)*intervalMs`는 template의
-`durationMs`보다 작아야 하며, 생성된 오브젝트는 같은 상태 수명 안에서 재생한다. 생성형 instance의
+`durationMs`보다 작아야 하며, 생성된 오브젝트는 같은 상태 수명 안에서 재생한다.
+optional `emissions`는 seed 분산을 대신하는 저작 사본 목록이다. 각 행은 `positionOffset`(±100000),
+`yawDegrees`(-36000..36000), `startDelayMs`(0..600000)를 정확히 갖고 1..128행이다. 행이 있으면
+`count`는 행 수와 같고 `intervalMs`·`spreadDegrees`는 0이어야 하며, 마지막 생성 시각은 최대
+`startDelayMs`다. 행 yaw는 그 사본의 로컬 이동과 공전 offset을 함께 돌리므로 offset을
+`R(yaw)*revolutionOffset`로 두면 모든 행이 저작 위치를 중심으로 한 원을 돈다. 행이 없는 문서는
+기존 동작을 그대로 유지한다. 생성형 instance의
 optional `anchorKind`는 고정 `WORLD` 또는 살아 있는 복제 플레이어 각각을 따르는 `PLAYER`,
 `position`은 해당 anchor의 상대 위치다. 기본값은 `WORLD`와 `[0,0,0]`이며 기존 배치 binding에는
 플레이어 anchor나 추가 instance 위치를 적용하지 않는다. ANIM resource는 기존 `animationTracks`를
