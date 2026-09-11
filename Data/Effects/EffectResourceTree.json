@@ -5,7 +5,7 @@
     {"id": "world", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "World"}
   ],
   "references": [
-    {"kind": "V1", "assetId": "effect.world.mouse_click", "displayName": "World Mouse Click", "parentId": "world"},
+    {"kind": "V1", "assetId": "effect.world.mouse_click", "displayName": "Mouse Click", "parentId": "world"},
     {"kind": "V1", "assetId": "effect.world.move_destination", "displayName": "World Move Destination", "parentId": "world"},
     {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.tuning.restore", "displayName": "이펙트_차원술사W_튜닝", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.full.restore", "displayName": "이펙트_차원술사W_전체", "parentId": "root.v1"},

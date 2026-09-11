@@ -507,6 +507,14 @@ bool Reject_LightReceiver(PS_IN input)
 PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 {
     if (Reject_LightReceiver(In)) return (PS_OUT_LIGHT)0;
+    // Each source row owns only its marker-5 pixels; reject other rows before
+    // reconstructing world position or sampling the directional shadow map.
+    const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
+    if (g_SourceCharacterRow != 0u)
+    {
+        if (sourceDepth.w != 5.f || sourceDepth.z != float(g_SourceCharacterRow)) discard;
+    }
+    else if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
     PS_OUT_LIGHT Out;
     
     vector          vNormalDesc = g_NormalTexture.Sample(LinearSampler, In.vTexcoord);
@@ -541,7 +549,6 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 
     const float fDirectDiffuse = saturate(dot(
         normalize(g_vLightDir) * -1.f, normalize(vNormal)));
-    const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
     const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
     const float staticShadow = g_ApplyStaticShadow != 0u && shadowChannel == g_ApplyStaticShadow ?
         1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
@@ -549,7 +556,6 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
         vWorldPos, vNormal.xyz) * staticShadow;
     if (g_SourceCharacterRow != 0u)
         return Resolve_SourceCharacterLight(In, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
-    if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
     if (sourceDepth.w == 7.f)
         return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
@@ -593,6 +599,14 @@ float Resolve_PointLightAttenuation(float fDistance)
 PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
 {
     if (Reject_LightReceiver(In)) return (PS_OUT_LIGHT)0;
+    // Each source row owns only its marker-5 pixels; reject other rows before
+    // reconstructing world position or sampling the directional shadow map.
+    const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
+    if (g_SourceCharacterRow != 0u)
+    {
+        if (sourceDepth.w != 5.f || sourceDepth.z != float(g_SourceCharacterRow)) discard;
+    }
+    else if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
     PS_OUT_LIGHT Out;
     
     vector vNormalDesc = g_NormalTexture.Sample(LinearSampler, In.vTexcoord);
@@ -640,14 +654,12 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
         fAtt *= fCone * fCone;
     }
     
-    const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
     const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
     const float staticShadow = g_ApplyStaticShadow != 0u && shadowChannel == g_ApplyStaticShadow ?
         1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
 
     if (g_SourceCharacterRow != 0u)
         return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, staticShadow);
-    if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
     if (sourceDepth.w == 7.f)
         return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)

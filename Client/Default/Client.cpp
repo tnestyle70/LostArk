@@ -114,75 +114,59 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return 1;
     }
 
-    if (FAILED(CGameInstance::Get().Add_Timer(TEXT("Timer_Default"))))
-    {
-        WriteExitDiagnostic("Timer_Default creation failed", E_FAIL);
-        return FALSE;
-    }
+    // Timer_60 remains the shared rendered-frame clock used by raid-entry animation.
     if (FAILED(CGameInstance::Get().Add_Timer(TEXT("Timer_60"))))
     {
         WriteExitDiagnostic("Timer_60 creation failed", E_FAIL);
         return FALSE;
     }
 
-
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CLIENT));
-
     MSG msg{};
 
-    f32_t       fTimeAcc = {};
-
-    // 기본 메시지 루프입니다:
     while (true)
     {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        // Drain queued input before the next frame; rendering is not capped at 60 Hz.
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             if (WM_QUIT == msg.message)
-            {
-                WriteExitDiagnostic("WM_QUIT", S_OK);
                 break;
-            }
             if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
             {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
         }
-
-        CGameInstance::Get().Update_TimeDelta(TEXT("Timer_Default"));
-
-        fTimeAcc += CGameInstance::Get().Get_TimeDelta(TEXT("Timer_Default"));
-
-        if (fTimeAcc >= 1.f / 60.f /* 1초에 60번만들어와. */)
+        if (WM_QUIT == msg.message)
         {
-            CGameInstance::Get().Update_TimeDelta(TEXT("Timer_60"));
+            WriteExitDiagnostic("WM_QUIT", S_OK);
+            break;
+        }
 
-            Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
-            if (nullptr != pProfiler)
-                pProfiler->Begin_Frame();
+        CGameInstance::Get().Update_TimeDelta(TEXT("Timer_60"));
+        Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+        if (nullptr != pProfiler)
+            pProfiler->Begin_Frame();
 
-            {
-                Engine::CProfilerScope scope(pProfiler, "Client.Update");
-                pMainApp->Update(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60")));
-            }
+        {
+            Engine::CProfilerScope scope(pProfiler, "Client.Update");
+            pMainApp->Update(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60")));
+        }
 
-            HRESULT hRenderResult = S_OK;
-            {
-                Engine::CProfilerScope scope(pProfiler, "Client.Render");
-                hRenderResult = pMainApp->Render();
-            }
+        HRESULT hRenderResult = S_OK;
+        {
+            Engine::CProfilerScope scope(pProfiler, "Client.Render");
+            hRenderResult = pMainApp->Render();
+        }
 
-            if (nullptr != pProfiler)
-                pProfiler->End_Frame();
+        if (nullptr != pProfiler)
+            pProfiler->End_Frame();
 
-            if (FAILED(hRenderResult))
-            {
-                WriteExitDiagnostic("Render failed", hRenderResult);
-                break;
-            }
-
-            fTimeAcc = 0.f;
-        }        
+        if (FAILED(hRenderResult))
+        {
+            WriteExitDiagnostic("Render failed", hRenderResult);
+            break;
+        }
     }
 
     return (int) msg.wParam;

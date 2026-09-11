@@ -36,33 +36,7 @@ void Client::CInventoryView::Sync_DisplayOrder(const size_t itemCount)
 
 void Client::CInventoryView::Hide()
 {
-	m_pBackgroundView->Set_SlotVisible("Inventory_PanelBg", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_TopDeco", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_Title", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_CloseBtn", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_AutoSortBtn", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_SearchBtn", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_Button1", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_CraftingButton", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_GemButton", false);
-	m_pBackgroundView->Set_SlotVisible("Inventory_BottomBars", false);
-	constexpr const char* CATEGORY_SLOT_IDS[] = {
-		"Inventory_Category_All", "Inventory_Category_Combat", "Inventory_Category_Cloth",
-		"Inventory_Category_Use", "Inventory_Category_Gem", "Inventory_Category_Card",
-		"Inventory_Category_Etc",
-	};
-	for (const char* pId : CATEGORY_SLOT_IDS)
-		m_pBackgroundView->Set_SlotVisible(pId, false);
-	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
-	{
-		const string strBgId = "Inventory_Slot_" + std::to_string(iSlotIndex);
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pBackgroundView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight))
-			break;
-		m_pBackgroundView->Set_SlotVisible(strBgId, false);
-		m_pBackgroundView->Set_SlotVisible(
-			"Inventory_ItemIcon_" + std::to_string(iSlotIndex), false);
-	}
+	m_pBackgroundView->Set_AllSlotsVisible(false);
 }
 
 void Client::CInventoryView::Update(

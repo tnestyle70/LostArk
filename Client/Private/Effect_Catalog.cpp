@@ -933,36 +933,31 @@ namespace
 		std::string& strOutError)
 	{
 		using namespace Client;
-		constexpr std::uintmax_t MaximumDocumentBytes =
-			16u * 1024u * 1024u;
 		std::error_code FileError;
 		const std::uintmax_t FileBytes = std::filesystem::file_size(
 			Source.DocumentPath, FileError);
-		if (FileError || 0u == FileBytes || FileBytes > MaximumDocumentBytes)
+		if (FileError)
 		{
-			strOutError =
-				"authored source document is missing, empty, or exceeds 16 MiB";
+			strOutError = "Authored source byte count failed for " + EffectAssetId +
+				": " + FileError.message();
 			return false;
 		}
-
-		std::ifstream Input(Source.DocumentPath, std::ios::binary);
-		if (!Input)
+		if (0u == FileBytes || FileBytes > CEffectDocumentCodec::MAXIMUM_DOCUMENT_BYTES)
 		{
-			strOutError = "authored source document could not be opened";
-			return false;
-		}
-		const std::string Text{
-			std::istreambuf_iterator<char>(Input),
-			std::istreambuf_iterator<char>() };
-		if (Text.size() != FileBytes)
-		{
-			strOutError = "authored source document read was incomplete";
+			strOutError = "Authored source byte count is outside its limit for " +
+				EffectAssetId + ": actualBytes=" + std::to_string(FileBytes) +
+				", limitBytes=" +
+				std::to_string(CEffectDocumentCodec::MAXIMUM_DOCUMENT_BYTES) + ".";
 			return false;
 		}
 
 		EFFECT_DOCUMENT_DESC Document;
-		if (!CEffectDocumentCodec::Parse(Text, Document, strOutError) ||
-			Document.bSourceContract ||
+		if (!CEffectDocumentCodec::Load(Source.DocumentPath, Document, strOutError))
+		{
+			strOutError = "Authored source " + EffectAssetId + ": " + strOutError;
+			return false;
+		}
+		if (Document.bSourceContract ||
 			(Document.iLoadedFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION &&
 			 Document.iLoadedFormatVersion !=
 				EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION) ||

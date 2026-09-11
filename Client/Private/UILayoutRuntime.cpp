@@ -284,7 +284,7 @@ HRESULT Client::CUILayoutRuntime::Load()
 			}
 		}
 
-		m_Slots.push_back(move(Slot));
+		Append_Slot(move(Slot));
 	}
 
 	return S_OK;
@@ -416,43 +416,72 @@ Client::CUILayoutRuntime::Get_Or_Load_KeyframeAnimation(const string& strPath)
 	return InsertedIter->second.isLoaded ? &InsertedIter->second : nullptr;
 }
 
+void Client::CUILayoutRuntime::Append_Slot(RUNTIME_SLOT Slot)
+{
+	m_Slots.push_back(move(Slot));
+	m_SlotIndices[m_Slots.back().strId].push_back(m_Slots.size() - 1u);
+}
+
+Client::CUILayoutRuntime::RUNTIME_SLOT* Client::CUILayoutRuntime::Find_Slot(
+	const string& strId, const SLOT_REQUIREMENT eRequirement)
+{
+	return const_cast<RUNTIME_SLOT*>(
+		static_cast<const CUILayoutRuntime&>(*this).Find_Slot(strId, eRequirement));
+}
+
+const Client::CUILayoutRuntime::RUNTIME_SLOT* Client::CUILayoutRuntime::Find_Slot(
+	const string& strId, const SLOT_REQUIREMENT eRequirement) const
+{
+	const auto Found = m_SlotIndices.find(strId);
+	if (Found == m_SlotIndices.end())
+		return nullptr;
+	if (eRequirement == SLOT_REQUIREMENT::ANY)
+		return &m_Slots[Found->second.front()];
+	for (const size_t iSlot : Found->second)
+	{
+		const RUNTIME_SLOT& Slot = m_Slots[iSlot];
+		if (eRequirement == SLOT_REQUIREMENT::FLIPBOOK && Slot.AnimationFramePaths.empty())
+			continue;
+		if (eRequirement == SLOT_REQUIREMENT::KEYFRAME && Slot.strKeyframeAnimationPath.empty())
+			continue;
+		return &Slot;
+	}
+	return nullptr;
+}
+
 bool_t Client::CUILayoutRuntime::Get_SlotRect(
 	const string& strId, f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const
 {
-	for (const RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		fX = Slot.fX;
-		fY = Slot.fY;
-		fWidth = Slot.fSizeX;
-		fHeight = Slot.fSizeY;
-		return true;
-	}
-	return false;
+	const RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
+		return false;
+	const RUNTIME_SLOT& Slot = *pSlot;
+	fX = Slot.fX;
+	fY = Slot.fY;
+	fWidth = Slot.fSizeX;
+	fHeight = Slot.fSizeY;
+	return true;
 }
 
 void Client::CUILayoutRuntime::Set_SlotVisible(const string& strId, bool_t bVisible)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		Slot.bVisible = bVisible;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_Visible(bVisible);
-		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
-			if (nullptr != pExtra)
-				pExtra->Set_Visible(bVisible);
-		/* Keyframe layer sprites only ever hide here -- showing is Update()'s per-key decision
-		(each layer's active key decides whether that layer draws at all this frame). */
-		if (!bVisible)
-		{
-			for (const shared_ptr<CUI_Sprite>& pKeySprite : Slot.KeyframeSprites)
-				if (nullptr != pKeySprite)
-					pKeySprite->Set_Visible(false);
-		}
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
+	RUNTIME_SLOT& Slot = *pSlot;
+	Slot.bVisible = bVisible;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_Visible(bVisible);
+	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+		if (nullptr != pExtra)
+			pExtra->Set_Visible(bVisible);
+	/* Keyframe layer sprites only ever hide here -- showing is Update()'s per-key decision
+	(each layer's active key decides whether that layer draws at all this frame). */
+	if (!bVisible)
+	{
+		for (const shared_ptr<CUI_Sprite>& pKeySprite : Slot.KeyframeSprites)
+			if (nullptr != pKeySprite)
+				pKeySprite->Set_Visible(false);
 	}
 }
 
@@ -499,37 +528,33 @@ void Client::CUILayoutRuntime::Set_AllSlotsVisible(bool_t bVisible)
 
 void Client::CUILayoutRuntime::Set_SlotTint(const string& strId, const float4_t& vTint)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_Tint(vTint);
-		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
-			if (nullptr != pExtra)
-				pExtra->Set_Tint(vTint);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_Tint(vTint);
+	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+		if (nullptr != pExtra)
+			pExtra->Set_Tint(vTint);
 }
 
 void Client::CUILayoutRuntime::Set_SlotTintMultiplier(
 	const string& strId,
 	const float4_t& vTintMultiplier)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_TintMultiplier(vTintMultiplier);
-		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
-			if (nullptr != pExtra)
-				pExtra->Set_TintMultiplier(vTintMultiplier);
-		for (const shared_ptr<CUI_Sprite>& pKeySprite : Slot.KeyframeSprites)
-			if (nullptr != pKeySprite)
-				pKeySprite->Set_TintMultiplier(vTintMultiplier);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_TintMultiplier(vTintMultiplier);
+	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+		if (nullptr != pExtra)
+			pExtra->Set_TintMultiplier(vTintMultiplier);
+	for (const shared_ptr<CUI_Sprite>& pKeySprite : Slot.KeyframeSprites)
+		if (nullptr != pKeySprite)
+			pKeySprite->Set_TintMultiplier(vTintMultiplier);
 }
 
 void Client::CUILayoutRuntime::Set_SlotAlpha(const string& strId, f32_t fAlpha)
@@ -539,33 +564,29 @@ void Client::CUILayoutRuntime::Set_SlotAlpha(const string& strId, f32_t fAlpha)
 
 void Client::CUILayoutRuntime::Set_SlotTexture(const string& strId, const string& strAssetPath)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
+		return;
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr == Slot.pSprite)
+		return;
+	if (strAssetPath.empty())
 	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr == Slot.pSprite)
-			return;
-		if (strAssetPath.empty())
-		{
-			Slot.pSprite->Set_Texture(nullptr);
-			return;
-		}
-		Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(strAssetPath));
+		Slot.pSprite->Set_Texture(nullptr);
 		return;
 	}
+	Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(strAssetPath));
 }
 
 void Client::CUILayoutRuntime::Set_SlotTextureSRV(
 	const string& strId, ComPtr<ID3D11ShaderResourceView> pSRV)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_Texture(pSRV);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_Texture(pSRV);
 }
 
 vector<string> Client::CUILayoutRuntime::Get_SlotIds() const
@@ -579,107 +600,92 @@ vector<string> Client::CUILayoutRuntime::Get_SlotIds() const
 
 void Client::CUILayoutRuntime::Set_SlotPosition(const string& strId, f32_t fX, f32_t fY)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		Slot.fX = fX;
-		Slot.fY = fY;
-		const f32_t fCenterX = (fX + Slot.fSizeX * 0.5f) * m_fScaleX;
-		const f32_t fCenterY = (fY + Slot.fSizeY * 0.5f) * m_fScaleY;
-		const f32_t fSizeX = Slot.fSizeX * m_fScaleX;
-		const f32_t fSizeY = Slot.fSizeY * m_fScaleY;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_Rect(fCenterX, fCenterY, fSizeX, fSizeY);
-		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
-			if (nullptr != pExtra)
-				pExtra->Set_Rect(fCenterX, fCenterY, fSizeX, fSizeY);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	Slot.fX = fX;
+	Slot.fY = fY;
+	const f32_t fCenterX = (fX + Slot.fSizeX * 0.5f) * m_fScaleX;
+	const f32_t fCenterY = (fY + Slot.fSizeY * 0.5f) * m_fScaleY;
+	const f32_t fSizeX = Slot.fSizeX * m_fScaleX;
+	const f32_t fSizeY = Slot.fSizeY * m_fScaleY;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_Rect(fCenterX, fCenterY, fSizeX, fSizeY);
+	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+		if (nullptr != pExtra)
+			pExtra->Set_Rect(fCenterX, fCenterY, fSizeX, fSizeY);
 }
 
 void Client::CUILayoutRuntime::Set_SlotRect(
 	const string& strId, f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		Slot.fX = fX;
-		Slot.fY = fY;
-		Slot.fSizeX = fWidth;
-		Slot.fSizeY = fHeight;
-		const f32_t fCenterX = (fX + fWidth * 0.5f) * m_fScaleX;
-		const f32_t fCenterY = (fY + fHeight * 0.5f) * m_fScaleY;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_Rect(fCenterX, fCenterY, fWidth * m_fScaleX, fHeight * m_fScaleY);
-		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
-			if (nullptr != pExtra)
-				pExtra->Set_Rect(fCenterX, fCenterY, fWidth * m_fScaleX, fHeight * m_fScaleY);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	Slot.fX = fX;
+	Slot.fY = fY;
+	Slot.fSizeX = fWidth;
+	Slot.fSizeY = fHeight;
+	const f32_t fCenterX = (fX + fWidth * 0.5f) * m_fScaleX;
+	const f32_t fCenterY = (fY + fHeight * 0.5f) * m_fScaleY;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_Rect(fCenterX, fCenterY, fWidth * m_fScaleX, fHeight * m_fScaleY);
+	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+		if (nullptr != pExtra)
+			pExtra->Set_Rect(fCenterX, fCenterY, fWidth * m_fScaleX, fHeight * m_fScaleY);
 }
 
 void Client::CUILayoutRuntime::Set_SlotFillRatio(const string& strId, f32_t fFillRatio)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_FillRatio(fFillRatio);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_FillRatio(fFillRatio);
 }
 
 void Client::CUILayoutRuntime::Set_SlotArcRatio(const string& strId, f32_t fArcRatio)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_ArcRatio(fArcRatio);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_ArcRatio(fArcRatio);
 }
 
 void Client::CUILayoutRuntime::Set_SlotUVWindow(const string& strId, f32_t fOffsetU,
 	f32_t fOffsetV, f32_t fScaleU, f32_t fScaleV)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_UVWindow(float2_t(fOffsetU, fOffsetV), float2_t(fScaleU, fScaleV));
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_UVWindow(float2_t(fOffsetU, fOffsetV), float2_t(fScaleU, fScaleV));
 }
 
 void Client::CUILayoutRuntime::Set_SlotRotation(const string& strId, f32_t fDegrees)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		if (nullptr != Slot.pSprite)
-			Slot.pSprite->Set_Rotation(fDegrees);
-		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
-			if (nullptr != pExtra)
-				pExtra->Set_Rotation(fDegrees);
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	if (nullptr != Slot.pSprite)
+		Slot.pSprite->Set_Rotation(fDegrees);
+	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+		if (nullptr != pExtra)
+			pExtra->Set_Rotation(fDegrees);
 }
 
 void Client::CUILayoutRuntime::Ensure_RuntimeSlot(const string& strId, f32_t fX, f32_t fY,
 	f32_t fWidth, f32_t fHeight, const string& strTexturePath)
 {
-	for (const RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId == strId)
-			return;
-	}
+	if (nullptr != Find_Slot(strId))
+		return;
 
 	RUNTIME_SLOT Slot{};
 	Slot.strId = strId;
@@ -688,41 +694,39 @@ void Client::CUILayoutRuntime::Ensure_RuntimeSlot(const string& strId, f32_t fX,
 	Slot.fSizeX = fWidth;
 	Slot.fSizeY = fHeight;
 	Slot.pSprite = Create_Sprite(fX, fY, fWidth, fHeight, strTexturePath);
-	m_Slots.push_back(move(Slot));
+	Append_Slot(move(Slot));
 }
 
 bool_t Client::CUILayoutRuntime::Play_KeyframeAnimation(const string& strId, const string& strLabel)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
+	RUNTIME_SLOT* pSlot = Find_Slot(strId, SLOT_REQUIREMENT::KEYFRAME);
+	if (nullptr == pSlot)
+		return false;
+	RUNTIME_SLOT& Slot = *pSlot;
+
+	const KEYFRAME_ANIM_DOCUMENT* pDocument =
+		Get_Or_Load_KeyframeAnimation(Slot.strKeyframeAnimationPath);
+	if (nullptr == pDocument)
+		return false;
+
+	const auto LabelIter = pDocument->Labels.find(strLabel);
+	if (pDocument->Labels.end() == LabelIter)
+		return false;
+
+	/* Window = [this label, the next label after it) -- or the document end when this is
+	the last label. Same contract as CHUDRuntimeView::Play_KeyframeAnimation. */
+	const int32_t iStartFrame = LabelIter->second;
+	int32_t iEndFrame = pDocument->iFrameCount;
+	for (const auto& Pair : pDocument->Labels)
 	{
-		if (Slot.strId != strId || Slot.strKeyframeAnimationPath.empty())
-			continue;
-
-		const KEYFRAME_ANIM_DOCUMENT* pDocument =
-			Get_Or_Load_KeyframeAnimation(Slot.strKeyframeAnimationPath);
-		if (nullptr == pDocument)
-			return false;
-
-		const auto LabelIter = pDocument->Labels.find(strLabel);
-		if (pDocument->Labels.end() == LabelIter)
-			return false;
-
-		/* Window = [this label, the next label after it) -- or the document end when this is
-		the last label. Same contract as CHUDRuntimeView::Play_KeyframeAnimation. */
-		const int32_t iStartFrame = LabelIter->second;
-		int32_t iEndFrame = pDocument->iFrameCount;
-		for (const auto& Pair : pDocument->Labels)
-		{
-			if (Pair.second > iStartFrame && Pair.second < iEndFrame)
-				iEndFrame = Pair.second;
-		}
-
-		Slot.iKeyframeWindowStart = iStartFrame;
-		Slot.iKeyframeWindowEnd = iEndFrame;
-		Slot.fKeyframeElapsedSeconds = 0.0;
-		return true;
+		if (Pair.second > iStartFrame && Pair.second < iEndFrame)
+			iEndFrame = Pair.second;
 	}
-	return false;
+
+	Slot.iKeyframeWindowStart = iStartFrame;
+	Slot.iKeyframeWindowEnd = iEndFrame;
+	Slot.fKeyframeElapsedSeconds = 0.0;
+	return true;
 }
 
 void Client::CUILayoutRuntime::Update_KeyframeSlot(RUNTIME_SLOT& Slot, f32_t fTimeDelta)
@@ -857,58 +861,52 @@ void Client::CUILayoutRuntime::Update(f32_t fTimeDelta)
 
 void Client::CUILayoutRuntime::Restart_Animation(const string& strId)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId || Slot.AnimationFramePaths.empty())
-			continue;
-		Slot.fAnimationElapsed = 0.f;
-		Slot.iAnimationFrame = 0;
-		if (nullptr != Slot.pSprite)
-		{
-			Slot.pSprite->Set_Texture(
-				m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[0]));
-		}
+	RUNTIME_SLOT* pSlot = Find_Slot(strId, SLOT_REQUIREMENT::FLIPBOOK);
+	if (nullptr == pSlot)
 		return;
+	RUNTIME_SLOT& Slot = *pSlot;
+	Slot.fAnimationElapsed = 0.f;
+	Slot.iAnimationFrame = 0;
+	if (nullptr != Slot.pSprite)
+	{
+		Slot.pSprite->Set_Texture(
+			m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[0]));
 	}
 }
 
 void Client::CUILayoutRuntime::Set_Animation_Frame(const string& strId, int32_t iFrame)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId || Slot.AnimationFramePaths.empty())
-			continue;
-		const int32_t iFrameCount = static_cast<int32_t>(Slot.AnimationFramePaths.size());
-		const int32_t iClamped = (std::max)(0, (std::min)(iFrame, iFrameCount - 1));
-		Slot.fAnimationElapsed = (Slot.fAnimationFPS > 0.f) ?
-			static_cast<f32_t>(iClamped) / Slot.fAnimationFPS : 0.f;
-		if (iClamped != Slot.iAnimationFrame && nullptr != Slot.pSprite)
-		{
-			Slot.iAnimationFrame = iClamped;
-			Slot.pSprite->Set_Texture(
-				m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[iClamped]));
-		}
+	RUNTIME_SLOT* pSlot = Find_Slot(strId, SLOT_REQUIREMENT::FLIPBOOK);
+	if (nullptr == pSlot)
 		return;
+	RUNTIME_SLOT& Slot = *pSlot;
+	const int32_t iFrameCount = static_cast<int32_t>(Slot.AnimationFramePaths.size());
+	const int32_t iClamped = (std::max)(0, (std::min)(iFrame, iFrameCount - 1));
+	Slot.fAnimationElapsed = (Slot.fAnimationFPS > 0.f) ?
+		static_cast<f32_t>(iClamped) / Slot.fAnimationFPS : 0.f;
+	if (iClamped != Slot.iAnimationFrame && nullptr != Slot.pSprite)
+	{
+		Slot.iAnimationFrame = iClamped;
+		Slot.pSprite->Set_Texture(
+			m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[iClamped]));
 	}
 }
 
 void Client::CUILayoutRuntime::Set_SlotAnimation(const string& strId,
 	const vector<string>& Frames, f32_t fFps, bool_t bLoop)
 {
-	for (RUNTIME_SLOT& Slot : m_Slots)
-	{
-		if (Slot.strId != strId)
-			continue;
-		Slot.AnimationFramePaths = Frames;
-		if (fFps > 0.f)
-			Slot.fAnimationFPS = fFps;
-		Slot.bAnimationLoop = bLoop;
-		Slot.fAnimationElapsed = 0.f;
-		Slot.iAnimationFrame = 0;
-		/* Show frame 0 immediately so the swap doesn't flash the previous boss's last frame for
-		one tick before Update() advances. A cleared list leaves the static texture untouched. */
-		if (nullptr != Slot.pSprite && !Frames.empty())
-			Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(Frames[0]));
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
 		return;
-	}
+	RUNTIME_SLOT& Slot = *pSlot;
+	Slot.AnimationFramePaths = Frames;
+	if (fFps > 0.f)
+		Slot.fAnimationFPS = fFps;
+	Slot.bAnimationLoop = bLoop;
+	Slot.fAnimationElapsed = 0.f;
+	Slot.iAnimationFrame = 0;
+	/* Show frame 0 immediately so the swap doesn't flash the previous boss's last frame for
+	one tick before Update() advances. A cleared list leaves the static texture untouched. */
+	if (nullptr != Slot.pSprite && !Frames.empty())
+		Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(Frames[0]));
 }
