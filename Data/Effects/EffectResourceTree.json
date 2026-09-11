@@ -2,8 +2,11 @@
   "schema": "lostark.effect-resource-tree",
   "formatVersion": 1,
   "nodes": [
+    {"id": "world", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "World"}
   ],
   "references": [
+    {"kind": "V1", "assetId": "effect.world.mouse_click", "displayName": "World Mouse Click", "parentId": "world"},
+    {"kind": "V1", "assetId": "effect.world.move_destination", "displayName": "World Move Destination", "parentId": "world"},
     {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.tuning.restore", "displayName": "이펙트_차원술사W_튜닝", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.full.restore", "displayName": "이펙트_차원술사W_전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050160.clip4.full.restore", "displayName": "이펙트_차원술사E_전체", "parentId": "root.v1"},
@@ -100,6 +103,7 @@
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34610.clip1.full.restore", "displayName": "창술사 V 1 원본 전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34610.clip2.full.restore", "displayName": "창술사 V 2 원본 전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34610.clip3.full.restore", "displayName": "창술사 V 3 원본 전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.lancemaster.skill.34630.full.restore", "displayName": "LanceMaster ALT V Full / Animation + Horse + Camera", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34630.clip1.full.restore", "displayName": "창술사 Alt+V 1 원본 전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34630.clip2.full.restore", "displayName": "창술사 Alt+V 2 원본 전체", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.lancemaster.skill.34630.clip3.full.restore", "displayName": "창술사 Alt+V 3 원본 전체", "parentId": "root.v1"},

@@ -4,6 +4,7 @@
 #ifdef _DEBUG
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "MapAssetCatalog.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
@@ -74,6 +75,7 @@ const char* ResultText(const PlaybackResult result)
 
 void CMainApp::RefreshSequenceViewer()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Refresh");
 	m_bSequenceViewerLoaded = true;
 	m_iSequenceViewerPendingEditorAction = -1;
 	DATA_JSON_VALUE labels;
@@ -313,6 +315,7 @@ void CMainApp::ExecuteSequenceViewerAction(const int action)
 
 void CMainApp::UpdateSequenceViewer()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Update");
 	for (const auto& sink : {
 		CLevel_KakulSaydonArena::Get_Active() ? CLevel_KakulSaydonArena::Get_Active()->Get_PlayerCommandSink() : nullptr,
 		CLevel_ValtanArena::Get_Active() ? CLevel_ValtanArena::Get_Active()->Get_PlayerCommandSink() : nullptr })
@@ -340,6 +343,7 @@ void CMainApp::UpdateSequenceViewer()
 
 void CMainApp::RenderSequenceViewer()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Build");
 	if (!ImGui::CollapsingHeader("Sequence Viewer / 시퀀스 뷰어", ImGuiTreeNodeFlags_DefaultOpen)) return;
 	if (!m_bSequenceViewerLoaded) RefreshSequenceViewer();
 	ImGui::TextWrapped("현재 맵과 관계없이 목록을 볼 수 있습니다. Test = 내 화면 미리보기 / Arena = 서버 공동 실행");

@@ -3,6 +3,8 @@
 #include "imgui_impl_win32.h"
 
 #include "ImGuiLayer.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 
 #include <filesystem>
 
@@ -97,9 +99,21 @@ void CImGuiLayer::BeginFrame()
 	if (!m_bInitialized || m_bFrameStarted)
 		return;
 
-	ImGui_ImplDX11_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
+	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+	ImGui_ImplDX11_SetProfiler(pProfiler);
+	CProfilerScope scope(pProfiler, "ImGui.NewFrame");
+	{
+		CProfilerScope backendScope(pProfiler, "ImGui.NewFrame.DX11");
+		ImGui_ImplDX11_NewFrame();
+	}
+	{
+		CProfilerScope platformScope(pProfiler, "ImGui.NewFrame.Win32");
+		ImGui_ImplWin32_NewFrame();
+	}
+	{
+		CProfilerScope coreScope(pProfiler, "ImGui.NewFrame.Core");
+		ImGui::NewFrame();
+	}
 
 	m_bFrameStarted = true;
 }
@@ -109,18 +123,37 @@ void CImGuiLayer::EndFrame()
 	if (!m_bInitialized || !m_bFrameStarted)
 		return;
 
-	ImGui::Render();
+	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+	{
+		CProfilerScope scope(pProfiler, "ImGui.FinalizeDrawData");
+		ImGui::Render();
+	}
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 	ImGuiIO& io = ImGui::GetIO();
+	if (nullptr != pProfiler)
+	{
+		pProfiler->Set_Counter(EProfilerCounter::ImGuiRenderWindows, io.MetricsRenderWindows);
+		pProfiler->Set_Counter(EProfilerCounter::ImGuiActiveWindows, io.MetricsActiveWindows);
+	}
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
+		CProfilerScope scope(pProfiler, "ImGui.PlatformUpdate");
+		ImGui::UpdatePlatformWindows();
+	}
+	const int32_t viewportCount = ImGui::GetPlatformIO().Viewports.Size;
+	if (nullptr != pProfiler)
+		pProfiler->Set_Counter(EProfilerCounter::ImGuiPlatformViewports, viewportCount);
+	// Update still runs to create/destroy detached windows. With only the main
+	// viewport there is no secondary render target to bind or restore.
+	if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) && viewportCount > 1)
+	{
+		CProfilerScope scope(pProfiler, "ImGui.PlatformRender");
 		ComPtr<ID3D11RenderTargetView> pPreviousRTV;
 		ComPtr<ID3D11DepthStencilView> pPreviousDSV;
 		if (nullptr != m_pContext)
 			m_pContext->OMGetRenderTargets(1, &pPreviousRTV, &pPreviousDSV);
 
-		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 
 		if (nullptr != m_pContext)
@@ -150,6 +183,7 @@ void CImGuiLayer::Shutdown()
 
 	CancelFrame();
 
+	ImGui_ImplDX11_SetProfiler(nullptr);
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();

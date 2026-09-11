@@ -119,7 +119,7 @@ ROOT_OPTIONAL_KEYS = {
     "nextLogicOrdinal", "logics", "nextSummonOrdinal", "summons",
     "nextWorldOrdinal", "worlds", "nextSceneProfileOrdinal", "sceneProfiles",
     "madnessPolicy", "presentationResources", "nextPresentationResourceOrdinal",
-    "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles",
+    "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles", "patternFlows",
 }
 PATTERN_OPTIONAL_KEYS = {
     "nextLogicOccurrenceOrdinal",
@@ -478,6 +478,17 @@ def _validate_logic_definition(
                 "NONE", "POLYMORPH", "MARIO", "DANCE", "MAZE"
             }:
                 raise CompositionError(f"{context} HUD_ENTER requires a supported hudMode")
+        elif kind == "CARD_MAZE_HIDE_NEXT":
+            if extra != {"triggerKind"}:
+                raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
+        elif kind == "CARD_MAZE_ENTER":
+            if extra != {"triggerKind", "teleportPosition"}:
+                raise CompositionError(f"{context} CARD_MAZE_ENTER requires only teleportPosition")
+            position = logic["teleportPosition"]
+            if not isinstance(position, list) or len(position) != 3:
+                raise CompositionError(f"{context} teleportPosition needs X/Y/Z")
+            for value in position:
+                _number(value, f"{context} teleportPosition", -100000.0, 100000.0)
         elif kind == "REAL_GAZE_TELEPORT":
             if extra - {"faceCenterYawOffsetDegrees"} != {"triggerKind", "teleportPosition", "clonePatternId", "clockHours"}:
                 raise CompositionError(f"{context} REAL_GAZE_TELEPORT values are incomplete")
@@ -647,7 +658,11 @@ def _validate_catalog(
         _keys(row, exact_keys, optional_keys or set(), row_context)
         row_id = _stable_id(row[id_key], f"{row_context} {id_key}")
         generated = generated_re.fullmatch(row_id)
-        if generated is None or int(generated.group(1)) >= next_ordinal:
+        source_prefix = "world.kouku.gate2.intro."
+        source_world = (id_key == "worldId" and row_id.startswith(source_prefix)
+                        and len(row_id) > len(source_prefix)
+                        and row.get("sequenceInstanceId") == "world.sequence.instance.kouku.gate2.intro." + row_id[len(source_prefix):])
+        if not source_world and (generated is None or int(generated.group(1)) >= next_ordinal):
             raise CompositionError(
                 f"{id_key} must use {context}.<N> below {ordinal_key}: {row_id}"
             )
@@ -872,7 +887,7 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
                 for box in current.get("logicOccurrences", []):
                     if not box.get("enabled", True): continue
                     logic = logics.get(box["logicId"], {})
-                    if logic.get("judgementKind") in {"POSE_INPUT", "ROULETTE_CARD_MATCH"} or logic.get("triggerKind") == "HUD_ENTER":
+                    if logic.get("judgementKind") in {"POSE_INPUT", "ROULETTE_CARD_MATCH"} or logic.get("triggerKind") in {"HUD_ENTER", "CARD_MAZE_HIDE_NEXT", "CARD_MAZE_ENTER"}:
                         stateful_members.add(member_id)
                     for slot in OUTCOME_SLOTS:
                         for result_id in outcome_logic_ids(box, slot):
@@ -1014,6 +1029,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
     """Check persisted identities and timing; reference/oracle metadata is advisory."""
 
     _keys(document, ROOT_KEYS, ROOT_OPTIONAL_KEYS, "composition")
+    validate_pattern_flows(document)
     version = _integer(document["formatVersion"], "composition formatVersion", 1, FORMAT_VERSION)
     exact_values = {
         "schema": SCHEMA,
@@ -1541,11 +1557,46 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             )
 
 
+def validate_pattern_flows(document: dict[str, Any]) -> None:
+    """Flow order is authoring metadata; every row reuses a saved execution ID."""
+    flows = _array(document.get("patternFlows", []), "patternFlows", 4)
+    if not flows:
+        return
+    identities: set[str] = set()
+    gates: set[str] = set()
+    patterns = {row.get("patternId"): row for row in document.get("patterns", []) if isinstance(row, dict)}
+    bundles = {row.get("bundleId"): row for row in document.get("bundles", []) if isinstance(row, dict)}
+    for flow in flows:
+        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"}, "Pattern Flow")
+        identity = _stable_id(flow["flowId"], "flowId")
+        gate = _stable_id(flow["gateId"], "Flow gateId")
+        _display_name(flow["displayName"], "Flow displayName")
+        if identity in identities or gate in gates or gate not in {"GATE1", "GATE2", "GATE3", "BINGO"}:
+            raise CompositionError("Pattern Flow requires one distinct saved flow per Gate")
+        identities.add(identity)
+        gates.add(gate)
+        entry_ids: set[str] = set()
+        for entry in _array(flow["entries"], "Flow entries", 256):
+            _exact_keys(entry, {"entryId", "kind", "targetId", "waitAfterMs"}, "Pattern Flow entry")
+            entry_id = _stable_id(entry["entryId"], "Flow entryId")
+            target_id = _stable_id(entry["targetId"], "Flow targetId")
+            _integer(entry["waitAfterMs"], "Flow waitAfterMs", 0, MAX_TIMELINE_MS)
+            if entry_id in entry_ids or entry["kind"] not in {"PATTERN", "BUNDLE"}:
+                raise CompositionError("Pattern Flow entry identity or kind is invalid")
+            entry_ids.add(entry_id)
+            target = (patterns if entry["kind"] == "PATTERN" else bundles).get(target_id)
+            if target is None or target.get("gateId", "GATE1") != gate:
+                raise CompositionError("Pattern Flow target is missing or belongs to another Gate: " + target_id)
+
+
 def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
                            bundle_ids: set[str] | None = None) -> dict[str, Any]:
     # Status is a legacy editing field. Only the private validation copy changes;
     # category, timings, lanes, and the persisted document remain authored values.
     candidate = copy.deepcopy(source)
+    # The Client audition service resolves the saved Flow against this admitted
+    # inventory and submits existing pattern/bundle requests after Server completion.
+    candidate.pop("patternFlows", None)
     candidate["patterns"] = [p for p in candidate["patterns"] if p["patternId"] in pattern_ids]
     candidate["bundles"] = [b for b in candidate.get("bundles", []) if b["bundleId"] in (bundle_ids or set())]
     for row in [*candidate["patterns"], *candidate["bundles"]]:
@@ -1561,6 +1612,8 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
     # Existing validation owns the root, shared definitions, folders and counters.
     # Row bodies are validated separately so one unfinished row cannot hide others.
     skeleton = copy.deepcopy(source)
+    validate_pattern_flows(source)
+    skeleton.pop("patternFlows", None)
     skeleton.update(patterns=[], bundles=[], playAllPatternIds=[])
     validate_document(skeleton, root)
     inventory: dict[str, Any] = {"folders": copy.deepcopy(source.get("folders", [])), "patterns": [], "bundles": []}
@@ -2934,7 +2987,7 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
                 raise CompositionError("presentation assetId must be Resources-relative")
             if kind == "SOUND" and not asset.startswith("Sound/"):
                 raise CompositionError("SOUND assetId must begin with Sound/")
-        if normalized["defaultAnchorKind"] not in {"MAP", "PLAYER", "BOSS"}:
+        if normalized["defaultAnchorKind"] not in ({"MAP", "PLAYER", "BOSS"} if kind == "LIGHT" else {"MAP", "PLAYER", "BOSS", "WORLD"}):
             raise CompositionError("presentation defaultAnchorKind is unsupported")
         if kind == "LIGHT" and normalized["resourceKind"] != "":
             raise CompositionError("LIGHT resourceKind must be empty")
@@ -3001,13 +3054,18 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if normalized["cardSymbol"] not in {"NONE", *CARD_SYMBOLS} or normalized["cardColor"] not in {"NONE", "RED", "BLACK"}:
             raise CompositionError("collider card mapping is invalid")
         light = resources[box["resourceId"]]["kind"] == "LIGHT"
-        if normalized["anchorKind"] not in ({"BOSS", "PLAYER", "MAP"} if light else {"BOSS", "WORLD"}):
+        effect = resources[box["resourceId"]]["kind"] == "EFFECT"
+        allowed_anchors = {"BOSS", "PLAYER", "MAP"} if light else ({"BOSS", "WORLD", "MAP"} if effect else {"BOSS", "WORLD"})
+        if normalized["anchorKind"] not in allowed_anchors:
             raise CompositionError("presentation anchorKind is invalid")
         if light and (normalized["scale"] != [1.0, 1.0, 1.0] or normalized["worldId"] or
                       normalized["logicOccurrenceId"] or
                       (normalized["anchorKind"] != "BOSS" and normalized["bone"]) or
                       (normalized["anchorKind"] == "PLAYER" and not normalized["followBoss"])):
             raise CompositionError("LIGHT requires unit scale, a direct anchor and Character follow without a bone")
+        if effect and normalized["anchorKind"] == "MAP" and (normalized["followBoss"] or
+                normalized["bone"] or normalized["boneTarget"] != "BODY" or normalized["worldId"] or normalized["worldOccurrenceId"]):
+            raise CompositionError("MAP Effect requires a fixed position without a bone or World occurrence")
         if not light and normalized["brightnessMultiplier"] != 1.0:
             raise CompositionError("brightnessMultiplier belongs only to LIGHT")
         for field in ("regionId", "worldId", "logicOccurrenceId"):
@@ -3031,8 +3089,8 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
             raise CompositionError("presentation fades exceed the occurrence duration")
         dissolve_start = _number(normalized["dissolveStart"], "presentation dissolveStart", 0, 1)
         dissolve_end = _number(normalized["dissolveEnd"], "presentation dissolveEnd", 0, 1)
-        if dissolve_start >= dissolve_end:
-            raise CompositionError("presentation dissolve interval is empty or reversed")
+        if dissolve_start > dissolve_end:
+            raise CompositionError("presentation dissolve interval is reversed")
         _number(normalized["volume"], "presentation volume", 0, 1)
         _number(normalized["brightnessMultiplier"], "presentation brightnessMultiplier", 0, 16)
         _boolean(normalized["followBoss"], "presentation followBoss")

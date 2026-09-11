@@ -1047,6 +1047,20 @@ class CameraShotOptionalContractTests(unittest.TestCase):
 
 
 class CameraTrackContractTests(unittest.TestCase):
+    def test_explicit_camera_up_preserves_roll_and_rejects_degenerate_basis(self) -> None:
+        track = self.make_track()
+        key = track["keyframes"][0]
+        key["up"] = [1.0, 0.0, 0.0]
+        before = copy.deepcopy(track)
+        pipeline._validate_camera_track(track, "rolled camera")
+        self.assertEqual(track, before)
+        key["eye"] = [0.0, 0.0, 0.0]
+        key["lookAt"] = [0.0, 0.0, 10.0]
+        for up in ([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [2.0, 0.0, 0.0], [float("nan"), 0.0, 0.0]):
+            with self.subTest(up=up), self.assertRaises(pipeline.CompositionError):
+                key["up"] = up
+                pipeline._validate_camera_track(track, "invalid camera up")
+
     def make_track(self) -> dict:
         return {
             "durationMs": 7400,

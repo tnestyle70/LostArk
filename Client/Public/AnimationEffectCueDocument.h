@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_set>
 
 NS_BEGIN(Client)
 
@@ -178,6 +179,11 @@ public:
         std::string& strOutStatus,
         bool_t bFilterToAvailableClips = false);
 
+    // Background class preparation reads membership captured by its main-thread owner.
+    static bool_t Load_WithCatalogSnapshot(const std::string& strAnimationAssetId,
+        const std::vector<std::string>& AvailableClips,
+        ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument, std::string& strOutStatus,
+        const std::unordered_set<std::string>& EffectAssetIds);
     static bool_t Load(
         const std::string& strAnimationAssetId,
         const std::vector<std::string>& AvailableClips,
@@ -193,6 +199,10 @@ public:
 		bool_t bFilterToAvailableClips = false);
 
 private:
+    static bool_t Load_Internal(const std::string& strAnimationAssetId,
+        const std::vector<std::string>& AvailableClips,
+        ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument, std::string& strOutStatus,
+        bool_t bFilterToAvailableClips, const std::unordered_set<std::string>* pEffectAssetIds);
 	static bool_t Load_FromText(
 		const std::string& strAnimationAssetId,
 		const std::string_view Text,
@@ -200,7 +210,8 @@ private:
 		ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
 		std::string& strOutStatus,
 		bool_t bFilterToAvailableClips,
-		std::vector<std::string>* pOutReferencedClips);
+		std::vector<std::string>* pOutReferencedClips,
+		const std::unordered_set<std::string>* pEffectAssetIds = nullptr);
 };
 
 NS_END

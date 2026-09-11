@@ -23,6 +23,13 @@
 #include <tuple>
 #include <unordered_set>
 
+struct Client::EFFECT_PRODUCT_LOAD_SOURCE_LEASE final
+{
+	HANDLE Handle = INVALID_HANDLE_VALUE;
+	~EFFECT_PRODUCT_LOAD_SOURCE_LEASE()
+	{ if (Handle != INVALID_HANDLE_VALUE) CloseHandle(Handle); }
+};
+
 namespace
 {
 	struct DIRECT_AUTHORED_RUNTIME_SOURCE final
@@ -1175,25 +1182,6 @@ bool_t Client::CEffectCatalog::Capture_ProductLoadStageRequest(
 		}
 	}
 
-	std::error_code Error;
-	const std::uintmax_t SourceByteCount = std::filesystem::file_size(
-		Source->second->DocumentPath, Error);
-	if (Error || 0u == SourceByteCount)
-	{
-		strOutStatus =
-			"Product Effect load-stage source is missing or empty: " +
-			strEffectAssetId;
-		return false;
-	}
-	const std::filesystem::file_time_type SourceWriteTime =
-		std::filesystem::last_write_time(Source->second->DocumentPath, Error);
-	if (Error)
-	{
-		strOutStatus =
-			"Product Effect load-stage source timestamp is unavailable: " +
-			strEffectAssetId;
-		return false;
-	}
 
 	OutRequest.iCatalogRevision = iCapturedCatalogRevision;
 	OutRequest.strEffectAssetId = strEffectAssetId;
@@ -1217,8 +1205,6 @@ bool_t Client::CEffectCatalog::Capture_ProductLoadStageRequest(
 	}
 	OutRequest.pMaterialProgramRegistry = Registry;
 	OutRequest.pScreenOverlayBinding = std::move(Overlay);
-	OutRequest.iSourceByteCount = SourceByteCount;
-	OutRequest.SourceWriteTime = SourceWriteTime;
 	strOutStatus = "Captured Product Effect load-stage source: " +
 		strEffectAssetId;
 	return true;
@@ -1233,8 +1219,7 @@ bool_t Client::CEffectCatalog::Stage_ProductLoadTarget(
 	if (0u == Request.iCatalogRevision ||
 		Request.strEffectAssetId.empty() || Request.DocumentPath.empty() ||
 		nullptr == Request.pSourceRegistrationIdentity ||
-		nullptr == Request.pMaterialProgramRegistry ||
-		0u == Request.iSourceByteCount)
+		nullptr == Request.pMaterialProgramRegistry)
 	{
 		strOutStatus = "Product Effect load-stage request is invalid.";
 		return false;
@@ -1275,17 +1260,34 @@ bool_t Client::CEffectCatalog::Stage_ProductLoadTarget(
 		return true;
 	}
 
-	std::error_code Error;
-	if (std::filesystem::file_size(Request.DocumentPath, Error) !=
-			Request.iSourceByteCount || Error ||
-		std::filesystem::last_write_time(Request.DocumentPath, Error) !=
-			Request.SourceWriteTime || Error)
+	// Acquire on the worker and retain through the owner commit/ACK.  This
+	// replaces frame-thread stat calls without admitting a mutable source.
+	auto Lease = std::make_shared<EFFECT_PRODUCT_LOAD_SOURCE_LEASE>();
+	Lease->Handle = CreateFileW(Request.DocumentPath.c_str(), GENERIC_READ,
+		FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+	if (Lease->Handle == INVALID_HANDLE_VALUE)
 	{
-		strOutStatus =
-			"Product Effect source changed before worker staging: " +
-			Request.strEffectAssetId;
+		strOutStatus = "Product Effect worker cannot lock source for reading: " +
+			Request.strEffectAssetId + " (Windows error " + std::to_string(GetLastError()) + ")";
 		return false;
 	}
+	std::error_code Error;
+	const auto SourceByteCount = std::filesystem::file_size(Request.DocumentPath, Error);
+	if (Error || SourceByteCount == 0u)
+	{
+		strOutStatus = "Product Effect worker source is missing or empty: " + Request.strEffectAssetId;
+		return false;
+	}
+	const auto SourceWriteTime = std::filesystem::last_write_time(Request.DocumentPath, Error);
+	if (Error || (Request.iSourceByteCount != 0u &&
+		(Request.iSourceByteCount != SourceByteCount || Request.SourceWriteTime != SourceWriteTime)))
+	{
+		strOutStatus = "Product Effect source changed before worker staging: " + Request.strEffectAssetId;
+		return false;
+	}
+	Staged->Request.iSourceByteCount = SourceByteCount;
+	Staged->Request.SourceWriteTime = SourceWriteTime;
+	Staged->pSourceReadLease = std::move(Lease);
 
 	DIRECT_AUTHORED_RUNTIME_SOURCE Source;
 	Source.DocumentPath = Request.DocumentPath;
@@ -1296,9 +1298,9 @@ bool_t Client::CEffectCatalog::Stage_ProductLoadTarget(
 		return false;
 	}
 	if (std::filesystem::file_size(Request.DocumentPath, Error) !=
-			Request.iSourceByteCount || Error ||
+			Staged->Request.iSourceByteCount || Error ||
 		std::filesystem::last_write_time(Request.DocumentPath, Error) !=
-			Request.SourceWriteTime || Error)
+			Staged->Request.SourceWriteTime || Error)
 	{
 		strOutStatus =
 			"Product Effect source changed during worker staging: " +
@@ -1488,15 +1490,11 @@ bool_t Client::CEffectCatalog::Commit_ProductLoadStage(
 	if (!bHasCurrentDocument)
 	{
 		CommitReceipt.m_bPublishedNewDocument = true;
-		std::error_code Error;
-		if (std::filesystem::file_size(pResult->Request.DocumentPath, Error) !=
-				pResult->Request.iSourceByteCount || Error ||
-			std::filesystem::last_write_time(
-				pResult->Request.DocumentPath, Error) !=
-				pResult->Request.SourceWriteTime || Error)
+		if (nullptr == pResult->pSourceReadLease ||
+			pResult->pSourceReadLease->Handle == INVALID_HANDLE_VALUE ||
+			0u == pResult->Request.iSourceByteCount)
 		{
-			strOutStatus =
-				"Product Effect source changed before staged commit.";
+			strOutStatus = "Product Effect staged source has no retained read lease.";
 			return false;
 		}
 		decltype(g_Effects)::iterator InsertedDocument;

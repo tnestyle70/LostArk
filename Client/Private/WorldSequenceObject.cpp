@@ -48,6 +48,7 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
     for (const auto& row : world.m)
         for (const float component : row)
             if (!std::isfinite(component)) return false;
+    if (!std::isfinite(localMs)) return false;
     if (animation)
     {
         uint32_t index = UINT32_MAX;
@@ -67,6 +68,7 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
         if (!m_Model->Set_AnimTrackPosition(index, ticks)) return false;
         m_Model->Play_Animation(0.f);
     }
+    m_SampleTimeSeconds = (std::max)(0.f, localMs) * 0.001f;
     m_World = world;
     m_Visible = visible;
     return true;
@@ -99,13 +101,17 @@ HRESULT CWorldSequenceObject::Render()
     }
     for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
     {
-        const HRESULT material = animated ? Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, {}, nullptr, m_Diffuse) :
-            CMapAssetRenderUtils::Bind_Material(m_Model, m_Shader, mesh, profile, 0.f, m_Diffuse);
+        const auto* surface = m_Model->Get_MaterialSurface(mesh);
+        const bool mapSurface = surface && surface->family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED;
+        const HRESULT material = animated && !mapSurface ? Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, {}, nullptr, m_Diffuse) :
+            CMapAssetRenderUtils::Bind_Material(m_Model, m_Shader, mesh, profile, m_SampleTimeSeconds, m_Diffuse);
         const auto meshLabel = " (mesh " + std::to_string(mesh) + ")";
         if (FAILED(material)) return failed("material binding" + meshLabel);
         if (animated && FAILED(m_Model->Bind_BoneMatrices(m_Shader, "g_BoneMatrices", mesh)))
             return failed("bone matrix binding" + meshLabel);
-        if (FAILED(m_Shader->Begin(animated ? 0u : CMapAssetRenderUtils::Select_Pass(profile, false))))
+        // Reuse the existing two-sided PS_MAIN pass for thin animated map/card surfaces.
+        const uint32_t pass = animated ? (mapSurface ? 6u : 0u) : CMapAssetRenderUtils::Select_Pass(profile, false);
+        if (FAILED(m_Shader->Begin(pass)))
             return failed("shader pass" + meshLabel);
         if (FAILED(m_Model->Render(mesh))) return failed("mesh submission" + meshLabel);
     }

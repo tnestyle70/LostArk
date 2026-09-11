@@ -309,7 +309,8 @@ public:
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees,
-		std::uint32_t iServerTick = 0u);
+		std::uint32_t iServerTick = 0u,
+		bool_t snapToSnapshot = false);
 	void Trigger_HitFlash();
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {

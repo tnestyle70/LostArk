@@ -30,8 +30,8 @@ struct EFFECT_DOCUMENT_DESC;
 class CEffectAuthoringSequencer final
 {
 public:
-    using V1_FACTORY = std::function<bool(const EFFECT_RESOURCE_KEY&, const std::string&, const float4x4_t&,
-        std::shared_ptr<CEffectObject>&, std::string&)>;
+    using V1_FACTORY = std::function<bool(const EFFECT_RESOURCE_KEY&, const std::vector<std::string>&, const float4x4_t&,
+        std::shared_ptr<CEffectObject>&, std::uint32_t&, std::uint32_t&, std::string&)>;
     using V1_RELEASE = std::function<void(const std::shared_ptr<CEffectObject>&)>;
     using V1_ANCHOR_PROVIDER = std::function<bool(const std::shared_ptr<CEffectObject>&,
         const float4x4_t&, bool, std::unordered_map<std::string, float4x4_t>&, std::string&)>;
@@ -54,10 +54,13 @@ public:
     void Update(float dt, bool active);
     bool Select_CharacterSkill(const std::string& asset, std::uint32_t skillId,
         std::optional<std::uint32_t> stageIndex = std::nullopt);
-    bool Select_KoukuEffect(const std::string& assetId);
+    bool Select_KoukuEffect(const std::string& assetId, bool requiresSourceModel, bool reusePlayerAnchor = false);
+    bool Select_WorldEffect(const std::string& assetId, bool reusePlayerAnchor = false);
     bool Preview(const EFFECT_RESOURCE_KEY& key, std::uint32_t durationMs = 3000u);
     bool Preview_Element(const EFFECT_RESOURCE_KEY& key, const std::string& elementId,
         const std::string& label, std::uint32_t durationMs, std::uint32_t focusMs);
+    bool Preview_Elements(const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds,
+        const std::string& label, std::uint32_t durationMs, std::uint32_t focusMs, bool loop);
     bool Append(const EFFECT_RESOURCE_KEY& key, std::uint32_t durationMs = 3000u, bool screenPost = false);
     bool Play(bool paused = false);
     void Preserve_ClockDuringAuthoring() { if (m_Active) m_SkipNextPlaybackDelta = true; }
@@ -67,8 +70,9 @@ public:
     void Pause(bool paused);
     void Stop();
     bool Is_Active() const { return m_Active; }
-    bool Is_ElementPreview() const { return m_Transient && !m_Transient->previewElementId.empty(); }
-    bool Owns_ModelClock() const { return m_Active && (m_UseKouku || m_CustomAnimation || !m_SelectedSequence.empty()); }
+    bool Is_ElementPreview() const { return m_Transient && !m_Transient->previewElementIds.empty(); }
+    bool Owns_ModelClock() const { return m_Active && Has_ModelSequence(); }
+    bool Is_Paused() const { return m_Paused; }
     bool Consume_InteractionRequest();
     const std::string& Status() const { return m_Status; }
     std::uint32_t ClockMs() const { return static_cast<std::uint32_t>(m_ClockMs); }
@@ -99,7 +103,10 @@ private:
         std::string id;
         EFFECT_RESOURCE_KEY key;
         // Transient document projection only; never a saved sequence occurrence.
-        std::string previewElementId, previewElementLabel;
+        std::vector<std::string> previewElementIds;
+        std::string previewElementLabel;
+        std::uint32_t previewStartMs = 0u;
+        bool previewLoop = false;
         std::string anchorSlotId = "root";
         std::uint32_t startMs = 0u, durationMs = 3000u;
         float3_t offset{};
@@ -182,6 +189,15 @@ private:
     bool Reload_ModelSequences();
     bool Select_ModelSequence(const std::string& id);
     bool Select_Kouku(const std::string& id, bool bundle);
+    bool Select_SceneEffectTarget(const std::string& assetId, bool requiresSourceModel,
+        bool reusePlayerAnchor, std::optional<bool> loopPolicy,
+        std::optional<std::uint32_t> previewDurationMs = std::nullopt);
+    bool Uses_TransientLoop() const
+    { return m_Transient && (Is_ElementPreview() || (m_KoukuEffectPreview && m_KoukuEffectPreview->loopPolicy.has_value())); }
+    bool Uses_KoukuSourceModel() const
+    { return m_KoukuEffectPreview ? m_KoukuEffectPreview->model.has_value() : m_UseKouku; }
+    bool Has_ModelSequence() const
+    { return m_KoukuEffectPreview ? m_KoukuEffectPreview->model.has_value() : (m_UseKouku || m_CustomAnimation || !m_SelectedSequence.empty()); }
     bool Begin_Model();
     bool Sample_Model(std::uint32_t clockMs);
     bool Resolve_Root(float4x4_t& root);
@@ -204,6 +220,17 @@ private:
     ComPtr<ID3D11DeviceContext> m_Context;
     std::shared_ptr<CCharacterPreviewPanel> m_Panel;
     CEffectCompositionModelPreview m_Kouku;
+    struct KOUKU_EFFECT_PREVIEW_TARGET final
+    {
+        std::string assetId;
+        float4x4_t playerRoot{};
+        std::optional<CEffectCompositionModelPreview> model;
+        // Only the independent preview consumes this; saved sequence Loop is unchanged.
+        std::optional<bool> loopPolicy;
+        std::optional<std::uint32_t> previewDurationMs;
+    };
+    // Tool-only target; the saved arrangement and its dirty state never change.
+    std::optional<KOUKU_EFFECT_PREVIEW_TARGET> m_KoukuEffectPreview, m_PendingKoukuEffectPreview;
     CKoukuSaydonPresentationPlayer* m_Player = nullptr;
     V1_FACTORY m_V1Factory;
     V1_RELEASE m_V1Release;

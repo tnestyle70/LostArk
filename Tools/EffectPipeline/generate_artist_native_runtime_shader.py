@@ -324,7 +324,7 @@ for ordinal, selection in enumerate(selections):
         mesh=selection['rendererShape'] in ['mesh','staticMesh']
         model=selection['rendererShape']=='skeletalMesh'
         decal=selection['rendererShape']=='decal' and arguments.profile_domain=='kouku'
-        if decal and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298'):
+        if decal and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298','cd75326f74ef024d827113811196cae2'):
             raise ValueError(('Unreviewed source decal prefix',sid))
         lines=[f'// {name}: {sid}; selected map {r["mapKey"]}.',
                f'float4 ArtistNative{program}(ARTIST_NATIVE_INPUT input)', '{',
@@ -340,6 +340,12 @@ for ordinal, selection in enumerate(selections):
                 lines += ['    source[1].w=input.color.a;'];sky=24
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);',f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);',f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         if mesh: lines += ['    source[1]=input.color; // Native mesh particle color prefix.']
+        if mesh and sid == '8f0b8e72c2782945b5c7c927c80a73c5':
+            # Quest's opaque pass has no leading opacity uniform. Its sole
+            # engine-owned row is particle color; selectioncolor binds row 1.
+            assert selection['sourceVS'] == '7025758b7227e342a3118ce0b01b81b2'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+            lines += ['    source[0]=input.color; // Native opaque quest mesh particle color prefix.']
         if decal:
             lines += ['    source[0]=float4(input.decalProjection.xy,0.f,0.f);', '    source[1]=input.color; // Source decal material color, including particle color modules.', '    source[2].x=input.decalProjection.z;']
             sky={'be9bb8ea52a06b40bc25b550e349b5b9':7,'316b66ee3867964da197becf270077f0':15}.get(sid)

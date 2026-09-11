@@ -32,6 +32,118 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    def test_intro_import_saves_sequence_with_world_and_presentation_definitions(self):
+        import sys
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT / "Tools/KoukuSaydonPipeline"))
+        try:
+            import build_gate2_intro_composition as builder
+        finally:
+            sys.path.pop(0)
+        source = {"compositionId": "boss.composition.kakulsaydon.sequencer", "revision": 3,
+            "worlds": [{"worldId": "world.keep"}], "presentationResources": [{"resourceId": "resource.keep"}],
+            "patterns": [{"patternId": "pattern.intro"}, {"patternId": "pattern.keep"}]}
+        pattern = {"patternId": "pattern.intro", "worldOccurrences": [{"worldId": "world.intro"}],
+            "presentationOccurrences": [{"resourceId": "camera.intro"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "KoukuSaydonSequenceComposition.json"
+            path.write_text(json.dumps(source), encoding="utf-8")
+            original = path.read_bytes()
+            with self.assertRaises(ValueError):
+                builder.install_sequence_pattern(path, pattern, [], [{"resourceId": "camera.intro"}])
+            self.assertEqual(original, path.read_bytes())
+            with patch.object(builder.os, "replace", side_effect=OSError("injected commit failure")), self.assertRaises(OSError):
+                builder.install_sequence_pattern(path, pattern, [{"worldId": "world.intro"}], [{"resourceId": "camera.intro"}])
+            self.assertEqual(original, path.read_bytes())
+            self.assertEqual([path], list(Path(directory).iterdir()))
+            builder.install_sequence_pattern(path, pattern, [{"worldId": "world.intro"}], [{"resourceId": "camera.intro"}])
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(4, saved["revision"])
+            self.assertEqual([pattern, {"patternId": "pattern.keep"}], saved["patterns"])
+            self.assertEqual([{"worldId": "world.keep"}, {"worldId": "world.intro"}], saved["worlds"])
+            self.assertEqual([{"resourceId": "resource.keep"}, {"resourceId": "camera.intro"}], saved["presentationResources"])
+
+    def test_map_effect_anchor_keeps_absolute_placement_and_rejects_follow_dependencies(self):
+        for resource_kind in ("V1_EFFECT", "V1_ELEMENT", "GROUP"):
+            resource = {"resourceId": "fx", "kind": "EFFECT", "resourceKind": resource_kind,
+                        "assetId": "effect.kouku.test.restore"}
+            box = {"occurrenceId": "pattern.map.presentation.1", "resourceId": "fx",
+                   "startMs": 250, "durationMs": 1500, "anchorKind": "MAP", "followBoss": False,
+                   "positionOffset": [23.0, 4.5, -12.0], "rotationDegrees": [0.0, 45.0, 0.0],
+                   "scale": [1.2, 1.2, 1.2]}
+            pattern = {"patternId": "pattern.map", "nextPresentationOccurrenceOrdinal": 2,
+                       "presentationOccurrences": [box]}
+            original = copy.deepcopy(pattern)
+            subject._validate_presentation_occurrences(pattern, {"fx": resource}, 2000, {})
+            self.assertEqual(original, pattern)
+            for update in ({"followBoss": True}, {"bone": "bip001-head"}, {"boneTarget": "WEAPON"},
+                           {"worldId": "world.other"}, {"worldOccurrenceId": "world.box"},
+                           {"positionOffset": [float("nan"), 0, 0]}):
+                invalid = copy.deepcopy(pattern)
+                invalid["presentationOccurrences"][0].update(update)
+                before = copy.deepcopy(invalid)
+                with self.subTest(resource_kind=resource_kind, update=update), self.assertRaises(subject.CompositionError):
+                    subject._validate_presentation_occurrences(invalid, {"fx": resource}, 2000, {})
+                self.assertEqual(before, invalid)
+            for kind in ("COLLIDER", "SOUND", "CAMERA"):
+                with self.subTest(kind=kind), self.assertRaises(subject.CompositionError):
+                    subject._validate_presentation_occurrences(pattern, {"fx": {**resource, "kind": kind}}, 2000, {})
+
+    def test_world_default_anchor_is_valid_for_cinematic_resources_but_not_light(self):
+        camera = {"resourceId": "camera.test", "displayName": "Camera", "kind": "CAMERA",
+            "assetId": "camera.shot.test", "defaultAnchorKind": "WORLD", "resourceKind": ""}
+        resources = subject._validate_presentation_resources({"presentationResources": [camera]})
+        self.assertEqual("WORLD", resources["camera.test"]["defaultAnchorKind"])
+        invalid = {**camera, "kind": "LIGHT"}
+        with self.assertRaises(subject.CompositionError):
+            subject._validate_presentation_resources({"presentationResources": [invalid]})
+
+    def test_gate2_imported_world_requires_the_matching_installed_instance_identity(self):
+        source = {"nextWorldOrdinal": 1, "worlds": [{
+            "worldId": "world.kouku.gate2.intro.saydon", "displayName": "Saydon",
+            "sequenceInstanceId": "world.sequence.instance.kouku.gate2.intro.saydon"}]}
+        def check(document):
+            return subject._validate_catalog(document, "nextWorldOrdinal", "worlds", "worldId",
+                subject.GENERATED_WORLD_RE, subject.WORLD_KEYS, subject.MAX_WORLDS, "kakulsaydon.g1.world")
+        identities, _ = check(source)
+        self.assertEqual({"world.kouku.gate2.intro.saydon"}, identities)
+        for identity, instance in [
+            ("world.unrelated.saydon", "world.sequence.instance.kouku.gate2.intro.saydon"),
+            ("world.kouku.gate2.intro.saydon", "world.sequence.instance.kouku.gate2.intro.kouku"),
+            ("world.kouku.gate2.intro.", "world.sequence.instance.kouku.gate2.intro."),
+            ("kakulsaydon.g1.world.1", "world.sequence.instance.existing")]:
+            invalid = copy.deepcopy(source)
+            invalid["worlds"][0].update(worldId=identity, sequenceInstanceId=instance)
+            with self.subTest(identity=identity), self.assertRaises(subject.CompositionError):
+                check(invalid)
+
+    def test_saved_pattern_flow_keeps_pattern_bundle_order_and_repeated_targets(self):
+        source = {"patterns": [{"patternId": "pattern.1", "gateId": "GATE1"}],
+            "bundles": [{"bundleId": "bundle.1", "gateId": "GATE1"}],
+            "patternFlows": [{"flowId": "flow.GATE1", "gateId": "GATE1", "displayName": "Gate 1",
+                "entries": [
+                    {"entryId": "entry.1", "kind": "PATTERN", "targetId": "pattern.1", "waitAfterMs": 0},
+                    {"entryId": "entry.2", "kind": "BUNDLE", "targetId": "bundle.1", "waitAfterMs": 600000},
+                    {"entryId": "entry.3", "kind": "PATTERN", "targetId": "pattern.1", "waitAfterMs": 100}]}]}
+        original = copy.deepcopy(source)
+        subject.validate_pattern_flows(source)
+        candidate = subject._publication_candidate(source, {"pattern.1"}, {"bundle.1"})
+        self.assertEqual(source, original)
+        self.assertNotIn("patternFlows", candidate)
+        self.assertEqual(["bundle.1"], [row["bundleId"] for row in candidate["bundles"]])
+        for change in ("wrong_gate", "unknown_target", "duplicate_entry", "duplicate_gate", "bad_wait", "bad_kind"):
+            invalid = copy.deepcopy(source)
+            flow = invalid["patternFlows"][0]
+            entry = flow["entries"][0]
+            if change == "wrong_gate": flow["gateId"] = "GATE2"
+            elif change == "unknown_target": entry["targetId"] = "missing.pattern"
+            elif change == "duplicate_entry": flow["entries"][1]["entryId"] = entry["entryId"]
+            elif change == "duplicate_gate": invalid["patternFlows"].append(copy.deepcopy(flow))
+            elif change == "bad_wait": entry["waitAfterMs"] = 600001
+            elif change == "bad_kind": entry["kind"] = "FOLDER"
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                subject.validate_pattern_flows(invalid)
+
     def test_v1_source_anchor_animation_times_follow_stage_boundaries(self):
         document = {"presentationResources": [{"resourceId": "fx", "kind": "EFFECT",
             "resourceKind": "V1_EFFECT", "assetId": "effect.kouku.test.restore", "durationMs": 5000}]}
@@ -59,6 +171,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         # Existing lane tests own independent patterns, not the new saved bundle references.
         cls.document["folders"] = []
         cls.document["bundles"] = []
+        cls.document.pop("patternFlows", None)
         for pattern in cls.document["patterns"]:
             pattern.pop("folderId", None)
 
@@ -2960,6 +3073,29 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             subject.project_encounter(document)
         trigger["clockHours"] = [5, 5, 10]
         with self.assertRaisesRegex(subject.CompositionError, "three different hours"):
+            self.validate(document)
+
+    def test_card_maze_triggers_preserve_authored_times_and_typed_destination(self):
+        document = subject._publication_candidate(self.document, {"KAKULSAYDON_G1_PATTERN_28"})
+        self.validate(document)
+        pattern = next(row for row in subject.project_encounter(document)["patterns"]
+                       if row["patternId"] == "KAKULSAYDON_G1_PATTERN_28")
+        triggers = sorted(pattern["mechanicTriggers"], key=lambda row: row["startMs"])
+        self.assertEqual([3744, 4182, 4529, 4824, 5136], [row["startMs"] for row in triggers])
+        self.assertEqual(["CARD_MAZE_HIDE_NEXT"] * 4 + ["CARD_MAZE_ENTER"], [row["kind"] for row in triggers])
+        self.assertEqual([.28, -.01, 1351.65], triggers[-1]["teleportPosition"])
+        hidden = next(row for row in document["logics"] if row.get("triggerKind") == "CARD_MAZE_HIDE_NEXT")
+        hidden["hudMode"] = "MAZE"
+        with self.assertRaisesRegex(subject.CompositionError, "unrelated values"):
+            self.validate(document)
+
+    def test_presentation_equal_dissolve_lifetime_endpoints_remain_valid(self):
+        document = subject._publication_candidate(self.document, {"KAKULSAYDON_G1_PATTERN_28"})
+        row = self.find(document, "KAKULSAYDON_G1_PATTERN_28")["presentationOccurrences"][0]
+        row["dissolveStart"] = row["dissolveEnd"] = 1.0
+        self.validate(document)
+        row["dissolveEnd"] = 0.5
+        with self.assertRaisesRegex(subject.CompositionError, "dissolve interval is reversed"):
             self.validate(document)
 
     def test_hud_enter_trigger_projects_mode_on_authored_start_tick(self):

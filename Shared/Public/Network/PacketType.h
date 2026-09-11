@@ -70,8 +70,9 @@ namespace LostArk::Shared
 	A v76 peer rejects the new slot value and drops the snapshot.
 	78 combines the v77 snapshot with Server-owned fear state, deadline and
 	presentation identity. The independent v73 fear branch and v77 main are
-	both incompatible with this combined layout. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 78;
+	both incompatible with this combined layout.
+	79 adds the card maze entry-hidden flag; v78 rejects that snapshot flag. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 79;
 
 	enum class WORLD_ID : std::uint16_t
 	{

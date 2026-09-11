@@ -23,7 +23,8 @@ namespace
 	bool IsValidTransientLight(const LIGHT_DESC& Light)
 	{
 		if (Light.staticShadowChannel > 15u || (Light.eReceiver != LIGHT_RECEIVER::ALL &&
-			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) ||
+			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER &&
+			Light.eReceiver != LIGHT_RECEIVER::UNBAKED) ||
 			(LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
 			LIGHT::DIRECTIONAL != Light.eType) ||
 			!std::isfinite(Light.fFalloffExponent) || Light.fFalloffExponent <= 0.f ||

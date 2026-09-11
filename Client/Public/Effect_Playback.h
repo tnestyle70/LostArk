@@ -56,6 +56,11 @@ struct EFFECT_EVALUATED_PARTICLE final
 	float4x4_t World{};
 	// Native particle material WorldToLocal uses the emitter, before sprite size/rotation.
 	float4x4_t SourceEmitterWorld{};
+	// MacroUV belongs to the current particle-system occurrence even when
+	// individual world-space particles retain their frozen birth transforms.
+	bool_t bSourceMacroUV = false;
+	float3_t vSourceMacroUVWorldCenter{};
+	f32_t fSourceMacroUVWorldRadius = 0.f;
 	float4_t Color = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vDynamicParameter{};
 	float3_t vWorldVelocity{};
@@ -566,14 +571,17 @@ private:
 		const EFFECT_DISTRIBUTION_DESC* pDistribution,
 		f32_t fTime,
 		const float3_t& Fallback);
-	void Queue_SpawnEvents(
+	void Queue_ParticleEvents(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
 		const PARTICLE_STATE& Particle,
-		const float4x4_t& ElementWorld);
+		const float4x4_t& ElementWorld,
+		std::string_view strEventType,
+		f32_t fEmitterTimeSeconds);
 	bool_t Dispatch_SourceEvents(
 		f32_t fFixedDelta,
-		const float4x4_t& RootWorld);
+		const float4x4_t& RootWorld,
+		size_t iFirstEvent = 0u);
 	f32_t Evaluate_SourceFloat(
 		const EFFECT_ELEMENT_DESC& Element,
 		const char_t* pModuleClass,

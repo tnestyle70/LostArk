@@ -24,6 +24,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CPlayableCharacterAssetService;
 class CCustomizingView;
 class CUILayoutRuntime;
 class CCharacterSelectArenaSpawnGate;
@@ -79,6 +80,7 @@ private:
 	HRESULT Ready_ServerGameplay();
 	bool_t Bind_CameraTarget(const shared_ptr<CCharacter>& character);
 	bool_t Request_ClassChange(size_t index);
+	void Advance_ClassAssetPreparation();
 	void Consume_ClassChangeResults();
 	bool_t Advance_DeferredClassPresentation();
 	bool_t Is_ClassPresentationPreparationPending() const;
@@ -264,6 +266,9 @@ private:
 	MODE m_eMode = MODE::CONNECTING;
 	size_t m_iSelectedClassIndex = 0;
 	std::optional<size_t> m_iPendingClassIndex;
+	std::optional<size_t> m_iRequestedClassIndex;
+	std::optional<size_t> m_iPreparingClassIndex;
+	unique_ptr<CPlayableCharacterAssetService> m_pClassAssetPreparation;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
 	std::uint32_t m_iNextDespawnRequestSequence = 1u;
 	std::uint32_t m_iNextKakulArenaRequestSequence = 1u;

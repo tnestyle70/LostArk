@@ -29898,6 +29898,74 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		auto& p = players[id]; p.iPlayerId = id; p.iNetEntityId = 100u + id; p.iCurrentHp = 50000u;
 		p.fPositionX = Maze::CENTER_X; p.fPositionY = -.01f; p.fPositionZ = Maze::CENTER_Z;
 	}
+	{
+		CGameplayCatalog catalog;
+		BOSS_PATTERN_DEFINITION pattern{};
+		pattern.strPatternId = "cardmaze.entry.contract";
+		CServerCollisionSystem collision;
+		std::string collisionStatus;
+		tests.Require(collision.Initialize(bootstrap.Get_Placements(), collisionStatus), "Maze entry loads the published collision layer");
+		BOSS_PATTERN_MECHANIC_TRIGGER enter{};
+		enter.strTriggerId = "entry"; enter.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
+		enter.iStartMs = 5000u; enter.iDurationMs = 200u;
+		enter.fTeleportX = Maze::CENTER_X; enter.fTeleportY = -.01f; enter.fTeleportZ = Maze::CENTER_Z;
+		pattern.MechanicTriggers.push_back(enter); // File order is deliberately not time order.
+		for (std::uint32_t index = 0u; index < 4u; ++index)
+		{
+			auto hide = enter; hide.strTriggerId = "hide." + std::to_string(index);
+			hide.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT;
+			hide.iStartMs = (index + 1u) * 1000u;
+			pattern.MechanicTriggers.push_back(hide);
+		}
+		SERVER_WORLD_ENTITY boss{}; boss.iPatternSequence = 1u; boss.iCurrentHp = boss.iMaximumHp = 1000u;
+		boss.strPatternId = pattern.strPatternId;
+		KOUKUSAYDON_LOGIC_LEDGER ledger;
+		auto entrants = players;
+		for (auto& [id, player] : entrants) { player.fPositionX = float(id); player.fPositionZ = 324.f; player.isCombatReady = true; }
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		std::vector<DAMAGE_EVENT> damage;
+		KOUKUSAYDON_LOGIC_OUTPUT output;
+		const auto update = [&](std::uint32_t elapsedMs, const CServerNavigation* nav) {
+			output = {};
+			CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, entrants, catalog, nullptr,
+				10u + CKoukuSaydonLogicRuntime::Ticks_FromMs(elapsedMs), damage, output, nav, &collision);
+		};
+		update(1000u, &navigation);
+		tests.Require((entrants[4u].CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN) && entrants[3u].CardMaze.flags == 0u,
+			"First maze cue hides the rightmost player");
+		entrants[1u].fPositionX = 99.f;
+		update(2000u, &navigation);
+		tests.Require((entrants[3u].CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN) && entrants[1u].CardMaze.flags == 0u,
+			"Movement after first hide cannot reorder the captured roster");
+		update(5000u, &navigation);
+		tests.Require(std::all_of(entrants.begin(), entrants.end(), [&](const auto& row) {
+			return !(row.second.CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN) && row.second.fPositionX == Maze::CENTER_X &&
+				row.second.fPositionZ == Maze::CENTER_Z && row.second.eKoukuAreaHudMode == KOUKU_HUD_MODE::MAZE;
+		}), "Late tick processes remaining hides before one transactional maze entry");
+		CKoukuSaydonLogicRuntime::Update_PlayerModes(entrants, &ledger, nullptr, 160u);
+		tests.Require(entrants[1u].eKoukuHudMode == KOUKU_HUD_MODE::MAZE && entrants[1u].eMadnessForm == PLAYER_MADNESS_FORM::NORMAL,
+			"Card maze entry enables Q while preserving the normal class body");
+		entrants = players;
+		for (auto& [id, player] : entrants) { player.fPositionX = float(id); player.fPositionZ = 324.f; player.isCombatReady = true; }
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(5000u, nullptr);
+		tests.Require(std::all_of(entrants.begin(), entrants.end(), [](const auto& row) {
+			return row.second.fPositionZ == 324.f && !(row.second.CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN);
+		}) && output.strStatus.find("preserved") != std::string::npos,
+			"Missing maze navigation preserves every position and reveals the roster");
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(1000u, &navigation);
+		entrants[2u].TriggerMove.isActive = true;
+		update(5000u, &navigation);
+		tests.Require(std::all_of(entrants.begin(), entrants.end(), [](const auto& row) {
+			return row.second.fPositionZ == 324.f && !(row.second.CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN);
+		}), "One busy participant prevents partial entry and reveals everyone");
+		entrants[2u].TriggerMove = {};
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(1000u, &navigation);
+		CKoukuSaydonLogicRuntime::Discard(ledger, entrants, &boss);
+		tests.Require(!(entrants[4u].CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN), "Stopping the cutscene reveals hidden participants");
+	}
 	Maze maze;
 	std::vector<Maze::SPAWN_REQUEST> spawns;
 	std::string status;

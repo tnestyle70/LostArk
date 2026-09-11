@@ -138,6 +138,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 		cue.iStartTick = Add_Ticks(startTick, Ticks_FromMs(pattern.MechanicTriggers[index].iStartMs));
 		ledger.MechanicTriggers.push_back(cue);
 	}
+	std::stable_sort(ledger.MechanicTriggers.begin(), ledger.MechanicTriggers.end(), [&](const auto& a, const auto& b) {
+		return pattern.MechanicTriggers[a.iIndex].iStartMs < pattern.MechanicTriggers[b.iIndex].iStartMs;
+	});
 	for (std::size_t index = 0u; index < pattern.WorldSequences.size(); ++index)
 	{
 		KOUKUSAYDON_LOGIC_CUE_STATE cue{};
@@ -377,7 +380,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
 	using namespace LostArk::Shared;
 	if (!ledger.Is_Active())
 		return;
-	(void)players;
+	Reveal_CardMazeEntryPlayers(ledger, players);
 	if (nullptr != pBoss)
 	{
 		pBoss->bKoukuShieldActive = false;
@@ -387,6 +390,79 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
         CBossCombatRuntime::Clear_PatternOutcomes(*pBoss);
 	}
 	ledger = {};
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Capture_CardMazeEntryRoster(
+	KOUKUSAYDON_LOGIC_LEDGER& ledger, const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	if (ledger.bCardMazeEntryRosterCaptured) return;
+	ledger.bCardMazeEntryRosterCaptured = true;
+	for (const auto& [id, player] : players)
+		if (Is_Judgeable(player) && player.eCardMazeRole == LostArk::Shared::CARD_MAZE_ROLE::NONE)
+			ledger.CardMazeEntryPlayers.push_back(id);
+	std::sort(ledger.CardMazeEntryPlayers.begin(), ledger.CardMazeEntryPlayers.end(), [&](auto left, auto right) {
+		const float lx = players.at(left).fPositionX, rx = players.at(right).fPositionX;
+		return lx != rx ? lx > rx : left < right;
+	});
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Reveal_CardMazeEntryPlayers(
+	const KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	for (const auto id : ledger.CardMazeEntryPlayers)
+		if (auto found = players.find(id); found != players.end())
+			found->second.CardMaze.flags &= static_cast<std::uint8_t>(~LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN);
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Enter_CardMaze(
+	const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, KOUKUSAYDON_LOGIC_LEDGER& ledger,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus)
+{
+	using namespace LostArk::Shared;
+	Capture_CardMazeEntryRoster(ledger, players);
+	const auto reject = [&](const char* reason) {
+		Reveal_CardMazeEntryPlayers(ledger, players);
+		outStatus = std::string("Card maze entry preserved all player positions: ") + reason;
+		return false;
+	};
+	SERVER_NAV_POINT ground{};
+	if (!navigation || !navigation->Is_Loaded() ||
+		!navigation->Is_PointWalkableExact(trigger.fTeleportX, trigger.fTeleportZ) ||
+		!navigation->Sample_Position(trigger.fTeleportX, trigger.fTeleportZ, ground) ||
+		std::abs(ground.y - trigger.fTeleportY) > 1.f ||
+		!CKoukuCardMazeRuntime::In_SafeZone(trigger.fTeleportX, trigger.fTeleportZ))
+		return reject("destination is not on the maze central navigation");
+	std::vector<std::pair<PLAYER_ID, SERVER_PLAYER>> staged;
+	for (const auto id : ledger.CardMazeEntryPlayers)
+	{
+		const auto found = players.find(id);
+		if (found == players.end() || !found->second.iCurrentHp) continue;
+		const auto& source = found->second;
+		if (!Is_Judgeable(source) || source.bPatternBound || source.TriggerMove.isActive ||
+			source.bArenaEjectionActive || source.CardMaze.transferStartTick ||
+			source.eCardMazeRole != CARD_MAZE_ROLE::NONE ||
+			(collision && !collision->Is_PlayerPositionClear(trigger.fTeleportX, ground.y, trigger.fTeleportZ, source.iNetEntityId)))
+			return reject("a participant or destination is unavailable");
+		SERVER_PLAYER player = source;
+		player.Clear_CardMazeState();
+		player.Clear_KoukuInteractionState();
+		player.eKoukuAreaHudMode = KOUKU_HUD_MODE::MAZE;
+		player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+		player.fPositionX = trigger.fTeleportX; player.fPositionY = ground.y; player.fPositionZ = trigger.fTeleportZ;
+		player.hasMoveGoal = false; player.MovePath.clear(); player.iMovePathIndex = 0u;
+		player.PendingCommand.Clear(); player.Clear_SkillTarget(); player.Projectiles.clear();
+		player.eAction = PLAYER_ACTION_STATE::NONE; player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.iActionStartTick = 0u; player.fActionElapsedSeconds = 0.f;
+		player.iComboStage = 0u; player.hasBufferedComboInput = false;
+		player.fKnockbackRemainingSeconds = 0.f;
+		staged.emplace_back(id, std::move(player));
+	}
+	if (staged.empty()) return reject("no living entry participant remains");
+	for (auto& [id, player] : staged) players.at(id) = std::move(player);
+	Reveal_CardMazeEntryPlayers(ledger, players);
+	outStatus = "Card maze entry committed; strike the central telescope with Q to begin";
+	return true;
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
@@ -797,6 +873,18 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		const auto& trigger = pattern.MechanicTriggers[cue.iIndex];
 		if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER == trigger.eKind)
 			ledger.eHudMode = trigger.eHudMode;
+		else if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT == trigger.eKind)
+		{
+			Capture_CardMazeEntryRoster(ledger, players);
+			if (ledger.iCardMazeNextHiddenPlayer < ledger.CardMazeEntryPlayers.size())
+			{
+				const auto found = players.find(ledger.CardMazeEntryPlayers[ledger.iCardMazeNextHiddenPlayer++]);
+				if (found != players.end() && Is_Judgeable(found->second))
+					found->second.CardMaze.flags |= LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN;
+			}
+		}
+		else if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER == trigger.eKind)
+			(void)Enter_CardMaze(trigger, ledger, players, navigation, collision, outOutput.strStatus);
 		else
 			outOutput.MechanicTriggers.push_back(trigger);
 	}

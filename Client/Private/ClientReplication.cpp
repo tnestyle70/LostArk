@@ -1,6 +1,7 @@
 #include "ClientReplication.h"
 
 #include "Profiler.h"
+#include "LevelTransitionService.h"
 
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
@@ -424,6 +425,7 @@ bool Client::CClientReplication::Update()
 		}
 	}
 
+	allSucceeded = Advance_PlayerAssetPreparation() && allSucceeded;
 	Update_DeathPresentations();
 #ifdef _DEBUG
 	if (m_CombatDebugVisibility.bCombatObjectHit)
@@ -1567,6 +1569,7 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE;
 	}
 	pCharacter->Apply_NetworkStance(Pending.Snapshot.eStance);
+	pCharacter->Apply_NetworkPresentationHidden((Pending.Snapshot.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
 	CCombatHUDViewModel::Get().Apply_LocalPlayer(
 		Pending.iServerTick,
 		Pending.Snapshot.eCharacterClass,
@@ -2036,11 +2039,8 @@ bool Client::CClientReplication::Create_Character(
 	}
 	else
 	{
-		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-			m_Desc.pDevice,
-			m_Desc.pContext,
-			m_Desc.iPrototypeLevelIndex,
-			characterClass)))
+		if (!CPlayableCharacterAssetService::Is_Ready(
+			m_Desc.iPrototypeLevelIndex, characterClass))
 		{
 			return false;
 		}
@@ -2115,6 +2115,23 @@ bool Client::CClientReplication::Apply_Spawn(
 		return Is_Same_Record(*existing, stagedRecord);
 	}
 
+	const auto pending = m_PendingPlayerSpawns.find(spawned.iNetEntityId);
+	if (pending != m_PendingPlayerSpawns.end())
+		return Is_Same_Record(Make_Record(pending->second), stagedRecord);
+	if (!CPlayableCharacterAssetService::Is_Ready(m_Desc.iPrototypeLevelIndex, spawned.eCharacterClass))
+	{
+		if (m_PendingPlayerSpawns.size() >= LostArk::Shared::MAX_WORLD_SNAPSHOT_PLAYERS) return false;
+		m_PendingPlayerSpawns.emplace(spawned.iNetEntityId, spawned);
+		return true;
+	}
+	return Commit_PlayerSpawn(spawned);
+}
+
+bool Client::CClientReplication::Commit_PlayerSpawn(
+	const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned)
+{
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Network.PlayerPresentation.CommitSpawn");
+	const NET_PLAYER_RECORD stagedRecord = Make_Record(spawned);
 	const bool_t isLocallyControlled =
 		spawned.iPlayerId ==
 		CNetworkManager::Get().Get_LocalPlayerId();
@@ -2159,6 +2176,9 @@ bool Client::CClientReplication::Apply_Spawn(
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	m_PendingPlayerSpawns.erase(despawned.iNetEntityId);
+	m_PendingPlayerPresentations.erase(despawned.iNetEntityId);
+	m_FailedPlayerSpawnClasses.erase(despawned.iNetEntityId);
 	m_PlayerHealth.Erase(despawned.iNetEntityId);
 	OBJECT_HANDLE handle{};
 
@@ -3259,158 +3279,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	bool allSucceeded = true;
 
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
-	{
-		const NET_PLAYER_RECORD* record =
-			m_Registry.Find_Record(player.iNetEntityId);
-		const bool_t isLocallyControlled = player.iNetEntityId ==
-			CNetworkManager::Get().Get_LocalEntityId();
-		if (nullptr != record &&
-			(record->eCharacterClass != player.eCharacterClass ||
-			 record->eMadnessForm != player.eMadnessForm))
-		{
-			if (isLocallyControlled &&
-				m_Desc.bDeferLocalCharacterClassReplacement)
-			{
-				Stage_LocalCharacterClassReplacement(
-					player, snapshot.iServerTick);
-				continue;
-			}
-			const CHARACTER_REPLACE_RESULT replaceResult =
-				Replace_CharacterClass(player);
-			if (CHARACTER_REPLACE_RESULT::FATAL_FAILURE == replaceResult)
-			{
-				allSucceeded = false;
-				continue;
-			}
-			if (CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE == replaceResult)
-				continue;
-		}
-		else if (isLocallyControlled &&
-			m_DeferredLocalCharacterClassReplacement.isPending)
-		{
-			/* A newer authoritative snapshot returned to the currently committed
-			   class before presentation commit.  Drop the superseded generation. */
-			Clear_DeferredLocalCharacterClassReplacement();
-		}
-		OBJECT_HANDLE handle{};
-
-		if (!m_Registry.Find_Handle(
-			player.iNetEntityId,
-			handle))
-		{
-			allSucceeded = false;
-			continue;
-		}
-
-		const std::shared_ptr<CCharacter> character =
-			m_Registry.Resolve(handle);
-
-		if (nullptr == character)
-		{
-			allSucceeded = false;
-			continue;
-		}
-
-		const float3_t position(
-			player.fPositionX,
-			player.fPositionY,
-			player.fPositionZ);
-
-		const bool_t isMoving =
-			player.eLocomotionState ==
-			PLAYER_LOCOMOTION_STATE::MOVING;
-
-		if (!character->Apply_NetworkState(
-			position,
-			player.fYawDegrees,
-			isMoving,
-			snapshot.iServerTick) ||
-			!character->Apply_MarioPresentation(
-				player.iMarioStage >= 1u && player.iMarioStage <= 4u) ||
-			!character->Apply_NetworkAction(
-				player.eAction,
-				player.iSkillId,
-				snapshot.iServerTick,
-				player.iActionStartTick,
-				player.fYawDegrees,
-				player.iComboStage,
-				player.hasSkillTarget,
-				float3_t(
-					player.fSkillTargetX,
-					player.fSkillTargetY,
-					player.fSkillTargetZ), player.eKoukuHudMode))
-		{
-			allSucceeded = false;
-		}
-		character->Apply_NetworkStance(player.eStance);
-		if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
-		{
-			// Both boss presentations expose the existing weak hand-socket interface.
-			// Resolve Kouku's grip from the owner in this same Server snapshot, not
-			// the previous action cached before this packet's entity loop.
-			std::shared_ptr<const IPlayerHandGripSocketSource> owner;
-			const auto ownerIter = m_WorldEntities.find(player.iAttachmentOwnerNetEntityId);
-			if (m_WorldEntities.end() != ownerIter &&
-				WORLD_ENTITY_KIND::BOSS == ownerIter->second.eKind &&
-				!ownerIter->second.bPresentationIsolated)
-			{
-				owner = ownerIter->second.pValtan.lock();
-                if (!owner && Is_KoukuSaydonArenaBoss(ownerIter->second.strArchetypeId,
-                    ownerIter->second.strEncounterId, ownerIter->second.iOwnerBossNetEntityId))
-                {
-                    const auto npc = ownerIter->second.pNpc.lock();
-                    const auto state = std::find_if(snapshot.Entities.begin(), snapshot.Entities.end(),
-                        [&](const auto& value) { return value.iNetEntityId == player.iAttachmentOwnerNetEntityId; });
-                    if (npc)
-                    {
-                        npc->Clear_PlayerHandGripLocalOffset();
-                        if (state != snapshot.Entities.end() && state->iCurrentHp &&
-                            state->eAction != WORLD_ENTITY_ACTION::DEAD &&
-                            state->PinnedDefinitionRevision == ownerIter->second.PinnedDefinitionRevision)
-                        {
-                            PLAYER_HAND_GRIP_LOCAL_OFFSET grip{};
-                            if (CKoukuSaydonPresentationAssetService::Try_Resolve_AttachmentGrip(
-                                ownerIter->second.strArchetypeId, state->strPatternId, player.eAttachmentSlot, grip,
-                                m_KoukuBundleState.iRunEpoch ? m_KoukuBundleState.iPinnedSourceRevision : 0u))
-                                (void)npc->Set_PlayerHandGripLocalOffset(grip);
-                            owner = npc;
-                        }
-                    }
-                }
-			}
-			/* A world-object slot has no boss socket to follow: the Server
-			position is the presentation, and asking for a grip would report a
-			failure that is not one. */
-			if (nullptr == owner ||
-				PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND != player.eAttachmentSlot)
-				character->Clear_NetworkAttachment();
-			else if (!character->Apply_NetworkAttachment(
-					owner, player.eAttachmentSlot) &&
-				m_strPendingPresentationFailure.empty())
-			{
-				m_strPendingPresentationFailure =
-					"Grabbed player kept its Server fallback transform because the owner presentation has no admitted CAPTURE gripLocalOffset.";
-			}
-		}
-		else
-			character->Clear_NetworkAttachment();
-		if (isLocallyControlled)
-		{
-			const NET_PLAYER_RECORD* localRecord =
-				m_Registry.Find_Record(player.iNetEntityId);
-			if (nullptr == localRecord)
-			{
-				allSucceeded = false;
-			}
-			else
-			{
-				CCombatHUDViewModel::Get().Apply_LocalPlayer(
-					snapshot.iServerTick,
-					localRecord->eCharacterClass,
-					player);
-			}
-		}
-	}
+		allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
 	if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) m_KoukuCardSnapshots = snapshot.Players;
 	std::vector<NET_ENTITY_ID> deadBossOwners;
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
@@ -3638,11 +3507,13 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					iter->second.iOwnerBossNetEntityId))
 			{
 				const std::shared_ptr<CNpc> boss = iter->second.pNpc.lock();
+				const bool_t newPatternEdge = !entity.strPatternId.empty() &&
+					entity.iPatternSequence != iter->second.iPatternSequence;
 				if (nullptr == boss ||
 					iter->second.PinnedDefinitionRevision !=
 						entity.PinnedDefinitionRevision ||
 					!boss->Apply_NetworkState(
-						position, entity.fYawDegrees, snapshot.iServerTick))
+						position, entity.fYawDegrees, snapshot.iServerTick, newPatternEdge))
 				{
 					allSucceeded = false;
 					continue;
@@ -3911,6 +3782,7 @@ Client::CClientReplication::CHARACTER_REPLACE_RESULT
 Client::CClientReplication::Replace_CharacterClass(
 	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Network.PlayerPresentation.Replace");
 	const NET_PLAYER_RECORD* currentRecord =
 		m_Registry.Find_Record(snapshot.iNetEntityId);
 	if (nullptr == currentRecord)
@@ -4030,6 +3902,12 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+	if (m_pPlayerAssetPreparation) m_pPlayerAssetPreparation->Cancel_AsyncPreparation();
+	m_PreparingPlayerClass.reset();
+	m_PendingPlayerSpawns.clear();
+	m_PendingPlayerPresentations.clear();
+	m_FailedPlayerSpawnClasses.clear();
+	m_FailedPlayerAssetClasses.clear();
 	m_PendingWorldSequencePlays.clear();
 	m_KoukuBundleState = {};
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
@@ -4123,4 +4001,291 @@ void Client::CClientReplication::Reset_World()
 	m_hasFatalWorldDestructionFailure = false;
 	m_strPendingPresentationFailure.clear();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
+}
+
+bool Client::CClientReplication::Apply_PlayerSnapshot(
+	const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick,
+	const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities)
+{
+	using namespace LostArk::Shared;
+	bool allSucceeded = true;
+	if (m_PendingPlayerSpawns.contains(player.iNetEntityId))
+	{
+		Stage_PlayerPresentation(player, serverTick, entities);
+		return true;
+	}
+	const NET_PLAYER_RECORD* record =
+		m_Registry.Find_Record(player.iNetEntityId);
+	const bool_t isLocallyControlled = player.iNetEntityId ==
+		CNetworkManager::Get().Get_LocalEntityId();
+	if (nullptr != record &&
+		(record->eCharacterClass != player.eCharacterClass ||
+		 record->eMadnessForm != player.eMadnessForm))
+	{
+		if (isLocallyControlled &&
+			m_Desc.bDeferLocalCharacterClassReplacement)
+		{
+			Stage_LocalCharacterClassReplacement(
+				player, serverTick);
+			return true;
+		}
+		if (player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL &&
+			!CPlayableCharacterAssetService::Is_Ready(m_Desc.iPrototypeLevelIndex, player.eCharacterClass))
+		{
+			Stage_PlayerPresentation(player, serverTick, entities);
+			return true;
+		}
+		const CHARACTER_REPLACE_RESULT replaceResult =
+			Replace_CharacterClass(player);
+		if (CHARACTER_REPLACE_RESULT::FATAL_FAILURE == replaceResult)
+		{
+			return false;
+		}
+		if (CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE == replaceResult)
+			return true;
+	}
+	else if (isLocallyControlled &&
+		m_DeferredLocalCharacterClassReplacement.isPending)
+	{
+		/* A newer authoritative snapshot returned to the currently committed
+		   class before presentation commit.  Drop the superseded generation. */
+		Clear_DeferredLocalCharacterClassReplacement();
+	}
+	OBJECT_HANDLE handle{};
+
+	if (!m_Registry.Find_Handle(
+		player.iNetEntityId,
+		handle))
+	{
+		return false;
+	}
+
+	const std::shared_ptr<CCharacter> character =
+		m_Registry.Resolve(handle);
+
+	if (nullptr == character)
+	{
+		return false;
+	}
+
+	const float3_t position(
+		player.fPositionX,
+		player.fPositionY,
+		player.fPositionZ);
+
+	const bool_t isMoving =
+		player.eLocomotionState ==
+		PLAYER_LOCOMOTION_STATE::MOVING;
+
+	if (!character->Apply_NetworkState(
+		position,
+		player.fYawDegrees,
+		isMoving,
+		serverTick) ||
+		!character->Apply_MarioPresentation(
+			player.iMarioStage >= 1u && player.iMarioStage <= 4u) ||
+		!character->Apply_NetworkAction(
+			player.eAction,
+			player.iSkillId,
+			serverTick,
+			player.iActionStartTick,
+			player.fYawDegrees,
+			player.iComboStage,
+			player.hasSkillTarget,
+			float3_t(
+				player.fSkillTargetX,
+				player.fSkillTargetY,
+				player.fSkillTargetZ), player.eKoukuHudMode))
+	{
+		allSucceeded = false;
+	}
+	character->Apply_NetworkStance(player.eStance);
+	character->Apply_NetworkPresentationHidden((player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
+	if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
+	{
+		// Both boss presentations expose the existing weak hand-socket interface.
+		// Resolve Kouku's grip from the owner in this same Server snapshot, not
+		// the previous action cached before this packet's entity loop.
+		std::shared_ptr<const IPlayerHandGripSocketSource> owner;
+		const auto ownerIter = m_WorldEntities.find(player.iAttachmentOwnerNetEntityId);
+		if (m_WorldEntities.end() != ownerIter &&
+			WORLD_ENTITY_KIND::BOSS == ownerIter->second.eKind &&
+			!ownerIter->second.bPresentationIsolated)
+		{
+			owner = ownerIter->second.pValtan.lock();
+                if (!owner && Is_KoukuSaydonArenaBoss(ownerIter->second.strArchetypeId,
+                    ownerIter->second.strEncounterId, ownerIter->second.iOwnerBossNetEntityId))
+                {
+                    const auto npc = ownerIter->second.pNpc.lock();
+                    const auto state = std::find_if(entities.begin(), entities.end(),
+                        [&](const auto& value) { return value.iNetEntityId == player.iAttachmentOwnerNetEntityId; });
+                    if (npc)
+                    {
+                        npc->Clear_PlayerHandGripLocalOffset();
+                        if (state != entities.end() && state->iCurrentHp &&
+                            state->eAction != WORLD_ENTITY_ACTION::DEAD &&
+                            state->PinnedDefinitionRevision == ownerIter->second.PinnedDefinitionRevision)
+                        {
+                            PLAYER_HAND_GRIP_LOCAL_OFFSET grip{};
+                            if (CKoukuSaydonPresentationAssetService::Try_Resolve_AttachmentGrip(
+                                ownerIter->second.strArchetypeId, state->strPatternId, player.eAttachmentSlot, grip,
+                                m_KoukuBundleState.iRunEpoch ? m_KoukuBundleState.iPinnedSourceRevision : 0u))
+                                (void)npc->Set_PlayerHandGripLocalOffset(grip);
+                            owner = npc;
+                        }
+                    }
+                }
+		}
+		/* A world-object slot has no boss socket to follow: the Server
+		position is the presentation, and asking for a grip would report a
+		failure that is not one. */
+		if (nullptr == owner ||
+			PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND != player.eAttachmentSlot)
+			character->Clear_NetworkAttachment();
+		else if (!character->Apply_NetworkAttachment(
+				owner, player.eAttachmentSlot) &&
+			m_strPendingPresentationFailure.empty())
+		{
+			m_strPendingPresentationFailure =
+				"Grabbed player kept its Server fallback transform because the owner presentation has no admitted CAPTURE gripLocalOffset.";
+		}
+	}
+	else
+		character->Clear_NetworkAttachment();
+	if (isLocallyControlled)
+	{
+		const NET_PLAYER_RECORD* localRecord =
+			m_Registry.Find_Record(player.iNetEntityId);
+		if (nullptr == localRecord)
+		{
+			allSucceeded = false;
+		}
+		else
+		{
+			CCombatHUDViewModel::Get().Apply_LocalPlayer(
+				serverTick,
+				localRecord->eCharacterClass,
+				player);
+		}
+	}
+	m_PendingPlayerPresentations.erase(player.iNetEntityId);
+	return allSucceeded;
+}
+
+Client::CClientReplication::CClientReplication() = default;
+Client::CClientReplication::~CClientReplication() = default;
+
+void Client::CClientReplication::Stage_PlayerPresentation(
+	const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick,
+	const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities)
+{
+	auto& pending = m_PendingPlayerPresentations[player.iNetEntityId];
+	pending.Snapshot = player;
+	pending.ServerTick = serverTick;
+	pending.AttachmentOwners.clear();
+	const auto owner = std::find_if(entities.begin(), entities.end(), [&](const auto& entity)
+		{ return entity.iNetEntityId == player.iAttachmentOwnerNetEntityId; });
+	if (owner != entities.end()) pending.AttachmentOwners.push_back(*owner);
+}
+
+bool Client::CClientReplication::Advance_PlayerAssetPreparation()
+{
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Network.PlayerAssets.Advance");
+	using namespace LostArk::Shared;
+	if (CLevelTransitionService::Is_Pending())
+	{
+		if (m_pPlayerAssetPreparation)
+		{
+			m_pPlayerAssetPreparation->Cancel_AsyncPreparation();
+			HRESULT result; std::string status;
+			(void)m_pPlayerAssetPreparation->Poll_AsyncPreparation(false, result, status);
+		}
+		return true;
+	}
+	const auto spawnClass = [&](const auto& spawn)
+	{
+		const auto latest = m_PendingPlayerPresentations.find(spawn.iNetEntityId);
+		return latest == m_PendingPlayerPresentations.end() ? spawn.eCharacterClass : latest->second.Snapshot.eCharacterClass;
+	};
+	const auto wanted = [&](const CHARACTER_CLASS_ID characterClass)
+	{
+		for (const auto& [id, pending] : m_PendingPlayerPresentations)
+			if (pending.Snapshot.eCharacterClass == characterClass) return true;
+		for (const auto& [id, spawn] : m_PendingPlayerSpawns)
+			if (spawnClass(spawn) == characterClass) return true;
+		return false;
+	};
+	if (m_pPlayerAssetPreparation && m_pPlayerAssetPreparation->Is_Preparing())
+	{
+		const bool keep = m_PreparingPlayerClass && wanted(*m_PreparingPlayerClass);
+		if (!keep) m_pPlayerAssetPreparation->Cancel_AsyncPreparation();
+		HRESULT result = E_PENDING; std::string status;
+		if (!m_pPlayerAssetPreparation->Poll_AsyncPreparation(keep, result, status)) return true;
+		if (keep && FAILED(result) && result != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+		{
+			m_FailedPlayerAssetClasses.insert(static_cast<uint8_t>(*m_PreparingPlayerClass));
+			m_strPendingPresentationFailure = status + " Existing player presentations were kept.";
+		}
+		m_PreparingPlayerClass.reset();
+	}
+	bool succeeded = true;
+	for (auto it = m_PendingPlayerSpawns.begin(); it != m_PendingPlayerSpawns.end();)
+	{
+		const auto characterClass = spawnClass(it->second);
+		const auto failed = m_FailedPlayerSpawnClasses.find(it->first);
+		if ((failed != m_FailedPlayerSpawnClasses.end() && failed->second == characterClass) ||
+			!CPlayableCharacterAssetService::Is_Ready(m_Desc.iPrototypeLevelIndex, characterClass)) { ++it; continue; }
+		auto spawn = it->second;
+		spawn.eCharacterClass = characterClass;
+		const auto latest = m_PendingPlayerPresentations.find(spawn.iNetEntityId);
+		if (latest != m_PendingPlayerPresentations.end())
+		{
+			spawn.fPositionX = latest->second.Snapshot.fPositionX;
+			spawn.fPositionY = latest->second.Snapshot.fPositionY;
+			spawn.fPositionZ = latest->second.Snapshot.fPositionZ;
+			spawn.fYawDegrees = latest->second.Snapshot.fYawDegrees;
+		}
+		if (!Commit_PlayerSpawn(spawn))
+		{
+			m_FailedPlayerSpawnClasses[it->first] = characterClass;
+			m_strPendingPresentationFailure = "Player presentation commit failed; its latest Server state remains staged.";
+			succeeded = false;
+			++it;
+			continue;
+		}
+		m_FailedPlayerSpawnClasses.erase(it->first);
+		it = m_PendingPlayerSpawns.erase(it);
+	}
+	for (auto it = m_PendingPlayerPresentations.begin(); it != m_PendingPlayerPresentations.end();)
+	{
+		if (m_PendingPlayerSpawns.contains(it->first) ||
+			!CPlayableCharacterAssetService::Is_Ready(m_Desc.iPrototypeLevelIndex, it->second.Snapshot.eCharacterClass))
+		{ ++it; continue; }
+		auto pending = std::move(it->second);
+		it = m_PendingPlayerPresentations.erase(it);
+		succeeded = Apply_PlayerSnapshot(pending.Snapshot, pending.ServerTick, pending.AttachmentOwners) && succeeded;
+	}
+	std::optional<CHARACTER_CLASS_ID> requested;
+	const auto consider = [&](CHARACTER_CLASS_ID characterClass)
+	{
+		if (!requested && !m_FailedPlayerAssetClasses.contains(static_cast<uint8_t>(characterClass)) &&
+			!CPlayableCharacterAssetService::Is_Ready(m_Desc.iPrototypeLevelIndex, characterClass)) requested = characterClass;
+	};
+	const auto localId = CNetworkManager::Get().Get_LocalEntityId();
+	if (const auto local = m_PendingPlayerPresentations.find(localId); local != m_PendingPlayerPresentations.end()) consider(local->second.Snapshot.eCharacterClass);
+	if (const auto local = m_PendingPlayerSpawns.find(localId); local != m_PendingPlayerSpawns.end()) consider(spawnClass(local->second));
+	for (const auto& [id, pending] : m_PendingPlayerPresentations) consider(pending.Snapshot.eCharacterClass);
+	for (const auto& [id, spawn] : m_PendingPlayerSpawns) consider(spawnClass(spawn));
+	if (requested)
+	{
+		if (!m_pPlayerAssetPreparation) m_pPlayerAssetPreparation = std::make_unique<CPlayableCharacterAssetService>();
+		const HRESULT result = m_pPlayerAssetPreparation->Begin_AsyncPreparation(m_Desc.pDevice, m_Desc.pContext, m_Desc.iPrototypeLevelIndex, *requested);
+		if (FAILED(result))
+		{
+			m_FailedPlayerAssetClasses.insert(static_cast<uint8_t>(*requested));
+			m_strPendingPresentationFailure = "Player class asset preparation could not start; existing players were kept.";
+		}
+		else if (result == S_OK) m_PreparingPlayerClass = requested;
+	}
+	return succeeded;
 }

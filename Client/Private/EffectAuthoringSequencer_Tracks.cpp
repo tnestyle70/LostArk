@@ -174,7 +174,9 @@ void CEffectAuthoringSequencer::Write_AdditionalRows(std::ostream& out) const
 bool CEffectAuthoringSequencer::Commit_TransientPreview()
 {
     if (!m_Transient) return true;
-    if (!m_Transient->previewElementId.empty())
+    if (m_KoukuEffectPreview)
+    { m_Status = "Stop the player-anchor preview before appending to the saved sequence. Choose that sequence's own anchor."; return false; }
+    if (!m_Transient->previewElementIds.empty())
     { m_Status = "Element preview cannot become a saved sequence row. Stop it or preview the whole document before appending."; return false; }
     if (m_Effects.size() >= TRACK_MAX_ROWS)
     { m_Status = "The sequence already has 256 Effect rows."; return false; }

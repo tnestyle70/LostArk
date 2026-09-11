@@ -761,7 +761,9 @@ namespace LostArk::Shared
 	};
 
 	/* Server-owned maze state. Flags: observing=1, escaped=2, exit=4,
-	   leaving maze=8. Effect assets and camera poses stay Client-side. */
+	   leaving maze=8, entry cutscene hidden=16. Effect assets and camera poses stay Client-side. */
+	inline constexpr std::uint8_t CARD_MAZE_ENTRY_HIDDEN = 16u;
+	inline constexpr std::uint8_t CARD_MAZE_VALID_FLAGS = 31u;
 	struct CARD_MAZE_PRESENTATION final
 	{
 		std::uint8_t flags = 0u;

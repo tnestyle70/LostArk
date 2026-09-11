@@ -1,4 +1,6 @@
 #include "Character.h"
+#include "PlayableCharacterAssetService.h"
+#include "Profiler.h"
 
 #include "AnimationSkillBindingDocument.h"
 #include "ActorCatalog.h"
@@ -107,6 +109,7 @@ HRESULT CCharacter::Initialize_Prototype()
 
 HRESULT CCharacter::Initialize(void* pArg)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Character.Initialize");
 	if (nullptr == pArg)
 		return E_FAIL;
 
@@ -236,8 +239,9 @@ void CCharacter::Load_InteractionAnimationBindings()
  m_InteractionClips = std::move(staged);
 }
 
-bool_t CCharacter::Load_ClipChains()
+bool_t CCharacter::Load_ClipChains(const bool_t reloadSource)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Character.SkillBindings.Admit");
 	if (nullptr == m_pSpec->pAssetName)
 		return false;
 	std::vector<std::string> availableClips;
@@ -251,13 +255,22 @@ bool_t CCharacter::Load_ClipChains()
 
 	ANIMATION_SKILL_BINDING_DOCUMENT document;
 	std::string status;
-	if (!CAnimationSkillBindingDocument::Load(
-		m_pSpec->pAssetName,
-		m_pSpec->eCharacterClass,
-		CPlayerSkillCatalog::Get_Skills(),
-		availableClips,
-		document,
-		status))
+	bool loaded = false;
+	if (!reloadSource && LostArk::Shared::Is_Supported_Playable_Character_Class(m_pSpec->eCharacterClass))
+	{
+		const auto prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(m_iPrototypeLevelIndex, m_pSpec->eCharacterClass);
+		if (prepared)
+		{
+			loaded = prepared->HasSkillBindings;
+			document = prepared->SkillBindings;
+			status = prepared->SkillStatus;
+		}
+		else status = "Character authoring was not prepared with its model prototypes.";
+	}
+	else
+		loaded = CAnimationSkillBindingDocument::Load(m_pSpec->pAssetName,
+			m_pSpec->eCharacterClass, CPlayerSkillCatalog::Get_Skills(), availableClips, document, status);
+	if (!loaded)
 	{
 		OutputDebugStringA(("Character skill animation load failed: " +
 			status + "\n").c_str());
@@ -316,6 +329,8 @@ bool_t CCharacter::Load_ClipChains()
 	}
 	if (stagedChains.empty())
 		return false;
+	if (reloadSource)
+		CPlayableCharacterAssetService::Update_PreparedSkillBindings(m_iPrototypeLevelIndex, m_pSpec->eCharacterClass, document);
 	if (nullptr != m_pChain)
 		m_PendingChains = std::move(stagedChains);
 	else
@@ -325,11 +340,12 @@ bool_t CCharacter::Load_ClipChains()
 
 bool_t CCharacter::Reload_SkillAnimationBindings()
 {
-	return Load_ClipChains();
+	return Load_ClipChains(true);
 }
 
 bool_t CCharacter::Load_EffectCues()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Character.EffectCues.Admit");
 	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName ||
 		nullptr == m_pBodyModel)
 		return false;
@@ -343,8 +359,20 @@ bool_t CCharacter::Load_EffectCues()
 	}
 	ANIMATION_EFFECT_CUE_DOCUMENT staged;
 	std::string status;
-	if (!CAnimationEffectCueDocument::Load(
-		m_pSpec->pAssetName, clips, staged, status))
+	bool loaded = false;
+	if (LostArk::Shared::Is_Supported_Playable_Character_Class(m_pSpec->eCharacterClass))
+	{
+		const auto prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(m_iPrototypeLevelIndex, m_pSpec->eCharacterClass);
+		if (prepared)
+		{
+			loaded = prepared->HasEffectCues;
+			staged = prepared->EffectCues;
+			status = prepared->EffectStatus;
+		}
+		else status = "Character Effect cues were not prepared with its model prototypes.";
+	}
+	else loaded = CAnimationEffectCueDocument::Load(m_pSpec->pAssetName, clips, staged, status);
+	if (!loaded)
 	{
 		OutputDebugStringA(("Character Effect cue load isolated: " +
 			status + "\n").c_str());
@@ -2349,13 +2377,27 @@ void CCharacter::Update(f32_t fTimeDelta)
 
 void CCharacter::Load_FaceSliders()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Character.FaceSliders.Admit");
 	if (nullptr == m_pSpec || nullptr == m_pSpec->pFaceSliderRace ||
 		nullptr == m_pBodyModel)
 	{
 		return;
 	}
 	std::string error;
-	if (!m_FaceSliderDocument.Load(m_pSpec->pFaceSliderRace, error))
+	bool loaded = false;
+	if (LostArk::Shared::Is_Supported_Playable_Character_Class(m_pSpec->eCharacterClass))
+	{
+		const auto prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(m_iPrototypeLevelIndex, m_pSpec->eCharacterClass);
+		if (prepared)
+		{
+			loaded = prepared->HasFaceSliders;
+			m_FaceSliderDocument = prepared->FaceSliders;
+			error = prepared->FaceSliderStatus;
+		}
+		else error = "Face sliders were not prepared with the character models.";
+	}
+	else loaded = m_FaceSliderDocument.Load(m_pSpec->pFaceSliderRace, error);
+	if (!loaded)
 	{
 		OutputDebugStringA(("[Character] face sliders unavailable: " + error + "\n").c_str());
 		return;
@@ -2637,9 +2679,16 @@ bool_t CCharacter::Set_FaceIrisTexture(const std::string& strTextureAssetId)
 
 void CCharacter::Load_FaceMorphs()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Character.FaceMorph.Admit");
 	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName || nullptr == m_pBodyModel)
 		return;
 
+	if (LostArk::Shared::Is_Supported_Playable_Character_Class(m_pSpec->eCharacterClass))
+	{
+		if (const auto prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(m_iPrototypeLevelIndex, m_pSpec->eCharacterClass))
+			m_FaceMorph = prepared->FaceMorphs; // Per-instance weights; immutable target arrays are shared.
+		return;
+	}
 	const std::string strClassId = m_pSpec->pAssetName;
 	const std::filesystem::path FaceMorphsPath = CRuntimeAssetRoot::Resolve(
 		"Character/" + strClassId + "/FaceMorphs/" + strClassId + ".facemorphs");
@@ -2665,6 +2714,8 @@ void CCharacter::Load_FaceMorphs()
 
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
+	// Skip the composite part render queues without changing equipment visibility.
+	if (m_isNetworkPresentationHidden) return;
 	__super::Late_Update(fTimeDelta);
 
 	/* Face sliders compose onto whatever the animation posed this frame; they

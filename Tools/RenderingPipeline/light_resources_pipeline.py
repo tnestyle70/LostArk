@@ -188,8 +188,8 @@ def validate_map_lights_v2(document: Any, area_id: str) -> dict[str, Any]:
             if isinstance(channel, bool) or not isinstance(channel, (int, float)) or not math.isfinite(channel) or channel < 1 or channel > 15 or int(channel) != channel:
                 raise LightValidationError("Static shadow light channel must be an integer in [1,15].")
         _exact(row, fields, "map light")
-        if row.get("receiver", "ALL") not in ("ALL", "SOURCE_CHARACTER"):
-            raise LightValidationError("Map light receiver must be ALL or SOURCE_CHARACTER.")
+        if row.get("receiver", "ALL") not in ("ALL", "SOURCE_CHARACTER", "UNBAKED"):
+            raise LightValidationError("Map light receiver must be ALL, SOURCE_CHARACTER or UNBAKED.")
         identity = _stable(row["lightId"], "lightId")
         if identity in ids:
             raise LightValidationError(f"Duplicate map light ID: {identity}")

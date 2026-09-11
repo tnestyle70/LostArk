@@ -1804,7 +1804,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		{
 			const std::uint64_t elapsedMicroseconds = To_Microseconds(
 				std::chrono::steady_clock::now() - tickStart);
+			const auto navigationMetrics = m_ServerNavigation.Get_PerformanceMetrics();
 			std::scoped_lock lock{ m_CommandMutex };
+			m_PerformanceMetrics.Navigation = navigationMetrics;
 			++m_PerformanceMetrics.iTickCount;
 			m_PerformanceMetrics.iLastTickMicroseconds = elapsedMicroseconds;
 			m_PerformanceMetrics.iMaximumTickMicroseconds = (std::max)(
@@ -2301,7 +2303,23 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			<< " SnapshotDropped=" << snapshotDroppedCount
 			<< " OutboundReliableRejected=" << reliableRejectedCount
 			<< " WireSendMaxUs=" << maximumWireSendMicroseconds
-			<< " WireSendFailures=" << sendFailureCount << '\n';
+			<< " WireSendFailures=" << sendFailureCount;
+		const auto writeNavigation = [](const char* name,
+			const SERVER_NAVIGATION_QUERY_METRICS& stage)
+			{
+				std::cout << " Nav" << name << "Calls=" << stage.iCalls
+					<< " Nav" << name << "TotalUs=" << stage.iTotalNanoseconds / 1000u
+					<< " Nav" << name << "MaxUs=" << stage.iMaximumNanoseconds / 1000u
+					<< " Nav" << name << "Expanded=" << stage.iExpandedNodes
+					<< " Nav" << name << "PathPoints=" << stage.iReturnedPathPoints;
+			};
+		writeNavigation("FindPath", metrics.Navigation.FindPath);
+		writeNavigation("ReachablePath", metrics.Navigation.ReachablePath);
+		writeNavigation("ProjectPoint", metrics.Navigation.ProjectPoint);
+		writeNavigation("SmoothPath", metrics.Navigation.SmoothPath);
+		writeNavigation("TraversalStep", metrics.Navigation.TraversalStep);
+		writeNavigation("LineOfSight", metrics.Navigation.LineOfSight);
+		std::cout << '\n';
 	}
 }
 
@@ -6669,7 +6687,8 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			if (pattern->bResetBossToSpawn && (!m_ServerNavigation.Is_PointWalkableExact(boss->fSpawnPositionX, boss->fSpawnPositionZ) || !std::isfinite(boss->fSpawnPositionY)))
 				return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "KoukuSaydon spawn reset is not on active navigation");
 			for (const auto& trigger : pattern->MechanicTriggers)
-				member.bOwnsPlayerMode = member.bOwnsPlayerMode || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER;
+				member.bOwnsPlayerMode = member.bOwnsPlayerMode || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER ||
+					trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
 			for (const auto& window : pattern->LogicWindows)
 			{
 				member.bOwnsPlayerMode = member.bOwnsPlayerMode || window.eKind == BOSS_PATTERN_LOGIC_KIND::POSE_INPUT || window.eKind == BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;

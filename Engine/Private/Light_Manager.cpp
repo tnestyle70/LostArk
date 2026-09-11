@@ -16,7 +16,8 @@ namespace
 	bool_t IsValidSceneLight(const LIGHT_DESC& Light)
 	{
 		if (Light.staticShadowChannel > 15u || (Light.eReceiver != LIGHT_RECEIVER::ALL &&
-			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) ||
+			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER &&
+			Light.eReceiver != LIGHT_RECEIVER::UNBAKED) ||
 			(LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
 			LIGHT::DIRECTIONAL != Light.eType) || !IsFinite4(Light.vDiffuse) ||
 			!IsFinite4(Light.vAmbient) || !IsFinite4(Light.vSpecular) ||

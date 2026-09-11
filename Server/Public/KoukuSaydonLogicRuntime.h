@@ -75,6 +75,10 @@ namespace LostArk::Server
 		std::map<std::pair<std::string, std::string>, std::uint32_t> AppliedContactMotionPriorities;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
+		// One snapshot of the entry roster: world X descending, then stable PlayerId.
+		bool bCardMazeEntryRosterCaptured = false;
+		std::vector<LostArk::Shared::PLAYER_ID> CardMazeEntryPlayers;
+		std::size_t iCardMazeNextHiddenPlayer = 0u;
 
 		[[nodiscard]] bool Is_Active() const noexcept { return !strPatternId.empty(); }
 	};
@@ -195,6 +199,13 @@ namespace LostArk::Server
 		[[nodiscard]] static std::uint32_t Ticks_FromMs(std::uint32_t ms) noexcept;
 
 	private:
+		static void Capture_CardMazeEntryRoster(KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		static void Reveal_CardMazeEntryPlayers(const KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		static bool Enter_CardMaze(const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
+			KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus);
 		static void Open_Window(
 			SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_LOGIC_WINDOW& window,

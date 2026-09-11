@@ -920,6 +920,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_Number(*pScreenPost, "intensityStart", S.fIntensityStart, strOutError) ||
 			!Read_Number(*pScreenPost, "intensityEnd", S.fIntensityEnd, strOutError) ||
 			!Read_Bool(*pScreenPost, "intensityLerp", S.bIntensityLerp, strOutError) ||
+			!Read_Bool(*pScreenPost, "intensitySmoothstep", S.bIntensitySmoothstep, strOutError) ||
 			!Read_Number(*pScreenPost, "secondaryIntensity", S.fSecondaryIntensity, strOutError) ||
 			!Read_Number(*pScreenPost, "frequency", S.fFrequency, strOutError) ||
 			!Read_FloatArray(*pScreenPost, "tint", &S.vTint.x, 4u, strOutError) ||
@@ -933,6 +934,39 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_Number(*pScreenPost, "overlayRotationDegrees", S.fOverlayRotationDegrees, strOutError) ||
 			!Read_Bool(*pScreenPost, "displaySpace", S.bDisplaySpace, strOutError))
 		{
+			return false;
+		}
+		if (const DATA_JSON_VALUE* pKeys = pScreenPost->Find("intensityKeys"))
+		{
+			if (!pKeys->Is_Array() || pKeys->Get_Array().size() < 2u || pKeys->Get_Array().size() > 64u)
+			{
+				strOutError = "params.screenPost.intensityKeys requires 2..64 timeSeconds/intensity keys.";
+				return false;
+			}
+			for (const DATA_JSON_VALUE& Key : pKeys->Get_Array())
+			{
+				CEffectV2Object::SCREEN_POST_PARAMS::INTENSITY_KEY Value;
+				if (!Has_ExactFields(Key, { "timeSeconds", "intensity" }) ||
+					!Read_Number(Key, "timeSeconds", Value.fTimeSeconds, strOutError) ||
+					!Read_Number(Key, "intensity", Value.fIntensity, strOutError))
+				{
+					strOutError = "params.screenPost intensity key requires finite timeSeconds/intensity.";
+					return false;
+				}
+				if (!std::isfinite(Value.fTimeSeconds) || !std::isfinite(Value.fIntensity) ||
+					Value.fTimeSeconds < 0.f || Value.fIntensity < 0.f ||
+					(S.IntensityKeys.empty() ? Value.fTimeSeconds != 0.f : Value.fTimeSeconds <= S.IntensityKeys.back().fTimeSeconds) ||
+					(P.fLifetime > 0.f && Value.fTimeSeconds > P.fLifetime))
+				{
+					strOutError = "params.screenPost intensity keys must start at 0, increase within lifetime and have non-negative intensity.";
+					return false;
+				}
+				S.IntensityKeys.push_back(Value);
+			}
+		}
+		if (S.bIntensitySmoothstep && S.IntensityKeys.empty())
+		{
+			strOutError = "params.screenPost.intensitySmoothstep requires intensityKeys.";
 			return false;
 		}
 		S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
@@ -1481,6 +1515,18 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "      \"intensityStart\": " + Json_Number(S.fIntensityStart) + ",\n";
 	Text += "      \"intensityEnd\": " + Json_Number(S.fIntensityEnd) + ",\n";
 	Text += std::string("      \"intensityLerp\": ") + Json_Bool(S.bIntensityLerp) + ",\n";
+	if (!S.IntensityKeys.empty())
+	{
+		Text += "      \"intensityKeys\": [";
+		for (size_t i = 0u; i < S.IntensityKeys.size(); ++i)
+		{
+			const auto& Key = S.IntensityKeys[i];
+			Text += (i == 0u ? "" : ", ") + std::string("{ \"timeSeconds\": ") +
+				Json_Number(Key.fTimeSeconds) + ", \"intensity\": " + Json_Number(Key.fIntensity) + " }";
+		}
+		Text += "],\n";
+		Text += std::string("      \"intensitySmoothstep\": ") + Json_Bool(S.bIntensitySmoothstep) + ",\n";
+	}
 	Text += "      \"secondaryIntensity\": " + Json_Number(S.fSecondaryIntensity) + ",\n";
 	Text += "      \"frequency\": " + Json_Number(S.fFrequency) + ",\n";
 	Text += "      \"tint\": " + Json_Float4(S.vTint) + ",\n";

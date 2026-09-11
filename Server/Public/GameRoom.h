@@ -120,6 +120,7 @@ namespace LostArk::Server
 
 	struct SERVER_ROOM_PERFORMANCE_METRICS final
 	{
+		SERVER_NAVIGATION_PERFORMANCE_METRICS Navigation;
 		std::uint64_t iTickCount = 0;
 		std::uint64_t iLastTickMicroseconds = 0;
 		std::uint64_t iMaximumTickMicroseconds = 0;

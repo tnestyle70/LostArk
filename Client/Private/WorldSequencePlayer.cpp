@@ -4,16 +4,31 @@
 #include "GameInstance.h"
 #include "MapAssetObject.h"
 #include "Model.h"
+#include "Profiler.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <mutex>
 
 using namespace Client;
 using namespace Engine;
 
 namespace
 {
+	struct PREPARED_WORLD_SEQUENCE_AREA final
+	{
+		uint32_t levelIndex = ETOUI(LEVEL::END);
+		std::string areaId;
+		std::string status;
+		bool_t ready = false;
+		CWorldSequenceDocument document;
+		WORLD_SEQUENCE_PLACEMENT_MAP placements;
+		WORLD_SEQUENCE_DEPLOY_MAP deploy;
+	};
+	std::mutex g_PreparedAreaMutex;
+	std::unique_ptr<PREPARED_WORLD_SEQUENCE_AREA> g_PreparedArea;
+
 	f32_t Clamp01(const f32_t value)
 	{
 		if (!std::isfinite(value))
@@ -176,6 +191,156 @@ bool_t CWorldSequencePlayer::Load_Area(
 	m_Document = std::move(staged);
 	m_Status = "World sequence loaded: " +
 		std::to_string(m_Document.Get_Instances().size()) + " instances";
+	return true;
+}
+
+bool_t CWorldSequencePlayer::Prepare_AreaLoad(const uint32_t levelIndex,
+	const std::string& areaId, const MAP_LOAD_SCOPE& loadScope, std::string& status,
+	const std::function<bool_t()>& isCancellationRequested)
+{
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "WorldSequence.PrepareArea");
+	// The previous unconsumed document is released on the Loader worker too.
+	{
+		std::scoped_lock lock(g_PreparedAreaMutex);
+		g_PreparedArea.reset();
+	}
+	const auto cancelled = [&]()
+	{
+		if (!isCancellationRequested || !isCancellationRequested()) return false;
+		status = "World sequence preparation cancelled";
+		return true;
+	};
+	if (cancelled()) return false;
+	auto staged = std::make_unique<PREPARED_WORLD_SEQUENCE_AREA>();
+	staged->levelIndex = levelIndex;
+	staged->areaId = areaId;
+	const auto fail = [&](std::string reason)
+	{
+		status = std::move(reason);
+		if (cancelled()) return false;
+		staged->status = status;
+		std::scoped_lock lock(g_PreparedAreaMutex);
+		g_PreparedArea = std::move(staged);
+		return false;
+	};
+	if (levelIndex >= ETOUI(LEVEL::END) || areaId.empty())
+		return fail("World sequence preparation Area or level is invalid");
+	const auto path = CMapAssetCatalog::Get_MapDataRoot() /
+		(std::filesystem::path(areaId).wstring() + L".worldsequences.json");
+	std::error_code fileError;
+	if (!std::filesystem::exists(path, fileError))
+		return fail(fileError ? "Could not inspect world sequence runtime document" :
+			"World sequence runtime document is absent (optional presentation)");
+	if (!std::filesystem::is_regular_file(path, fileError) || fileError)
+		return fail("World sequence runtime document is not a regular file");
+	{
+		CProfilerScope targetsScope(CGameInstance::Get().Get_Profiler(), "WorldSequence.CollectLoadTargets");
+		CMapAssetCatalog catalog;
+		std::vector<MAP_PLACEMENT_RECORD> records;
+		if (!CMapPlacementRuntime::Try_GetCachedLoadStage(areaId, loadScope, catalog, records))
+			return fail("World sequence preparation requires the Loader map stage");
+		staged->placements.reserve(records.size());
+		for (const auto& record : records)
+		{
+			const auto* asset = catalog.Find(record.assetId);
+			staged->placements.emplace(record.placementId, WORLD_SEQUENCE_PLACEMENT_INFO{
+				record.signedScale, asset && asset->renderProfile.renderMode != MAP_ASSET_RENDER_MODE::BACKGROUND });
+		}
+		if (cancelled()) return false;
+		CDeployPropCatalog deployCatalog;
+		if (!deployCatalog.Load_Default(areaId)) return fail(deployCatalog.Get_Status());
+		std::unordered_map<std::string, WORLD_SEQUENCE_DEPLOY_INFO> assetClips;
+		for (const auto& asset : deployCatalog.Get_Assets())
+		{
+			if (cancelled()) return false;
+			WORLD_SEQUENCE_DEPLOY_INFO info;
+			if (asset.kind == DEPLOY_PROP_MODEL_KIND::ANIM)
+			{
+				// Clone shares mesh/material resources and never creates a live object
+				// or submits context commands. Only its immutable clip metadata is read.
+				const auto model = std::dynamic_pointer_cast<CModel>(CGameInstance::Get().Clone_Prototype(
+					levelIndex, asset.intactPrototypeTag));
+				if (!model) return fail("World sequence Deploy model is not prepared: " + asset.id);
+				info.animationClips.reserve(model->Get_NumAnimations());
+				for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+				{
+					const char_t* name = model->Get_AnimationName(index);
+					f32_t position = 0.f, duration = 0.f;
+					const f32_t rate = model->Get_AnimationTickPerSecond(index);
+					// Same admission as CDeployPropObject::Get_AnimationClips().
+					if (name && name[0] && model->Get_AnimationProgress(index, position, duration) &&
+						std::isfinite(duration) && duration >= 0.f && std::isfinite(rate) && rate > 0.f)
+						info.animationClips.emplace_back(name);
+				}
+				info.animationTargetSupported = !info.animationClips.empty();
+			}
+			assetClips.emplace(asset.id, std::move(info));
+		}
+		staged->deploy.reserve(deployCatalog.Get_Placements().size());
+		for (const auto& placement : deployCatalog.Get_Placements())
+		{
+			const auto found = assetClips.find(placement.assetId);
+			if (found == assetClips.end()) return fail("World sequence Deploy asset metadata is missing");
+			staged->deploy.emplace(placement.runtimePlacementId, found->second);
+		}
+	}
+	if (cancelled()) return false;
+	if (!staged->document.Load(path, areaId, staged->placements, staged->deploy, status))
+		return fail("World sequence load failed: " + status);
+	if (cancelled()) return false;
+	staged->ready = true;
+	staged->status = "World sequence prepared: " +
+		std::to_string(staged->document.Get_Instances().size()) + " instances";
+	status = staged->status;
+	{
+		std::scoped_lock lock(g_PreparedAreaMutex);
+		g_PreparedArea = std::move(staged);
+	}
+	return true;
+}
+
+bool_t CWorldSequencePlayer::Load_PreparedArea(const std::string& areaId, const TARGET_SET& targets)
+{
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "WorldSequence.CommitPrepared");
+	if (areaId.empty() || !targets.Is_Complete())
+	{ m_Status = "World sequence Area or target set is empty"; return false; }
+	std::unique_ptr<PREPARED_WORLD_SEQUENCE_AREA> staged;
+	{
+		std::scoped_lock lock(g_PreparedAreaMutex);
+		if (!g_PreparedArea || g_PreparedArea->areaId != areaId || g_PreparedArea->levelIndex != targets.levelIndex)
+		{ m_Status = "World sequence Loader stage is unavailable; existing presentation preserved"; return false; }
+		staged = std::move(g_PreparedArea);
+	}
+	if (!staged->ready)
+	{ m_Status = staged->status; return false; }
+	// Bind the validated document to exactly the admitted live targets. This is
+	// a compact metadata comparison, not another file read, parse or key validation.
+	const auto placements = Collect_Placements(*targets.pCatalog, *targets.pPlacements);
+	const auto deploy = Collect_DeployPlacements(*targets.pDeployRuntime);
+	bool_t match = placements.size() == staged->placements.size() && deploy.size() == staged->deploy.size();
+	for (const auto& [id, value] : placements)
+	{
+		const auto found = staged->placements.find(id);
+		if (found == staged->placements.end() ||
+			found->second.sequenceTargetSupported != value.sequenceTargetSupported ||
+			found->second.signedScale.x != value.signedScale.x ||
+			found->second.signedScale.y != value.signedScale.y ||
+			found->second.signedScale.z != value.signedScale.z) { match = false; break; }
+	}
+	for (const auto& [id, value] : deploy)
+	{
+		const auto found = staged->deploy.find(id);
+		if (found == staged->deploy.end() ||
+			found->second.animationTargetSupported != value.animationTargetSupported ||
+			found->second.animationClips != value.animationClips) { match = false; break; }
+	}
+	if (!match)
+	{ m_Status = "World sequence Loader targets changed before activation; existing presentation preserved"; return false; }
+	Stop_All(targets, true);
+	m_ObjectModels.clear();
+	m_EffectSnapshots.clear();
+	m_Document = std::move(staged->document);
+	m_Status = "Committed " + staged->status;
 	return true;
 }
 

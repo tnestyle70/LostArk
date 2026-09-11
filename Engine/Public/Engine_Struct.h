@@ -28,7 +28,7 @@ namespace Engine
 		uint32_t	iWinSizeX{}, iWinSizeY{};
 	}ENGINE_DESC;
 
-	enum class LIGHT_RECEIVER : uint32_t { ALL = 0u, SOURCE_CHARACTER = 1u };
+	enum class LIGHT_RECEIVER : uint32_t { ALL = 0u, SOURCE_CHARACTER = 1u, UNBAKED = 2u };
 
 	typedef struct tagLightDesc
 	{

@@ -386,8 +386,14 @@ private:
 		unique_ptr<CWorldSequencePlayer> player;
 	};
 	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> m_CompositionWorldPreviewCues;
-	// Preview borrows only its bound Deploy states and the exclusive arena visibility.
-	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> m_CompositionWorldPreviewDeployStates;
+	struct COMPOSITION_WORLD_PREVIEW_DEPLOY_STATE final
+	{
+		uint64_t placementId = 0u;
+		DEPLOY_PROP_STATE previousState = DEPLOY_PROP_STATE::INTACT;
+		DEPLOY_PROP_STATE appliedState = DEPLOY_PROP_STATE::INTACT;
+	};
+	// Preview borrows bound Deploy states, a replaced book and exclusive arena visibility.
+	std::vector<COMPOSITION_WORLD_PREVIEW_DEPLOY_STATE> m_CompositionWorldPreviewDeployStates;
 	std::vector<std::pair<uint64_t, bool_t>> m_CompositionWorldPreviewArenaVisibility;
 	std::string m_strCompositionWorldPreviewPattern;
 	bool_t m_bCompositionWorldPreviewClockBound = false;

@@ -545,6 +545,15 @@ namespace
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
 			{ outStatus = "ENTER_AREA geometry belongs to its linked Collider occurrence."; return false; }
 		}
+		else if (logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER")
+		{
+			if (!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
+				logic.fFaceCenterYawOffsetDegrees != 0.0 ||
+				!std::all_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return std::isfinite(x) && std::abs(x) <= 100000.0; }) ||
+				(logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" &&
+				 std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; })))
+			{ outStatus = "Card maze hide has no values; enter accepts only the central teleport position."; return false; }
+		}
 		else if (logic.strTriggerKind == "HUD_ENTER")
 		{
 			const auto& mode = logic.strHudMode;
@@ -891,7 +900,7 @@ namespace
                     const auto* logic = findLogic(box.strLogicId);
                     if (!logic) return fail("member Logic reference is missing");
                     if (logic->strJudgementKind == "POSE_INPUT" || logic->strJudgementKind == "ROULETTE_CARD_MATCH" ||
-                        logic->strTriggerKind == "HUD_ENTER") statefulMembers.insert(member.strMemberId);
+                        (logic->strTriggerKind == "HUD_ENTER" || logic->strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic->strTriggerKind == "CARD_MAZE_ENTER")) statefulMembers.insert(member.strMemberId);
                     for (const auto* outcomes : {&box.OnSuccessLogicIds, &box.OnFailLogicIds, &box.OnTimeoutLogicIds})
                         for (const auto& id : *outcomes)
                         {
@@ -949,7 +958,7 @@ namespace
                 !Valid_PresentationVector(row.Scale, .001, 10000.) ||
                 !std::isfinite(row.fVolume) || row.fVolume < 0. || row.fVolume > 1. ||
                 !std::isfinite(row.fDissolveStart) || !std::isfinite(row.fDissolveEnd) ||
-                row.fDissolveStart < 0. || row.fDissolveEnd > 1. || row.fDissolveStart >= row.fDissolveEnd ||
+                row.fDissolveStart < 0. || row.fDissolveEnd > 1. || row.fDissolveStart > row.fDissolveEnd ||
                 row.fBrightnessMultiplier != 1. || row.strAnchorKind != "BOSS" || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
                 !row.strWorldId.empty() || !row.strRegionId.empty() || !row.strLogicOccurrenceId.empty() ||
                 !row.strWorldOccurrenceId.empty() || row.strCardSymbol != "NONE" || row.strCardColor != "NONE")
@@ -1002,7 +1011,7 @@ namespace
 			document.MadnessPolicy.iClownHoldMs > MAX_TIME_MS ||
 			document.iNextFolderOrdinal < 1u || document.iNextFolderOrdinal > MAX_NEXT_ORDINAL ||
             document.iNextBundleOrdinal < 1u || document.iNextBundleOrdinal > MAX_NEXT_ORDINAL ||
-            document.Folders.size() > 4096u || document.Bundles.size() > 4096u ||
+            document.Folders.size() > 4096u || document.Bundles.size() > 4096u || document.PatternFlows.size() > 4u ||
             document.Patterns.size() > MAX_PATTERNS ||
 			document.PlayAllPatternIds.size() > MAX_PATTERNS)
 		{
@@ -1065,10 +1074,17 @@ namespace
 		std::unordered_map<std::string, std::string> worldInstanceIds;
 		for (const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION& world : document.Worlds)
 		{
+			// The Gate 2 source importer keeps the actor's semantic identity;
+			// its World resource and installed instance must share the exact suffix.
+			constexpr std::string_view sourceWorldPrefix = "world.kouku.gate2.intro.";
+			const bool sourceWorld = world.strWorldId.starts_with(sourceWorldPrefix) &&
+				world.strWorldId.size() > sourceWorldPrefix.size() &&
+				world.strSequenceInstanceId == "world.sequence.instance.kouku.gate2.intro." +
+					world.strWorldId.substr(sourceWorldPrefix.size());
 			if (!Is_StableId(world.strWorldId) ||
-				!world.strWorldId.starts_with(GENERATED_WORLD_PREFIX) ||
-				!Try_ParseGeneratedOrdinal(world.strWorldId,
-					GENERATED_WORLD_PREFIX, document.iNextWorldOrdinal) ||
+				(!sourceWorld && (!world.strWorldId.starts_with(GENERATED_WORLD_PREFIX) ||
+				 !Try_ParseGeneratedOrdinal(world.strWorldId,
+					GENERATED_WORLD_PREFIX, document.iNextWorldOrdinal))) ||
 				!worldIds.insert(world.strWorldId).second ||
 				!Is_DisplayName(world.strDisplayName) ||
 				!Is_StableId(world.strSequenceInstanceId) ||
@@ -1349,7 +1365,7 @@ namespace
 					!Valid_PresentationVector(row.RotationDegrees, -36000.0, 36000.0) ||
 					!Valid_PresentationVector(row.Scale, 0.001, 10000.0) ||
 					!std::isfinite(row.fDissolveStart) || row.fDissolveStart < 0.0 || row.fDissolveStart > 1.0 ||
-					!std::isfinite(row.fDissolveEnd) || row.fDissolveEnd <= row.fDissolveStart || row.fDissolveEnd > 1.0 ||
+					!std::isfinite(row.fDissolveEnd) || row.fDissolveEnd < row.fDissolveStart || row.fDissolveEnd > 1.0 ||
 					!std::isfinite(row.fVolume) || row.fVolume < 0.0 || row.fVolume > 1.0 ||
 					!std::isfinite(row.fBrightnessMultiplier) || row.fBrightnessMultiplier < 0.0 || row.fBrightnessMultiplier > 16.0 ||
 					(row.strBoneTarget != "BODY" && row.strBoneTarget != "WEAPON") ||
@@ -1370,12 +1386,15 @@ namespace
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
 				{ outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone."; return false; }
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
-					(row.strAnchorKind == "PLAYER" || row.strAnchorKind == "MAP" || row.fBrightnessMultiplier != 1.0)) ||
+					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.strAnchorKind == "WORLD" || row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
 					 (row.strAnchorKind != "BOSS" && !row.strBone.empty()) ||
 					 (row.strAnchorKind == "PLAYER" && !row.bFollowBoss))))
 				{ outStatus = "Invalid Light anchor, scale, bone or brightness: " + row.strOccurrenceId; return false; }
+				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && row.strAnchorKind == "MAP" &&
+					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldOccurrenceId.empty()))
+				{ outStatus = "MAP Effect requires a fixed position without a bone or World occurrence."; return false; }
 				if (!row.strWorldOccurrenceId.empty())
 				{
 					const auto owner = std::find_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
@@ -1725,6 +1744,33 @@ namespace
             for (const auto& bundle : document.Bundles)
                 if (!bundles.insert(bundle.strBundleId).second || !Validate_Bundle(document, bundle, outStatus)) return false;
         }
+        std::unordered_set<std::string> flowIds, flowGates;
+        for (const auto& flow : document.PatternFlows)
+        {
+            if (!Is_StableId(flow.strFlowId) || !flowIds.insert(flow.strFlowId).second ||
+                !flowGates.insert(flow.strGateId).second || !Is_DisplayName(flow.strDisplayName) ||
+                (flow.strGateId != "GATE1" && flow.strGateId != "GATE2" && flow.strGateId != "GATE3" && flow.strGateId != "BINGO") ||
+                flow.Entries.size() > 256u)
+            { outStatus = "Pattern Flow requires one bounded, named stable flow per Gate."; return false; }
+            std::unordered_set<std::string> entries;
+            for (const auto& entry : flow.Entries)
+            {
+                if (!Is_StableId(entry.strEntryId) || !entries.insert(entry.strEntryId).second ||
+                    !Is_StableId(entry.strTargetId) || entry.iWaitAfterMs > MAX_TIME_MS ||
+                    (entry.strKind != "PATTERN" && entry.strKind != "BUNDLE"))
+                { outStatus = "Pattern Flow entry identity, kind, target or wait is invalid: " + entry.strEntryId; return false; }
+                // Incomplete referenced rows remain editable; playback validates published availability.
+                if (validatePatternLinks)
+                {
+                    const bool exists = entry.strKind == "PATTERN" ?
+                        std::any_of(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) {
+                            return row.strPatternId == entry.strTargetId && row.strGateId == flow.strGateId; }) :
+                        std::any_of(document.Bundles.begin(), document.Bundles.end(), [&](const auto& row) {
+                            return row.strBundleId == entry.strTargetId && row.strGateId == flow.strGateId; });
+                    if (!exists) { outStatus = "Pattern Flow target is missing or belongs to another Gate: " + entry.strTargetId; return false; }
+                }
+            }
+        }
         outStatus = "Validated KoukuSaydon composition structure.";
 		return true;
 	}
@@ -1914,7 +1960,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			{ "nextLogicOrdinal", "logics", "nextSummonOrdinal", "summons",
 			  "nextWorldOrdinal", "worlds", "nextSceneProfileOrdinal", "sceneProfiles",
 			  "nextPresentationResourceOrdinal", "presentationResources",
-			  "madnessPolicy", "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles" }))
+			  "madnessPolicy", "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles", "patternFlows" }))
 	{
 		outStatus = "KoukuSaydon composition JSON is malformed or has unexpected root properties: " +
 			parseError;
@@ -2974,6 +3020,32 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
         staged.Bundles.push_back(std::move(bundle));
     }
 
+	if (const auto* flows = root.Find("patternFlows"))
+	{
+		if (!flows->Is_Array() || flows->Get_Array().size() > 4u)
+		{ outStatus = "Pattern Flows must be a bounded array."; return false; }
+		for (const auto& value : flows->Get_Array())
+		{
+			KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
+			const auto* entries = Required(value, "entries", DATA_JSON_TYPE::ARRAY);
+			if (!Has_ExactProperties(value, {"flowId", "gateId", "displayName", "entries"}) ||
+				!readText(value, "flowId", flow.strFlowId) || !readText(value, "gateId", flow.strGateId) ||
+				!readText(value, "displayName", flow.strDisplayName) || !entries || entries->Get_Array().size() > 256u)
+			{ outStatus = "Pattern Flow properties are invalid."; return false; }
+			for (const auto& row : entries->Get_Array())
+			{
+				KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY entry;
+				const auto* wait = row.Find("waitAfterMs");
+				if (!Has_ExactProperties(row, {"entryId", "kind", "targetId", "waitAfterMs"}) ||
+					!readText(row, "entryId", entry.strEntryId) || !readText(row, "kind", entry.strKind) ||
+					!readText(row, "targetId", entry.strTargetId) || !wait ||
+					!Try_ParseUnsigned(*wait, MAX_TIME_MS, entry.iWaitAfterMs))
+				{ outStatus = "Pattern Flow entry properties are invalid."; return false; }
+				flow.Entries.push_back(std::move(entry));
+			}
+			staged.PatternFlows.push_back(std::move(flow));
+		}
+	}
 	if (!Validate_Shape(staged, outStatus))
 		return false;
 	outDocument = std::move(staged);
@@ -3174,6 +3246,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			}
 			else if (logic.strTriggerKind == "HUD_ENTER")
 				output << ",\n      \"hudMode\": \"" << logic.strHudMode << "\"";
+			else if (logic.strTriggerKind == "CARD_MAZE_ENTER")
+				output << ",\n      \"teleportPosition\": [" << logic.TeleportPosition[0] << ", " << logic.TeleportPosition[1] << ", " << logic.TeleportPosition[2] << "]";
 			else if (logic.strTriggerKind == "REAL_GAZE_TELEPORT")
 			{
 				output << ",\n      \"faceCenterYawOffsetDegrees\": " << logic.fFaceCenterYawOffsetDegrees;
@@ -3465,6 +3539,23 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
             output << "]}";
         }
         output << (i + 1 < document.Bundles.size() ? "," : "") << '\n';
+    }
+    output << "  ],\n  \"patternFlows\": [\n";
+    for (size_t i = 0; i < document.PatternFlows.size(); ++i)
+    {
+        const auto& flow = document.PatternFlows[i];
+        output << "    {\"flowId\": \"" << CDataJson::Escape(flow.strFlowId)
+            << "\", \"gateId\": \"" << CDataJson::Escape(flow.strGateId)
+            << "\", \"displayName\": \"" << CDataJson::Escape(flow.strDisplayName) << "\", \"entries\": [";
+        for (size_t j = 0; j < flow.Entries.size(); ++j)
+        {
+            const auto& entry = flow.Entries[j];
+            output << (j ? "," : "") << "{\"entryId\": \"" << CDataJson::Escape(entry.strEntryId)
+                << "\", \"kind\": \"" << CDataJson::Escape(entry.strKind)
+                << "\", \"targetId\": \"" << CDataJson::Escape(entry.strTargetId)
+                << "\", \"waitAfterMs\": " << entry.iWaitAfterMs << '}';
+        }
+        output << "]}" << (i + 1 < document.PatternFlows.size() ? "," : "") << '\n';
     }
     output << "  ]\n}\n";
 

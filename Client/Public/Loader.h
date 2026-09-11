@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "MapLoadScope.h"
 #include "Network/PacketType.h"
+#include "PlayableCharacterAssetService.h"
 
 #include <atomic>
 #include <chrono>
@@ -115,6 +116,8 @@ private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	LEVEL m_eNextLevelID = LEVEL::END;
+	LostArk::Shared::CHARACTER_CLASS_ID m_ePreparedCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::shared_ptr<const CPlayableCharacterAssetService::AUTHORING_INPUT> m_pCharacterAuthoringInput;
 	HANDLE m_hThread = {};
 	tchar_t m_szLoadingText[MAX_PATH] = {};
 	mutable std::mutex m_StatusMutex;

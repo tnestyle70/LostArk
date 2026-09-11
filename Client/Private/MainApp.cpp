@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "MainApp.h"
+#include "PlayableCharacterAssetService.h"
 #include "DungeonTimerView.h"
 #include "BossImmuneGaugeView.h"
 
@@ -444,6 +445,7 @@ void CMainApp::Update_CustomizingSceneProfile()
 
 void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ItemUpgrade.Update");
 	if (nullptr == m_pItemUpgradeView)
 		return;
 
@@ -728,6 +730,18 @@ HRESULT CMainApp::Initialize()
 		return E_FAIL;
 	}
 
+	// The Loader snapshots skill definitions before starting its worker. Release
+	// must not depend on opening an authoring tool to initialize these definitions.
+	// Preserve the existing Level/replication failure and recovery boundary.
+	if (CPlayerSkillCatalog::Get_Skills().empty())
+	{
+		Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Catalog.PlayerSkills.Initialize");
+		std::string skillCatalogStatus;
+		if (!CPlayerSkillCatalog::Load(skillCatalogStatus))
+			OutputDebugStringA(("[MainApp] Player Skill Catalog initialization failed: " +
+				skillCatalogStatus + "\n").c_str());
+	}
+
 	/* Was only ever loaded lazily from the F1 "Inventory (Debug)" panel's own render code, so
 	CItemCatalog::Find_ById() returned nullptr for every real item (no icon, just the quantity
 	text) until a player opened Developer Tools at least once. Not fatal on failure -- the debug
@@ -989,6 +1003,8 @@ namespace
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.InputAndUI.Update");
 	Update_CustomizingSceneProfile();
 
 	/* Once per frame, before any screen's Update()/Render() checks its own widgets via
@@ -997,6 +1013,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CUIInputRouter::Get().Begin_Frame();
 
 #ifdef _DEBUG
+	// Complete export even when F1 or the profiler window is hidden.
+	if (m_pProfilerTool)
+		m_pProfilerTool->Update_SaveState();
 	UpdateDebugToolShortcut();
 #endif
 
@@ -1154,7 +1173,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		worldLeftMouseConsumed);
 	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, false);
 
-	CNetworkManager::Get().Update();
+	}
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Network.DrainAndDispatch");
+		CNetworkManager::Get().Update();
+	}
 #ifdef _DEBUG
 	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
 	   Balance, Effect, and Valtan Boss Tools. Drain it once per frame here, independent
@@ -1164,7 +1187,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CValtanTuningCommandService::Get().Update();
 	CKoukuSaydonPatternAuditionService::Get().Update();
 #endif
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Engine.Update");
 	CGameInstance::Get().Update_Engine(fTimeDelta);
+	}
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Presentation.Prepare");
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
 	{
 		if (!m_pKoukuPresentationPlayer)
@@ -1206,19 +1234,28 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CEffectPresentationService::Commit_PendingSpawns();
 	CEffectPresentationService::Prepare_FrameCamera(fTimeDelta);
 	CEffectPresentationService::Synchronize_FollowAnchors();
+	}
 	CEffectPresentationService::Update(fTimeDelta);
 	/* Product combat-object groups and Effect Tool previews share one free-group
 	   clock. MainApp advances it exactly once after the Engine object tick. */
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.ProductGroups.Update");
 	CEffectV2Runtime::Advance_ProductGroups(fTimeDelta, m_pDevice, m_pContext);
+	}
 
 	#ifdef _DEBUG
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.DebugTools.Update");
 	if (nullptr != m_pMapTool)
 	{
-		m_pMapTool->Update(
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Map.Update");
+			m_pMapTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
 			DEBUG_TOOL::MAP == m_eDebugInputOwner);
+		}
 	}
 	UpdateSequenceViewer();
 	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
@@ -1252,19 +1289,31 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
 			 DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner) ||
 			m_eCompositionPreviewOwner != DEBUG_TOOL::NONE;
-		m_pAnimationTool->Update(
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Animation.Update");
+			m_pAnimationTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
+		}
 	}
 	/* Save and publish jobs are process owners, not window owners. Poll the
 	   immutable Save receipt first, let a hidden Composition caller accept and
 	   reopen its exact local owners, then poll the optional Full DataOnly job. */
 	if (nullptr != m_pBalanceTool)
-		m_pBalanceTool->Update_ValtanSaveJob();
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ValtanSaveJob");
+			m_pBalanceTool->Update_ValtanSaveJob();
+		}
 	if (nullptr != m_pValtanActionWorkbench)
-		m_pValtanActionWorkbench->Update_SaveState();
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanComposition.Update_SaveState");
+			m_pValtanActionWorkbench->Update_SaveState();
+		}
 	if (nullptr != m_pBalanceTool)
-		m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ServerRuntimeSetPublishJob");
+			m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
+		}
 	/* Composition Save receipts are delivered independently of both Developer
 	   Tools visibility and the Composition window's Render call. If Effect Tool
 	   does not exist yet, leave the request pending in the Workbench. */
@@ -1291,15 +1340,24 @@ void CMainApp::Update(const f32_t fTimeDelta)
         if (m_pEffectToolV2)
         {
             m_pEffectToolV2->Set_AuthoringCamera(effectCamera);
-            m_pEffectToolV2->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+            {
+                Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV2.Update_AuthoringWorkspace");
+                m_pEffectToolV2->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
                 IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2);
+            }
         }
         if (m_pEffectTool)
         {
             m_pEffectTool->Set_AuthoringCamera(effectCamera);
-            m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+            {
+                Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update_AuthoringWorkspace");
+                m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
                 IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
-            m_pEffectTool->Update(fTimeDelta);
+            }
+            {
+                Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update");
+                m_pEffectTool->Update(fTimeDelta);
+            }
             EFFECT_RESOURCE_KEY ResourceKey;
             if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
             {
@@ -1314,11 +1372,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
     }
 	if (nullptr != m_pValtanBossTool)
 	{
-		m_pValtanBossTool->Update(
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Update");
+			m_pValtanBossTool->Update(
 			m_bDeveloperToolsVisible &&
 				IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS),
 			m_bDeveloperToolsVisible &&
 				IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN));
+		}
 		if (m_pValtanBossTool->Consume_LogicPatternOpenRequest())
 		{
 			(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
@@ -1345,6 +1406,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					"Effect Tool opened, but the exact Product occurrence needs attention.";
 			}
 		}
+	}
+	if (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Consume_PublishRequest())
+	{
+		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) || !m_pKoukuSaydonActionWorkbench)
+			m_strKoukuCompletePlayStatus = "The Composition publisher workspace could not initialize.";
+		else if (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
+			m_strKoukuCompletePlayStatus = "Save Composition edits and wait for the current publish before publishing Pattern Flow.";
+		else if (m_pKoukuSaydonActionWorkbench->Reload(m_strKoukuCompletePlayStatus))
+			m_bKoukuFlowPublishPending = m_pKoukuSaydonActionWorkbench->Publish_AllPatterns(m_strKoukuCompletePlayStatus);
+		m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
 	}
 	/* Workbench links use the same stable Product requests as the domain
 	   owners. Each one-shot is drained here; the Workbench never creates a
@@ -1556,6 +1627,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (nullptr != workbench)
 	{
 		workbench->Tick_Background();
+		if (route.owner == DEBUG_TOOL::SEQUENCER && m_bKoukuFlowPublishPending && !workbench->Is_PublishRunning())
+		{
+			m_bKoukuFlowPublishPending = false;
+			m_strKoukuCompletePlayStatus = workbench->Get_Status();
+			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
+		}
 		if (workbench->Consume_ProductInventoryRefreshRequest() &&
 			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
 			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
@@ -1970,10 +2047,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (route.workbench)
 		{
 			route.workbench->Set_PreviewState(finalPreview);
-			if (!completedPreviewId.empty() && route.workbench->Advance_CompleteSequencePlay(completedPreviewId))
+			std::string completedGate;
+			if (!completedPreviewId.empty() && route.workbench->Advance_CompleteSequencePlay(completedPreviewId, &completedGate))
 			{
 				finalPreview.strStatus = route.workbench->Get_Status();
 				if (!route.workbench->Is_CompleteSequencePlaying()) StopCompositionPreview(route.owner);
+				if (!completedGate.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+					FinishKoukuGateCompletePlay(completedGate, finalPreview.strStatus);
 				route.workbench->Set_PreviewState(finalPreview);
 			}
 		}
@@ -1986,31 +2066,46 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 
 	if (m_pWorldObjectTool)
-		m_pWorldObjectTool->Update(fTimeDelta, m_bDeveloperToolsVisible &&
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.WorldObjects.Update");
+			m_pWorldObjectTool->Update(fTimeDelta, m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT) && DEBUG_TOOL::WORLD_OBJECT == m_eDebugInputOwner);
+		}
 	RefreshWorldObjectResources();
 	if (nullptr != m_pCameraTool)
 	{
-		m_pCameraTool->Update(
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Camera.Update");
+			m_pCameraTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::CAMERA) &&
 			DEBUG_TOOL::CAMERA == m_eDebugInputOwner);
+		}
+	}
 	}
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.LevelAndEnvironment.Update");
     string environmentStatus;
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	Apply_LevelRequest();
+	}
+
 }
 
 HRESULT CMainApp::Render()
 {
 	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
-	const HRESULT hBeginResult =
-		CGameInstance::Get().Render_Begin(&clearColor);
+	HRESULT hBeginResult;
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BeginFrame");
+		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BeginFrame");
+		hBeginResult = CGameInstance::Get().Render_Begin(&clearColor);
+	}
 	if (FAILED(hBeginResult))
 	{
 		if (nullptr != m_pImGuiLayer)
@@ -2020,12 +2115,20 @@ HRESULT CMainApp::Render()
 
 	/* The character info window's live portrait draws into its own target here, before the
 	world/UI pass whose CI_Preview sprite samples it. */
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Portraits");
+		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Portraits");
 	if (nullptr != m_pCharacterInfoView)
 		(void)m_pCharacterInfoView->Render_Portrait();
 	if (nullptr != m_pAvatarBookView)
 		(void)m_pAvatarBookView->Render_Portrait();
+	}
 
-	const HRESULT hWorldResult = CGameInstance::Get().Render();
+	HRESULT hWorldResult;
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");
+		hWorldResult = CGameInstance::Get().Render();
+	}
 	if (FAILED(hWorldResult))
 	{
 		if (nullptr != m_pImGuiLayer)
@@ -2035,6 +2138,7 @@ HRESULT CMainApp::Render()
 
 	if (nullptr != m_pImGuiLayer)
 	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BuildAndSubmit");
 		/* No Lobby draw call here anymore -- Update_LobbyButtons() (called from Update())
 		drives the Lobby's real CUI_Sprite slots. */
 	#ifdef _DEBUG
@@ -2106,15 +2210,21 @@ HRESULT CMainApp::Render()
 			if (ETOUI(LEVEL::BERN) == chatLevel)
 			{
 				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
-				m_pChatWindowView->Render(
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					m_pChatWindowView->Render(
 					nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
+				}
 			}
 			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
 			{
 				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
-				m_pChatWindowView->Render(
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					m_pChatWindowView->Render(
 					nullptr != pValtanArena ?
 						pValtanArena->Get_PlayerCommandSink() : nullptr);
+				}
 			}
 		}
 		if (nullptr != m_pPartyWindowView)
@@ -2128,14 +2238,20 @@ HRESULT CMainApp::Render()
 				if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
 					m_pPartyWindowView->Sync_From_Roster(
 						pBern->Get_PartyRoster(), pBern->Get_PlayerHealth());
-				m_pPartyWindowView->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Party.Build");
+					m_pPartyWindowView->Render();
+				}
 			}
 			else if (ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
 			{
 				if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
 					m_pPartyWindowView->Sync_From_Roster(
 						pValtanArena->Get_PartyRoster(), pValtanArena->Get_PlayerHealth());
-				m_pPartyWindowView->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Party.Build");
+					m_pPartyWindowView->Render();
+				}
 			}
 		}
 #ifdef _DEBUG
@@ -2159,12 +2275,18 @@ HRESULT CMainApp::Render()
 			if (IsDebugToolVisible(DEBUG_TOOL::MAP) && nullptr != m_pMapTool)
 			{
 				focusNextWindow(DEBUG_TOOL::MAP);
-				m_pMapTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Map.Build");
+					m_pMapTool->Render();
+				}
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT) && m_pWorldObjectTool)
 			{
 				focusNextWindow(DEBUG_TOOL::WORLD_OBJECT);
-				m_pWorldObjectTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.WorldObjects.Build");
+					m_pWorldObjectTool->Render();
+				}
 				if (m_pWorldObjectTool->Consume_InteractionRequest())
 					m_eDebugInputOwner = DEBUG_TOOL::WORLD_OBJECT;
 				if (!m_pWorldObjectTool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT, false);
@@ -2172,14 +2294,20 @@ HRESULT CMainApp::Render()
 			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool)
 			{
 				focusNextWindow(DEBUG_TOOL::SEQUENCER);
-				m_pSequencerTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Composition.Build");
+					m_pSequencerTool->Render();
+				}
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) && m_pSequenceBenchmarkTool)
 			{
 				focusNextWindow(DEBUG_TOOL::SEQUENCER_BENCHMARK);
-				m_pSequenceBenchmarkTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.SequenceBenchmark.Build");
+					m_pSequenceBenchmarkTool->Render();
+				}
 				if (!m_pSequenceBenchmarkTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK, false);
 			}
@@ -2187,20 +2315,29 @@ HRESULT CMainApp::Render()
 				nullptr != m_pAnimationTool)
 			{
 				focusNextWindow(DEBUG_TOOL::ANIMATION);
-				m_pAnimationTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Animation.Build");
+					m_pAnimationTool->Render();
+				}
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT))
 			{
 				focusNextWindow(DEBUG_TOOL::EFFECT);
 				if (nullptr != m_pEffectTool)
-					m_pEffectTool->Render();
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Build");
+						m_pEffectTool->Render();
+					}
                 if (m_pEffectTool && m_pEffectTool->Consume_AuthoringInteraction())
                     m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
 			}
             if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_pEffectToolV2)
             {
                 focusNextWindow(DEBUG_TOOL::EFFECT_V2);
-                m_pEffectToolV2->Render();
+                {
+                    Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV2.Build");
+                    m_pEffectToolV2->Render();
+                }
                 if (m_pEffectToolV2->Consume_AuthoringInteraction())
                     m_eDebugInputOwner = DEBUG_TOOL::EFFECT_V2;
             }
@@ -2213,7 +2350,10 @@ HRESULT CMainApp::Render()
 				nullptr != m_pProfilerTool)
 			{
 				focusNextWindow(DEBUG_TOOL::PROFILER);
-				m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
+					m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
+				}
 				if (!m_pProfilerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
 			}
@@ -2222,17 +2362,26 @@ HRESULT CMainApp::Render()
 			if (IsDebugToolVisible(DEBUG_TOOL::UI) && nullptr != m_pHUDLayoutTool)
 			{
 				focusNextWindow(DEBUG_TOOL::UI);
-				m_pHUDLayoutTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.HUDLayout.Build");
+					m_pHUDLayoutTool->Render();
+				}
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::BALANCE) && nullptr != m_pBalanceTool)
 			{
 				focusNextWindow(DEBUG_TOOL::BALANCE);
-				m_pBalanceTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Build");
+					m_pBalanceTool->Render();
+				}
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS) && nullptr != m_pValtanBossTool)
 			{
 				focusNextWindow(DEBUG_TOOL::VALTAN_BOSS);
-				m_pValtanBossTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Build");
+					m_pValtanBossTool->Render();
+				}
 				if (!m_pValtanBossTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS, false);
 			}
@@ -2240,28 +2389,40 @@ HRESULT CMainApp::Render()
 				nullptr != m_pKoukuSaydonBossTool)
 			{
 				focusNextWindow(DEBUG_TOOL::KOUKU_SAYDON_BOSS);
-				m_pKoukuSaydonBossTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.KoukuBoss.Build");
+					m_pKoukuSaydonBossTool->Render();
+				}
 				if (!m_pKoukuSaydonBossTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN) && nullptr != m_pValtanBossTool)
 			{
 				focusNextWindow(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
-				m_pValtanBossTool->Render_LogicPatternWindow();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Render_LogicPatternWindow");
+					m_pValtanBossTool->Render_LogicPatternWindow();
+				}
 				if (!m_pValtanBossTool->Is_LogicPatternOpen())
 					SetDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::CAMERA) && nullptr != m_pCameraTool)
 			{
 				focusNextWindow(DEBUG_TOOL::CAMERA);
-				m_pCameraTool->Render();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Camera.Build");
+					m_pCameraTool->Render();
+				}
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::EQUIPMENT) &&
 				nullptr != m_pEquipmentAuthoringTool)
 			{
 				focusNextWindow(DEBUG_TOOL::EQUIPMENT);
-				m_pEquipmentAuthoringTool->Render(
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Equipment.Build");
+					m_pEquipmentAuthoringTool->Render(
 					DEBUG_TOOL::EQUIPMENT == m_eDebugInputOwner);
+				}
 			}
 
 			if (m_bProfilerVisible)
@@ -2271,11 +2432,22 @@ HRESULT CMainApp::Render()
 			}
 		}
 #endif
-		m_pImGuiLayer->EndFrame();
+		{
+			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
+		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
+			m_pImGuiLayer->EndFrame();
+		}
 	}
 	/* Raid entry popup's live boss: over the popup's own sprites, under the Draw_Text pass
 	   that letters it. */
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BossShowcase");
+		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BossShowcase");
 	CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
+	}
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
+		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
 	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
@@ -2384,6 +2556,7 @@ HRESULT CMainApp::Render()
 	that called Claim_Mouse_This_Frame(). */
 	CUIInputRouter::Get().End_Frame();
 
+	}
 	return CGameInstance::Get().Render_End();
 }
 
@@ -2395,6 +2568,7 @@ void CMainApp::Hide_CombatHUD()
 
 void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.CombatHUD.Update");
 	if (nullptr == m_pHUDRuntimeView)
 		return;
 
@@ -3100,6 +3274,7 @@ void CMainApp::Update_KoukuHudMode()
 
 void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.LobbyButtons.Update");
 	if (nullptr == m_pLobbyBackgroundView)
 		return;
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
@@ -3241,6 +3416,7 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 
 void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.CharacterSelectWindow.Update");
 	if (nullptr == m_pCharacterSelectWindowView)
 		return;
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
@@ -3283,6 +3459,7 @@ void CMainApp::RenderCharacterSelectWindowText()
 
 void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Minimap.Update");
 	if (nullptr == m_pMinimapView)
 		return;
 	/* Each level owns its own CClientReplication, so the active one is asked for the marker
@@ -4377,6 +4554,7 @@ void CMainApp::RenderItemUpgradeFailDetailText()
 
 void CMainApp::Update_ItemQuickSlots()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ItemQuickSlots.Update");
 	if (nullptr == m_pInventoryView)
 		return;
 
@@ -4427,6 +4605,7 @@ void CMainApp::Update_ItemQuickSlots()
 
 void CMainApp::Update_PlayerHealthManaBar()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.PlayerHealthManaBar.Update");
 	/* Only reached from Update_CombatHUD's own show path, which already validated the player
 	snapshot and this view. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
@@ -4444,6 +4623,7 @@ void CMainApp::Update_PlayerHealthManaBar()
 
 void CMainApp::Update_LanceMasterIdentityGauge()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.LanceMasterIdentityGauge.Update");
 	/* Same real formula as ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress():
 	each of the 3 segments independently tracks 0..100, and only fills once every segment
 	before it is already full (LanceMasterStance.as's bubbleEffect cascade). Degrees come from
@@ -4510,6 +4690,7 @@ void CMainApp::Update_LanceMasterIdentityGauge()
 
 void CMainApp::Update_SkillCooldowns()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillCooldowns.Update");
 	/* Only reached from Update_CombatHUD's own show path. Matches the fixed server tick rate
 	other Client files already redeclare locally (CombatHUDViewModel.cpp, Character.cpp) rather
 	than exposing a Shared constant for it. */
@@ -4701,6 +4882,7 @@ void CMainApp::Hide_BossHealthBar()
 
 void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.BossImmuneGauge.Update");
 	if (nullptr == m_pBossImmuneGaugeView)
 		return;
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -4718,6 +4900,7 @@ void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
 
 void CMainApp::Update_BossHealthBar()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.BossHealthBar.Update");
 	if (nullptr == m_pBossUIView)
 	{
 		return;
@@ -5246,6 +5429,7 @@ void CMainApp::RenderItemAnnounceText()
 
 void CMainApp::Update_ChargeGauge()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ChargeGauge.Update");
 	if (nullptr == m_pHUDRuntimeView)
 		return;
 
@@ -5484,6 +5668,7 @@ void CMainApp::Hide_EstherUI()
 
 void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.EstherGauge.Update");
 	if (nullptr == m_pEstherUIView)
 		return;
 
@@ -5606,6 +5791,7 @@ void CMainApp::RenderEstherGaugeText()
 
 void CMainApp::Update_SkillIcons()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillIcons.Update");
 	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
 	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
 	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
@@ -5718,6 +5904,7 @@ void CMainApp::Update_SkillIcons()
 
 void CMainApp::Update_QuickSlotFlash()
 {
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.QuickSlotFlash.Update");
 	/* Icon art, slot frame, keybind label, and cooldown sweep aren't extracted from QuickSlot.gfx
 	yet, so this only plays the real on-use flash -- Update_SkillIcons/Update_SkillCooldowns
 	(called alongside this, not instead of it) still own everything else. Only reached from
@@ -6265,6 +6452,14 @@ HRESULT CMainApp::Start_Level(
 
 void CMainApp::Apply_LevelRequest()
 {
+	// A single model decode is cooperatively cancellable only at its boundaries.
+	// Keep the request queued and the current scene ticking until retirement ends.
+	if (CLevelTransitionService::Is_Pending())
+	{
+		Engine::CProfilerScope drainScope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.LevelTransition.Drain");
+		CPlayableCharacterAssetService::Cancel_AllAsyncPreparations();
+		if (CPlayableCharacterAssetService::Has_ActivePreparations()) return;
+	}
 	LEVEL_TRANSITION_REQUEST request{};
 	if (!CLevelTransitionService::Try_Consume(request))
 		return;
@@ -6618,6 +6813,7 @@ HRESULT CMainApp::EnsureAnimationPreviewBackend()
 
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Open");
 	/* Keep the old enum value as an internal compatibility route only. */
 	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
@@ -6754,6 +6950,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (!m_pSequenceActionWorkbench)
 		{
 			m_pSequenceActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>(true);
+			m_pSequenceActionWorkbench->Set_CompleteSequenceAdmission(
+				[this](std::string_view gate, std::string& status) { return PrepareKoukuGateCompletePlay(gate, status); });
 			m_pSequenceActionWorkbench->Set_WorldPlacementResolver(
 				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
 				{
@@ -6990,6 +7188,7 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 
 void CMainApp::RenderArenaCameraAndPlayerControls()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.CameraAndPlayer");
 	const LEVEL level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
 	CLevel_ValtanArena* valtan = LEVEL::VALTAN_ARENA == level ?
 		CLevel_ValtanArena::Get_Active() : nullptr;
@@ -7068,6 +7267,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 
 void CMainApp::RenderArenaFollowCameraSettings()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.FollowCamera");
 	const uint32_t level = CGameInstance::Get().Get_CurrentLevelID();
 	auto* characterSelect = level == ETOUI(LEVEL::CHARACTER_SELECT) ? CLevel_CharacterSelect::Get_Active() : nullptr;
 	auto* kouku = level == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
@@ -7157,6 +7357,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 
 void CMainApp::RenderKoukuUiPreviewControls()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuUIPreview");
 	ImGui::SeparatorText("Kouku UI Preview (Debug)");
 	CCombatHUDViewModel& viewModel = CCombatHUDViewModel::Get();
 	// Replication reset clears the override when the arena session ends.
@@ -7326,6 +7527,7 @@ void CMainApp::RenderKoukuUiPreviewControls()
 
 void CMainApp::RenderDebugLevelNavigation()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.LevelNavigation");
 	auto levelName = [](const LEVEL level) -> const char_t*
 	{
 		switch (level)
@@ -7702,6 +7904,7 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 
 void CMainApp::RenderKoukuSaydonArenaControls()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuArena");
 	if (!ImGui::CollapsingHeader("KoukuSaydon Arena", ImGuiTreeNodeFlags_DefaultOpen))
 		return;
 	ImGui::TextDisabled(
@@ -7899,633 +8102,73 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		isClown ? "clown" : "player");
 	if (!controller.Get_DebugMadnessFormStatus().empty())
 		ImGui::TextWrapped("%s", controller.Get_DebugMadnessFormStatus().c_str());
-	RenderKoukuSaydonBossTuningControls();
 }
 
-namespace
+bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
-	/* Temporary tuning helpers: number patching keeps the authored JSON text
-	   intact except for the one value being saved, so the files stay diffable
-	   and their CRLF/indent style survives. Remove with the tuning slice. */
-	bool_t Read_ProjectTextFile(
-		const wchar_t* pRelativePath, std::string& outText, std::filesystem::path& outPath)
-	{
-		outPath = CProjectDataRoot::Resolve(pRelativePath);
-		std::ifstream input(outPath, std::ios::binary);
-		if (!input)
-			return false;
-		outText.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-		return !input.bad() && !outText.empty();
-	}
-
-	bool_t Read_TuningFile(const std::filesystem::path& path, std::string& text)
-	{
-		std::ifstream input(path, std::ios::binary);
-		if (!input)
-			return false;
-		text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-		return !input.bad();
-	}
-
-	/* Stage both documents before replacing either. Backups survive a failed
-	   rollback; stale authoring bytes never get silently overwritten. */
-	bool_t Commit_TuningFiles(
-		const std::array<std::filesystem::path, 2>& paths,
-		const std::array<std::string, 2>& expected,
-		const std::array<std::string, 2>& replacements,
-		std::string& status)
-	{
-		status.clear();
-		const std::wstring suffix = L".kouku-tuning." +
-			std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
-		std::array<std::filesystem::path, 2> staged, backups;
-		std::size_t promoted = 0u;
-		auto cleanup = [&]()
-		{
-			for (const auto& path : staged)
-			{
-				std::error_code error;
-				if (!path.empty()) std::filesystem::remove(path, error);
-			}
-		};
-		for (std::size_t i = 0u; i < paths.size(); ++i)
-		{
-			std::string current;
-			if (!Read_TuningFile(paths[i], current) || current != expected[i])
-			{
-				status = "Tuning source changed; Reload Baseline before saving. Nothing was written.";
-				cleanup();
-				return false;
-			}
-			staged[i] = paths[i]; staged[i] += suffix + L".tmp";
-			backups[i] = paths[i]; backups[i] += suffix + L".rollback";
-			const HANDLE file = CreateFileW(staged[i].c_str(), GENERIC_WRITE, 0,
-				nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-			DWORD written = 0u;
-			const bool_t durable = INVALID_HANDLE_VALUE != file &&
-				WriteFile(file, replacements[i].data(),
-					static_cast<DWORD>(replacements[i].size()), &written, nullptr) &&
-				written == replacements[i].size() && FlushFileBuffers(file);
-			if (INVALID_HANDLE_VALUE != file) CloseHandle(file);
-			std::string verified;
-			if (!durable || !Read_TuningFile(staged[i], verified) || verified != replacements[i])
-			{
-				status = "Could not stage tuning files; original files are unchanged.";
-				cleanup();
-				return false;
-			}
-		}
-		for (std::size_t i = 0u; i < paths.size(); ++i)
-		{
-			std::string current;
-			if (!Read_TuningFile(paths[i], current) || current != expected[i])
-			{
-				status = "Tuning source changed during save; reverting committed files.";
-				break;
-			}
-			if (!ReplaceFileW(paths[i].c_str(), staged[i].c_str(), backups[i].c_str(), 0, nullptr, nullptr))
-			{
-				const DWORD error = GetLastError();
-				status = "Tuning file replacement failed (" + std::to_string(error) +
-					"); reverting committed files.";
-				// ReplaceFile may move the original to the backup before failing.
-				// Restore that exact source without replacing a concurrent writer.
-				if (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2 == error &&
-					(!Read_TuningFile(backups[i], current) || current != expected[i] ||
-					 !MoveFileExW(backups[i].c_str(), paths[i].c_str(), MOVEFILE_WRITE_THROUGH)))
-					status += " Recovery copy retained at " + backups[i].string();
-				break;
-			}
-			++promoted;
-			// The atomic replace captures the source it actually replaced. A
-			// writer between our read and replace must be restored, not lost.
-			if (!Read_TuningFile(backups[i], current) || current != expected[i])
-			{
-				status = "Tuning source changed at replacement; reverting committed files.";
-				break;
-			}
-			if (!Read_TuningFile(paths[i], current) || current != replacements[i])
-			{
-				status = "Tuning write verification failed; reverting committed files.";
-				break;
-			}
-		}
-		if (promoted != paths.size() || !status.empty())
-		{
-			while (promoted > 0u)
-			{
-				const std::size_t i = --promoted;
-				std::string current;
-				if (!Read_TuningFile(paths[i], current) || current != replacements[i] ||
-					!MoveFileExW(backups[i].c_str(), paths[i].c_str(),
-						MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-				{
-					status += " Recovery copy retained at " + backups[i].string();
-				}
-			}
-			cleanup();
-			return false;
-		}
-		for (const auto& path : backups)
-		{
-			std::error_code error;
-			std::filesystem::remove(path, error);
-		}
-		cleanup();
-		return true;
-	}
-
-	std::string Format_TuningNumber(const double value)
-	{
-		char_t buffer[64]{};
-		sprintf_s(buffer, "%.6g", value);
-		std::string text = buffer;
-		if (std::string::npos == text.find('.') && std::string::npos == text.find('e'))
-			text += ".0";
-		return text;
-	}
-
-	bool_t Is_JsonNumberChar(const char_t c)
-	{
-		return ('0' <= c && c <= '9') || '-' == c || '+' == c || '.' == c || 'e' == c || 'E' == c;
-	}
-
-	/* Replaces the number after `key` inside the row that starts at `anchor`.
-	The row ends where the next row's identity key (`nextRowKey`) begins, so a
-	key placed after a nested object such as presentationClips is still found. */
-	bool_t Patch_JsonNumberAfter(
-		std::string& text, const std::string_view anchor, const std::string_view key,
-		const double value, const std::string_view nextRowKey)
-	{
-		const size_t anchorPos = text.find(anchor);
-		if (std::string::npos == anchorPos)
-			return false;
-		const size_t keyPos = text.find(key, anchorPos);
-		const size_t rowEnd = text.find(nextRowKey, anchorPos + anchor.size());
-		if (std::string::npos == keyPos || keyPos >= rowEnd || !std::isfinite(value))
-			return false;
-		const size_t begin = keyPos + key.size();
-		size_t end = begin;
-		while (end < text.size() && Is_JsonNumberChar(text[end]))
-			++end;
-		if (end == begin)
-			return false;
-		text.replace(begin, end - begin, Format_TuningNumber(value));
-		return true;
-	}
-
-	bool_t Patch_JsonPositionAfter(
-		std::string& text, const std::string_view anchor, const float3_t& position)
-	{
-		const size_t anchorPos = text.find(anchor);
-		if (std::string::npos == anchorPos)
-			return false;
-		const std::string_view key = "\"position\": [";
-		const size_t keyPos = text.find(key, anchorPos);
-		if (std::string::npos == keyPos || keyPos >= text.find('}', anchorPos))
-			return false;
-		const size_t begin = keyPos + key.size();
-		const size_t end = text.find(']', begin);
-		if (std::string::npos == end)
-			return false;
-		const std::string newline = std::string::npos != text.find("\r\n") ? "\r\n" : "\n";
-		const std::string replacement = newline + "        " + Format_TuningNumber(position.x) +
-			"," + newline + "        " + Format_TuningNumber(position.y) +
-			"," + newline + "        " + Format_TuningNumber(position.z) + newline + "      ";
-		text.replace(begin, end - begin, replacement);
-		return true;
-	}
-
-	const DATA_JSON_VALUE* Find_ArrayObjectByString(
-		const DATA_JSON_VALUE& root, const char_t* pArrayName,
-		const char_t* pKey, const std::string_view value)
-	{
-		const DATA_JSON_VALUE* pArray = root.Find(pArrayName);
-		if (nullptr == pArray || !pArray->Is_Array())
-			return nullptr;
-		for (const DATA_JSON_VALUE& entry : pArray->Get_Array())
-		{
-			const DATA_JSON_VALUE* pField = entry.Is_Object() ? entry.Find(pKey) : nullptr;
-			if (nullptr != pField && pField->Is_String() && pField->Get_String() == value)
-				return &entry;
-		}
-		return nullptr;
-	}
-
-	constexpr const wchar_t* KOUKU_TUNE_CATALOG_PATH = L"Actors/BossCatalog.json";
-	constexpr const wchar_t* KOUKU_TUNE_WORLD_PATH = L"Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json";
-	constexpr const char_t* KOUKU_TUNE_BIG_SAYDON = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
-	constexpr const char_t* KOUKU_TUNE_BIG_SAYDON_PLACEMENT = "boss.kakulsaydon.g2.big-saydon";
-	/* Every arena boss placement the slice can yaw. The two Saydon bodies
-	whose catalog row declares the hammer also expose hammer scale/rotation. */
-	struct KOUKU_TUNE_BOSS
-	{
-		const char_t* pLabel;
-		const char_t* pArchetypeId;
-		const char_t* pPlacementId;
-	};
-	constexpr KOUKU_TUNE_BOSS KOUKU_TUNE_BOSSES[] = {
-		{ "G1 Saydon", "BOSS_KAKULSAYDON_G1_SAYDON", "boss.kakulsaydon.g1.saydon" },
-		{ "G2 Big Saydon", KOUKU_TUNE_BIG_SAYDON, KOUKU_TUNE_BIG_SAYDON_PLACEMENT },
-		{ "G2 Kouku", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku" },
-		{ "G3 Saydon", "BOSS_KAKULSAYDON_G3_SAYDON", "boss.kakulsaydon.g3.saydon" },
-		{ "Bingo Saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON", "boss.kakulsaydon.bingo.saydon" },
-	};
-	static_assert(std::size(KOUKU_TUNE_BOSSES) == 5u,
-		"CMainApp::m_KoukuTuneBosses holds one row per KOUKU_TUNE_BOSSES entry");
-
-	/* [0, 360) for a placement yawDegrees; (-360, 360) keeps the sign of a
-	catalog rotation axis so a tuned -30 is saved as -30. */
-	double Wrap_YawDegrees(const double degrees)
-	{
-		double wrapped = std::fmod(degrees, 360.0);
-		return wrapped < 0.0 ? wrapped + 360.0 : wrapped;
-	}
-	f32_t Wrap_RotationDegrees(const f32_t degrees)
-	{
-		return static_cast<f32_t>(std::fmod(static_cast<double>(degrees), 360.0));
-	}
-
-	/* Replaces the three numbers of an inline `[x, y, z]` after `key` inside
-	the row that starts at `anchor`, bounded like Patch_JsonNumberAfter. */
-	bool_t Patch_JsonInlineVector3After(
-		std::string& text, const std::string_view anchor, const std::string_view key,
-		const float3_t& value, const std::string_view nextRowKey)
-	{
-		const size_t anchorPos = text.find(anchor);
-		if (std::string::npos == anchorPos)
-			return false;
-		const size_t keyPos = text.find(key, anchorPos);
-		const size_t rowEnd = text.find(nextRowKey, anchorPos + anchor.size());
-		if (std::string::npos == keyPos || keyPos >= rowEnd)
-			return false;
-		const size_t begin = keyPos + key.size();
-		const size_t end = text.find(']', begin);
-		if (std::string::npos == end || end >= rowEnd ||
-			!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z))
-			return false;
-		text.replace(begin, end - begin,
-			Format_TuningNumber(value.x) + ", " + Format_TuningNumber(value.y) + ", " +
-			Format_TuningNumber(value.z));
-		return true;
-	}
+	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	if (!arena || CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight() ||
+		CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive)
+	{ status = "Complete Play requires the KoukuSaydon Arena and no active Server playback."; return false; }
+	if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+	if (!m_pKoukuSaydonBossTool->Validate_PatternFlow(gateId, status)) return false;
+	if (m_pKoukuSaydonActionWorkbench && (m_pKoukuSaydonActionWorkbench->Is_Dirty() ||
+		m_pKoukuSaydonActionWorkbench->Is_PublishRunning()))
+	{ status = "Save Composition edits and finish Publish All Patterns before Complete Play."; return false; }
+	const size_t gateIndex = gateId == "GATE1" ? 0u : gateId == "GATE2" ? 1u :
+		gateId == "GATE3" ? 2u : gateId == "BINGO" ? 8u : CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE;
+	if (gateIndex == CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE)
+	{ status = "Unknown Gate for Complete Play."; return false; }
+	if (arena->Is_DebugGatePending())
+	{ status = "Wait for the current Gate activation to finish before Complete Play."; return false; }
+	if (arena->Get_ActiveDebugGate() != gateIndex && !arena->Debug_ActivateGate(gateIndex, status)) return false;
+	m_strKoukuCompletePlayFlowGate = std::string(gateId);
+	m_iKoukuCompletePlayFlowRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
+	m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+	return true;
 }
 
-void CMainApp::Load_KoukuTuningBaseline()
+bool_t CMainApp::StartKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
-	m_bKoukuTuneLoaded = true;
-	m_bKoukuTuneBaselineValid = false;
-	std::string catalogText, worldText;
-	std::filesystem::path catalogPath, worldPath;
-	DATA_JSON_VALUE catalogRoot, worldRoot;
-	std::string parseError;
-	if (!Read_ProjectTextFile(KOUKU_TUNE_CATALOG_PATH, catalogText, catalogPath) ||
-		!CDataJson::Parse(catalogText, catalogRoot, parseError) ||
-		!Read_ProjectTextFile(KOUKU_TUNE_WORLD_PATH, worldText, worldPath) ||
-		!CDataJson::Parse(worldText, worldRoot, parseError))
-	{
-		m_strKoukuTuneStatus = "Tuning baseline could not be read: " + parseError;
-		return;
-	}
-	const auto isScale = [](const DATA_JSON_VALUE* pValue)
-	{
-		return nullptr != pValue && pValue->Is_Number() && std::isfinite(pValue->Get_Number()) &&
-			pValue->Get_Number() > 0.0 && pValue->Get_Number() <= 100.0;
-	};
-	const auto isDegrees = [](const DATA_JSON_VALUE* pValue)
-	{
-		return nullptr != pValue && pValue->Is_Number() && std::isfinite(pValue->Get_Number()) &&
-			std::fabs(pValue->Get_Number()) <= 360.0;
-	};
-	const DATA_JSON_VALUE* pBigSaydon = Find_ArrayObjectByString(
-		catalogRoot, "bosses", "archetypeId", KOUKU_TUNE_BIG_SAYDON);
-	const DATA_JSON_VALUE* pBigPlacement = Find_ArrayObjectByString(
-		worldRoot, "placements", "placementId", KOUKU_TUNE_BIG_SAYDON_PLACEMENT);
-	const DATA_JSON_VALUE* pBodyScale = nullptr == pBigSaydon ? nullptr : pBigSaydon->Find("bodyModelPreScale");
-	const DATA_JSON_VALUE* pPosition = nullptr == pBigPlacement ? nullptr : pBigPlacement->Find("position");
-	const BOSS_ACTOR_ENTRY* pLiveBig = CActorCatalog::Find_Boss(KOUKU_TUNE_BIG_SAYDON);
-	if (!isScale(pBodyScale) || nullptr == pLiveBig || pLiveBig->bodyModelPreScale <= 0.f ||
-		nullptr == pPosition || !pPosition->Is_Array() || 3u != pPosition->Get_Array().size() ||
-		!std::all_of(pPosition->Get_Array().begin(), pPosition->Get_Array().end(),
-			[](const DATA_JSON_VALUE& value) { return value.Is_Number() &&
-				std::isfinite(value.Get_Number()) && std::fabs(value.Get_Number()) <= 1'000'000.0; }))
-	{
-		m_strKoukuTuneStatus = "Tuning baseline rows are missing in the catalog or world JSON.";
-		return;
-	}
-	KOUKU_TUNE_BOSS_ROW rows[std::size(KOUKU_TUNE_BOSSES)]{};
-	for (size_t i = 0u; i < std::size(KOUKU_TUNE_BOSSES); ++i)
-	{
-		const KOUKU_TUNE_BOSS& boss = KOUKU_TUNE_BOSSES[i];
-		const DATA_JSON_VALUE* pRow = Find_ArrayObjectByString(
-			catalogRoot, "bosses", "archetypeId", boss.pArchetypeId);
-		const DATA_JSON_VALUE* pPlacement = Find_ArrayObjectByString(
-			worldRoot, "placements", "placementId", boss.pPlacementId);
-		const DATA_JSON_VALUE* pYaw = nullptr == pPlacement ? nullptr : pPlacement->Find("yawDegrees");
-		const BOSS_ACTOR_ENTRY* pLive = CActorCatalog::Find_Boss(boss.pArchetypeId);
-		if (nullptr == pRow || nullptr == pLive || !isDegrees(pYaw))
-		{
-			m_strKoukuTuneStatus = std::string("Tuning baseline row is missing for ") + boss.pArchetypeId + ".";
-			return;
-		}
-		const DATA_JSON_VALUE* pRowBodyScale = pRow->Find("bodyModelPreScale");
-		if (!isScale(pRowBodyScale) || !std::isfinite(pLive->bodyModelPreScale) || pLive->bodyModelPreScale <= 0.f)
-		{
-			m_strKoukuTuneStatus = std::string("Tuning body scale is invalid for ") + boss.pArchetypeId + ".";
-			return;
-		}
-		KOUKU_TUNE_BOSS_ROW& row = rows[i];
-		row.fBodyCatalogScale = pLive->bodyModelPreScale;
-		row.fBodyScaleMultiplier = static_cast<f32_t>(pRowBodyScale->Get_Number() / row.fBodyCatalogScale);
-		row.fBaselineYawDegrees = static_cast<f32_t>(pYaw->Get_Number());
-		row.bHasWeapon = !pLive->weaponModel.empty();
-		if (!row.bHasWeapon)
-			continue;
-		const DATA_JSON_VALUE* pWeaponScale = pRow->Find("weaponModelPreScale");
-		const DATA_JSON_VALUE* pRotation = pRow->Find("weaponModelPreRotationDegrees");
-		if (!isScale(pWeaponScale) || pLive->weaponModelPreScale <= 0.f ||
-			nullptr == pRotation || !pRotation->Is_Array() || 3u != pRotation->Get_Array().size() ||
-			!isDegrees(&pRotation->Get_Array()[0]) || !isDegrees(&pRotation->Get_Array()[1]) ||
-			!isDegrees(&pRotation->Get_Array()[2]))
-		{
-			m_strKoukuTuneStatus = std::string("Tuning baseline hammer values are invalid for ") + boss.pArchetypeId + ".";
-			return;
-		}
-		row.fHammerCatalogScale = pLive->weaponModelPreScale;
-		row.vHammerCatalogRotation = pLive->weaponModelPreRotationDegrees;
-		row.fHammerScaleMultiplier = static_cast<f32_t>(
-			pWeaponScale->Get_Number() / row.fHammerCatalogScale);
-		row.vHammerRotationBaseline = float3_t(
-			static_cast<f32_t>(pRotation->Get_Array()[0].Get_Number()),
-			static_cast<f32_t>(pRotation->Get_Array()[1].Get_Number()),
-			static_cast<f32_t>(pRotation->Get_Array()[2].Get_Number()));
-	}
-	// Multipliers are relative to the prototypes loaded by this Client, even
-	// after Save/Reload. Saving never changes that live reference scale.
-	m_fKoukuTuneBigSaydonCatalogScale = pLiveBig->bodyModelPreScale;
-	const auto& position = pPosition->Get_Array();
-	m_vKoukuTuneBigSaydonPlacement = float3_t(
-		static_cast<f32_t>(position[0].Get_Number()),
-		static_cast<f32_t>(position[1].Get_Number()),
-		static_cast<f32_t>(position[2].Get_Number()));
-	m_fKoukuTuneBigSaydonScaleMultiplier = static_cast<f32_t>(
-		pBodyScale->Get_Number() / m_fKoukuTuneBigSaydonCatalogScale);
-	m_vKoukuTuneBigSaydonOffset = {};
-	std::copy(std::begin(rows), std::end(rows), std::begin(m_KoukuTuneBosses));
-	m_strKoukuTuneCatalogBaseline = catalogText;
-	m_strKoukuTuneWorldBaseline = worldText;
-	m_bKoukuTuneBaselineValid = true;
-	m_strKoukuTuneStatus = "Baseline loaded: big Saydon scale " +
-		Format_TuningNumber(m_fKoukuTuneBigSaydonCatalogScale) + ", position (" +
-		Format_TuningNumber(m_vKoukuTuneBigSaydonPlacement.x) + ", " +
-		Format_TuningNumber(m_vKoukuTuneBigSaydonPlacement.y) + ", " +
-		Format_TuningNumber(m_vKoukuTuneBigSaydonPlacement.z) +
-		"); yaw and hammer rows for " + std::to_string(std::size(KOUKU_TUNE_BOSSES)) + " arena bosses.";
+	if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER_BENCHMARK)) || !m_pSequenceActionWorkbench)
+	{ status = "The Sequence workspace could not initialize."; return false; }
+	if (!m_pSequenceActionWorkbench->Has_Composition() && !m_pSequenceActionWorkbench->Reload(status)) return false;
+	return m_pSequenceActionWorkbench->Request_CompleteSequencePlay(status, gateId);
 }
 
-void CMainApp::Save_KoukuTuning()
+void CMainApp::FinishKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
-	if (!m_bKoukuTuneBaselineValid)
+	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const size_t expectedGate = gateId == "GATE1" ? 0u : gateId == "GATE2" ? 1u :
+		gateId == "GATE3" ? 2u : gateId == "BINGO" ? 8u : CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE;
+	if (arena)
 	{
-		m_strKoukuTuneStatus = "Load a valid tuning baseline before saving.";
-		return;
+		arena->Stop_CompositionCamera(true);
+		if (arena->Get_DebugCamera()) arena->Get_DebugCamera()->Set_FollowEnabled(true);
 	}
-	std::string catalogText, worldText;
-	std::filesystem::path catalogPath, worldPath;
-	if (!Read_ProjectTextFile(KOUKU_TUNE_CATALOG_PATH, catalogText, catalogPath) ||
-		!Read_ProjectTextFile(KOUKU_TUNE_WORLD_PATH, worldText, worldPath))
-	{
-		m_strKoukuTuneStatus = "Tuning save could not read the catalog or world JSON.";
-		return;
-	}
-	if (catalogText != m_strKoukuTuneCatalogBaseline || worldText != m_strKoukuTuneWorldBaseline)
-	{
-		m_strKoukuTuneStatus = "Tuning source changed; Reload Baseline before saving. Nothing was written.";
-		return;
-	}
-	const double bodyScale = static_cast<double>(m_fKoukuTuneBigSaydonCatalogScale) *
-		static_cast<double>(m_fKoukuTuneBigSaydonScaleMultiplier);
-	const float3_t position(
-		m_vKoukuTuneBigSaydonPlacement.x + m_vKoukuTuneBigSaydonOffset.x,
-		m_vKoukuTuneBigSaydonPlacement.y + m_vKoukuTuneBigSaydonOffset.y,
-		m_vKoukuTuneBigSaydonPlacement.z + m_vKoukuTuneBigSaydonOffset.z);
-	if (!std::isfinite(bodyScale) || bodyScale <= 0.0 || bodyScale > 100.0 ||
-		!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
-		std::fabs(position.x) > 1'000'000.f || std::fabs(position.y) > 1'000'000.f || std::fabs(position.z) > 1'000'000.f)
-	{
-		m_strKoukuTuneStatus = "Tuning values are outside the catalog/world limits; nothing was written.";
-		return;
-	}
-	const std::string bigSaydonRow = std::string("\"archetypeId\": \"") + KOUKU_TUNE_BIG_SAYDON + "\"";
-	const std::string bigPlacementRow =
-		std::string("\"placementId\": \"") + KOUKU_TUNE_BIG_SAYDON_PLACEMENT + "\"";
-	if (!Patch_JsonNumberAfter(catalogText, bigSaydonRow,
-			"\"bodyModelPreScale\": ", bodyScale, "\"archetypeId\":") ||
-		!Patch_JsonPositionAfter(worldText, bigPlacementRow, position))
-	{
-		m_strKoukuTuneStatus = "Tuning save could not locate the big Saydon catalog or placement rows; nothing was written.";
-		return;
-	}
-	std::string summary;
-	for (size_t i = 0u; i < std::size(KOUKU_TUNE_BOSSES); ++i)
-	{
-		const KOUKU_TUNE_BOSS& boss = KOUKU_TUNE_BOSSES[i];
-		const KOUKU_TUNE_BOSS_ROW& row = m_KoukuTuneBosses[i];
-		const double yaw = Wrap_YawDegrees(
-			static_cast<double>(row.fBaselineYawDegrees) + static_cast<double>(row.fYawOffset));
-		const std::string placementRow = std::string("\"placementId\": \"") + boss.pPlacementId + "\"";
-		if (!std::isfinite(yaw) || !Patch_JsonNumberAfter(worldText, placementRow,
-				"\"yawDegrees\": ", yaw, "\"placementId\":"))
-		{
-			m_strKoukuTuneStatus = std::string("Tuning save could not write yawDegrees for ") +
-				boss.pPlacementId + "; nothing was written.";
-			return;
-		}
-		const double rowBodyScale = static_cast<double>(row.fBodyCatalogScale) *
-			static_cast<double>(row.fBodyScaleMultiplier);
-		const std::string bodyCatalogRow = std::string("\"archetypeId\": \"") + boss.pArchetypeId + "\"";
-		if (std::string_view(boss.pArchetypeId) != KOUKU_TUNE_BIG_SAYDON &&
-			(!std::isfinite(rowBodyScale) || rowBodyScale <= 0.0 || rowBodyScale > 100.0 ||
-			 !Patch_JsonNumberAfter(catalogText, bodyCatalogRow,
-				"\"bodyModelPreScale\": ", rowBodyScale, "\"archetypeId\":")))
-		{
-			m_strKoukuTuneStatus = std::string("Tuning save could not write body scale for ") + boss.pArchetypeId + "; nothing was written.";
-			return;
-		}
-		summary += std::string(boss.pLabel) + " yaw " + Format_TuningNumber(yaw);
-		if (row.bHasWeapon)
-		{
-			const double hammerScale = static_cast<double>(row.fHammerCatalogScale) *
-				static_cast<double>(row.fHammerScaleMultiplier);
-			const float3_t rotation(
-				Wrap_RotationDegrees(row.vHammerRotationBaseline.x + row.vHammerRotationOffset.x),
-				Wrap_RotationDegrees(row.vHammerRotationBaseline.y + row.vHammerRotationOffset.y),
-				Wrap_RotationDegrees(row.vHammerRotationBaseline.z + row.vHammerRotationOffset.z));
-			const std::string catalogRow = std::string("\"archetypeId\": \"") + boss.pArchetypeId + "\"";
-			if (!std::isfinite(hammerScale) || hammerScale <= 0.0 || hammerScale > 100.0 ||
-				!Patch_JsonNumberAfter(catalogText, catalogRow,
-					"\"weaponModelPreScale\": ", hammerScale, "\"archetypeId\":") ||
-				!Patch_JsonInlineVector3After(catalogText, catalogRow,
-					"\"weaponModelPreRotationDegrees\": [", rotation, "\"archetypeId\":"))
-			{
-				m_strKoukuTuneStatus = std::string("Tuning save could not write the hammer values for ") +
-					boss.pArchetypeId + "; nothing was written.";
-				return;
-			}
-			summary += ", hammer scale " + Format_TuningNumber(hammerScale) + " rotation (" +
-				Format_TuningNumber(rotation.x) + ", " + Format_TuningNumber(rotation.y) + ", " +
-				Format_TuningNumber(rotation.z) + ")";
-		}
-		summary += "; ";
-	}
-	DATA_JSON_VALUE verify;
-	std::string parseError;
-	if (!CDataJson::Parse(catalogText, verify, parseError) ||
-		!CDataJson::Parse(worldText, verify, parseError))
-	{
-		m_strKoukuTuneStatus = "Tuning save produced invalid JSON; nothing was written: " + parseError;
-		return;
-	}
-	std::string saveError;
-	if (!Commit_TuningFiles({ catalogPath, worldPath },
-		{ m_strKoukuTuneCatalogBaseline, m_strKoukuTuneWorldBaseline },
-		{ catalogText, worldText }, saveError))
-	{
-		m_strKoukuTuneStatus = saveError;
-		return;
-	}
-	// Keep the edit origin and live multipliers unchanged: repeated Save is
-	// idempotent and the drawn scale/offset does not jump after writing.
-	m_strKoukuTuneCatalogBaseline = catalogText;
-	m_strKoukuTuneWorldBaseline = worldText;
-	m_strKoukuTuneStatus = "Saved bodyModelPreScale " + Format_TuningNumber(bodyScale) +
-		" (big Saydon), position (" + Format_TuningNumber(position.x) + ", " +
-		Format_TuningNumber(position.y) + ", " + Format_TuningNumber(position.z) + "); " + summary +
-		"Scale/rotation apply on the next Client run; position/yaw after Save -> Publish All Patterns -> restart Server. The live offsets stay until Reload.";
-}
-
-void CMainApp::RenderKoukuSaydonBossTuningControls()
-{
-	CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
-	if (nullptr == pArena)
-		return;
-	ImGui::SeparatorText("Arena Boss Tuning (temporary)");
-	ImGui::TextDisabled(
-		"Live values are Client-side multipliers/offsets on the spawned bodies. Save writes catalog scale/rotation (next Client run) and world position/yaw (Save -> Publish All Patterns -> restart Server). Remove this slice once tuned.");
-	if (!m_bKoukuTuneLoaded)
-		Load_KoukuTuningBaseline();
-	if (ImGui::SmallButton("Reload Baseline##KoukuTune"))
-		Load_KoukuTuningBaseline();
-	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_bKoukuTuneBaselineValid);
-	if (ImGui::SmallButton("Save Tuning##KoukuTune"))
-		Save_KoukuTuning();
-	ImGui::EndDisabled();
-	if (!m_bKoukuTuneBaselineValid)
-	{
-		ImGui::TextWrapped("%s", m_strKoukuTuneStatus.c_str());
-		return;
-	}
-	for (size_t i = 0u; i < std::size(KOUKU_TUNE_BOSSES); ++i)
-	{
-		const KOUKU_TUNE_BOSS& boss = KOUKU_TUNE_BOSSES[i];
-		KOUKU_TUNE_BOSS_ROW& row = m_KoukuTuneBosses[i];
-		const std::shared_ptr<CNpc> npc = pArena->Debug_FindArenaBossNpc(boss.pArchetypeId);
-		ImGui::PushID(static_cast<int32_t>(i));
-		ImGui::SeparatorText(boss.pLabel);
-		if (std::string_view(boss.pArchetypeId) == KOUKU_TUNE_BIG_SAYDON)
-		{
-			const std::shared_ptr<CNpc> bigSaydon =
-				pArena->Debug_FindArenaBossNpc(KOUKU_TUNE_BIG_SAYDON);
-			ImGui::TextDisabled("Big Saydon body: %s", nullptr != bigSaydon ? "spawned" : "not spawned");
-			ImGui::SetNextItemWidth(260.f);
-			ImGui::SliderFloat("Big Saydon scale x##KoukuTune", &m_fKoukuTuneBigSaydonScaleMultiplier,
-				0.05f, 20.f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::SetNextItemWidth(260.f);
-			float3_t editedPosition(
-				m_vKoukuTuneBigSaydonPlacement.x + m_vKoukuTuneBigSaydonOffset.x,
-				m_vKoukuTuneBigSaydonPlacement.y + m_vKoukuTuneBigSaydonOffset.y,
-				m_vKoukuTuneBigSaydonPlacement.z + m_vKoukuTuneBigSaydonOffset.z);
-			if (ImGui::DragFloat3("G2 Big Saydon Transform position (m)##KoukuTune", &editedPosition.x,
-				0.05f, -1000000.f, 1000000.f, "%.2f"))
-				m_vKoukuTuneBigSaydonOffset = float3_t(
-					editedPosition.x - m_vKoukuTuneBigSaydonPlacement.x,
-					editedPosition.y - m_vKoukuTuneBigSaydonPlacement.y,
-					editedPosition.z - m_vKoukuTuneBigSaydonPlacement.z);
-			if (nullptr != bigSaydon)
-			{
-				bigSaydon->Set_DebugPresentationScale(m_fKoukuTuneBigSaydonScaleMultiplier);
-				bigSaydon->Set_DebugPresentationOffset(m_vKoukuTuneBigSaydonOffset);
-			}
-			ImGui::Text("-> bodyModelPreScale %s | position (%.2f, %.2f, %.2f)",
-				Format_TuningNumber(static_cast<double>(m_fKoukuTuneBigSaydonCatalogScale) *
-					static_cast<double>(m_fKoukuTuneBigSaydonScaleMultiplier)).c_str(),
-				m_vKoukuTuneBigSaydonPlacement.x + m_vKoukuTuneBigSaydonOffset.x,
-				m_vKoukuTuneBigSaydonPlacement.y + m_vKoukuTuneBigSaydonOffset.y,
-				m_vKoukuTuneBigSaydonPlacement.z + m_vKoukuTuneBigSaydonOffset.z);
-		}
-		ImGui::TextDisabled("%s | saved yawDegrees %.1f", nullptr != npc ? "spawned" : "not spawned",
-			row.fBaselineYawDegrees);
-		if (std::string_view(boss.pArchetypeId) != KOUKU_TUNE_BIG_SAYDON)
-		{
-			ImGui::SetNextItemWidth(260.f);
-			ImGui::SliderFloat("body scale x##KoukuTune", &row.fBodyScaleMultiplier,
-				0.05f, 20.f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::Text("-> bodyModelPreScale %s", Format_TuningNumber(
-				static_cast<double>(row.fBodyCatalogScale) * row.fBodyScaleMultiplier).c_str());
-			if (nullptr != npc) npc->Set_DebugPresentationScale(row.fBodyScaleMultiplier);
-		}
-		ImGui::SetNextItemWidth(260.f);
-		ImGui::DragFloat("yaw offset (deg)##KoukuTune", &row.fYawOffset, 0.5f, -360.f, 360.f, "%.1f");
-		if (row.bHasWeapon)
-		{
-			ImGui::SetNextItemWidth(260.f);
-			ImGui::SliderFloat("hammer scale x##KoukuTune", &row.fHammerScaleMultiplier,
-				0.01f, 100.f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::SetNextItemWidth(260.f);
-			ImGui::DragFloat3("hammer rotation offset (deg)##KoukuTune", &row.vHammerRotationOffset.x,
-				0.5f, -360.f, 360.f, "%.1f");
-		}
-		if (nullptr != npc)
-		{
-			// The tuning delta follows Server rotation; a saved spawn yaw must not
-			// pin a boss while a pattern turns or teleports it.
-			npc->Set_DebugPresentationYawOffset(row.fYawOffset);
-			if (row.bHasWeapon)
-			{
-				npc->Set_DebugWeaponScale(row.fHammerScaleMultiplier);
-				npc->Set_DebugWeaponRotation(row.vHammerCatalogRotation, float3_t(
-					Wrap_RotationDegrees(row.vHammerRotationBaseline.x + row.vHammerRotationOffset.x),
-					Wrap_RotationDegrees(row.vHammerRotationBaseline.y + row.vHammerRotationOffset.y),
-					Wrap_RotationDegrees(row.vHammerRotationBaseline.z + row.vHammerRotationOffset.z)));
-			}
-		}
-		const double yaw = Wrap_YawDegrees(
-			static_cast<double>(row.fBaselineYawDegrees) + static_cast<double>(row.fYawOffset));
-		if (row.bHasWeapon)
-		{
-			ImGui::Text("-> yawDegrees %.1f | weaponModelPreScale %s | weaponModelPreRotationDegrees (%.1f, %.1f, %.1f)",
-				yaw,
-				Format_TuningNumber(static_cast<double>(row.fHammerCatalogScale) *
-					static_cast<double>(row.fHammerScaleMultiplier)).c_str(),
-				Wrap_RotationDegrees(row.vHammerRotationBaseline.x + row.vHammerRotationOffset.x),
-				Wrap_RotationDegrees(row.vHammerRotationBaseline.y + row.vHammerRotationOffset.y),
-				Wrap_RotationDegrees(row.vHammerRotationBaseline.z + row.vHammerRotationOffset.z));
-		}
-		else
-		{
-			ImGui::Text("-> yawDegrees %.1f", yaw);
-		}
-		ImGui::PopID();
-	}
-	ImGui::TextWrapped("%s", m_strKoukuTuneStatus.c_str());
+	m_eDebugInputOwner = DEBUG_TOOL::NONE;
+	if (!arena || !m_pKoukuSaydonBossTool || gateId != m_strKoukuCompletePlayFlowGate)
+	{ status = "Sequences finished, but the Complete Play arena or Gate changed. Pattern Flow was not started."; }
+	else if (arena->Is_DebugGatePending())
+	{ status = "Sequences finished, but Server Gate activation is still pending. Retry Pattern Flow after activation."; }
+	else if (arena->Get_ActiveDebugGate() != expectedGate ||
+		m_iKoukuCompletePlayWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
+	{ status = "Sequences finished, but the Server Gate activation failed or changed: " + arena->Get_DebugGateStatus(); }
+	else if (!m_pKoukuSaydonBossTool->Validate_PatternFlow(gateId, status)) {}
+	else if (m_iKoukuCompletePlayFlowRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
+	{ status = "Sequences finished, but the saved Product changed during playback. Start the updated Pattern Flow explicitly."; }
+	else (void)m_pKoukuSaydonBossTool->Play_PatternFlow(gateId, status);
+	m_strKoukuCompletePlayFlowGate.clear();
+	m_iKoukuCompletePlayFlowRevision = 0u;
+	m_strKoukuCompletePlayStatus = status;
 }
 
 void CMainApp::RenderKoukuSaydonCompletePlayControls()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuCompletePlay");
 	if (!ImGui::CollapsingHeader("KoukuSaydon Complete Play (Server Boss Replay)")) return;
 	if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
-	ImGui::TextWrapped("This is the Boss Patterns tree from Composition > Publish All Patterns. Choose a Gate, bundle or child Pattern; unavailable rows show what needs authoring.");
+	ImGui::TextWrapped("Complete Play runs this Gate's sequences, then its Saved Pattern Flow. All Patterns includes every published Pattern and Bundle.");
 	if (ImGui::SmallButton(m_bKoukuCompletePlayLoadAttempted ? "Reload KoukuSaydon Inventory" : "Load KoukuSaydon Inventory"))
 	{ (void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus); m_bKoukuCompletePlayLoadAttempted = true; }
 	if (!m_bKoukuCompletePlayLoadAttempted) { ImGui::TextDisabled("Load the published Boss Patterns tree."); return; }
@@ -8535,13 +8178,16 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (ImGui::Combo("Gate##KoukuCompletePlayGate", &m_iKoukuCompletePlayGate, labels, 4))
 	{ m_iKoukuCompletePlaySelection = 0; m_strKoukuCompletePlayPatternId.clear(); }
 	const std::string gate = gates[m_iKoukuCompletePlayGate];
+	if (ImGui::Combo("Category##KoukuCompletePlay", &m_iKoukuCompletePlayCategory, "Saved Pattern Flow\0All Patterns\0"))
+	{ m_iKoukuCompletePlaySelection = 0; m_strKoukuCompletePlayPatternId.clear(); }
 	const auto patterns = m_pKoukuSaydonBossTool->Get_ProductPatterns();
 	const auto bundles = m_pKoukuSaydonBossTool->Get_ProductBundles();
 	const auto findPattern = [&](const std::string& id) -> const CKoukuSaydonBossTool::PRODUCT_PATTERN* {
 		auto it=std::find_if(patterns.begin(),patterns.end(),[&](const auto& p){return p.strPatternId==id;}); return it==patterns.end()?nullptr:&*it; };
-	bool gateHasProduct = false;
 	if (ImGui::BeginChild("KoukuCompletePlayInventory", ImVec2(0,240), true))
-		gateHasProduct = m_pKoukuSaydonBossTool->Render_PatternTree(gate, m_iKoukuCompletePlaySelection, m_strKoukuCompletePlayPatternId);
+		(void)(m_iKoukuCompletePlayCategory == 0 ?
+			m_pKoukuSaydonBossTool->Render_SavedPatternFlow(gate, m_iKoukuCompletePlaySelection, m_strKoukuCompletePlayPatternId) :
+			m_pKoukuSaydonBossTool->Render_PatternTree(gate, m_iKoukuCompletePlaySelection, m_strKoukuCompletePlayPatternId));
 	ImGui::EndChild();
 	const auto* pattern=m_iKoukuCompletePlaySelection==3?findPattern(m_strKoukuCompletePlayPatternId):nullptr;
 	const auto selectedBundle=std::find_if(bundles.begin(),bundles.end(),[&](const auto& b){return m_iKoukuCompletePlaySelection==2 && b.strBundleId==m_strKoukuCompletePlayPatternId && b.strGateId==gate;});
@@ -8560,9 +8206,11 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	}
 	else ImGui::TextDisabled("Select a playback bundle or child Pattern. Parent folders are not executable.");
 	auto& service=CKoukuSaydonPatternAuditionService::Get(); const auto audition=service.Get_Snapshot();
+	const auto flow = service.Get_FlowSnapshot();
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
 	const bool ready=bundleSelected?selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
-	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight());
+	const bool sequencePlaying = m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_CompleteSequencePlaying();
+	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight() || flow.bActive || sequencePlaying);
 	const auto prepareSavedProduct = [&]() {
 		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition())
 		{
@@ -8589,16 +8237,33 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		}
 	}
 	ImGui::EndDisabled(); ImGui::SameLine();
-	ImGui::BeginDisabled(!arena || !audition.Is_InFlight() || !audition.iRoomAuditionEpoch);
-	if (ImGui::Button("Stop Server Play")) (void)service.Stop(m_strKoukuCompletePlayStatus);
-	ImGui::SameLine(); ImGui::BeginDisabled(audition.strBundleId.empty());
+	ImGui::BeginDisabled(!arena || (!sequencePlaying && !flow.bActive && !audition.Is_InFlight()));
+	if (ImGui::Button("Stop Complete Play"))
+	{
+		if (sequencePlaying)
+		{
+			m_pSequenceActionWorkbench->Cancel_CompleteSequencePlay();
+			StopCompositionPreview(DEBUG_TOOL::SEQUENCER_BENCHMARK);
+			m_strKoukuCompletePlayFlowGate.clear();
+			m_strKoukuCompletePlayStatus = "Complete Play stopped before Pattern Flow.";
+		}
+		else (void)service.Stop(m_strKoukuCompletePlayStatus);
+	}
+	ImGui::SameLine(); ImGui::BeginDisabled(audition.strBundleId.empty() || sequencePlaying || flow.bActive || !audition.iRoomAuditionEpoch);
 	if (ImGui::Button("Restart Bundle")) (void)service.Restart_Bundle(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled(); ImGui::EndDisabled();
-	ImGui::BeginDisabled(!arena || !gateHasProduct || m_pKoukuSaydonBossTool->Get_PlayAllPatternIds().empty() || audition.Is_InFlight());
-	if (ImGui::Button("Complete Play All (Sequential)##KoukuServerPatternAll") && prepareSavedProduct())
-		(void)m_pKoukuSaydonBossTool->Play_All(m_strKoukuCompletePlayStatus);
+	ImGui::BeginDisabled(!arena || audition.Is_InFlight() || flow.bActive || sequencePlaying);
+	if (ImGui::Button("Complete Play - Sequences + Pattern Flow"))
+		(void)StartKoukuGateCompletePlay(gate, m_strKoukuCompletePlayStatus);
+	ImGui::SameLine();
+	if (ImGui::Button("Play Saved Pattern Flow"))
+		(void)m_pKoukuSaydonBossTool->Play_PatternFlow(gate, m_strKoukuCompletePlayStatus);
+	ImGui::SameLine();
+	if (ImGui::Button("Composition Play All") && prepareSavedProduct())
+		(void)m_pKoukuSaydonBossTool->Play_CompositionAll(gate, m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled();
 	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
+	if (!flow.strStatus.empty()) ImGui::TextWrapped("%s", flow.strStatus.c_str());
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
 	for (const auto& member : audition.Members) ImGui::BulletText("%s | boss %u | %s | state %u",member.strMemberId.c_str(),member.iBossNetEntityId,member.strPatternId.c_str(),unsigned(member.eState));
 	ImGui::TextWrapped("%s",audition.strStatus.c_str());
@@ -8734,6 +8399,7 @@ bool_t CMainApp::Debug_OpenValtanPatternFlow(std::string& strOutStatus)
 
 void CMainApp::RenderCompletePlayControls()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ValtanCompletePlay");
 	if (!ImGui::CollapsingHeader(
 		"Valtan Complete Play (Server Boss Replay)"))
 	{
@@ -8825,6 +8491,7 @@ void CMainApp::RenderCompletePlayControls()
 
 void CMainApp::RenderServerArenaActiveControls()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ServerArena");
 	if (!ImGui::CollapsingHeader("Server Arena Active"))
 	{
 		return;
@@ -9076,6 +8743,7 @@ void CMainApp::RefreshWorldObjectResources()
 
 void CMainApp::RenderDeveloperTools()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.Build");
 	const ImGuiViewport* const pViewport = ImGui::GetMainViewport();
 	ImVec2 vDefaultSize(720.f, 760.f);
 	if (nullptr != pViewport)
@@ -9168,7 +8836,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("World Object Tool", DEBUG_TOOL::WORLD_OBJECT);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
-		toolCell("Profiler", DEBUG_TOOL::PROFILER);
+		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
 		toolCell("Balance Tool", DEBUG_TOOL::BALANCE);
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
@@ -9186,7 +8854,7 @@ void CMainApp::RenderDeveloperTools()
 			{ DEBUG_TOOL::EFFECT, "Effect Tool V1" },
             { DEBUG_TOOL::EFFECT_V2, "Effect Tool V2" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
-			{ DEBUG_TOOL::PROFILER, "Profiler" },
+			{ DEBUG_TOOL::PROFILER, "Composition Profiler" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
 			{ DEBUG_TOOL::BALANCE, "Balance Tool" },
 			{ DEBUG_TOOL::VALTAN_BOSS, "Valtan Boss Tool" },
@@ -9447,6 +9115,7 @@ void CMainApp::RenderDeveloperTools()
 
 void CMainApp::RenderRenderingWorkbench()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Rendering.Build");
     const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
     if (m_iRenderingLastLevel != currentLevel)
     {
@@ -9836,6 +9505,7 @@ void CMainApp::RenderRenderingWorkbench()
 
 void CMainApp::RenderProfilerOverlay()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.ProfilerOverlay");
 	if (!m_bProfilerVisible)
 		return;
 
@@ -9878,6 +9548,7 @@ void CMainApp::RenderProfilerOverlay()
 
 void CMainApp::RenderProfilerSettings()
 {
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.ProfilerDetails");
 	if (!m_bProfilerVisible)
 		return;
 
@@ -9894,6 +9565,7 @@ void CMainApp::RenderProfilerSettings()
 	if (ImGui::Button("Reset profiler history") && nullptr != pProfiler)
 		pProfiler->Reset_History();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(m_pProfilerTool && m_pProfilerTool->Is_Saving());
 	if (ImGui::Button("Save profiler JSON"))
 	{
 		if (nullptr == pProfiler)
@@ -9902,19 +9574,18 @@ void CMainApp::RenderProfilerSettings()
 		}
 		else
 		{
-			const Engine::FProfilerCaptureSnapshot snapshot =
-				pProfiler->Snapshot();
-			const uint64_t frameNumber = snapshot.Frames.empty() ?
-				0u : snapshot.Frames.back().FrameNumber;
-			const filesystem::path outputPath =
-				CProfilerCaptureIO::Make_DefaultPath(frameNumber);
-			string error;
-			m_strProfilerCaptureStatus = CProfilerCaptureIO::Save_Json(
-				snapshot,
-				outputPath,
-				&error) ? "Saved: " + outputPath.string() : error;
+			// Both profiler entry points share the same bounded asynchronous exporter.
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::PROFILER)) && m_pProfilerTool)
+			{
+				m_pProfilerTool->Request_Save(*pProfiler);
+				m_strProfilerCaptureStatus.clear();
+			}
+			else m_strProfilerCaptureStatus = "Composition Profiler could not be opened.";
 		}
 	}
+	ImGui::EndDisabled();
+	if (m_pProfilerTool && !m_pProfilerTool->Get_CaptureStatus().empty())
+		ImGui::TextWrapped("%s", m_pProfilerTool->Get_CaptureStatus().c_str());
 	if (!m_strProfilerCaptureStatus.empty())
 		ImGui::TextWrapped("%s", m_strProfilerCaptureStatus.c_str());
 	ImGui::End();

@@ -1993,6 +1993,21 @@
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.intro.lights.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.mouse_click.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.intro.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\kouku.gate2.intro.fade.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -2541,6 +2556,9 @@
     <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.full.restore.effectsequence.json">
       <Filter>96.DataFiles</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.full.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.clip1.full.restore.effectsequence.json">
       <Filter>96.DataFiles</Filter>
     </None>
@@ -2827,6 +2845,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -3024,5 +3043,18 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2304.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2304.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2304.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWorldNative.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.4219776.stage1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.4219776.stage2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.festival.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.fireworks.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.grid.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.wave.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.warning.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.light.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

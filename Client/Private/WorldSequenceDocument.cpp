@@ -1,6 +1,8 @@
 #include "WorldSequenceDocument.h"
 
 #include "DataJson.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 #include "SourceCharacterMaterialParameters.h"
 
 #include <algorithm>
@@ -308,6 +310,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 	const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
 	std::string& outStatus)
 {
+	CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "WorldSequence.Document.Load");
 	std::error_code existsError;
 	if (!std::filesystem::exists(path, existsError))
 	{
@@ -360,7 +363,12 @@ bool_t Client::CWorldSequenceDocument::Load(
 	}
 	DATA_JSON_VALUE root;
 	std::string parseError;
-	if (!CDataJson::Parse(text, root, parseError) ||
+	bool_t parsed = false;
+	{
+		CProfilerScope parseScope(CGameInstance::Get().Get_Profiler(), "WorldSequence.Document.Parse");
+		parsed = CDataJson::Parse(text, root, parseError);
+	}
+	if (!parsed ||
 		!Is_ObjectShape(root,
 			{ "schema", "formatVersion", "areaId", "revision",
 			  "templates", "instances" }, { "objectResources" }))
@@ -410,7 +418,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -448,6 +456,35 @@ bool_t Client::CWorldSequenceDocument::Load(
 				(std::string(key) == "sequenceInstanceId" ? object.sequenceInstanceId :
 					object.diffuseTextureAssetId) = field->Get_String();
 			}
+            if (const auto* source = row.Find("materialSourceModelAssetId"))
+            {
+                if (!source->Is_String() || !Is_ResourcePath(source->Get_String(), true))
+                { outStatus = "Invalid world object material source model: " + object.objectId; return false; }
+                object.materialSourceModelAssetId = source->Get_String();
+            }
+            if (const auto* bindings = row.Find("mapMaterialBindings"))
+            {
+                if (!bindings->Is_Array() || bindings->Get_Array().size() > 64u)
+                { outStatus = "Invalid world object map material bindings"; return false; }
+                for (const auto& binding : bindings->Get_Array())
+                {
+                    if (!Is_ObjectShape(binding, { "materialName", "sourceAssetId", "sourceMaterialName" }, { "diffuseTextureAssetId" }) ||
+                        !binding.Find("materialName")->Is_String() || !binding.Find("sourceAssetId")->Is_String() ||
+                        !binding.Find("sourceMaterialName")->Is_String())
+                    { outStatus = "Invalid world object map material binding"; return false; }
+                    WORLD_SEQUENCE_MAP_MATERIAL_BINDING material;
+                    material.materialName = binding.Find("materialName")->Get_String();
+                    material.sourceAssetId = binding.Find("sourceAssetId")->Get_String();
+                    material.sourceMaterialName = binding.Find("sourceMaterialName")->Get_String();
+                    if (const auto* diffuse = binding.Find("diffuseTextureAssetId"))
+                    {
+                        if (!diffuse->Is_String() || !Is_ResourcePath(diffuse->Get_String(), false))
+                        { outStatus = "Invalid map material diffuse texture"; return false; }
+                        material.diffuseTextureAssetId = diffuse->Get_String();
+                    }
+                    object.mapMaterialBindings.push_back(std::move(material));
+                }
+            }
             if (const auto* value = row.Find("materialProfile"))
             {
                 WORLD_SEQUENCE_MATERIAL_PROFILE profile;
@@ -836,6 +873,22 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< "\",\n      \"anchorBone\": \"" << CDataJson::Escape(object.anchorBone) << "\"";
 		if (!object.defaultMotionInstanceId.empty())
 			output << ",\n      \"defaultMotionInstanceId\": \"" << CDataJson::Escape(object.defaultMotionInstanceId) << "\"";
+        if (!object.materialSourceModelAssetId.empty())
+            output << ",\n      \"materialSourceModelAssetId\": \"" << CDataJson::Escape(object.materialSourceModelAssetId) << "\"";
+        if (!object.mapMaterialBindings.empty())
+        {
+            output << ",\n      \"mapMaterialBindings\": [";
+            for (size_t i = 0; i < object.mapMaterialBindings.size(); ++i)
+            {
+                const auto& binding = object.mapMaterialBindings[i];
+                output << (i ? "," : "") << "\n        {\"materialName\": \"" << CDataJson::Escape(binding.materialName)
+                    << "\", \"sourceAssetId\": \"" << CDataJson::Escape(binding.sourceAssetId)
+                    << "\", \"sourceMaterialName\": \"" << CDataJson::Escape(binding.sourceMaterialName) << "\"";
+                if (!binding.diffuseTextureAssetId.empty()) output << ", \"diffuseTextureAssetId\": \"" << CDataJson::Escape(binding.diffuseTextureAssetId) << "\"";
+                output << "}";
+            }
+            output << "\n      ]";
+        }
         if (object.materialProfile)
         {
             const auto& profile = *object.materialProfile;
@@ -1017,6 +1070,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 	const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
 	std::string& outStatus) const
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "WorldSequence.Document.Validate");
 	if (m_AreaId.empty() || m_AreaId.size() > 128u || 0u == m_iRevision ||
 		m_Templates.size() > MAX_TEMPLATE_COUNT ||
 		m_Instances.size() > MAX_INSTANCE_COUNT || m_ObjectResources.size() > MAX_INSTANCE_COUNT)
@@ -1047,6 +1101,17 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid or duplicate world object resource: " + object.objectId;
 			return false;
 		}
+        if ((!object.materialSourceModelAssetId.empty() && (alias || !Is_ResourcePath(object.materialSourceModelAssetId, true))) ||
+            object.mapMaterialBindings.size() > 64u || (alias && !object.mapMaterialBindings.empty()))
+        { outStatus = "Invalid world object material source: " + object.objectId; return false; }
+        std::unordered_set<std::string> materialNames;
+        if (object.materialProfile) materialNames.insert(object.materialProfile->materialName);
+        for (const auto& binding : object.mapMaterialBindings)
+            if (binding.materialName.empty() || binding.materialName.size() > 63u || !Is_ValidUtf8DisplayText(binding.materialName) ||
+                !Is_ValidStableId(binding.sourceAssetId) || binding.sourceMaterialName.empty() || binding.sourceMaterialName.size() > 63u ||
+                !Is_ValidUtf8DisplayText(binding.sourceMaterialName) || !materialNames.insert(binding.materialName).second ||
+                (!binding.diffuseTextureAssetId.empty() && !Is_ResourcePath(binding.diffuseTextureAssetId, false)))
+            { outStatus = "Invalid or duplicate world object map material binding: " + object.objectId; return false; }
         if (object.materialProfile && (alias || !Validate_MaterialProfile(*object.materialProfile)))
         { outStatus = "Invalid world object material profile: " + object.objectId; return false; }
 		if (!object.defaultMotionInstanceId.empty())
@@ -1502,6 +1567,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.anchorBone != right.anchorBone ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
             left.materialProfile != right.materialProfile ||
+            left.materialSourceModelAssetId != right.materialSourceModelAssetId || left.mapMaterialBindings != right.mapMaterialBindings ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
 			left.defaultMotionInstanceId != right.defaultMotionInstanceId) return false;

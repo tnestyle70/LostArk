@@ -1604,7 +1604,7 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 		!std::isfinite(Playback.fDissolveOutEnd) ||
 		!((Playback.fDissolveOutStart == -1.f && Playback.fDissolveOutEnd == -1.f) ||
 			(Playback.fDissolveOutStart >= 0.f &&
-			 Playback.fDissolveOutStart < Playback.fDissolveOutEnd &&
+			 Playback.fDissolveOutStart <= Playback.fDissolveOutEnd &&
 			 Playback.fDissolveOutEnd <= 1.f)))
 	{
 		Report("group playback has an invalid age/rate/envelope: " + Group.strGroupId);

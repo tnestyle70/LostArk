@@ -407,6 +407,24 @@ bool_t Client::CAnimationEffectCueDocument::Load(
     std::string& strOutStatus,
     const bool_t bFilterToAvailableClips)
 {
+    return Load_Internal(strAnimationAssetId, AvailableClips, OutDocument, strOutStatus,
+        bFilterToAvailableClips, nullptr);
+}
+
+bool_t Client::CAnimationEffectCueDocument::Load_WithCatalogSnapshot(
+    const std::string& strAnimationAssetId, const std::vector<std::string>& AvailableClips,
+    ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument, std::string& strOutStatus,
+    const std::unordered_set<std::string>& EffectAssetIds)
+{
+    return Load_Internal(strAnimationAssetId, AvailableClips, OutDocument, strOutStatus,
+        false, &EffectAssetIds);
+}
+
+bool_t Client::CAnimationEffectCueDocument::Load_Internal(
+    const std::string& strAnimationAssetId, const std::vector<std::string>& AvailableClips,
+    ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument, std::string& strOutStatus,
+    const bool_t bFilterToAvailableClips, const std::unordered_set<std::string>* pEffectAssetIds)
+{
     if (strAnimationAssetId.empty())
     {
         strOutStatus = "Animation asset ID is empty.";
@@ -429,7 +447,7 @@ bool_t Client::CAnimationEffectCueDocument::Load(
 	ANIMATION_EFFECT_CUE_DOCUMENT Staged;
 	if (!Load_FromText(
 		strAnimationAssetId, Text, AvailableClips, Staged,
-		strOutStatus, bFilterToAvailableClips))
+		strOutStatus, bFilterToAvailableClips, nullptr, pEffectAssetIds))
 	{
 		return false;
 	}
@@ -608,7 +626,8 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
 	ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
 	std::string& strOutStatus,
 	const bool_t bFilterToAvailableClips,
-	std::vector<std::string>* pOutReferencedClips)
+	std::vector<std::string>* pOutReferencedClips,
+	const std::unordered_set<std::string>* pEffectAssetIds)
 {
 	if (strAnimationAssetId.empty() || Text.empty())
 	{
@@ -930,7 +949,8 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
             strOutStatus = "Duplicate Animation EFFECT cue.";
             return false;
         }
-		if (!CEffectCatalog::Contains(Cue.strEffectAssetId))
+		if (!(pEffectAssetIds ? pEffectAssetIds->contains(Cue.strEffectAssetId) :
+			CEffectCatalog::Contains(Cue.strEffectAssetId)))
 		{
 			Staged.UnavailableEffectAssetIds.push_back(
 				Cue.strEffectAssetId);

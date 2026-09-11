@@ -1,0 +1,36 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "kouku.gate2.intro.fade",
+  "displayName": "2관문 진입 / 원본 암전",
+  "durationMs": 27000,
+  "children": [
+    {
+      "childId": "gate2.intro.fade.black",
+      "resource": {
+        "kind": "LEAF",
+        "id": "kouku.gate2.intro.fade.black"
+      },
+      "startMs": 0,
+      "durationMs": 27000,
+      "stop": "Kill",
+      "localTransform": {
+        "translation": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ]
+}

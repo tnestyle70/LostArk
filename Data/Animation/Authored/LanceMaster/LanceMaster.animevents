@@ -3124,10 +3124,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3139
 "flm_sk_squalllance_02" EFFECT startms=0 payload="effect.lancemaster.skill.34610.clip2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_squalllance_03" EFFECT startms=0 payload="effect.lancemaster.skill.34610.clip3.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_stab" EFFECT startms=0 payload="effect.lancemaster.skill.34540.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"flm_sk_super_squalllance_01" EFFECT startms=0 payload="effect.lancemaster.skill.34630.clip1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"flm_sk_super_squalllance_02" EFFECT startms=0 payload="effect.lancemaster.skill.34630.clip2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"flm_sk_super_squalllance_03" EFFECT startms=0 payload="effect.lancemaster.skill.34630.clip3.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"flm_sk_super_squalllance_04" EFFECT startms=0 payload="effect.lancemaster.skill.34630.clip4.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"flm_sk_super_squalllance_01" EFFECT startms=0 payload="effect.lancemaster.skill.34630.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_talonstrike" EFFECT startms=0 payload="effect.lancemaster.skill.34550.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_threetalonstrike_01" EFFECT startms=0 payload="effect.lancemaster.skill.34120.clip1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_threetalonstrike_02" EFFECT startms=0 payload="effect.lancemaster.skill.34120.clip2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

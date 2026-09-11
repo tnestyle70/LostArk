@@ -295,3 +295,17 @@ $env:ACTORX_BLENDER_ADDON = 'C:\...\io_import_scene_unreal_psa_psk_280.py'
 ### 파괴 애니메이션을 정할 수 없음
 
 `-KeepBlend`로 생성한 `.blend`를 열고 Action Editor에서 각 clip을 재생한다. 이름이나 프레임 수만으로 결정하지 않는다. 시각 판정이 끝난 뒤에만 `CDeployPropObject` 상태와 clip 이름을 연결한다.
+
+## UModel glTF 메시와 PSA의 본 순서가 다를 때
+
+`build_umodel_gltf_psa.py`는 기본적으로 glTF skin joint와 PSA track 이름·순서의 일치를
+요구한다. 말 `SK_FLM_HOR_00`처럼 이름 집합은 같지만 AnimSet의 track 순서가 다르면
+명시적으로 `--allow-bone-order-remap`을 사용한다. 이 옵션은 중복·누락이 없는 이름의
+일대일 대응만 허용하고 PSA track을 해당 glTF node에 연결한다. skin의 JOINTS 인덱스,
+inverse bind, node hierarchy를 재배열하지 않는다. 결과 receipt의 `boneOrderRemapped`가
+실제 재배열 여부를 기록한다.
+
+자식 회전의 ActorX conjugate와 root 예외는 메시 hierarchy로 구분하며 normalized 정수
+skin weights는 Assimp 입력 전에 FLOAT로 변환한다. 생성 glTF를 기존 ModelAssetConverter로
+cook한 뒤 Engine의 고정30tick 경로에 넣을 때는 `retime_wmodel_ticks.py`로 duration과 모든
+key time을 함께30tick으로 정규화한다. mesh만 `--scale`하여 skeleton 길이와 어긋나게 하지 않는다.

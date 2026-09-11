@@ -1423,7 +1423,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1470,6 +1470,37 @@ function Read-WorldSequenceDocument {
                 if ($null -ne $resource.PSObject.Properties['diffuseTextureAssetId']) {
                     if ($resource.diffuseTextureAssetId -isnot [string]) { throw 'World object diffuse path must be a string' }
                     if ($resource.diffuseTextureAssetId -ne '') { Assert-SequenceAssetPath $resource.diffuseTextureAssetId $false }
+                }
+            }
+            if ($null -ne $resource.PSObject.Properties['materialSourceModelAssetId']) {
+                if ($alias -or $resource.materialSourceModelAssetId -isnot [string] -or $resource.materialSourceModelAssetId -eq '') { throw 'Invalid world object material source model' }
+                Assert-SequenceAssetPath $resource.materialSourceModelAssetId $true
+                $sourceNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.materialSourceModelAssetId)).Names
+                $targetNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.modelAssetId)).Names
+                foreach ($name in $sourceNames.Keys) {
+                    if (-not $targetNames.ContainsKey($name)) { throw "Cinematic model lost source material slot: $name" }
+                }
+            }
+            if ($null -ne $resource.PSObject.Properties['mapMaterialBindings']) {
+                if ($alias -or $resource.mapMaterialBindings -isnot [array] -or $resource.mapMaterialBindings.Count -gt 64) { throw 'Invalid world object map material bindings' }
+                $boundMaterials = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                if ($null -ne $resource.PSObject.Properties['materialProfile']) { [void]$boundMaterials.Add($resource.materialProfile.materialName) }
+                $targetNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.modelAssetId)).Names
+                if ($null -eq $cinematicMapMaterials) {
+                    try { $cinematicMapMaterials = ([IO.File]::ReadAllText($authoringMaterialPath, [Text.UTF8Encoding]::new($false, $true)) | ConvertFrom-Json).materials }
+                    catch { throw "World Object map material source JSON parse failed: $authoringMaterialPath" }
+                }
+                foreach ($binding in $resource.mapMaterialBindings) {
+                    $bindingFields = @('materialName','sourceAssetId','sourceMaterialName')
+                    if ($null -ne $binding.PSObject.Properties['diffuseTextureAssetId']) { $bindingFields += 'diffuseTextureAssetId'; Assert-SequenceAssetPath $binding.diffuseTextureAssetId $false }
+                    Assert-ExactJsonProperties $binding $bindingFields 'World object map material binding'
+                    $sourceRows = @($cinematicMapMaterials | Where-Object { $_.assetId -ceq $binding.sourceAssetId -and $_.materialName -ceq $binding.sourceMaterialName })
+                    if (-not $targetNames.ContainsKey($binding.materialName) -or $sourceRows.Count -ne 1 -or $sourceRows[0].family -cne 'bg-source-opaque-masked') { throw 'World Object map material slot/source is absent or unsupported' }
+                    if ($null -ne $binding.PSObject.Properties['diffuseTextureAssetId'] -and -not [IO.File]::Exists((Join-Path $runtimeResourceRoot $binding.diffuseTextureAssetId))) { throw 'World Object map surface texture is absent' }
+                    if ($binding.sourceAssetId -isnot [string] -or $binding.sourceAssetId -cnotmatch $stableId -or -not $boundMaterials.Add($binding.materialName)) { throw 'Invalid or duplicate map material binding' }
+                    foreach ($name in @($binding.materialName,$binding.sourceMaterialName)) {
+                        if ($name -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($name) -notin 1..63 -or $name -match '[\x00-\x1f\x7f]') { throw 'Invalid map material binding name' }
+                    }
                 }
             }
             if ($null -ne $resource.PSObject.Properties['materialProfile']) {

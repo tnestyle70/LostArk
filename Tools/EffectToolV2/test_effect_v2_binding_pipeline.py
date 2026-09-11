@@ -641,6 +641,38 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
             ),
         )
 
+    def test_screen_post_intensity_curve_accepts_bounded_keys_and_rejects_malformed_keys(self) -> None:
+        leaf_id = "boss.valtan.fade"
+        path = self.authored / f"{leaf_id}.effectv2.json"
+        leaf = self.leaf(leaf_id, effect_type="ScreenPost", lifetime=27.0)
+        screen = {"profile": "ZoomBlur", "intensitySmoothstep": True,
+                  "intensityKeys": [{"timeSeconds": 0.0, "intensity": 1.0},
+                                    {"timeSeconds": 0.97, "intensity": 0.0},
+                                    {"timeSeconds": 27.0, "intensity": 1.0}]}
+        leaf["params"]["screenPost"] = screen
+        self.assertEqual(27000, pipeline._validate_leaf_resource(leaf_id, path, leaf))
+        invalid = [[], screen["intensityKeys"][:1],
+                   [{"timeSeconds": 0, "intensity": 1}, {"timeSeconds": 0, "intensity": 0}],
+                   [{"timeSeconds": 0, "intensity": 1}, {"timeSeconds": 1e-100, "intensity": 0}],
+                   [{"timeSeconds": 0, "intensity": 1}, {"timeSeconds": 1.0, "intensity": 0}, {"timeSeconds": 1.000000001, "intensity": 1}],
+                   [{"timeSeconds": 0, "intensity": 1}, {"timeSeconds": 28, "intensity": 0}],
+                   [{"timeSeconds": 1, "intensity": 1}, {"timeSeconds": 27, "intensity": 0}],
+                   [{"timeSeconds": 0, "intensity": -1}, {"timeSeconds": 27, "intensity": 0}],
+                   [{"timeSeconds": 0, "intensity": 1e100}, {"timeSeconds": 27, "intensity": 0}],
+                   [{"timeSeconds": 0, "intensity": 1}, {"timeSeconds": 27}],
+                   [{"timeSeconds": 0, "intensity": 1, "future": 1}, {"timeSeconds": 27, "intensity": 0}],
+                   [{"timeSeconds": 0, "intensity": 1}, {"timeSeconds": True, "intensity": 0}]]
+        for keys in invalid:
+            with self.subTest(keys=keys), self.assertRaises(pipeline.BindingContractError):
+                bad = copy.deepcopy(leaf)
+                bad["params"]["screenPost"]["intensityKeys"] = keys
+                pipeline._validate_leaf_resource(leaf_id, path, bad)
+        del leaf["params"]["screenPost"]["intensityKeys"]
+        with self.assertRaises(pipeline.BindingContractError):
+            pipeline._validate_leaf_resource(leaf_id, path, leaf)
+        leaf["params"]["screenPost"]["intensitySmoothstep"] = False
+        self.assertEqual(27000, pipeline._validate_leaf_resource(leaf_id, path, leaf))
+
     def test_optional_korean_labels_and_preview_context_preserve_resource_identity(self) -> None:
         leaf_id = "boss.valtan.leaf-a"
         path = self.authored / f"{leaf_id}.effectv2.json"

@@ -41,6 +41,10 @@ public:
 		const shared_ptr<Engine::CModel>& pModel,
 		const std::filesystem::path& FaceMorphsPath,
 		const std::filesystem::path& FaceMorphMapPath);
+	// CPU-only decode/layout validation, also used while the body prototype is staged.
+	bool_t Initialize(const Engine::CModel& model,
+		const std::filesystem::path& FaceMorphsPath,
+		const std::filesystem::path& FaceMorphMapPath);
 
 	size_t Get_MorphCount() const {
 		return m_Morphs.size();
@@ -74,7 +78,7 @@ private:
 	{
 		std::string strName;
 		f32_t fWeight = 0.f;
-		std::vector<VERTEX_TARGET> Targets;
+		std::shared_ptr<const std::vector<VERTEX_TARGET>> Targets;
 	};
 	struct TOUCHED_KEY
 	{

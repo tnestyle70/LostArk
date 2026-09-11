@@ -3,6 +3,7 @@
 #include "Level_KakulSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "AnimationTargetService.h"
+#include "CameraTool.h"
 
 #include <Windows.h>
 
@@ -51,9 +52,29 @@ bool_t Client::CLevel_KakulSaydonArena::Save_CameraShots(std::string&)
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera Save.");
 }
 
+void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(bool_t)
+{
+	throw std::runtime_error("CPU editor harness unexpectedly stopped a live Camera.");
+}
+
+Client::VALTAN_CINEMATIC_CAMERA_CUE Client::CLevel_KakulSaydonArena::CameraShot_ToCue(const KAKUL_CAMERA_SHOT&)
+{
+	throw std::runtime_error("CPU editor harness unexpectedly requested a live Camera cue.");
+}
+
+bool_t Client::CCameraTool::Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE&)
+{
+	throw std::runtime_error("CPU editor harness unexpectedly captured a live Camera.");
+}
+
 std::string Client::CAnimationTargetService::Resolve_AssetName()
 {
 	throw std::runtime_error("CPU editor harness unexpectedly queried the live animation target.");
+}
+
+std::shared_ptr<Client::CCharacter> Client::CAnimationTargetService::Resolve_SceneCharacter()
+{
+	throw std::runtime_error("CPU editor harness unexpectedly queried the live Scene Character.");
 }
 
 bool_t Client::CAnimationTargetService::Resolve_ModelTarget(
@@ -475,13 +496,20 @@ namespace
 		RequireEditorStep(sequence.Reload(status), status, "load independent Sequence seed");
 		const auto actionGood = action.Get_LastGood();
 		const auto sequenceGood = sequence.Get_LastGood();
+		std::vector<const KOUKU_SAYDON_COMPOSITION_PATTERN*> gateOneSequences;
+		for (const auto& row : sequenceGood.Patterns)
+		{
+			RequireEditorStep(row.strLoadError.empty(), row.strLoadError,
+				("admit Sequence seed " + row.strPatternId).c_str());
+			if (row.strGateId == "GATE1") gateOneSequences.push_back(&row);
+		}
 		Require(sequenceGood.strCompositionId == "boss.composition.kakulsaydon.sequencer" &&
-			sequenceGood.iRevision >= 2u && sequenceGood.Patterns.size() == 2u &&
+			sequenceGood.iRevision >= 2u && gateOneSequences.size() == 2u &&
 			std::all_of(sequenceGood.Patterns.begin(), sequenceGood.Patterns.end(), [](const auto& row) {
 				return row.strLoadError.empty() && row.strAuthoringStatus == "DRAFT" &&
 					!row.WorldOccurrences.empty() && !row.PresentationOccurrences.empty(); }),
 			"Sequence seed did not retain both valid World/Camera DRAFT timelines");
-		const auto& opening = sequenceGood.Patterns.front();
+		const auto& opening = *gateOneSequences.front();
 		Require(opening.WorldOccurrences.size() == 7u && opening.Stages.size() == 1u &&
 			opening.Stages.front().iDurationMs == 37800u &&
 			std::all_of(opening.WorldOccurrences.begin(), opening.WorldOccurrences.begin() + 5,
@@ -490,8 +518,8 @@ namespace
 			"opening map must finish unfolding at native 4507ms while book and Saydon keep the 37800ms scene");
 		CKoukuSaydonActionWorkbench sequenceWorkbench(true);
 		RequireEditorStep(sequenceWorkbench.Reload(status), status, "load Sequence playback workspace");
-		const auto firstSequenceId = sequenceGood.Patterns[0].strPatternId;
-		const auto secondSequenceId = sequenceGood.Patterns[1].strPatternId;
+		const auto firstSequenceId = gateOneSequences[0]->strPatternId;
+		const auto secondSequenceId = gateOneSequences[1]->strPatternId;
 		const auto consumeSequence = [&](const std::string& expectedId, const bool expectedPaused = false) {
 			KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
 			std::uint32_t clockMs = 999u;
@@ -531,8 +559,36 @@ namespace
 		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId), "first sequence did not finish");
 		consumeSequence(secondSequenceId);
 		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "second ready");
-		Require(sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId) &&
-			!sequenceWorkbench.Is_CompleteSequencePlaying(), "Complete Play looped after the finale");
+		std::string completedGate = "previous";
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId, &completedGate) &&
+			!sequenceWorkbench.Is_CompleteSequencePlaying() && completedGate == "GATE1",
+			"Complete Play looped after the finale or did not hand off its exact Gate");
+		Require(!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId, &completedGate) && completedGate.empty(),
+			"duplicate completion handed the Gate to battle twice");
+		std::vector<std::string> gateTwoSequences;
+		for (const auto& row : sequenceGood.Patterns)
+			if (row.strGateId == "GATE2") gateTwoSequences.push_back(row.strPatternId);
+		Require(!gateTwoSequences.empty(), "Sequence seed has no Gate 2 intro");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status, "GATE2"), status,
+			"explicit Gate 2 Complete Play from Gate 1 selection");
+		for (std::size_t i = 0u; i < gateTwoSequences.size(); ++i)
+		{
+			consumeSequence(gateTwoSequences[i]);
+			sequenceWorkbench.Notify_SequencePreviewAdmission(true, "Gate 2 ready");
+			Require(sequenceWorkbench.Advance_CompleteSequencePlay(gateTwoSequences[i], &completedGate),
+				"Gate 2 sequence did not finish");
+			Require(completedGate == (i + 1u == gateTwoSequences.size() ? "GATE2" : ""),
+				"Gate 2 completion handed off another Gate or started battle before its finale");
+		}
+		RequireEditorStep(sequenceWorkbench.Select_PatternById(firstSequenceId, status), status,
+			"return to Gate 1 after Gate 2 Complete Play");
+		sequenceWorkbench.Set_CompleteSequenceAdmission([](std::string_view gate, std::string& reason) {
+			reason = "saved flow unavailable for " + std::string(gate); return false;
+		});
+		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status, "GATE1") &&
+			!sequenceWorkbench.Is_CompleteSequencePlaying() && status == "saved flow unavailable for GATE1",
+			"failed battle preflight started the intro or discarded its failure");
+		sequenceWorkbench.Set_CompleteSequenceAdmission({});
 		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "queue before owner loss");
 		sequenceWorkbench.Cancel_CompleteSequencePlay();
 		KOUKU_SAYDON_COMPOSITION_PATTERN cancelled;
@@ -540,7 +596,7 @@ namespace
 		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
 			!sequenceWorkbench.Consume_PatternPreviewRequest(cancelled, cancelledClock, cancelledPaused, cancelledTarget),
 			"owner loss retained an automatic next-sequence request");
-		sequenceWorkbench.Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE2);
+		sequenceWorkbench.Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE3);
 		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status), "empty Gate replayed another Gate's sequences");
 		CKoukuSaydonActionWorkbench actionWorkbench;
 		Require(!actionWorkbench.Request_CompleteSequencePlay(status), "Action workspace admitted Sequence Complete Play");
@@ -1960,6 +2016,7 @@ namespace
 			stage.AnimationOccurrences = { animation }; pattern.Stages.push_back(stage);
 		}
 		source.Patterns.clear(); source.Folders.clear(); source.Bundles.clear(); source.PlayAllPatternIds.clear();
+		source.PatternFlows.clear();
 		source.Logics.clear(); source.Summons.clear(); source.Worlds.clear(); source.SceneProfiles.clear(); source.PresentationResources.clear();
 		const std::array<KOUKU_SAYDON_PRESENTATION_KIND, 5u> kinds = {
 			KOUKU_SAYDON_PRESENTATION_KIND::EFFECT, KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER,

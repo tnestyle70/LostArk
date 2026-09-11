@@ -24,6 +24,8 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -32,6 +34,7 @@
 namespace Client
 {
 	class CCharacter;
+	class CPlayableCharacterAssetService;
 	class CNpc;
 	class CValtan;
 	class CDeployPropRuntime;
@@ -298,6 +301,8 @@ namespace Client
 		};
 
 	public:
+		CClientReplication();
+		~CClientReplication();
 		bool Initialize(const DESC& desc);
 		bool Update();
 		bool Has_PendingConnectionLoss() const;
@@ -493,6 +498,14 @@ namespace Client
 			f32_t yawDegrees,
 			bool_t isLocallyControlled,
 			std::shared_ptr<CCharacter>& outCharacter);
+		bool Apply_PlayerSnapshot(const LostArk::Shared::PLAYER_SNAPSHOT& player,
+			std::uint32_t serverTick,
+			const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities);
+		void Stage_PlayerPresentation(const LostArk::Shared::PLAYER_SNAPSHOT& player,
+			std::uint32_t serverTick,
+			const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities);
+		bool Advance_PlayerAssetPreparation();
+		bool Commit_PlayerSpawn(const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned);
 		bool Apply_Spawn(
 			const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned);
 
@@ -612,6 +625,19 @@ namespace Client
 		// Stable net objects: slot table, free-slot index and the
 		// handle-by-entity-id lookup, kept across frames.
 		CNetObjectRegistry m_Registry;
+		struct PENDING_PLAYER_PRESENTATION final
+		{
+			LostArk::Shared::PLAYER_SNAPSHOT Snapshot{};
+			std::uint32_t ServerTick = 0u;
+			// Only the referenced hand-grip owner is needed from the source packet.
+			std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT> AttachmentOwners;
+		};
+		std::map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::S2C_PLAYER_SPAWNED> m_PendingPlayerSpawns;
+		std::map<LostArk::Shared::NET_ENTITY_ID, PENDING_PLAYER_PRESENTATION> m_PendingPlayerPresentations;
+		std::map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::CHARACTER_CLASS_ID> m_FailedPlayerSpawnClasses;
+		std::unique_ptr<CPlayableCharacterAssetService> m_pPlayerAssetPreparation;
+		std::optional<LostArk::Shared::CHARACTER_CLASS_ID> m_PreparingPlayerClass;
+		std::unordered_set<uint8_t> m_FailedPlayerAssetClasses;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
 		bool m_isInitialized = false;

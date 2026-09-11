@@ -319,6 +319,27 @@ Esc/우클릭/follow 복귀는 미제출 선택을 취소하고 Tab으로 mouse-
 일반 gameplay 입력을 다시 활성화하지 않는다. Server/Client는 같은 protocol로 빌드·재시작해야 한다.
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
+F1 → `Open Composition Profiler`는 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
+보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
+저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
+각 JSON은 저장 시점의 최근 최대 1200프레임이고 세션 전체를 무제한 누적하는 파일은 아니다.
+`Saved JSON` 탭에서 `Refresh files`로 목록을 갱신하고 선택한 파일을 `Delete selected JSON`으로 삭제한다.
+외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
+CPU Self는 자식 구간을 제외하며 GPU pass는 겹치는 inclusive timestamp 구간이다.
+GPU pending/미지원과 미관측 구간은 0ms로 해석하지 않는다. `Updated, not submitted`는 같은
+프레임에 평가했지만 성공한 model draw가 없는 경우이며 frustum 밖 판정과 다르다. Server 권위
+navigation 시간은 별도 프로세스의 기존 `[RoomPerf]` 로그 `Nav...` 필드로 확인한다.
+`ImGui` 탭은 각 툴의 Build/Update, DX11 업로드·제출, platform viewport와 Present를 나누어
+표시하고 draw/vertex/index/upload 작업량을 함께 보여준다. JSON 저장은 창을 닫아도 완료 처리된다.
+`Picking.Readback`은 MapTool/Effect Tool/F1 이동 피킹 요청 때만 현재 화면 한 픽셀을 읽는 경로다.
+일반 프레임의 전체 viewport readback은 하지 않으며 요청의 GPU 대기는 `Picking.MapWait`, 복사량은
+Workload의 picking readback counters로 확인한다. `UI.Runtime.*`은 제품 HUD/UI 업데이트이고 ImGui Build와 구분한다.
+Character Select의 playable class 모델과 presentation 문서는 기존 CModel worker 준비 뒤 main prototype commit으로 반영한다.
+준비 중 기존 캐릭터를 유지하고 최신 선택을 처리한다. 레벨 전환은 취소된 준비·자원 해제의 완료를
+프레임마다 확인한 뒤 진행한다. `CharacterAssets.*`와 `Model.Load.*`로 worker 준비, main commit,
+decode/mesh/material/bone/animation 비용을 구분하며 총 준비 시간과 main frame 정지는 서로 다른 지표다.
+Debug x64는 외부 ImGui core/backend 여섯 소스에만 /O2 /Zi를 적용하므로 해당 내부 stepping은
+최적화된 코드 기준이다. Engine/Client 자체 소스의 Debug 설정과 ImGui assert는 유지한다.
 
 F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
 snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경
@@ -445,6 +466,10 @@ Complete Play, Restart, Next를 runtime-ready로 표시하지 않는다. consume
 
 Debug F1의 `Effect Tool V1`과 `Effect Tool V2`는 각각 독립 창·입력 focus·닫기 상태를 갖는다.
 V1의 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를 같은 저작 tree로 연다.
+V1 Model/Summon detail의 `Loop Animation`은 cue window 안에서 clip만 반복하고 이동은 계속한다.
+`Hold Last Frame`과 동시에 켤 수 없으며 저장 문서의 생략된 `loop`는 false다. 한 문서는 ModelCue를 최대 16개 가진다.
+Artist D full restore는 앞쪽 두 호랑이, LanceMaster ALT V Full은 네 animation clip과 말·camera를 한 시간축으로 재생한다.
+원본 MeshParticle의 Follow Attachment에서 socket offset/rotation을 편집하면 해당 stable element의 anchor만 변경한다.
 V2는 기존 leaf/group·target attachment 편집을 소유하며 CPU draft와 저장 경로를 유지한다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
 Valtan pattern을 열면 master가 가리키는 Product cue와 stage-authored reference를 중복 없이 나열하고,
 combat-object/도넛 같은 재사용 asset은 최상위 `INDEPENDENT EFFECT` tree에 한 번만 노출한다. 그 아래에는

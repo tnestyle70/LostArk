@@ -1,4 +1,6 @@
 #include "..\public\Graphic_Device.h"
+#include "Profiler.h"
+#include "GameInstance.h"
 
 CGraphic_Device::CGraphic_Device()
 
@@ -136,6 +138,7 @@ HRESULT CGraphic_Device::Clear_DepthStencil_View()
 
 HRESULT CGraphic_Device::Present()
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Present");
 	if (nullptr == m_pSwapChain)
 		return E_FAIL;
 	

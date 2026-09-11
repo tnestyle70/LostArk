@@ -1,4 +1,6 @@
 #include "Shader.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 
 #include <cwchar>
 #include <cstring>
@@ -16,7 +18,9 @@ namespace
 		const std::wstring& CompiledPath,
 		uint64_t iByteCount,
 		HRESULT hResult,
-		uint64_t iElapsedMs)
+		uint64_t iElapsedMs,
+		uint32_t iPassCount = 0u,
+		uint32_t iCreatedInputLayouts = 0u)
 	{
 		wchar_t ResultText[16]{};
 		swprintf_s(ResultText, L"0x%08X", static_cast<uint32_t>(hResult));
@@ -37,6 +41,11 @@ namespace
 		Message += ResultText;
 		Message += L" elapsedMs=";
 		Message += std::to_wstring(iElapsedMs);
+		if (0u != iPassCount)
+		{
+			Message += L" passes=" + std::to_wstring(iPassCount);
+			Message += L" inputLayoutsCreated=" + std::to_wstring(iCreatedInputLayouts);
+		}
 		Message += L"\n";
 		OutputDebugStringW(Message.c_str());
 	}
@@ -164,6 +173,8 @@ CShader::~CShader()
 
 HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D11_INPUT_ELEMENT_DESC* pElements, uint32_t iNumElements)
 {
+	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+	CProfilerScope loadScope(pProfiler, "Shader.Load");
 	const uint64_t StartTime = GetTickCount64();
 	std::wstring ModulePath;
 	std::wstring CompiledPath;
@@ -190,17 +201,23 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		return Fail(L"resolve", Result);
 
 	std::vector<uint8_t> Bytecode;
-	Result = ReadCompiledEffect(CompiledPath, Bytecode, ByteCount);
+	{
+		CProfilerScope scope(pProfiler, "Shader.ReadBytecode");
+		Result = ReadCompiledEffect(CompiledPath, Bytecode, ByteCount);
+	}
 	if (FAILED(Result))
 		return Fail(L"read", Result);
 
 	ComPtr<ID3DX11Effect> Effect;
-	Result = D3DX11CreateEffectFromMemory(
-		Bytecode.data(),
-		Bytecode.size(),
-		0u,
-		m_pDevice.Get(),
-		Effect.GetAddressOf());
+	{
+		CProfilerScope scope(pProfiler, "Shader.CreateEffect");
+		Result = D3DX11CreateEffectFromMemory(
+			Bytecode.data(),
+			Bytecode.size(),
+			0u,
+			m_pDevice.Get(),
+			Effect.GetAddressOf());
+	}
 	if (FAILED(Result) || nullptr == Effect || !Effect->IsValid())
 		return Fail(L"effect", FAILED(Result) ? Result : E_FAIL);
 
@@ -218,10 +235,21 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 	if (FAILED(Result) || 0u == TechniqueDesc.Passes || TechniqueDesc.Passes > MaxCompiledEffectPasses)
 		return Fail(L"technique-desc", FAILED(Result) ? Result : E_FAIL);
 
+	// Input elements are fixed for this prototype. Identical byte signatures
+	// therefore describe the same immutable D3D input layout across its passes.
+	struct INPUT_SIGNATURE_LAYOUT final
+	{
+		const void* pBytes = nullptr;
+		size_t iByteCount = 0u;
+		size_t iLayoutIndex = 0u;
+	};
+	std::vector<INPUT_SIGNATURE_LAYOUT> UniqueInputSignatures;
 	std::vector<ComPtr<ID3D11InputLayout>> InputLayouts;
 	std::shared_ptr<EFFECT_BINDINGS> Bindings;
 	try
 	{
+		CProfilerScope scope(pProfiler, "Shader.BuildBindings");
+		UniqueInputSignatures.reserve(TechniqueDesc.Passes);
 		InputLayouts.reserve(TechniqueDesc.Passes);
 		Bindings = std::make_shared<EFFECT_BINDINGS>();
 		Bindings->Passes.reserve(TechniqueDesc.Passes);
@@ -271,31 +299,49 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		return Fail(L"binding-cache-reserve", E_OUTOFMEMORY);
 	}
 
-	for (uint32_t i = 0u; i < TechniqueDesc.Passes; ++i)
 	{
-		ID3DX11EffectPass* pPass = pTechnique->GetPassByIndex(i);
-		if (nullptr == pPass || !pPass->IsValid())
-			return Fail(L"pass", E_FAIL);
+		CProfilerScope scope(pProfiler, "Shader.CreateInputLayouts");
+		for (uint32_t i = 0u; i < TechniqueDesc.Passes; ++i)
+		{
+			ID3DX11EffectPass* pPass = pTechnique->GetPassByIndex(i);
+			if (nullptr == pPass || !pPass->IsValid())
+				return Fail(L"pass", E_FAIL);
 
-		D3DX11_PASS_DESC PassDesc{};
-		Result = pPass->GetDesc(&PassDesc);
-		if (FAILED(Result))
-			return Fail(L"pass-desc", Result);
-		if (nullptr == PassDesc.pIAInputSignature || 0u == PassDesc.IAInputSignatureSize)
-			return Fail(L"pass-signature", E_FAIL);
+			D3DX11_PASS_DESC PassDesc{};
+			Result = pPass->GetDesc(&PassDesc);
+			if (FAILED(Result))
+				return Fail(L"pass-desc", Result);
+			if (nullptr == PassDesc.pIAInputSignature || 0u == PassDesc.IAInputSignatureSize)
+				return Fail(L"pass-signature", E_FAIL);
 
-		ComPtr<ID3D11InputLayout> InputLayout;
-		Result = m_pDevice->CreateInputLayout(
-			pElements,
-			iNumElements,
-			PassDesc.pIAInputSignature,
-			PassDesc.IAInputSignatureSize,
-			InputLayout.GetAddressOf());
-		if (FAILED(Result) || nullptr == InputLayout)
-			return Fail(L"input-layout", FAILED(Result) ? Result : E_FAIL);
+			const auto cached = std::find_if(UniqueInputSignatures.begin(), UniqueInputSignatures.end(),
+				[&PassDesc](const INPUT_SIGNATURE_LAYOUT& signature)
+				{
+					return signature.iByteCount == PassDesc.IAInputSignatureSize &&
+						0 == std::memcmp(signature.pBytes, PassDesc.pIAInputSignature, signature.iByteCount);
+				});
+			if (cached != UniqueInputSignatures.end())
+			{
+				InputLayouts.push_back(InputLayouts[cached->iLayoutIndex]);
+				Bindings->Passes.push_back(pPass);
+				continue;
+			}
 
-		InputLayouts.push_back(std::move(InputLayout));
-		Bindings->Passes.push_back(pPass);
+			ComPtr<ID3D11InputLayout> InputLayout;
+			Result = m_pDevice->CreateInputLayout(
+				pElements,
+				iNumElements,
+				PassDesc.pIAInputSignature,
+				PassDesc.IAInputSignatureSize,
+				InputLayout.GetAddressOf());
+			if (FAILED(Result) || nullptr == InputLayout)
+				return Fail(L"input-layout", FAILED(Result) ? Result : E_FAIL);
+
+			UniqueInputSignatures.push_back({ PassDesc.pIAInputSignature,
+				PassDesc.IAInputSignatureSize, InputLayouts.size() });
+			InputLayouts.push_back(std::move(InputLayout));
+			Bindings->Passes.push_back(pPass);
+		}
 	}
 
 	m_pEffect = std::move(Effect);
@@ -310,7 +356,9 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		CompiledPath,
 		ByteCount,
 		S_OK,
-		GetTickCount64() - StartTime);
+		GetTickCount64() - StartTime,
+		TechniqueDesc.Passes,
+		static_cast<uint32_t>(UniqueInputSignatures.size()));
 	return S_OK;
 }
 

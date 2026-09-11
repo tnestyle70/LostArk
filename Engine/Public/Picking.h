@@ -2,9 +2,7 @@
 
 #include "Engine_Defines.h"
 
-/* 동적인 텍스쳐를 보관한다. */
-/* 렌더타겟을 복사해온다. */
-/* 픽셀에 들어가 있는 정보를 꺼내온다. */
+// On-demand world-position readback from the currently rendered target.
 
 NS_BEGIN(Engine)
 
@@ -17,8 +15,11 @@ public:
 
 public:
 	HRESULT Initialize(HWND hWnd);
-	void Update();
 	bool_t Picking(float4_t& vOut);
+
+private:
+	bool_t Read_Pixel(ID3D11Texture2D* pSource, uint32_t x, uint32_t y,
+		float4_t& vOut, class CProfiler* pProfiler);
 
 private:
 	ComPtr<ID3D11Device>				m_pDevice = { nullptr };
@@ -26,9 +27,8 @@ private:
 
 	ComPtr<ID3D11Texture2D>				m_pTexture2D = { nullptr };
 	HWND								m_hWnd = {};
-	float2_t							m_vViewportSize = {};
 
-	shared_ptr<float4_t[]>				m_pWorldPositions = { };
+	DWORD m_iOwnerThreadId = 0u;
 
 public:
 	static unique_ptr<CPicking> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, HWND hWnd);

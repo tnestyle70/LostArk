@@ -38150,3 +38150,15 @@ bool CEffect_Tool::Render_WorldObjectResourceGrid(bool draft)
 }
 }
 ```
+
+## G06. 사용자 관찰 이후 입자 공간 재점검
+
+불뿜기의 작은 불과 뒤쪽 대형 사각형, 내려치기의 미표시를 사용자 관찰로 접수했다. 기존 source material 연결 및 finite/count 검증과 실제 Render 제출 성공을 구분하여 조사한다.
+
+`Tools/EffectPipeline/build_kouku_gate1_full_restore.py::project`는 원본 Required/CDO/archetype을 합친 뒤 `bUseLocalSpace`의 false 기본값을 명시한다. legacy importer의 미확인 true fallback을 두 문서에 복사하지 않는다. source notify의 본 연결은 발생 위치를 계속 공급하되, world-space로 발생한 입자는 출생 transform을 유지한다. 명시 true와 기존 원본 수치/재질/리소스 ID/타이밍은 보존한다. 두 기존 authored JSON만 같은 생성기로 갱신하며 C++ 신규 파일과 프로젝트 등록은 없다.
+
+기존 임시 product-object CPU probe에 전체 60Hz 구간의 element별 크기/위치/색상과 실제 DirectXMath billboard 분해 결과를 확인한다. GPU shader 입력은 현재 compiled CSO의 변수와 pass를 숫자로 확인하며 Client/UI를 실행하지 않는다. JSON 구조/리소스 closure, 최소 컴파일과 diff check 후 실제 화면 확인은 사용자가 수행한다. 검증 결과와 추가로 확정되는 원인은 RESULT에 기록한다.
+
+### G06 본 단위 보정
+
+실제 설치된 MN_RPCT_05.wmodel의 세 공격 clip에서 원본 골격 combined basis는 약100이며, CModel의 .017 preScale 뒤에는1.7이다. 기존 Build_SourceAnchorWorlds가 다시100을 곱하면170이 되어 socket local offset과 particle 크기가100배가 된다. 이 중복 곱만 제거하고 애니메이션의 실제 scale과 bone translation은 유지한다. Product sampler와 Effect Tool은 같은 helper를 사용하므로 함께 교정된다. source attachment의 로컬 위치는 이미 미터이며 raw 골격 행렬의 단위는 캐릭터마다 실측해야 한다. 기존 synthetic1.7 probe와 실제 모델에서 추출한 행렬의 전후 결과를 따로 기록한다.

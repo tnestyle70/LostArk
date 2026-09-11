@@ -179,6 +179,7 @@ public:
 	}
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
+	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
 	/* Replication hands over the replicated owner presentation while the Server
 	   reports GRABBED. The character keeps only a weak reference and the admitted
 	   grip; every Update re-resolves the socket so a vanished owner falls back to
@@ -371,6 +372,7 @@ private:
 	/* Negative when no delayed idle commit is pending. */
 	f32_t m_fPendingIdleSeconds = { -1.f };
 	wstring_t m_strNavigationPrototypeTag;
+	bool_t m_isNetworkPresentationHidden = false;
 
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
@@ -504,7 +506,7 @@ private:
 	/* IDLE and RUN can belong to the current stance instead of the class. Every
 	other state resolves straight off the spec. */
 	const char_t* Resolve_LocomotionClip(CHARACTER_ANIM eAnim) const;
-	bool_t Load_ClipChains();
+	bool_t Load_ClipChains(bool_t reloadSource = false);
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;

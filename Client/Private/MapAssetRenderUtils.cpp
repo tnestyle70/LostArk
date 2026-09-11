@@ -27,7 +27,8 @@ namespace
         {
             const bool mainDirectional = scene && !mainDirectionalConsumed && light.eType == LIGHT::DIRECTIONAL;
             if (mainDirectional) mainDirectionalConsumed = true;
-            if (bakedReceiver && light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER) return S_OK;
+            if (bakedReceiver && (light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER ||
+                light.eReceiver == LIGHT_RECEIVER::UNBAKED)) return S_OK;
             if (light.vDiffuse.x == 0.f && light.vDiffuse.y == 0.f && light.vDiffuse.z == 0.f) return S_OK;
             if (worldCullSphere && light.eType != LIGHT::DIRECTIONAL)
             {

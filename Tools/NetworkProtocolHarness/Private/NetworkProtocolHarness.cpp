@@ -2282,10 +2282,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 78u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 79u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 78");
+			"Mario direction packet retains its appended identity in protocol 79");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2523,7 +2523,15 @@ namespace
 				decoded.Players[0].CardMaze.marchStartTick == 100u && decoded.Players[0].CardMaze.marchCycleMs == 51722u &&
 				decoded.Players[0].CardMaze.transferStartTick == 210u,
 				"Maze personal exit and authoritative march/transfer clocks round trip");
-			state.flags = 16u;
+			state.flags = CARD_MAZE_ENTRY_HIDDEN;
+			CPacketWriter hiddenWire;
+			testRunner.Require(Write_Message(hiddenWire, extended), "Card maze entry hidden flag writes");
+			CPacketReader hiddenReader{ hiddenWire.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT hiddenDecoded{};
+			testRunner.Require(Read_Message(hiddenReader, hiddenDecoded) && hiddenDecoded.Players.size() == 1u &&
+				hiddenDecoded.Players[0].CardMaze.flags == CARD_MAZE_ENTRY_HIDDEN,
+				"Card maze entry visibility survives snapshot serialization");
+			state.flags = 32u;
 			CPacketWriter invalidFlags;
 			testRunner.Require(!Write_Message(invalidFlags, extended) && invalidFlags.Get_Buffer().empty(),
 				"Unknown maze flag refuses snapshot transactionally");
@@ -2672,7 +2680,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 78u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 79u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -2740,7 +2748,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 78u, "World Object owner lifecycle and fear use protocol 78");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 79u, "World Object owner lifecycle and fear use protocol 79");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3093,7 +3101,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 78u,
+			NETWORK_PROTOCOL_VERSION == 79u,
 			"Protocol 78 preserves main trigger identities with WORLD occurrence placement");
 	}
 
@@ -6422,7 +6430,7 @@ namespace
 
 		testRunner.Require(
 			78u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 78");
+			"Session Diagnostics Use Current Protocol Version 79");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");

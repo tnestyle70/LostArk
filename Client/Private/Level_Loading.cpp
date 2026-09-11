@@ -33,7 +33,6 @@
 
 namespace
 {
-	std::atomic<uint64_t> g_iNextEffectLoadJobEpoch = 1u;
 
 	/* Fraction of the track the heartbeat segment covers while no lane has published a real
 	fraction yet. */
@@ -135,7 +134,7 @@ HRESULT CLevel_Loading::Initialize(
 	if (bUsesEffectLoadJob)
 	{
 		m_iEffectLoadJobEpoch =
-			g_iNextEffectLoadJobEpoch.fetch_add(1u, std::memory_order_relaxed);
+			CEffectPresentationService::Allocate_ProductPreparationEpoch();
 		if (0u == m_iEffectLoadJobEpoch)
 			return E_FAIL;
 		iEffectCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
@@ -575,6 +574,11 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 	if (!bCharacterSelect && !bValtanArena && !bKoukuArena)
 	{
 		return true;
+	}
+	if (!CEffectPresentationService::Drain_RuntimePreparationForLoading())
+	{
+		m_strEffectPreparationStatus = "Waiting for previous Effect worker cleanup.";
+		return false;
 	}
 	const std::string TargetLabel =
 		bCharacterSelect ? "CHARACTER SELECT" :

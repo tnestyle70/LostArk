@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -14,6 +15,41 @@
 
 namespace
 {
+	class CNavigationQueryTimer final
+	{
+	public:
+		CNavigationQueryTimer(
+			LostArk::Server::SERVER_NAVIGATION_QUERY_METRICS& metrics,
+			const std::vector<LostArk::Server::SERVER_NAV_POINT>* path = nullptr)
+			: m_Metrics(metrics), m_pPath(path), m_Begin(std::chrono::steady_clock::now()) {}
+		~CNavigationQueryTimer()
+		{
+			const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+				std::chrono::steady_clock::now() - m_Begin).count();
+			const auto nanoseconds = static_cast<std::uint64_t>((std::max)(elapsed, 0LL));
+			++m_Metrics.iCalls;
+			m_Metrics.iTotalNanoseconds += nanoseconds;
+			m_Metrics.iMaximumNanoseconds = (std::max)(m_Metrics.iMaximumNanoseconds, nanoseconds);
+			if (nullptr != m_pPath)
+				m_Metrics.iReturnedPathPoints += m_pPath->size();
+		}
+	private:
+		LostArk::Server::SERVER_NAVIGATION_QUERY_METRICS& m_Metrics;
+		const std::vector<LostArk::Server::SERVER_NAV_POINT>* m_pPath;
+		std::chrono::steady_clock::time_point m_Begin;
+	};
+
+	void Accumulate_NavigationMetrics(
+		LostArk::Server::SERVER_NAVIGATION_QUERY_METRICS& destination,
+		const LostArk::Server::SERVER_NAVIGATION_QUERY_METRICS& source)
+	{
+		destination.iCalls += source.iCalls;
+		destination.iTotalNanoseconds += source.iTotalNanoseconds;
+		destination.iMaximumNanoseconds = (std::max)(destination.iMaximumNanoseconds, source.iMaximumNanoseconds);
+		destination.iExpandedNodes += source.iExpandedNodes;
+		destination.iReturnedPathPoints += source.iReturnedPathPoints;
+	}
+
 	std::filesystem::path Resolve_DataRoot()
 	{
 		wchar_t configured[32768]{};
@@ -40,8 +76,26 @@ namespace
 	}
 }
 
+LostArk::Server::SERVER_NAVIGATION_PERFORMANCE_METRICS
+LostArk::Server::CServerNavigation::Get_PerformanceMetrics() const
+{
+	SERVER_NAVIGATION_PERFORMANCE_METRICS result = m_PerformanceMetrics;
+	for (const CServerNavigation& region : m_Regions)
+	{
+		const auto child = region.Get_PerformanceMetrics();
+		Accumulate_NavigationMetrics(result.FindPath, child.FindPath);
+		Accumulate_NavigationMetrics(result.ReachablePath, child.ReachablePath);
+		Accumulate_NavigationMetrics(result.ProjectPoint, child.ProjectPoint);
+		Accumulate_NavigationMetrics(result.SmoothPath, child.SmoothPath);
+		Accumulate_NavigationMetrics(result.TraversalStep, child.TraversalStep);
+		Accumulate_NavigationMetrics(result.LineOfSight, child.LineOfSight);
+	}
+	return result;
+}
+
 bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 {
+	m_PerformanceMetrics = {};
 	m_iWidth = 0;
 	m_iHeight = 0;
 	m_fCellSize = 0.f;
@@ -608,6 +662,7 @@ bool LostArk::Server::CServerNavigation::Project_Point(
 {
 	if (const CServerNavigation* region = Select_Region(x, z))
 		return region->Project_Point(x, z, outPoint);
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.ProjectPoint);
 	if (!Is_Loaded() || x < m_fOriginX || z < m_fOriginZ ||
 		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||
 		z >= m_fOriginZ + static_cast<float>(m_iHeight) * m_fCellSize)
@@ -628,6 +683,7 @@ bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
 {
 	if (const CServerNavigation* region = Select_Region(x, z))
 		return region->Project_PointOnSameLevel(x, z, outPoint);
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.ProjectPoint);
 	/* A collapsed cell keeps the baked height of the floor that used to be
 	there, so the hole itself carries the deck to come back to. Measured against
 	the authored Valtan floor regions, one metre of tolerance inside twenty
@@ -726,6 +782,7 @@ bool LostArk::Server::CServerNavigation::Resolve_TraversalStep(
 {
 	if (const CServerNavigation* region = Select_Region(fromX, fromZ))
 		return region->Resolve_TraversalStep(fromX, fromZ, toX, toZ, outPoint);
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.TraversalStep);
 	SERVER_NAV_POINT fromGround{};
 	SERVER_NAV_POINT toGround{};
 	if (!Sample_Position(fromX, fromZ, fromGround) ||
@@ -747,6 +804,7 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 {
 	if (const CServerNavigation* region = Select_Region(startX, startZ))
 		return region->Has_LineOfSight(startX, startZ, endX, endZ);
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.LineOfSight);
 	constexpr double LOS_HEIGHT_TOLERANCE = 1.000001;
 	constexpr double CORNER_TOLERANCE = 0.000000000001;
 	if (!Is_PointWalkableExact(startX, startZ) ||
@@ -880,6 +938,7 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 {
 	if (const CServerNavigation* region = Select_Region(startX, startZ))
 		return region->Find_Path(startX, startZ, goalX, goalZ, outPath);
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.FindPath, &outPath);
 	outPath.clear();
 	std::uint32_t start = 0;
 	std::uint32_t goal = 0;
@@ -933,6 +992,7 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 		if (closed[current])
 			continue;
 		closed[current] = 1u;
+		++m_PerformanceMetrics.FindPath.iExpandedNodes;
 		if (current == goal)
 		{
 			found = true;
@@ -1006,6 +1066,7 @@ void LostArk::Server::CServerNavigation::Smooth_Path(
 		region->Smooth_Path(startX, startZ, goalX, goalZ, path);
 		return;
 	}
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.SmoothPath, &path);
 	if (path.empty())
 		return;
 	SERVER_NAV_POINT exactGoal{};
@@ -1055,6 +1116,7 @@ bool LostArk::Server::CServerNavigation::Find_PathToReachablePointWithinRadius(
 			startX, startZ, centerX, centerZ, radius,
 			minimumDestinationDistance, outPath);
 	}
+	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.ReachablePath, &outPath);
 	outPath.clear();
 	if (!Is_Loaded() || !std::isfinite(startX) || !std::isfinite(startZ) ||
 		!std::isfinite(centerX) || !std::isfinite(centerZ) ||
@@ -1098,6 +1160,7 @@ bool LostArk::Server::CServerNavigation::Find_PathToReachablePointWithinRadius(
 		cursor < frontier.size() && noParent == goal; ++cursor)
 	{
 		const std::uint32_t current = frontier[cursor];
+		++m_PerformanceMetrics.ReachablePath.iExpandedNodes;
 		const int currentX = static_cast<int>(current % m_iWidth);
 		const int currentZ = static_cast<int>(current / m_iWidth);
 		for (const auto& direction : DIRECTIONS)

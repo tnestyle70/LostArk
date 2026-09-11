@@ -303,7 +303,18 @@ HRESULT CRenderer::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGame
 		eRenderGroupID >= RENDERGROUP::END)
 		return E_FAIL;
 
-	m_RenderObjects[ETOUI(eRenderGroupID)].push_back(pRenderObject);	
+	m_RenderObjects[ETOUI(eRenderGroupID)].push_back(pRenderObject);
+    if (CProfiler* profiler = CGameInstance::Get().Get_Profiler())
+    {
+        switch (eRenderGroupID)
+        {
+        case RENDERGROUP::PRIORITY: profiler->Add_Counter(EProfilerCounter::RenderSubmissionsPriority); break;
+        case RENDERGROUP::SHADOW: profiler->Add_Counter(EProfilerCounter::RenderSubmissionsShadow); break;
+        case RENDERGROUP::NONBLEND: profiler->Add_Counter(EProfilerCounter::RenderSubmissionsNonBlend); break;
+        case RENDERGROUP::BLEND: profiler->Add_Counter(EProfilerCounter::RenderSubmissionsBlend); break;
+        default: break; // Other queues are not included in these four counters.
+        }
+    }
 
 	return S_OK;
 }
@@ -509,6 +520,7 @@ HRESULT CRenderer::Draw()
 	};
 	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
 	CProfilerScope drawScope(pProfiler, "Render.Draw");
+	CProfilerGpuScope gpuDrawScope(pProfiler, "Render.Draw");
 	HRESULT hResult = S_OK;
 	{
 		CProfilerScope scope(pProfiler, "Render.SubmitFrameProviders");
@@ -528,12 +540,14 @@ HRESULT CRenderer::Draw()
 		return FailFrame("Ready_ScenePostTargets", hResult);
 	{
 		CProfilerScope scope(pProfiler, "Render.Shadow");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Shadow");
 		hResult = Render_Shadow();
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
 	{
 		CProfilerScope scope(pProfiler, "Render.NonBlend");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.NonBlend");
 		hResult = Render_NonBlend();
 	}
 	if (FAILED(hResult))
@@ -541,12 +555,14 @@ HRESULT CRenderer::Draw()
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
 		CProfilerScope scope(pProfiler, "Render.SSAO");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.SSAO");
 		hResult = Render_SSAO();
 		if (FAILED(hResult))
 			return FailFrame("Render_SSAO", hResult);
 	}
 	{
 		CProfilerScope scope(pProfiler, "Render.Lights");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Lights");
 		hResult = Render_Lights();
 	}
 	if (FAILED(hResult))
@@ -566,6 +582,7 @@ HRESULT CRenderer::Draw()
 			SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION,
 			m_pContext.Get());
 		CProfilerScope scope(pProfiler, "Render.SceneHDR");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.SceneHDR");
 		hSceneResult = Render_Priority();
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Combined();
@@ -573,7 +590,6 @@ HRESULT CRenderer::Draw()
 			hSceneResult = Render_NonLight();
 		if (SUCCEEDED(hSceneResult) && m_bSceneColorSnapshotRequested)
 		{
-			CProfilerScope snapshotScope(pProfiler, "Render.SceneColorSnapshot");
 			hSceneResult = Capture_SceneColorSnapshot();
 		}
 		if (SUCCEEDED(hSceneResult))
@@ -589,6 +605,7 @@ HRESULT CRenderer::Draw()
 
 	{
 		CProfilerScope scope(pProfiler, "Render.ScreenPosts");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.ScreenPosts");
 		hResult = Render_ScreenPosts();
 	}
 	if (FAILED(hResult))
@@ -597,6 +614,7 @@ HRESULT CRenderer::Draw()
 	if (m_RenderQualitySettings.bBloomEnabled)
 	{
 		CProfilerScope scope(pProfiler, "Render.Bloom");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Bloom");
 		hResult = Render_Bloom();
 		if (FAILED(hResult))
 			return FailFrame("Render_Bloom", hResult);
@@ -605,6 +623,7 @@ HRESULT CRenderer::Draw()
 	/* The one and only place tone mapping and gamma are applied. */
 	{
 		CProfilerScope scope(pProfiler, "Render.Final");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Final");
 		hResult = Render_Final();
 	}
 	if (FAILED(hResult))
@@ -612,6 +631,7 @@ HRESULT CRenderer::Draw()
 
 	{
 		CProfilerScope scope(pProfiler, "Render.DisplayOverlays");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.DisplayOverlays");
 		hResult = Render_DisplayOverlays();
 	}
 	if (FAILED(hResult))
@@ -620,6 +640,7 @@ HRESULT CRenderer::Draw()
 	/* UI is authored in display space, so it stays out of the HDR target. */
 	{
 		CProfilerScope scope(pProfiler, "Render.UI");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.UI");
 		hResult = Render_UI();
 	}
 	if (FAILED(hResult))
@@ -628,6 +649,7 @@ HRESULT CRenderer::Draw()
 #ifdef _DEBUG
 	{
 		CProfilerScope scope(pProfiler, "Render.Debug");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Debug");
 		hResult = Render_Debug();
 	}
 	if (FAILED(hResult))
@@ -652,6 +674,9 @@ HRESULT CRenderer::Add_DebugComponent(shared_ptr<CComponent> pDebugComponent)
 
 HRESULT CRenderer::Render_Priority()
 {
+    CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope cpuScope(profiler, "Render.Priority");
+    CProfilerGpuScope gpuScope(profiler, "Render.Priority");
 	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)])
 	{
 		if (nullptr != pRenderObject)
@@ -918,6 +943,9 @@ HRESULT CRenderer::Render_Lights()
 
 HRESULT CRenderer::Render_Combined()
 {
+    CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope cpuScope(profiler, "Render.Combined");
+    CProfilerGpuScope gpuScope(profiler, "Render.Combined");
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Diffuse"), m_pShader, "g_DiffuseTexture")))
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Shade"), m_pShader, "g_ShadeTexture")))
@@ -960,6 +988,9 @@ HRESULT CRenderer::Render_Combined()
 
 HRESULT CRenderer::Render_NonLight()
 {
+    CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope cpuScope(profiler, "Render.NonLight");
+    CProfilerGpuScope gpuScope(profiler, "Render.NonLight");
 	HRESULT hFirstFailure = S_OK;
 	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::NONLIGHT)])
 	{
@@ -993,6 +1024,8 @@ HRESULT CRenderer::Refresh_SceneColorSnapshot()
 
 HRESULT CRenderer::Capture_SceneColorSnapshot()
 {
+    CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope snapshotScope(profiler, "Render.SceneColorSnapshot");
 	const auto sourceSRV = CGameInstance::Get().Get_RT_SRV(TEXT("Target_SceneHDR"));
 	const auto snapshotSRV = CGameInstance::Get().Get_RT_SRV(TEXT("Target_EffectSceneColor"));
 	if (!sourceSRV || !snapshotSRV)
@@ -1031,8 +1064,29 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
 	m_pContext->OMSetRenderTargets(0, nullptr, nullptr);
 	ID3D11ShaderResourceView* emptySRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
 	m_pContext->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, emptySRVs);
-	const HRESULT result = CGameInstance::Get().Copy_RT_Resource(
-		TEXT("Target_SceneHDR"), snapshotTexture);
+    HRESULT result = E_FAIL;
+    {
+        CProfilerGpuScope copyScope(profiler, "Render.SceneColorCopy");
+        result = CGameInstance::Get().Copy_RT_Resource(
+            TEXT("Target_SceneHDR"), snapshotTexture);
+    }
+    if (SUCCEEDED(result) && profiler)
+    {
+        profiler->Add_Counter(EProfilerCounter::SceneColorCopies);
+        // Both named targets are created as RGBA16F. Count the copied logical
+        // payload, not read+write bus traffic or driver allocation overhead.
+        uint64_t pixels = 0;
+        uint32_t width = sourceDesc.Width;
+        uint32_t height = sourceDesc.Height;
+        for (uint32_t mip = 0; mip < sourceDesc.MipLevels; ++mip)
+        {
+            pixels += static_cast<uint64_t>(width) * height;
+            width = (std::max)(1u, width / 2);
+            height = (std::max)(1u, height / 2);
+        }
+        profiler->Add_Counter(EProfilerCounter::SceneColorCopyBytes,
+            pixels * 8u * sourceDesc.ArraySize * sourceDesc.SampleDesc.Count);
+    }
 	m_pContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
 		outputs, depth.Get());
 	for (auto* output : outputs)
@@ -1042,6 +1096,9 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
 
 HRESULT CRenderer::Render_Blend()
 {
+    CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope cpuScope(profiler, "Render.Blend");
+    CProfilerGpuScope gpuScope(profiler, "Render.Blend");
 	HRESULT hFirstFailure = S_OK;
 
 	/* Translucent surfaces have to be drawn far to near or they overwrite each

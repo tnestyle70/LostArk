@@ -321,7 +321,9 @@
     <ClCompile Include="..\Private\Effect_Distribution.cpp" />
     <ClCompile Include="..\Private\Effect_Playback.cpp" />
     <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
-    <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_MaterialProgramRegistry.cpp" />
     <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
@@ -612,6 +614,11 @@
     <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.fear.face.effectv2group.json" />
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.fear.face_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.intro.lights.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.mouse_click.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.intro.fade.black.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Groups\kouku.gate2.intro.fade.effectv2group.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.restore.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.heart.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.heart.effectv2group.json" />
@@ -817,6 +824,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.full.restore.effectsequence.json" />
+    <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.clip1.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.clip2.full.restore.effectsequence.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.warlord.skill.17250.clip1.full.restore.effectsequence.json" />
@@ -1199,6 +1207,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip1.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip2.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip1.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip2.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip3.full.restore.effect.json" />
@@ -1560,5 +1569,18 @@
       <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2304.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWorldNative.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.4219776.stage1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.4219776.stage2.full.restore.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.festival.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.fireworks.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.grid.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.wave.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.warning.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.light.full.restore.effect.json" />
   </ItemGroup>
 </Project>

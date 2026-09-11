@@ -14,6 +14,7 @@
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "KakulArenaHiddenPlacements.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuMadnessGaugeView.h"
@@ -44,6 +45,7 @@
 #include <iomanip>
 #include <limits>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace
 {
@@ -333,8 +335,8 @@ namespace
 		std::unordered_set<std::string> sceneIds;
 		for (const Client::DATA_JSON_VALUE& entry : keyframes->Get_Array())
 		{
-			if (!Has_ExactProperties(entry,
-				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
+			if (!Has_ShotProperties(entry,
+				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }, { "up" }))
 			{
 				outStatus = "KoukuSaydon camera keyframe shape is invalid: " + shotId;
 				return false;
@@ -382,6 +384,15 @@ namespace
 				return false;
 			}
 			keyframe.strSceneId = sceneId->Get_String();
+			if (const auto* up = entry.Find("up"))
+			{
+				if (!Read_Float3(up, 1.f, keyframe.vUp))
+				{ outStatus = "Camera up must be a finite direction: " + shotId; return false; }
+				const auto forward = XMVector3Normalize(XMLoadFloat3(&keyframe.vLookAt) - XMLoadFloat3(&keyframe.vEye));
+				if (XMVectorGetX(XMVector3LengthSq(XMVector3Cross(XMLoadFloat3(&keyframe.vUp), forward))) < 0.000001f)
+				{ outStatus = "Camera up must not be parallel to its view: " + shotId; return false; }
+				keyframe.hasUp = true;
+			}
 			keyframe.iTimeMs = timeMs;
 			keyframe.fFovYDegrees = static_cast<f32_t>(fov->Get_Number());
 			previousTimeMs = timeMs;
@@ -571,6 +582,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	const auto& document = sourceDocument ? *sourceDocument : m_SequencePlayer.Get_Document();
 	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> staged;
 	std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> placementBindings;
+	bool previewsResourceBook = false;
 	for (const auto& cue : cues)
 	{
 		const auto* instance = document.Find_Instance(cue.instanceId);
@@ -583,12 +595,16 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 		}
 		if (!Can_StartCompositionWorld(cue.instanceId, status, &document)) return false;
 		for (const auto& binding : instance->bindings)
+		{
+			if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+				binding.targetId == "world.object.kouku.popup.book") previewsResourceBook = true;
 			if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
 				!placementBindings.emplace(binding.targetKind, binding.targetId).second)
 			{
 				status = "WORLD preview occurrences share a mutable map/deploy target: " + cue.occurrenceId;
 				return false;
 			}
+		}
 		auto player = make_unique<CWorldSequencePlayer>();
 		if (!player->Set_Document(document, targets, status) ||
 			!player->Prepare_InstanceResources(cue.instanceId, targets))
@@ -603,7 +619,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	if (!m_CompositionWorldPreviewDeployStates.empty() || !m_CompositionWorldPreviewArenaVisibility.empty())
 	{ status = "Previous WORLD preview state could not be restored."; return false; }
 
-	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> previousDeployStates;
+	std::vector<COMPOSITION_WORLD_PREVIEW_DEPLOY_STATE> previousDeployStates;
 	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> visibleDeployStates;
 	bool_t previewsCutsceneSet = false;
 	for (const auto& [kind, target] : placementBindings)
@@ -619,12 +635,27 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 			const auto object = m_DeployRuntime.Find(targetId);
 			if (!object || object->Is_AnimationAuthoringPreviewActive())
 			{ status = "WORLD preview Deploy target is missing or already owned."; return false; }
-			previousDeployStates.emplace_back(targetId, object->Get_State());
+			previousDeployStates.push_back({targetId, object->Get_State(), DEPLOY_PROP_STATE::INTACT});
 			visibleDeployStates.emplace_back(targetId, DEPLOY_PROP_STATE::INTACT);
 		}
 		else if (kind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
 			KAKULSAYDON_CUTSCENE_SET_FIRST_ID <= targetId && targetId < KAKULSAYDON_CUTSCENE_SET_END_ID)
 			previewsCutsceneSet = true;
+	}
+	if (previewsResourceBook)
+	{
+		if (placementBindings.contains({WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT,
+			std::to_string(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID)}))
+		{ status = "WORLD preview cannot own both the restored and legacy popup book."; return false; }
+		const auto book = m_DeployRuntime.Find(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID);
+		if (book)
+		{
+			if (book->Is_AnimationAuthoringPreviewActive())
+			{ status = "WORLD preview legacy popup book is already owned."; return false; }
+			previousDeployStates.push_back({KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID,
+				book->Get_State(), DEPLOY_PROP_STATE::DESPAWNED});
+			visibleDeployStates.emplace_back(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
+		}
 	}
 	std::vector<std::pair<uint64_t, bool_t>> previousArenaVisibility;
 	if (previewsCutsceneSet)
@@ -648,7 +679,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	m_bCompositionWorldPreviewStandingArenaVisible = false;
 	if (!visibleDeployStates.empty() && !m_DeployRuntime.Set_States(visibleDeployStates))
 	{
-		status = "WORLD preview could not show its bound Deploy targets: " + m_DeployRuntime.Get_Status();
+		status = "WORLD preview could not apply its Deploy states: " + m_DeployRuntime.Get_Status();
 		Debug_StopCompositionWorldPreview();
 		return false;
 	}
@@ -702,9 +733,10 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 	// writes while an animation preview owns the model. Respect later external state.
 	for (auto row = m_CompositionWorldPreviewDeployStates.begin(); row != m_CompositionWorldPreviewDeployStates.end();)
 	{
-		const auto object = m_DeployRuntime.Find(row->first);
-		if (object && object->Get_State() == DEPLOY_PROP_STATE::INTACT &&
-			!m_DeployRuntime.Set_State(row->first, row->second))
+		const auto object = m_DeployRuntime.Find(row->placementId);
+		if (object && object->Get_State() == row->appliedState &&
+			object->Get_State() != row->previousState &&
+			!m_DeployRuntime.Set_State(row->placementId, row->previousState))
 		{
 			OutputDebugStringA(("[KoukuWorldPreview] Deploy restore pending: " + m_DeployRuntime.Get_Status() + "\n").c_str());
 			++row;
@@ -821,102 +853,126 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 
 HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 {
+	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+	CProfilerScope initializeScope(pProfiler, "Level.Kouku.Initialize");
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::KAKULSAYDON_ARENA);
-	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
-		KAKULSAYDON_AREA_ID != pEntry->pMapAreaId ||
-		!m_MapRuntime.Load_Area(
-			ETOUI(LEVEL::KAKULSAYDON_ARENA),
-			pEntry->pMapAreaId,
-			pEntry->MapLoadScope))
 	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena] " +
-			m_MapRuntime.Get_Status() + "\n").c_str());
-		return E_FAIL;
+		CProfilerScope scope(pProfiler, "Level.Kouku.MapPlacementCommit");
+		if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
+			KAKULSAYDON_AREA_ID != pEntry->pMapAreaId ||
+			!m_MapRuntime.Load_Area(
+				ETOUI(LEVEL::KAKULSAYDON_ARENA),
+				pEntry->pMapAreaId,
+				pEntry->MapLoadScope))
+		{
+			OutputDebugStringA((
+				"[Level_KakulSaydonArena] " +
+				m_MapRuntime.Get_Status() + "\n").c_str());
+			return E_FAIL;
+		}
 	}
 	/* Loader admits this Area's deploy prototypes before activation. Clone the
 	   prepared models here; repeating admission would both stall this frame
 	   and reject the duplicate prototype tags. */
-	if (!m_DeployRuntime.Load_Area(
-		ETOUI(LEVEL::KAKULSAYDON_ARENA),
-		pEntry->pMapAreaId))
 	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][DeployProp] " +
-			m_DeployRuntime.Get_Status() + "\n").c_str());
-		m_MapRuntime.Clear();
-		return E_FAIL;
+		CProfilerScope scope(pProfiler, "Level.Kouku.DeployCommit");
+		if (!m_DeployRuntime.Load_Area(
+			ETOUI(LEVEL::KAKULSAYDON_ARENA),
+			pEntry->pMapAreaId))
+		{
+			OutputDebugStringA((
+				"[Level_KakulSaydonArena][DeployProp] " +
+				m_DeployRuntime.Get_Status() + "\n").c_str());
+			m_MapRuntime.Clear();
+			return E_FAIL;
+		}
 	}
 	if (!Reload_MapLights())
 	{
 		m_DeployRuntime.Clear();m_MapRuntime.Clear();return E_FAIL;
 	}
-	/* Levers stay INTACT so the player can find them. Each paper stage bridge
-	   only exists once its lever is pulled, so suppress it here rather than
-	   waiting for the first sequence frame and flashing an unfolded bridge. */
-	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> hiddenBridges;
-	hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size());
-	for (const uint64_t placementId : KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS)
-		hiddenBridges.emplace_back(placementId, DEPLOY_PROP_STATE::DESPAWNED);
-	if (!m_DeployRuntime.Set_States(hiddenBridges))
 	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][PaperBridge] " +
-			m_DeployRuntime.Get_Status() + "\n").c_str());
-		m_DeployRuntime.Clear();
-		m_MapRuntime.Clear();
-		return E_FAIL;
-	}
-
-	/* The finale reveals each of these on its own keyframe. Hiding them now
-	   costs nothing if the sequence never runs, and a placement the runtime
-	   cannot address is reported rather than silently left standing. */
-	for (const uint64_t placementId : KAKULSAYDON_CIRCUS_FINALE_PLACEMENT_IDS)
-	{
-		MAP_RUNTIME_PLACED_ENTRY* const entry = CWorldSequencePlayer::Find_Placement(
-			m_MapRuntime.Get_MutablePlacements(), placementId);
-		if (nullptr == entry ||
-			!CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
+		CProfilerScope scope(pProfiler, "Level.Kouku.InitialVisibility");
+		/* Levers stay INTACT so the player can find them. Each paper stage bridge
+		   only exists once its lever is pulled, so suppress it here rather than
+		   waiting for the first sequence frame and flashing an unfolded bridge. */
+		std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> hiddenBridges;
+		hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size());
+		for (const uint64_t placementId : KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS)
+			hiddenBridges.emplace_back(placementId, DEPLOY_PROP_STATE::DESPAWNED);
+		if (!m_DeployRuntime.Set_States(hiddenBridges))
 		{
 			OutputDebugStringA((
-				"[Level_KakulSaydonArena][CircusFinale] placement not hidden: " +
-				std::to_string(placementId) + "\n").c_str());
+				"[Level_KakulSaydonArena][PaperBridge] " +
+				m_DeployRuntime.Get_Status() + "\n").c_str());
+			m_DeployRuntime.Clear();
+			m_MapRuntime.Clear();
+			return E_FAIL;
 		}
-	}
 
-	/* The pop-up book cutscene raises the tent arena, so it must not already be
-	   standing when the level opens. The generated list is every placement
-	   within 80m of the roulette floor; the circus plaza is 800m away and never
-	   overlaps it. */
-	for (const uint64_t placementId : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
-	{
-		MAP_RUNTIME_PLACED_ENTRY* const entry = CWorldSequencePlayer::Find_Placement(
-			m_MapRuntime.Get_MutablePlacements(), placementId);
-		if (nullptr == entry ||
-			!CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
+		// Resolve the initial visibility batch once. emplace preserves the same
+		// first-match identity as Find_Placement without 483 full vector scans.
+		std::unordered_map<uint64_t, MAP_RUNTIME_PLACED_ENTRY*> placementIndex;
+		auto& placements = m_MapRuntime.Get_MutablePlacements();
+		placementIndex.reserve(placements.size());
+		for (auto& entry : placements)
+			placementIndex.emplace(entry.record.placementId, &entry);
+		const auto FindInitialPlacement = [&placementIndex](const uint64_t placementId)
 		{
-			OutputDebugStringA((
-				"[Level_KakulSaydonArena][Arena] placement not hidden: " +
-				std::to_string(placementId) + "\n").c_str());
+			const auto found = placementIndex.find(placementId);
+			return found != placementIndex.end() ? found->second : nullptr;
+		};
+
+		/* The finale reveals each of these on its own keyframe. Hiding them now
+		   costs nothing if the sequence never runs, and a placement the runtime
+		   cannot address is reported rather than silently left standing. */
+		for (const uint64_t placementId : KAKULSAYDON_CIRCUS_FINALE_PLACEMENT_IDS)
+		{
+			MAP_RUNTIME_PLACED_ENTRY* const entry = FindInitialPlacement(placementId);
+			if (nullptr == entry ||
+				!CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
+			{
+				OutputDebugStringA((
+					"[Level_KakulSaydonArena][CircusFinale] placement not hidden: " +
+					std::to_string(placementId) + "\n").c_str());
+			}
+		}
+
+		/* The pop-up book cutscene raises the tent arena, so it must not already be
+		   standing when the level opens. The generated list is every placement
+		   within 80m of the roulette floor; the circus plaza is 800m away and never
+		   overlaps it. */
+		for (const uint64_t placementId : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
+		{
+			MAP_RUNTIME_PLACED_ENTRY* const entry = FindInitialPlacement(placementId);
+			if (nullptr == entry ||
+				!CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
+			{
+				OutputDebugStringA((
+					"[Level_KakulSaydonArena][Arena] placement not hidden: " +
+					std::to_string(placementId) + "\n").c_str());
+			}
 		}
 	}
-
 	/* A missing or rejected sequence document only costs the scripted props
 	   their animation. The arena itself, its Server contracts and every other
 	   placement stay enterable, so report the loss instead of blocking entry. */
-	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::KAKULSAYDON_ARENA),
-		CWorldSequenceObject::PROTOTYPE_TAG, CWorldSequenceObject::Create(m_pDevice, m_pContext))))
-		return E_FAIL;
-	auto sequenceTargets = Make_WorldSequenceTargets();
-	if (!m_SequencePlayer.Load_Area(pEntry->pMapAreaId, sequenceTargets))
 	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][WorldSequence] " +
-			m_SequencePlayer.Get_Status() + "\n").c_str());
+		CProfilerScope scope(pProfiler, "Level.Kouku.WorldSequence.Load");
+		if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::KAKULSAYDON_ARENA),
+			CWorldSequenceObject::PROTOTYPE_TAG, CWorldSequenceObject::Create(m_pDevice, m_pContext))))
+			return E_FAIL;
+		auto sequenceTargets = Make_WorldSequenceTargets();
+		if (!m_SequencePlayer.Load_PreparedArea(pEntry->pMapAreaId, sequenceTargets))
+		{
+			OutputDebugStringA((
+				"[Level_KakulSaydonArena][WorldSequence] " +
+				m_SequencePlayer.Get_Status() + "\n").c_str());
+		}
 	}
 
 	std::string stageStatus;
@@ -945,23 +1001,29 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	   first Update() on the frame this Level is activated. */
 	/* Most of this stage's life is EFActorMotion rather than matinee: cards
 	   rocking, floor pieces turning. An absent document is not an error. */
-	if (!m_MapRuntime.Load_SelfMotions(std::string(KAKULSAYDON_AREA_ID)))
 	{
-		OutputDebugStringA(
-			"[Level_KakulSaydonArena] Self-motion document was rejected.\n");
+		CProfilerScope scope(pProfiler, "Level.Kouku.SelfMotion.Load");
+		if (!m_MapRuntime.Load_SelfMotions(std::string(KAKULSAYDON_AREA_ID)))
+		{
+			OutputDebugStringA(
+				"[Level_KakulSaydonArena] Self-motion document was rejected.\n");
+		}
 	}
 
-	m_pTriggerMoveFadeView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
-		L"UI/KakulFade/KakulFadeUI.json");
-	m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", false);
-	m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
+	{
+		CProfilerScope scope(pProfiler, "Level.Kouku.UI.Create");
+		m_pTriggerMoveFadeView = std::make_unique<CUILayoutRuntime>(
+			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
+			L"UI/KakulFade/KakulFadeUI.json");
+		m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", false);
+		m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
+			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
-	m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
-		L"UI/DeadScene/DeadSceneUI.json");
-	m_pDeadSceneView->Set_AllSlotsVisible(false);
+		m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
+			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
+			L"UI/DeadScene/DeadSceneUI.json");
+		m_pDeadSceneView->Set_AllSlotsVisible(false);
+	}
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -972,8 +1034,11 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	replicationDesc.strMapAreaId = pEntry->pMapAreaId;
 	replicationDesc.strPlayerLayerTag = TEXT("Layer_Player");
 	replicationDesc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
-	if (!m_Replication.Initialize(replicationDesc))
-		return E_FAIL;
+	{
+		CProfilerScope scope(pProfiler, "Level.Kouku.Replication.Initialize");
+		if (!m_Replication.Initialize(replicationDesc))
+			return E_FAIL;
+	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
@@ -981,12 +1046,15 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 #ifdef _DEBUG
 	m_PlayerController.Set_DebugMarioJumpEnabled(true);
 #endif
-	if (!m_PlayerController.Initialize_TargetingPreview(
-			ETOUI(LEVEL::KAKULSAYDON_ARENA)) ||
-		!m_PlayerController.Initialize_ClickMoveEffect(
-			ETOUI(LEVEL::KAKULSAYDON_ARENA)))
 	{
-		return E_FAIL;
+		CProfilerScope scope(pProfiler, "Level.Kouku.Controller.Prepare");
+		if (!m_PlayerController.Initialize_TargetingPreview(
+				ETOUI(LEVEL::KAKULSAYDON_ARENA)) ||
+			!m_PlayerController.Initialize_ClickMoveEffect(
+				ETOUI(LEVEL::KAKULSAYDON_ARENA)))
+		{
+			return E_FAIL;
+		}
 	}
 
 #ifdef _DEBUG
@@ -1322,10 +1390,16 @@ bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
 		outStatus = "Cutscene targets are not ready";
 		return false;
 	}
-	/* The book carries the unfold animation, so it has to be on the map
-	   before its sequence samples the first frame. */
+	// Older documents borrow Deploy 7. Recovered documents clone the same
+    // book through an explicit material-bound World Object; keep only its owner visible.
+    bool borrowsBook = false;
+    for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
+        if (instance.instanceId.starts_with(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
+            for (const auto& binding : instance.bindings)
+                if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT &&
+                    binding.targetId == std::to_string(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID)) borrowsBook = true;
 	if (!targets.pDeployRuntime->Set_State(
-		KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, DEPLOY_PROP_STATE::INTACT))
+		KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, borrowsBook ? DEPLOY_PROP_STATE::INTACT : DEPLOY_PROP_STATE::DESPAWNED))
 	{
 		outStatus = "Cutscene book could not be revealed: " +
 			targets.pDeployRuntime->Get_Status();
@@ -1683,6 +1757,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 	std::string& outStatus)
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Level.Kouku.StageMarkers.Load");
 	const std::filesystem::path path = Find_StageMarkerDocument();
 	std::error_code fileError;
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
@@ -2089,6 +2164,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_DespawnArenaBosses(std::string& ou
 HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	const wstring_t& strLayerTag)
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Level.Kouku.Camera.Create");
 	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::KOUKU_SAYDON,
 		m_FollowCameraProfile, m_strFollowCameraProfileStatus))
 	{
@@ -2248,6 +2324,7 @@ namespace
 		if (!first) text += "\n" + std::string(depth * 2u, ' ');
 		return text + (object ? "}" : "]");
 	}
+	DATA_JSON_VALUE Camera_TrackJson(const VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	DATA_JSON_VALUE Camera_ShotJson(const CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT& shot,
 		const DATA_JSON_VALUE* existing)
 	{
@@ -2266,7 +2343,8 @@ namespace
 		fields["transitionEasing"] = J::String(shot.eTransitionEasing == VALTAN_CINEMATIC_CAMERA_EASING::LINEAR ? "LINEAR" : "SMOOTHSTEP");
 		if (shot.followsPlayer) fields["follow"] = J::Object({ {"eyeOffset", vec(shot.vFollowEyeOffset)}, {"lookAtOffset", vec(shot.vFollowLookAtOffset)} });
 		else fields.erase("follow");
-		if (!shot.hasCameraTrack) fields.erase("cameraTrack");
+		if (shot.hasCameraTrack) fields["cameraTrack"] = Camera_TrackJson(shot.CameraTrack);
+		else fields.erase("cameraTrack");
 		return J::Object(std::move(fields), existing ? existing->Get_ObjectInsertionOrder() : std::vector<std::string>{});
 	}
 	DATA_JSON_VALUE Camera_TrackJson(const VALTAN_CINEMATIC_CAMERA_CUE& cue)
@@ -2275,8 +2353,12 @@ namespace
 		const auto vec = [](const float3_t& v) { return J::Array({J::Number(v.x), J::Number(v.y), J::Number(v.z)}); };
 		J::ARRAY keys;
 		for (const auto& key : cue.Keyframes)
-			keys.push_back(J::Object({{"sceneId", J::String(key.strSceneId)}, {"timeMs", J::Number(key.iTimeMs)},
-				{"eye", vec(key.vEye)}, {"lookAt", vec(key.vLookAt)}, {"fovYDegrees", J::Number(key.fFovYDegrees)}}));
+		{
+			J::OBJECT fields{{"sceneId", J::String(key.strSceneId)}, {"timeMs", J::Number(key.iTimeMs)},
+				{"eye", vec(key.vEye)}, {"lookAt", vec(key.vLookAt)}, {"fovYDegrees", J::Number(key.fFovYDegrees)}};
+			if (key.hasUp) fields["up"] = vec(key.vUp);
+			keys.push_back(J::Object(std::move(fields)));
+		}
 		return J::Object({{"durationMs", J::Number(cue.iDurationMs)},
 			{"interpolation", J::String(cue.eInterpolation == VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR ? "LINEAR" :
 				cue.eInterpolation == VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM ? "CATMULL_ROM" : "INVALID")},
@@ -2330,6 +2412,8 @@ bool_t Client::CLevel_KakulSaydonArena::Stage_PatternCameraTracks(const std::str
 		KAKUL_CAMERA_SHOT shot = old != original.end() ? *old : KAKUL_CAMERA_SHOT{};
 		shot.strShotId = cue.strCueId; shot.strDisplayName = name->second; shot.bPatternOnly = true;
 		shot.iBlendInMs = cue.iTransitionInMs; shot.iBlendOutMs = cue.iTransitionOutMs;
+		if (trackChanged || old->iBlendInMs != cue.iTransitionInMs)
+			shot.iDefaultHoldMs = cue.iDurationMs > cue.iTransitionInMs ? cue.iDurationMs - cue.iTransitionInMs : 0u;
 		if (old == original.end())
 		{
 			shot.vHalfExtents = {1.f, 1.f, 1.f};
@@ -2417,6 +2501,10 @@ bool_t Client::CLevel_KakulSaydonArena::Create_CameraShot(const std::string_view
 	VALTAN_CINEMATIC_CAMERA_POSE pose;
 	if (!CCameraTool::Capture_ViewPose(pose)) { outStatus = "Current Camera pose is unavailable."; return false; }
 	shot.vEye = pose.vEye; shot.vLookAt = pose.vLookAt; shot.fFovYDegrees = pose.fFovYDegrees;
+	shot.CameraTrack = CameraShot_ToCue(shot);
+	shot.CameraTrack.Keyframes.front().vUp = pose.vUp;
+	shot.CameraTrack.Keyframes.front().hasUp = true;
+	shot.hasCameraTrack = true;
 	DATA_JSON_VALUE root; std::string ignored;
 	(void)CDataJson::Parse(Camera_EmptyDocument(), root, ignored);
 	auto fields = root.Get_Object(); fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(shot, nullptr) });
@@ -2435,11 +2523,11 @@ bool_t Client::CLevel_KakulSaydonArena::Update_CameraShot(const KAKUL_CAMERA_SHO
 	const auto found = std::find_if(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
 		[&](const auto& value) { return value.strShotId == shot.strShotId; });
 	if (found == m_AuthoringCameraShots.end()) { outStatus = "Camera shot was not found."; return false; }
-	// Track rows retain their existing keys. This editor edits the static pose only after an explicit capture.
+	// Validate the exact track being committed, including times and orientation.
 	DATA_JSON_VALUE root; std::string ignored;
 	(void)CDataJson::Parse(Camera_EmptyDocument(), root, ignored);
-	auto fields = root.Get_Object(); auto single = shot; single.hasCameraTrack = false;
-	fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(single, nullptr) });
+	auto fields = root.Get_Object();
+	fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(shot, nullptr) });
 	std::vector<KAKUL_CAMERA_SHOT> validated;
 	if (!Parse_CameraShots(Camera_JsonText(DATA_JSON_VALUE::Object(std::move(fields))), validated, outStatus)) return false;
 	auto adjusted = shot;
@@ -2508,6 +2596,7 @@ bool_t Client::CLevel_KakulSaydonArena::Save_CameraShots(std::string& outStatus)
 bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	std::string& outStatus)
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Level.Kouku.CameraShots.Load");
 	const std::filesystem::path path = Find_CameraShotDocument();
 	std::error_code fileError;
 	if (!std::filesystem::is_regular_file(path, fileError) || fileError)
@@ -2951,7 +3040,8 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	VALTAN_CINEMATIC_CAMERA_POSE applied = target;
 	if (found->iBlendInMs && !CValtanCinematicCameraController::Sample_BoundedTransition(
 		transition.fromPose, target, found->iBlendInMs, seconds, applied, found->eTransitionEasing)) return false;
-	if (!m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees)) return false;
+	if (!(applied.hasUp ? m_pCamera->Apply_PresentationPoseWithUp(owner, applied.vEye, applied.vLookAt, applied.vUp, applied.fFovYDegrees) :
+		m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees))) return false;
 	transition.appliedPose = applied;
 	transition.lastSeconds = seconds;
 	return true;
@@ -2967,6 +3057,10 @@ bool_t Client::CLevel_KakulSaydonArena::Resolve_CompositionFollowPose(VALTAN_CIN
 	outPose.vEye = float3_t(position.x + eyeOffset.x, position.y + eyeOffset.y, position.z + eyeOffset.z);
 	outPose.vLookAt = float3_t(position.x + lookOffset.x, position.y + lookOffset.y, position.z + lookOffset.z);
 	outPose.fFovYDegrees = m_FollowCameraProfile.fovYDegrees;
+	const auto rotation = m_FollowCameraProfile.rotationDegrees;
+	const auto basis = XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotation.x),
+		XMConvertToRadians(rotation.y), XMConvertToRadians(rotation.z));
+	XMStoreFloat3(&outPose.vUp, basis.r[1]); outPose.hasUp = true;
 	return true;
 }
 
@@ -2980,8 +3074,12 @@ void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(const bool_t force)
 		if (m_pCamera)
 		{
 			auto pose = transition.appliedPose;
-			if (m_pCamera->Is_FollowEnabled()) (void)Resolve_CompositionFollowPose(pose);
-			(void)m_pCamera->End_PresentationOverrideToPose(0x4b4f554b55434f4dull, pose.vEye, pose.vLookAt, pose.fFovYDegrees);
+			if (m_pCamera->Is_FollowEnabled())
+			{
+				(void)Resolve_CompositionFollowPose(pose);
+				(void)m_pCamera->End_PresentationOverrideToPose(0x4b4f554b55434f4dull, pose.vEye, pose.vLookAt, pose.fFovYDegrees);
+			}
+			else (void)m_pCamera->End_PresentationOverride(0x4b4f554b55434f4dull);
 		}
 		transition.ownerKey.clear(); transition.returning = false;
 		return;
@@ -3009,12 +3107,14 @@ void Client::CLevel_KakulSaydonArena::Update_CompositionCamera(const f32_t timeD
 	if (transition.blendOutMs && !CValtanCinematicCameraController::Sample_BoundedTransition(
 		transition.fromPose, target, transition.blendOutMs, transition.returnSeconds, applied, transition.easing))
 	{ Stop_CompositionCamera(true); return; }
-	if (!m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees))
+	if (!(applied.hasUp ? m_pCamera->Apply_PresentationPoseWithUp(owner, applied.vEye, applied.vLookAt, applied.vUp, applied.fFovYDegrees) :
+		m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees)))
 	{ Stop_CompositionCamera(true); return; }
 	transition.appliedPose = applied;
 	if (transition.returnSeconds * 1000.f >= float(transition.blendOutMs))
 	{
-		(void)m_pCamera->End_PresentationOverrideToPose(owner, target.vEye, target.vLookAt, target.fFovYDegrees);
+		if (transition.followAtStart) (void)m_pCamera->End_PresentationOverrideToPose(owner, target.vEye, target.vLookAt, target.fFovYDegrees);
+		else (void)m_pCamera->End_PresentationOverride(owner);
 		if (transition.followAtStart)
 			(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset, CArenaCameraProfile::LookOffset(m_FollowCameraProfile),
 				m_FollowCameraProfile.rotationDegrees.z, m_FollowCameraProfile.fovYDegrees, m_FollowCameraProfile.followResponse);
@@ -3194,6 +3294,7 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 
 bool_t Client::CLevel_KakulSaydonArena::Reload_MapLights()
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Level.Kouku.MapLights.Load");
 	auto staged=std::make_shared<CMapLightPresentationRuntime>();
 	if(!staged->Load_Runtime(std::string(KAKULSAYDON_AREA_ID)))
 	{OutputDebugStringA(("[Level_KakulSaydonArena] "+staged->Get_Status()+"\n").c_str());return false;}
@@ -3205,6 +3306,7 @@ bool_t Client::CLevel_KakulSaydonArena::Reload_MapLights()
 bool_t Client::CLevel_KakulSaydonArena::Ready_DebugStageEntryTriggers(
 	const std::string& areaId)
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Level.Kouku.DebugTriggers.Load");
 	/* Arena-side entrances only. Every stage also carries its own trigger
 	   boxes a kilometre away, and drawing those here would say nothing
 	   about where a player is supposed to stand when the arena opens. */

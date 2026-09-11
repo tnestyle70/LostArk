@@ -193,8 +193,8 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
         throw std::runtime_error("Presentation fades exceed the occurrence.");
     box.fDissolveStart = Number(row, "dissolveStart", 0.0, 1.0);
     box.fDissolveEnd = Number(row, "dissolveEnd", 0.0, 1.0);
-    if (box.fDissolveStart >= box.fDissolveEnd)
-        throw std::runtime_error("Presentation dissolve interval is empty or reversed.");
+    if (box.fDissolveStart > box.fDissolveEnd)
+        throw std::runtime_error("Presentation dissolve interval is reversed.");
     box.fVolume = Number(row, "volume", 0.0, 1.0);
     if (row.Find("brightnessMultiplier")) box.fBrightnessMultiplier = Number(row, "brightnessMultiplier", 0.0, 16.0);
     const auto& follow = Field(row, "followBoss");
@@ -214,13 +214,18 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("worldId")) box.strWorldId = Text(row, "worldId", true);
     if (row.Find("worldOccurrenceId")) box.strWorldOccurrenceId = Text(row, "worldOccurrenceId", true);
     if (box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" &&
-        !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")))
+        !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
+        !(kind == KIND::EFFECT && box.strAnchorKind == "MAP"))
         throw std::runtime_error("Presentation anchorKind is unsupported.");
     if (kind == KIND::LIGHT && (box.strAnchorKind == "WORLD" || !box.strWorldId.empty() ||
         box.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
         (box.strAnchorKind != "BOSS" && !box.strBone.empty()) ||
         (box.strAnchorKind == "PLAYER" && !box.bFollowBoss)))
         throw std::runtime_error("Invalid Light anchor, scale or bone.");
+    if (kind == KIND::EFFECT && box.strAnchorKind == "MAP" &&
+        (box.bFollowBoss || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
+            !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty()))
+        throw std::runtime_error("MAP Effect requires a fixed position without a bone or World occurrence.");
     if (box.strAnchorKind == "WORLD" && box.strWorldId.empty())
         throw std::runtime_error("WORLD presentation anchor needs a worldId.");
     if (box.strBoneTarget == "WEAPON" && ((kind != KIND::COLLIDER && kind != KIND::EFFECT) || box.strAnchorKind != "BOSS" || box.strBone.empty()))
@@ -393,10 +398,10 @@ bool Build_SourceAnchorWorlds(const SOURCE_ATTACHMENTS& attachments,
             if (bone == bones.end())
             { error = "Kouku source bone is unavailable: " + attachment.strRuntimeBoneName; return false; }
             matrix_t raw = XMLoadFloat4x4(&bone->second);
-            // Source socket/particle local positions are already cm -> m.
-            // Preserve the mesh's actual 0.017 pre-scale (1.7 in metres),
-            // animated scale and bone translation; undo only the source unit.
-            for (size_t axis = 0u; axis < 3u; ++axis) raw.r[axis] = XMVectorScale(raw.r[axis], 100.f);
+            // Both Kouku/Saydon cooked rigs already carry a 100x root basis.
+            // CModel applies the actor pre-scale (G1 0.017 -> 1.7, G2 Kouku
+            // 0.012053 -> 1.2053). Metre-based offsets consume that basis
+            // directly; preserve animated scale/translation without another x100.
             if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::BONE)
                 anchor = raw * XMLoadFloat4x4(&view.BoneRoot);
             else if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
@@ -1315,7 +1320,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             OCCURRENCE placedBox = box;
             float4x4_t anchor = pivot;
             auto anchorModel = model;
-            if (resource.eKind == KIND::LIGHT && box.strAnchorKind == "MAP")
+            if ((resource.eKind == KIND::LIGHT || resource.eKind == KIND::EFFECT) && box.strAnchorKind == "MAP")
             { XMStoreFloat4x4(&anchor, XMMatrixIdentity()); anchorModel.reset(); }
             if (box.strAnchorKind == "WORLD")
             {

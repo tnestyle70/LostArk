@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>
 #include <limits>
+#include <set>
 #include <utility>
 
 namespace
@@ -131,6 +132,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_Selected(
 	const std::uint32_t expectedSourceRevision,
 	std::string& outStatus)
 {
+	if (m_FlowSnapshot.bActive) Cancel_Flow("Pattern Flow cancelled by another playback request.");
 	return Submit(
 		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED,
 		patternId, expectedGameplayRevision, expectedSourceRevision, outStatus);
@@ -141,6 +143,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_All(
 	const std::uint32_t expectedSourceRevision,
 	std::string& outStatus)
 {
+	if (m_FlowSnapshot.bActive) Cancel_Flow("Pattern Flow cancelled by another playback request.");
 	return Submit(
 		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL,
 		{}, expectedGameplayRevision, expectedSourceRevision, outStatus);
@@ -150,12 +153,96 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_Bundle(
 	const std::string_view bundleId, const std::string_view gateId,
 	const LostArk::Shared::GameplayDataRevision& revision, const std::uint32_t sourceRevision, std::string& status)
 {
+	if (m_FlowSnapshot.bActive) Cancel_Flow("Pattern Flow cancelled by another playback request.");
 	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE, {}, revision, sourceRevision, status, bundleId, gateId);
+}
+
+bool Client::CKoukuSaydonPatternAuditionService::Play_Flow(
+	const std::string_view gateId, const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries,
+	const LostArk::Shared::GameplayDataRevision& revision, const std::uint32_t sourceRevision, std::string& status)
+{
+	Update();
+	if (m_FlowSnapshot.bActive || m_Snapshot.Is_InFlight() || m_bTargetTransitionPending)
+	{ status = "Finish or stop the active playback and gate transition before starting Pattern Flow."; return false; }
+	if ((gateId != "GATE1" && gateId != "GATE2" && gateId != "GATE3" && gateId != "BINGO") ||
+		entries.empty() || entries.size() > 256u || !revision.Is_Valid() || sourceRevision == 0u)
+	{ status = "Pattern Flow needs a saved Gate, bounded non-empty order and exact Product revision."; return false; }
+	std::set<std::string> ids;
+	for (const auto& entry : entries)
+		if (entry.strEntryId.empty() || !ids.insert(entry.strEntryId).second ||
+			entry.strPatternId.empty() == entry.strBundleId.empty() ||
+			entry.strBossPlacementId.empty() || entry.strBossArchetypeId.empty() || entry.iWaitAfterMs > 600000u)
+		{ status = "Pattern Flow entry has an invalid execution identity or wait."; return false; }
+	m_FlowSnapshot = {};
+	m_FlowSnapshot.bActive = true; m_FlowSnapshot.strGateId = gateId; m_FlowSnapshot.iEntryCount = entries.size();
+	m_FlowEntries = entries; m_FlowRevision = revision; m_iFlowSourceRevision = sourceRevision;
+	m_iFlowWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+	m_bFlowEntryCompleted = false; m_bStopFlowWhenAdmitted = false;
+	return Submit_FlowEntry(status);
+}
+
+bool Client::CKoukuSaydonPatternAuditionService::Submit_FlowEntry(std::string& status)
+{
+	const auto& entry = m_FlowEntries[m_FlowSnapshot.iEntryIndex];
+	m_FlowSnapshot.strEntryId = entry.strEntryId;
+	Set_TargetBoss(entry.strBossPlacementId, entry.strBossArchetypeId);
+	m_bSubmittingFlowEntry = true;
+	const bool submitted = Submit(entry.strBundleId.empty() ?
+		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED :
+		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE,
+		entry.strPatternId, m_FlowRevision, m_iFlowSourceRevision, status,
+		entry.strBundleId, m_FlowSnapshot.strGateId);
+	m_bSubmittingFlowEntry = false;
+	if (!submitted) { Cancel_Flow("Pattern Flow stopped: " + status); return false; }
+	m_iFlowRequestSequence = m_Snapshot.iRequestSequence;
+	m_bFlowEntryCompleted = false;
+	m_FlowSnapshot.strStatus = "Pattern Flow " + std::to_string(m_FlowSnapshot.iEntryIndex + 1u) + "/" +
+		std::to_string(m_FlowSnapshot.iEntryCount) + ": " + status;
+	status = m_FlowSnapshot.strStatus;
+	return true;
+}
+
+void Client::CKoukuSaydonPatternAuditionService::Cancel_Flow(std::string status)
+{
+	m_FlowSnapshot.bActive = false;
+	m_FlowSnapshot.strStatus = std::move(status);
+	m_FlowEntries.clear();
+	m_bFlowEntryCompleted = false;
+}
+
+void Client::CKoukuSaydonPatternAuditionService::Update_Flow()
+{
+	if (!m_FlowSnapshot.bActive || m_bSubmittingFlowEntry) return;
+	const auto& network = CNetworkManager::Get();
+	if (!network.Is_Connected() || m_iFlowWorldGeneration != network.Get_WorldInboundGeneration() ||
+		m_bTargetTransitionPending || m_Snapshot.iRequestSequence != m_iFlowRequestSequence ||
+		m_Snapshot.ExpectedGameplayRevision != m_FlowRevision || m_Snapshot.iExpectedSourceRevision != m_iFlowSourceRevision)
+	{ Cancel_Flow("Pattern Flow stopped because its world, Gate or exact request revision changed."); return; }
+	if (m_Snapshot.eState == KOUKU_SAYDON_PATTERN_AUDITION_STATE::REJECTED ||
+		m_Snapshot.eState == KOUKU_SAYDON_PATTERN_AUDITION_STATE::ABORTED)
+	{ Cancel_Flow("Pattern Flow stopped: " + m_Snapshot.strStatus); return; }
+	if (m_Snapshot.eState != KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED) return;
+	if (!m_bFlowEntryCompleted)
+	{
+		if (m_FlowSnapshot.iEntryIndex + 1u == m_FlowEntries.size())
+		{ Cancel_Flow("Pattern Flow completed; every selected Pattern and Bundle finished on the Server."); return; }
+		m_iFlowNextStartAtMilliseconds = Now_Milliseconds() + m_FlowEntries[m_FlowSnapshot.iEntryIndex].iWaitAfterMs;
+		m_bFlowEntryCompleted = true;
+	}
+	if (Now_Milliseconds() < m_iFlowNextStartAtMilliseconds) return;
+	++m_FlowSnapshot.iEntryIndex;
+	std::string status;
+	Submit_FlowEntry(status);
 }
 
 bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string& status)
 {
+	const bool flow = m_FlowSnapshot.bActive;
+	if (flow) Cancel_Flow("Pattern Flow stopped; remaining entries were cancelled.");
 	const auto snapshot = m_Snapshot;
+	if (flow && !snapshot.Is_InFlight()) { status = m_FlowSnapshot.strStatus; return true; }
+	if (flow && snapshot.Is_InFlight() && !snapshot.iRoomAuditionEpoch)
+	{ m_bStopFlowWhenAdmitted = true; status = "Remaining Flow entries cancelled; Stop will follow the pending Server admission."; return true; }
 	if (!snapshot.Is_InFlight() || !snapshot.iRoomAuditionEpoch) { status = "No admitted Server run to stop."; return false; }
 	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP, {}, snapshot.ExpectedGameplayRevision,
 		snapshot.iExpectedSourceRevision, status, snapshot.strBundleId, snapshot.strGateId, snapshot.iRoomAuditionEpoch);
@@ -163,6 +250,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string& status)
 
 bool Client::CKoukuSaydonPatternAuditionService::Restart_Bundle(std::string& status)
 {
+	if (m_FlowSnapshot.bActive) Cancel_Flow("Pattern Flow cancelled by bundle restart.");
 	const auto snapshot = m_Snapshot;
 	if (!snapshot.Is_InFlight() || snapshot.strBundleId.empty() || !snapshot.iRoomAuditionEpoch) { status = "Select an active bundle run to restart."; return false; }
 	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE, {}, snapshot.ExpectedGameplayRevision,
@@ -238,6 +326,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	m_bControlRequest = control;
 	m_RequestScope = request.Scope;
 	Advance_RequestSequence();
+	if (!control) m_bRunHasStarted = false;
 	m_Snapshot = {};
 	m_Snapshot.strBundleId = bundleId;
 	m_Snapshot.strGateId = request.Scope.strGateId;
@@ -278,13 +367,11 @@ void Client::CKoukuSaydonPatternAuditionService::Update()
 	while (network.Try_Consume_KoukuSaydonPatternAuditionLifecycle(lifecycle))
 		Apply_Lifecycle(lifecycle);
 
-	if (!m_Snapshot.Is_InFlight())
-		return;
 	const std::uint64_t now = Now_Milliseconds();
 	const std::uint64_t timeout =
 		KOUKU_SAYDON_PATTERN_AUDITION_STATE::REQUEST_PENDING == m_Snapshot.eState ?
 			VERDICT_TIMEOUT_MILLISECONDS : QUEUED_START_TIMEOUT_MILLISECONDS;
-	if (now >= m_iStateStartedAtMilliseconds &&
+	if (m_Snapshot.Is_InFlight() && now >= m_iStateStartedAtMilliseconds &&
 		now - m_iStateStartedAtMilliseconds > timeout &&
 		KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE != m_Snapshot.eState)
 	{
@@ -292,6 +379,17 @@ void Client::CKoukuSaydonPatternAuditionService::Update()
 			KOUKU_SAYDON_PATTERN_AUDITION_STATE::ABORTED,
 			"KoukuSaydon Server Play timed out before an exact ACTIVE lifecycle arrived.");
 	}
+	if (m_bStopFlowWhenAdmitted && !m_bSubmittingFlowEntry)
+	{
+		if (!m_Snapshot.Is_InFlight()) m_bStopFlowWhenAdmitted = false;
+		else if (m_Snapshot.iRoomAuditionEpoch != 0u)
+		{
+			m_bStopFlowWhenAdmitted = false;
+			std::string status;
+			Stop(status);
+		}
+	}
+	Update_Flow();
 }
 
 void Client::CKoukuSaydonPatternAuditionService::Apply_Result(
@@ -401,13 +499,15 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 		if (lifecycle.strPatternId.empty() ||
 			(KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED ==
 				m_Snapshot.eOperation &&
-			 lifecycle.strPatternId != m_Snapshot.strRequestedPatternId))
+			 lifecycle.strPatternId != m_Snapshot.strRequestedPatternId &&
+			 !m_bRunHasStarted))
 		{
 			Set_Terminal(
 				KOUKU_SAYDON_PATTERN_AUDITION_STATE::ABORTED,
 				"The Server ACTIVE lifecycle named a different pattern identity.");
 			break;
 		}
+		m_bRunHasStarted = true;
 		m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE;
 		m_Snapshot.strLivePatternId = lifecycle.strPatternId;
 		m_Snapshot.strStatus = "[Live] " + lifecycle.strPatternId +
@@ -417,15 +517,16 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 	case KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PATTERN_COMPLETED:
 		if (!m_Snapshot.strBundleId.empty())
 		{ m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE; m_Snapshot.strStatus = "Child completed; waiting for the remaining bundle members."; break; }
+		// A selected pattern may own Server follow-ups. PATTERN_COMPLETED is
+		// never the whole-run terminal event, including while Stop is pending.
 		m_Snapshot.strLivePatternId.clear();
-		m_Snapshot.eState = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL ==
-			m_Snapshot.eOperation ? KOUKU_SAYDON_PATTERN_AUDITION_STATE::QUEUED :
-			KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED;
+		m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::QUEUED;
 		m_Snapshot.strStatus = "Server pattern completed: " +
 			lifecycle.strPatternId + ".";
 		m_iStateStartedAtMilliseconds = Now_Milliseconds();
 		break;
 	case KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED:
+		if (!lifecycle.strMemberId.empty()) break;
 		Set_Terminal(
 			KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED,
 			"KoukuSaydon Server Play completed.");
@@ -461,6 +562,9 @@ void Client::CKoukuSaydonPatternAuditionService::Reset(
 	m_Snapshot = {};
 	m_RequestScope = {};
 	m_bControlRequest = false;
+	m_bRunHasStarted = false;
+	Cancel_Flow(reason.empty() ? "Pattern Flow reset." : std::string(reason));
+	m_bStopFlowWhenAdmitted = false;
 	m_bTargetTransitionPending = false;
 	Set_TargetBoss({}, {});
 	if (!reason.empty())

@@ -33,6 +33,13 @@ namespace
 		const f32_t deltaX = pose.vLookAt.x - pose.vEye.x;
 		const f32_t deltaY = pose.vLookAt.y - pose.vEye.y;
 		const f32_t deltaZ = pose.vLookAt.z - pose.vEye.z;
+		if (pose.hasUp)
+		{
+			const auto cross = XMVector3Cross(XMLoadFloat3(&pose.vUp),
+				XMVector3Normalize(XMVectorSet(deltaX, deltaY, deltaZ, 0.f)));
+			const auto length = XMVectorGetX(XMVector3LengthSq(cross));
+			if (!Is_FinitePosition(pose.vUp) || !std::isfinite(length) || length < 0.000001f) return false;
+		}
 		return deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ > 0.000001f;
 	}
 
@@ -57,6 +64,33 @@ namespace
 		default:
 			return false;
 		}
+	}
+
+	bool_t Sample_Orientation(const Client::VALTAN_CINEMATIC_CAMERA_POSE& left,
+		const Client::VALTAN_CINEMATIC_CAMERA_POSE& right, const f32_t alpha,
+		Client::VALTAN_CINEMATIC_CAMERA_POSE& outPose)
+	{
+		const auto rotation = [](const auto& pose, vector_t& quaternion, f32_t& distance)
+		{
+			const auto direction = XMLoadFloat3(&pose.vLookAt) - XMLoadFloat3(&pose.vEye);
+			distance = XMVectorGetX(XMVector3Length(direction));
+			const auto forward = XMVector3Normalize(direction);
+			const auto cross = XMVector3Cross(XMLoadFloat3(&pose.vUp), forward);
+			const auto length = XMVectorGetX(XMVector3LengthSq(cross));
+			if (!std::isfinite(distance) || distance < 0.001f || !std::isfinite(length) || length < 0.000001f) return false;
+			const auto rightAxis = XMVector3Normalize(cross);
+			quaternion = XMQuaternionRotationMatrix(XMMATRIX(rightAxis, XMVector3Cross(forward, rightAxis),
+				forward, XMVectorSet(0.f, 0.f, 0.f, 1.f)));
+			return true;
+		};
+		vector_t from, to; f32_t leftDistance = 0.f, rightDistance = 0.f;
+		if (!rotation(left, from, leftDistance) || !rotation(right, to, rightDistance)) return false;
+		const auto basis = XMMatrixRotationQuaternion(XMQuaternionSlerp(from, to, alpha));
+		XMStoreFloat3(&outPose.vLookAt, XMLoadFloat3(&outPose.vEye) + basis.r[2] *
+			(leftDistance + (rightDistance - leftDistance) * alpha));
+		XMStoreFloat3(&outPose.vUp, basis.r[1]);
+		outPose.hasUp = true;
+		return true;
 	}
 
 	float3_t Resolve_BossFacingPoint(
@@ -227,7 +261,7 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	if (cue.Keyframes.begin() == upper)
 	{
 		const auto& first = cue.Keyframes.front();
-		outPose = { first.vEye, first.vLookAt, first.fFovYDegrees };
+		outPose = { first.vEye, first.vLookAt, first.fFovYDegrees, first.vUp, first.hasUp };
 		return Is_ValidPose(outPose);
 	}
 	const size_t rightIndex = static_cast<size_t>(
@@ -236,7 +270,7 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	const auto& left = cue.Keyframes[leftIndex];
 	if (cue.Keyframes.end() == upper)
 	{
-		outPose = { left.vEye, left.vLookAt, left.fFovYDegrees };
+		outPose = { left.vEye, left.vLookAt, left.fFovYDegrees, left.vUp, left.hasUp };
 		return Is_ValidPose(outPose);
 	}
 	const auto& right = cue.Keyframes[rightIndex];
@@ -294,6 +328,11 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	}
 	outPose.fFovYDegrees = left.fFovYDegrees +
 		(right.fFovYDegrees - left.fFovYDegrees) * alpha;
+	outPose.vUp = { 0.f, 1.f, 0.f };
+	outPose.hasUp = false;
+	if ((left.hasUp || right.hasUp) && !Sample_Orientation(
+		{ left.vEye, left.vLookAt, left.fFovYDegrees, left.vUp, left.hasUp },
+		{ right.vEye, right.vLookAt, right.fFovYDegrees, right.vUp, right.hasUp }, alpha, outPose)) return false;
 	/* Independent Eye and LookAt splines can overshoot into the same point even
 	   when every authored scene is valid. Keep product playback alive by using
 	   the corresponding linear segment for that sample instead of abandoning
@@ -420,6 +459,9 @@ bool_t Client::CValtanCinematicCameraController::Sample_BoundedTransition(
 		XMLoadFloat3(&toPose.vLookAt), alpha));
 	outPose.fFovYDegrees = fromPose.fFovYDegrees +
 		(toPose.fFovYDegrees - fromPose.fFovYDegrees) * alpha;
+	outPose.vUp = { 0.f, 1.f, 0.f };
+	outPose.hasUp = false;
+	if ((fromPose.hasUp || toPose.hasUp) && !Sample_Orientation(fromPose, toPose, alpha, outPose)) return false;
 	return true;
 }
 

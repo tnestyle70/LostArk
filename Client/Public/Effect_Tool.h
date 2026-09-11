@@ -109,7 +109,8 @@ enum class EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND : uint8_t
 {
 	PLAYER_CLASS,
 	VALTAN_BOSS,
-	KOUKU_BOSS
+	KOUKU_BOSS,
+	WORLD
 };
 
 struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
@@ -121,7 +122,7 @@ struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
 	std::string_view strLabel;
 };
 
-inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 8u>
+inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 9u>
 	EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS = {{
 		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
@@ -146,7 +147,10 @@ inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 8u>
 			"Valtan" },
 		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::KOUKU_BOSS,
 			LostArk::Shared::CHARACTER_CLASS_ID::END,
-			"KoukuSaydon" }
+			"KoukuSaydon" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::WORLD,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"World" }
 	}};
 
 /* Valtan Boss Tool transfers only stable Product identity. Effect Tool re-resolves
@@ -585,7 +589,7 @@ private:
     void Render_EffectDetailWindow();
     void Render_AuthoringSessionBar();
     void Render_AllEffectsWindow();
-	void Render_KoukuAuthoredEffectSection(const std::string& strSearch);
+	void Render_SavedAuthoredEffectSection(const std::string& strSearch, bool_t bWorld);
 	void Render_ActiveAuthoredEffectTree();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
@@ -941,6 +945,8 @@ private:
 	bool_t Prepare_RecoveryPreviewTarget();
 	bool_t Try_PlayRecoveryEffect();
 	bool_t Try_PreviewElementTimeline(const std::string& strElementId);
+    bool_t Try_PlayMarkedElementGroup();
+    bool_t Try_PreviewElementsTimeline(const std::vector<std::string>& elementIds, bool loop);
 	void Render_RecoveryEffectForProduct(const std::string& strProductEffectId);
 	bool_t Try_PlaySavedUnifiedEffect(
 		const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding);
@@ -1037,8 +1043,11 @@ private:
 		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
 		const EFFECT_DOCUMENT_DESC& Document) const;
-    bool Build_ElementPreviewDocument(const EFFECT_DOCUMENT_DESC& document,
-        const std::string& elementId, EFFECT_DOCUMENT_DESC& preview, std::string& error) const;
+    bool Build_ElementsPreviewDocument(const EFFECT_DOCUMENT_DESC& document,
+        const std::vector<std::string>& elementIds, EFFECT_DOCUMENT_DESC& preview, std::string& error) const;
+    bool Resolve_ElementsPreviewWindow(const EFFECT_DOCUMENT_DESC& document,
+        const std::vector<std::string>& elementIds, uint32_t& startMs, uint32_t& endMs,
+        std::string& label, std::string& error) const;
     bool_t Try_SelectProductCue(
         const EFFECT_SKILL_TREE_ENTRY& Entry,
         size_t iCueIndex);
@@ -1312,6 +1321,7 @@ private:
         LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
 	bool_t m_bAllEffectsValtanBossSelected = false;
 	bool_t m_bAllEffectsKoukuBossSelected = false;
+	bool_t m_bAllEffectsWorldSelected = false;
     EFFECT_PREVIEW_FILTER m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     EFFECT_DOCUMENT_SOURCE m_eActiveDocumentSource =
         EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;
@@ -1323,9 +1333,8 @@ private:
 	string m_strActiveDocumentBaselineCanonical;
     string m_strSelectedResourceSlotId = "meshModel";
     string m_strSelectedElementId;
-	/* Ctrl/Shift-clicking Element rows marks them for one bulk delete. Empty
-	   means the single m_strSelectedElementId is the delete target, which is
-	   the behaviour every other command still assumes. */
+	// Editor-only stable IDs for Play Group, Delete and Duplicate. Row marks
+	// preserve the current Detail selection and are never saved in the document.
 	std::set<string, std::less<>> m_MarkedElementIds;
 	// Document replacement invalidates marks; row marking never changes IDs.
 	bool_t m_bMarkedElementIdsNeedPrune = false;
@@ -1485,8 +1494,8 @@ private:
     void Render_AuthoringCommands();
     bool Render_WorldObjectResourceGrid(bool draft);
     bool Is_AuthoringWorldResource(const std::string& id, EFFECT_RESOURCE_FILE_KIND kind) const;
-    bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root,
-        std::shared_ptr<CEffectObject>& object, std::string& error);
+    bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root,
+        std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error);
     void Attach_AuthoringSaved();
     bool Resolve_AuthoringSourceAnchors(const std::shared_ptr<CEffectObject>& object,
         const float4x4_t& root, bool useKouku,

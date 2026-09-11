@@ -1287,7 +1287,7 @@ namespace
 						SourceString(Module, "events[0].type");
 					const std::string_view Name =
 						SourceString(Module, "events[0].customname");
-					if (Type != "epet_spawn" || Name.empty())
+					if ((Type != "epet_spawn" && Type != "epet_death") || Name.empty())
 					{
 						strOutError =
 							"Portable source event generator route is invalid: " +
@@ -1306,7 +1306,7 @@ namespace
 						SourceString(Module, "eventgeneratortype");
 					const std::string_view Name =
 						SourceString(Module, "eventname");
-					if (Type != "epet_spawn" || Name.empty())
+					if ((Type != "epet_spawn" && Type != "epet_death") || Name.empty())
 					{
 						strOutError =
 							"Portable source event receiver route is invalid: " +
@@ -1833,6 +1833,31 @@ namespace
 			strOutError = "source module class is not in the strict executor allowlist";
 			return false;
 		}
+		if (SourceClass_Matches(Module, "particlemodulerequired"))
+		{
+			constexpr std::string_view MacroPaths[] = {
+				"runtime.macrouv.radiuscm", "runtime.macrouv.position.x",
+				"runtime.macrouv.position.y", "runtime.macrouv.position.z" };
+			if (std::ranges::any_of(MacroPaths, [&Module](const auto path)
+				{ return nullptr != Find_SourceLiteral(Module, path); }))
+			{
+				for (const auto path : MacroPaths)
+				{
+					if (!Find_SourceLiteral(Module, path) || !std::isfinite(SourceNumber(Module, path, 0.f)) ||
+						!Validate_ReconstructedSourceLiteral(Module, path,
+							Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError))
+					{
+						strOutError = "Source MacroUV requires its recovered radius and three local-position numbers.";
+						return false;
+					}
+				}
+				if (SourceNumber(Module, MacroPaths[0], 0.f) <= 0.f)
+				{
+					strOutError = "Source MacroUV requires a positive world-space radius.";
+					return false;
+				}
+			}
+		}
 		if (Module.strClassName == "particlemodulelocationemitter" ||
 			Module.strClassName == "efparticlemodulelocationemitter")
 		{
@@ -1853,10 +1878,9 @@ namespace
 				 SourceString(Module, "selectionmethod") != "elesm_random") ||
 				!SourceBool(Module, "bspawnmodule", true) ||
 				SourceBool(Module, "bupdatemodule", false) ||
-				SourceBool(Module, "inheritsourcevelocity", false) ||
 				SourceBool(Module, "binheritsourcerotation", false))
 			{
-				strOutError = "LocationEmitter requires a random/sequential live provider with spawn-only position inheritance; velocity/rotation inheritance is unsupported.";
+				strOutError = "LocationEmitter requires a random/sequential live provider with spawn-only inheritance; rotation inheritance is unsupported.";
 				return false;
 			}
 			return true;
@@ -2380,6 +2404,8 @@ struct Client::CEffectPlayback::PREPARED_RESOURCES final
 	std::unordered_map<std::string, std::vector<SOURCE_UPDATE_MODULE>>
 		SourceUpdateModules;
 	std::unordered_map<std::string, std::vector<size_t>> SourceVectorFieldModuleIndices;
+	std::unordered_map<std::string, std::vector<size_t>> SourceSpawnPerUnitModuleIndices;
+	std::unordered_set<std::string> SourceDeathEventGeneratorElementIds;
 	std::unordered_map<std::string, size_t> ParticleProviderElementIndices;
 };
 
@@ -2611,11 +2637,16 @@ bool_t Client::CEffectPlayback::Validate_SourceParticleProviders(
 				return Reject("orphaned particle-system metadata", Element);
 			continue;
 		}
+		const auto* SourceRequired = Find_SourceModule(Element, "particlemodulerequired");
+		const bool_t bRecoveredHiddenEmitter = Recipe.bSimulationOnly && SourceRequired &&
+			SourceString(*SourceRequired, "source.emitterrendermode") == "erm_none";
+		const bool_t bBoundedHiddenLoop = bRecoveredHiddenEmitter && Recipe.iEmitterLoopCount == 0u &&
+			std::isfinite(Element.Detail.Timing.fLifeTimeSeconds) && Element.Detail.Timing.fLifeTimeSeconds > 0.f;
 		if (Document.bSourceContract || !Recipe.bEnabled || !Element.bVisible ||
 			Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
 			Recipe.strParticleSystemOccurrenceId.empty() ||
 			Recipe.strParticleSystemOccurrenceId.size() > 256u || Recipe.strEmitterName.size() > 128u ||
-			Recipe.iEmitterLoopCount != 1u || Recipe.fEmitterDurationSeconds <= 0.f ||
+			(Recipe.iEmitterLoopCount != 1u && !bBoundedHiddenLoop) || Recipe.fEmitterDurationSeconds <= 0.f ||
 			Element.Detail.Particle.iMaxParticles == 0u ||
 			Element.Detail.Particle.SourceScale.fCount <= 0.f ||
 			Element.TransformInheritance.bEnabled || Element.SourcePresentation.bEnabled ||
@@ -2643,8 +2674,11 @@ bool_t Client::CEffectPlayback::Validate_SourceParticleProviders(
 			const f32_t Life = Lifetime->LookupTable.front();
 			if (!std::isfinite(Life) || Life <= 0.f ||
 				!std::ranges::all_of(Lifetime->LookupTable, [Life](f32_t Value) { return Value == Life; }) ||
-				Life * Element.Detail.Particle.SourceScale.fLifeTime < Recipe.fEmitterDurationSeconds)
-				return Reject("provider particles must survive the complete emission interval", Element);
+				!std::isfinite(Life * Element.Detail.Particle.SourceScale.fLifeTime) ||
+				Life * Element.Detail.Particle.SourceScale.fLifeTime <= 0.f)
+				return Reject("recovered hidden emitter requires a constant positive particle lifetime", Element);
+			// LocationEmitter selects live particles and skips a birth when none
+			// remain; ERM_None does not imply an artificially persistent particle.
 			continue;
 		}
 		const std::string ProviderId(SourceString(*Location, "runtime.providerelementid"));
@@ -2669,8 +2703,28 @@ bool_t Client::CEffectPlayback::Validate_SourceParticleProviders(
 		++References[ProviderId];
 	}
 	for (const auto& Element : Document.Elements)
-		if (Element.SourceRecipe.bSimulationOnly && !References.contains(Element.strElementId))
-			return Reject("unreferenced simulation-only row has no visible dependent", Element);
+	{
+		if (!Element.SourceRecipe.bSimulationOnly || References.contains(Element.strElementId)) continue;
+		const bool_t bHasEventConsumer = std::ranges::any_of(Element.SourceRecipe.Modules,
+			[&Document](const EFFECT_SOURCE_MODULE_DESC& Generator)
+			{
+				if (!SourceModule_Enabled(Generator) || !SourceClass_Matches(Generator, "particlemoduleeventgenerator")) return false;
+				const auto type = SourceString(Generator, "events[0].type");
+				const auto name = SourceString(Generator, "events[0].customname");
+				if ((type != "epet_spawn" && type != "epet_death") || name.empty()) return false;
+				return std::ranges::any_of(Document.Elements, [&](const EFFECT_ELEMENT_DESC& Receiver)
+				{
+					return Receiver.bVisible && !Receiver.SourceRecipe.bSimulationOnly && Receiver.SourceRecipe.bEnabled &&
+						Is_EffectElementAuthoringExecutionTarget(Receiver) && Is_PortableAuthoredEmitterCarrier(Receiver) &&
+						std::ranges::any_of(Receiver.SourceRecipe.Modules, [&](const EFFECT_SOURCE_MODULE_DESC& Module)
+						{
+							return SourceModule_Enabled(Module) && SourceClass_Matches(Module, "particlemoduleeventreceiverspawn") &&
+								SourceString(Module, "eventgeneratortype") == type && SourceString(Module, "eventname") == name;
+						});
+				});
+			});
+		if (!bHasEventConsumer) return Reject("simulation-only row has no live location or event consumer", Element);
+	}
 	strOutError.clear();
 	return true;
 }
@@ -3056,6 +3110,8 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		std::make_shared<PREPARED_RESOURCES>(*pPreparedResources);
 	StagedPreparedResources->SourceUpdateModules.clear();
 	StagedPreparedResources->SourceVectorFieldModuleIndices.clear();
+	StagedPreparedResources->SourceSpawnPerUnitModuleIndices.clear();
+	StagedPreparedResources->SourceDeathEventGeneratorElementIds.clear();
 	StagedPreparedResources->ParticleProviderElementIndices.clear();
 	if (!Validate_SourceParticleProviders(Document, strOutError)) return false;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
@@ -3071,6 +3127,18 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 			const auto& Module = Element.SourceRecipe.Modules[iModule];
 			if (!SourceModule_Enabled(Module))
 				continue;
+			if (Element.SourceRecipe.bEnabled && SourceClass_Matches(Module, "particlemodulerequired") &&
+				std::ranges::any_of(Module.Literals, [](const auto& literal)
+					{ return literal.strPropertyPath.starts_with("runtime.macrouv."); }) &&
+				!Validate_ReconstructedSourceModuleExecutionContract(Module, strOutError))
+				return false;
+			// Build from this immutable staged document; edits/re-staging rebuild the
+			// exact enabled module order, with no RNG/distribution evaluation here.
+			if (SourceClass_Matches(Module, "particlemodulespawnperunit"))
+				StagedPreparedResources->SourceSpawnPerUnitModuleIndices[Element.strElementId].push_back(iModule);
+			if (SourceClass_Matches(Module, "particlemoduleeventgenerator") &&
+				SourceString(Module, "events[0].type") == "epet_death")
+				StagedPreparedResources->SourceDeathEventGeneratorElementIds.insert(Element.strElementId);
 			const auto Kind = Classify_SourceUpdateModule(Module);
 			if (Kind != SOURCE_UPDATE_MODULE_KIND::NONE)
 				UpdateModules.push_back(SOURCE_UPDATE_MODULE::Prepare(Element, iModule));
@@ -3869,7 +3937,7 @@ bool_t Client::CEffectPlayback::Step(
 
 	{
 		Engine::CProfilerScope particleProfile(
-			CGameInstance::Get().Get_Profiler(), "Effect.Particle.Simulate");
+			CGameInstance::Get().Get_Profiler(), "Effect.Particle.Spawn");
 		for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 		{
 		if (!Is_PlaybackElementAdmitted(Element))
@@ -4010,8 +4078,9 @@ bool_t Client::CEffectPlayback::Step(
 		}
 	}
 
-	if (!Dispatch_SourceEvents(fFixedDelta, RootWorld))
+	const auto DispatchEvents = [&](const size_t firstEvent)
 	{
+		if (Dispatch_SourceEvents(fFixedDelta, RootWorld, firstEvent)) return true;
 		if (m_bHasPortableSourceEvents)
 			m_States = PreviousStates;
 		m_iSimulationStep = iPreviousSimulationStep;
@@ -4025,11 +4094,13 @@ bool_t Client::CEffectPlayback::Step(
 		m_strSourceVisualProgramStatus =
 			"Portable source event queue overflow rolled back the fixed step.";
 		return false;
-	}
+	};
+	if (!DispatchEvents(0u)) return false;
+	const size_t iDispatchedSpawnEvents = m_PendingSourceEvents.size();
 
 	{
 		Engine::CProfilerScope particleProfile(
-			CGameInstance::Get().Get_Profiler(), "Effect.Particle.Simulate");
+			CGameInstance::Get().Get_Profiler(), "Effect.Particle.Update");
 		for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 		{
 			if (!Is_PlaybackElementAdmitted(Element))
@@ -4038,6 +4109,7 @@ bool_t Client::CEffectPlayback::Step(
 			Update_Particles(Element, State, fFixedDelta, RootWorld);
 		}
 	}
+	if (!DispatchEvents(iDispatchedSpawnEvents)) return false;
 	{
 		Engine::CProfilerScope historyProfile(
 			CGameInstance::Get().Get_Profiler(),
@@ -4071,16 +4143,9 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 		!Is_PortableAuthoredEmitterCarrier(Element))
 		return 0u;
 
-	std::vector<const EFFECT_SOURCE_MODULE_DESC*> SpawnPerUnitModules;
-	for (const EFFECT_SOURCE_MODULE_DESC& Module : Element.SourceRecipe.Modules)
-	{
-		if (SourceModule_Enabled(Module) &&
-			SourceClass_Matches(Module, "particlemodulespawnperunit"))
-		{
-			SpawnPerUnitModules.push_back(&Module);
-		}
-	}
-	if (SpawnPerUnitModules.empty() || !Can_EvaluateElementWorld(Element))
+	const auto found = m_pPreparedResources->SourceSpawnPerUnitModuleIndices.find(Element.strElementId);
+	if (found == m_pPreparedResources->SourceSpawnPerUnitModuleIndices.end() ||
+		found->second.empty() || !Can_EvaluateElementWorld(Element))
 		return 0u;
 
 	const float3_t CurrentOrigin = Get_Translation(Evaluate_ElementWorld(
@@ -4115,8 +4180,9 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	}
 
 	double SpawnContribution = 0.0;
-	for (const EFFECT_SOURCE_MODULE_DESC* pModule : SpawnPerUnitModules)
+	for (const size_t moduleIndex : found->second)
 	{
+		const auto* pModule = &Element.SourceRecipe.Modules[moduleIndex];
 		const f32_t fUnitScalarUeCentimeters = SourceNumber(
 			*pModule, "unitscalar", 0.f);
 		const f32_t fSpawnPerUnit = Evaluate_ModuleFloat(
@@ -4258,20 +4324,19 @@ void Client::CEffectPlayback::Spawn_Particles(
 	const float4x4_t* pSpawnWorldOverride)
 {
 	const EFFECT_PARTICLE_DESC& Desc = Element.Detail.Particle;
-	if (!Can_EvaluateElementWorld(Element))
+	/* Preserve the count ceiling and RNG stream, but do not evaluate matrices
+	   for zero births. Spawn/loop accumulator random draws occur at the caller. */
+	const uint32_t iMaxParticles = Scale_SourceCount(Element, Desc.iMaxParticles);
+	const uint32_t iAvailable = iMaxParticles > State.Particles.size() ?
+		iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
+	const uint32_t iSpawnCount = (std::min)(iCount, iAvailable);
+	if (0u == iSpawnCount || !Can_EvaluateElementWorld(Element))
 		return;
 	const float4x4_t ElementWorld = nullptr != pSpawnWorldOverride ?
 		*pSpawnWorldOverride : Evaluate_ElementWorld(
 			Element, m_fSampleTimeSeconds, RootWorld);
 	const matrix_t InverseElementWorld = XMMatrixInverse(
 		nullptr, XMLoadFloat4x4(&ElementWorld));
-	/* The ceiling rises with the trim, otherwise asking for more particles would
-	   stop at the count the source was extracted with. */
-	const uint32_t iMaxParticles = Scale_SourceCount(
-		Element, Desc.iMaxParticles);
-	const uint32_t iAvailable = iMaxParticles > State.Particles.size() ?
-		iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
-	const uint32_t iSpawnCount = (std::min)(iCount, iAvailable);
 	for (uint32_t iParticle = 0u; iParticle < iSpawnCount; ++iParticle)
 	{
 		PARTICLE_STATE Particle;
@@ -4434,15 +4499,18 @@ void Client::CEffectPlayback::Spawn_Particles(
 		Particle.iSpawnSimulationStep = m_iSimulationStep;
 		Particle.SpawnRootWorld = ElementWorld;
 		State.Particles.push_back(Particle);
-		Queue_SpawnEvents(Element, State, State.Particles.back(), ElementWorld);
+		Queue_ParticleEvents(Element, State, State.Particles.back(), ElementWorld,
+			"epet_spawn", Particle.fSpawnEmitterTimeSeconds);
 	}
 }
 
-void Client::CEffectPlayback::Queue_SpawnEvents(
+void Client::CEffectPlayback::Queue_ParticleEvents(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State,
 	const PARTICLE_STATE& Particle,
-	const float4x4_t& ElementWorld)
+	const float4x4_t& ElementWorld,
+	const std::string_view strEventType,
+	const f32_t fEmitterTimeSeconds)
 {
 	for (const EFFECT_SOURCE_MODULE_DESC& Module : Element.SourceRecipe.Modules)
 	{
@@ -4460,10 +4528,10 @@ void Client::CEffectPlayback::Queue_SpawnEvents(
 					continue;
 				break;
 			}
-			if (Type != "epet_spawn")
+			if (Type != strEventType)
 				continue;
 			const std::string CounterId = Module.strStableId + ":" +
-				std::to_string(iEvent) + ":spawn";
+				std::to_string(iEvent) + (strEventType == "epet_death" ? ":death" : ":spawn");
 			const uint32_t iTrackingCount = ++State.EventTrackingCounts[CounterId];
 			const uint32_t iFrequency = static_cast<uint32_t>((std::max)(0.f,
 				SourceNumber(Module, Prefix + "frequency", 0.f)));
@@ -4478,7 +4546,7 @@ void Client::CEffectPlayback::Queue_SpawnEvents(
 			Event.strType = std::string(Type);
 			Event.strName = std::string(SourceString(
 				Module, Prefix + "customname"));
-			Event.fEmitterTimeSeconds = Particle.fSpawnEmitterTimeSeconds;
+			Event.fEmitterTimeSeconds = fEmitterTimeSeconds;
 			Event.vPosition = Transform_Coord(
 				EventPosition, XMLoadFloat4x4(&ParticleRoot));
 			Event.vVelocity = Transform_Normal(
@@ -4495,12 +4563,13 @@ void Client::CEffectPlayback::Queue_SpawnEvents(
 
 bool_t Client::CEffectPlayback::Dispatch_SourceEvents(
 	const f32_t fFixedDelta,
-	const float4x4_t& RootWorld)
+	const float4x4_t& RootWorld,
+	const size_t iFirstEvent)
 {
 	UNREFERENCED_PARAMETER(fFixedDelta);
 	if (m_bSourceEventQueueOverflow)
 		return false;
-	for (size_t iEvent = 0u;
+	for (size_t iEvent = iFirstEvent;
 		iEvent < m_PendingSourceEvents.size() &&
 		iEvent < MAX_SOURCE_EVENTS_PER_STEP;
 		++iEvent)
@@ -4524,9 +4593,8 @@ bool_t Client::CEffectPlayback::Dispatch_SourceEvents(
 				const std::string_view EventName = SourceString(Module, "eventname");
 				const std::string_view EventType = SourceString(
 					Module, "eventgeneratortype");
-				if (EventName != Event.strName ||
-					EventType != "epet_spawn" ||
-					Event.strType != "epet_spawn")
+				if (EventName != Event.strName || EventType != Event.strType ||
+					(EventType != "epet_spawn" && EventType != "epet_death"))
 				{
 					continue;
 				}
@@ -4996,8 +5064,19 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 					SourceParticle.SpawnRootWorld;
 				const float3_t WorldPosition = Transform_Coord(SourceParticle.vPosition,
 					XMLoadFloat4x4(&ProviderWorld));
-				Particle.vPosition = Transform_Coord(WorldPosition,
-					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));
+				const matrix_t InverseElementWorld = XMMatrixInverse(nullptr,
+					XMLoadFloat4x4(&ElementWorld));
+				Particle.vPosition = Transform_Coord(WorldPosition, InverseElementWorld);
+				if (SourceBool(Module, "inheritsourcevelocity", false))
+				{
+					const float3_t SourceVelocity = Multiply3(SourceParticle.vVelocity,
+						SourceParticle.vVelocityScale);
+					const float3_t WorldVelocity = Transform_Normal(SourceVelocity,
+						XMLoadFloat4x4(&ProviderWorld));
+					Particle.vVelocity = Add3(Particle.vVelocity, Scale3(
+						Transform_Normal(WorldVelocity, InverseElementWorld),
+						SourceNumber(Module, "inheritsourcevelocityscale", 1.f)));
+				}
 				Particle.bSourceEmitterLocationResolved = true;
 				break;
 			}
@@ -5581,6 +5660,9 @@ void Client::CEffectPlayback::Update_Particles(
 		 NativeParticle.bSubUVOverLife ||
 		 NativeParticle.InitialVelocity.bUniformSolidAngle);
 
+	const bool_t bGeneratesDeath =
+		m_pPreparedResources->SourceDeathEventGeneratorElementIds.contains(Element.strElementId);
+
 	/* A particle's spawn-owning step evaluates age zero.  On later steps,
 	   reject the terminal age before running another module update, then commit
 	   the next age before evaluating distributions.  This keeps the normalized
@@ -5588,9 +5670,9 @@ void Client::CEffectPlayback::Update_Particles(
 	   and the other over-life modules without changing the existing per-step
 	   velocity/position integration count. */
 	std::erase_if(State.Particles,
-		[this, fFixedDelta](const PARTICLE_STATE& Particle)
+		[this, fFixedDelta, bGeneratesDeath](const PARTICLE_STATE& Particle)
 		{
-			return Particle.iSpawnSimulationStep != m_iSimulationStep &&
+			return !bGeneratesDeath && Particle.iSpawnSimulationStep != m_iSimulationStep &&
 				Particle.fAgeSeconds + fFixedDelta >=
 					Particle.fLifeTimeSeconds;
 		});
@@ -5610,8 +5692,11 @@ void Client::CEffectPlayback::Update_Particles(
 	{
 		const bool_t bBirthStep =
 			Particle.iSpawnSimulationStep == m_iSimulationStep;
+		const f32_t fParticleDelta = bGeneratesDeath ? (bBirthStep ? 0.f :
+			(std::min)(fFixedDelta, (std::max)(0.f, Particle.fLifeTimeSeconds - Particle.fAgeSeconds))) : fFixedDelta;
 		if (!bBirthStep)
-			Particle.fAgeSeconds += fFixedDelta;
+			Particle.fAgeSeconds = bGeneratesDeath ? (std::min)(Particle.fLifeTimeSeconds,
+				Particle.fAgeSeconds + fParticleDelta) : Particle.fAgeSeconds + fFixedDelta;
 		if (bBirthStep && bDeferEnhancedNativeBirthIntegration)
 			continue;
 		const f32_t fNormalizedAge = Clamp01(
@@ -5619,26 +5704,36 @@ void Client::CEffectPlayback::Update_Particles(
 		if (Element.SourceRecipe.bEnabled)
 		{
 			Apply_SourceUpdateModules(Element, State, Particle, fEmitterTime,
-				fNormalizedAge, fFixedDelta, ElementWorld, VectorFieldUpdates,
+				fNormalizedAge, fParticleDelta, ElementWorld, VectorFieldUpdates,
 				SourceUpdateModules);
 		}
 		else
 		{
 			Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 			Particle.vVelocity = Add3(Particle.vVelocity,
-				Scale3(Element.Detail.Particle.vAcceleration, fFixedDelta));
+				Scale3(Element.Detail.Particle.vAcceleration, fParticleDelta));
 			if (Element.Detail.Particle.fDrag > 0.f)
 			{
 				Particle.vVelocity = Scale3(Particle.vVelocity,
-					(std::max)(0.f, 1.f - Element.Detail.Particle.fDrag * fFixedDelta));
+					(std::max)(0.f, 1.f - Element.Detail.Particle.fDrag * fParticleDelta));
 			}
 		}
-		const float3_t EffectiveVelocity = Apply_TargetAttractor(
-			Element, Particle, fNormalizedAge, fFixedDelta,
-			ElementWorld, RootWorld);
+		const float3_t EffectiveVelocity = fParticleDelta > 0.f ? Apply_TargetAttractor(
+			Element, Particle, fNormalizedAge, fParticleDelta,
+			ElementWorld, RootWorld) : Multiply3(Particle.vVelocity, Particle.vVelocityScale);
 		Particle.vPosition = Add3(Particle.vPosition,
-			Scale3(EffectiveVelocity, fFixedDelta));
+			Scale3(EffectiveVelocity, fParticleDelta));
+		if (bGeneratesDeath && Particle.fAgeSeconds >= Particle.fLifeTimeSeconds)
+		{
+			// Preserve the terminal world position and effective velocity before removal.
+			PARTICLE_STATE Terminal = Particle;
+			Terminal.vVelocity = EffectiveVelocity;
+			Queue_ParticleEvents(Element, State, Terminal, ElementWorld, "epet_death", fEmitterTime);
+		}
 	}
+	if (bGeneratesDeath)
+		std::erase_if(State.Particles, [](const PARTICLE_STATE& Particle)
+			{ return Particle.fAgeSeconds >= Particle.fLifeTimeSeconds; });
 }
 
 float3_t Client::CEffectPlayback::Apply_TargetAttractor(
@@ -6171,7 +6266,10 @@ void Client::CEffectPlayback::Sample_Trail(
 	const bool_t bDirectAuthoredFlowRibbon01 =
 		!Is_SourceVisualProgramElementAdmitted(Element) &&
 		Has_EffectFlowRibbon01TrailContract(Element);
-	bool_t bCascadeRibbon = bDirectAuthoredFlowRibbon01;
+	const bool_t bKoukuNativeRibbon = Is_CascadeRibbonTarget(Element) &&
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
+			"effect.ue3.kouku-2346-native.v1";
+	bool_t bCascadeRibbon = bDirectAuthoredFlowRibbon01 || bKoukuNativeRibbon;
 	bool_t bAnimationTrail = false;
 	bool_t bBakedEdgeAnimationTrail = false;
 	if (Is_SourceVisualProgramElementAdmitted(Element))
@@ -6305,7 +6403,7 @@ void Client::CEffectPlayback::Sample_Trail(
 		return true;
 	};
 	const auto UpdatePointPayload = [this, &Element, bFlowRibbon01,
-		bRibbonLiquid01ParentDefault,
+		bKoukuNativeRibbon, bRibbonLiquid01ParentDefault,
 		&EvaluateDeterministicFloat, &EvaluateDeterministicVector,
 		&EvaluateIdentityFloat](
 		EFFECT_EVALUATED_TRAIL_POINT& Point)
@@ -6316,7 +6414,7 @@ void Client::CEffectPlayback::Sample_Trail(
 		Point.iSourceColorComponentMask = 0u;
 		Point.iDynamicParameterComponentMask = 0u;
 
-		if (bFlowRibbon01)
+		if (bFlowRibbon01 || bKoukuNativeRibbon)
 		{
 			float3_t StartColor{};
 			float3_t ColorScale{};
@@ -7329,6 +7427,30 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			InverseParticleElementWorld = XMMatrixInverse(
 				nullptr, XMLoadFloat4x4(&ParticleElementWorld));
 		}
+		bool_t bSourceMacroUV = false;
+		float3_t SourceMacroUVWorldCenter{};
+		f32_t fSourceMacroUVWorldRadius = 0.f;
+		if (bHasParticles && Element.SourceRecipe.bEnabled)
+		{
+			const auto* Required = Find_SourceModule(Element, "particlemodulerequired");
+			if (Required && SourceModule_Enabled(*Required) &&
+				Find_SourceLiteral(*Required, "runtime.macrouv.radiuscm"))
+			{
+				const float3_t LocalPosition = UE3_CentimetersToClient(float3_t(
+					SourceNumber(*Required, "runtime.macrouv.position.x", 0.f),
+					SourceNumber(*Required, "runtime.macrouv.position.y", 0.f),
+					SourceNumber(*Required, "runtime.macrouv.position.z", 0.f)));
+				const float4x4_t OccurrenceWorld = Element.Detail.Particle.bLocalSpace ?
+					ParticleElementWorld : Evaluate_ElementWorld(Element, m_fSampleTimeSeconds, RootWorld);
+				SourceMacroUVWorldCenter = Transform_Coord(LocalPosition,
+					XMLoadFloat4x4(&OccurrenceWorld));
+				// The source radius is already world-space: convert units only.
+				fSourceMacroUVWorldRadius = SourceNumber(*Required, "runtime.macrouv.radiuscm", 0.f) * .01f;
+				bSourceMacroUV = std::isfinite(SourceMacroUVWorldCenter.x) &&
+					std::isfinite(SourceMacroUVWorldCenter.y) && std::isfinite(SourceMacroUVWorldCenter.z) &&
+					std::isfinite(fSourceMacroUVWorldRadius) && fSourceMacroUVWorldRadius > 0.f;
+			}
+		}
 		for (const PARTICLE_STATE& Particle : State.Particles)
 		{
 			const f32_t ParticleT = Clamp01(
@@ -7396,6 +7518,9 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				XMLoadFloat4x4(&ParticleRoot);
 			EFFECT_EVALUATED_PARTICLE Evaluated;
 			Evaluated.pElement = &Element;
+			Evaluated.bSourceMacroUV = bSourceMacroUV;
+			Evaluated.vSourceMacroUVWorldCenter = SourceMacroUVWorldCenter;
+			Evaluated.fSourceMacroUVWorldRadius = fSourceMacroUVWorldRadius;
 			XMStoreFloat4x4(&Evaluated.World, World);
 			XMStoreFloat4x4(&Evaluated.SourceEmitterWorld,
 				Element.Detail.Particle.bLocalSpace ?

@@ -385,11 +385,9 @@ private:
 	/* F1 KoukuSaydon saved-pattern list by gate; Complete Play goes through
 	   CKoukuSaydonBossTool so the Server audition path stays single-owner. */
 	void RenderKoukuSaydonCompletePlayControls();
-	/* Temporary: live big Saydon scale/offset and bingo hammer scale with Save
-	   into the catalog/world JSON. Remove once the values are chosen. */
-	void RenderKoukuSaydonBossTuningControls();
-	void Load_KoukuTuningBaseline();
-	void Save_KoukuTuning();
+	bool_t PrepareKoukuGateCompletePlay(std::string_view gateId, std::string& status);
+	bool_t StartKoukuGateCompletePlay(std::string_view gateId, std::string& status);
+	void FinishKoukuGateCompletePlay(std::string_view gateId, std::string& status);
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
@@ -753,37 +751,15 @@ private:
 	   gate combo only filters the list. Stable pattern ID is the selection. */
 	bool_t m_bKoukuCompletePlayLoadAttempted = false;
 	int32_t m_iKoukuCompletePlayGate = 0;
+	int32_t m_iKoukuCompletePlayCategory = 0;
+	string m_strKoukuCompletePlayFlowGate;
+	uint32_t m_iKoukuCompletePlayFlowRevision = 0u;
+	uint64_t m_iKoukuCompletePlayWorldGeneration = 0u;
+	bool_t m_bKoukuFlowPublishPending = false;
 	int32_t m_iKoukuCompletePlaySelection = 0;
 	string m_strKoukuCompletePlayPatternId;
 	string m_strKoukuCompletePlayStatus =
 		"Load the KoukuSaydon inventory, pick a gate and a saved pattern, then Complete Play.";
-	/* Temporary tuning slice state (see RenderKoukuSaydonBossTuningControls). */
-	bool_t m_bKoukuTuneLoaded = false;
-	bool_t m_bKoukuTuneBaselineValid = false;
-	string m_strKoukuTuneCatalogBaseline;
-	string m_strKoukuTuneWorldBaseline;
-	f32_t m_fKoukuTuneBigSaydonCatalogScale = 0.f;
-	float3_t m_vKoukuTuneBigSaydonPlacement = {};
-	f32_t m_fKoukuTuneBigSaydonScaleMultiplier = 1.f;
-	float3_t m_vKoukuTuneBigSaydonOffset = {};
-	/* One arena boss placement: its saved yaw and, for a hammer-holding body,
-	   the saved hammer pre-scale/rotation. Offsets and multipliers are the live
-	   edits; Save folds them into the JSON. Order follows KOUKU_TUNE_BOSSES. */
-	struct KOUKU_TUNE_BOSS_ROW
-	{
-		f32_t fBodyCatalogScale = 0.f;
-		f32_t fBodyScaleMultiplier = 1.f;
-		f32_t fBaselineYawDegrees = 0.f;
-		f32_t fYawOffset = 0.f;
-		bool_t bHasWeapon = false;
-		f32_t fHammerCatalogScale = 0.f;
-		f32_t fHammerScaleMultiplier = 1.f;
-		float3_t vHammerCatalogRotation = {};
-		float3_t vHammerRotationBaseline = {};
-		float3_t vHammerRotationOffset = {};
-	};
-	KOUKU_TUNE_BOSS_ROW m_KoukuTuneBosses[5] = {};
-	string m_strKoukuTuneStatus;
 	vector<string> m_CompletePlayPatternIds;
 	vector<string> m_CompletePlayPatternLabels;
 	/* Stable identity is the selection authority.  UI indices are derived from

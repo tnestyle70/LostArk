@@ -17,7 +17,7 @@ Texture2D g_CharacterSurfaceTexture;
 Texture2D g_CharacterGeometryTexture;
 float4x4 g_SourceCharacterViewMatrix, g_SourceCharacterProjMatrix;
 uint g_ApplyStaticShadow = 0u;
-uint g_LightReceiver = 0u; // ALL=0, SOURCE_CHARACTER=1; baked map diffuse stays in RNM.
+uint g_LightReceiver = 0u; // ALL=0, SOURCE_CHARACTER=1, UNBAKED=2.
 #define SOURCE_CHARACTER_LIGHT_PASS
 #include "Shader_SourceCharacterMaterial.hlsli"
 
@@ -486,9 +486,27 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     return output;
 }
 
+// Source static lights also illuminate moving scenery that has no RNM.
+// The packed baked flag belongs to recovered map families, not legacy pixels
+// or marker-5 native rows (those are checked in their material light pass).
+bool Reject_LightReceiver(PS_IN input)
+{
+    if (g_LightReceiver == 1u) return g_SourceCharacterRow == 0u;
+    if (g_LightReceiver != 2u) return false;
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    const float marker = g_DepthTexture.Load(pixel).w;
+    if (g_SourceCharacterRow != 0u)
+        return marker == 5.f && g_SourceCharacterProgram >= 80u &&
+            g_SourceCharacterProgram <= 83u && g_SourceMapMonsterBakedEnabled != 0u &&
+            g_MaterialSpecularTexture.Load(pixel).w > .5f;
+    const bool sourceMap = marker == 3.f || marker == 4.f ||
+        (marker >= 7.f && marker <= 13.f);
+    return sourceMap && (asuint(g_GeometricNormalTexture.Load(pixel).w) & 0x00400000u) != 0u;
+}
+
 PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 {
-    if (g_LightReceiver == 1u && g_SourceCharacterRow == 0u) return (PS_OUT_LIGHT)0;
+    if (Reject_LightReceiver(In)) return (PS_OUT_LIGHT)0;
     PS_OUT_LIGHT Out;
     
     vector          vNormalDesc = g_NormalTexture.Sample(LinearSampler, In.vTexcoord);
@@ -574,7 +592,7 @@ float Resolve_PointLightAttenuation(float fDistance)
 
 PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
 {
-    if (g_LightReceiver == 1u && g_SourceCharacterRow == 0u) return (PS_OUT_LIGHT)0;
+    if (Reject_LightReceiver(In)) return (PS_OUT_LIGHT)0;
     PS_OUT_LIGHT Out;
     
     vector vNormalDesc = g_NormalTexture.Sample(LinearSampler, In.vTexcoord);

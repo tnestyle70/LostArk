@@ -27,6 +27,7 @@ struct EFFECT_VISUAL_PROGRAM_CORPUS;
 struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
 struct EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING;
 class CEffectMaterialProgramRegistry;
+struct EFFECT_PRODUCT_LOAD_SOURCE_LEASE;
 
 /* Product Loading captures catalog-owned identities on the main thread, then
    parses only this immutable source on the Loader worker.  The worker result
@@ -45,6 +46,7 @@ struct EFFECT_PRODUCT_LOAD_STAGE_REQUEST final
 		pMaterialProgramRegistry;
 	std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
 		pScreenOverlayBinding;
+	// Captured by the worker while a source read lease prevents writes/replacement.
 	std::uintmax_t iSourceByteCount = 0u;
 	std::filesystem::file_time_type SourceWriteTime{};
 };
@@ -55,6 +57,7 @@ struct EFFECT_PRODUCT_LOAD_STAGE_RESULT final
 	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument;
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pVisualProjection;
+	std::shared_ptr<const EFFECT_PRODUCT_LOAD_SOURCE_LEASE> pSourceReadLease;
 };
 
 /* Owner-thread proof of the exact catalog identities published by one Loading

@@ -48,6 +48,10 @@
 #include "imgui.h"
 #ifndef IMGUI_DISABLE
 #include "imgui_impl_dx11.h"
+// Keep Engine debug allocation macros out of ImGui placement-new expressions.
+#pragma push_macro("new")
+#include "Profiler.h" // LostArk optional observer; rendering remains backend-owned.
+#pragma pop_macro("new")
 
 // DirectX
 #include <stdio.h>
@@ -72,6 +76,7 @@ struct ImGui_ImplDX11_Texture
 
 struct ImGui_ImplDX11_Data
 {
+    Engine::CProfiler*          Profiler;
     ID3D11Device*               pd3dDevice;
     ID3D11DeviceContext*        pd3dDeviceContext;
     IDXGIFactory*               pFactory;
@@ -105,6 +110,18 @@ static ImGui_ImplDX11_Data* ImGui_ImplDX11_GetBackendData()
     return ImGui::GetCurrentContext() ? (ImGui_ImplDX11_Data*)ImGui::GetIO().BackendRendererUserData : nullptr;
 }
 
+void ImGui_ImplDX11_SetProfiler(Engine::CProfiler* profiler)
+{
+    if (ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData())
+        bd->Profiler = profiler;
+}
+
+static void ImGui_ImplDX11_Count(ImGui_ImplDX11_Data* bd, Engine::EProfilerCounter counter, uint64_t value = 1)
+{
+    if (bd->Profiler)
+        bd->Profiler->Add_Counter(counter, value);
+}
+
 // Forward Declarations
 static void ImGui_ImplDX11_InitMultiViewportSupport();
 static void ImGui_ImplDX11_ShutdownMultiViewportSupport();
@@ -113,6 +130,8 @@ static void ImGui_ImplDX11_ShutdownMultiViewportSupport();
 static void ImGui_ImplDX11_SetupRenderState(const ImDrawData* draw_data, ID3D11DeviceContext* device_ctx)
 {
     ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+
+    Engine::CProfilerScope scope(bd->Profiler, "ImGui.DX11.SetupState");
 
     // Setup viewport
     D3D11_VIEWPORT vp = {};
@@ -142,7 +161,10 @@ static void ImGui_ImplDX11_SetupRenderState(const ImDrawData* draw_data, ID3D11D
         };
         memcpy(&constant_buffer->mvp, mvp, sizeof(mvp));
         device_ctx->Unmap(bd->pVertexConstantBuffer, 0);
+        ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiConstantUploadBytes, sizeof(mvp));
     }
+    else
+        ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiBufferMapFailures);
 
     // Setup shader and vertex buffers
     unsigned int stride = sizeof(ImDrawVert);
@@ -176,6 +198,8 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
 
     ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
     ID3D11DeviceContext* device = bd->pd3dDeviceContext;
+    Engine::CProfilerScope scope(bd->Profiler, "ImGui.RenderDrawData");
+    Engine::CProfilerGpuScope gpuScope(bd->Profiler, "ImGui.RenderDrawData");
 
     // Catch up with texture updates. Most of the times, the list will have 1 element with an OK status, aka nothing to do.
     // (This almost always points to ImGui::GetPlatformIO().Textures[] but is part of ImDrawData to allow overriding or disabling texture updates).
@@ -184,9 +208,18 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
             if (tex->Status != ImTextureStatus_OK)
                 ImGui_ImplDX11_UpdateTexture(tex);
 
+    // Empty frames may still carry dynamic atlas updates, handled above. No
+    // draw lists means no callbacks, uploads or modified render state to restore.
+    if (draw_data->CmdListsCount == 0)
+        return;
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiDrawLists, draw_data->CmdListsCount);
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiVertices, draw_data->TotalVtxCount);
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiIndices, draw_data->TotalIdxCount);
+
     // Create and grow vertex/index buffers if needed
     if (!bd->pVB || bd->VertexBufferSize < draw_data->TotalVtxCount)
     {
+        Engine::CProfilerScope growScope(bd->Profiler, "ImGui.DX11.GrowBuffers");
         if (bd->pVB) { bd->pVB->Release(); bd->pVB = nullptr; }
         bd->VertexBufferSize = draw_data->TotalVtxCount + 5000;
         D3D11_BUFFER_DESC desc = {};
@@ -197,9 +230,11 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
         desc.MiscFlags = 0;
         if (bd->pd3dDevice->CreateBuffer(&desc, nullptr, &bd->pVB) < 0)
             return;
+        ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiBufferGrowths);
     }
     if (!bd->pIB || bd->IndexBufferSize < draw_data->TotalIdxCount)
     {
+        Engine::CProfilerScope growScope(bd->Profiler, "ImGui.DX11.GrowBuffers");
         if (bd->pIB) { bd->pIB->Release(); bd->pIB = nullptr; }
         bd->IndexBufferSize = draw_data->TotalIdxCount + 10000;
         D3D11_BUFFER_DESC desc = {};
@@ -209,14 +244,27 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         if (bd->pd3dDevice->CreateBuffer(&desc, nullptr, &bd->pIB) < 0)
             return;
+        ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiBufferGrowths);
     }
 
     // Upload vertex/index data into a single contiguous GPU buffer
     D3D11_MAPPED_SUBRESOURCE vtx_resource, idx_resource;
-    if (device->Map(bd->pVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &vtx_resource) != S_OK)
-        return;
-    if (device->Map(bd->pIB, 0, D3D11_MAP_WRITE_DISCARD, 0, &idx_resource) != S_OK)
-        return;
+    {
+        Engine::CProfilerScope mapScope(bd->Profiler, "ImGui.DX11.MapBuffers");
+        if (device->Map(bd->pVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &vtx_resource) != S_OK)
+        {
+            ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiBufferMapFailures);
+            return;
+        }
+        if (device->Map(bd->pIB, 0, D3D11_MAP_WRITE_DISCARD, 0, &idx_resource) != S_OK)
+        {
+            device->Unmap(bd->pVB, 0);
+            ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiBufferMapFailures);
+            return;
+        }
+    }
+    {
+    Engine::CProfilerScope uploadScope(bd->Profiler, "ImGui.DX11.UploadBuffers");
     ImDrawVert* vtx_dst = (ImDrawVert*)vtx_resource.pData;
     ImDrawIdx* idx_dst = (ImDrawIdx*)idx_resource.pData;
     for (const ImDrawList* draw_list : draw_data->CmdLists)
@@ -228,6 +276,11 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
     }
     device->Unmap(bd->pVB, 0);
     device->Unmap(bd->pIB, 0);
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiVertexUploadBytes,
+        static_cast<uint64_t>(draw_data->TotalVtxCount) * sizeof(ImDrawVert));
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiIndexUploadBytes,
+        static_cast<uint64_t>(draw_data->TotalIdxCount) * sizeof(ImDrawIdx));
+    }
 
     // Backup DX state that will be modified to restore it afterwards (unfortunately this is very ugly looking and verbose. Close your eyes!)
     struct BACKUP_DX11_STATE
@@ -255,6 +308,8 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
         ID3D11InputLayout*          InputLayout;
     };
     BACKUP_DX11_STATE old = {};
+    {
+    Engine::CProfilerScope backupScope(bd->Profiler, "ImGui.DX11.BackupState");
     old.ScissorRectsCount = old.ViewportsCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
     device->RSGetScissorRects(&old.ScissorRectsCount, old.ScissorRects);
     device->RSGetViewports(&old.ViewportsCount, old.Viewports);
@@ -273,6 +328,7 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
     device->IAGetIndexBuffer(&old.IndexBuffer, &old.IndexBufferFormat, &old.IndexBufferOffset);
     device->IAGetVertexBuffers(0, 1, &old.VertexBuffer, &old.VertexBufferStride, &old.VertexBufferOffset);
     device->IAGetInputLayout(&old.InputLayout);
+    }
 
     // Setup desired DX state
     ImGui_ImplDX11_SetupRenderState(draw_data, device);
@@ -289,6 +345,9 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
 
     // Render command lists
     // (Because we merged all buffers into a single one, we maintain our own offset into them)
+    {
+    Engine::CProfilerScope submitScope(bd->Profiler, "ImGui.DX11.DrawSubmission");
+    uint64_t draw_commands = 0, draw_calls = 0, callbacks = 0;
     int global_idx_offset = 0;
     int global_vtx_offset = 0;
     ImVec2 clip_off = draw_data->DisplayPos;
@@ -298,8 +357,10 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
         for (int cmd_i = 0; cmd_i < draw_list->CmdBuffer.Size; cmd_i++)
         {
             const ImDrawCmd* pcmd = &draw_list->CmdBuffer[cmd_i];
+            ++draw_commands;
             if (pcmd->UserCallback != nullptr)
             {
+                ++callbacks;
                 // User callback, registered via ImDrawList::AddCallback()
                 // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
                 if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
@@ -323,13 +384,19 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
                 ID3D11ShaderResourceView* texture_srv = (ID3D11ShaderResourceView*)pcmd->GetTexID();
                 device->PSSetShaderResources(0, 1, &texture_srv);
                 device->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                ++draw_calls;
             }
         }
         global_idx_offset += draw_list->IdxBuffer.Size;
         global_vtx_offset += draw_list->VtxBuffer.Size;
     }
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiDrawCommands, draw_commands);
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiDrawCalls, draw_calls);
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiCallbacks, callbacks);
+    }
     platform_io.Renderer_RenderState = nullptr;
 
+    Engine::CProfilerScope restoreScope(bd->Profiler, "ImGui.DX11.RestoreState");
     // Restore modified DX state
     device->RSSetScissorRects(old.ScissorRectsCount, old.ScissorRects);
     device->RSSetViewports(old.ViewportsCount, old.Viewports);
@@ -369,6 +436,7 @@ static void ImGui_ImplDX11_DestroyTexture(ImTextureData* tex)
 void ImGui_ImplDX11_UpdateTexture(ImTextureData* tex)
 {
     ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+    Engine::CProfilerScope scope(bd->Profiler, "ImGui.DX11.TextureUpdate");
     if (tex->Status == ImTextureStatus_WantCreate)
     {
         // Create and upload new texture to graphics system
@@ -411,6 +479,12 @@ void ImGui_ImplDX11_UpdateTexture(ImTextureData* tex)
         tex->SetTexID((ImTextureID)(intptr_t)backend_tex->pTextureView);
         tex->SetStatus(ImTextureStatus_OK);
         tex->BackendUserData = backend_tex;
+        if (backend_tex->pTexture && backend_tex->pTextureView)
+        {
+            ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiTextureCreates);
+            ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiTextureUploadBytes,
+                static_cast<uint64_t>(tex->Width) * tex->Height * 4);
+        }
     }
     else if (tex->Status == ImTextureStatus_WantUpdates)
     {
@@ -422,6 +496,9 @@ void ImGui_ImplDX11_UpdateTexture(ImTextureData* tex)
         {
             D3D11_BOX box = { (UINT)r.x, (UINT)r.y, (UINT)0, (UINT)(r.x + r.w), (UINT)(r.y + r .h), (UINT)1 };
             bd->pd3dDeviceContext->UpdateSubresource(backend_tex->pTexture, 0, &box, tex->GetPixelsAt(r.x, r.y), (UINT)tex->GetPitch(), 0);
+            ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiTextureUpdates);
+            ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiTextureUploadBytes,
+                static_cast<uint64_t>(r.w) * r.h * tex->BytesPerPixel);
         }
         tex->SetStatus(ImTextureStatus_OK);
     }
@@ -434,6 +511,8 @@ bool    ImGui_ImplDX11_CreateDeviceObjects()
     ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
     if (!bd->pd3dDevice)
         return false;
+    Engine::CProfilerScope scope(bd->Profiler, "ImGui.DX11.DeviceObjects");
+    ImGui_ImplDX11_Count(bd, Engine::EProfilerCounter::ImGuiDeviceObjectBuilds);
     ImGui_ImplDX11_InvalidateDeviceObjects();
 
     // By using D3DCompile() from <d3dcompiler.h> / d3dcompiler.lib, we introduce a dependency to a given version of d3dcompiler_XX.dll (see D3DCOMPILER_DLL_A)
@@ -668,6 +747,7 @@ void ImGui_ImplDX11_Shutdown()
     IM_ASSERT(bd != nullptr && "No renderer backend to shutdown, or already shutdown?");
     ImGuiIO& io = ImGui::GetIO();
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+    bd->Profiler = nullptr;
 
     ImGui_ImplDX11_ShutdownMultiViewportSupport();
     ImGui_ImplDX11_InvalidateDeviceObjects();
@@ -795,6 +875,8 @@ static void ImGui_ImplDX11_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
 static void ImGui_ImplDX11_RenderWindow(ImGuiViewport* viewport, void*)
 {
     ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+    Engine::CProfilerScope scope(bd->Profiler, "ImGui.PlatformViewport.Render");
+    Engine::CProfilerGpuScope gpuScope(bd->Profiler, "ImGui.PlatformViewport.Render");
     ImGui_ImplDX11_ViewportData* vd = (ImGui_ImplDX11_ViewportData*)viewport->RendererUserData;
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
     bd->pd3dDeviceContext->OMSetRenderTargets(1, &vd->RTView, nullptr);
@@ -807,7 +889,13 @@ static void ImGui_ImplDX11_SwapBuffers(ImGuiViewport* viewport, void*)
 {
     ImGui_ImplDX11_ViewportData* vd = (ImGui_ImplDX11_ViewportData*)viewport->RendererUserData;
     if (vd->SwapChain)
+    {
+        ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+        Engine::CProfilerScope scope(bd->Profiler, "ImGui.PlatformViewport.Present");
+        // Timestamp interval includes presentation scheduling; it is not GPU busy time.
+        Engine::CProfilerGpuScope gpuScope(bd->Profiler, "ImGui.PlatformViewport.Present");
         vd->SwapChain->Present(0, 0); // Present without vsync
+    }
 }
 
 static void ImGui_ImplDX11_InitMultiViewportSupport()

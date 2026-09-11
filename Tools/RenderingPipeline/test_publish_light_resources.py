@@ -157,6 +157,14 @@ class LightResourcePipelineTest(unittest.TestCase):
 
 
 class MapLightV2PipelineTest(unittest.TestCase):
+    def test_unbaked_receiver_roundtrips_and_unknown_receiver_is_rejected(self) -> None:
+        document = map_document("AREA")
+        document["lights"][0]["receiver"] = "UNBAKED"
+        self.assertEqual(document, pipeline.validate_map_lights_v2(json.loads(json.dumps(document)), "AREA"))
+        document["lights"][0]["receiver"] = "OTHER"
+        with self.assertRaises(pipeline.LightValidationError):
+            pipeline.validate_map_lights_v2(document, "AREA")
+
     def test_map_v2_empty_and_mixed_types_validate_with_strict_fields(self) -> None:
         document = map_document("AREA")
         pipeline.validate_map_lights_v2(document, "AREA")

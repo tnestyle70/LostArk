@@ -90,6 +90,15 @@ public:
 	   targets are required because the document is admitted against the
 	   placements and Deploy props this level actually created. */
 	bool_t Load_Area(const std::string& areaId, const TARGET_SET& targets);
+	// Loader-only: parse/validate against its admitted map/Deploy prototypes.
+	// One bounded pending Area is replaced on the next preparation and consumed
+	// once by activation. Cancellation publishes no usable stage.
+	static bool_t Prepare_AreaLoad(uint32_t levelIndex, const std::string& areaId,
+		const MAP_LOAD_SCOPE& loadScope, std::string& status,
+		const std::function<bool_t()>& isCancellationRequested = nullptr);
+	// Product activation never falls back to synchronous file parsing. Failed or
+	// missing preparation preserves this player's document and reports its reason.
+	bool_t Load_PreparedArea(const std::string& areaId, const TARGET_SET& targets);
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
 	bool_t Prepare_InstanceResources(const std::string& instanceId, const TARGET_SET& targets);
 	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,

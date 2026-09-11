@@ -3889,7 +3889,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -3897,6 +3897,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
+		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER') -and
+			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
+			 ($trigger.kind -ceq 'CARD_MAZE_HIDE_NEXT' -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
+			throw "KoukuSaydon card maze trigger carries unrelated values"
+		}
 		$hours = @(0,0,0)
 		$clone = '-'
 		if ($trigger.kind -ceq 'REAL_GAZE_TELEPORT') {
@@ -4117,7 +4122,7 @@ foreach ($bundle in @($koukuEncounterDocument.bundles)) {
             }
             if (@($reachable.sceneProfiles).Count -gt 0) { [void]$sceneOwners.Add([string]$member.memberId) }
             foreach ($trigger in @($reachable.mechanicTriggers)) {
-                if ($trigger.kind -ceq 'HUD_ENTER') { [void]$statefulOwners.Add([string]$member.memberId) }
+                if ($trigger.kind -cin @('HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER')) { [void]$statefulOwners.Add([string]$member.memberId) }
             }
             foreach ($window in @($reachable.logicWindows)) {
                 if ($window.kind -cin @('POSE_INPUT','ROULETTE_CARD_MATCH')) { [void]$statefulOwners.Add([string]$member.memberId) }

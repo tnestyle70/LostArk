@@ -75,3 +75,73 @@ Element Solo는 원본 전체 문서를 먼저 검증하고 선택 사본에 실
 ## PR #358 통합 검증과 사용자 실행 인계
 
 Kouku revision323 공식 owner publisher 4 domain PASS, composition validate PASS(저장30/실행26/stage200). 관련 JSON 9개와 project/filter XML 8개 parse PASS, origin/main 대비 PR diff whitespace 검사 PASS. 로그와 구조 검사는 `out/PR358Integration20260911/`에 보관했다. 최신 요청에 따라 PR은 갱신하고 사용자가 자신의 EXE 빌드·화면 검증 후 병합한다. 에이전트는 중단한 빌드를 성공으로 처리하지 않고 별도 Client 실행을 수행하지 않았다.
+
+## Action Benchmark 관찰 뒤 스케일·공간 해석 수정
+
+사용자는 Action Benchmark의 패턴 Play에서 불뿜기의 작은 불과 뒤쪽의 거대한 sprite 사각형, 내려찍기 미표시를 보고했다. 내려찍기는 별도 오류 문구가 없었던 것으로 기억한다고 답했다. 아래 검증은 이 관찰 뒤 수행했으며, 앞 절의 과거 compile/CPU 결과와 구분한다.
+
+`KoukuSaydonPresentationPlayer.cpp::Build_SourceAnchorWorlds`가 bone basis에 추가로 곱하던 100을 제거했다. 설치된 `Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel`의 세 공격 clip을 각 31시점으로 읽으면 골격 combined basis는 약100이다. CModel의 .017 pre-transform 뒤 source attachment에 필요한 basis는1.7이다. 기존 코드는170을 만들었으므로 socket offset과 particle 크기를100배 키웠다. 본 위치와 애니메이션 회전·스케일은 그대로 보존한다. 앞 절의 단위 비율 설명만으로 이 모델의 cooked root basis를 검증한 것으로 간주하지 않는다.
+
+Kouku builder가 Required/CDO/archetype을 합성한 뒤 `bUseLocalSpace`의 생략값을 false로 전달하도록 수정했다. 미확인 legacy importer 기본 true를 복사하던 경로에서 내려찍기12개, 불뿜기36개의 localSpace 값만 변경했다. source notify의 bone-follow는 출생 위치를 공급하고, world-space 입자는 출생 transform을 유지한다. 원본에 명시된 true와 zero/null spawn distribution은 보존했다.
+
+검증 증거는 `out/KoukuRenderRepair20260911/`에 둔다.
+
+- `model_bone_measurements.json`: 실제 설치 모델의 raw basis, 기존170과 수정1.7 basis, 본 위치를 분리했다. 실제 Client 실행이나 화면 캡처는 아니다.
+- `cpu_probe_result.json`: 기존 Product codec/projection/Playback obj를 사용한 60 Hz 전체 수명 검사. 내려찍기397프레임·불뿜기667프레임의 Parse/Stage/Seek·되감기·source slot 누락 거절·유한 행렬 검사가 통과했다. 내려찍기는16개 중13개, 불뿜기는57개 중37개 occurrence가 생성됐다. 나머지 zero-spawn 원본에 임의 burst를 추가하지 않았다. 입력 source slot basis1.7은 합성값이므로 실제 모델 경로 검사와 구분한다.
+- 내려찍기 baked trail payload 1,392표본의 RGBA mask는 모두15, 수명 범위는0 이상1 미만이고 누적 거리도 유효했다. CPU 궤적이 만들어진다는 사실만으로 화면 표시를 판정하지 않는다.
+- `shader_variable_probe_result.json`, `all_material_variable_probe.json`: 설치 CSO를 WARP로 읽어 native parameter/time와 렌더 경로의 변수 존재를 수치로 점검했다.
+- `native_draw_probe_result.json`: 원본 DDS, native parameter packet, 같은 CPU 표본의 color/dynamic을 사용한 창 없는64×64 WARP 검사다. trail2306/2307, sprite2308/2309/2313/2314/2316/2317/2318, mesh2315에서 비영 RGB 픽셀이 확인됐다.2312는 원본 RGB0·alpha 출력이며2310 distortion은 이 고정 입력에서0이었다. 비유한 픽셀은0이다. 실제 장면의 depth·카메라·렌더 제출을 재현한 검사는 아니다.
+
+거미카운터의 `MN_RPCZ_00`도 별도로 읽었다. 네 `rpcz00_att_battle_6_01..04` clip의 head/spine1/root36표본은 raw basis99.999962~100.000034다. 같은 모델이라도 G1 preScale .017과 G2 .012053이 다르므로 결과 basis는 각각1.7과1.2053이다. 같은 helper가 그 값을 보존하며 G2에1.7을 강제하지 않는다. 수치는 `spider_model_bone_measurements.json`에 둔다.
+
+불뿜기의 중복100배 계산과 localSpace 오해석은 소스에 반영했다. 변경한 `KoukuSaydonPresentationPlayer.cpp`의 Debug C++20 최소 컴파일은 통과했다(`kouku_compile.log`, 기존 C4819 경고 포함). `SelectedFiles`를 지정한 MSBuild가 전체 ClCompile로 확장된 시도는 편집 중 파일과의 경합을 피하려 중단했고 성공으로 기록하지 않는다. 뒤이어 수행한 별도 out OBJ 컴파일만 이번 최소 컴파일 증거다. 내려찍기의 사용자 화면 미표시가 이 수정으로 해소됐는지는 미확인이다. 사용자는 우선 진행 중인 작업을 마무리하도록 요청했으며, 최종 visual PASS는 기록하지 않는다. 최종 통합 컴파일·링크와 정확한 재생 경로는 통합 검증 뒤 아래에 기록한다.
+
+## 이번 요청의 연결·데이터 최종 상태
+
+거미카운터 추가 뒤 Composition revision328 공식 owner publisher4개 domain을 통과했다.
+생성된 Client patternbindings와 Encounter의 Product 목록에서 내려찍기29·불뿜기30·거미15의
+실제 Effect asset과 유효한 재생 창을 확인했다. 새 장판과 리본의 세부 내용은
+[거미카운터 결과](2026-09-11_KOUKU_SPIDER_COUNTER_SOURCE_EFFECT_IMPLEMENTATION_RESULT.md)에 둔다.
+
+현재 수정한6개 Effect 문서는 내려찍기16, 불뿜기57, 거미 준비5/돌진9, 워로드AltV230/186요소다.
+각 문서의 실제 Resources 참조를 확인했고 변경 JSON/XML15개 parse와 `git diff --check`도
+통과했다. 증거는 `out/KoukuRenderRepair20260911/final_validation.json`이다. 모든 class의
+광역 source 검사 결과를 이번 좁은 검증의 성공으로 바꾸지 않는다.
+
+Solo 즉시 재생·Shift/Ctrl선택의 Play Group 반복은
+[선택 재생 결과](2026-09-11_EFFECT_TOOL_SOLO_AND_SELECTED_GROUP_PLAYBACK_RESULT.md),
+F native446을 재사용한 황금 번개18개 묶음은
+[워로드 결과](../09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md)에 기록했다.
+AGENTS의 복구 문서 탐색 규칙과 V2/gotchas의 반복 결함 항목도 함께 갱신했다.
+
+## 최종 Debug 빌드와 실행 인계
+
+`Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`의
+Engine/Shared/Server/Client compile·link·deploy가 모두 통과했고 missingRuntimeInputs는0개다.
+정본 결과는 `out/BuildPipeline/runs/20260911T073907619Z-debug-product.json`, 상세 로그는
+`out/KoukuRenderRepair20260911/product_debug_final.log`다. Client.exe는2026-09-11 16:39:07 KST
+빌드다. C4819/C4828과 외부 DirectXTK PDB의 LNK4099 경고는 남았고 컴파일 오류는0개다.
+앞서 중단돼 최종 결과가 없었던 `product_debug_build.log`는 성공 증거로 사용하지 않는다.
+데이터 배포는 별도로 수행한 revision328 owner publisher 결과를 따른다.
+
+마지막 상태 확인에서 Server와 Client는 모두 실행 중이 아니었다. LAN 설정은 server-host,
+`192.168.0.14:7777`이고 Visual Studio의 **Server + Client** profile로 Ctrl+F5를 누른다.
+
+1. Lobby → KoukuSaydon → F1 → Action Benchmark에서 기존1관문 내려찍기29·불뿜기30의
+   패턴 Play를 확인한다. 내려찍기 미표시 해소와 불뿜기 크기·위치는 사용자 화면 확인 대기다.
+2. 같은 도구의 GATE2 `쿠크_거미카운터`에서 세 돌진의 검정·붉은 바닥과 잔상을 확인한다.
+3. Character Select → Warlord에서 F와 Alt+V의 번개 형태·황금색·개수를 비교한다.
+4. Effect Tool → Current Effect에서 Solo를 누른다. A를 일반 클릭하고 B를 Shift클릭한 뒤
+   Play All 오른쪽 Play Group을 눌러 추가 Play 없이 반복되는지 확인한다. Stop/문서 전환도 확인한다.
+
+Client/UI 실행·조작·캡처와 수동 visual PASS는 수행하지 않았다. 같은 작업 폴더에 다른 기능의
+변경이 함께 있어 stage/commit/push하지 않았으며, 기존 변경을 되돌리거나 정리하지 않았다.
+
+
+## 내려찍기 미표시의 v15 renderer 준비 실패 수정
+
+추가 사용자 관찰은 불뿜기는 표시되지만 내려찍기는 표시되지 않는다는 내용이다. 내려찍기 v15와 거미카운터 stage2 v15를 실제 Product codec·projection·renderer로 실행하면 둘 다 `Visual-program adapter denominator did not map to prepared elements.`로 GPU resource 준비가 실패했다. 정상 표시된 불뿜기와 거미카운터 stage1은 v13이며, 단일 shader draw나 CPU playback 검사는 이 준비 실패를 통과하지 않는다.
+
+`Effect_DocumentRenderer.cpp`의 `ADAPTER_PACKET_V1` 검증은 LocalDecal adapter가 반드시 하나 이상 있다고 가정했다. document-owned baked trail/ribbon은 유효한 supplemental element만 소유하므로 LocalDecal 수가 0이다. 유효한 supplemental이 있으면 이 0을 허용하고, 실제로 준비한 LocalDecal adapter 수와 승인된 수의 일치 검사는 유지했다. source 크기·본 단위·shader·저작 데이터는 변경하지 않았다.
+
+`out/KoukuDecalAnchor20260911/renderer_stage_probe_run.log`는 수정 전 두 문서 모두 prepare 실패, exit1을 기록한다. 같은 임시 CLI와 수정한 renderer의 별도 MSVC out OBJ를 사용한 `renderer_stage_probe_fixed.log`는 두 문서 모두 parse/projection/실제 WARP resource prepare/renderer attach/`CEffectObject::Clone` 성공, exit0이다. 실제 설치 texture·model과 Product CSO를 사용했으며 Client, 창, swapchain, draw 또는 캡처를 만들지 않았다. 최소 C++ compile/link와 `git diff --check`를 통과했다. 최종 Client 통합 빌드는 같은 작업의 Pattern Flow 결과에 기록하며, 실제 아레나 표시·형태 판정은 사용자 확인 대기다.

@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 323,
+  "sourceRevision": 330,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -25128,7 +25128,7 @@
           "stageId": "STAGE_29",
           "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.29",
           "stageKind": "ACTIVE",
-          "durationMs": 1667,
+          "durationMs": 382,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -25147,7 +25147,83 @@
       ],
       "resetBossToSpawn": false,
       "logicWindows": [],
-      "mechanicTriggers": [],
+      "mechanicTriggers": [
+        {
+          "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.1",
+          "kind": "CARD_MAZE_ENTER",
+          "startMs": 5136,
+          "durationMs": 186,
+          "hudMode": "NONE",
+          "teleportPosition": [
+            0.28,
+            -0.01,
+            1351.65
+          ],
+          "clonePatternId": "",
+          "clockHours": [],
+          "faceCenterYawOffsetDegrees": 0.0
+        },
+        {
+          "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.2",
+          "kind": "CARD_MAZE_HIDE_NEXT",
+          "startMs": 3744,
+          "durationMs": 236,
+          "hudMode": "NONE",
+          "teleportPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "clonePatternId": "",
+          "clockHours": [],
+          "faceCenterYawOffsetDegrees": 0.0
+        },
+        {
+          "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.3",
+          "kind": "CARD_MAZE_HIDE_NEXT",
+          "startMs": 4182,
+          "durationMs": 236,
+          "hudMode": "NONE",
+          "teleportPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "clonePatternId": "",
+          "clockHours": [],
+          "faceCenterYawOffsetDegrees": 0.0
+        },
+        {
+          "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.4",
+          "kind": "CARD_MAZE_HIDE_NEXT",
+          "startMs": 4529,
+          "durationMs": 236,
+          "hudMode": "NONE",
+          "teleportPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "clonePatternId": "",
+          "clockHours": [],
+          "faceCenterYawOffsetDegrees": 0.0
+        },
+        {
+          "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.5",
+          "kind": "CARD_MAZE_HIDE_NEXT",
+          "startMs": 4824,
+          "durationMs": 236,
+          "hudMode": "NONE",
+          "teleportPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "clonePatternId": "",
+          "clockHours": [],
+          "faceCenterYawOffsetDegrees": 0.0
+        }
+      ],
       "worldSequences": [],
       "sceneProfiles": []
     },
@@ -25456,11 +25532,27 @@
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.4",
       "displayName": "카드미로_동시",
-      "durationMs": 6634,
+      "durationMs": 5349,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.4.member.1",
           "patternId": "KAKULSAYDON_G1_PATTERN_28",
+          "startOffsetMs": 0,
+          "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+          "actorProfileId": "MN_RPCZ_00"
+        }
+      ]
+    },
+    {
+      "bundleId": "kakulsaydon.bundle.6",
+      "gateId": "GATE2",
+      "folderId": "kakulsaydon.folder.6",
+      "displayName": "쿠크거미카운터_동시",
+      "durationMs": 21501,
+      "members": [
+        {
+          "memberId": "kakulsaydon.bundle.6.member.1",
+          "patternId": "KAKULSAYDON_G1_PATTERN_15",
           "startOffsetMs": 0,
           "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
           "actorProfileId": "MN_RPCZ_00"
@@ -25949,14 +26041,9 @@
             "memberId": "kakulsaydon.bundle.6.member.1",
             "patternId": "KAKULSAYDON_G1_PATTERN_15",
             "startOffsetMs": 0
-          },
-          {
-            "memberId": "kakulsaydon.bundle.6.member.2",
-            "patternId": "KAKULSAYDON_G1_PATTERN_16",
-            "startOffsetMs": 0
           }
         ],
-        "unavailableReason": "Bundle child is unavailable: KAKULSAYDON_G1_PATTERN_16: PRODUCT pattern has no stages: KAKULSAYDON_G1_PATTERN_16"
+        "unavailableReason": ""
       },
       {
         "bundleId": "kakulsaydon.bundle.7",

@@ -775,6 +775,15 @@ Action Workbench의 KoukuSaydon session이 전체 트리를 편집하고 단일 
 `Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json`의 전체 `patternInventory`를 표시하고,
 실행 가능한 Product와 Server bootstrap은 기존 typed 재생 경로에서 소비한다.
 Composition v3는 `GATE1/GATE2/GATE3/BINGO`, 부모 폴더, 재생 묶음, 대상 보스가 지정된 패턴을 저장한다.
+카드미로 Logic의 `CARD_MAZE_HIDE_NEXT`는 첫 occurrence에서 살아 있는 참가자를 월드 X 내림차순,
+동률 PlayerId 순으로 확정하고 한 occurrence마다 한 명을 숨긴다. `CARD_MAZE_ENTER`의
+`teleportPosition`은 서버 navigation과 collision으로 검증하는 미로 중앙 목적지다. 참가자 전원
+검증 뒤 같은 tick에 이동·표시 복구·MAZE HUD를 적용하고 기존 중앙 Q 망원경 진행을 사용한다.
+입장 실패나 패턴 Stop은 이 연출이 숨긴 참가자를 다시 표시하며, 실패하면 전원 원래 위치를 유지한다.
+Shared protocol 79의 `CARD_MAZE_PRESENTATION.flags` bit16이 표시 상태를 복제한다.
+Server/Client를 함께 다시 빌드하고 publish 뒤 Server를 재시작한다.
+Effect occurrence의 dissolve 시작·끝은 lifetime 정규화 시간이다. 같은 값은 기존 runtime의 즉시
+전환 규칙을 사용하며 1/1은 lifetime 끝까지 dissolve-out을 하지 않는다. 역전된 구간은 거부한다.
 Composition Patterns의 Model View는 표시 필터이며 묶음의 실행 대상을 바꾸지 않는다. 부모는 분류만 하고,
 묶음은 stable child pattern ID와 시작 offset을 참조한다. 묶음을 선택하면 자식별 요약 Sequencer와 공통
 Camera/Scene Profile 행을, 자식을 선택하면 기존 상세 Sequencer를 편집한다. Create Parent → Create Bundle →
@@ -801,8 +810,16 @@ stable ID와 참조는 바뀌지 않는다. Stage 삽입·삭제는 겹치는 Bo
 Animation의 optional blendInMs는 직전 clip 끝점에서 현재 clip으로 보간한다. Product의 짧은 playMs는
 남은 Stage 동안 종료 자세를 유지하고 LOOP_TO_WINDOW는 지정한 시간창에서 반복한다.
 Preview, Product의 body/weapon 및 서버 bone-contact bake가 같은 샘플링 계약을 사용한다.
-F1의 Gate 선택은 유지하며 게시된 전체 트리를 나열한다. Complete Play는 실행 가능한 선택 패턴 하나 또는 선택한 묶음
-전체를 Server에 요청한다. 기존 Play All은 실행 가능한 Pattern의 원본 순서대로 순차 재생한다. Server는 묶음의 모든 대상을
+F1은 관문별 `Saved Pattern Flow`와 `All Patterns`를 구분한다. Boss Tool의 `Pattern Flow`에서
+Pattern 또는 Bundle stable ID를 추가하고 순서·대기 시간을 편집하여 `Save Pattern Flow` →
+`Publish Saved Patterns`로 게시한다. 정본은 기존 KoukuSaydon Composition의 optional `patternFlows`다.
+Action Workbench는 모델 선택과 무관하게 전체 Gate→Parent→Bundle→Pattern 트리를 표시한다.
+`Complete Play - Sequences + Pattern Flow`는 관문의 Sequence를 순서대로 끝낸 뒤 플레이어 follow camera로
+복귀하여 저장 Flow를 시작한다. 정상 완료 이벤트만 연결되며 Stop/실패/관문·world·게시 revision 변경은
+전투 시작을 막는다. `Play Saved Pattern Flow`는 전투 순서만 실행하고 `Composition Play All`은 선택 관문의
+게시 목록에서 Bundle을 하나의 동시 실행 항목으로 유지하며 해당 child의 중복 단독 재생을 제외한다.
+Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 typed Pattern/Bundle 요청을 보낸다.
+거부·취소·연결 종료는 남은 순서를 취소한다. Server는 묶음의 모든 대상을
 검증한 뒤 하나의 run epoch와 공통 시작 tick을 확정한다. offset은 30Hz tick으로 올림하며 Stop/Restart는
 원래 run epoch를 명시한다. 같은 방의 Client와 늦게 입장한 Client는 복제된 묶음 상태와 시작 tick을 소비한다.
 공통 Camera/Scene Profile은 묶음 시계에서 한 번 실행하며 다른 소유자의 겹치는 전역 연출은 게시 단계에서
@@ -869,7 +886,11 @@ F1 Boss Tuning의 Save가 기록한 `Gameplay.world.json` 위치·방향도 Serv
 
 Composition Effect Resources는 V2 GROUP 목록이 기본이며 V1 탭에서 기존 authored Effect와 stable Element를
 선택한다. `resourceKind=V1_EFFECT/V1_ELEMENT`와 optional `elementId`는 원본 V1 문서를 참조한다.
-Effect occurrence도 Collider와 같은 BODY/WEAPON named bone, BOSS/WORLD anchor와 local offset을 사용한다.
+Effect occurrence는 BODY/WEAPON named bone, BOSS/WORLD anchor와 local offset을 사용하고,
+MAP을 선택하면 고정 월드 위치·회전·크기를 사용한다. MAP은 follow/bone/world 참조를 함께 저장하지
+않으며 `Use Player Position`은 현재 플레이어 위치를 occurrence에 복사한다. 같은 규칙은 독립
+Sequencer Benchmark에도 적용된다. Effect Tool의 Kouku `Play All`은 현재 플레이어의 위치·방향을
+임시 기준으로 사용한다. Append한 occurrence의 앵커와 저장된 Sequence는 이 임시 재생으로 바뀌지 않는다.
 관측한 anchor 기록으로 외부 시계 재생·seek를 처리하며 과거 기록이 없는 구간을 임의 포즈로 보충하지 않는다.
 
 Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effectResourceId/effectDelayMs를
@@ -1317,8 +1338,8 @@ WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }
 
 ### 카드미로 진행·관전 계약
 
-MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 70의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
+MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 79의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
 
 카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
 
-문양 플레이어·병사 발밑은 `cardmaze.mark.heart/spade/club/diamond`, 개인 출구는 `cardmaze.exit.heart/spade/club/diamond` Effect GROUP을 사용한다. 두 그룹은 같은 `cardmaze.symbol.*` Decal leaf와 기존 `Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47{,_1,_2,_3}.dds`를 사용한다(하트/스페이드/클럽/다이아몬드 순서). 기존 춤 연출은 수정하지 않는다. 플레이어/병사 표시는 해당 객체의 이동 위치만 따라가고 출구는 서버 출구 좌표에 고정한다. Client는 이동·처치 판정 없이 snapshot과 복제 객체로 표시·정리만 한다. 다인 플레이와 Release의 망원경 담당은 문양과 목표를 받지 않는다. Debug Server에서 방에 정확히 한 명이면 최초 상자 타격자가 HUNTER 문양과 망원경 owner identity를 함께 받는다. 이 1인 테스트만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 세토 접촉·처치·출구는 기존 규칙을 사용한다. 다른 참가자가 죽어 혼자 생존한 상황은 이 예외를 켜지 않는다. Protocol 70 Client/Server를 함께 사용한다. 화면 크기·색상·실제 4인 입력·접촉·암전은 사용자 런타임 확인 대상이다.
+문양 플레이어·병사 발밑은 `cardmaze.mark.heart/spade/club/diamond`, 개인 출구는 `cardmaze.exit.heart/spade/club/diamond` Effect GROUP을 사용한다. 두 그룹은 같은 `cardmaze.symbol.*` Decal leaf와 기존 `Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47{,_1,_2,_3}.dds`를 사용한다(하트/스페이드/클럽/다이아몬드 순서). 기존 춤 연출은 수정하지 않는다. 플레이어/병사 표시는 해당 객체의 이동 위치만 따라가고 출구는 서버 출구 좌표에 고정한다. Client는 이동·처치 판정 없이 snapshot과 복제 객체로 표시·정리만 한다. 다인 플레이와 Release의 망원경 담당은 문양과 목표를 받지 않는다. Debug Server에서 방에 정확히 한 명이면 최초 상자 타격자가 HUNTER 문양과 망원경 owner identity를 함께 받는다. 이 1인 테스트만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 세토 접촉·처치·출구는 기존 규칙을 사용한다. 다른 참가자가 죽어 혼자 생존한 상황은 이 예외를 켜지 않는다. Protocol 79 Client/Server를 함께 사용한다. 화면 크기·색상·실제 4인 입력·접촉·암전은 사용자 런타임 확인 대상이다.

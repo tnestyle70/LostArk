@@ -378,6 +378,38 @@ class UmodelGltfPsaCookerTests(unittest.TestCase):
             self.run_cooker(), "glTF joint order/names differ from PSA BONENAMES"
         )
 
+    def test_explicit_bone_order_remap_preserves_skin_and_targets_tracks_by_name(self) -> None:
+        _write_gltf(self.gltf, joint_names=("child", "root"))
+        doc = json.loads(self.gltf.read_text(encoding="utf-8"))
+        doc["nodes"][1]["children"] = [0]
+        self.gltf.write_text(json.dumps(doc), encoding="utf-8")
+        _write_psa(self.psa, bone_names=("root", "child"))
+        self.assert_failed_without_outputs(self.run_cooker(), "glTF joint order/names differ")
+        result = self.run_cooker("--allow-bone-order-remap")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        staged = json.loads(self.output_gltf.read_text(encoding="utf-8"))
+        self.assertEqual(staged["skins"], doc["skins"])
+        self.assertEqual(staged["nodes"], doc["nodes"])
+        animation = staged["animations"][0]
+        translations = {}
+        for channel in animation["channels"]:
+            if channel["target"]["path"] == "translation":
+                accessor = animation["samplers"][channel["sampler"]]["output"]
+                translations[channel["target"]["node"]] = _read_floats(
+                    staged, self.output_bin.read_bytes(), accessor, 3)[0]
+        self.assertEqual(translations[1], (0.0, 0.0, 0.0))
+        for actual, expected in zip(translations[0], (0.1, 0.3, -0.2)):
+            self.assertAlmostEqual(actual, expected)
+        self.assertTrue(json.loads(self.report.read_text())["boneOrderRemapped"])
+
+    def test_bone_order_remap_rejects_missing_or_duplicate_joint_names(self) -> None:
+        for names in (("root", "unknown"), ("root", "root")):
+            with self.subTest(names=names):
+                _write_gltf(self.gltf, joint_names=names)
+                _write_psa(self.psa, bone_names=("root", "child"))
+                result = self.run_cooker("--allow-bone-order-remap")
+                self.assert_failed_without_outputs(result, "glTF joint")
+
     def test_rejects_animation_key_count_mismatch(self) -> None:
         _write_gltf(self.gltf)
         _write_psa(self.psa, key_payload_count=1)

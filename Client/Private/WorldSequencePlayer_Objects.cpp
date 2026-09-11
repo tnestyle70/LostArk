@@ -133,8 +133,32 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             if (path.empty())
             { m_Status = "World Object model path is invalid: " + resource->modelAssetId; return false; }
             MODEL_ASSET_LOAD_DESC load;
-            if (!CActorCatalog::Build_ModelLoadDescription(resource->modelAssetId, load, m_Status))
-                return false;
+            const auto& materialSource = resource->materialSourceModelAssetId.empty() ? resource->modelAssetId : resource->materialSourceModelAssetId;
+            if (!CActorCatalog::Build_ModelLoadDescription(materialSource, load, m_Status)) return false;
+            if (!resource->materialSourceModelAssetId.empty() && load.materialOverrides.empty())
+            { m_Status = "World Object original actor materials are unavailable: " + materialSource; return false; }
+            load.meshPath = path;
+            for (const auto& binding : resource->mapMaterialBindings)
+            {
+                const auto* asset = targets.pCatalog->Find(binding.sourceAssetId);
+                if (!asset) { m_Status = "World Object map material asset is missing: " + binding.sourceAssetId; return false; }
+                const auto found = std::find_if(asset->materialOverrides.begin(), asset->materialOverrides.end(),
+                    [&](const auto& row) { return row.materialName == binding.sourceMaterialName; });
+                if (found == asset->materialOverrides.end() || found->surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED)
+                { m_Status = "World Object map surface binding is missing or unsupported: " + binding.sourceMaterialName; return false; }
+                auto material = *found;
+                material.materialName = binding.materialName;
+                material.surface.hasBakedLighting = false;
+                material.surface.hasStaticShadow = false;
+                material.bakedAveragePath.clear(); material.bakedDirectionalPath.clear(); material.staticShadowPath.clear();
+                if (!binding.diffuseTextureAssetId.empty())
+                {
+                    material.surfaceDiffusePath = CRuntimeAssetRoot::Resolve(binding.diffuseTextureAssetId);
+                    if (material.surfaceDiffusePath.empty()) { m_Status = "World Object surface texture is invalid"; return false; }
+                }
+                std::erase_if(load.materialOverrides, [&](const auto& prior) { return prior.materialName == material.materialName; });
+                load.materialOverrides.push_back(std::move(material));
+            }
             if (resource->materialProfile)
             {
                 MODEL_MATERIAL_OVERRIDE material;

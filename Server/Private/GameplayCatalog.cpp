@@ -3025,6 +3025,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					trigger.ClockHours.push_back(hour);
 				}
 			}
+			else if (fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER")
+			{
+				trigger.eKind = fields[4] == "CARD_MAZE_HIDE_NEXT" ?
+					BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT : BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
+				if (mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+					trigger.fFaceCenterYawOffsetDegrees != 0.f ||
+					(trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT &&
+					 (trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f)))
+				{ m_strStatus = "Card maze trigger carries unrelated values"; return false; }
+			}
 			else if (fields[4] != "HUD_ENTER" || fields[11] != "-" ||
 				fields[12] != "0" || fields[13] != "0" || fields[14] != "0")
 				return false;

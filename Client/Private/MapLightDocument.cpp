@@ -209,9 +209,13 @@ bool_t Client::CMapLightDocument::Parse(
 			{outStatus="Map light kind/cone/range conflict: "+record.lightId;return false;}
 			if (const auto* receiver = row.Find("receiver"))
 			{
-				if (!receiver->Is_String() || (receiver->Get_String() != "ALL" && receiver->Get_String() != "SOURCE_CHARACTER"))
-				{ outStatus="Map light receiver is invalid: "+record.lightId; return false; }
-				record.receiver=receiver->Get_String()=="ALL"?LIGHT_RECEIVER::ALL:LIGHT_RECEIVER::SOURCE_CHARACTER;
+				if (!receiver->Is_String())
+                { outStatus="Map light receiver is invalid: "+record.lightId; return false; }
+                const auto& name = receiver->Get_String();
+                if (name == "ALL") record.receiver = LIGHT_RECEIVER::ALL;
+                else if (name == "SOURCE_CHARACTER") record.receiver = LIGHT_RECEIVER::SOURCE_CHARACTER;
+                else if (name == "UNBAKED") record.receiver = LIGHT_RECEIVER::UNBAKED;
+                else { outStatus="Map light receiver is invalid: "+record.lightId; return false; }
 			}
 			record.kind=kind=="POINT"?LIGHT::POINT:kind=="SPOT"?LIGHT::SPOT:LIGHT::DIRECTIONAL;
 			record.enabled=enabled->Get_Boolean();record.position={pos[0],pos[1],pos[2]};
@@ -339,7 +343,8 @@ std::string Client::CMapLightDocument::Serialize() const
 		 <<", \"color\": ["<<r.color.x<<","<<r.color.y<<","<<r.color.z<<","<<r.color.w<<"], \"brightness\": "<<r.brightness;
         if (r.staticShadowChannel != 0u) o<<", \"staticShadowChannel\": "<<r.staticShadowChannel;
 		if (r.receiver != LIGHT_RECEIVER::ALL)
-			o<<", \"receiver\": \""<<(r.receiver==LIGHT_RECEIVER::SOURCE_CHARACTER?"SOURCE_CHARACTER":"INVALID")<<"\"";
+			o<<", \"receiver\": \""<<(r.receiver==LIGHT_RECEIVER::SOURCE_CHARACTER?"SOURCE_CHARACTER":
+                r.receiver==LIGHT_RECEIVER::UNBAKED?"UNBAKED":"INVALID")<<"\"";
 		o<<"}";
 	}
 	o<<"\n  ]\n}\n";return o.str();

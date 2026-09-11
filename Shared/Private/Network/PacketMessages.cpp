@@ -160,7 +160,7 @@ namespace
 			snapshot.iMarioStage <= 4u &&
 			snapshot.iMarioLayoutVariant <= 3u &&
 			(snapshot.iMarioStage != 0u || snapshot.iMarioLayoutVariant == 0u) &&
-			snapshot.CardMaze.flags <= 15u &&
+			snapshot.CardMaze.flags <= LostArk::Shared::CARD_MAZE_VALID_FLAGS &&
 			std::isfinite(snapshot.CardMaze.exitX) && std::isfinite(snapshot.CardMaze.exitY) &&
 			std::isfinite(snapshot.CardMaze.exitZ) &&
 			((snapshot.CardMaze.marchStartTick == 0u) == (snapshot.CardMaze.marchCycleMs == 0u)) &&
@@ -3067,7 +3067,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			rawCardMazeSuit >= static_cast<std::uint8_t>(MECHANIC_CARD_SYMBOL::END) ||
 			!reader.Read_U8(player.iCardMazeKills) ||
 			!reader.Read_U8(player.iCardMazeKillTarget) ||
-			!reader.Read_U8(player.CardMaze.flags) || player.CardMaze.flags > 15u ||
+			!reader.Read_U8(player.CardMaze.flags) || player.CardMaze.flags > LostArk::Shared::CARD_MAZE_VALID_FLAGS ||
 			!reader.Read_F32(player.CardMaze.exitX) || !std::isfinite(player.CardMaze.exitX) ||
 			!reader.Read_F32(player.CardMaze.exitY) || !std::isfinite(player.CardMaze.exitY) ||
 			!reader.Read_F32(player.CardMaze.exitZ) || !std::isfinite(player.CardMaze.exitZ) ||

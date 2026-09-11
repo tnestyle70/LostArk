@@ -4,6 +4,7 @@
 #include "EffectEditingSession.h"
 #include "Effect_Object.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include <algorithm>
 #include <cmath>
@@ -224,6 +225,7 @@ bool CEffectAuthoringSequencer::Duplicate_SelectedRow()
 
 void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
 {
+    Engine::CProfilerScope Profile(CGameInstance::Get().Get_Profiler(), "EffectSequencer.Render");
     ImGui::SetNextWindowSize({1180.f, 420.f}, ImGuiCond_FirstUseEver);
     const bool expanded = ImGui::Begin(title, nullptr, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar())
@@ -239,11 +241,13 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
     if (expanded)
     {
         if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
-        if (ImGui::Button("Play")) { if (m_ClockMs >= DurationMs()) m_ClockMs = 0; Play(); }
+        const auto restartMs = Is_ElementPreview() ? m_Transient->previewStartMs : 0u;
+        if (ImGui::Button("Play")) { if (m_ClockMs >= DurationMs()) m_ClockMs = restartMs; Play(); }
         ImGui::SameLine(); if (ImGui::Button(m_Paused ? "Resume" : "Pause")) Pause(!m_Paused);
-        ImGui::SameLine(); if (ImGui::Button("Restart")) { m_ClockMs = 0; Play(); }
+        ImGui::SameLine(); if (ImGui::Button("Restart")) { m_ClockMs = restartMs; Play(); }
         ImGui::SameLine(); if (ImGui::Button("Stop")) { Stop(); m_ClockMs = 0; }
-        ImGui::SameLine(); ImGui::Checkbox("Loop", &m_Loop);
+        ImGui::SameLine();
+        ImGui::Checkbox("Loop", Uses_TransientLoop() ? &m_Transient->previewLoop : &m_Loop);
         ImGui::SameLine(); if (ImGui::Button("Refresh Effects")) Refresh_Effects();
         ImGui::SameLine(); if (ImGui::Button("Resources")) m_ResourcesOpen = true;
         ImGui::SameLine(); if (ImGui::Button("Details")) m_BoxDetailOpen = true;
@@ -298,16 +302,16 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
                 add(TRACK_KIND::ANIMATION, clip.id, clip.label.empty() ? clip.clipName : clip.label,
                     clip.startMs, clip.durationMs, clip.muted, !recoveryAnimation);
         }
-        const bool elementPreview = m_Transient && !m_Transient->previewElementId.empty();
+        const bool elementPreview = m_Transient && !m_Transient->previewElementIds.empty();
         auto addEffect = [&](const EFFECT_ROW& row, bool transient)
         {
             const auto resource = std::find_if(m_CompositionResources.begin(), m_CompositionResources.end(),
                 [&](const auto& entry) { return entry.key == row.key; });
-            const auto label = row.previewElementId.empty() ?
+            const auto label = row.previewElementIds.empty() ?
                 (resource == m_CompositionResources.end() ? row.key.strStableId : resource->label) :
-                (row.previewElementLabel.empty() ? row.previewElementId : row.previewElementLabel);
+                (row.previewElementLabel.empty() ? row.previewElementIds.front() : row.previewElementLabel);
             add(row.screenPost ? TRACK_KIND::SCREEN_POST : TRACK_KIND::EFFECT, row.id,
-                transient ? (row.previewElementId.empty() ? "Preview / " : "Element / ") + label : label,
+                transient ? (row.previewElementIds.empty() ? "Preview / " : "Element / ") + label : label,
                 row.startMs, row.durationMs, row.muted, !transient);
         };
         if (!elementPreview) for (const auto& row : m_Effects) addEffect(row, false);
@@ -344,15 +348,18 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
             for (std::size_t lane = 0; lane < lanes.size(); ++lane)
             {
                 auto& boxes = lanes[lane];
-                std::stable_sort(boxes.begin(), boxes.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
                 std::vector<std::uint32_t> rowEnds;
                 std::vector<std::size_t> positions;
-                for (const auto& box : boxes)
                 {
-                    std::size_t row = 0;
-                    while (row < rowEnds.size() && rowEnds[row] > box.start) ++row;
-                    if (row == rowEnds.size()) rowEnds.push_back(0u);
-                    rowEnds[row] = box.start + box.duration; positions.push_back(row);
+                    Engine::CProfilerScope LayoutProfile(CGameInstance::Get().Get_Profiler(), "EffectSequencer.LaneLayout");
+                    std::stable_sort(boxes.begin(), boxes.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
+                    for (const auto& box : boxes)
+                    {
+                        std::size_t row = 0;
+                        while (row < rowEnds.size() && rowEnds[row] > box.start) ++row;
+                        if (row == rowEnds.size()) rowEnds.push_back(0u);
+                        rowEnds[row] = box.start + box.duration; positions.push_back(row);
+                    }
                 }
                 const auto rowCount = (std::max)(std::size_t{1}, rowEnds.size());
                 const float height = rowHeight * static_cast<float>(rowCount);
@@ -370,6 +377,10 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
                     const float top = y + positions[i] * rowHeight + 2.f;
                     const float left = origin.x + labels + startMs * m_Zoom * .001f;
                     const float right = (std::max)(left + 6.f, left + durationMs * m_Zoom * .001f);
+                    // Keep the active item alive while dragging beyond the viewport.
+                    // The final Dummy below still owns the full scrollable layout.
+                    if (!dragging && !ImGui::IsRectVisible({left - 2.f, top - 2.f}, {right + 2.f, top + rowHeight - 3.f}))
+                        continue;
                     CompositionTimeline::DrawBox(draw, {left, top}, {right, top + rowHeight - 5.f},
                         box.muted ? IM_COL32(73,75,81,200) : colors[lane],
                         m_SelectedTrack == box.kind && m_SelectedRowId == box.id, box.label.c_str(), box.editable, box.editable);

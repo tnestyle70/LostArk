@@ -124,6 +124,8 @@ CLevel_CharacterSelect::CLevel_CharacterSelect(
 
 CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
+	// Stop the owner before clearing level/catalog/replication state it observes.
+	m_pClassAssetPreparation.reset();
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 	/* A level teardown with the Create Character modal still open (disconnect -> Lobby, world
@@ -482,29 +484,80 @@ bool_t CLevel_CharacterSelect::Bind_CameraTarget(
 bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 {
 	if (m_isCreateCharacterModalOpen || Is_CustomizingOpen() ||
-		MODE::SERVER_ARENA != m_eMode || m_iPendingClassIndex.has_value() ||
-		Is_ClassPresentationPreparationPending() ||
+		MODE::SERVER_ARENA != m_eMode || CLevelTransitionService::Is_Pending() ||
 		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
-	{
 		return false;
-	}
-	if (index == m_iSelectedClassIndex)
+	// Keep only the latest intent. No model IO, parsing, or prototype mutation
+	// occurs in the click handler; the previous Server character remains active.
+	m_iRequestedClassIndex = index;
+	if (m_pClassAssetPreparation && m_iPreparingClassIndex != m_iRequestedClassIndex)
+		m_pClassAssetPreparation->Cancel_AsyncPreparation();
+	m_strStatus = std::string("Class preparation requested: ") +
+		Get_CharacterClassName(SUPPORTED_CLASSES[index]) + ".";
+	return true;
+}
+
+void CLevel_CharacterSelect::Advance_ClassAssetPreparation()
+{
+	if (CLevelTransitionService::Is_Pending())
 	{
+		m_iRequestedClassIndex.reset();
+		if (m_pClassAssetPreparation)
+		{
+			m_pClassAssetPreparation->Cancel_AsyncPreparation();
+			HRESULT result; std::string status;
+			(void)m_pClassAssetPreparation->Poll_AsyncPreparation(false, result, status);
+		}
+		return;
+	}
+	if (!m_pClassAssetPreparation)
+		m_pClassAssetPreparation = std::make_unique<CPlayableCharacterAssetService>();
+	if (m_pClassAssetPreparation->Is_Preparing())
+	{
+		const bool_t wanted = m_iPreparingClassIndex == m_iRequestedClassIndex;
+		HRESULT result = E_PENDING;
+		std::string status;
+		if (!m_pClassAssetPreparation->Poll_AsyncPreparation(wanted, result, status))
+		{
+			if (wanted && !status.empty()) m_strStatus = std::move(status);
+			return;
+		}
+		m_iPreparingClassIndex.reset();
+		if (wanted && FAILED(result) && result != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+		{
+			m_iRequestedClassIndex.reset();
+			m_strStatus = status + " The active character was kept.";
+			return;
+		}
+	}
+	if (!m_iRequestedClassIndex) return;
+	const size_t index = *m_iRequestedClassIndex;
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW pending;
+	const bool_t awaitingSnapshot = m_iPendingClassIndex.has_value() ||
+		m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(pending);
+	if (index == m_iSelectedClassIndex && !awaitingSnapshot)
+	{
+		m_iRequestedClassIndex.reset();
 		m_strStatus = "The selected class is already active.";
-		return true;
+		return;
 	}
 	const auto characterClass = SUPPORTED_CLASSES[index];
-	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-		m_pDevice,
-		m_pContext,
-		ETOUI(LEVEL::CHARACTER_SELECT),
-		characterClass)))
+	if (!CPlayableCharacterAssetService::Is_Ready(ETOUI(LEVEL::CHARACTER_SELECT), characterClass))
 	{
-		m_strStatus =
-			"The selected class assets failed to load. The active character was kept.";
-		return false;
+		const HRESULT started = m_pClassAssetPreparation->Begin_AsyncPreparation(
+			m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), characterClass);
+		if (FAILED(started))
+		{
+			m_iRequestedClassIndex.reset();
+			m_strStatus = "The selected class preparation could not start. The active character was kept.";
+		}
+		else if (started == S_OK) m_iPreparingClassIndex = index;
+		return;
 	}
-
+	// Commands stay sequential. A later click may prepare while the prior
+	// authoritative snapshot settles, but never replaces that Server decision.
+	if (awaitingSnapshot || CLASS_PRESENTATION_PREPARATION_STATE::IDLE != m_eClassPresentationPreparationState)
+		return;
 	const std::uint32_t sequence = m_iNextClassChangeSequence++;
 	if (0u == m_iNextClassChangeSequence)
 		m_iNextClassChangeSequence = 1u;
@@ -512,7 +565,8 @@ bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 		sequence, characterClass))
 	{
 		m_strStatus = "The class change request could not be sent.";
-		return false;
+		m_iRequestedClassIndex.reset();
+		return;
 	}
 	m_iPendingClassIndex = index;
 	m_iPendingClassChangeSequence = sequence;
@@ -520,7 +574,7 @@ bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 		std::chrono::steady_clock::now() + CLASS_CHANGE_TIMEOUT;
 	m_strStatus = std::string("Server class change requested: ") +
 		Get_CharacterClassName(characterClass) + ".";
-	return true;
+	m_iRequestedClassIndex.reset();
 }
 
 void CLevel_CharacterSelect::Consume_ClassChangeResults()
@@ -619,12 +673,12 @@ bool_t CLevel_CharacterSelect::Advance_DeferredClassPresentation()
 		}
 		else
 		{
-			ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
-			std::string Status;
-			if (!CAnimationEffectCueDocument::Load_ForProductPrewarm(
-					pSpec->pAssetName, CueDocument, Status) ||
+			const auto Prepared = CPlayableCharacterAssetService::Get_PreparedPresentation(
+				ETOUI(LEVEL::CHARACTER_SELECT), Pending.eCharacterClass);
+			std::string Status = Prepared ? Prepared->EffectStatus : "Class authoring was not prepared with its model prototypes.";
+			if (!Prepared || !Prepared->HasEffectCues ||
 				!CEffectPresentationService::Queue_ProductCues_Priority(
-					CueDocument.Cues,
+					Prepared->EffectCues.Cues,
 					m_ClassPresentationEffectTargets,
 					Status))
 			{
@@ -714,6 +768,8 @@ bool_t CLevel_CharacterSelect::Advance_DeferredClassPresentation()
 
 bool_t CLevel_CharacterSelect::Is_ClassPresentationPreparationPending() const
 {
+	if (m_iRequestedClassIndex || (m_pClassAssetPreparation && m_pClassAssetPreparation->Is_Preparing()))
+		return true;
 	if (CLASS_PRESENTATION_PREPARATION_STATE::IDLE !=
 		m_eClassPresentationPreparationState)
 	{
@@ -954,6 +1010,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 				CLIENT_REPLICATION_FAILED);
 		return;
 	}
+	Advance_ClassAssetPreparation();
 	if (Is_ProductPointerHovered())
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 	if (!m_isCreateCharacterModalOpen && !Is_CustomizingOpen() &&
@@ -962,8 +1019,10 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		m_PlayerController.Update(
 			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
 	}
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW pendingClassSnapshot;
 	if (m_iPendingClassIndex.has_value() &&
-		!Is_ClassPresentationPreparationPending() &&
+		!m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(pendingClassSnapshot) &&
+		CLASS_PRESENTATION_PREPARATION_STATE::IDLE == m_eClassPresentationPreparationState &&
 		std::chrono::steady_clock::now() >= m_ClassChangeDeadline)
 	{
 		m_iPendingClassIndex.reset();
@@ -1019,6 +1078,8 @@ void CLevel_CharacterSelect::Return_ServerArenaToLobby(
 	const string& reason,
 	const char_t* pTransitionSource)
 {
+	if (m_pClassAssetPreparation) m_pClassAssetPreparation->Cancel_AsyncPreparation();
+	m_iRequestedClassIndex.reset();
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
 	m_pActiveCharacter.reset();
 	CNetworkManager::Get().Close_ServerConnection();
@@ -1948,9 +2009,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::Separator();
 	ImGui::TextUnformatted("Playable class");
 	ImGui::BeginDisabled(!isServerArena || transitionPending ||
-		m_isCreateCharacterModalOpen ||
-		m_iPendingClassIndex.has_value() ||
-		Is_ClassPresentationPreparationPending());
+		m_isCreateCharacterModalOpen || Is_CustomizingOpen());
 	for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
 	{
 		if (ImGui::Selectable(
@@ -2377,9 +2436,7 @@ void CLevel_CharacterSelect::Update_ClassList()
 	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
-		!m_isCreateCharacterModalOpen &&
-		!m_iPendingClassIndex.has_value() &&
-		!Is_ClassPresentationPreparationPending() &&
+		!m_isCreateCharacterModalOpen && !Is_CustomizingOpen() &&
 		!CLevelTransitionService::Is_Pending();
 
 	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,

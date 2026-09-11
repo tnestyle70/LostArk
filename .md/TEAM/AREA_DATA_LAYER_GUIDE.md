@@ -268,6 +268,20 @@ Area scope는 같은 transaction에서 stage한 catalog·placement를 검증 기
 `CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
 오브젝트 재생 runtime을 만들지 않는다.
 
+World Object의 optional `materialSourceModelAssetId`는 새 cinematic WModel이 사용할 원래 actor
+재질의 Resources-relative 모델 ID다. 실제 모델과 원래 모델의 material slot 이름이 같아야 하며,
+`CActorCatalog`가 승인한 material override를 새 `CModel` 로드에 적용한다. 원래 재질이 없으면
+재생 준비가 실패하고 기존 객체를 유지한다.
+
+optional `mapMaterialBindings`는 최대 64개 `{ materialName, sourceAssetId, sourceMaterialName,
+diffuseTextureAssetId? }`다. target `materialName`은 새 WModel의 실제 slot이고 source는 해당
+Area catalog에서 승인한 `SOURCE_BG_OPAQUE_MASKED` 재질 행이다. optional diffuse만 별도로
+지정할 수 있으며 모든 경로는 Resources 상대 ID다. 중복 target slot, 없는 source/slot, 다른
+family와 경로 이탈을 거부한다. 배치 고유 RNM·static shadow는 복사하지 않는다. 움직이는
+skinned map도 기존 animated shader에서 같은 BG surface 계산과 Composition 시간을 소비한다.
+sequence alias에는 이 두 재질 필드를 저장할 수 없다. Map publisher가 실 모델·재질·텍스처를
+검사하고 `CWorldSequenceDocument`의 Save/Load는 동일 필드를 보존한다.
+
 Object Tool의 부모 선택은 공통 모델·텍스처·크기·Anchor와 연결된 Motion 목록만 표시하고,
 자식 선택은 해당 Motion의 Detail과 Sequencer를 표시한다. `Create Object`는 부모만 만들고
 모델을 지정한 뒤 `Create Motion`으로 자식을 추가한다. `Append Clip`은 자식 선택에서만 가능하다.
@@ -389,7 +403,7 @@ source 문서를, 제품 Level은 runtime 문서를 읽고 둘 다 기존 `CPres
 Valtan은 catalog가 이 pair를 선언하므로 누락·손상을 정상적인 생략으로 취급하지 않고 Area stage를 실패시킨다.
 
 쿠크 `LV_LUT_MIDNIGHTC_ED`도 같은 pair를 선언한다. formatVersion 2는 `PROJECT_AUTHORED` 문서이며
-0~64개의 Directional/Point/Spot에 stable `lightId`, `displayName`, `groupId`, `enabled`, 위치·회전·range·falloff·cone·RGBA·brightness를 저장한다.
+0~512개의 Directional/Point/Spot에 stable `lightId`, `displayName`, `groupId`, `enabled`, 위치·회전·range·falloff·cone·RGBA·brightness를 저장한다.
 Rendering Workbench의 Map 목록은 player 위치를 기준으로 point/spot을 생성하고, 변경값을 Area source에 저장한다.
 Publish는 기존 Map publisher, 제품 로드는 `CMapLightPresentationRuntime`을 사용한다. 잘못된 새 source/preview는 이전 문서를 보존한다.
 같은 v2 map light는 Composition Light 탭에 읽기 전용 정의로 표시된다. Append는 stable lightId를 참조하며
@@ -397,6 +411,12 @@ Publish는 기존 Map publisher, 제품 로드는 `CMapLightPresentationRuntime`
 Default Directional Light는 Scene Profile의 기존 방향광을 편집하는 목록 행이다. maplights에 별도 기본광을 추가하지 않는다.
 활성 RenderingProfiles의 optional `mapLightIntensityMultiplier`(0~4, 기본 1)는 실제 Map light 제출 때 brightness에 곱한다.
 이 배율은 기존 v1/v2 맵 배치와 그 저작 preview에 적용하며 원본 brightness를 바꾸지 않는다. 패턴의 LIGHT occurrence에는 적용하지 않는다.
+
+map light의 optional `receiver`는 `ALL`, `SOURCE_CHARACTER`, `UNBAKED`다. `UNBAKED`는
+구운 조명이 없는 캐릭터·움직이는 맵 표면에 원본 광원을 적용하며, RNM이나 native baked 표식이
+있는 정적 맵 pixel에는 중복 조명을 더하지 않는다. Deferred와 forward map이 같은 수광 계약을
+사용한다. 쿠크의 원본 구운 광원 84개는 이 값을 사용하며 광원 위치·색·강도는 원본대로 유지한다.
+잘못된 receiver 값은 source/runtime 로드 단계에서 거부한다.
 
 Valtan DeployProp은 Development MapTool에서 source catalog 12 asset / 151 placement를
 `CDeployPropRuntime` 한 경로로 stage한다. Deploy asset catalog는 format version 2이며 각 asset의
@@ -624,3 +644,21 @@ Area 진입 시 여섯 class binary를 모두 선로드하지 않는다. Lobby�
 6. 필요한 actor/encounter/balance stable ID 연결
 7. Loader/registry/publisher 연결과 해당 domain Validate/실행형 harness 등록
 8. Debug/Release scenario smoke와 process cleanup
+
+
+## Composition Camera 저작과 cameraTrack 방향
+
+쿠크 Action Composition Workbench와 Sequencer의 `Composition Camera`는 해당 Area
+`.camerashots.json`의 기존 stable `shotId`를 편집한다. `Create Camera Action`에서 이름을
+입력하고 현재 시점을 첫 key로 만든 뒤 `Capture arrival ms`와 `Capture Pos + Rot`으로
+도착 시각을 추가한다. `Pos`, `Rot / pitch yaw roll`, `FOV Y`와 구간 보간을 편집할 수
+있으며 이동 속도는 두 key의 거리와 도착 시각 차이로 결정된다. `Save Camera`는 Area
+정본을 저장하고 `Append Camera at Cursor`와 Composition Save는 같은 shot ID를 참조한다.
+
+`cameraTrack.keyframes[]`는 기존 `eye`, `lookAt`, `fovYDegrees`, `timeMs`에 optional
+`up` 3성분을 허용한다. `up`은 유한하고 길이가 0이 아니며 view 방향과 평행하지 않아야
+한다. 명시 방향이 있는 구간은 quaternion 최단 회전으로 roll까지 보간하고, 기존 up이
+없는 문서는 기존 eye/lookAt 보간을 유지한다. 첫 key는 0ms, 최대 64개, 시간은 엄격히
+증가하며 전체 track은 최대 120000ms다. 잘못된 편집이나 저장 충돌은 기존 shot을
+보존하고 실패 이유를 표시한다. 제품 재생은 기존 camera cue/sampler와 typed presentation
+경로를 사용하며 별도 camera runtime이나 저장 domain을 만들지 않는다.

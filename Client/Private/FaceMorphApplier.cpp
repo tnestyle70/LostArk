@@ -190,11 +190,18 @@ bool_t Client::CFaceMorphApplier::Initialize(
 	const std::filesystem::path& FaceMorphsPath,
 	const std::filesystem::path& FaceMorphMapPath)
 {
+	if (!pModel) return false;
+	return Initialize(*pModel, FaceMorphsPath, FaceMorphMapPath);
+}
+
+bool_t Client::CFaceMorphApplier::Initialize(
+	const Engine::CModel& model,
+	const std::filesystem::path& FaceMorphsPath,
+	const std::filesystem::path& FaceMorphMapPath)
+{
 	m_Morphs.clear();
 	m_EverTouched.clear();
 	m_isDirty = false;
-	if (nullptr == pModel)
-		return false;
 
 	uint32_t iVertexIndexBound = 0u;
 	std::vector<RAW_MORPH> RawMorphs;
@@ -218,11 +225,13 @@ bool_t Client::CFaceMorphApplier::Initialize(
 		return false;
 	}
 
-	m_Morphs.reserve(RawMorphs.size());
+	std::vector<MORPH> staged;
+	staged.reserve(RawMorphs.size());
 	for (const RAW_MORPH& Raw : RawMorphs)
 	{
 		MORPH Morph;
 		Morph.strName = Raw.strName;
+		std::vector<VERTEX_TARGET> targets;
 		for (size_t i = 0; i < Raw.WedgeIndices.size(); ++i)
 		{
 			const uint32_t iWedgeIndex = Raw.WedgeIndices[i];
@@ -230,18 +239,20 @@ bool_t Client::CFaceMorphApplier::Initialize(
 				return false;
 			for (const std::pair<uint32_t, uint32_t>& Target : TargetsByWedge[iWedgeIndex])
 			{
-				if (Target.second >= pModel->Get_MeshVertexCount(Target.first))
+				if (Target.second >= model.Get_MeshVertexCount(Target.first))
 					return false;
 				VERTEX_TARGET VertexTarget;
 				VertexTarget.iMeshIndex = Target.first;
 				VertexTarget.iVertexIndex = Target.second;
 				VertexTarget.vPositionDelta = Raw.PositionDeltas[i];
 				VertexTarget.vNormalDelta = Raw.NormalDeltas[i];
-				Morph.Targets.push_back(VertexTarget);
+				targets.push_back(VertexTarget);
 			}
 		}
-		m_Morphs.push_back(std::move(Morph));
+		Morph.Targets = std::make_shared<const std::vector<VERTEX_TARGET>>(std::move(targets));
+		staged.push_back(std::move(Morph));
 	}
+	m_Morphs = std::move(staged);
 	return !m_Morphs.empty();
 }
 
@@ -306,7 +317,7 @@ void Client::CFaceMorphApplier::Apply(const shared_ptr<Engine::CModel>& pModel)
 	{
 		if (std::fabs(Morph.fWeight) <= WEIGHT_EPSILON)
 			continue;
-		for (const VERTEX_TARGET& Target : Morph.Targets)
+		for (const VERTEX_TARGET& Target : *Morph.Targets)
 		{
 			const TOUCHED_KEY Key{ Target.iMeshIndex, Target.iVertexIndex };
 			std::pair<float3_t, float3_t>& Accumulated = AccumulatedByVertex[Key];
