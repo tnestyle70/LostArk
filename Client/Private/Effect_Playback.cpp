@@ -644,7 +644,8 @@ namespace
 			return SOURCE_UPDATE_MODULE_KIND::LOCATION_BONE_SOCKET;
 		if (SourceClass_Matches(Module, "particlemodulelocalvectorfield"))
 			return SOURCE_UPDATE_MODULE_KIND::LOCAL_VECTOR_FIELD;
-		if (SourceClass_Matches(Module, "particlemoduleacceleration"))
+		if (SourceClass_Matches(Module, "particlemoduleacceleration") ||
+			SourceClass_Matches(Module, "particlemoduleaccelerationoverlifetime"))
 			return SOURCE_UPDATE_MODULE_KIND::ACCELERATION;
 		if (SourceClass_Matches(Module, "particlemodulevelocityoverlifetime"))
 			return SOURCE_UPDATE_MODULE_KIND::VELOCITY_OVER_LIFETIME;
@@ -1781,8 +1782,9 @@ namespace
 		std::string& strOutError)
 	{
 		strOutError.clear();
-		static constexpr std::array<std::string_view, 38u> Supported = {
+		static constexpr std::array<std::string_view, 39u> Supported = {
 			"particlemoduleacceleration",
+			"particlemoduleaccelerationoverlifetime",
 			"particlemodulecameraoffset",
 			"particlemodulecolor",
 			"particlemodulecoloroverlife",
@@ -1847,13 +1849,14 @@ namespace
 			if (!Module.Distributions.empty() ||
 				SourceString(Module, "emittername").empty() ||
 				SourceString(Module, "runtime.providerelementid").empty() ||
-				SourceString(Module, "selectionmethod") != "elesm_sequential" ||
+				(SourceString(Module, "selectionmethod") != "elesm_sequential" &&
+				 SourceString(Module, "selectionmethod") != "elesm_random") ||
 				!SourceBool(Module, "bspawnmodule", true) ||
 				SourceBool(Module, "bupdatemodule", false) ||
 				SourceBool(Module, "inheritsourcevelocity", false) ||
 				SourceBool(Module, "binheritsourcerotation", false))
 			{
-				strOutError = "LocationEmitter requires a sequential live provider with spawn-only position inheritance; velocity/rotation inheritance is unsupported.";
+				strOutError = "LocationEmitter requires a random/sequential live provider with spawn-only position inheritance; velocity/rotation inheritance is unsupported.";
 				return false;
 			}
 			return true;
@@ -2271,10 +2274,14 @@ struct Client::CEffectPlayback::SOURCE_UPDATE_MODULE final
 			Result.bDirectScaleIdentity = Is_Warlord17090ChainTypedScaleIdentity(Element, Module);
 			break;
 		case SOURCE_UPDATE_MODULE_KIND::ACCELERATION:
-			Result.bEffectAcceleration = Module.strClassName.starts_with("ef");
-			Bind(0u, Result.bEffectAcceleration ? "acceldata" : "acceleration");
+		{
+			const bool_t bOverLife = SourceClass_Matches(Module, "particlemoduleaccelerationoverlifetime");
+			Result.bEffectAcceleration = bOverLife || Module.strClassName.starts_with("ef");
+			Bind(0u, bOverLife ? "acceloverlife" :
+				(Result.bEffectAcceleration ? "acceldata" : "acceleration"));
 			Result.bWorldSpace = SourceBool(Module, "balwaysinworldspace", false);
 			break;
+		}
 		case SOURCE_UPDATE_MODULE_KIND::VELOCITY_OVER_LIFETIME:
 			Bind(0u, "veloverlife");
 			Result.bAbsoluteVelocity = SourceBool(Module, "absolute", false) ||
@@ -4965,10 +4972,20 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			const uint32_t ActiveCount = static_cast<uint32_t>(
 				std::ranges::count_if(ProviderParticles, IsAlive));
 			if (0u == ActiveCount) continue;
-			// UE3's per-module payload increments before selecting and wraps to 0.
-			// Each dependent owns its cursor, so the petals of one flower coincide.
-			auto& SelectedIndex = State.LocationEmitterNextIndices[Module.strStableId];
-			SelectedIndex = SelectedIndex + 1u >= ActiveCount ? 0u : SelectedIndex + 1u;
+			uint32_t SelectedIndex = 0u;
+			if (SourceString(Module, "selectionmethod") == "elesm_random")
+			{
+				// UE3 truncates appSRand() * ActiveParticles, then clamps the endpoint.
+				SelectedIndex = (std::min)(ActiveCount - 1u,
+					static_cast<uint32_t>(Next_ModuleRandom(State, Module) * ActiveCount));
+			}
+			else
+			{
+				// UE3's per-module sequential payload increments before selecting.
+				auto& Cursor = State.LocationEmitterNextIndices[Module.strStableId];
+				Cursor = Cursor + 1u >= ActiveCount ? 0u : Cursor + 1u;
+				SelectedIndex = Cursor;
+			}
 			uint32_t LiveIndex = 0u;
 			for (const auto& SourceParticle : ProviderParticles)
 			{
@@ -6547,10 +6564,16 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 		return true;
 	}
 
+	const bool_t bKoukuNative =
+		Element.Material.SourceMaterial.bEnabled &&
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId.starts_with(
+			"effect.ue3.kouku-");
 	const double fLocalTime = static_cast<double>(m_fSampleTimeSeconds) -
 		Packet.fLocalTimeSeconds;
+	const double fNativeTail = bKoukuNative ?
+		static_cast<double>(Element.Detail.Trail.fPointLifeTimeSeconds) : 0.0;
 	if (fLocalTime < 0.0 ||
-		fLocalTime > Packet.fPlaybackClampSeconds + 1e-6)
+		fLocalTime > Packet.fPlaybackClampSeconds + fNativeTail + 1e-6)
 		return true;
 	const double fClampedTime = (std::min)(
 		fLocalTime, Packet.fPlaybackClampSeconds);
@@ -6567,7 +6590,7 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 		Element, m_fSampleTimeSeconds, RootWorld);
 	const matrix_t WorldMatrix = XMLoadFloat4x4(&ElementWorld);
 	const auto AppendSample = [this, &Element, &OutTrail, &WorldMatrix,
-		fClampedTime](
+		fClampedTime, fLocalTime, bKoukuNative](
 		const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE& Sample)
 	{
 		EFFECT_EVALUATED_TRAIL_EDGE_PAIR Pair;
@@ -6580,9 +6603,12 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 		Pair.Payload.vWorldPosition = Pair.vControlPointWorld;
 		const double fPointLifeTime = (std::max)(1e-6,
 			static_cast<double>(Element.Detail.Trail.fPointLifeTimeSeconds));
+		const double fAge = ((bKoukuNative ? fLocalTime : fClampedTime) -
+			Sample.fRelativeTimeSeconds) / fPointLifeTime;
+		if (bKoukuNative && fAge >= 1.0)
+			return;
 		Pair.Payload.fNormalizedAge = static_cast<f32_t>((std::min)(
-			0.999999, (std::max)(0.0,
-				(fClampedTime - Sample.fRelativeTimeSeconds) / fPointLifeTime)));
+			0.999999, (std::max)(0.0, fAge)));
 		if (!OutTrail.EdgePairs.empty())
 		{
 			const float3_t& Previous =
@@ -6602,6 +6628,57 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 			Color.vColorMultiply.w) *
 			(1.f - Pair.Payload.fNormalizedAge);
 		Pair.Payload.iSourceColorComponentMask = 0x08u;
+		if (bKoukuNative)
+		{
+			// Baked geometry still owns the source point's module parameters.
+			// Keep the same deterministic draw when Seek rebuilds the frame.
+			uint32_t iSeed = Hash_RuntimeRandomIdentity(Element) ^
+				Element.Detail.Particle.iRandomSeed ^
+				static_cast<uint32_t>(Sample.fRelativeTimeSeconds * 1000000.0);
+			const f32_t fRandom = UE_RandomFraction(iSeed);
+			const f32_t fSpawn = static_cast<f32_t>(Sample.fRelativeTimeSeconds);
+			const f32_t fLife = Pair.Payload.fNormalizedAge;
+			const float3_t Start = Evaluate_SourceVector(Element,
+				"particlemodulecolor", "startcolor", fSpawn, fRandom,
+				float3_t(1.f, 1.f, 1.f));
+			const float3_t Over = Evaluate_SourceVector(Element,
+				"particlemodulecoloroverlife", "coloroverlife", fLife, fRandom,
+				Start);
+			const float3_t Scale = Evaluate_SourceVector(Element,
+				"particlemodulecolorscaleoverlife", "colorscaleoverlife",
+				fLife, fRandom, float3_t(1.f, 1.f, 1.f));
+			const f32_t fStartAlpha = Evaluate_SourceFloat(Element,
+				"particlemodulecolor", "startalpha", fSpawn, fRandom, 1.f);
+			const f32_t fAlpha = Evaluate_SourceFloat(Element,
+				"particlemodulecoloroverlife", "alphaoverlife", fLife, fRandom,
+				fStartAlpha) * Evaluate_SourceFloat(Element,
+				"particlemodulecolorscaleoverlife", "alphascaleoverlife",
+				fLife, fRandom, 1.f);
+			Pair.Payload.vSourceColor = {
+				Over.x * Scale.x * Color.vColorMultiply.x,
+				Over.y * Scale.y * Color.vColorMultiply.y,
+				Over.z * Scale.z * Color.vColorMultiply.z,
+				fAlpha * Color.vColorMultiply.w };
+			Pair.Payload.iSourceColorComponentMask = 0x0fu;
+			Pair.Payload.vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
+			Pair.Payload.iDynamicParameterComponentMask = 0x0fu;
+			const EFFECT_SOURCE_MODULE_DESC* pDynamic = Find_SourceModule(
+				Element, "particlemoduleparameterdynamic");
+			if (nullptr != pDynamic)
+			{
+				for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
+				{
+					const auto& Paths = DYNAMIC_PARAMETER_PATHS[iParameter];
+					const f32_t fTime = SourceBool(*pDynamic,
+						Paths.strSpawnTimeOnly, false) ? fSpawn :
+						SourceBool(*pDynamic, Paths.strUseEmitterTime, false) ?
+						static_cast<f32_t>(fLocalTime) : fLife;
+					(&Pair.Payload.vDynamicParameter.x)[iParameter] =
+						Evaluate_SourceFloat(Element, "particlemoduleparameterdynamic",
+							Paths.strValue.data(), fTime, fRandom, 1.f);
+				}
+			}
+		}
 		OutTrail.EdgePairs.push_back(std::move(Pair));
 	};
 
@@ -7320,6 +7397,9 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			EFFECT_EVALUATED_PARTICLE Evaluated;
 			Evaluated.pElement = &Element;
 			XMStoreFloat4x4(&Evaluated.World, World);
+			XMStoreFloat4x4(&Evaluated.SourceEmitterWorld,
+				Element.Detail.Particle.bLocalSpace ?
+					XMLoadFloat4x4(&ParticleElementWorld) : XMMatrixIdentity());
 			const float4_t ElementColor =
 				Evaluate_Color(Element, ParticleT).vColorMultiply;
 			if (Element.SourceRecipe.bEnabled)
@@ -7397,6 +7477,32 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				EFFECT_EVALUATED_ELEMENT DecalParticle;
 				DecalParticle.pElement = &Element;
 				DecalParticle.World = Evaluated.World;
+				const auto* DecalType = Find_SourceModule(Element, "efparticlemoduletypedatadecal");
+				if (nullptr != DecalType &&
+					Element.Material.SourceMaterial.strRuntimeShaderProfileId.starts_with("effect.ue3.kouku-"))
+				{
+					// The existing ground projector rays along -Y. Its normalized cube
+					// is centered between the source near/far planes (UE centimeters).
+					const f32_t Near = SourceNumber(*DecalType, "nearplane", 0.f);
+					const f32_t Far = SourceNumber(*DecalType, "farplane", 0.f);
+					const f32_t CenterY = -.005f * (Near + Far);
+					const f32_t SourceRoll = SourceNumber(*DecalType, "rotation.degrees.roll", 0.f);
+					const matrix_t Root = XMLoadFloat4x4(&ParticleRoot);
+					vector_t RootScale{}, RootRotation{}, RootTranslation{};
+					if (!(Far > Near) || !XMMatrixDecompose(&RootScale, &RootRotation, &RootTranslation, Root))
+						continue;
+					const f32_t RootYaw = std::atan2(-ParticleRoot._13, ParticleRoot._11);
+					// Yaw-only affects projector orientation, while the particle origin
+					// still uses the full original bone transform and source position.
+					const vector_t Origin = XMVector3TransformCoord(XMLoadFloat3(&Position), Root);
+					const matrix_t DecalWorld =
+						XMMatrixScaling(Size.x, (Far - Near) * .01f, Size.y) *
+						XMMatrixRotationY(XMConvertToRadians(Particle.vRotationDegrees.y + SourceRoll)) *
+						XMMatrixTranslation(0.f, CenterY, 0.f) *
+						XMMatrixScalingFromVector(RootScale) * XMMatrixRotationY(RootYaw) *
+						XMMatrixTranslationFromVector(Origin);
+					XMStoreFloat4x4(&DecalParticle.World, DecalWorld);
+				}
 				DecalParticle.Color = Element.Detail.Color;
 				DecalParticle.Color.vColorMultiply = Evaluated.Color;
 				DecalParticle.fLocalTimeSeconds =

@@ -1365,6 +1365,81 @@
       "effectAssetId": "effect.lancemaster.skill.34650.clip2.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.clip2.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba0.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba0.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba3.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050100.tuning.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.tuning.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip2.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.clip2.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip4.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip4.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050180.tuning.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.tuning.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.a1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240.clip1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050520.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050520.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.4219877.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.4219877.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.4219801.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.4219801.full.restore.effect.json"
     }
   ]
 }

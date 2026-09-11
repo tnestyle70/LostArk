@@ -209,6 +209,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 {
 	using namespace LostArk::Shared;
+	if (hit.bUsePushDirection && (!std::isfinite(hit.fPushDirectionX) || !std::isfinite(hit.fPushDirectionZ) ||
+		hit.fPushDirectionX * hit.fPushDirectionX + hit.fPushDirectionZ * hit.fPushDirectionZ < .000001f))
+		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	if (0u == target.iCurrentHp || !target.isCombatReady ||
 		PLAYER_ACTION_STATE::DEAD == target.eAction ||
 		PLAYER_ACTION_STATE::FALLING == target.eAction ||
@@ -243,8 +246,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	}
 	CPlayerSkillSystem::Arm_PlayerHitReaction(
 		target,
-		hit.fSourceX,
-		hit.fSourceZ,
+		hit.bUsePushDirection ? target.fPositionX - hit.fPushDirectionX : hit.fSourceX,
+		hit.bUsePushDirection ? target.fPositionZ - hit.fPushDirectionZ : hit.fSourceZ,
 		hit.fPushRangeM,
 		hit.iPushMs,
 		hit.bKnockdown,

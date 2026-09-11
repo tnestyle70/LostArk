@@ -74,3 +74,58 @@ Publish-WorldGameplay.ps1의 KAKULSAYDON_ARENA 범위 옵션으로 쿠크 월드
 codec을 사용한다. Product·world·balance 출력 및 receipt를 함께 보존하여 뒤 단계 실패는 모두 복구한다.
 다른 월드 게시 파일과 원본 배치는 변경하지 않는다. 저장 Y10을 정상 publisher로 배포하고 검증한다.
 Server의 실행 중 world 교체는 기존 계약에 없어 여전히 Server 재시작이 필요하다.
+
+## G05. 1관문 Complete Play 순차 재생 — 2026-09-11
+
+사용자가 통합 시퀀서의 두 연출을 첫 번째부터 이어 재생하도록 구현을 요청했다. 재개 기준은
+`bba47ad00269c91e0b97391c14ce0f2fed660f09`이며 최신 쿠크 재질 복원과 gameplay 계약을 보존한다.
+Sequence 원본의 현재 순서는 팝업북 37,800ms, 1관문 피날레 21,010ms다. 별도 Server 패턴
+게시가 아닌 기존 Sequence authoring Preview backend의 순차 transport를 확장한다.
+
+`KoukuSaydonActionWorkbench.h/.cpp`는 현재 Gate의 document order를 stable pattern ID 목록으로
+확정하여 Complete Play 시작 시 첫 항목 0ms를 요청한다. Pause/Resume은 현재 clock을 사용하고,
+자연 종료만 다음 항목을 요청한다. 명시 Stop/Reset, owner 교체, admission/재생 실패는 순서를 취소한다.
+`KoukuSaydonPresentationPlayer.h/.cpp`는 자연 종료 신호와 명시 중단을 구분하고 `MainApp.cpp`가
+기존 animation/world/presentation backend의 결과를 해당 Workbench에 전달한다.
+
+`Level_KakulSaydonArena.h/.cpp`의 WORLD sample은 실패 이유를 호출자에 반환하여 카메라만
+계속 재생하거나 실패를 정상 완료로 넘기지 않는다. 팝업북이 차용한 standing map 표시와 Deploy
+상태는 Stop/실패/다음 연출 전환 때 복구한다. 중복 표시나 누락은 현재 placement binding을 기준으로
+고친다. 사용자 후속 Summon/Effect/Scene Profile 콘텐츠를 임의 추가하지 않는다.
+
+## G06. 실제 1관문 모델·재질 연결
+
+실측상 Deploy `DEPLOY_BOSS_MN_RPCT_00`은 기존 MN_RPCT_00 모델을 사용하지만 실제 1관문
+Saydon의 BossCatalog 모델은 MN_RPCT_05다. 두 모델은 각각 자체 skeleton과 같은 이름의 249개
+clip을 가지고 있고 연출이 소비하는 clip은 후자에도 존재한다. 기존 stable Deploy/placement ID와
+원본 timeline을 유지하면서 실제 Gate1 모델을 연결하고, 최신 공통 CModel 재질 override가 Deploy
+loader에도 들어가는지 확인하여 누락된 소비 지점만 확장한다. 새 모델 런타임이나 retarget를 만들지 않는다.
+
+맵은 컷신용 움직이는 placement와 standing placement의 assetId/material/lightmap 연결을 비교한다.
+연출용 배치라는 이유만으로 원본 Transform을 없애거나 서 있는 맵으로 바꾸지 않는다. 같은 정본 asset의
+복원 재질과 원본 펼침 animation을 소비하게 연결하고 실제 차이와 남은 범위를 RESULT에 적는다.
+현재 맵 펼침 template 5개는 각각 4,507ms이며 속도는 1이다. 이 다섯 WORLD box의 duration을
+4,507ms로 맞춰 끝난 연출 복제본을 해제한 뒤 standing arena를 표시한다. 책·Saydon·Camera의
+37,800ms와 두 번째 연출의 21,010ms는 유지한다. 역방향 scrub은 같은 visibility 전환을 되돌린다.
+현재 피날레는 editor provenance의 맵 배치 23개이며 배우 animation track과 원본 Matinee 연결은 없다.
+원본 배우·시간표를 추측하여 추가하지 않고 현재 저장 연출을 이어 재생하는 범위로 구현한다.
+
+기존 focused native sequence document/transport 검사로 순서·취소·오류를 검증하고, Area Publish/Check와
+변경 JSON/XML parse, 최소 Client 컴파일·링크, `git diff --check`를 수행한다. 새 C++ 파일은 없어
+project/filter 추가는 필요 없다. Client/UI를 실행하거나 캡처하지 않으며 최종 화면 확인은 사용자가 한다.
+
+## G07. 쿠크 아레나 맵 로더 진입 회귀 수정
+
+사용자 Client의 Server 입장 승인 뒤 `Map: explicit area catalog` 실패를 실제
+`CMapAssetCatalog::Load_Area`로 재현했다. 공용 `SourceCharacterMaterialParameters.h`의
+`source.map.translucent-` prefix 분기가 기존 named family tiled/reflection/bump를 숫자형
+44~63 전용 handler에 보내 정상 쿠크 재질 5행을 거절한다. named 세 family를 먼저 기존
+`SourceMapForwardMaterial::Configure`로 명시 분기하고 숫자형·알 수 없는 family의 검증은 유지한다.
+실패한 handler의 반환값을 이용한 fallback은 추가하지 않는다.
+
+`Loader.cpp::Ready_MapArea`는 카탈로그가 반환한 실제 실패 이유를 기존 ActiveStatus에 보존해
+`Level_Loading::Recover_FromFailure`의 session diagnostic에도 전달한다. 새 상태나 public API는
+추가하지 않는다. 동일 CPU probe로 수정 전 실패/수정 후 1,301개 카탈로그 admission을 비교하고,
+공용 dispatcher의 named/numbered family와 잘못된 입력을 확인한다. 최소 Client 컴파일과
+`git diff --check` 뒤 앞서 승인된 Sequence 수정과 함께 PR을 만들고 merge한다. 실행 중 Client의
+파일 교체 보류는 유지하며 화면 진입 확인을 자동 PASS로 기록하지 않는다.

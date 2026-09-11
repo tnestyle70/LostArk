@@ -327,7 +327,8 @@ def _effect_v2_artifact_paths(
     boss_catalog = _read_json(boss_catalog_path, "BossCatalog Effect V2 owners")
     _require_exact_properties(
         boss_catalog,
-        frozenset(("schema", "formatVersion", "bosses")),
+        frozenset(("schema", "formatVersion", "bosses"))
+        | (frozenset(("modelMaterialOverrides",)) if "modelMaterialOverrides" in boss_catalog else frozenset()),
         "BossCatalog Effect V2 owners",
     )
     if (

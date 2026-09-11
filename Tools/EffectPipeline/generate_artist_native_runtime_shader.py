@@ -10,6 +10,7 @@ import argparse, json, re, math, hashlib, copy
 ROOT = Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description='Generate bounded Artist native HLSL from extracted source shader maps and Resources mappings.')
 parser.add_argument('--source-dir',type=Path,default=ROOT/'out/ArtistCoreRestore20260909')
+parser.add_argument('--profile-domain', choices=('artist','kouku'), default='artist')
 parser.add_argument('--program-start',type=int,default=None,
     help='Allocate an additional non-overlapping Artist program range without renumbering the original programs.')
 parser.add_argument('--install-additional-groups',action='store_true',
@@ -216,6 +217,7 @@ struct ARTIST_NATIVE_INPUT
     float3 skyLowerColor;
     float3 ambientColor;
     float skyIntensity;
+    float4 decalProjection; // Source near/far (cm), opacity.
 };
 '''
 for i in range(9):
@@ -321,6 +323,9 @@ for ordinal, selection in enumerate(selections):
         ntemps=int(next(d.split()[-1] for d in declarations if d.startswith('dcl_temps')))
         mesh=selection['rendererShape'] in ['mesh','staticMesh']
         model=selection['rendererShape']=='skeletalMesh'
+        decal=selection['rendererShape']=='decal' and arguments.profile_domain=='kouku'
+        if decal and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298'):
+            raise ValueError(('Unreviewed source decal prefix',sid))
         lines=[f'// {name}: {sid}; selected map {r["mapKey"]}.',
                f'float4 ArtistNative{program}(ARTIST_NATIVE_INPUT input)', '{',
                f'    float4 source[{bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]}]; [unroll] for (uint i=0u; i<{bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]}u; ++i) source[i]=0.f;',
@@ -335,6 +340,11 @@ for ordinal, selection in enumerate(selections):
                 lines += ['    source[1].w=input.color.a;'];sky=24
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);',f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);',f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         if mesh: lines += ['    source[1]=input.color; // Native mesh particle color prefix.']
+        if decal:
+            lines += ['    source[0]=float4(input.decalProjection.xy,0.f,0.f);', '    source[1]=input.color; // Source decal material color, including particle color modules.', '    source[2].x=input.decalProjection.z;']
+            sky={'be9bb8ea52a06b40bc25b550e349b5b9':7,'316b66ee3867964da197becf270077f0':15}.get(sid)
+            if sky is not None:
+                lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         for b in bindings['vectors']:
             exp=uniform['pixelVectorExpressions'][b['expressionIndexOrGroup']]
             lines += [f'    source[{b["baseIndex"]//16}] = {expression(exp)};']
@@ -342,6 +352,7 @@ for ordinal, selection in enumerate(selections):
             for lane,exp in enumerate(uniform['pixelScalarExpressions'][b['expressionIndexOrGroup']*4:b['expressionIndexOrGroup']*4+4]):
                 lines += [f'    source[{b["baseIndex"]//16}].'+ 'xyzw'[lane]+f' = ({expression(exp)}).x;']
         lines += ['    float4 passValues[4]={float4(.5f,-.5f,.5f,.5f),float4(0.f,0.f,0.f,0.f),float4(0.f,0.f,0.f,0.f),float4(0.f,0.f,0.f,0.f)};']
+        if decal: lines += ['    passValues[3]=float4(0.f,0.f,0.f,1.f); // Neutral source scene grading.']
         dynamic='dynamicparameter' in selection['sourceVF'];subuv='subuv' in selection['sourceVF']
         for sig in p['inputSignature']:
             semantic=sig['semanticName'].lower();index=sig['semanticIndex'];reg=sig['register']
@@ -349,6 +360,8 @@ for ordinal, selection in enumerate(selections):
                 values={10:'float4(input.sourceBasisX,'+('input.subUVBlend' if subuv else '0.f')+')',11:'float4(input.sourceBasisZ,input.handedness)',0:('float4(input.uv,input.uv1)' if mesh else 'float4(input.uv,'+('input.uvNext' if subuv else 'float2(0.f,0.f)')+')'),1:'input.color',2:('input.dynamicParameter' if dynamic else 'float4(0.f,0.f,0.f,0.f)'),4:'float4(0.f,0.f,0.f,1.f)',6:'float4(input.tangentView,1.f)',5:'float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW)'}
                 if model:
                     values.update({0:'float4(input.uv,0.f,0.f)',4:'float4(0.f,0.f,0.f,1.f)',5:'float4(input.sourceWorldPosition,1.f)',6:'float4(input.tangentView,1.f)',7:'float4(input.tangentUp,0.f)'})
+                if decal:
+                    values.update({0:'float4(input.uv,input.uv1)',7:'float4(input.tangentUp,0.f)'})
                 if index not in values:
                     raise ValueError(f'Native TEXCOORD{index} has no {selection["rendererShape"]} carrier adapter; source VS {selection["sourceVS"]}, engine CB0 slots {selection.get("cb0Unowned",[])}.')
                 val=values[index]
@@ -385,7 +398,7 @@ for ordinal, selection in enumerate(selections):
                 skip.add(sampleIndex+1);skip.update(range(reconstructionIndex+1,reconstructionIndex+4));break
             else:raise ValueError(('unclosed native depth sample',sid,sampleInstruction))
         for i,ins in enumerate(instructions):
-            if model and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
+            if (model or decal) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
             if i in skip:continue
             if i in depthReconstruct:
                 raw,dst=depthReconstruct[i]
@@ -422,7 +435,7 @@ for ordinal, selection in enumerate(selections):
             lines += [f'    // {i+1}: {ins}','    '+translated]
         lines+=['    return output;','}']
         program_code += (lines if model else ['#ifndef ARTIST_NATIVE_MODEL_ONLY']+lines+['#endif'])+['']
-        row={'program':program,'runtimeShaderProfileId':f'effect.ue3.artist-{program}-native.v1',
+        row={'program':program,'runtimeShaderProfileId':f'effect.ue3.{arguments.profile_domain}-{program}-native.v1',
              'sourceMaterial':r['sourceMaterial'],'parentMaterial':r['parentMaterial'],'rendererShape':selection['rendererShape'],
              'occurrences':selection['occurrences'],'sourceVF':selection['sourceVF'],'sourceVS':selection['sourceVS'],'sourcePS':sid,'parameters':list(params.values()),'parameterFloat4Rows':vector_slot,'perNodeUnboundDefaults':[{'kind':k[0],'name':k[1],'values':v} for k,v in fixedNodeDefaults.items()],
              'textures':textures,'nativeRT0InstructionCount':last_rt0+1,'depthAdapter':adapt,

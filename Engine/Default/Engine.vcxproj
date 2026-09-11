@@ -331,12 +331,22 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterMaterial.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterPrograms.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceSpecialSurface.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageSurface.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Cell.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_StaticShadowMap.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SceneHeightFog.hlsli" />
+  </ItemGroup>
 </Project>

@@ -5,7 +5,7 @@
 namespace
 {
 	constexpr size_t MAX_PRESENTATION_PROVIDERS = 256u;
-	constexpr size_t MAX_TRANSIENT_LIGHTS = 64u;
+	constexpr size_t MAX_TRANSIENT_LIGHTS = 384u;
 	constexpr size_t MAX_SCREEN_POSTS = 64u;
 	constexpr size_t MAX_SCREEN_OVERLAYS = 64u;
 
@@ -22,7 +22,9 @@ namespace
 
 	bool IsValidTransientLight(const LIGHT_DESC& Light)
 	{
-		if ((LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
+		if (Light.staticShadowChannel > 15u || (Light.eReceiver != LIGHT_RECEIVER::ALL &&
+			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) ||
+			(LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
 			LIGHT::DIRECTIONAL != Light.eType) ||
 			!std::isfinite(Light.fFalloffExponent) || Light.fFalloffExponent <= 0.f ||
 			!IsFinite4(Light.vDiffuse) || !IsFinite4(Light.vAmbient) ||
@@ -49,7 +51,7 @@ namespace
 		return LIGHT::SPOT != Light.eType ||
 			(std::isfinite(Light.fSpotInnerCos) && std::isfinite(Light.fSpotOuterCos) &&
 			 Light.fSpotOuterCos > 0.f && Light.fSpotOuterCos <= Light.fSpotInnerCos &&
-			 Light.fSpotInnerCos < 1.f);
+			 Light.fSpotOuterCos < 1.f && Light.fSpotInnerCos <= 1.f);
 	}
 
 	bool IsSrgbFormat(const DXGI_FORMAT eFormat)

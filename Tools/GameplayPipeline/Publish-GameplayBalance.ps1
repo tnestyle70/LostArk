@@ -1312,8 +1312,14 @@ if ($totalPartDamageReductionPercent -ge 100) {
 # authoring documents must still describe the exact same stable part identity
 # and bit, while no model path crosses into the Server bootstrap.
 $bossCatalogDocument = Read-JsonDocument 'Data/Actors/BossCatalog.json'
-Assert-ExactProperties $bossCatalogDocument @(
-	'schema','formatVersion','bosses') 'boss presentation catalog'
+$bossCatalogProperties = @('schema','formatVersion','bosses')
+if ($bossCatalogDocument.PSObject.Properties['modelMaterialOverrides']) {
+    $bossCatalogProperties += 'modelMaterialOverrides'
+    if ($bossCatalogDocument.modelMaterialOverrides -isnot [Array]) {
+        throw 'Boss model material overrides must be an array.'
+    }
+}
+Assert-ExactProperties $bossCatalogDocument $bossCatalogProperties 'boss presentation catalog'
 Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
 Assert-JsonInteger $bossCatalogDocument.formatVersion `
 	'boss presentation catalog formatVersion' 8 8
@@ -3427,6 +3433,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			'maxDistanceM','poseIndex','threshold','shieldArcDegrees',
 			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout')
 		if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) { $windowProperties += 'bossChargeDistanceM' }
+        if ($null -ne $window.PSObject.Properties['chargeYawOffsetDegrees']) { $windowProperties += 'chargeYawOffsetDegrees' }
 		if ($null -ne $window.PSObject.Properties['rearmOnExit']) { $windowProperties += 'rearmOnExit' }
 		if ($null -ne $window.PSObject.Properties['repeatAfterKnockback']) { $windowProperties += 'repeatAfterKnockback' }
 		if ($null -ne $window.PSObject.Properties['holdLogicOccurrenceId']) { $windowProperties += 'holdLogicOccurrenceId' }
@@ -3566,12 +3573,20 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$patternRows.Add((@('PATTERNLOGICREARM', $koukuEncounterDocument.encounterId,
 				$koukuPattern.patternId, $window.windowId, $repeatMode) -join "`t"))
 		}
+        $chargeYawOffset = 0.0
+        if ($null -ne $window.PSObject.Properties['chargeYawOffsetDegrees']) {
+            Assert-JsonNumber $window.chargeYawOffsetDegrees 'Boss charge yaw offset'
+            if ([Math]::Abs([double]$window.chargeYawOffsetDegrees) -gt 360 -or
+                $null -eq $window.PSObject.Properties['bossChargeDistanceM']) { throw 'Charge yaw needs a charge distance and -360..360 degrees' }
+            $chargeYawOffset = [double]$window.chargeYawOffsetDegrees
+        }
         if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) {
             Assert-JsonNumber $window.bossChargeDistanceM 'Boss charge distance'
             if ($windowKind -cne 'ENTER_AREA' -or $window.bossChargeDistanceM -le 0 -or $window.bossChargeDistanceM -gt 1000 -or
                 $null -ne $koukuPattern.PSObject.Properties['bossMotion']) { throw 'Boss charge needs ENTER_AREA and 0..1000 m without absolute bossMotion' }
             $patternRows.Add((@('PATTERNLOGICCHARGE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
-                $window.windowId, (Format-InvariantFloat $window.bossChargeDistanceM 'Boss charge distance')) -join "`t"))
+                $window.windowId, (Format-InvariantFloat $window.bossChargeDistanceM 'Boss charge distance'),
+                (Format-InvariantFloat $chargeYawOffset 'Boss charge yaw offset')) -join "`t"))
         }
 		$contactTargetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		if ($windowKind -ceq 'OBJECT_CONTACT') {
@@ -3623,11 +3638,14 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		for ($regionOrdinal = 0; $regionOrdinal -lt @($window.cardRegions).Count; ++$regionOrdinal) {
 			$region = $window.cardRegions[$regionOrdinal]
 			$regionFields = @('regionId','shape','anchorKind','center','yawDegrees','halfExtents','radiusM','halfAngleDegrees','cardSymbol','cardColor')
+			$hasSectorAxes = $region.PSObject.Properties.Name -contains 'radiusXM'
+			if ($hasSectorAxes -ne ($region.PSObject.Properties.Name -contains 'radiusZM')) { throw 'Sector axes must be supplied together' }
+			if ($hasSectorAxes) { $regionFields += @('radiusXM','radiusZM') }
 			$hasWorldTrack = $region.PSObject.Properties.Name -contains 'worldTrack'
 			if ($hasWorldTrack) { $regionFields += 'worldTrack' }
 			Assert-ExactProperties $region $regionFields 'KoukuSaydon collider region'
 			Assert-StableId $region.regionId 'KoukuSaydon region ID'
-			if (-not $regionIds.Add([string]$region.regionId) -or $region.shape -cnotin @('BOX','SECTOR','CIRCLE') -or
+			if (-not $regionIds.Add([string]$region.regionId) -or $region.shape -cnotin @('BOX','SECTOR','REVERSE_SECTOR','CIRCLE') -or
 				$region.anchorKind -cnotin @('WORLD','BOSS_CURRENT','BOSS_SPAWN') -or
 				$region.cardSymbol -cnotin @('NONE','HEART','SPADE','CLUB','DIAMOND') -or
 				$region.cardColor -cnotin @('NONE','RED','BLACK') -or
@@ -3637,16 +3655,23 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 			$regionNumbers = @($region.center) + @($region.yawDegrees) + @($region.halfExtents) + @($region.radiusM,$region.halfAngleDegrees)
 			foreach ($number in $regionNumbers) { Assert-JsonNumber $number 'KoukuSaydon region geometry' }
-			if ([double]$region.radiusM -le 0 -or [double]$region.halfAngleDegrees -le 0 -or [double]$region.halfAngleDegrees -gt 180 -or
+			if ([double]$region.radiusM -le 0 -or [double]$region.halfAngleDegrees -lt 0 -or ($region.shape -cne 'REVERSE_SECTOR' -and [double]$region.halfAngleDegrees -eq 0) -or [double]$region.halfAngleDegrees -gt 180 -or
 				@($region.halfExtents | Where-Object { [double]$_ -le 0 }).Count -gt 0) { throw 'KoukuSaydon region dimensions must be positive' }
 			if ($windowKind -ceq 'ROULETTE_CARD_MATCH') {
 				if ($region.cardSymbol -ceq 'NONE' -or -not $regionCards.Add("$($region.cardSymbol)/$($region.cardColor)")) {
 					throw 'KoukuSaydon roulette needs eight different suit/color pairs'
 				}
 			}
+			$axisFields = @()
+			if ($hasSectorAxes) {
+				Assert-JsonNumber $region.radiusXM 'Sector radiusXM'
+				Assert-JsonNumber $region.radiusZM 'Sector radiusZM'
+				if ($region.shape -cnotin @('SECTOR','REVERSE_SECTOR') -or $region.radiusXM -le 0 -or $region.radiusZM -le 0) { throw 'Sector axes require positive radii' }
+				$axisFields = @((Format-InvariantFloat $region.radiusXM 'Sector radiusXM'), (Format-InvariantFloat $region.radiusZM 'Sector radiusZM'))
+			}
 			$formattedRegion = @($regionNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'KoukuSaydon region geometry' })
 			$patternRows.Add((@('PATTERNLOGICREGION',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
-				$window.windowId,$regionOrdinal,$region.regionId,$region.anchorKind,$region.shape) + $formattedRegion + @($region.cardSymbol,$region.cardColor) -join "`t"))
+				$window.windowId,$regionOrdinal,$region.regionId,$region.anchorKind,$region.shape) + $formattedRegion + @($region.cardSymbol,$region.cardColor) + $axisFields -join "`t"))
 			if ($hasWorldTrack) {
 				$track = $region.worldTrack
 				Assert-ExactProperties $track @('startMs','startDelayMs','durationMs','playbackSpeed','interpolation','baselinePosition','baselineYawDegrees','baselineScale','keys') 'Collider WORLD track'
@@ -3703,7 +3728,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			for ($ordinal = 0; $ordinal -lt $outcomes.Count; ++$ordinal) {
 				$outcome = $outcomes[$ordinal]
 				$outcomeProperties = @('kind','percent','durationMs','patternId')
-				foreach ($field in @('pushRangeM','pushMs')) {
+				foreach ($field in @('pushRangeM','pushMs','pushDirection')) {
 					if ($null -ne $outcome.PSObject.Properties[$field]) { $outcomeProperties += $field }
 				}
 				if ($outcome.kind -ceq 'FEAR') { $outcomeProperties += 'presentationId' }
@@ -3722,6 +3747,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$outcomeKind = [string]$outcome.kind
 				$outcomePushRangeM = 0.0
 				$outcomePushMs = 0
+				$outcomePushDirection = 'AWAY_FROM_BOSS'
 				if ($null -ne $outcome.PSObject.Properties['pushRangeM'] -or $null -ne $outcome.PSObject.Properties['pushMs']) {
 					if ($outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE') { throw 'Only MAX_HP_PERCENT_DAMAGE owns push values' }
 					if (($null -ne $outcome.PSObject.Properties['pushRangeM']) -ne ($null -ne $outcome.PSObject.Properties['pushMs'])) {
@@ -3739,6 +3765,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 						(($outcomePushRangeM -eq 0) -ne ($outcomePushMs -eq 0))) {
 						throw 'KoukuSaydon outcome pushRangeM 0..20 and pushMs 0..600000 must both be zero or positive'
 					}
+				}
+				if ($null -ne $outcome.PSObject.Properties['pushDirection']) {
+					Assert-JsonString $outcome.pushDirection 'KoukuSaydon pushDirection'
+					$outcomePushDirection = [string]$outcome.pushDirection
+					if ($outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE' -or $outcomePushDirection -cnotin @('AWAY_FROM_BOSS','BOSS_FORWARD') -or
+						($outcomePushDirection -ceq 'BOSS_FORWARD' -and $outcomePushRangeM -le 0)) { throw 'Invalid damage pushDirection' }
 				}
 				$isContactResult = $outcomeKind -cin @('PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW')
 				if ($isContactResult -ne ($windowKind -ceq 'OBJECT_CONTACT')) { throw 'OBJECT_CONTACT requires contact motion or window signal results' }
@@ -3806,7 +3838,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				if ($outcomePushRangeM -gt 0) {
 					$patternRows.Add((@('PATTERNLOGICPUSH', $koukuEncounterDocument.encounterId,
 						$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
-						(Format-InvariantFloat $outcomePushRangeM 'KoukuSaydon outcome pushRangeM'), $outcomePushMs) -join "`t"))
+						(Format-InvariantFloat $outcomePushRangeM 'KoukuSaydon outcome pushRangeM'), $outcomePushMs) + $(if ($outcomePushDirection -ceq 'BOSS_FORWARD') { @($outcomePushDirection) } else { @() }) -join "`t"))
 				}
 				if ($isContactResult -and ($outcome.percent -ne 0 -or $outcome.durationMs -ne 0)) { throw 'Contact result does not take percent or durationMs' }
 				if ($outcomeKind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') {

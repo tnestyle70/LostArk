@@ -181259,7 +181259,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.8d68241ee3b958d53bd07b51",
@@ -181760,7 +181761,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.1398e49f534d2306dc635722",
@@ -182266,7 +182268,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.a0ce168086ea661c8d06b87d",
@@ -182767,7 +182770,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.bd203b98e519fefb71dfe2d6",
@@ -183273,7 +183277,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.0bd244b4afbf2c173d5fa0b7",
@@ -183827,7 +183832,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.cbec397d553c74ce81931fe2",
@@ -184328,7 +184334,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.f9feb7b9e254b71b86e36ffc",
@@ -184829,7 +184836,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.ec6cc2205684d4f25064a43e",
@@ -185330,7 +185338,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.d07d7d8df86913d105fdcb42",
@@ -185836,7 +185845,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.f92f558cd0f0b232398b6fa0",
@@ -186337,7 +186347,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.801502e5122ade0ce62cd2f4",
@@ -187060,7 +187071,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "normal"
     },
     {
       "id": "authored.lance-va.static.789829e4a47ba93f24be1201",
@@ -187449,7 +187461,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.e4fad338d81f78816ac0fb3c",
@@ -187843,7 +187856,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "normal"
     },
     {
       "id": "authored.lance-va.static.e41bd3276ecebe40150cf3ee",
@@ -188471,7 +188485,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.97dc91d2549eac233004ed16",
@@ -189099,7 +189114,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.d37f401dfa5556660932fbcc",
@@ -189727,7 +189743,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.97c1662e3dcd637484561150",
@@ -190423,7 +190440,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.df418f991abb490315b35945",
@@ -190924,7 +190942,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.a2dc023ecdee4d982c2eff79",
@@ -191556,7 +191575,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     },
     {
       "id": "authored.lance-va.static.e09fcac68cc6e6dde91930d7",
@@ -192217,7 +192237,8 @@
             1
           ]
         }
-      }
+      },
+      "compositionLayer": "sceneBackdrop"
     }
   ]
 }

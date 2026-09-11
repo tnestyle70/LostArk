@@ -4454,6 +4454,7 @@ void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
 			ImGui::SliderFloat("Enter End (life ratio)", &S.fOverlayEnterEnd, 0.f, S.fOverlayExitStart);
 			ImGui::SliderFloat("Exit Start (life ratio)", &S.fOverlayExitStart, S.fOverlayEnterEnd, 1.f);
 			ImGui::DragFloat("Screen Rotation", &S.fOverlayRotationDegrees, 0.1f);
+			ImGui::Checkbox("Keep image brightness during scene darkening", &S.bDisplaySpace);
 			ImGui::SliderFloat("Opacity", &S.fIntensityStart, 0.f, 1.f);
 			ImGui::Checkbox("Opacity Lerp", &S.bIntensityLerp);
 			if (S.bIntensityLerp)

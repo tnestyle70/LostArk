@@ -126,6 +126,7 @@ namespace Client
 		std::uint32_t iPercent = 0u;
 		std::uint32_t iDurationMs = 0u;
 		double fPushRangeM = 0.0;
+		std::string strPushDirection = "AWAY_FROM_BOSS";
 		std::uint32_t iPushMs = 0u;
 		std::string strFollowupPatternId;
 		std::string strSceneProfileId;
@@ -143,6 +144,7 @@ namespace Client
 		bool_t bRearmOnExit = false;
 		bool_t bRepeatAfterKnockback = false;
 		double fBossChargeDistanceM = 0.0;
+        double fChargeYawOffsetDegrees = 0.0;
 		std::string strHudMode;
 		std::array<double, 3> TeleportPosition{};
 		std::string strClonePatternId;

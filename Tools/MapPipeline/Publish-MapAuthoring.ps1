@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^[A-Za-z0-9_.-]+$')]
@@ -143,7 +143,7 @@ function Read-MapAssetCatalog {
     if ($null -eq $header -or -not $header.Success -or
         $header.Groups['area'].Value -cne $AreaId -or
         [uint32]$header.Groups['count'].Value -ne ($lines.Count - 1) -or
-        $lines.Count -lt 2 -or $lines.Count -gt 513) {
+        $lines.Count -lt 2 -or $lines.Count -gt 2049) {
         throw "Asset catalog header/count is invalid: $Path"
     }
     $version = [int]$header.Groups['version'].Value
@@ -1423,7 +1423,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1472,6 +1472,51 @@ function Read-WorldSequenceDocument {
                     if ($resource.diffuseTextureAssetId -ne '') { Assert-SequenceAssetPath $resource.diffuseTextureAssetId $false }
                 }
             }
+            if ($null -ne $resource.PSObject.Properties['materialProfile']) {
+                if ($alias) { throw 'World object sequence alias cannot own a material profile' }
+                $material = $resource.materialProfile
+                Assert-ExactJsonProperties $material @('materialName','sourceMaterial','family','parameters','textures') 'World object material'
+                if ($material.materialName -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($material.materialName) -notin 1..63 -or
+                    $material.sourceMaterial -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($material.sourceMaterial) -notin 1..512 -or
+                    $material.materialName -match '[\x00-\x1f\x7f]' -or $material.sourceMaterial -match '[\x00-\x1f\x7f]' -or
+                    $material.family -cne 'source.character.monster-pbr-masked.v1') {
+                    throw 'World object material identity or native family is invalid'
+                }
+                # Exact named inputs of the selected native Base/Light pair, program 21.
+                $parameterNames = @('1.use_dyeing_sp','1.use_emissive_flickerspeed_fixed','beckmannspecular_constant_max','buffcolor','constantoutline','constantoutline_blink','constantoutline_color','diffusecolor','emissive_color','emissive_flicker_speed','emissive_intensity','emissive_intensitymin','fresnel_radius','fresnel_rimlightintensity','fx_color_desaturation_actiontool','fx_color_desaturation_buffsettool','fx_color_intensity_actiontool','fx_color_intensity_buffsettool','hit_color','ibl_color_bottom','ibl_color_top','ibl_exposer','ibl_intensity','ibl_normal_smooth','ibl_reflect_lodbias','metalicness_power','normaltex_intensity','orennayar','orennayar_brightness','pbr_specular_intensity','pbr_specular_power','roughness_power','selectioncolor','shadowfactor','specular_power_limit','state','state_noise','trans_rim_hard','trans_rim_inradius','transcolor','transcolor_rimlight ')
+                Assert-ExactJsonProperties $material.parameters $parameterNames 'World object native material parameters'
+                foreach ($name in $parameterNames) {
+                    $value = $material.parameters.$name
+                    if ($value -is [array]) {
+                        if ($value.Count -ne 4) { throw "Invalid native material vector: $name" }
+                        $values = $value
+                    } else { $values = @($value) }
+                    foreach ($component in $values) {
+                        if (-not (Test-JsonNumber $component) -or [Math]::Abs([double]$component) -gt 1000000) {
+                            throw "Invalid native material parameter: $name"
+                        }
+                    }
+                }
+                if ($material.textures -isnot [array] -or $material.textures.Count -ne 8) {
+                    throw 'World object native material requires eight texture expressions'
+                }
+                $textureMask = 0
+                foreach ($texture in $material.textures) {
+                    Assert-ExactJsonProperties $texture @('expressionIndex','assetId','colorSpace') 'World object native material texture'
+                    if (-not (Test-JsonNumber $texture.expressionIndex) -or [double]$texture.expressionIndex % 1 -ne 0 -or $texture.expressionIndex -notin 0..7 -or
+                        $texture.assetId -isnot [string] -or $texture.colorSpace -cnotin @('srgb','linear')) {
+                        throw 'Invalid world object native material texture'
+                    }
+                    $bit = 1 -shl [int]$texture.expressionIndex
+                    if (($textureMask -band $bit) -ne 0) { throw 'Duplicate world object native texture expression' }
+                    $textureMask = $textureMask -bor $bit
+                    Assert-SequenceAssetPath $texture.assetId $false
+                    if (-not [IO.File]::Exists((Join-Path $runtimeResourceRoot $texture.assetId))) {
+                        throw "World object material texture is missing: $($texture.assetId)"
+                    }
+                }
+                if ($textureMask -ne 255) { throw 'World object native texture coverage is incomplete' }
+            }
             $objectResources[$resource.objectId] = $resource
         }
     }
@@ -1503,7 +1548,15 @@ function Read-WorldSequenceDocument {
         if ([double]$template.durationMs -ne [math]::Floor([double]$template.durationMs)) { throw 'World sequence duration must be integer milliseconds' }
         if ($null -ne $template.PSObject.Properties['objectMotion']) {
             $motion = $template.objectMotion
-            Assert-ExactJsonProperties $motion @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset','count','intervalMs','spreadDegrees','seed') 'World object motion'
+            $motionProperties = @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset','count','intervalMs','spreadDegrees','seed')
+            if ($null -ne $motion.PSObject.Properties['spawnHalfExtents']) {
+                $motionProperties += 'spawnHalfExtents'
+                Assert-SequenceVector $motion.spawnHalfExtents 'World object spawn half extents'
+                if (@($motion.spawnHalfExtents | Where-Object { [double]$_ -lt 0 }).Count -gt 0) {
+                    throw 'World object spawn half extents must be nonnegative'
+                }
+            }
+            Assert-ExactJsonProperties $motion $motionProperties 'World object motion'
             foreach ($field in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
                 Assert-SequenceVector $motion.$field "World object motion $field"
             }
@@ -2216,12 +2269,13 @@ function Read-MapMaterialDocument {
     if ($document.schema -cne 'lostark.map-materials' -or
         -not (Test-JsonNumber $document.formatVersion) -or $document.formatVersion -notin @(1,2) -or
         $document.areaId -cne $AreaId -or $document.materials -isnot [array] -or
-        $document.materials.Count -lt 1 -or $document.materials.Count -gt 4096) {
+        $document.materials.Count -lt 1 -or $document.materials.Count -gt 32768) {
         throw "Invalid map material document header: $Path"
     }
     $keys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $modelNames = @{}
     $bakedAssets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $shadowAssets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $validateLightingTexture = {
         param($Value)
         if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace($Value) -or
@@ -2236,6 +2290,31 @@ function Read-MapMaterialDocument {
         }
     }
     foreach ($row in $document.materials) {
+        # Render state is validated separately from each strict material family.
+        $materialFields = [ordered]@{}
+        foreach ($property in $row.PSObject.Properties) {
+            if ($property.Name -cin @('renderMode','cullMode')) {
+                if ($document.formatVersion -ne 2 -or $row.family -ceq 'diffuse-sampler' -or $property.Value -isnot [string]) { throw 'Invalid per-material draw state' }
+                if ($property.Name -ceq 'renderMode' -and $property.Value -cnotin @('deferred','translucent','background','additive','water')) { throw 'Unknown material render mode' }
+                if ($property.Name -ceq 'cullMode' -and $property.Value -cnotin @('back','front','none')) { throw 'Unknown material cull mode' }
+            } else { $materialFields[$property.Name] = $property.Value }
+        }
+        $row = [pscustomobject]$materialFields
+        if ($null -ne $row.PSObject.Properties['bakedLighting'] -and $null -ne $row.bakedLighting.PSObject.Properties['staticShadow']) {
+            $shadow = $row.bakedLighting.staticShadow
+            Assert-ExactJsonProperties $shadow @('texture','lightGuid','lightChannel','penumbraWidth','penumbraBasis','shadowExponent') 'Static shadow'
+            if ($shadow.lightGuid -isnot [string] -or $shadow.lightGuid -cnotmatch '^[0-9a-f]{32}$' -or
+                $shadow.penumbraBasis -cne 'PROJECT_ADAPTER' -or
+                -not (Test-JsonNumber $shadow.lightChannel) -or $shadow.lightChannel -lt 1 -or $shadow.lightChannel -gt 15 -or [Math]::Floor($shadow.lightChannel) -ne $shadow.lightChannel -or
+                -not (Test-JsonNumber $shadow.penumbraWidth) -or $shadow.penumbraWidth -le 0 -or $shadow.penumbraWidth -gt 1 -or
+                -not (Test-JsonNumber $shadow.shadowExponent) -or $shadow.shadowExponent -le 0 -or $shadow.shadowExponent -gt 128) { throw 'Invalid static shadow transfer or light identity' }
+            & $validateLightingTexture $shadow.texture
+            [void]$shadowAssets.Add($row.assetId)
+            $bakedFields = [ordered]@{}
+            foreach ($field in $row.bakedLighting.PSObject.Properties) { if ($field.Name -cne 'staticShadow') { $bakedFields[$field.Name] = $field.Value } }
+            $row.bakedLighting = [pscustomobject]$bakedFields
+        }
+
         if ($row.family -ceq 'diffuse-sampler') {
             Assert-ExactJsonProperties $row @('assetId','materialName','sourceMaterial','family','sourceTexture','addressU') 'Map diffuse sampler'
             foreach ($key in @('assetId','materialName','sourceMaterial','sourceTexture')) {
@@ -2254,8 +2333,204 @@ function Read-MapMaterialDocument {
             if (-not $modelNames.ContainsKey($modelPath)) {
                 $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names
             }
-            if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -ne 1) {
-                throw "Map diffuse sampler material does not resolve uniquely: $($row.assetId)/$($row.materialName)"
+            if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -lt 1) {
+                throw "Map diffuse sampler material does not exist: $($row.assetId)/$($row.materialName)"
+            }
+            continue
+        }
+        if ($row.family -cin @('bg-source-snowice-opaque','bg-source-vertexblend-opaque','bg-source-wet-opaque')) {
+            if ($document.formatVersion -ne 2) { throw 'Source special requires formatVersion 2' }
+            $ice = $row.family -ceq 'bg-source-snowice-opaque'
+            $blend = $row.family -ceq 'bg-source-vertexblend-opaque'
+            $fields = @('assetId','materialName','sourceMaterial','family','textureColorSpace','castsShadow','diffuseColor','specularColor','reflectionColor','normalIntensity','diffuseBrightness','specularIntensity','specularPower','uvTiling','detailNormalIntensity','detailNormalTiling','diffuseTexture','normalTexture')
+            $flags = 0
+            if ($ice -or $blend) {
+                if (-not (Test-JsonNumber $row.sourceSpecialFlags) -or $row.sourceSpecialFlags -lt 0 -or $row.sourceSpecialFlags -gt 3 -or [Math]::Floor($row.sourceSpecialFlags) -ne $row.sourceSpecialFlags) { throw 'Invalid source special flags' }
+                $flags = [int]$row.sourceSpecialFlags
+                $fields += 'sourceSpecialFlags'
+            }
+            $scalars = @('normalIntensity','diffuseBrightness','specularIntensity','specularPower','detailNormalIntensity','detailNormalTiling')
+            $vectors = @('diffuseColor','specularColor','reflectionColor')
+            if ($ice) {
+                $scalars += 'sourceNormalTiling'
+                $vectors += @('sourceIceCoreColor','sourceIceOuterColor','sourceIceBlend')
+                $fields += @('sourceNormalTiling','sourceIceCoreColor','sourceIceOuterColor','sourceIceBlend','sourceIceBumpOffset')
+                if (-not (Test-JsonNumber $row.sourceIceBumpOffset) -or [Math]::Abs([double]$row.sourceIceBumpOffset) -gt 1000000) { throw 'Invalid ice bump offset' }
+            } elseif ($blend) {
+                $scalars += 'sourceBlendSharpness'; $vectors += 'sourceRimlight'
+                $fields += @('sourceBlendDiffuse','sourceBlendSpecular','sourceBlendLayers','sourceBlendSharpness','sourceRimlight')
+                foreach ($key in @('sourceBlendDiffuse','sourceBlendSpecular','sourceBlendLayers')) {
+                    if ($row.$key -isnot [array] -or $row.$key.Count -ne 4) { throw 'Invalid source blend layers' }
+                    foreach ($layer in $row.$key) {
+                        if ($layer -isnot [array] -or $layer.Count -ne 4) { throw 'Invalid source blend layer arity' }
+                        foreach ($value in $layer) { if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt 1000000) { throw 'Invalid source blend layer value' } }
+                    }
+                }
+                for ($i=0; $i -lt 4; $i++) {
+                    if (($i -lt 2 -or ($flags -band (1 -shl ($i - 2)))) -and ($row.sourceBlendLayers[$i][0] -le 0 -or $row.sourceBlendLayers[$i][1] -le 0)) { throw 'Invalid source blend UV' }
+                }
+            } else {
+                $scalars += @('sourceNormalTiling','sourceWetSpecularPower'); $vectors += 'sourceWetParameters'
+                $fields += @('sourceNormalTiling','sourceWetParameters','sourceWetSpecularPower')
+            }
+            $textures = @(@('diffuseTexture','diffuse'),@('normalTexture','normal'))
+            if (-not $blend) {
+                $textures += ,@('reflectionTexture','reflection')
+                if (-not $ice -or ($flags -band 2)) { $textures += ,@('specularTexture','specular') }
+            }
+            if ($ice) { $textures += ,@('specialMaskTexture','specialMask') }
+            if ($blend -or ($ice -and ($flags -band 1))) { $textures += ,@('detailNormalTexture','detailNormal') }
+            if ($blend) {
+                $textures += @(@('overlayDiffuseTexture','overlay'),@('overlayNormalTexture','overlayNormal'))
+                if ($flags -band 1) { $textures += @(@('blendDiffuseGTexture','blendG'),@('blendNormalGTexture','blendGNormal')) }
+                if ($flags -band 2) { $textures += @(@('blendDiffuseBTexture','blendB'),@('blendNormalBTexture','blendBNormal')) }
+            }
+            $spaces = @()
+            foreach ($texture in $textures) { $fields += $texture[0]; $spaces += $texture[1] }
+            if ($null -ne $row.PSObject.Properties['bakedLighting']) { $fields += 'bakedLighting' }
+            Assert-ExactJsonProperties $row @($fields | Select-Object -Unique) 'Source special'
+            Assert-ExactJsonProperties $row.textureColorSpace $spaces 'Source special color spaces'
+            foreach ($texture in $textures) {
+                & $validateLightingTexture $row.($texture[0])
+                $space = $row.textureColorSpace.($texture[1])
+                if ($space -cnotin @('srgb','linear') -or ($texture[1] -match '[Nn]ormal' -and $space -cne 'linear')) { throw 'Invalid source special color space' }
+            }
+            foreach ($key in $scalars) { if (-not (Test-JsonNumber $row.$key) -or $row.$key -lt 0 -or $row.$key -gt [single]::MaxValue) { throw 'Invalid source special scalar' } }
+            foreach ($key in $vectors) {
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne 4) { throw 'Invalid source special vector' }
+                foreach ($value in $row.$key) { if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) { throw 'Invalid source special vector value' } }
+            }
+            if ($row.uvTiling -isnot [array] -or $row.uvTiling.Count -ne 2 -or $row.castsShadow -isnot [bool] -or $row.detailNormalTiling -le 0 -or (-not $blend -and $row.sourceNormalTiling -le 0)) { throw 'Invalid source special UV or shadow' }
+            foreach ($value in $row.uvTiling) { if (-not (Test-JsonNumber $value) -or $value -le 0 -or $value -gt 1000000) { throw 'Invalid source special UV value' } }
+            foreach ($key in @('assetId','materialName','sourceMaterial')) {
+                if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or $row.$key -match '[\x00-\x1f\x7f]') { throw 'Invalid source special identity' }
+            }
+            if ([Text.Encoding]::UTF8.GetByteCount($row.materialName) -gt 63 -or [Text.Encoding]::UTF8.GetByteCount($row.sourceMaterial) -gt 512 -or
+                -not $keys.Add($row.assetId + "`n" + $row.materialName) -or -not $script:mapMaterialModels.ContainsKey($row.assetId)) { throw 'Invalid or duplicate source special identity' }
+            if ($null -ne $row.PSObject.Properties['bakedLighting']) {
+                Assert-ExactJsonProperties $row.bakedLighting @('averageTexture','directionalTexture','colorSpace') 'Source special baked lighting'
+                if ($row.bakedLighting.colorSpace -cnotin @('linear','srgb')) { throw 'Invalid source special lightmap color space' }
+                & $validateLightingTexture $row.bakedLighting.averageTexture
+                & $validateLightingTexture $row.bakedLighting.directionalTexture
+                [void]$bakedAssets.Add($row.assetId)
+            }
+            $modelPath = [string]$script:mapMaterialModels[$row.assetId]
+            if (-not $modelNames.ContainsKey($modelPath)) { $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names }
+            if (-not $modelNames[$modelPath].ContainsKey($row.materialName)) { throw 'Source special material does not exist in WModel' }
+            continue
+        }
+        if ($row.family -cin @('bg-source-foliage-masked','bg-source-grass-masked')) {
+            if ($document.formatVersion -ne 2) { throw 'Source foliage requires formatVersion 2' }
+            $fields = @('assetId','materialName','sourceMaterial','family','sourceFlags','transmissionColor','diffuseBrightness','normalIntensity','specularIntensity','specularPower','diffuseSaturation','diffuseColor','specularColor','castsShadow','diffuseTexture','textureColorSpace')
+            foreach ($optional in @('normalTexture','specularTexture','maskTexture','emissive','bakedLighting')) {
+                if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
+            }
+            Assert-ExactJsonProperties $row $fields 'Source foliage'
+            foreach ($key in @('assetId','materialName','sourceMaterial','family')) {
+                if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or $row.$key -match '[\x00-\x1f\x7f]') { throw "Invalid source foliage identity: $key" }
+            }
+            if ([Text.Encoding]::UTF8.GetByteCount($row.materialName) -gt 63 -or [Text.Encoding]::UTF8.GetByteCount($row.sourceMaterial) -gt 512 -or
+                -not $keys.Add($row.assetId + "`n" + $row.materialName) -or -not $script:mapMaterialModels.ContainsKey($row.assetId)) { throw 'Invalid source foliage material identity' }
+            if (-not (Test-JsonNumber $row.sourceFlags) -or $row.sourceFlags -lt 0 -or $row.sourceFlags -gt 127 -or [Math]::Floor($row.sourceFlags) -ne $row.sourceFlags) { throw 'Invalid source foliage flags' }
+            $flags = [int]$row.sourceFlags
+            if (($flags -band 8) -ne 0 -and ($flags -band 4) -eq 0) { throw 'Source foliage specular branch mismatch' }
+            foreach ($key in @('diffuseBrightness','normalIntensity','specularIntensity','specularPower','diffuseSaturation')) {
+                if (-not (Test-JsonNumber $row.$key) -or $row.$key -lt 0 -or $row.$key -gt [single]::MaxValue) { throw "Invalid source foliage scalar: $key" }
+            }
+            foreach ($key in @('diffuseColor','specularColor','transmissionColor')) {
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne 4) { throw "Invalid source foliage color: $key" }
+                foreach ($value in $row.$key) { if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) { throw 'Invalid foliage color component' } }
+            }
+            if ($row.castsShadow -isnot [bool]) { throw 'Invalid foliage shadow policy' }
+            Assert-ExactJsonProperties $row.textureColorSpace @('diffuse','normal','specular','mask') 'Foliage color spaces'
+            foreach ($key in @('diffuse','normal','specular','mask')) { if ($row.textureColorSpace.$key -cnotin @('srgb','linear')) { throw 'Invalid foliage texture color space' } }
+            if ($row.textureColorSpace.normal -cne 'linear') { throw 'Foliage normal must be linear' }
+            & $validateLightingTexture $row.diffuseTexture
+            if (($flags -band 1) -ne 0) { & $validateLightingTexture $row.normalTexture }
+            if (($flags -band 8) -ne 0) { & $validateLightingTexture $row.specularTexture }
+            if ($row.family -ceq 'bg-source-foliage-masked') { & $validateLightingTexture $row.maskTexture }
+            if ($null -ne $row.PSObject.Properties['bakedLighting']) {
+                Assert-ExactJsonProperties $row.bakedLighting @('averageTexture','directionalTexture','colorSpace') 'Foliage baked lighting'
+                if ($row.bakedLighting.colorSpace -cnotin @('linear','srgb')) { throw 'Invalid foliage lightmap color space' }
+                & $validateLightingTexture $row.bakedLighting.averageTexture
+                & $validateLightingTexture $row.bakedLighting.directionalTexture
+                [void]$bakedAssets.Add($row.assetId)
+            }
+            if ($null -ne $row.PSObject.Properties['emissive']) {
+                $emissive = $row.emissive
+                if (($flags -band 32) -eq 0) { throw 'Unexpected foliage emissive input' }
+                Assert-ExactJsonProperties $emissive @('texture','color','intensity','uvTiling','colorSpace','flicker') 'Foliage emissive'
+                Assert-ExactJsonProperties $emissive.flicker @('minimum','speed','phaseOffset') 'Foliage flicker'
+                & $validateLightingTexture $emissive.texture
+                if ($emissive.colorSpace -cnotin @('linear','srgb') -or $emissive.color -isnot [array] -or $emissive.color.Count -ne 4 -or $emissive.uvTiling -isnot [array] -or $emissive.uvTiling.Count -ne 2) { throw 'Invalid foliage emissive shape' }
+                foreach ($value in @($emissive.color) + @($emissive.intensity,$emissive.flicker.minimum,$emissive.flicker.speed)) {
+                    if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) { throw 'Invalid foliage emissive value' }
+                }
+                foreach ($value in $emissive.uvTiling) { if (-not (Test-JsonNumber $value) -or $value -le 0 -or $value -gt 1000000) { throw 'Invalid foliage emissive UV' } }
+                if (-not (Test-JsonNumber $emissive.flicker.phaseOffset) -or [Math]::Abs([double]$emissive.flicker.phaseOffset) -gt 1000000) { throw 'Invalid foliage emissive phase' }
+            } elseif (($flags -band 32) -ne 0) { throw 'Missing foliage emissive input' }
+            $modelPath = [string]$script:mapMaterialModels[$row.assetId]
+            if (-not $modelNames.ContainsKey($modelPath)) { $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names }
+            if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -lt 1) { throw 'Foliage material does not exist in WModel' }
+            continue
+        }
+        if ($row.family -is [string] -and $row.family.StartsWith('source.', [StringComparison]::Ordinal)) {
+            if ($document.formatVersion -ne 2) { throw 'Native map material requires formatVersion 2' }
+            $nativeFields = @('assetId','materialName','sourceMaterial','family','parameters','textures')
+            if ($null -ne $row.PSObject.Properties['bakedLighting']) {
+                $supportsNativeBaked = $row.family -cin @('source.character.monster-862fa1000fe2.v1','source.character.monster-3c300c108ac5.v1','source.character.monster-7373ec8df226.v1','source.character.monster-a2e0ec089348.v1')
+                if ($row.family -cmatch '^source\.map\.translucent-(\d+)\.v1$') {
+                    $nativeProgram = [int]$Matches[1]
+                    $supportsNativeBaked = $nativeProgram -ge 44 -and $nativeProgram -le 63 -and $nativeProgram -notin @(47,53,55)
+                }
+                elseif ($row.family -cmatch '^source\.map\.water-(\d+)\.v1$') {
+                    $nativeProgram = [int]$Matches[1]
+                    $supportsNativeBaked = $nativeProgram -ge 40 -and $nativeProgram -le 43
+                }
+                if (-not $supportsNativeBaked) { throw 'Unsupported native baked lighting family' }
+                $nativeFields += 'bakedLighting'
+                Assert-ExactJsonProperties $row.bakedLighting @('averageTexture','directionalTexture','colorSpace') 'Native baked lighting'
+                if ($row.bakedLighting.colorSpace -cnotin @('linear','srgb')) { throw 'Invalid native lightmap color space' }
+                & $validateLightingTexture $row.bakedLighting.averageTexture
+                & $validateLightingTexture $row.bakedLighting.directionalTexture
+                [void]$bakedAssets.Add($row.assetId)
+            }
+            Assert-ExactJsonProperties $row $nativeFields 'Native map material'
+            foreach ($key in @('assetId','materialName','sourceMaterial','family')) {
+                if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or $row.$key -match '[\x00-\x1F\x7F]') {
+                    throw "Invalid native map identity: $key"
+                }
+            }
+            if ([Text.Encoding]::UTF8.GetByteCount($row.materialName) -gt 63 -or
+                [Text.Encoding]::UTF8.GetByteCount($row.sourceMaterial) -gt 512 -or
+                -not $keys.Add($row.assetId + "`n" + $row.materialName) -or
+                -not $script:mapMaterialModels.ContainsKey($row.assetId) -or
+                $row.parameters -isnot [pscustomobject] -or $row.textures -isnot [array]) { throw 'Invalid native map material contract' }
+            $texturelessHelper = $row.family -cin @('source.map.black.v1','source.map.shadow-modulate.v1')
+            if ($texturelessHelper -ne ($row.textures.Count -eq 0)) { throw 'Invalid textureless native helper' }
+            foreach ($parameter in $row.parameters.PSObject.Properties) {
+                $components = @($parameter.Value)
+                if ($components.Count -ne 1 -and $components.Count -ne 4) { throw 'Invalid native parameter arity' }
+                foreach ($value in $components) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1000000) { throw 'Invalid native material parameter' }
+                }
+            }
+            $textureIndices = [Collections.Generic.HashSet[int]]::new()
+            foreach ($texture in $row.textures) {
+                Assert-ExactJsonProperties $texture @('expressionIndex','assetId','colorSpace') 'Native map texture'
+                if (-not (Test-JsonNumber $texture.expressionIndex) -or $texture.expressionIndex -lt 0 -or
+                    $texture.expressionIndex -ge 16 -or [Math]::Floor($texture.expressionIndex) -ne $texture.expressionIndex -or
+                    -not $textureIndices.Add([int]$texture.expressionIndex) -or $texture.colorSpace -cnotin @('srgb','linear')) {
+                    throw 'Invalid native map texture index or color space'
+                }
+                & $validateLightingTexture $texture.assetId
+            }
+            $modelPath = [string]$script:mapMaterialModels[$row.assetId]
+            if (-not $modelNames.ContainsKey($modelPath)) {
+                $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names
+            }
+            if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or $modelNames[$modelPath][$row.materialName] -lt 1) {
+                throw 'Native map material does not exist in WModel'
             }
             continue
         }
@@ -2265,6 +2540,7 @@ function Read-MapMaterialDocument {
             'reflectionTexture','textureColorSpace')
         $scalarFields = @('diffuseBrightness','normalIntensity','specularIntensity',
             'specularPower','reflectionIntensity','reflectionContrast')
+        $isSourceBg = $row.family -ceq 'bg-source-opaque-masked'
         $isSourceOverlay = $row.family -ceq 'bg_base_opa_overlay'
         $isSourceSpecular = $row.family -ceq 'bg_seamless-specular_opa'
         $isPBR = $row.family -cin @('bg_base_pbr_seamless_opa','bg_base_pbr_opa')
@@ -2278,6 +2554,18 @@ function Read-MapMaterialDocument {
             'bg_base_msk' { $fields += 'diffuseSaturation'; $scalarFields += 'diffuseSaturation' }
             'bg_base_pbr_seamless_opa' { }
             'bg_base_pbr_opa' { }
+            'bg-source-opaque-masked' {
+                if ($document.formatVersion -ne 2) { throw 'Source BG requires formatVersion 2' }
+                $fields = @('assetId','materialName','sourceMaterial','family','textureColorSpace',
+                    'diffuseBrightness','normalIntensity','specularIntensity','specularPower',
+                    'reflectionIntensity','reflectionContrast','reflectionTiling','diffuseSaturation',
+                    'diffuseColor','specularColor','reflectionColor','uvTiling','reflectionOriginOffset',
+                    'castsShadow','diffuseTexture','sourceFlags','sourceBump','sourceUV','flickerMode','addressU')
+                $scalarFields += @('reflectionTiling','diffuseSaturation')
+                foreach ($optional in @('normalTexture','specularTexture','reflectionTexture','bakedLighting','emissive','detailNormalTexture','detailNormalIntensity','detailNormalTiling','sourceSubspecular','sourceRimlight','sourceSpecularSaturation','sourcePanning')) {
+                    if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
+                }
+            }
             'bg_base_opa_overlay' {
                 if ($document.formatVersion -ne 2) { throw 'Source overlay requires formatVersion 2' }
                 $fields = @('assetId','materialName','sourceMaterial','family','textureColorSpace',
@@ -2288,7 +2576,17 @@ function Read-MapMaterialDocument {
                 $scalarFields = @('diffuseBrightness','diffuseSaturation','normalIntensity','specularIntensity',
                     'specularPower','overlayTiling','overlayNormalIntensity','overlaySharpness',
                     'overlayBrightness','overlaySaturation','overlaySpecularIntensity')
-                if ($null -ne $row.PSObject.Properties['bakedLighting']) { $fields += 'bakedLighting' }
+                foreach ($optional in @('bakedLighting','uvTiling','specularTexture')) {
+                    if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
+                }
+                foreach ($optional in @('sourceOverlayFlags','sourceDirection','sourceUV','detailNormalTexture','detailNormalIntensity','detailNormalTiling')) {
+                    if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
+                }
+                if ($null -ne $row.PSObject.Properties['sourceOverlayFlags']) {
+                    if (-not (Test-JsonNumber $row.sourceOverlayFlags) -or $row.sourceOverlayFlags -lt 0 -or $row.sourceOverlayFlags -gt 511 -or [Math]::Floor($row.sourceOverlayFlags) -ne $row.sourceOverlayFlags) { throw 'Invalid source overlay flags' }
+                    if (($row.sourceOverlayFlags -band 1) -eq 0) { $fields = @($fields | Where-Object { $_ -cne 'normalTexture' }) }
+                    if (($row.sourceOverlayFlags -band 2) -eq 0) { $fields = @($fields | Where-Object { $_ -cne 'overlayNormalTexture' }) }
+                }
             }
             'bg_seamless-specular_opa' {
                 if ($document.formatVersion -ne 2) { throw 'Source specular requires formatVersion 2' }
@@ -2304,7 +2602,7 @@ function Read-MapMaterialDocument {
             }
         }
         Assert-ExactJsonProperties $row $fields "Map material row $($row.assetId)"
-        $identityFields = if ($isSourceOverlay) { @('assetId','materialName','sourceMaterial') } else { @('assetId','materialName','sourceMaterial','reflectionTexture') }
+        $identityFields = if ($isSourceOverlay -or $isSourceBg) { @('assetId','materialName','sourceMaterial') } else { @('assetId','materialName','sourceMaterial','reflectionTexture') }
         foreach ($key in $identityFields) {
             if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or
                 $row.$key -match '[\x00-\x1F\x7F]') { throw "Invalid map material $key" }
@@ -2316,10 +2614,11 @@ function Read-MapMaterialDocument {
             throw "Invalid, duplicate, or unknown map material identity: $($row.assetId)/$($row.materialName)"
         }
         foreach ($key in $scalarFields) {
-            if (-not (Test-JsonNumber $row.$key) -or [double]$row.$key -lt 0 -or
-                [double]$row.$key -gt [single]::MaxValue) { throw "Invalid map material number: $key" }
+            $allowSigned = $isSourceBg -and $key -ceq 'normalIntensity'
+            if (-not (Test-JsonNumber $row.$key) -or (-not $allowSigned -and [double]$row.$key -lt 0) -or
+                [Math]::Abs([double]$row.$key) -gt [single]::MaxValue) { throw "Invalid map material number: $key" }
         }
-        if ((-not $isPBR -and [double]$row.specularPower -lt 1) -or
+        if ((-not $isPBR -and -not $isSourceBg -and -not $isSourceOverlay -and [double]$row.specularPower -lt 1) -or
             (($isPBR -or $isSourceSpecular -or $row.family -ceq 'bg_seamless-specular_msk') -and [double]$row.reflectionTiling -le 0)) {
             throw "Invalid map material power or tiling: $($row.assetId)"
         }
@@ -2350,7 +2649,7 @@ function Read-MapMaterialDocument {
                 throw 'Invalid PBR bounds or normal color space'
             }
         }
-        if ($isSourceSpecular) {
+        if ($isSourceSpecular -or $isSourceBg) {
             if ($row.castsShadow -isnot [bool] -or $row.textureColorSpace.normal -cne 'linear') {
                 throw 'Invalid source specular shadow or normal color space'
             }
@@ -2362,19 +2661,89 @@ function Read-MapMaterialDocument {
                     }
                 }
             }
-            if ($row.uvTiling[0] -le 0 -or $row.uvTiling[1] -le 0) { throw 'Non-positive source specular UV tiling' }
+            if (-not $isSourceBg -and ($row.uvTiling[0] -le 0 -or $row.uvTiling[1] -le 0)) { throw 'Non-positive source specular UV tiling' }
         }
         if ($isSourceOverlay -and ($row.castsShadow -isnot [bool] -or $row.overlayTiling -le 0 -or
             $row.textureColorSpace.normal -cne 'linear' -or $row.textureColorSpace.overlayNormal -cne 'linear')) {
             throw 'Invalid source overlay shadow, tiling or normal color space'
         }
-        $spaceKeys = if ($isSourceOverlay) { @('diffuse','normal','overlayDiffuse','overlayNormal') } elseif ($isSourceSpecular) { @('diffuse','normal','specular','reflection') } elseif ($isPBR) { @('diffuse','normal','detailNormal','reflection','orm') } else { @('diffuse','specular','reflection') }
+        if ($isSourceBg) {
+            if (-not (Test-JsonNumber $row.sourceFlags) -or $row.sourceFlags -lt 0 -or $row.sourceFlags -gt 65535 -or
+                [Math]::Floor($row.sourceFlags) -ne $row.sourceFlags -or
+                -not (Test-JsonNumber $row.flickerMode) -or $row.flickerMode -lt 0 -or $row.flickerMode -gt 2 -or
+                [Math]::Floor($row.flickerMode) -ne $row.flickerMode -or $row.addressU -cnotin @('WRAP','MIRROR')) {
+                throw 'Invalid source BG flags, flicker or sampler'
+            }
+            $flags = [uint32]$row.sourceFlags
+            foreach ($key in @('sourceSubspecular','sourcePanning','sourceRimlight')) {
+                if ($null -eq $row.PSObject.Properties[$key]) { continue }
+                $count = if ($key -ceq 'sourceRimlight') { 4 } else { 2 }
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne $count) { throw 'Invalid source BG branch vector' }
+                foreach ($value in $row.$key) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1000000 -or ($key -cne 'sourcePanning' -and $value -lt 0)) { throw 'Invalid source BG branch component' }
+                }
+            }
+            if ($null -ne $row.PSObject.Properties['sourceSpecularSaturation'] -and
+                (-not (Test-JsonNumber $row.sourceSpecularSaturation) -or $row.sourceSpecularSaturation -lt 0 -or $row.sourceSpecularSaturation -gt 1000000)) { throw 'Invalid source specular saturation' }
+            if ((($flags -band 8) -ne 0 -and ($flags -band 4) -eq 0) -or
+                (($flags -band 32) -ne 0 -and ($flags -band 16) -eq 0)) { throw 'Inconsistent source BG branches' }
+            foreach ($vector in @('sourceBump','sourceUV')) {
+                if ($row.$vector -isnot [array] -or $row.$vector.Count -ne 4) { throw "Invalid source BG vector: $vector" }
+                foreach ($value in $row.$vector) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt [single]::MaxValue) {
+                        throw "Invalid source BG vector value: $vector"
+                    }
+                }
+            }
+            if ([Math]::Abs($row.sourceUV[0]*$row.sourceUV[0]+$row.sourceUV[1]*$row.sourceUV[1]-1) -gt 0.0001) {
+                throw 'Source BG UV rotation must be unit length'
+            }
+        }
+        $spaceKeys = if ($isSourceOverlay) { @('diffuse','normal','overlayDiffuse','overlayNormal') } elseif ($isSourceSpecular -or $isSourceBg) { @('diffuse','normal','specular','reflection') } elseif ($isPBR) { @('diffuse','normal','detailNormal','reflection','orm') } else { @('diffuse','specular','reflection') }
+        if ($isSourceOverlay -and $null -ne $row.PSObject.Properties['specularTexture']) { $spaceKeys += 'specular' }
+        if ($isSourceOverlay -and $null -ne $row.PSObject.Properties['uvTiling']) {
+            if ($row.uvTiling -isnot [array] -or $row.uvTiling.Count -ne 2) { throw 'Invalid overlay UV tiling' }
+            foreach ($value in $row.uvTiling) {
+                if (-not (Test-JsonNumber $value) -or $value -le 0 -or $value -gt [single]::MaxValue) { throw 'Invalid overlay UV value' }
+            }
+        }
         Assert-ExactJsonProperties $row.textureColorSpace $spaceKeys 'Map material color spaces'
         foreach ($key in $spaceKeys) {
             if ($row.textureColorSpace.$key -isnot [string] -or
                 $row.textureColorSpace.$key -cnotin @('srgb','linear')) { throw "Invalid map material color space: $key" }
         }
-        $textureKeys = if ($isSourceOverlay) { @('diffuseTexture','normalTexture','overlayDiffuseTexture','overlayNormalTexture') } elseif ($isSourceSpecular) { @('diffuseTexture','normalTexture','specularTexture','reflectionTexture') } elseif ($isPBR) { @('diffuseTexture','normalTexture','detailNormalTexture','ormTexture','reflectionTexture') } else { @('reflectionTexture') }
+        $textureKeys = if ($isSourceOverlay) { @('diffuseTexture','normalTexture','overlayDiffuseTexture','overlayNormalTexture') } elseif ($isSourceSpecular -or $isSourceBg) { @('diffuseTexture','normalTexture','specularTexture','reflectionTexture') } elseif ($isPBR) { @('diffuseTexture','normalTexture','detailNormalTexture','ormTexture','reflectionTexture') } else { @('reflectionTexture') }
+        if ($isSourceOverlay -and $null -ne $row.PSObject.Properties['specularTexture']) { $textureKeys += 'specularTexture' }
+        if ($isSourceOverlay -and $null -ne $row.PSObject.Properties['sourceOverlayFlags']) {
+            $hasOverlayDetail = ($row.sourceOverlayFlags -band 32) -ne 0
+            foreach ($key in @('detailNormalTexture','detailNormalIntensity','detailNormalTiling')) {
+                if ($hasOverlayDetail -ne ($null -ne $row.PSObject.Properties[$key])) { throw 'Inconsistent source overlay detail branch' }
+            }
+            if (($row.sourceOverlayFlags -band 1) -eq 0) { $textureKeys = @($textureKeys | Where-Object { $_ -cne 'normalTexture' }) }
+            if (($row.sourceOverlayFlags -band 2) -eq 0) { $textureKeys = @($textureKeys | Where-Object { $_ -cne 'overlayNormalTexture' }) }
+            if (($row.sourceOverlayFlags -band 32) -ne 0) {
+                $textureKeys += 'detailNormalTexture'
+                foreach ($key in @('detailNormalIntensity','detailNormalTiling')) {
+                    if (-not (Test-JsonNumber $row.$key) -or $row.$key -lt 0 -or $row.$key -gt [single]::MaxValue) { throw 'Invalid overlay detail parameter' }
+                }
+            }
+            foreach ($key in @('sourceDirection','sourceUV')) {
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne 4) { throw 'Invalid source overlay vector' }
+                foreach ($value in $row.$key) { if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1000000) { throw 'Invalid overlay vector component' } }
+            }
+        }
+        if ($isSourceBg) {
+            $textureKeys = @('diffuseTexture')
+            if (($flags -band 1) -ne 0) { $textureKeys += 'normalTexture' }
+            if (($flags -band 8) -ne 0) { $textureKeys += 'specularTexture' }
+            if (($flags -band 16) -ne 0) { $textureKeys += 'reflectionTexture' }
+            if (($flags -band 32768) -ne 0) {
+                $textureKeys += 'detailNormalTexture'
+                foreach ($key in @('detailNormalIntensity','detailNormalTiling')) {
+                    if (-not (Test-JsonNumber $row.$key) -or $row.$key -lt 0 -or $row.$key -gt [single]::MaxValue) { throw 'Invalid source detail normal parameter' }
+                }
+            }
+        }
         foreach ($textureKey in $textureKeys) {
         if ($row.$textureKey -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$textureKey)) { throw "Invalid map texture: $textureKey" }
         $texture = [string]$row.$textureKey
@@ -2412,7 +2781,7 @@ function Read-MapMaterialDocument {
                     throw 'Invalid source emissive nonnegative value'
                 }
             }
-            if ($emissive.flicker.minimum -gt 1) { throw 'Source emissive minimum must be in [0,1]' }
+            if (-not $isSourceBg -and $emissive.flicker.minimum -gt 1) { throw 'Source emissive minimum must be in [0,1]' }
             foreach ($value in $emissive.uvTiling) {
                 if (-not (Test-JsonNumber $value) -or $value -le 0 -or $value -gt [single]::MaxValue) {
                     throw 'Invalid source emissive UV tiling'
@@ -2447,8 +2816,8 @@ function Read-MapMaterialDocument {
             $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names
         }
         if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or
-            $modelNames[$modelPath][$row.materialName] -ne 1) {
-            throw "Map material name does not exist in WModel or is ambiguous: $($row.assetId)/$($row.materialName)"
+            $modelNames[$modelPath][$row.materialName] -lt 1) {
+            throw "Map material name does not exist in WModel: $($row.assetId)/$($row.materialName)"
         }
     }
     if ($null -ne $placementLighting) {
@@ -2460,7 +2829,19 @@ function Read-MapMaterialDocument {
         }
         $lightingSources = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($lighting in $placementLighting.Value) {
-            Assert-ExactJsonProperties $lighting @('sourcePlacementId','assetId','coordinateScale','coordinateBias','averageScale','directionalScale') 'Placement lighting'
+            $lightingFields = @('sourcePlacementId','assetId','coordinateScale','coordinateBias','averageScale','directionalScale')
+            $hasShadowScale = $null -ne $lighting.PSObject.Properties['shadowCoordinateScale']
+            $hasShadowBias = $null -ne $lighting.PSObject.Properties['shadowCoordinateBias']
+            if ($hasShadowScale -ne $hasShadowBias) { throw 'Incomplete placement shadow coordinates' }
+            if ($hasShadowScale) {
+                $lightingFields += @('shadowCoordinateScale','shadowCoordinateBias')
+                if (-not $shadowAssets.Contains($lighting.assetId) -or $lighting.shadowCoordinateScale -isnot [array] -or $lighting.shadowCoordinateScale.Count -ne 2 -or $lighting.shadowCoordinateBias -isnot [array] -or $lighting.shadowCoordinateBias.Count -ne 2) { throw 'Invalid placement shadow asset or coordinates' }
+                for ($axis=0; $axis -lt 2; $axis++) {
+                    $scale=$lighting.shadowCoordinateScale[$axis]; $bias=$lighting.shadowCoordinateBias[$axis]
+                    if (-not (Test-JsonNumber $scale) -or -not (Test-JsonNumber $bias) -or $scale -le 0 -or $bias -lt 0 -or $scale+$bias -gt 1.00001) { throw 'Placement shadow coordinates exceed atlas bounds' }
+                }
+            }
+            Assert-ExactJsonProperties $lighting $lightingFields 'Placement lighting'
             if ($lighting.sourcePlacementId -isnot [string] -or [string]::IsNullOrWhiteSpace($lighting.sourcePlacementId) -or
                 [Text.Encoding]::UTF8.GetByteCount($lighting.sourcePlacementId) -gt 512 -or
                 $lighting.sourcePlacementId -match '[\x00-\x1F\x7F]' -or

@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "MainApp.h"
+#include "DungeonTimerView.h"
 #include "BossImmuneGaugeView.h"
 
 #include "CharacterSelectionState.h"
@@ -770,6 +771,9 @@ HRESULT CMainApp::Initialize()
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
+
+	m_pDungeonTimerView = std::make_unique<CDungeonTimerView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 	/* Authored layer tints are opaque -- every real slot would otherwise sit fully visible from
 	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
 	boss. */
@@ -1042,6 +1046,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
+	/* Screen-anchored, so it runs in every Level -- including the one the HUD
+	   Layout Tool is used from. */
+	if (nullptr != m_pDungeonTimerView)
+	{
+#ifdef _DEBUG
+		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
+#endif
+		m_pDungeonTimerView->Update(fTimeDelta,
+			CCombatHUDViewModel::Get().Get_DungeonTimer());
+	}
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
 	Update_BossImmuneGauge(fTimeDelta);
@@ -1519,6 +1533,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		COMPOSITION_ANIMATION_RESOURCE resource;
 		if (shell->Consume_AnimationPreviewRequest(resource))
 		{
+			workbench->Cancel_CompleteSequencePlay();
 			if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
 			{
 				if (m_pAnimationTool->Preview_CompositionAnimationResource(resource, m_strToolStatus))
@@ -1604,6 +1619,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (workbench->Consume_PatternPreviewRequest(
     pattern, startClockMs, startPaused, targetAssetName))
   {
+   const bool completeSequenceRequested = workbench->Is_CompleteSequencePlaying();
+   bool previewAccepted = false;
    const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
     [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
    if (hasAnimation && (!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
@@ -1623,9 +1640,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
      if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
      if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
      ClaimCompositionPreviewOwner(route.owner);
+     previewAccepted = true;
 					m_eDebugInputOwner = route.owner;
     }
     else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
+
    }
    else
    {
@@ -1644,14 +1663,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
      if (!hasAnimation && m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
      ClaimCompositionPreviewOwner(route.owner);
      m_eDebugInputOwner = route.owner;
-     if (!Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
-      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
+     previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
+      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr);
+     if (!previewAccepted)
+     {
+      workbench->Notify_SequencePreviewAdmission(false, previewRouteStatus);
       StopCompositionPreview(route.owner);
+     }
     }
    }
    else if (previewed) previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
    else previewRouteStatus = m_strToolStatus;
    }
+   workbench->Notify_SequencePreviewAdmission(previewAccepted, previewRouteStatus);
+   if (completeSequenceRequested && !previewAccepted) StopCompositionPreview(route.owner);
   }
 
   KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
@@ -1865,8 +1890,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 	}
 	KOUKU_PREVIEW_STATE finalPreview;
+	std::string completedPreviewId;
+	if (m_pKoukuPresentationPlayer)
+		(void)m_pKoukuPresentationPlayer->Consume_CompletedPreview(completedPreviewId);
 	const bool ownedClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
-	if (ownedClock)
+	if (!completedPreviewId.empty())
+	{
+		finalPreview.strPatternId = completedPreviewId;
+		finalPreview.iClockMs = finalPreview.iDurationMs = m_pKoukuPresentationPlayer->Preview_DurationMs();
+		finalPreview.strStatus = "Sequence preview completed.";
+	}
+	else if (ownedClock)
 	{
 		finalPreview.strPatternId = m_pKoukuPresentationPlayer->Preview_PatternId();
 		finalPreview.bPlaying = m_pKoukuPresentationPlayer->Preview_Playing();
@@ -1883,7 +1917,24 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		finalPreview.iDurationMs = sampled.iDurationMs; finalPreview.strStatus = sampled.strStatus;
 	}
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena && (!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsBundle()))
-		arena->Debug_SampleCompositionWorldPreview(finalPreview.strPatternId, finalPreview.bPlaying, finalPreview.iClockMs);
+	{
+		std::string worldPreviewStatus;
+		if (!arena->Debug_SampleCompositionWorldPreview(finalPreview.strPatternId,
+			finalPreview.bPlaying, finalPreview.iClockMs, worldPreviewStatus))
+		{
+			completedPreviewId.clear();
+			finalPreview.bPlaying = finalPreview.bPaused = false;
+			finalPreview.strStatus = worldPreviewStatus;
+			const auto failedOwner = m_eCompositionPreviewOwner;
+			StopCompositionPreview(failedOwner);
+			for (const auto& route : compositionRoutes)
+				if (route.owner == failedOwner)
+				{
+					if (route.workbench) route.workbench->Set_PreviewState(finalPreview);
+					if (route.shell) route.shell->Set_AnimationPreviewStatus(worldPreviewStatus);
+				}
+		}
+	}
 	if (m_pKoukuPresentationPlayer && !m_pKoukuPresentationPlayer->Preview_IsBundle())
 	{
 		float4x4_t pivot{};
@@ -1916,7 +1967,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	for (const auto& route : compositionRoutes)
 	{
 		if (route.owner != m_eCompositionPreviewOwner) continue;
-		if (route.workbench) route.workbench->Set_PreviewState(finalPreview);
+		if (route.workbench)
+		{
+			route.workbench->Set_PreviewState(finalPreview);
+			if (!completedPreviewId.empty() && route.workbench->Advance_CompleteSequencePlay(completedPreviewId))
+			{
+				finalPreview.strStatus = route.workbench->Get_Status();
+				if (!route.workbench->Is_CompleteSequencePlaying()) StopCompositionPreview(route.owner);
+				route.workbench->Set_PreviewState(finalPreview);
+			}
+		}
 		if (!route.shell) continue;
 		CSequencerTool::ANIMATION_PREVIEW_STATE state;
 		state.strPatternId = finalPreview.strPatternId; state.strStatus = finalPreview.strStatus;
@@ -1940,6 +2000,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
+    string environmentStatus;
+    if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus))
+        OutputDebugStringA((environmentStatus + "\n").c_str());
 	Apply_LevelRequest();
 }
 
@@ -2240,6 +2303,8 @@ HRESULT CMainApp::Render()
 	{
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
+		if (nullptr != m_pDungeonTimerView)
+			m_pDungeonTimerView->Render();
 		RenderChargeGaugeText();
 		RenderSkillCooldownText();
 		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
@@ -6494,6 +6559,7 @@ void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequenceBenchmarkTool.get() : nullptr);
 	if (previousWorkbench)
 	{
+		previousWorkbench->Cancel_CompleteSequencePlay();
 		auto state = previousWorkbench->Get_PreviewState();
 		state.bPlaying = false;
 		state.bPaused = true;
@@ -7175,6 +7241,79 @@ void CMainApp::RenderKoukuUiPreviewControls()
 			m_KoukuUiPreview.CooldownEndTicks[i] = iTick + 150u;
 		}
 		bChanged = true;
+	}
+	/* Fires the floating status word over the local character in the KoukuSaydon
+	arena, so the retail damagetext motion can be looked at without waiting for the
+	Server to apply FEAR. The word and colour come from the same retail tables the
+	live path uses (EFTable_GameMsg tip.name.skillbuffdmgfont_*, and
+	EFTable_SkillBuff.FontColor = 0x8041D9 for fear). */
+	if (ImGui::Button("Fire fear status word##Kouku"))
+		viewModel.Debug_Fire_StatusEffectTextPreview();
+	ImGui::SameLine();
+	ImGui::TextDisabled("KoukuSaydon arena only");
+	/* Corner minigame time limit (retail dungeontimer.gfx, titleImageType
+	   KOUKUSATON). Drawn on the real screen by m_pDungeonTimerView, not on the
+	   HUD Layout Tool canvas -- that tool only positions the emblem. No Server
+	   deadline exists for the card maze or the Mario stage, so the countdown runs
+	   in CCombatHUDViewModel. Never touches Server truth. */
+	ImGui::SeparatorText("Dungeon timer (Debug)");
+	{
+		HUD_DUNGEON_TIMER_STATE timer = viewModel.Get_DungeonTimer();
+		bool_t bRunning = viewModel.Is_DungeonTimerRunning();
+		bool_t bTimerChanged = false;
+		if (ImGui::Checkbox("Show timer##Kouku", &m_bDungeonTimerPreview))
+		{
+			timer.isVisible = m_bDungeonTimerPreview;
+			timer.fSeconds = m_fDungeonTimerStartSeconds;
+			if (!m_bDungeonTimerPreview)
+				bRunning = false;
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputFloat("Start s##Kouku", &m_fDungeonTimerStartSeconds, 0.f, 0.f, "%.0f"))
+		{
+			m_fDungeonTimerStartSeconds = (std::clamp)(m_fDungeonTimerStartSeconds, 0.f, 3599.f);
+			timer.fSeconds = m_fDungeonTimerStartSeconds;
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90.f);
+		if (ImGui::InputFloat("Warn s##Kouku", &m_fDungeonTimerWarningSeconds, 0.f, 0.f, "%.0f"))
+		{
+			m_fDungeonTimerWarningSeconds = (std::clamp)(m_fDungeonTimerWarningSeconds, 0.f, 600.f);
+			bTimerChanged = true;
+		}
+		if (ImGui::Button(bRunning ? "Pause##KoukuTimer" : "Run##KoukuTimer"))
+		{
+			bRunning = !bRunning;
+			if (bRunning)
+			{
+				m_bDungeonTimerPreview = true;
+				timer.isVisible = true;
+				/* A stopped clock sitting at zero is a fresh run, not a resume. Without
+				   this the countdown starts at 0, which is below the warning threshold,
+				   so it comes up in the warning colour and the split readout. */
+				if (timer.fSeconds <= 0.f)
+					timer.fSeconds = m_fDungeonTimerStartSeconds;
+			}
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset##KoukuTimer"))
+		{
+			timer.fSeconds = m_fDungeonTimerStartSeconds;
+			bRunning = false;
+			bTimerChanged = true;
+		}
+		ImGui::SameLine();
+		ImGui::TextDisabled("%02d:%02d", static_cast<int32_t>(timer.fSeconds) / 60,
+			static_cast<int32_t>(timer.fSeconds) % 60);
+		if (bTimerChanged)
+		{
+			timer.fWarningSeconds = m_fDungeonTimerWarningSeconds;
+			viewModel.Debug_Set_DungeonTimer(timer, bRunning);
+		}
 	}
 	if (bChanged)
 	{
@@ -8462,7 +8601,11 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
 	for (const auto& member : audition.Members) ImGui::BulletText("%s | boss %u | %s | state %u",member.strMemberId.c_str(),member.iBossNetEntityId,member.strPatternId.c_str(),unsigned(member.eState));
-	ImGui::TextWrapped("%s",audition.strStatus.c_str()); ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
+	ImGui::TextWrapped("%s",audition.strStatus.c_str());
+	// Submission returns a pending message once; the service owns its later verdict.
+	if (!m_strKoukuCompletePlayStatus.starts_with("Waiting for the Server to admit") &&
+		m_strKoukuCompletePlayStatus != audition.strStatus)
+		ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()
@@ -8567,6 +8710,9 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 	m_strCompletePlayStatus = strOutStatus;
 	if (submitted)
 	{
+		if (nullptr != m_pAnimationTool)
+			m_pAnimationTool->Release_ValtanCompositionPreviewForServerPlayback();
+		ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 		m_bCompletePlayStatusTracking = true;
 		m_strCompletePlayTrackedPatternId = m_strCompletePlayPatternId;
 	}
@@ -8896,7 +9042,8 @@ void CMainApp::RefreshWorldObjectResources()
 				row.strObjectDisplayName = owner->displayName;
 				row.bDefaultMotion = owner->defaultMotionInstanceId == instance.instanceId;
 				row.bSupportsPlacement = owner->sequenceInstanceId.empty() &&
-					instance.anchorKind == "WORLD" && owner->anchorKind == "WORLD";
+					instance.anchorKind == owner->anchorKind &&
+					(instance.anchorKind == "WORLD" || instance.anchorKind == "BOSS" || instance.anchorKind == "PLAYER");
 			}
 			for (const auto& animation : sequence->animationTracks)
 				row.AnimationClips.push_back(animation.clipName);

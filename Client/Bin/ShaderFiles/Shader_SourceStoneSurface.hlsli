@@ -125,6 +125,40 @@ SOURCE_STONE_SURFACE EvaluateSourceStoneSurface(float4 diffuseSample,
     return result;
 }
 
+// The same native overlay graph also selects optional normal/detail channels,
+// height inversion and world-direction coverage. Keep the original overload's
+// approved floor permutation intact while consuming these checked switches.
+SOURCE_STONE_SURFACE EvaluateSourceStoneVariants(float4 diffuseSample,
+    float4 normalSample, float4 overlayDiffuseSample, float4 overlayNormalSample,
+    float4 detailNormalSample, float4 sourceVertexColor, SOURCE_STONE_PARAMETERS material,
+    uint flags, float3 directionInTangentSpace, float amount, float detailIntensity)
+{
+    SOURCE_STONE_SURFACE result;
+    const float2 raw = normalSample.rg * 2.f - 1.f;
+    const float2 detail = (flags & 32u) != 0u ? (detailNormalSample.rg * 2.f - 1.f) * detailIntensity : 0.f;
+    result.baseNormal = (flags & 1u) != 0u ? SourceStoneUnit(float3(
+        (raw * material.normalIntensity + detail) * sourceVertexColor.a,
+        sqrt(max(1.f - dot(raw, raw), 0.f)) + 0.00001f)) : float3(0.f, 0.f, 1.f);
+    const float2 overlayXY = overlayNormalSample.rg * 2.f - 1.f;
+    const float3 overlayNormal = (flags & 2u) != 0u ? float3(overlayXY * material.overlayNormalIntensity,
+        sqrt(max(1.f - dot(overlayXY, overlayXY), 0.f)) + 0.00001f) : float3(0.f, 0.f, 1.f);
+    const float baseHeight = saturate(result.baseNormal.z * result.baseNormal.z * diffuseSample.a);
+    const float height = overlayDiffuseSample.a * overlayDiffuseSample.a * ((flags & 16u) != 0u ? baseHeight : 1.f - baseHeight);
+    const float coverage = (flags & 4u) != 0u ? 1.f - sourceVertexColor.r :
+        (dot(result.baseNormal, directionInTangentSpace) + 1.f) * 0.5f + (amount - 0.5f) * 2.f;
+    result.overlayWeight = SourceStoneOverlayWeight(1.f - coverage, height, material.overlaySharpness);
+    result.directMixedNormal = lerp(result.baseNormal, overlayNormal, result.overlayWeight * 0.65f);
+    result.bakedMixedNormal = SourceStoneUnit(result.directMixedNormal);
+    result.diffuse = lerp(SourceStoneSaturation(diffuseSample.rgb, material.diffuseSaturation) *
+        material.diffuseColor * material.diffuseBrightness,
+        SourceStoneSaturation(overlayDiffuseSample.rgb * material.overlayColor * material.overlayBrightness,
+            material.overlaySaturation), result.overlayWeight);
+    result.specular = (flags & 256u) != 0u ? lerp(diffuseSample.rgb * material.specularColor * material.specularIntensity,
+        SourceStoneSaturation(overlayDiffuseSample.rgb, material.overlaySaturation) * material.overlaySpecularIntensity,
+        result.overlayWeight) : 0.f;
+    return result;
+}
+
 float3 SourceStoneDirectionalWeights(float3 direction)
 {
     return saturate(float3(

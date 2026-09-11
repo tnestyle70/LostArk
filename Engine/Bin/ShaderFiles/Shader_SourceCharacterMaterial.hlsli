@@ -2,6 +2,7 @@
 #define SOURCE_CHARACTER_MATERIAL_INCLUDED
 
 #include "Shader_SourceCharacterPrograms.hlsli"
+#include "Shader_StaticShadowMap.hlsli"
 
 float3 SourceCharacterSafeUnit(float3 value)
 {
@@ -35,20 +36,23 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     float3 n = SourceCharacterSafeUnit(normal);
     t = SourceCharacterSafeUnit(t - n * dot(t, n));
     // The existing character import's normal-map basis uses negative binormal.
-    float3 b = SourceCharacterSafeUnit(-binormal);
+    const bool staticMapMonster = g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u;
+    float3 b = SourceCharacterSafeUnit(staticMapMonster ? binormal : -binormal);
     float3 view = SourceCharacterSafeUnit(cameraPosition - worldPosition);
     float3 light = SourceCharacterSafeUnit(lightDirection);
     float3 tangentView = float3(dot(t, view), dot(b, view), dot(n, view));
     float3 tangentLight = float3(dot(t, light), dot(b, light), dot(n, light));
     float3 up = float3(t.y, b.y, n.y);
-    float handedness = dot(cross(t.xzy, b.xzy), n.xzy) < 0.f ? -1.f : 1.f;
+    float handedness = (staticMapMonster ? dot(cross(t, b), n) :
+        dot(cross(t.xzy, b.xzy), n.xzy)) < 0.f ? -1.f : 1.f;
     input.values[0] = float4(t.x, b.x, n.x, 0.f);
     input.values[1] = float4(t.y, b.y, n.y, handedness);
     input.values[2] = 1.f;
     input.values[4] = float4(uv, extraUV.yx);
-    float4 sourcePosition = float4(worldPosition.xzy * 100.f, 1.f);
+    float4 sourcePosition = float4((staticMapMonster ?
+        float3(worldPosition.x, -worldPosition.z, worldPosition.y) : worldPosition.xzy) * 100.f, 1.f);
     input.projection[0] = viewProjection[0] * 0.01f;
-    input.projection[1] = viewProjection[2] * 0.01f;
+    input.projection[1] = viewProjection[2] * (staticMapMonster ? -0.01f : 0.01f);
     input.projection[2] = viewProjection[1] * 0.01f;
     input.projection[3] = viewProjection[3];
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
@@ -64,7 +68,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[6] = float4(tangentView, 1.f);
         input.values[7] = clipPosition;
     }
-    if (g_SourceCharacterProgram == 12u)
+    if (g_SourceCharacterProgram == 12u || g_SourceCharacterProgram == 22u || g_SourceCharacterProgram == 84u || staticMapMonster)
     {
         // The legacy head direct VS packs UV/light/view/position into 2/3/5/6.
         // Its base pass uses the common layout above.
@@ -91,7 +95,8 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[7] = float4(up, 0.f);
     }
     if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
-        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u)
+        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
+        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u)
     {
         input.values[5] = float4(0.f, 0.f, 0.f, 1.f); // Source fog identity.
         input.values[6] = g_SourceCharacterProgram == 6u ? 0.f : float4(tangentView, 1.f);
@@ -122,19 +127,32 @@ struct SOURCE_CHARACTER_GBUFFER
 
 SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extraUV,
     float3 worldPosition, float3 tangent, float3 binormal, float3 normal,
-    float4 clipPosition, float4 screenPosition, float4x4 view, float4x4 projection, bool frontFace)
+    float4 clipPosition, float4 screenPosition, float4x4 view, float4x4 projection, bool frontFace,
+    float2 lightmapUV = 0.f, float4 averageScale = 0.f, float4 directionalScale = 0.f,
+    float2 staticShadowUV = 0.f)
 {
     float3 cameraPosition = -mul((float3x3)view, view[3].xyz);
     SOURCE_CHARACTER_NATIVE_INPUT nativeInput = MakeSourceCharacterInput(uv, extraUV,
         worldPosition, tangent, binormal, normal, cameraPosition, clipPosition,
         mul(view, projection), float3(0.f, 1.f, 0.f), 0.f, 1.f, frontFace);
+    if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u &&
+        g_SourceMapMonsterBakedEnabled != 0u && averageScale.w != 0.f)
+    {
+        nativeInput.hasBakedLighting = true;
+        nativeInput.values[3].zw = lightmapUV;
+        nativeInput.bakedAverage = g_SourceMapMonsterAverageTexture.Sample(
+            SourceCharacterLookupSampler, lightmapUV).rgb * averageScale.rgb;
+        nativeInput.bakedCoefficients = g_SourceMapMonsterDirectionalTexture.Sample(
+            SourceCharacterLookupSampler, lightmapUV).rgb * directionalScale.rgb;
+    }
     SOURCE_CHARACTER_NATIVE_OUTPUT native = EvaluateSourceCharacterBase(nativeInput);
     if (native.discarded) discard;
     // Opaque native PS alpha is explicitly zero and is not coverage. Hair and
     // eyelash carry actual opacity. The existing opaque character draw uses
     // ordered coverage until its source sorted-translucency passes are present.
     if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
-        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u)
+        g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
+        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u)
     {
         static const float threshold[16] = {
             .5f, 8.5f, 2.5f, 10.5f, 12.5f, 4.5f, 14.5f, 6.5f,
@@ -148,12 +166,23 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     // Specular; only the existing scene ambient multiplies this colour.
     output.diffuse = float4(native.targets[3].rgb, 1.f);
     float3 sourceMappedNormal = SourceCharacterOctDecode(native.targets[2].xy * 2.f - 1.f);
-    output.normal = float4(sourceMappedNormal.xzy * .5f + .5f, 0.f);
+    const float3 mappedNormal = (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ?
+        float3(sourceMappedNormal.x, sourceMappedNormal.z, -sourceMappedNormal.y) : sourceMappedNormal.xzy;
+    output.normal = float4(mappedNormal * .5f + .5f, 0.f);
     output.depth = float4(clipPosition.z / clipPosition.w, clipPosition.w / 1000.f,
         float(g_SourceCharacterRow), 5.f);
     output.pickPosition = float4(worldPosition, 1.f);
     output.indirect = float4(native.targets[0].rgb, 0.f);
+    if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u)
+    {
+        output.indirect.a = 1.f - EvaluateMapStaticShadow(staticShadowUV);
+        output.pickPosition.w = EncodeMapStaticShadowChannel(output.pickPosition.w);
+    }
     output.extraUV = extraUV;
+    // Static monster light PS consumes only UV0; this unused auxiliary lane
+    // records actual per-pixel RNM use, including mixed lit/unlit instances.
+    if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u)
+        output.extraUV.w = nativeInput.hasBakedLighting ? 1.f : 0.f;
     output.surfaceUVTangent = float4(uv, SourceCharacterOctEncode(SourceCharacterSafeUnit(tangent)));
     output.geometricNormal = float4(SourceCharacterSafeUnit(normal),
         (dot(cross(normal, tangent), binormal) < 0.f ? -1.f : 1.f) * (frontFace ? 1.f : 2.f));

@@ -174,3 +174,41 @@ Alt V clip1의 native1166 electric005 번개6개는 기존 발생 시각과 shap
 데이터 변경 근거는 `out/ArtistWarlordVisualFollowup20260910/Warlord/v-altv-lightning-resume.json`과 `lightning-resume-verification.json`, 직전 사용자 파일은 `lightning_resume_before/`에 있다.
 
 최종 빌드 근거는 `out/BuildPipeline/runs/20260910T063843956Z-debug-product.json`이다. 새 제품의 본체 재질 회귀 검사는 `out/DimensionMasterMaterialResume20260910/final-warlord-activation.json`, DLL/CSO 실물 일치는 같은 폴더의 `final-probe-inputs.json`에 있다.
+
+## G13. 워로드 Q full source follow 중복 축소 교정
+
+2026-09-10 사용자는 Q full을 Play해도 잘 보이지 않고, 이후 무언가는 보이지만 BA만큼 깔끔하지 않다고 보고했다. 현재 Q17030→`wgl_sk_pierceingspear`→`effect.warlord.skill.17030.full.restore` 연결과18행은 정상이다. 원본 Particle Color는 붉은 HDR 값이며 예를 들어30/5/1이다. 실제 Dynamic 모듈이 있는 Q mesh1000/1005/1012는 앞선 방패의 빈 Dynamic stream 문제와 다르다. shader 수식과 원본 색을 임의 교체하지 않았다.
+
+실제 Playback119행을 현재 native PS12개와 실제 source DDS에 공급한357개 WARP 수치 case에서 nonfinite0이었다. 핵심 mesh1000/1005/1012의 alpha와 RGB가 양수여서 shader 전체0 가설을 배제했다. 원본 RT0 alpha0을 쓰는 additive 발생은 RGB로 판정했다. 원본 screen-post와 light는 이 PS 대상이 아니다. GPU 결과는 숫자만 읽었고 이미지나 스크린샷을 생성하지 않았다.
+
+원인은 source follow의 이중 단위 변환이다. 제품 `PlayableCharacterAssetService`의 Warlord admission0.0001×yaw-90과 rig root100이 실제 named bone combined basis0.01을 만든다. `b_weapon_rhand`, `b_effectworldzero`, `bip001-spine2`의 translation은 이미 m단위다. 일반 source follow가 이0.01을 이미 m단위인 Q particle 크기에 다시 적용해 핵심 효과가 작아졌다. 같은 실제 모델·pose·현재 CSO·`CEffectDocumentRenderer::Render`를 쓰고3×3의 import basis만 제거하면 효과 출력이 회복됐다.
+
+| 같은256×256 WARP 수치 장면 | 수정 전 | 수정 후 |
+|---|---:|---:|
+| 전체28sample 최대 비영 RGB pixel |217|2456|
+| 전체28sample 최대 RGB |0.122042|413.648|
+|0.6667초 비영 RGB pixel |217|1649|
+|0.6667초 최대 RGB |0.119533|81.4834|
+|0.6667초 mesh 제출 수 |4/6|6/6|
+| nonfinite |0|0|
+
+합성 camera/depth와 실제 effect geometry를 사용하는 수치 비교다. live scene, tone mapping, BA와의 최종 실루엣·색 일치를 대신 판정하지 않는다.
+
+`Effect_PresentationService.cpp`의 typed source-bone scale manifest가 Q full 한 asset의 prototypeAdmissionScale0.0001, rigRootScale100, combinedAnchorScale0.01, reciprocal100을 소유한다. 합성값과 기존0.01 helper의 호환은 static_assert로 검사한다. 새 `Requires_SourceBoneImportScaleNormalization` 선택을 Product source-anchor 수집과 Tool 현재 pose/과거 pose 수집이 함께 소비한다. 기존 `Build_SourceBoneAnchorWorld`의 엄격한0.01·직교·affine 검사와 translation 보존은 그대로 재사용한다. 다른 Warlord 슬롯·Artist·미등록 asset은 새 선택에서 제외되며 기존 Artist31470 전용 경로는 바꾸지 않았다.
+
+변경 파일은 `Client/Public/Effect_PresentationService.h`, `Client/Private/Effect_PresentationService.cpp`, `Client/Private/Effect_Tool.cpp`와 대응 PLAN/RESULT다. 기존 인코딩과 줄끝을 유지했다. Q JSON18행, source resource ID, shader 수식, timing과 cue 연결은 보존했다. 신규 C++/shader 파일과 project/filter 등록은 없다.
+
+검증 증거는 `out/WarlordQRestore20260910`에 있다. `draw-product-root.log`는 수정 전, `draw-actual-fix.log`는 실제 수정된 Service 객체의 helper를 연결한 현재 CModel/Playback/Renderer 숫자 결과다. `frames.csv`, `ps_results.csv`, `ps-probe.log`는119입력/357case다. 최종 변경 Service와 Tool 번역 단위 최소 컴파일 및 `git diff --check`는 성공했다. JSON/XML은 수정하지 않았다.
+
+`anchor-debug.log`는 실제 제품 pretransform으로 로드한 bind pose와 Q0.6167초 pose에서 wgl·손·worldzero·spine의8개 matrix를 검사한다. 축0.01→1, translation 정확 보존, owner scale2 보존, 잘못된0.0001/1/비균등 입력24개 거절, Q 외 asset3개 제외를 확인했다. 이 독립 probe는 현재 source helper 본문을 그대로 컴파일했다. 별도 actual renderer 검증은 실제 Service 번역 단위를 연결했다.
+
+Release 최소 probe의 컴파일은 가능했으나 기존 `Engine/Bin/Release/Engine.lib`가 현재 `CModel::Create(..., bool)` 심볼을 제공하지 않아 link 실패했다. 오래된 Release ABI를 임의 우회하거나 전체 Release 제품을 빌드하지 않았다. Release actual model 검증은 미완료다. Debug Product 전체 빌드·배포는 통합 root가 소유하며 이 절의 개별 TU 검사와 구분한다. 실행 중인 Client/UI 조작·캡처·EXE 교체와 사용자 최종 화면 판정은 수행하지 않았다.
+
+
+## 2026-09-10 최종 Product 통합 확인
+
+사용자 마지막 Save/종료 뒤 최신 원본에 통합하고 관련 publisher와 정규 Debug Product 빌드를 완료했다.
+Engine/Shared/Server/Client 컴파일·링크·EXE/DLL/셰이더 배포는 PASS이며 실행 입력 누락은0이다.
+이 기록은 위의 Product 통합 대기 상태를 갱신한다. 세부 게시 revision·새 Server 검사·남은 사용자
+화면 확인은09-10 KOUKU_PATTERN_EFFECT_ANCHOR_FEAR_AUTHORING_IMPLEMENTATION_RESULT의 G10에 있다.
+빌드 근거: `out/BuildPipeline/runs/20260910T091016153Z-debug-product.json`. Client/UI 실행·캡처와 최종 육안 승인은 수행하지 않았다.

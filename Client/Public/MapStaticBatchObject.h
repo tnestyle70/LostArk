@@ -133,6 +133,9 @@ private:
 	std::vector<FMapStaticInstance>	m_Instances;
 	//이번 프레임에 실제 보이는 GPU용 인스턴스 배열
 	std::vector<VTXMESHINSTANCE> m_VisibleInstances;
+	// Reused staging storage; m_VisibleInstances remains the committed payload.
+	std::vector<VTXMESHINSTANCE> m_CandidateVisibleInstances;
+	uint32_t m_iAuthoredVisibleInstanceCount = {};
 	/* Authored-visible instances are independent from the camera-frustum list. */
 	std::vector<VTXMESHINSTANCE> m_ShadowInstances;
 	//placementId로 m_Instances의 index를 O(1)로 찾을 수 있게 한다.

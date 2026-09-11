@@ -49,3 +49,13 @@ Alt V31930은 사용자 관찰에서 clip1의 카메라는 정상이고 clip2의
 clip1의52행과 clip2의202행을 기존 source clock에 따라 하나의 `effect.artist.skill.31930.full.restore`로 합친다. clip2는 실제 clip1 길이1733.333ms 뒤로 옮기고, Element 시간·provider 참조·카메라 clock을 함께 맞춘다. 정상인 컷신 카메라4행/1065key와254Element의 원래 배치·재질을 보존한다. animevent는 첫 clip에서 한 번 호출하며 뒤 clip에서는 중복 생성하지 않는다. Tool Catalog/ResourceTree와 project None 목록도 이 단일 정본을 사용한다. 기존 두 파일과 사용자 저장본은 검토 가능한 백업으로 보존한다.
 
 새 C++ 파일은 없다. 기존 full codec/Playback과 원본 카메라 sampler를 재사용해 저장·재로드·full drawable·provider closure·시간 경계와 카메라 값 보존을 확인한다. Resources 설치와 Data 변경은 현재 bytes가 그대로인 경우에만 commit한다. Product 빌드 뒤 사용자 재실행에서 두꺼운 몸통과 Alt V의 카메라→꽃밭 전체 재생을 확인한다.
+
+## G09. 도화가 전체 스킬 이펙트 미발생 긴급 수정
+
+사용자가 실행 중인 EXE에서 도화가 스킬 이펙트가 전부 발생하지 않는다고 보고했다. Alt V의 두 EFFECT 행을 한 행으로 합친 현재 Artist.animevents는 실제 이벤트1047행인데 헤더는1048을 선언한다. 실제 소비자인 CAnimationEffectCueDocument::Load_FromText가 행 수 불일치에서 문서 전체를 거부하므로 Character::Load_EffectCues와 Product prewarm 모두 정상 cue를 등록하지 못한다.
+
+Data/Animation/Authored/Artist/Artist.animevents의 헤더만1047로 교정한다. 기존18개 제품 EFFECT와 나머지 이벤트, 이펙트 문서 및 런타임의 행 수 검증을 유지한다. 실제 로더로18개 cue의 등록과 실패 전후를 확인하고, Catalog 대상과 저작 JSON을 검사한다. 데이터는 CProjectDataRoot의 Data 정본에서 읽으므로 제품 재빌드는 필요 없다. 이미 생성된 캐릭터는 도화가 외 class를 선택한 뒤 도화가로 돌아오거나 재입장하여 새로 로드한다. 실행 중인 Client/Server를 종료하거나 UI를 조작하지 않는다. 쿠크 후속 변경과 차원술사 BA 검토는 보존한 채 별도로 남긴다.
+
+## G10. 기존 Product 선택과 Alt V GPU 발생 수 일치
+
+사용자가 Q/W/R/A/S/F를 이전 Product로 되돌리도록 지정했다. 각 슬롯의 기존 unified를 재사용하며 A는 기존 linear-reveal.unified를 선택한다. R 두 clip의 ba1/ba4 연결을 유지하고 다른 슬롯의 full.restore를 보존한다. Alt V는 Playback이 simulation-only provider를 GPU 발생에서 제외하지만 Renderer의 Resolve_GpuRenderFamily가 sprite로 세어 전체 Render를 거부한다. 공통 family 분류에서 같은 provider를 END로 제외해 개수·순서·실제 draw 소비를 맞춘다. 기존 Codec·Playback·실제 Render 진입을 사용해254행 문서와 provider를 포함한 frame, 일반 문서와 잘못된 frame의 거부를 확인한다. 새 C++ 파일은 없으며 최소 Renderer 컴파일 후 최종 Product 빌드에 포함한다.

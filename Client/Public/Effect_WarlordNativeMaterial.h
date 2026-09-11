@@ -8221,7 +8221,153 @@ inline constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,34> WARLORD_NATIVE_SWITCH
     {"1.use_rimlight_rotate", false},
     {"1.use_ssslt_texture", false},
 }};
-inline constexpr std::array<WARLORD_NATIVE_PROGRAM_DESC,271> WARLORD_NATIVE_PROGRAMS = {{
+inline constexpr std::array<std::string_view,2> WARLORD_NATIVE_TEXTURES_2005 = {{"12.map_f","02.map_e"}};
+inline constexpr std::array<WARLORD_NATIVE_PARAMETER_DESC,25> WARLORD_NATIVE_PARAMETERS_2005 = {{
+    {"selectioncolor", 7u, 0u, true},
+    {"93.emissiion_color", 6u, 0u, true},
+    {"time", 5u, 2u, false},
+    {"15.map_e_panning_x", 3u, 0u, false},
+    {"13.map_e_uvscale_r", 2u, 2u, false},
+    {"14.map_e_uvscale_g", 2u, 3u, false},
+    {"21.curvature", 3u, 2u, false},
+    {"22.str", 3u, 3u, false},
+    {"11.uv.curvature", 2u, 1u, false},
+    {"16.map_e_panning_y", 3u, 1u, false},
+    {"05.map_e_panning_x", 1u, 0u, false},
+    {"03.map_e_uvscale_r", 0u, 2u, false},
+    {"04.map_e_uvscale_g", 0u, 3u, false},
+    {"06.map_e_panning_y", 1u, 1u, false},
+    {"91.desaturation", 4u, 2u, false},
+    {"92.emissiion_power", 4u, 3u, false},
+    {"06.radius", 1u, 2u, false},
+    {"07.hardness", 1u, 3u, false},
+    {"02.radius", 0u, 0u, false},
+    {"03.hardness", 0u, 1u, false},
+    {"09.power", 2u, 0u, false},
+    {"95.str", 5u, 0u, false},
+    {"96.power", 5u, 1u, false},
+    {"32.fresnal_power", 4u, 0u, false},
+    {"33.fresnal_str", 4u, 1u, false},
+}};
+inline constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,27> WARLORD_NATIVE_SWITCHES_2005 = {{
+    {"00.usespecullar", false},
+    {"11.mape+mapf", false},
+    {"10.use_mapb", true},
+    {"01.use_emissionmap", true},
+    {"01.usemesh", false},
+    {"05.useinvert", true},
+    {"00.usedistortion", false},
+    {"01.usesphmask", true},
+    {"25.xinvert", false},
+    {"20.usetwirl", true},
+    {"01.usecoordinate_index1", false},
+    {"94.sphmask+(texmap*phasemap)", false},
+    {"01.effectonalphatex", false},
+    {"11.useclamptexmap", false},
+    {"91.mapch.r", true},
+    {"92.mapch.g", true},
+    {"00.checkisdepthbiasalpha", false},
+    {"21.usephasetexmap", false},
+    {"30.usefresnal", true},
+    {"31.fresnal.invert", false},
+    {"00.use_uvdistort", false},
+    {"29.usedynamic_ypanning", false},
+    {"23.usedynamicstr", false},
+    {"93.mapch.b", true},
+    {"10.fresnal", true},
+    {"99.alphadissolve", false},
+    {"94.mapch.a", true},
+}};
+
+inline constexpr std::array<std::string_view,3> WARLORD_NATIVE_TEXTURES_2006 = {{"13.map_b","06.map","01.map_a"}};
+inline constexpr std::array<WARLORD_NATIVE_PARAMETER_DESC,22> WARLORD_NATIVE_PARAMETERS_2006 = {{
+    {"selectioncolor", 6u, 0u, true},
+    {"09.lodbias", 2u, 3u, false},
+    {"16.map_b_panning_x", 4u, 1u, false},
+    {"14.map_b_uvscale_r", 3u, 3u, false},
+    {"15.map_b_uvscale_g", 4u, 0u, false},
+    {"09.map_d_panning_x", 3u, 0u, false},
+    {"07.map_d_uvscale_r", 2u, 0u, false},
+    {"08.map_d_uvscale_g", 2u, 2u, false},
+    {"10.map_d_panning_y", 3u, 1u, false},
+    {"05.distort_str", 1u, 0u, false},
+    {"17.map_b_panning_y", 4u, 2u, false},
+    {"04.map_a_panning_x", 0u, 2u, false},
+    {"02.map_a_uvscale_r", 0u, 0u, false},
+    {"03.map_a_uvscale_g", 0u, 1u, false},
+    {"05.map_a_panning_y", 1u, 2u, false},
+    {"21.str", 4u, 3u, false},
+    {"22.power", 5u, 0u, false},
+    {"10.radius", 3u, 2u, false},
+    {"04.ringthickness", 0u, 3u, false},
+    {"05.shapehardness", 1u, 3u, false},
+    {"07.power", 2u, 1u, false},
+    {"05.distortion_str", 1u, 1u, false},
+}};
+inline constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,11> WARLORD_NATIVE_SWITCHES_2006 = {{
+    {"01.usemesh", false},
+    {"00.alphamap", true},
+    {"10.additionalmap", true},
+    {"11.mapa*mapb", false},
+    {"20.usehemisphere", false},
+    {"00.useemissioncolor", false},
+    {"00.checkisdepthbiasalpha", false},
+    {"01.usesoftshape", false},
+    {"02.useouthardness", true},
+    {"00.use_uvdistort", true},
+    {"00.usedistortion", true},
+}};
+
+inline constexpr std::array<std::string_view,4> WARLORD_NATIVE_TEXTURES_2007 = {{"native_texture_0","01.map_uv","01.map_a","11.map_b"}};
+inline constexpr std::array<WARLORD_NATIVE_PARAMETER_DESC,7> WARLORD_NATIVE_PARAMETERS_2007 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"09.str", 0u, 1u, false},
+    {"10.power", 0u, 2u, false},
+    {"12.map_b_uvscale", 0u, 3u, false},
+    {"18.str", 1u, 0u, false},
+    {"19.power", 1u, 1u, false},
+    {"01.depthbiasdalpha_bias", 0u, 0u, false},
+}};
+inline constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,8> WARLORD_NATIVE_SWITCHES_2007 = {{
+    {"00.checkisdepthbiasalpha", true},
+    {"01.usemesh", false},
+    {"06.mapch.r", true},
+    {"07.mapch.g", true},
+    {"08.mapch.b", true},
+    {"00.useemissionmap", false},
+    {"30.usefresnal", false},
+    {"31.fresnal.invert", false},
+}};
+
+inline constexpr std::array<std::string_view,5> WARLORD_NATIVE_TEXTURES_2008 = {{"01.map_uv","01.map_e","native_texture_2","01.map_a","11.map_b"}};
+inline constexpr std::array<WARLORD_NATIVE_PARAMETER_DESC,14> WARLORD_NATIVE_PARAMETERS_2008 = {{
+    {"selectioncolor", 4u, 0u, true},
+    {"19.emissiion_color", 3u, 0u, true},
+    {"04.map_e_panning_x", 0u, 3u, false},
+    {"02.map_e_uvscale_r", 0u, 1u, false},
+    {"03.map_e_uvscale_g", 0u, 2u, false},
+    {"05.map_e_panning_y", 1u, 0u, false},
+    {"12.desaturation", 1u, 3u, false},
+    {"15.emissiion_power", 2u, 1u, false},
+    {"09.str", 1u, 1u, false},
+    {"10.power", 1u, 2u, false},
+    {"12.map_b_uvscale", 2u, 0u, false},
+    {"18.str", 2u, 2u, false},
+    {"19.power", 2u, 3u, false},
+    {"01.depthbiasdalpha_bias", 0u, 0u, false},
+}};
+inline constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,8> WARLORD_NATIVE_SWITCHES_2008 = {{
+    {"00.checkisdepthbiasalpha", true},
+    {"01.usemesh", false},
+    {"06.mapch.r", true},
+    {"07.mapch.g", true},
+    {"08.mapch.b", true},
+    {"00.useemissionmap", true},
+    {"30.usefresnal", false},
+    {"31.fresnal.invert", false},
+}};
+
+inline constexpr std::array<WARLORD_NATIVE_PROGRAM_DESC,275> WARLORD_NATIVE_PROGRAMS = {{
     {1122u,"effect.ue3.warlord-1122-native.v1","fx_m_mi_w_00.mi.fx_w_wgl_gdd_pbr_02","efbasematerial_prologue.ch.realpbr.base.realpbr_wp_dead_msk","ue3.material.efbasematerial.prologue.ch.realpbr.base.realpbr.wp.dead.msk.a2f90b5232d3",true,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_1122,WARLORD_NATIVE_PARAMETERS_1122,WARLORD_NATIVE_SWITCHES_1122},
     {1123u,"effect.ue3.warlord-1123-native.v1","fx_m_mi_w_00.mi.fx_w_wgl_gdd_pbr_01","efbasematerial_prologue.ch.realpbr.base.realpbr_wp_dead_msk","ue3.material.efbasematerial.prologue.ch.realpbr.base.realpbr.wp.dead.msk.a2f90b5232d3",true,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_1123,WARLORD_NATIVE_PARAMETERS_1123,WARLORD_NATIVE_SWITCHES_1123},
 
@@ -8494,6 +8640,10 @@ inline constexpr std::array<WARLORD_NATIVE_PROGRAM_DESC,271> WARLORD_NATIVE_PROG
     {2002u,"effect.ue3.warlord-2002-native.v1","fx_m_mi_05.fx_mi.fx_e_pa_gl_07_1_ad","fx_m_mi_05.fx_m.fx_e_pa_mask_01_ad","ue3.material.fx.m.mi.05.fx.m.fx.e.pa.mask.01.ad.f1d8ba435442",false,"sprite",false,false,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2002,WARLORD_NATIVE_PARAMETERS_2002,WARLORD_NATIVE_SWITCHES_2002},
     {2003u,"effect.ue3.warlord-2003-native.v1","fx_m_mi_o_00.fx_mi.fx_o_me_floorstrm_20_ad","fx_m_mi_00.fx_m.fx_d_pa_master_01_ad","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",true,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2003,WARLORD_NATIVE_PARAMETERS_2003,WARLORD_NATIVE_SWITCHES_2003},
     {2004u,"effect.ue3.warlord-2004-native.v1","fx_m_mi_y_00.fx_m.fx_y_pa_timework_01_tr","fx_m_mi_y_00.fx_m.fx_y_pa_timework_01_tr","ue3.material.fx.m.mi.y.00.fx.m.fx.y.pa.timework.01.tr.f3d0be3fc016",false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2004,WARLORD_NATIVE_PARAMETERS_2004,WARLORD_NATIVE_SWITCHES_2004},
+    {2005u,"effect.ue3.warlord-2005-native.v1","fx_m_mi_w_00.mi.fx_w_me_ringmaster_01_05_ad","fx_m_mi_03.fx_m.fx_d_pa_ringmaster_01_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ringmaster.01.ad.f754ad06cfe6",false,"sprite",false,false,true,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2005,WARLORD_NATIVE_PARAMETERS_2005,WARLORD_NATIVE_SWITCHES_2005},
+    {2006u,"effect.ue3.warlord-2006-native.v1","fx_m_mi_w_00.mi.fx_w_pa_ring_11_28_ad","fx_m_mi_03.fx_m.fx_d_pa_ring_11_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.11.ad.43bcef3b2175",false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2006,WARLORD_NATIVE_PARAMETERS_2006,WARLORD_NATIVE_SWITCHES_2006},
+    {2007u,"effect.ue3.warlord-2007-native.v1","fx_m_mi_03.fx_mi.fx_d_pa_turbulence_01_22_dt_tr","fx_m_mi_03.fx_m.fx_d_pa_turbulence_01_tr","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.turbulence.01.tr.324978c21e60",false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2007,WARLORD_NATIVE_PARAMETERS_2007,WARLORD_NATIVE_SWITCHES_2007},
+    {2008u,"effect.ue3.warlord-2008-native.v1","fx_m_mi_d_00.fx_mi.fx_d_pa_turbulence_01_104_dt_ad","fx_m_mi_03.fx_m.fx_d_pa_turbulence_01_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.turbulence.01.ad.798cb913f060",false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2008,WARLORD_NATIVE_PARAMETERS_2008,WARLORD_NATIVE_SWITCHES_2008},
 }};
 
 inline const WARLORD_NATIVE_PROGRAM_DESC* Find_WarlordNativeProgram(

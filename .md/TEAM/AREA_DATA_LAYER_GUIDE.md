@@ -79,11 +79,27 @@ PBR 입력에는 texture별 색 공간, optional `bakedLighting`/`environment`�
 필드·원본 근거·근사 경계는 해당 바닥 복구 PLAN/RESULT를 따른다. 임의의 모든 ORM 재질을
 이 family로 대신 해석하지 않는다.
 
-`Publish-MapAuthoring.ps1`은 요청 material 이름이 실제 WModel에 정확히 한 번 있는지,
+`Publish-MapAuthoring.ps1`은 요청 material 이름이 실제 WModel에 존재하는지,
 texture 경로·finite 수치·색 공간과 source/runtime 경로 쌍을 검사하고 문서와 catalog를 함께 교체한다.
+원본 section 여러 개가 같은 이름의 material entry를 반복하면 하나의 named override가 모든 해당 entry에 적용된다. authoring에는 같은 `assetId + materialName`을 중복 선언하지 않으며, 서로 다른 원본 MIC가 같은 이름으로 합쳐진 경우에는 임의로 하나를 선택하지 않는다.
 선택적 재질을 선언한 Area의 runtime mapassets header는 version 5이며 필수 재질 파일명을 가진다.
 v4 row 형식은 유지하며 기존 v1~v4와 mapset v1도 읽는다. shard-set은 각 child header에 같은 참조를 둔다.
 Loader와 MapTool은 같은 named override를 `CModel -> CMaterial`에 전달한다. 로드 실패는 기존 catalog를 보존한다.
+
+원본 정적 그림자는 optional `bakedLighting.staticShadow`의 `texture`, `lightGuid`,
+`penumbraWidth`, `penumbraBasis`, `shadowExponent`, `lightChannel` 여섯 필드로 선언한다.
+texture는 Resources 상대 G8 DDS이며 실제 SRV는 R8_UNORM을 요구한다. 현재 penumbraBasis는
+`PROJECT_ADAPTER`만 허용하며 원본 CPU penumbra를 확정한 값으로 기록하지 않는다.
+같은 placementLighting의 `shadowCoordinateScale`/`shadowCoordinateBias`는 한 쌍이다.
+material lightChannel과 map light의 optional `staticShadowChannel`은 1~15에서 일치해야
+그 direct light에 해당 그림자를 적용한다. 0은 명시 채널이 없다는 뜻이며 기존 scene 첫 directional은
+기본 channel 1을 사용한다. 잘못된 경로·채널·비정상 수치는 기존 문서를 보존한 채 실패한다.
+
+대형 RNM Area의 named material JSON만 128 MiB/8,000,000 value parse 한도를 명시하며
+전역 JSON 기본 한도를 바꾸지 않는다. mapasset aggregate 상한은 32,768이며 shard별 상한과
+source/runtime Area 검사를 함께 유지한다. 이는 Resources payload를 Git에 넣거나 별도 manifest를
+배포 선행조건으로 만든다는 뜻이 아니다. Resources는 기존 Drive 관리, mapassets/mapplacements는
+기존 Area publisher와 Git LFS 계약을 따른다.
 
 MapTool은 이 문서를 읽지만 재질 수치 편집/저장 UI는 제공하지 않는다. 저작 JSON 변경 후 명시적 publish와
 Client 재시작이 적용 기준이다. F1 Rendering Workbench의 Floor Materials은 session-only A/B와

@@ -422,12 +422,13 @@ bool_t CWorldSequencePlayer::Validate_ObjectPlacement(const std::string& instanc
 	};
 	const auto* resource = Is_SingleObjectMotion(*instance) ?
 		m_Document.Find_ObjectResource(instance->bindings.front().targetId) : nullptr;
-	if (instance->anchorKind != "WORLD" || !resource || resource->anchorKind != "WORLD" ||
+	if (!resource || instance->anchorKind != resource->anchorKind ||
+		(instance->anchorKind != "WORLD" && instance->anchorKind != "BOSS" && instance->anchorKind != "PLAYER") ||
 		!validVector(placement->position, -100000.f, 100000.f) ||
 		!validVector(placement->rotationDegrees, -36000.f, 36000.f) ||
 		!validVector(placement->scale, .001f, 1000.f))
 	{
-		status = "Independent placement requires one WORLD Object Resource and finite placement values: " + instanceId;
+		status = "Object placement requires one matching WORLD/PLAYER/BOSS resource and finite transform values: " + instanceId;
 		return false;
 	}
 	return true;

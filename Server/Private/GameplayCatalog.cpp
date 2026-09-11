@@ -1333,7 +1333,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr);
 }
 
-bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct()
+bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct(
+	const CGameplayCatalog& activeGameplay)
 {
 	const auto dataRoot = Resolve_DataRoot();
 	const auto repositoryRoot = dataRoot.parent_path().parent_path().parent_path();
@@ -1356,7 +1357,26 @@ bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct()
 			return false;
 		}
 	}
-	return Load();
+	CGameplayCatalog published;
+	if (!published.Load())
+	{
+		m_strStatus = published.Get_Status();
+		return false;
+	}
+	if (activeGameplay.m_NonKoukuBootstrapRows.empty() ||
+		published.m_KoukuBootstrapRows.empty())
+	{
+		m_strStatus = "KoukuSaydon reload requires an admitted active baseline and published encounter";
+		return false;
+	}
+	// Retain the live process balance, even if another publisher has newer rows on disk.
+	// Reparse the joined rows to validate every encounter reference against that balance.
+	const std::string rows = activeGameplay.m_NonKoukuBootstrapRows +
+		published.m_KoukuBootstrapRows;
+	const std::string joined = "LOSTARK_GAMEPLAY_BOOTSTRAP\t" +
+		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+		std::to_string(std::count(rows.begin(), rows.end(), '\n')) + "\n" + rows;
+	return Load_BootstrapBytes(joined, nullptr, nullptr);
 }
 
 bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
@@ -1400,6 +1420,28 @@ bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
 
 bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	const std::filesystem::path& path,
+	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+	const LostArk::Shared::GameplayDataRevision* parentRevision)
+{
+	std::ifstream bootstrapFile(path, std::ios::binary);
+	if (!bootstrapFile)
+	{
+		m_strStatus = "Missing gameplay bootstrap: " + path.string();
+		return false;
+	}
+	const std::string bootstrapBytes{
+		std::istreambuf_iterator<char>{ bootstrapFile },
+		std::istreambuf_iterator<char>{} };
+	if (bootstrapFile.bad())
+	{
+		m_strStatus = "Gameplay bootstrap could not be read";
+		return false;
+	}
+	return Load_BootstrapBytes(bootstrapBytes, expectedBootstrapRevision, parentRevision);
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
+	const std::string& bootstrapBytes,
 	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
 	const LostArk::Shared::GameplayDataRevision* parentRevision)
 {
@@ -1548,20 +1590,6 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	m_ValtanPresentationGenerationId = {};
 	m_iKoukuSaydonProductSourceRevision = 0u;
 
-	std::ifstream bootstrapFile(path, std::ios::binary);
-	if (!bootstrapFile)
-	{
-		m_strStatus = "Missing gameplay bootstrap: " + path.string();
-		return false;
-	}
-	const std::string bootstrapBytes{
-		std::istreambuf_iterator<char>{ bootstrapFile },
-		std::istreambuf_iterator<char>{} };
-	if (bootstrapFile.bad())
-	{
-		m_strStatus = "Gameplay bootstrap could not be read";
-		return false;
-	}
 	LostArk::Shared::GameplayDataRevision admittedRevision{};
 	if (!Calculate_GameplayDataRevision(bootstrapBytes, admittedRevision))
 	{
@@ -2597,10 +2625,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
         else if (!fields.empty() && "PATTERNLOGICCHARGE" == fields[0])
         {
-            float distance = 0.f;
-            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+            float distance = 0.f, yawOffset = 0.f;
+            if ((fields.size() != 5u && fields.size() != 6u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
                 !IsStableId(fields[3]) || !ParseNumber(fields[4], distance) || !std::isfinite(distance) ||
-                distance <= 0.f || distance > 1000.f)
+                distance <= 0.f || distance > 1000.f || (fields.size() == 6u &&
+                (!ParseNumber(fields[5], yawOffset) || !std::isfinite(yawOffset) || std::abs(yawOffset) > 360.f)))
             { m_strStatus = "Boss charge row is invalid"; return false; }
             const auto owners = m_BossPatterns.find(std::string(fields[1]));
             if (owners == m_BossPatterns.end()) { m_strStatus = "Boss charge encounter is missing"; return false; }
@@ -2618,6 +2647,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
                     window->iStartMs < other.iStartMs + other.iDurationMs)
                 { m_strStatus = "Boss charge windows overlap"; return false; }
             window->fBossChargeDistanceM = distance;
+            window->fChargeYawOffsetDegrees = yawOffset;
         }
         else if (!fields.empty() && "PATTERNLOGICHOLD" == fields[0])
         {
@@ -2644,14 +2674,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		{
 			BOSS_LOGIC_REGION region{};
 			std::uint32_t ordinal = 0u;
-			if (19u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+			if ((19u != fields.size() && 21u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
 				!IsStableId(fields[3]) || !ParseNumber(fields[4], ordinal) || ordinal >= 64u || !IsStableId(fields[5]))
 			{ m_strStatus = "Boss Logic region identity is invalid"; return false; }
 			region.strRegionId = std::string(fields[5]);
 			if ("BOSS_CURRENT" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
 			else if ("BOSS_SPAWN" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN;
 			else if ("WORLD" != fields[6]) { m_strStatus = "Boss Logic region anchor is invalid"; return false; }
-			region.bSector = "SECTOR" == fields[7];
+			region.bReverseSector = "REVERSE_SECTOR" == fields[7];
+			region.bSector = "SECTOR" == fields[7] || region.bReverseSector;
 			region.bCircle = "CIRCLE" == fields[7];
 			if (!region.bSector && !region.bCircle && "BOX" != fields[7]) { m_strStatus = "Boss Logic region shape is invalid"; return false; }
 			float* numbers[] = { &region.fCenterX, &region.fCenterY, &region.fCenterZ, &region.fYawDegrees,
@@ -2660,8 +2691,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				if (!ParseNumber(fields[index + 8u], *numbers[index]) || !std::isfinite(*numbers[index]))
 				{ m_strStatus = "Boss Logic region geometry is invalid"; return false; }
 			if (region.fHalfX <= 0.f || region.fHalfY <= 0.f || region.fHalfZ <= 0.f ||
-				region.fRadiusM <= 0.f || region.fHalfAngleDegrees <= 0.f || region.fHalfAngleDegrees > 180.f)
+				region.fRadiusM <= 0.f || (region.bReverseSector ? region.fHalfAngleDegrees < 0.f : region.fHalfAngleDegrees <= 0.f) || region.fHalfAngleDegrees > 180.f)
 			{ m_strStatus = "Boss Logic region dimensions are invalid"; return false; }
+			if (fields.size() == 21u && (!region.bSector ||
+				!ParseNumber(fields[19], region.fRadiusXM) || !ParseNumber(fields[20], region.fRadiusZM) ||
+				!std::isfinite(region.fRadiusXM) || !std::isfinite(region.fRadiusZM) ||
+				region.fRadiusXM <= 0.f || region.fRadiusZM <= 0.f))
+			{ m_strStatus = "Boss Logic sector axes are invalid"; return false; }
 			if ("NONE" != fields[17])
 			{
 				std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> symbols;
@@ -2686,7 +2722,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					[&](const BOSS_LOGIC_REGION& value) { return value.strRegionId == region.strRegionId; }))
 			{ m_strStatus = "Boss Logic region window/order is invalid"; return false; }
 			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW &&
-				(!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
+				(!region.bSector || region.bReverseSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
 				 region.eCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE))
 			{ m_strStatus = "Shield reflection requires boss-pivot sector regions without card mapping"; return false; }
 			window->CardRegions.push_back(std::move(region));
@@ -2863,7 +2899,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		{
 			std::uint32_t ordinal = 0u, pushMs = 0u;
 			float rangeM = 0.f;
-			if (fields.size() != 8u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			if ((fields.size() != 8u && fields.size() != 9u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				(fields.size() == 9u && fields[8] != "AWAY_FROM_BOSS" && fields[8] != "BOSS_FORWARD") ||
 				(fields[4] != "SUCCESS" && fields[4] != "FAIL" && fields[4] != "TIMEOUT") ||
 				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
 				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM <= 0.f || rangeM > 20.f ||
@@ -2887,6 +2924,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			{ m_strStatus = "Boss logic push needs one max-HP damage outcome"; return false; }
 			outcomes[ordinal].fPushRangeM = rangeM;
 			outcomes[ordinal].iPushMs = pushMs;
+			if (fields.size() == 9u && fields[8] == "BOSS_FORWARD")
+				outcomes[ordinal].ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD;
 		}
 		else if (!fields.empty() && (fields[0] == "PATTERNLOGICCONTACTTARGET" || fields[0] == "PATTERNLOGICCONTACTGROUP" ||
 			fields[0] == "PATTERNLOGICCONTACTMOTION" || fields[0] == "PATTERNLOGICSIGNAL"))
@@ -6698,6 +6737,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	   from validated owners because target/bundle rows use IDs in column 1. */
 	std::string nonKoukuRows = "LOSTARK_NON_KOUKU_GAMEPLAY\t" +
 		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\n";
+	std::string koukuBootstrapRows, nonKoukuBootstrapRows;
 	std::istringstream domainInput{ bootstrapBytes };
 	std::getline(domainInput, line);
 	const auto* koukuPatterns = Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
@@ -6722,6 +6762,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					bundle->strEncounterId == "ENCOUNTER_KAKULSAYDON_G1";
 			}
 		}
+		auto& domainRows = koukuOwned ? koukuBootstrapRows : nonKoukuBootstrapRows;
+		domainRows.append(line); domainRows.push_back('\n');
 		if (!koukuOwned) { nonKoukuRows.append(line); nonKoukuRows.push_back('\n'); }
 	}
 	LostArk::Shared::GameplayDataRevision nonKoukuRevision{};
@@ -6731,6 +6773,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		return false;
 	}
 	rollback.committed = true;
+	m_KoukuBootstrapRows = std::move(koukuBootstrapRows);
+	m_NonKoukuBootstrapRows = std::move(nonKoukuBootstrapRows);
 	m_NonKoukuGameplayRevision = nonKoukuRevision;
 	m_ActiveRevision = nullptr == parentRevision ?
 		admittedRevision : *parentRevision;

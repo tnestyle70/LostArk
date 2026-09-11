@@ -43,6 +43,12 @@ namespace
 		the Madness_Anchor slot; CKoukuMadnessGaugeView moves the whole group to the local
 		character's head point at runtime, so only the offsets between slots matter here. */
 		{ "Kouku Madness",  "UI/KoukuSaydon/MadnessGauge_Layout.json", "UI/KoukuSaydon/Madness/", false },
+		/* KoukuSaydon minigame time limit (retail dungeontimer.gfx, class
+		DungeonTimerFrame, titleImageType KOUKUSATON). One emblem slot:
+		CDungeonTimerView derives the countdown number position and size from this
+		slot width, so moving or resizing it here moves both. The number itself is
+		drawn by that view inside the arena, not on this canvas. */
+		{ "Kouku Timer",    "UI/KoukuSaydon/DungeonTimer_Layout.json", "UI/KoukuSaydon/DungeonTimer/", false },
 		/* Target/boss status display -- not the local player's own class (Combat HUD) and not the
 		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
 		squeezed into either. */

@@ -54,6 +54,8 @@ struct EFFECT_EVALUATED_PARTICLE final
 {
 	const EFFECT_ELEMENT_DESC* pElement = nullptr;
 	float4x4_t World{};
+	// Native particle material WorldToLocal uses the emitter, before sprite size/rotation.
+	float4x4_t SourceEmitterWorld{};
 	float4_t Color = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vDynamicParameter{};
 	float3_t vWorldVelocity{};

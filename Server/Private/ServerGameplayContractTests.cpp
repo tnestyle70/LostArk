@@ -1271,7 +1271,9 @@ namespace
 
         BOSS_PATTERN_LOGIC_WINDOW charge{};
         charge.strWindowId = "charge.1"; charge.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        tests.Require(charge.fChargeYawOffsetDegrees == 0.f, "Legacy charge facing offset defaults to zero");
         charge.iStartMs = 101u; charge.iDurationMs = 1001u; charge.fBossChargeDistanceM = 7.f;
+        charge.fChargeYawOffsetDegrees = 90.f;
         BOSS_LOGIC_REGION body{};
         body.strRegionId = "charge.body"; body.bCircle = true;
         body.fRadiusM = 1.f; body.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
@@ -1288,13 +1290,13 @@ namespace
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 519u, events, output);
         tests.Require(std::abs(boss->fPositionX) < .001f && boss->fPositionZ > 3.f && boss->fPositionZ < 4.f &&
-            std::abs(boss->fYawDegrees) < .001f && boss->fPatternTargetLastPositionZ == 10.f,
-            "Boss charge captures one target position and keeps its direction after that player moves");
+            std::abs(boss->fYawDegrees - 90.f) < .001f && boss->fPatternTargetLastPositionZ == 10.f,
+            "Boss charge keeps its captured travel direction after the player moves while rotating body yaw by ninety degrees");
         players.at(1u).fPositionX = 0.f; players.at(1u).fPositionZ = 7.f;
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 534u, events, output);
         tests.Require(std::abs(boss->fPositionZ - 7.f) < .001f && std::abs(boss->fPositionX) < .001f &&
-            players.at(1u).eAction == PLAYER_ACTION_STATE::FEAR && players.at(1u).iActionStartTick == 534u,
+            std::abs(boss->fYawDegrees - 90.f) < .001f && players.at(1u).eAction == PLAYER_ACTION_STATE::FEAR && players.at(1u).iActionStartTick == 534u,
             "Boss charge reaches exactly seven metres on its pattern-clock deadline and its body collider follows before fear overlap");
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 550u, events, output);
@@ -2127,6 +2129,47 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 			}
 		}
 		tests.Require(foundBoundary, "Whirlwind push preserves navigation bounds through the existing Server mover");
+		// Laser uses the same reaction/mover with the boss yaw sampled at each hit.
+		auto laserDamage = damage;
+		laserDamage.ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD;
+		for (const float yaw : {0.f, 90.f, -135.f, 725.f})
+		{
+			first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+			first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true;
+			first.fPositionX = 13.f; first.fPositionZ = -7.f;
+			boss->fPositionX = -9.f; boss->fPositionZ = 21.f; boss->fYawDegrees = yaw;
+			CKoukuSaydonLogicRuntime::Apply_Result(first, laserDamage, *boss, catalog, nullptr, 600u, events);
+			const float radians = yaw * .017453292519943295f;
+			tests.Require(first.iCurrentHp == 900u && std::abs(first.fKnockbackDirectionX - std::sin(radians)) < .0001f &&
+				std::abs(first.fKnockbackDirectionZ - std::cos(radians)) < .0001f &&
+				std::abs(first.fKnockbackSpeed * first.fKnockbackRemainingSeconds - 2.f) < .0001f,
+				"Laser damage samples current boss forward regardless of player-relative bearing and preserves push distance/time");
+		}
+		boss->fPositionX = boss->fPositionZ = 0.f; boss->fYawDegrees = 90.f;
+		auto& ellipseWindow = pattern.LogicWindows.front();
+		ellipseWindow.bRearmOnExit = ellipseWindow.bRepeatAfterKnockback = false;
+		ellipseWindow.OnTimeout.clear(); ellipseWindow.OnSuccess = {damage};
+		auto& ellipse = ellipseWindow.CardRegions.front();
+		ellipse.bCircle = false; ellipse.bSector = true; ellipse.bReverseSector = true;
+		ellipse.fRadiusXM = 1.f; ellipse.fRadiusZM = 5.f; ellipse.fHalfAngleDegrees = 45.f;
+		for (const auto& sample : std::array<std::array<float, 3u>, 4u>{{ {3.f, 0.f, 1000.f}, {-3.f, 0.f, 900.f}, {0.f, 2.f, 1000.f}, {-6.f, 0.f, 1000.f} }})
+		{
+			first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+			first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true;
+			first.fPositionX = sample[0]; first.fPositionZ = sample[1];
+			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 650u, ledger); update(650u);
+			tests.Require(first.iCurrentHp == static_cast<unsigned>(sample[2]),
+				"Authoritative Reverse Sector retains its rotated long axis, safe wedge and short-axis/radial exclusions");
+		}
+		for (const auto& boundary : std::array<std::array<float, 2u>, 2u>{{ {0.f, 900.f}, {180.f, 1000.f} }})
+		{
+			first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+			first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true; first.fPositionX = 3.f;
+			ellipse.fHalfAngleDegrees = boundary[0];
+			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 700u, ledger); update(700u);
+			tests.Require(first.iCurrentHp == static_cast<unsigned>(boundary[1]),
+				"Reverse safe angle zero hits the full ellipse and 360 leaves an empty hazard");
+		}
 	}
 #endif
 	std::cout << "failures : " << tests.failures << '\n';
@@ -3138,6 +3181,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bytes += "PATTERNLOGICREGION\t" + encounter + "\t" + reentryId + "\treentry.hit\t0\treentry.body\tBOSS_CURRENT\tCIRCLE\t0\t0\t0\t0\t1\t1\t1\t4\t45\tNONE\tNONE\n";
 		bytes += "PATTERNLOGICOUTCOME\t" + encounter + "\t" + reentryId + "\treentry.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-\n";
 		bytes += "PATTERNLOGICPUSH\t" + encounter + "\t" + reentryId + "\treentry.hit\tSUCCESS\t0\t2\t242\n";
+		const std::string ellipseId = "KAKULSAYDON_G1_ELLIPSE_CONTRACT";
+		appendPattern(ellipseId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 10000u);
+		bytes += "PATTERNLOGIC\t" + encounter + "\t" + ellipseId + "\t0\tellipse.hit\tENTER_AREA\t0\t10000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
+		bytes += "PATTERNLOGICREGION\t" + encounter + "\t" + ellipseId + "\tellipse.hit\t0\tellipse.body\tBOSS_CURRENT\tREVERSE_SECTOR\t0\t0\t0\t725\t1\t1\t1\t0.6\t0\tNONE\tNONE\t0.6\t12\n";
+		bytes += "PATTERNLOGICOUTCOME\t" + encounter + "\t" + ellipseId + "\tellipse.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-\n";
+		bytes += "PATTERNLOGICPUSH\t" + encounter + "\t" + ellipseId + "\tellipse.hit\tSUCCESS\t0\t2\t242\tBOSS_FORWARD\n";
 		const std::string retargetId = "KAKULSAYDON_G1_RETARGET_CONTRACT";
 		bytes += "PATTERN\t" + encounter + "\t" + retargetId + "\t" + retargetId + ".action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t3\tANY\tANY\t0\n";
 		bytes += "PATTERNBOSS\t" + encounter + "\t" + retargetId + "\tBOSS_KAKULSAYDON_G2_BIG_SAYDON\n";
@@ -3220,6 +3269,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				reentry->LogicWindows.front().OnSuccess.front().fPushRangeM == 2.f &&
 				reentry->LogicWindows.front().OnSuccess.front().iPushMs == 242u,
 				"Published supplemental rearm and push rows reach the admitted Kouku pattern");
+			const auto* elliptic = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, ellipseId, status);
+			tests.Require(elliptic && elliptic->LogicWindows.size() == 1u &&
+				elliptic->LogicWindows.front().CardRegions.front().bReverseSector &&
+				elliptic->LogicWindows.front().CardRegions.front().fRadiusXM == .6f &&
+				elliptic->LogicWindows.front().CardRegions.front().fRadiusZM == 12.f &&
+				elliptic->LogicWindows.front().CardRegions.front().fHalfAngleDegrees == 0.f &&
+				elliptic->LogicWindows.front().OnSuccess.front().ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD,
+				"Extended sector-axis and forward-push rows reach the real admitted Server catalog together");
 			if (reentry)
 			{
 				auto invalid = *reentry; invalid.LogicWindows.front().eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
@@ -3515,7 +3572,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const HANDLE publishing = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
 				0u, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 			CGameplayCatalog blockedProduct;
-			tests.Require(publishing != INVALID_HANDLE_VALUE && !blockedProduct.Load_PublishedKoukuProduct() &&
+			tests.Require(publishing != INVALID_HANDLE_VALUE && !blockedProduct.Load_PublishedKoukuProduct(*generation) &&
 				blockedProduct.Get_Status().find("publish is in progress") != std::string::npos,
 				"Kouku admission cannot read a publisher transaction before commit or rollback");
 			auto restart = play; restart.iRequestSequence = 2u;
@@ -3579,11 +3636,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			publish(foreign); play.iRequestSequence = 9u;
 			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
-				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_REVISION_MISMATCH &&
-				reloadRoom->m_pKoukuPublishedProductGeneration == refreshedPin &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED &&
+				result.iPinnedSourceRevision == oldSource + 2u &&
+				reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration->Has_SameNonKoukuGameplay(*generation) &&
 				reloadRoom->Get_ActiveGameplayGeneration() == generation,
-				"Kouku reload rejects unrelated damage changes and retains process balance");
-			publish(published); play.iRequestSequence = 10u; play.Scope.iExpectedSourceRevision = oldSource;
+				"Kouku reload admits only encounter edits and retains active damage despite unrelated disk changes");
+			stop = play; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;
+			stop.iRequestSequence = 10u; stop.iExpectedRunEpoch = result.iRoomAuditionEpoch;
+			(void)reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, stop, result);
+			publish(published); play.iRequestSequence = 11u; play.Scope.iExpectedSourceRevision = oldSource;
 			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
 				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
 				"A new run cannot roll back to an older source after a newer Product was admitted");
@@ -12908,6 +12969,34 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				rotatedShapeMiss, 0.f, 0.f, 1.f, 1.f, 4.f, 0.5f),
 			"Evaluate a cross in its rotated basis");
 
+		tests.Require(
+			Circle_IntersectsEllipticSector({ 0.f, 9.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 60.f) &&
+			!Circle_IntersectsEllipticSector({ 1.1f, 8.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 60.f) &&
+			Circle_IntersectsEllipticSector({ 9.f, 0.f, .1f }, 0.f, 0.f, 1.f, 0.f, 1.f, 10.f, 60.f),
+			"Elliptic sectors preserve independent width/depth and rotate with boss facing");
+		tests.Require(
+			!Circle_IntersectsEllipticSector({ 0.f, 7.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 60.f, true) &&
+			Circle_IntersectsEllipticSector({ 0.f, -7.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 60.f, true) &&
+			!Circle_IntersectsEllipticSector({ 1.3f, 0.f, .2f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 360.f) &&
+			Circle_IntersectsEllipticSector({ 1.2f, 0.f, .2f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 360.f),
+			"Reverse sector leaves the safe wedge and ellipse contact uses the actual body radius");
+		const float ellipseTheta = .6f;
+		const float arcX = std::sin(ellipseTheta), arcZ = 10.f * std::cos(ellipseTheta);
+		const float normalLength = std::sqrt(arcX * arcX + arcZ * arcZ / 10000.f);
+		const float normalX = arcX / normalLength, normalZ = arcZ / (100.f * normalLength);
+		tests.Require(
+			Circle_IntersectsEllipticSector({ arcX + .25f * normalX, arcZ + .25f * normalZ, .25f },
+				0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 120.f) &&
+			!Circle_IntersectsEllipticSector({ arcX + .251f * normalX, arcZ + .251f * normalZ, .25f },
+				0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 120.f),
+			"Ellipse arc tangency is inclusive and a separated body misses away from the principal axes");
+		tests.Require(
+			!Circle_IntersectsEllipticSector({ 0.f, 0.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 0.f) &&
+			Circle_IntersectsEllipticSector({ 0.f, 7.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 0.f, true) &&
+			!Circle_IntersectsEllipticSector({ 0.f, 0.f, .1f }, 0.f, 0.f, 0.f, 1.f, 1.f, 10.f, 360.f, true) &&
+			!Circle_IntersectsEllipticSector({ 0.f, 0.f, .1f }, 0.f, 0.f, 0.f, 1.f, 0.f, 10.f, 60.f),
+			"Elliptic sector empty/full complement and invalid radii are explicit");
+
 		constexpr float ROOT_THREE_OVER_TWO = 0.8660254f;
 		const std::array<BODY_CIRCLE_XZ, 6u> sixDirectionArms = {{
 			{ 0.f, 5.f, 0.2f },
@@ -14451,31 +14540,27 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
 		constexpr std::array<std::uint32_t, 3u> expectedDurationMs =
-			{ 1500u, 1067u, 1700u };
+			{ 1400u, 1067u, 1700u };
 		constexpr std::array<std::uint32_t, 3u> expectedHitMs =
-			{ 50u, 28u, 335u };
-		constexpr std::array<std::uint32_t, 3u> expectedComboAdvanceMs =
-			{ 1500u, 1067u, 1700u };
+			{ 100u, 28u, 335u };
 		constexpr std::array<std::uint32_t, 3u> expectedOpenMs =
-			{ 0u, 0u, 0u };
+			{ 100u, 93u, 0u };
 		constexpr std::array<std::uint32_t, 3u> expectedCloseMs =
-			{ 0u, 0u, 0u };
+			{ 1400u, 1067u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			1500u == dimensionMasterBasicAttack->iActionDurationMs &&
-			50u == dimensionMasterBasicAttack->iHitTimeMs &&
-			dimensionMasterBasicAttack->ComboStages.size() ==
-				expectedDurationMs.size();
+			1400u == dimensionMasterBasicAttack->iActionDurationMs &&
+			100u == dimensionMasterBasicAttack->iHitTimeMs &&
+			dimensionMasterBasicAttack->ComboStages.size() == expectedDurationMs.size();
 		if (exactDimensionMasterTiming)
 		{
 			for (std::size_t index = 0u; index < expectedDurationMs.size(); ++index)
 			{
-				const PLAYER_COMBO_STAGE& stage =
-					dimensionMasterBasicAttack->ComboStages[index];
+				const PLAYER_COMBO_STAGE& stage = dimensionMasterBasicAttack->ComboStages[index];
 				exactDimensionMasterTiming = exactDimensionMasterTiming &&
 					stage.iActionDurationMs == expectedDurationMs[index] &&
 					stage.iHitTimeMs == expectedHitMs[index] &&
-					stage.iComboAdvanceMs == expectedComboAdvanceMs[index] &&
+					stage.iComboAdvanceMs == expectedDurationMs[index] &&
 					stage.iInputOpenMs == expectedOpenMs[index] &&
 					stage.iInputCloseMs == expectedCloseMs[index] &&
 					!stage.RootMotion.empty() &&
@@ -14483,9 +14568,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve full automatic DimensionMaster BA motions and stage-aligned root motion");
+			"Resolve three manual DimensionMaster BA stages and matching source root motion");
 
-		if (nullptr != dimensionMasterBasicAttack)
+		if (exactDimensionMasterTiming)
 		{
 			CPlayerSkillSystem skills;
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
@@ -14506,54 +14591,50 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			basicAttack.fAimX = 1.f;
 			basicAttack.fAimZ = 0.f;
 
-			SERVER_PLAYER automatic = makePlayer();
-			const bool automaticStarted =
-				skills.Try_Start(automatic, basicAttack, catalog, 100u);
-			bool chainedEveryStage = automaticStarted &&
-				!automatic.hasBufferedComboInput;
-			std::uint32_t automaticTick = 101u;
-			for (std::size_t stageIndex = 0u;
-				chainedEveryStage &&
-					stageIndex + 1u < dimensionMasterBasicAttack->ComboStages.size();
-				++stageIndex)
-			{
-				const PLAYER_COMBO_STAGE& stage =
-					dimensionMasterBasicAttack->ComboStages[stageIndex];
-				const std::uint32_t previousStartTick =
-					automatic.iActionStartTick;
-				automatic.fActionElapsedSeconds =
-					static_cast<float>(stage.iComboAdvanceMs - 1u) * 0.001f;
-				skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
-					0.f, automaticTick++, noDamageEvents);
-				chainedEveryStage = chainedEveryStage &&
-					PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
-					automatic.iComboStage == stageIndex + 1u &&
-					previousStartTick == automatic.iActionStartTick;
-				skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
-					0.002f, automaticTick++, noDamageEvents);
-				chainedEveryStage = chainedEveryStage &&
-					PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
-					automatic.iComboStage == stageIndex + 2u &&
-					previousStartTick != automatic.iActionStartTick &&
-					!automatic.hasBufferedComboInput;
-			}
+			SERVER_PLAYER tapped = makePlayer();
+			const bool tapStarted = skills.Try_Start(tapped, basicAttack, catalog, 100u);
+			tapped.fActionElapsedSeconds = 1.401f;
+			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
+				0.f, 143u, noDamageEvents);
+			tests.Require(tapStarted && PLAYER_ACTION_STATE::NONE == tapped.eAction &&
+				0u == tapped.iComboStage,
+				"One DimensionMaster LMB ends after the first double-thrust motion");
 
-			const PLAYER_COMBO_STAGE& finalStage =
-				dimensionMasterBasicAttack->ComboStages.back();
-			automatic.fActionElapsedSeconds =
-				static_cast<float>(finalStage.iActionDurationMs - 1u) * 0.001f;
-			skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
-				0.f, automaticTick++, noDamageEvents);
-			const bool heldFinalFullMotion =
-				PLAYER_ACTION_STATE::SKILL == automatic.eAction &&
-				3u == automatic.iComboStage;
-			skills.Update(automatic, noTargets, catalog, nullptr, nullptr,
-				0.002f, automaticTick++, noDamageEvents);
-			tests.Require(
-				chainedEveryStage && heldFinalFullMotion &&
-					PLAYER_ACTION_STATE::NONE == automatic.eAction &&
-					0u == automatic.iComboStage,
-				"Advance one DimensionMaster LMB through the three project-tuned BA motions");
+			SERVER_PLAYER clicked = makePlayer();
+			bool advancedOnEachClick = skills.Try_Start(clicked, basicAttack, catalog, 200u);
+			std::uint32_t clickTick = 201u;
+			for (std::size_t stageIndex = 0u; advancedOnEachClick && stageIndex < 2u; ++stageIndex)
+			{
+				const PLAYER_COMBO_STAGE& stage = dimensionMasterBasicAttack->ComboStages[stageIndex];
+				const std::uint32_t previousStartTick = clicked.iActionStartTick;
+				// A click after the visible thrusts/slash still buys the next stage.
+				clicked.fActionElapsedSeconds = 0.7f;
+				basicAttack.iClientSequence = static_cast<std::uint32_t>(stageIndex + 2u);
+				const bool bufferedWithoutRestart =
+					!skills.Try_Start(clicked, basicAttack, catalog, clickTick++);
+				const bool duplicateRejected = !skills.Try_Start(clicked, basicAttack, catalog, clickTick++);
+				skills.Update(clicked, noTargets, catalog, nullptr, nullptr,
+					0.f, clickTick++, noDamageEvents);
+				advancedOnEachClick = bufferedWithoutRestart && duplicateRejected &&
+					clicked.hasBufferedComboInput && clicked.iComboStage == stageIndex + 1u;
+				clicked.fActionElapsedSeconds = static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
+				skills.Update(clicked, noTargets, catalog, nullptr, nullptr,
+					0.f, clickTick++, noDamageEvents);
+				advancedOnEachClick = advancedOnEachClick && clicked.iActionStartTick == previousStartTick;
+				skills.Update(clicked, noTargets, catalog, nullptr, nullptr,
+					0.002f, clickTick++, noDamageEvents);
+				advancedOnEachClick = advancedOnEachClick &&
+					PLAYER_ACTION_STATE::SKILL == clicked.eAction &&
+					clicked.iComboStage == stageIndex + 2u &&
+					clicked.iActionStartTick != previousStartTick && !clicked.hasBufferedComboInput;
+			}
+			clicked.fActionElapsedSeconds = 1.699f;
+			skills.Update(clicked, noTargets, catalog, nullptr, nullptr, 0.f, clickTick++, noDamageEvents);
+			const bool heldFinalMotion = PLAYER_ACTION_STATE::SKILL == clicked.eAction && 3u == clicked.iComboStage;
+			skills.Update(clicked, noTargets, catalog, nullptr, nullptr, 0.002f, clickTick++, noDamageEvents);
+			tests.Require(advancedOnEachClick && heldFinalMotion &&
+				PLAYER_ACTION_STATE::NONE == clicked.eAction && 0u == clicked.iComboStage,
+				"Three DimensionMaster clicks play double thrust, BA3, and BA4 once each");
 		}
 	}
 	{
@@ -14603,49 +14684,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
-		bool explicitWaitedForAutomaticChain =
+		bool explicitWaitedForCurrentMotion =
 			nullptr != basicAttackDefinition &&
 				!basicAttackDefinition->ComboStages.empty();
 		std::uint32_t pendingBoundaryTick = 202u;
-		if (explicitWaitedForAutomaticChain)
+		if (explicitWaitedForCurrentMotion)
 		{
-			for (std::size_t stageIndex = 0u;
-				stageIndex < basicAttackDefinition->ComboStages.size();
-				++stageIndex)
-			{
-				const PLAYER_COMBO_STAGE& stage =
-					basicAttackDefinition->ComboStages[stageIndex];
-				player.fActionElapsedSeconds =
-					static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
-				skills.Update(player, noTargets, catalog, nullptr, nullptr,
-					0.f, pendingBoundaryTick++, noDamageEvents);
-				explicitWaitedForAutomaticChain =
-					explicitWaitedForAutomaticChain &&
-					PLAYER_ACTION_STATE::SKILL == player.eAction &&
-					player.iComboStage == stageIndex + 1u &&
-					PLAYER_PENDING_COMMAND_KIND::SKILL ==
-						player.PendingCommand.eKind;
-
-				skills.Update(player, noTargets, catalog, nullptr, nullptr,
-					0.002f, pendingBoundaryTick++, noDamageEvents);
-				const bool isFinalStage = stageIndex + 1u ==
-					basicAttackDefinition->ComboStages.size();
-				explicitWaitedForAutomaticChain =
-					explicitWaitedForAutomaticChain &&
-					PLAYER_PENDING_COMMAND_KIND::SKILL ==
-						player.PendingCommand.eKind &&
-					(isFinalStage ?
-						(PLAYER_ACTION_STATE::NONE == player.eAction &&
-							0u == player.iComboStage) :
-						(PLAYER_ACTION_STATE::SKILL == player.eAction &&
-							player.iComboStage == stageIndex + 2u));
-			}
+			const PLAYER_COMBO_STAGE& stage = basicAttackDefinition->ComboStages.front();
+			player.fActionElapsedSeconds =
+				static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
+			skills.Update(player, noTargets, catalog, nullptr, nullptr,
+				0.f, pendingBoundaryTick++, noDamageEvents);
+			explicitWaitedForCurrentMotion =
+				PLAYER_ACTION_STATE::SKILL == player.eAction &&
+				1u == player.iComboStage &&
+				PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind;
+			skills.Update(player, noTargets, catalog, nullptr, nullptr,
+				0.002f, pendingBoundaryTick++, noDamageEvents);
+			explicitWaitedForCurrentMotion = explicitWaitedForCurrentMotion &&
+				PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind &&
+				PLAYER_ACTION_STATE::NONE == player.eAction && 0u == player.iComboStage;
 		}
 		const bool pendingStarted =
 			skills.Try_StartPending(
 				player, latestExplicit, catalog, pendingBoundaryTick++);
 		tests.Require(
-			explicitWaitedForAutomaticChain && pendingStarted &&
+			explicitWaitedForCurrentMotion && pendingStarted &&
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
 			2050120u == player.iCurrentSkillId &&
 			PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind &&
@@ -14653,7 +14717,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			resourceBeforePending - pendingSkillDefinition->iResourceCost ==
 				player.iCurrentResource &&
 			player.CooldownEndTickBySkillId.contains(2050120u),
-			"Commit the latest explicit skill after the full automatic BA chain and spend costs once");
+			"Commit the latest explicit skill after the current purchased BA motion and spend costs once");
 
 		C2S_MOVE pendingMove{};
 		pendingMove.iClientSequence = 1u;
@@ -14727,39 +14791,31 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				!live.CooldownEndTickBySkillId.contains(2050100u);
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
 			std::vector<DAMAGE_EVENT> noDamageEvents;
-			bool moveWaitedForAutomaticChain =
+			bool moveWaitedForCurrentMotion =
 				nullptr != roomBasicAttackDefinition &&
 					!roomBasicAttackDefinition->ComboStages.empty();
 			std::uint32_t roomBoundaryTick = 302u;
-			if (moveWaitedForAutomaticChain)
+			if (moveWaitedForCurrentMotion)
 			{
-				for (std::size_t stageIndex = 0u;
-					stageIndex < roomBasicAttackDefinition->ComboStages.size();
-					++stageIndex)
-				{
-					const PLAYER_COMBO_STAGE& stage =
-						roomBasicAttackDefinition->ComboStages[stageIndex];
-					live.fActionElapsedSeconds =
-						static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
-					room.m_PlayerSkillSystem.Update(
-						live, noTargets, room.m_GameplayCatalog, nullptr, nullptr,
-						0.002f, roomBoundaryTick++, noDamageEvents);
-					const bool isFinalStage = stageIndex + 1u ==
-						roomBasicAttackDefinition->ComboStages.size();
-					moveWaitedForAutomaticChain =
-						moveWaitedForAutomaticChain &&
-						PLAYER_PENDING_COMMAND_KIND::MOVE ==
-							live.PendingCommand.eKind &&
-						(isFinalStage ?
-							(PLAYER_ACTION_STATE::NONE == live.eAction &&
-								0u == live.iComboStage) :
-							(PLAYER_ACTION_STATE::SKILL == live.eAction &&
-								live.iComboStage == stageIndex + 2u));
-				}
+				const PLAYER_COMBO_STAGE& stage = roomBasicAttackDefinition->ComboStages.front();
+				live.fActionElapsedSeconds =
+					static_cast<float>(stage.iActionDurationMs - 1u) * 0.001f;
+				room.m_PlayerSkillSystem.Update(
+					live, noTargets, room.m_GameplayCatalog, nullptr, nullptr,
+					0.f, roomBoundaryTick++, noDamageEvents);
+				moveWaitedForCurrentMotion =
+					PLAYER_ACTION_STATE::SKILL == live.eAction && 1u == live.iComboStage &&
+					PLAYER_PENDING_COMMAND_KIND::MOVE == live.PendingCommand.eKind;
+				room.m_PlayerSkillSystem.Update(
+					live, noTargets, room.m_GameplayCatalog, nullptr, nullptr,
+					0.002f, roomBoundaryTick++, noDamageEvents);
+				moveWaitedForCurrentMotion = moveWaitedForCurrentMotion &&
+					PLAYER_PENDING_COMMAND_KIND::MOVE == live.PendingCommand.eKind &&
+					PLAYER_ACTION_STATE::NONE == live.eAction && 0u == live.iComboStage;
 			}
 			room.Commit_PendingPlayerCommand(live, roomBoundaryTick++);
 			stagedAndCommittedMove = roomAttackStarted &&
-				latestMoveReplacedSkill && moveWaitedForAutomaticChain &&
+				latestMoveReplacedSkill && moveWaitedForCurrentMotion &&
 				PLAYER_PENDING_COMMAND_KIND::NONE == live.PendingCommand.eKind &&
 				PLAYER_ACTION_STATE::NONE == live.eAction &&
 				0u == live.iComboStage && live.hasMoveGoal;
@@ -14777,7 +14833,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				0u == invalidPending.iCurrentResource;
 		}
 		tests.Require(stagedAndCommittedMove,
-			"Keep latest MOVE through automatic BA and commit it from the final boundary position");
+			"Keep latest MOVE through the current BA motion and commit it from the final boundary position");
 		tests.Require(failedPendingSkillWasIsolated,
 			"Discard only a pending skill that fails boundary revalidation");
 	}

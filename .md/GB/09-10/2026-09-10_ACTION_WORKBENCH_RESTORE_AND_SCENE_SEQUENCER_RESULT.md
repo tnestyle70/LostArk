@@ -96,3 +96,92 @@ Client/UI는 실행하거나 캡처하지 않았다. 새 실행 파일로 Server
 F1 → Open Action Workbench로 기존 Logic/Collider를 확인한다. 바로 아래 Open Sequencer Benchmark는
 Composition Sequencer 목록과 같은 Resources/Box Detail을 연다. 두 편집기의 선택·Save·Preview를
 각각 확인한다. 파1빨2 Complete Play에서 본체 높이와 앵커 Effect를 사용자가 최종 판정한다.
+
+## G05. 1관문 두 연출 Complete Play — 2026-09-11
+
+재개 기준 bba47ad00269c91e0b97391c14ce0f2fed660f09의 최신 재질·gameplay를 보존하고,
+독립 Sequence의 Complete Play를 구현했다. 선택 Gate의 document order를 stable pattern ID로
+확정하여 첫 항목 0ms부터 요청한다. 자연 종료만 다음 항목으로 이동하며 마지막 항목 뒤에는 반복하지
+않는다. Pause/Resume, 명시 Stop/Reset, admission 실패, WORLD sample 실패와 owner 교체를
+기존 Preview 경계로 연결했다. Action Workbench의 Server Complete Play 의미는 유지한다.
+
+자연 종료 신호는 MainApp이 같은 프레임의 transport를 소비한 뒤 확정한다. 마지막 프레임에서
+Pause/Seek를 눌렀을 때 presentation clock이 먼저 해제되어 다른 backend로 명령이 넘어가거나
+다음 연출로 진행하지 않게 했다. WORLD sample 오류는 occurrence와 원래 오류 이유를 표시하고
+연속 재생과 차용 상태를 정리한다.
+
+Sequence 정본 revision은 2다. 팝업북의 5개 맵 WORLD box는 현재 template의 4,507ms/속도 1을
+소비하고, 종료 시 움직이는 복제본을 숨긴 뒤 기존 Level의 standing arena를 표시한다. 역방향 scrub은
+다시 연출 배치를 표시한다. 책·Saydon·Camera 37,800ms와 피날레 21,010ms는 유지했다.
+Stop/실패/다음 연출 전환은 미리보기 전의 Deploy 상태와 standing arena 표시 상태를 복구한다.
+
+## G06. 실제 1관문 Saydon과 맵 재질 연결
+
+Imported deployassets의 stable ID `DEPLOY_BOSS_MN_RPCT_00`과 placement 5를 유지하면서 모델을
+`Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel`로 교체하고 Area publisher로 배포했다.
+이 ID는 저장 호환용 이름이며 현재 모델이 RPCT00이라는 뜻이 아니다. 실제 Gate1 BossCatalog가
+가리키는 RPCT05와 동일한 모델이다. Deploy의 기존 `CActorCatalog::Build_ModelLoadDescription`
+→ `CModel` 경로와 source character material bind가 복구된 5개 override를 소비한다.
+Resources 바이너리나 두 번째 모델 runtime은 추가하지 않았다.
+
+RPCT00은 3 mesh/material, RPCT05는 5 mesh/material이며 두 모델은 168 bone·249 clip 이름을
+공유한다. 실제 skeleton/clip bytes는 다르다. 연출이 소비하는 12개 clip 이름이 RPCT05에 모두 있으며,
+복구 override가 참조하는 texture 21개의 존재를 확인했다. 원본 연출 캐스팅을 그대로 재현했다는
+의미가 아니라 사용자가 요청한 실제 Gate1 모델의 자체 animation과 복구 재질을 연결한 변경이다.
+
+움직이는 맵은 136 placement·37 model·40 mesh-used material slot이며 현재 BG8 복구 재질과
+일치한다. standing arena는 별도 461 placement이고 그중 411개는 RNM 배치 조명을 가진다.
+연출 모델 37개 중 36개의 mesh 이름은 standing 쪽에도 있지만 material variant 5종과 연출 전용
+중앙 면 `lv_module_mesh03_512`가 다르다. 따라서 연출용 배치와 미복구 맵은 같은 뜻이 아니다.
+고정 아레나의 RNM을 움직이는 부품에 억지로 복사하지 않고 Level의 두 배치 표시를 전환한다.
+
+두 번째 `circus_finale`는 현재 23개 맵 placement의 editor-authored 움직임이며 배우 animation
+track과 source package/export 연결 정보가 없다. 로컬 원본 map package 17개의 InterpData 조사에서도
+현재 21,010ms timeline에 직접 대응하는 원본을 찾지 못했다. 기존 피날레를 이어 재생하도록 유지했으며
+원본 배우 연출 복원 완료로 기록하지 않는다. 후속 Summon·Effect·Scene Profile 저작은 사용자 작업이다.
+
+## G07. 2026-09-11 자동 검증과 남은 실행 단계
+
+- `Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope Area -Mode Publish`와
+  같은 범위 `-Mode Check` 성공: placement 3,368개, 출력 8개. 실제 내용 변경은 deployassets의 모델 참조다.
+- Client x64 Debug `ClCompile` 성공. 최신 수정된 PresentationPlayer까지 컴파일했고 기존 코드 페이지
+  경고는 남아 있다. 로그: `out/gate1-client-compile.log`.
+- 기존 native 검사 프로젝트 x64 Debug 빌드·링크 성공 후 실제
+  `ValtanPatternAuditionServiceHarness.exe --kouku-sequence-document-contract` 실행 exit 0.
+  첫 항목/0ms/문서 순서, queued pause, 잘못된 완료 신호, 실패 이유, 마지막 종료, owner 취소,
+  독립 원본·atomic Save/Reload·CAS 보존을 검사했다. 빌드 로그: `out/gate1-sequence-harness-build.log`.
+- 기존 Python의 Sequence pane/storage 분리와 Server request 차단 검사 2개 통과.
+- 변경 Sequence JSON parse와 `git diff --check` 통과. 이번 변경에 XML/project/filter 추가는 없다.
+- Client/UI는 에이전트가 실행·조작·캡처하지 않았다. 사용자가 “현재 사용 중 — 파일 교체 보류”로
+  회신하여 최종 링크와 실행 파일 교체를 보류했다. 현재 Client.exe는 14:45:41 빌드이며 마지막
+  PresentationPlayer 수정은 14:51:02여서 새 수정 전체가 실행 파일에 포함된 상태는 아니다.
+  컴파일 및 검사 EXE 성공을 제품 Client 실행 완료로 기록하지 않는다.
+
+사용자 화면 확인 경로는 Lobby → KoukuSaydon → F1 → Open Sequencer Benchmark →
+Saydon/1관문 → Complete Play다. 첫 팝업북의 펼침 뒤 실제 아레나 표시, RPCT05의 재질·animation,
+두 번째 저장 피날레 진입과 Stop/재시작 결과는 새 Client 실행 파일에서 사용자가 확인한다.
+
+## G08. 쿠크 로더의 named translucent family 회귀 수정
+
+사용자 Client 11976·24352의 session diagnostic은 Server `entry.accepted` 뒤
+`CLIENT_LOAD_FAILED`, `loading.target-resource-load: [Loader] Map: explicit area catalog`를 기록했다.
+Deploy 모델 준비 이전의 실패다. 실제 `CMapAssetCatalog::Load_Area`를 UI 없는 CPU probe에서
+실행한 수정 전 결과도 `invalid native program inputs`로 실패했으며 처음 거절된 행은
+`MAP_3C514C107BAB_LV_OCN_FORGOTTENIS_PLANE01_SM_OVR_017DC7A6977C/SLOT_000_dummy_material_0`다.
+
+공용 dispatcher가 `source.map.translucent-` prefix만 보고 기존 named family까지 숫자형 44~63
+handler로 보낸 것이 원인이다. tiled 2행, reflection 2행, bump 1행을 각각 기존 Forward program
+34/35/36으로 명시 분기했다. 실패 후 fallback이나 재질 데이터 삭제는 하지 않았다.
+Loader의 맵 카탈로그 실패도 기존 ActiveStatus에 원래 이유를 보존해 recovery 진단으로 전달한다.
+
+수정 전 native 실행 증거는 `out/KoukuGate1CatalogNative20260911/baseline.log`와
+`catalog-native-before.exe`에 보존했다. 임시 probe는 제품 MapAssetCatalog/DataJson/RuntimeAssetRoot/
+ProjectDataRoot C++를 그대로 사용하며 별도 out object에 컴파일했다. Resources와 제품 intermediate는
+진단 준비 과정에서 변경하지 않았다. Client 최소 Debug 컴파일은 exit 0이며
+`out/gate1-loader-compile.log`에 기록했다. 기존 코드 페이지 경고는 남아 있다.
+
+수정 후 동일 native 실행은 `Catalog ready (v5): 1301`로 성공했다(2,271ms).
+실제 쿠크 named 5행은 program 34/35/36, 베른 numbered 525행은 program 44~63을 유지했다.
+잘못된 family/부족한 입력 1,060건 거부와 출력 보존, 카탈로그 후속 로드 실패 시 기존
+ready/AreaId/entry 보존도 확인했다. 결과는 `out/KoukuGate1CatalogNative20260911/after.log`,
+failures 0이다. 이는 catalog admission 검증이며 사용자 Client의 실제 화면 진입 확인은 아직 남아 있다.

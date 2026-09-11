@@ -3,6 +3,8 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
+#include "Presentation_Manager.h"
+#include <array>
 
 #include <algorithm>
 #include <cmath>
@@ -15,6 +17,54 @@
 
 namespace
 {
+    HRESULT BindForwardSceneLights(const std::shared_ptr<Engine::CShader>& shader, bool bakedReceiver, const float4_t* worldCullSphere)
+    {
+        constexpr size_t capacity = 400u; // Scene 16 + existing transient budget 384.
+        std::array<float4_t, capacity> positions{}, directions{}, colors{}, cones{};
+        uint32_t count = 0u;
+        bool mainDirectionalConsumed = false;
+        const auto append = [&](const Engine::LIGHT_DESC& light, bool scene) -> HRESULT
+        {
+            const bool mainDirectional = scene && !mainDirectionalConsumed && light.eType == LIGHT::DIRECTIONAL;
+            if (mainDirectional) mainDirectionalConsumed = true;
+            if (bakedReceiver && light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER) return S_OK;
+            if (light.vDiffuse.x == 0.f && light.vDiffuse.y == 0.f && light.vDiffuse.z == 0.f) return S_OK;
+            if (worldCullSphere && light.eType != LIGHT::DIRECTIONAL)
+            {
+                const float x = light.vPosition.x - worldCullSphere->x;
+                const float y = light.vPosition.y - worldCullSphere->y;
+                const float z = light.vPosition.z - worldCullSphere->z;
+                const float radius = light.fRange + worldCullSphere->w;
+                if (radius <= 0.f || x*x + y*y + z*z > radius*radius) return S_OK;
+            }
+            if (count >= capacity) return E_BOUNDS;
+            float type = 0.f;
+            switch (light.eType)
+            {
+            case LIGHT::DIRECTIONAL: type = 1.f; break;
+            case LIGHT::POINT: type = 2.f; break;
+            case LIGHT::SPOT: type = 3.f; break;
+            default: return E_INVALIDARG;
+            }
+            positions[count] = float4_t(light.vPosition.x, light.vPosition.y, light.vPosition.z, light.fRange);
+            directions[count] = float4_t(light.vDirection.x, light.vDirection.y, light.vDirection.z, type);
+            colors[count] = float4_t(light.vDiffuse.x, light.vDiffuse.y, light.vDiffuse.z, light.fFalloffExponent);
+            cones[count] = float4_t(light.fSpotInnerCos, light.fSpotOuterCos, 0.f, light.staticShadowChannel != 0u ? float(light.staticShadowChannel) : mainDirectional ? 1.f : 0.f);
+            ++count;
+            return S_OK;
+        };
+        for (const auto& light : Engine::CGameInstance::Get().Get_SceneLights())
+            if (FAILED(append(light, true))) return E_FAIL;
+        for (const auto& light : Engine::CPresentation_Manager::Get().Get_TransientLights())
+            if (FAILED(append(light, false))) return E_FAIL;
+        if (FAILED(shader->Bind_RawValue("g_SourceMapForwardLightCount", &count, sizeof(count))) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightPositionRange", positions.data(), sizeof(positions))) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightDirectionType", directions.data(), sizeof(directions))) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightColorExponent", colors.data(), sizeof(colors))) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightConeShadow", cones.data(), sizeof(cones)))) return E_FAIL;
+        return S_OK;
+    }
+
 	std::mutex g_SurfaceBindingMutex;
 	std::vector<Client::MAP_SURFACE_BINDING_ROW> g_SurfaceBindings;
 	uint32_t g_SurfaceBindingLevelId = (std::numeric_limits<uint32_t>::max)();
@@ -555,7 +605,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const MAP_ASSET_RENDER_PROFILE& profile,
 	f32_t elapsedTime, const ComPtr<ID3D11ShaderResourceView>& diffuseOverride,
 	const std::string& diagnosticAssetId,
-    const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting)
+    const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting, const float4_t* worldCullSphere)
 {
 	if (nullptr == model ||
 		nullptr == shader ||
@@ -598,15 +648,19 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_OPACITY) ? 1u : 0u;
 
+    const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
+    const bool constantSource = nativeSurface &&
+        nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+        (nativeSurface->sourceCharacter.program == 64u || nativeSurface->sourceCharacter.program == 65u);
 	const float2_t uvOffset(
 		profile.uvSpeed.x * elapsedTime,
 		profile.uvSpeed.y * elapsedTime);
 
-	if (FAILED(diffuseOverride ? shader->Bind_Texture("g_DiffuseTexture", diffuseOverride) : model->Bind_Material(
+	if ((!constantSource && FAILED(diffuseOverride ? shader->Bind_Texture("g_DiffuseTexture", diffuseOverride) : model->Bind_Material(
 		shader,
 		"g_DiffuseTexture",
 		meshIndex,
-		aiTextureType_DIFFUSE)) ||
+		aiTextureType_DIFFUSE))) ||
 
 		FAILED(shader->Bind_RawValue(
 			"g_UVScale",
@@ -704,6 +758,64 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	}
 
+    // A static World Object may own the same native material contract as an actor.
+    // Submit its real CMaterial into the shared direct-light pass after legacy resets.
+    const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyShadowLighting{};
+    const auto& shadowLighting = bakedLighting ? *bakedLighting : emptyShadowLighting;
+    const uint32_t hasStaticShadow = nativeSurface && nativeSurface->hasStaticShadow ? 1u : 0u;
+    if (FAILED(shader->Bind_RawValue("g_HasStaticShadow", &hasStaticShadow, sizeof(hasStaticShadow))) ||
+        FAILED(shader->Bind_RawValue("g_StaticShadowScaleBias", &shadowLighting.shadowScaleBias, sizeof(shadowLighting.shadowScaleBias))) ||
+        (hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
+
+    if (nativeSurface && nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+    {
+        const uint32_t noMapSurface = 0u;
+        if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &noMapSurface, sizeof(noMapSurface))) ||
+            FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &noMapSurface, sizeof(noMapSurface)))) return E_FAIL;
+        const uint32_t sourceProgram = nativeSurface->sourceCharacter.program;
+        const bool forwardBakedProgram = sourceProgram >= 40u && sourceProgram <= 63u &&
+            sourceProgram != 47u && sourceProgram != 53u && sourceProgram != 55u;
+        if (sourceProgram >= 80u && sourceProgram <= 83u)
+        {
+            const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
+            const auto& instanceLighting = bakedLighting ? *bakedLighting : emptyLighting;
+            if (FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &instanceLighting.scaleBias, sizeof(instanceLighting.scaleBias))) ||
+                FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &instanceLighting.averageScale, sizeof(instanceLighting.averageScale))) ||
+                FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &instanceLighting.directionalScale, sizeof(instanceLighting.directionalScale)))) return E_FAIL;
+        }
+        if ((sourceProgram >= 33u && sourceProgram <= 63u) || sourceProgram == 65u)
+        {
+            float4_t ambient(0.f, 0.f, 0.f, 1.f);
+            for (const auto& light : CGameInstance::Get().Get_SceneLights())
+            {
+                ambient.x += light.vAmbient.x;
+                ambient.y += light.vAmbient.y;
+                ambient.z += light.vAmbient.z;
+            }
+            if (FAILED(CGameInstance::Get().Bind_HeightFog(shader.get())) ||
+                FAILED(shader->Bind_RawValue("g_SourceMapAmbient", &ambient, sizeof(ambient))) ||
+                FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), shader,
+                    "g_SourceMapSceneDepth"))) return E_FAIL;
+            if (sourceProgram >= 38u && sourceProgram <= 63u &&
+                FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_EffectSceneColor"), shader,
+                    "g_SourceMapSceneColor"))) return E_FAIL;
+        }
+        if (sourceProgram >= 38u && sourceProgram <= 63u &&
+            FAILED(BindForwardSceneLights(shader, forwardBakedProgram && nativeSurface->hasBakedLighting && bakedLighting, worldCullSphere))) return E_FAIL;
+        if (sourceProgram >= 40u && sourceProgram <= 63u)
+        {
+            const uint32_t hasBaked = forwardBakedProgram && nativeSurface->hasBakedLighting && bakedLighting ? 1u : 0u;
+            const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
+            const auto& lighting = bakedLighting ? *bakedLighting : emptyLighting;
+            if (FAILED(shader->Bind_RawValue("g_HasBakedLighting", &hasBaked, sizeof(hasBaked))) ||
+                FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &lighting.scaleBias, sizeof(lighting.scaleBias))) ||
+                FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &lighting.averageScale, sizeof(lighting.averageScale))) ||
+                FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale))) ||
+                (hasBaked && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
+        }
+        return model->Bind_SourceCharacter(shader, meshIndex);
+    }
+
 	const auto* surface = model->Get_MaterialSurface(meshIndex);
 	const bool_t hasDefinition = surface &&
 		surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY &&
@@ -718,7 +830,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||
 		FAILED(shader->Bind_RawValue("g_SurfaceDebugView", &debugView, sizeof(debugView))))
 		return E_FAIL;
-    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u) && surface->hasBakedLighting ? 1u : 0u;
+    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u || program == 8u || program == 9u || program == 10u || (program >= 11u && program <= 13u)) && surface->hasBakedLighting ? 1u : 0u;
     const uint32_t hasEnvironment = (program == 3u || program == 4u) && surface->hasEnvironmentCube ? 1u : 0u;
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
     const auto& lighting = bakedLighting ? *bakedLighting : emptyLighting;
@@ -745,7 +857,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		recordBinding();
 		return S_OK;
 	}
-	if ((program == 3u || program == 4u) && surface->hasEmissive)
+	if ((program == 3u || program == 4u || program == 8u || program == 9u || program == 10u) && surface->hasEmissive)
 	{
 		if (!std::isfinite(elapsedTime))
 			return E_INVALIDARG;
@@ -765,7 +877,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const auto* camera = CGameInstance::Get().Get_CamPosition();
 	if (!camera || FAILED(shader->Bind_RawValue("g_vCamPosition", camera, sizeof(*camera))) ||
 		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
-        (program != 7u && FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION))) ||
+        (program != 7u && program != 8u && program != 9u && program != 10u && program != 12u && FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION))) ||
 		((program == 1u || program == 5u) && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR))))
 		return E_FAIL;
 	if (FAILED(shader->Bind_RawValue("g_SurfaceDiffuseBrightness", &surface->diffuseBrightness, sizeof(surface->diffuseBrightness))))
@@ -790,6 +902,42 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionColor", &surface->reflectionColor, sizeof(surface->reflectionColor))))
 		return E_FAIL;
+    if (program >= 11u && program <= 13u && FAILED(model->Bind_SourceSpecialSurface(shader, meshIndex)))
+        return E_FAIL;
+    if (program == 9u || program == 10u)
+    {
+        const uint32_t flags = surface->sourceFoliageFlags;
+        if (((flags & 1u) && FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS))) ||
+            ((flags & 8u) && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR))) ||
+            (program == 9u && FAILED(model->Bind_SurfaceTexture(shader, "g_SourceFoliageMaskTexture", meshIndex, aiTextureType_TRANSMISSION))) ||
+            FAILED(shader->Bind_RawValue("g_SourceFoliageFlags", &flags, sizeof(flags))) ||
+            FAILED(shader->Bind_RawValue("g_SourceFoliageTransmission", &surface->sourceFoliageTransmission,
+                sizeof(surface->sourceFoliageTransmission)))) return E_FAIL;
+    }
+    if (program == 8u)
+    {
+        const uint32_t flags = surface->sourceBgFlags;
+        if (!std::isfinite(elapsedTime) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgSubspecular", &surface->sourceBgSubspecular, sizeof(surface->sourceBgSubspecular))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgRimlight", &surface->sourceBgRimlight, sizeof(surface->sourceBgRimlight))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgSpecularSaturation", &surface->sourceBgSpecularSaturation, sizeof(surface->sourceBgSpecularSaturation))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgPanning", &surface->sourceBgPanning, sizeof(surface->sourceBgPanning))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceEmissiveTime", &elapsedTime, sizeof(elapsedTime)))) return E_FAIL;
+        if ((flags & 32768u) &&
+            (FAILED(model->Bind_SurfaceTexture(shader, "g_DetailNormalTexture", meshIndex, aiTextureType_HEIGHT)) ||
+             FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalIntensity", &surface->detailNormalIntensity, sizeof(surface->detailNormalIntensity))) ||
+             FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalTiling", &surface->detailNormalTiling, sizeof(surface->detailNormalTiling))))) return E_FAIL;
+        if (((flags & 1u) && FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS))) ||
+            ((flags & 8u) && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR))) ||
+            ((flags & 16u) && FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgFlags", &flags, sizeof(flags))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgBump", &surface->sourceBgBump, sizeof(surface->sourceBgBump))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgUV", &surface->sourceBgUV, sizeof(surface->sourceBgUV))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgFlicker", &surface->sourceBgFlicker, sizeof(surface->sourceBgFlicker))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &surface->uvTiling, sizeof(surface->uvTiling))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceReflectionOriginOffset", &surface->reflectionOriginOffset, sizeof(surface->reflectionOriginOffset))))
+            return E_FAIL;
+    }
     if (program == 5u)
     {
         if (FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS)) ||
@@ -799,9 +947,19 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     }
     if (program == 7u)
     {
-        if (FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS)) ||
+        const uint32_t separateSpecular = surface->overlaySeparateSpecular ? 1u : 0u;
+        if (FAILED(shader->Bind_RawValue("g_SourceOverlayFlags", &surface->sourceOverlayFlags, sizeof(surface->sourceOverlayFlags))) ||
+            FAILED(shader->Bind_RawValue("g_SourceOverlayDirection", &surface->sourceOverlayDirection, sizeof(surface->sourceOverlayDirection))) ||
+            FAILED(shader->Bind_RawValue("g_SourceOverlayUV", &surface->sourceBgUV, sizeof(surface->sourceBgUV))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalIntensity", &surface->detailNormalIntensity, sizeof(surface->detailNormalIntensity))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalTiling", &surface->detailNormalTiling, sizeof(surface->detailNormalTiling))) ||
+            ((surface->sourceOverlayFlags & 32u) != 0u && FAILED(model->Bind_SurfaceTexture(shader, "g_DetailNormalTexture", meshIndex, aiTextureType_HEIGHT)))) return E_FAIL;
+        if (FAILED(shader->Bind_RawValue("g_SurfaceOverlaySeparateSpecular", &separateSpecular, sizeof(separateSpecular))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &surface->uvTiling, sizeof(surface->uvTiling))) ||
+            (separateSpecular && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR)))) return E_FAIL;
+        if (((surface->sourceOverlayFlags & 1u) != 0u && FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS))) ||
             FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceOverlayDiffuseTexture", meshIndex, aiTextureType_BASE_COLOR)) ||
-            FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceOverlayNormalTexture", meshIndex, aiTextureType_NORMAL_CAMERA)) ||
+            ((surface->sourceOverlayFlags & 2u) != 0u && FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceOverlayNormalTexture", meshIndex, aiTextureType_NORMAL_CAMERA))) ||
             FAILED(shader->Bind_RawValue("g_SurfaceOverlayColor", &surface->overlayColor, sizeof(surface->overlayColor))) ||
             FAILED(shader->Bind_RawValue("g_SurfaceOverlayTiling", &surface->overlayTiling, sizeof(surface->overlayTiling))) ||
             FAILED(shader->Bind_RawValue("g_SurfaceOverlayNormalIntensity", &surface->overlayNormalIntensity, sizeof(surface->overlayNormalIntensity))) ||

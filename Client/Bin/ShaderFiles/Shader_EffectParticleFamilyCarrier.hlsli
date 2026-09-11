@@ -102,7 +102,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.sourceBasisX = float3(sourceT.x, sourceB.x, sourceN.x);
     output.sourceBasisZ = float3(sourceT.y, sourceB.y, sourceN.y);
     output.sourceHandedness = dot(cross(sourceN, sourceT), sourceB) < 0.f ? -1.f : 1.f;
-    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2004u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 51u == g_SourceMaterialProfile ||
+    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2341u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 51u == g_SourceMaterialProfile ||
         83u == g_SourceMaterialProfile ||
         101u == g_SourceMaterialProfile ||
         102u == g_SourceMaterialProfile ||
@@ -114,7 +114,10 @@ VS_OUT VS_MAIN(VS_IN input)
         235u == g_SourceMaterialProfile ||
         242u == g_SourceMaterialProfile ||
         244u == g_SourceMaterialProfile ||
-        247u == g_SourceMaterialProfile)
+        247u == g_SourceMaterialProfile ||
+        342u == g_SourceMaterialProfile || 343u == g_SourceMaterialProfile ||
+        347u == g_SourceMaterialProfile || 348u == g_SourceMaterialProfile ||
+        368u == g_SourceMaterialProfile || 375u == g_SourceMaterialProfile)
     {
         const float3 worldPosition = mul(float4(input.position, 1.f), world).xyz;
         const float3 toCamera = g_CameraPosition.xyz - worldPosition;
@@ -236,7 +239,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 6
-    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2004u)))
+    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)))
     {
         WARLORD_NATIVE_INPUT nativeInput = (WARLORD_NATIVE_INPUT)0;
         nativeInput.uv = input.uv;
@@ -284,7 +287,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 7
-    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u)))
+    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2341u)))
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.uv;
@@ -331,7 +334,9 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 5
-    if (g_SourceMaterialProfile >= 320u && g_SourceMaterialProfile <= 323u)
+    if ((g_SourceMaterialProfile >= 320u && g_SourceMaterialProfile <= 323u) ||
+        (g_SourceMaterialProfile >= 340u && g_SourceMaterialProfile <= 375u) ||
+        (g_SourceMaterialProfile >= 389u && g_SourceMaterialProfile <= 399u))
     {
         SD_NATIVE_INPUT nativeInput = (SD_NATIVE_INPUT)0;
         nativeInput.uv = input.uv;

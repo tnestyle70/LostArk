@@ -507,7 +507,22 @@ bool_t Client::CLevel_KakulSaydonArena::Create_CompositionPreviewActor(
     desc.strShaderTag = L"Prototype_Component_Shader_VtxAnimMeshBinary";
     desc.pIdleClip = actor->presentationClips.idle.c_str();
     desc.vPosition = placement->position;
-    desc.fYawDegree = pattern.ResetBossYawDegrees ? float(*pattern.ResetBossYawDegrees) : placement->yawDegrees;
+    desc.fYawDegree = placement->yawDegrees;
+    // The Server preserves the live facing even when only position is reset.
+    // Start preview from that same authoritative pose, rather than an unrelated spawn yaw.
+    std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+    m_Replication.Collect_KoukuPresentationViews(bosses, players);
+    for (const auto& live : bosses)
+    {
+        if (live.strArchetypeId != placement->archetypeId || live.iOwnerBossNetEntityId ||
+            !live.Snapshot.iCurrentHp) continue;
+        desc.fYawDegree = live.Snapshot.fYawDegrees;
+        if (!pattern.bResetBossToSpawn)
+            desc.vPosition = {live.Snapshot.fPositionX, live.Snapshot.fPositionY, live.Snapshot.fPositionZ};
+        break;
+    }
+    if (pattern.ResetBossYawDegrees) desc.fYawDegree = float(*pattern.ResetBossYawDegrees);
     if (pattern.BossMotion)
     {
         const auto& motion = *pattern.BossMotion;
@@ -625,11 +640,12 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 			bool_t visible = false;
 			if (!CMapPlacementRuntime::Try_GetRuntimeVisible(entry, visible))
 			{ status = "WORLD preview could not capture standing arena visibility."; return false; }
-			if (visible) previousArenaVisibility.emplace_back(entry.record.placementId, visible);
+			previousArenaVisibility.emplace_back(entry.record.placementId, visible);
 		}
 	}
 	m_CompositionWorldPreviewDeployStates = std::move(previousDeployStates);
 	m_CompositionWorldPreviewArenaVisibility = std::move(previousArenaVisibility);
+	m_bCompositionWorldPreviewStandingArenaVisible = false;
 	if (!visibleDeployStates.empty() && !m_DeployRuntime.Set_States(visibleDeployStates))
 	{
 		status = "WORLD preview could not show its bound Deploy targets: " + m_DeployRuntime.Get_Status();
@@ -700,7 +716,8 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 		auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), row->first);
 		bool_t visible = false;
 		if (entry && (!CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, visible) ||
-			(!visible && !CMapPlacementRuntime::Set_RuntimeVisible(*entry, row->second))))
+			(visible == m_bCompositionWorldPreviewStandingArenaVisible && visible != row->second &&
+				!CMapPlacementRuntime::Set_RuntimeVisible(*entry, row->second))))
 		{
 			OutputDebugStringA("[KoukuWorldPreview] Standing arena visibility restore pending.\n");
 			++row;
@@ -711,19 +728,21 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 	m_bCompositionWorldPreviewClockBound = false;
 }
 
-void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
-	const std::string& patternId, const bool_t playing, const uint32_t clockMs)
+bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
+	const std::string& patternId, const bool_t playing, const uint32_t clockMs, std::string& status)
 {
-	if (m_CompositionWorldPreviewCues.empty()) return;
+	status.clear();
+	if (m_CompositionWorldPreviewCues.empty()) return true;
 	if (!playing || patternId != m_strCompositionWorldPreviewPattern)
 	{
 		// A pending Animation target admission takes one frame. Wait for that
 		// first matching clock; after binding, a changed owner releases WORLD.
 		if (m_bCompositionWorldPreviewClockBound) Debug_StopCompositionWorldPreview();
-		return;
+		return true;
 	}
 	m_bCompositionWorldPreviewClockBound = true;
 	auto targets = Make_WorldSequenceTargets();
+	bool_t cutsceneMapPending = false;
 	for (auto& [id, playback] : m_CompositionWorldPreviewCues)
 	{
 		const auto& cue = playback.cue;
@@ -741,6 +760,17 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 				return CWorldSequencePlayer::Resolve_BossBoneAnchor(view.Model, view.BoneRoot, bone, out, status);
 			};
 		const auto span = player.Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
+		const auto* instance = player.Get_Document().Find_Instance(cue.instanceId);
+		if (instance && (clockMs < cue.startMs || clockMs - cue.startMs < span))
+			for (const auto& binding : instance->bindings)
+			{
+				uint64_t targetId = 0u;
+				if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
+					CWorldSequencePlayer::Try_ParseTargetId(binding, targetId) &&
+					KAKULSAYDON_CUTSCENE_SET_FIRST_ID <= targetId &&
+					targetId < KAKULSAYDON_CUTSCENE_SET_END_ID)
+					cutsceneMapPending = true;
+			}
 		if (clockMs < cue.startMs || clockMs - cue.startMs >= span)
 		{
 			player.Stop_All(targets, true);
@@ -749,18 +779,43 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		if (!player.Is_Playing(cue.instanceId) &&
 			!player.Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs, cue.placement))
 		{
-			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
+			status = "WORLD preview failed: " + cue.occurrenceId + ": " + player.Get_Status();
+			OutputDebugStringA(("[KoukuWorldPreview] " + status + "\n").c_str());
 			Debug_StopCompositionWorldPreview();
-			return;
+			return false;
 		}
 		if (!player.Seek_InstanceToMs(cue.instanceId,
 			static_cast<f32_t>(clockMs - cue.startMs), targets))
 		{
-			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
+			status = "WORLD preview failed: " + cue.occurrenceId + ": " + player.Get_Status();
+			OutputDebugStringA(("[KoukuWorldPreview] " + status + "\n").c_str());
 			Debug_StopCompositionWorldPreview();
-			return;
+			return false;
 		}
 	}
+	// Finished unfold boxes release their animated copies before the real arena
+	// (including its placement lighting) is shown. Scrubbing reverses the swap.
+	const bool_t showStandingArena = !cutsceneMapPending;
+	if (!m_CompositionWorldPreviewArenaVisibility.empty() &&
+		showStandingArena != m_bCompositionWorldPreviewStandingArenaVisible)
+	{
+		std::vector<MAP_RUNTIME_PLACED_ENTRY*> changed;
+		for (const auto& previous : m_CompositionWorldPreviewArenaVisibility)
+		{
+			auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), previous.first);
+			if (!entry || !CMapPlacementRuntime::Set_RuntimeVisible(*entry, showStandingArena))
+			{
+				for (auto* applied : changed)
+					(void)CMapPlacementRuntime::Set_RuntimeVisible(*applied, m_bCompositionWorldPreviewStandingArenaVisible);
+				status = "WORLD preview could not switch the unfolded and standing arena.";
+				Debug_StopCompositionWorldPreview();
+				return false;
+			}
+			changed.push_back(entry);
+		}
+		m_bCompositionWorldPreviewStandingArenaVisible = showStandingArena;
+	}
+	return true;
 }
 #endif
 
@@ -783,25 +838,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
-	/* The product loader contract for this arena stages only the map and the
-	   server player bundle, so the deploy models Load_Area clones are admitted
-	   here through the same CDeployPropRuntime entry the loader uses for every
-	   other Area. Failing closed keeps the arena out rather than entering it
-	   with levers and bridges that can never appear. */
-	std::string deployPrototypeStatus;
-	if (!CDeployPropRuntime::Ensure_AreaPrototypes(
-		m_pDevice,
-		m_pContext,
-		ETOUI(LEVEL::KAKULSAYDON_ARENA),
-		pEntry->pMapAreaId,
-		deployPrototypeStatus))
-	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][DeployProp] " +
-			deployPrototypeStatus + "\n").c_str());
-		m_MapRuntime.Clear();
-		return E_FAIL;
-	}
+	/* Loader admits this Area's deploy prototypes before activation. Clone the
+	   prepared models here; repeating admission would both stall this frame
+	   and reject the duplicate prototype tags. */
 	if (!m_DeployRuntime.Load_Area(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA),
 		pEntry->pMapAreaId))
@@ -1215,6 +1254,63 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
 			CCombatHUDViewModel::Get().Get_KoukuGimmick());
 	}
+	Update_StatusEffectText(fTimeDelta);
+}
+
+void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeDelta)
+{
+	/* "gongpo" (fear). The word and its colour are retail data, not a code
+	   decision: EFTable_GameMsg tip.name.skillbuffdmgfont_<buffId> spells it and
+	   EFTable_SkillBuff.FontColor gives 0x8041D9 on all 66 fear buff rows that show
+	   one. Those rows also carry FontShow 1, which is the movie motion the view
+	   draws. Written with universal character names so this file keeps the
+	   ASCII bytes its codepage needs, exactly like the card maze suit names below. */
+	static const std::wstring FEAR_WORD = L"\uACF5\uD3EC";
+	constexpr std::uint32_t FEAR_COLOR_RGB = 0x8041D9u;
+
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+	Collect_KoukuPresentationViews(bosses, players);
+	for (const KOUKU_CARD_PRESENTATION_VIEW& view : players)
+	{
+		if (LostArk::Shared::PLAYER_ACTION_STATE::FEAR != view.Snapshot.eAction ||
+			0u == view.Snapshot.iCurrentHp || 0u == view.Snapshot.iActionStartTick)
+		{
+			continue;
+		}
+		CStatusEffectTextView::REQUEST request{};
+		request.iOwnerEntityId = view.Snapshot.iNetEntityId;
+		/* The Server owns the window, so its start tick is the occurrence: one
+		   word per FEAR, and a second FEAR pops a second word. */
+		request.iOccurrenceKey = view.Snapshot.iActionStartTick;
+		request.strWord = FEAR_WORD;
+		request.iColorRgb = FEAR_COLOR_RGB;
+		request.pAnchor = view.pCharacter;
+		m_StatusEffectTextView.Submit(request);
+	}
+
+#ifdef _DEBUG
+	/* F1 preview: the same word over the local character with no Server truth,
+	   keyed by the button's own serial so repeated presses keep firing. */
+	const std::uint32_t previewSerial =
+		CCombatHUDViewModel::Get().Get_StatusEffectTextPreviewSerial();
+	const auto previewAnchor = m_Replication.Get_LocalCharacter();
+	/* Only consume the serial once there is a character to hang the word on, so
+	   a press made before the local character is up is not swallowed. */
+	if (previewSerial != m_iStatusEffectTextPreviewSerial && nullptr != previewAnchor)
+	{
+		m_iStatusEffectTextPreviewSerial = previewSerial;
+		CStatusEffectTextView::REQUEST request{};
+		request.iOwnerEntityId = 0u;
+		request.iOccurrenceKey = previewSerial;
+		request.strWord = FEAR_WORD;
+		request.iColorRgb = FEAR_COLOR_RGB;
+		request.pAnchor = previewAnchor;
+		m_StatusEffectTextView.Submit(request);
+	}
+#endif
+
+	m_StatusEffectTextView.Update(fTimeDelta);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
@@ -1578,6 +1674,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.68f),
 			Colors::White, 0.f, float2_t(mazeSize.x * 0.5f, mazeSize.y * 0.5f), 1.f);
 	}
+	/* Floating status words last, over the scene and over the two prompts above,
+	   the way the retail damage-text canvas sits on its own top layer. */
+	m_StatusEffectTextView.Render();
 	return drawn;
 }
 

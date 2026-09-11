@@ -1103,5 +1103,115 @@ class NativeShaderObjectBindingTests(unittest.TestCase):
         )
 
 
+class TexturelessNativeBindingTests(unittest.TestCase):
+    @staticmethod
+    def disassembly() -> dict:
+        return {
+            "profile": "ps_5_0",
+            "normalizedDisassemblySha256": "0" * 64,
+            "declarationSha256": "1" * 64,
+            "instructionSha256": "2" * 64,
+            "instructionCount": 2,
+            "declarations": ["dcl_constantbuffer CB0[5], immediateIndexed"],
+            "instructions": ["mov o0.xyz, cb0[1].xyzx", "ret"],
+        }
+
+    @staticmethod
+    def closure(cb0: int = 5) -> dict:
+        closure = binding_closure(observed={}, textures=[], samplers=[])
+        closure["declaredConstantBuffer0Float4Count"] = cb0
+        return closure
+
+    @staticmethod
+    def glow_triple() -> bytes:
+        return b"".join((
+            wire_array([wire_row(i, (i + 2) * 16, 16, 0) for i in range(3)]),
+            wire_array([wire_row(0, 16, 16, 0)]),
+            wire_array([]),
+        ))
+
+    def test_textureless_declarations_require_explicit_opt_in(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no texture/sampler sample pair"):
+            subject.parse_dxbc_declaration_closure(self.disassembly())
+        closure = subject.parse_dxbc_declaration_closure(
+            self.disassembly(), allow_textureless=True
+        )
+        self.assertEqual(closure["declaredTextureRegisters"], [])
+        self.assertEqual(closure["declaredSamplerRegisters"], [])
+        self.assertEqual(closure["observedSamplePairCounts"], {})
+
+    def test_opt_in_rejects_unused_texture_or_sampler_declarations(self) -> None:
+        for declaration in (
+            "dcl_resource_texture2d (float,float,float,float) t0",
+            "dcl_sampler s0, mode_default",
+        ):
+            with self.subTest(declaration=declaration):
+                disassembly = self.disassembly()
+                disassembly["declarations"].append(declaration)
+                with self.assertRaisesRegex(ValueError, "no texture/sampler sample pair"):
+                    subject.parse_dxbc_declaration_closure(
+                        disassembly, allow_textureless=True
+                    )
+
+    def test_zero_texture_source_closes_constant_wires_and_keeps_engine_prefix(self) -> None:
+        counts = dict(pixelScalarExpressions=11, pixelVectorExpressions=1,
+                      pixelTexture2DExpressions=0)
+        payload = b"\xff" * 73 + self.glow_triple() + b"\x00" * 20
+        selected = subject.select_unique_native_binding_arrays(
+            payload, 1000, counts, self.closure(),
+            required_vector_expression_indices={0},
+        )
+        self.assertEqual(selected["bindingArraysOffsetInShaderObject"], 73)
+        self.assertEqual(selected["constantBufferClosure"]["boundConstantBuffer0Slots"],
+                         [1, 2, 3, 4])
+        self.assertEqual(selected["constantBufferClosure"]["leadingUnownedConstantBuffer0Slots"], [0])
+        self.assertEqual(selected["textures"], [])
+
+    def test_optimized_out_source_textures_need_a_proven_vector_boundary(self) -> None:
+        counts = dict(pixelScalarExpressions=9, pixelVectorExpressions=2,
+                      pixelTexture2DExpressions=3)
+        triple = wire_array([]) + wire_array([wire_row(0, 16, 16, 0)]) + wire_array([])
+        payload = b"\xff" * 73 + triple + b"\x00" * 20
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous: 2"):
+            subject.select_unique_native_binding_arrays(payload, 2000, counts, self.closure(2))
+        selected = subject.select_unique_native_binding_arrays(
+            payload, 2000, counts, self.closure(2),
+            required_vector_expression_indices={0},
+        )
+        self.assertEqual(selected["bindingArraysOffsetInShaderObject"], 73)
+        self.assertEqual(selected["scalarGroups"], [])
+        self.assertEqual([row["expressionIndexOrGroup"] for row in selected["vectors"]], [0])
+        self.assertEqual(selected["textures"], [])
+
+    def test_textureless_constraint_cannot_hide_true_ambiguity(self) -> None:
+        counts = dict(pixelScalarExpressions=11, pixelVectorExpressions=1,
+                      pixelTexture2DExpressions=0)
+        payload = b"\xff" * 73 + self.glow_triple() + b"\xff" * 40 + self.glow_triple()
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous: 2"):
+            subject.select_unique_native_binding_arrays(
+                payload, 1000, counts, self.closure(),
+                required_vector_expression_indices={0},
+            )
+
+    def test_required_vector_index_must_exist_in_source(self) -> None:
+        counts = dict(pixelScalarExpressions=11, pixelVectorExpressions=1,
+                      pixelTexture2DExpressions=0)
+        with self.assertRaisesRegex(ValueError, "outside the uniform expressions"):
+            subject.scan_native_binding_array_candidates(
+                b"\xff" * 73 + self.glow_triple(), 0, counts, self.closure(),
+                required_vector_expression_indices={1},
+            )
+
+    def test_sampled_shader_still_rejects_empty_texture_array(self) -> None:
+        counts = dict(pixelScalarExpressions=11, pixelVectorExpressions=1,
+                      pixelTexture2DExpressions=1)
+        closure = binding_closure()
+        closure["declaredConstantBuffer0Float4Count"] = 5
+        self.assertEqual(subject.scan_native_binding_array_candidates(
+            b"\xff" * 73 + self.glow_triple() + b"\x00" * 20,
+            0, counts, closure,
+        ), [])
+
+
 if __name__ == "__main__":
     unittest.main()

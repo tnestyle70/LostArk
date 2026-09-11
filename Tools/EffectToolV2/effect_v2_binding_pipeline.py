@@ -657,6 +657,7 @@ def _validate_leaf_params(
         enter_end = _optional_number(screen, "overlayEnterEnd", f"{owner}.screenPost", 0.25)
         exit_start = _optional_number(screen, "overlayExitStart", f"{owner}.screenPost", 0.75)
         _optional_number(screen, "overlayRotationDegrees", f"{owner}.screenPost", 0.0)
+        _optional_bool(screen, "displaySpace", f"{owner}.screenPost", False)
         if any(value <= 0.0 for value in scale) or not 0.0 <= enter_end <= exit_start <= 1.0:
             raise BindingContractError(f"{owner}.screenPost overlay scale/phases are out of range")
 

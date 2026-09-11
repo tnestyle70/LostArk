@@ -3,6 +3,8 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+#include <array>
+#include <map>
 #include <optional>
 #include <algorithm>
 
@@ -10,6 +12,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+namespace Engine { struct MODEL_MATERIAL_OVERRIDE; }
 
 NS_BEGIN(Client)
 
@@ -38,6 +42,24 @@ enum class WORLD_SEQUENCE_TARGET_KIND
 	OBJECT_RESOURCE,
 };
 
+struct WORLD_SEQUENCE_MATERIAL_TEXTURE
+{
+    uint32_t expressionIndex = 0u;
+    std::string assetId;
+    bool_t srgb = false;
+    bool operator==(const WORLD_SEQUENCE_MATERIAL_TEXTURE&) const = default;
+};
+
+struct WORLD_SEQUENCE_MATERIAL_PROFILE
+{
+    std::string materialName;
+    std::string sourceMaterial;
+    std::string family;
+    std::map<std::string, std::array<float, 4>> parameters;
+    std::vector<WORLD_SEQUENCE_MATERIAL_TEXTURE> textures;
+    bool operator==(const WORLD_SEQUENCE_MATERIAL_PROFILE&) const = default;
+};
+
 struct WORLD_SEQUENCE_OBJECT_RESOURCE
 {
 	std::string objectId;
@@ -49,6 +71,8 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string anchorBossArchetypeId;
 	std::string anchorBone;
 	std::string diffuseTextureAssetId;
+	// Immutable source material input shared by every Motion of this resource.
+	std::optional<WORLD_SEQUENCE_MATERIAL_PROFILE> materialProfile;
 	f32_t modelPreScale = 0.01f;
 	bool_t animated = false;
 	float3_t scale = {1.f, 1.f, 1.f};
@@ -65,6 +89,8 @@ struct WORLD_SEQUENCE_OBJECT_MOTION
 	float3_t angularVelocityDegrees = {};
 	float3_t revolutionDegreesPerSecond = {};
 	float3_t revolutionOffset = {};
+	// Per-emitter position range around its captured origin, in local metres.
+	float3_t spawnHalfExtents = {};
 	uint32_t count = 1u;
 	uint32_t intervalMs = 0u;
 	f32_t spreadDegrees = 0.f;
@@ -244,6 +270,9 @@ public:
 	{
 		return m_Instances;
 	}
+
+    static bool_t Build_MaterialOverride(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,
+        const std::filesystem::path& resourceRoot, Engine::MODEL_MATERIAL_OVERRIDE& out);
 
 	static const char_t* Interpolation_ToString(
 		WORLD_SEQUENCE_INTERPOLATION interpolation);

@@ -439,6 +439,21 @@ void CGameInstance::Request_SceneColorSnapshot()
 		m_pRenderer->Request_SceneColorSnapshot();
 }
 
+HRESULT CGameInstance::Refresh_SceneColorSnapshot()
+{
+	return m_pRenderer ? m_pRenderer->Refresh_SceneColorSnapshot() : E_FAIL;
+}
+
+void CGameInstance::Request_SceneEnvironmentReplacement()
+{
+    if (m_pRenderer) m_pRenderer->Request_SceneEnvironmentReplacement();
+}
+
+bool_t CGameInstance::Is_SceneEnvironmentReplaced() const
+{
+    return m_pRenderer && m_pRenderer->Is_SceneEnvironmentReplaced();
+}
+
 RENDER_QUALITY_SETTINGS CGameInstance::Get_RenderQualitySettings() const
 {
 	return m_pRenderer->Get_RenderQualitySettings();
@@ -481,6 +496,11 @@ void CGameInstance::Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& sta
 RENDER_ENVIRONMENT_STATE CGameInstance::Get_RenderEnvironment() const
 {
     return m_pRenderer ? m_pRenderer->Get_RenderEnvironment() : RENDER_ENVIRONMENT_STATE{};
+}
+
+HRESULT CGameInstance::Bind_HeightFog(CShader* shader) const
+{
+    return m_pRenderer->Bind_HeightFog(shader);
 }
 
 HRESULT CGameInstance::Apply_HeightFog(
@@ -544,10 +564,10 @@ const vector<LIGHT_DESC>& CGameInstance::Get_SceneLights() const
 HRESULT CGameInstance::Render_Lights(
 	shared_ptr<class CShader> pShader,
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-	bool_t bEnableSceneDirectionalShadow)
+	bool_t bEnableSceneDirectionalShadow, LIGHT_RECEIVER ePassReceiver)
 {
 	return m_pLight_Manager->Render_Lights(
-		pShader, pVIBuffer, bEnableSceneDirectionalShadow);
+		pShader, pVIBuffer, bEnableSceneDirectionalShadow, ePassReceiver);
 }
 
 HRESULT CGameInstance::Add_Font(const wstring& strFontTag, const tchar_t* pFontFilePath)

@@ -154,7 +154,7 @@ namespace
 	struct LOGIC_REGION_TRANSFORM final
 	{
 		float centerX = 0.f, centerZ = 0.f, yaw = 0.f;
-		float halfX = 0.f, halfZ = 0.f, radius = 0.f;
+		float halfX = 0.f, halfZ = 0.f, radius = 0.f, radiusX = 0.f, radiusZ = 0.f;
 	};
 
 	bool Resolve_LogicRegionTransform(const LostArk::Server::BOSS_LOGIC_REGION& region,
@@ -164,6 +164,8 @@ namespace
 		using namespace LostArk::Server;
 		float centerX = region.fCenterX, centerZ = region.fCenterZ, yaw = region.fYawDegrees;
 		float halfX = region.fHalfX, halfZ = region.fHalfZ, radius = region.fRadiusM;
+		float radiusX = region.fRadiusXM > 0.f ? region.fRadiusXM : radius;
+		float radiusZ = region.fRadiusZM > 0.f ? region.fRadiusZM : radius;
 		if (region.WorldTrack.bEnabled)
 		{
 			const auto& track = region.WorldTrack;
@@ -213,7 +215,7 @@ namespace
 				std::cos(worldRadians) * region.fCenterX * sx + std::sin(worldRadians) * region.fCenterZ * sz;
 			centerZ = track.fBaselineZ - std::sin(baselineRadians) * ox + std::cos(baselineRadians) * oz -
 				std::sin(worldRadians) * region.fCenterX * sx + std::cos(worldRadians) * region.fCenterZ * sz;
-			yaw += worldYaw; halfX *= sx; halfZ *= sz; radius *= sx;
+			yaw += worldYaw; halfX *= sx; halfZ *= sz; radius *= sx; radiusX *= sx; radiusZ *= sz;
 		}
 		if (BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region.eAnchor)
 		{
@@ -230,7 +232,7 @@ namespace
 			centerX += boss.fSpawnPositionX;
 			centerZ += boss.fSpawnPositionZ;
 		}
-		outTransform = { centerX, centerZ, yaw, halfX, halfZ, radius };
+		outTransform = { centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ };
 		return true;
 	}
 
@@ -240,7 +242,7 @@ namespace
 	{
 		LOGIC_REGION_TRANSFORM transform;
 		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform)) return false;
-		const auto [centerX, centerZ, yaw, halfX, halfZ, radius] = transform;
+		const auto [centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ] = transform;
 		const float dx = player.fPositionX - centerX, dz = player.fPositionZ - centerZ;
 		if (!std::isfinite(dx) || !std::isfinite(dz)) return false;
 		const float radians = yaw * 0.017453292519943295f;
@@ -250,10 +252,15 @@ namespace
 			return std::fabs(localX) <= halfX && std::fabs(localZ) <= halfZ;
 		const float distanceSq = dx * dx + dz * dz;
 		if (region.bCircle) return distanceSq <= radius * radius;
-		if (distanceSq < 0.000001f || distanceSq > radius * radius) return false;
-		const float angle = std::atan2(localX, localZ) * 57.29577951308232f;
+		const float nx = localX / radiusX, nz = localZ / radiusZ;
+		if (nx * nx + nz * nz > 1.f) return false;
+		if (region.bReverseSector && region.fHalfAngleDegrees <= 0.f) return true;
+		if (region.bReverseSector && region.fHalfAngleDegrees >= 180.f) return false;
+		if (distanceSq < 0.000001f) return false;
+		const float angle = std::atan2(nx, nz) * 57.29577951308232f;
 		// A shared radial edge belongs to exactly one sector.
-		return angle >= -region.fHalfAngleDegrees && angle < region.fHalfAngleDegrees;
+		const bool inside = angle >= -region.fHalfAngleDegrees && angle < region.fHalfAngleDegrees;
+		return region.bReverseSector ? !inside : inside;
 	}
 
 	bool Intersects_LogicRegion(const LostArk::Server::BOSS_LOGIC_REGION& region,
@@ -264,13 +271,13 @@ namespace
 		using namespace LostArk::Shared::CombatCollision;
 		LOGIC_REGION_TRANSFORM transform;
 		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform)) return false;
-		const auto [centerX, centerZ, yaw, halfX, halfZ, radius] = transform;
+		const auto [centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ] = transform;
 		if (region.bCircle) return Circles_Overlap(CIRCLE_XZ{ centerX, centerZ, radius }, target);
 		const float radians = yaw * 0.017453292519943295f;
 		const float forwardX = std::sin(radians), forwardZ = std::cos(radians);
 		if (region.bSector)
-			return Circle_IntersectsCone(target, centerX, centerZ, forwardX, forwardZ,
-				radius, region.fHalfAngleDegrees * 2.f);
+			return Circle_IntersectsEllipticSector(target, centerX, centerZ, forwardX, forwardZ,
+				radiusX, radiusZ, region.fHalfAngleDegrees * 2.f, region.bReverseSector);
 		// The shared box starts at its rear edge and extends along local +Z.
 		return Circle_IntersectsForwardBox(target, centerX - forwardX * halfZ,
 			centerZ - forwardZ * halfZ, forwardX, forwardZ, halfZ * 2.f, halfX);
@@ -525,13 +532,15 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
 	if (!boss.bKoukuShieldActive || boss.fKoukuShieldArcDegrees <= 0.f)
 		return false;
 	const auto reflects = [sourceX, sourceZ](const float centerX, const float centerZ,
-		const float yaw, const float halfAngle)
+		const float yaw, const float halfAngle, const float radiusX = 1.f, const float radiusZ = 1.f)
 	{
 		const float dx = sourceX - centerX, dz = sourceZ - centerZ;
 		if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz < 0.0001f)
 			return false;
-		const float direction = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
-		return std::fabs(Wrap180(direction - yaw)) <= halfAngle;
+		const float radians = yaw * .017453292519943295f;
+		const float x = (std::cos(radians) * dx - std::sin(radians) * dz) / radiusX;
+		const float z = (std::sin(radians) * dx + std::cos(radians) * dz) / radiusZ;
+		return std::fabs(static_cast<float>(std::atan2(x, z) * DEGREES_PER_RADIAN)) <= halfAngle;
 	};
 	if (!boss.KoukuShieldRegions.empty())
 	{
@@ -540,11 +549,13 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
 		{
 			// A ranged attacker is reflected by direction too; the sector radius
 			// is its debug drawing extent, not an attack-distance restriction.
-			if (!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT)
+			if (!region.bSector || region.bReverseSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT)
 				continue;
 			const float centerX = boss.fPositionX + std::cos(radians) * region.fCenterX + std::sin(radians) * region.fCenterZ;
 			const float centerZ = boss.fPositionZ - std::sin(radians) * region.fCenterX + std::cos(radians) * region.fCenterZ;
-			if (reflects(centerX, centerZ, boss.fYawDegrees + region.fYawDegrees, region.fHalfAngleDegrees))
+			if (reflects(centerX, centerZ, boss.fYawDegrees + region.fYawDegrees, region.fHalfAngleDegrees,
+				region.fRadiusXM > 0.f ? region.fRadiusXM : region.fRadiusM,
+				region.fRadiusZM > 0.f ? region.fRadiusZM : region.fRadiusM))
 				return true;
 		}
 		return false;
@@ -617,6 +628,13 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 		hit.fSourceZ = boss.fPositionZ;
 		hit.fPushRangeM = result.fPushRangeM;
 		hit.iPushMs = result.iPushMs;
+		if (result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD)
+		{
+			hit.bUsePushDirection = true;
+			const float radians = boss.fYawDegrees * 0.017453292519943295f;
+			hit.fPushDirectionX = std::sin(radians);
+			hit.fPushDirectionZ = std::cos(radians);
+		}
 		hit.iServerTick = serverTick;
 		hit.bIgnoreDefense = true;
 		hit.bIgnoreCounter = true;
@@ -828,7 +846,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
             motion.StartPosition = {boss.fPositionX, boss.fPositionY, boss.fPositionZ};
             motion.EndPosition = {boss.fPositionX + dx / length * window.fBossChargeDistanceM,
                 boss.fPositionY, boss.fPositionZ + dz / length * window.fBossChargeDistanceM};
-            motion.fYawDegrees = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+            // The authored clip may face a different native axis; its body yaw
+            // must not rotate the captured world-space travel vector.
+            motion.fYawDegrees = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN) + window.fChargeYawOffsetDegrees;
             state.ChargeMotion = motion;
             boss.iTargetEntityId = target->iNetEntityId;
             boss.iPatternTargetEntityId = target->iNetEntityId;

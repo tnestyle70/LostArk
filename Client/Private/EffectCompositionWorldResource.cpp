@@ -79,6 +79,9 @@ void ReadTemplate(const DATA_JSON_VALUE& source, EFFECT_COMPOSITION_WORLD_MOTION
             !Vector(motion->Find("angularVelocityDegrees"), &value.angularVelocityDegrees.x, 3) ||
             !Vector(motion->Find("revolutionDegreesPerSecond"), &value.revolutionDegreesPerSecond.x, 3) ||
             !Vector(motion->Find("revolutionOffset"), &value.revolutionOffset.x, 3) ||
+            (motion->Find("spawnHalfExtents") && !Vector(motion->Find("spawnHalfExtents"), &value.spawnHalfExtents.x, 3)) ||
+            value.spawnHalfExtents.x < 0.f || value.spawnHalfExtents.y < 0.f || value.spawnHalfExtents.z < 0.f ||
+            value.spawnHalfExtents.x > 100000.f || value.spawnHalfExtents.y > 100000.f || value.spawnHalfExtents.z > 100000.f ||
             !UInt(*motion, "count", value.count, 128u) || !value.count ||
             !UInt(*motion, "intervalMs", value.intervalMs, MAX_MS) || !UInt(*motion, "seed", value.seed) ||
             !Number(motion->Find("spreadDegrees"), value.spreadDegrees) || value.spreadDegrees < 0.f || value.spreadDegrees > 180.f ||
@@ -315,7 +318,9 @@ bool Client::Apply_WorldMotionToEffect(const EFFECT_COMPOSITION_WORLD_RESOURCE& 
         staged.Desc.eShape = CEffectV2Object::SHAPE::PARTICLE;
         staged.strAnimationClip.clear();
         auto& particle = params.Particle;
-        particle.eSpawnShape = CEffectV2Object::PARTICLE_SPAWN_SHAPE::POINT;
+        particle.eSpawnShape = Zero(physics.spawnHalfExtents) ? CEffectV2Object::PARTICLE_SPAWN_SHAPE::POINT :
+            CEffectV2Object::PARTICLE_SPAWN_SHAPE::BOX;
+        particle.vSpawnExtents = physics.spawnHalfExtents;
         particle.eVelocityMode = CEffectV2Object::PARTICLE_VELOCITY_MODE::FIXED;
         particle.vVelocityMin = particle.vVelocityMax = physics.velocity;
         particle.vAcceleration = physics.acceleration;
@@ -361,7 +366,7 @@ bool Client::Apply_WorldMotionToEffect(const EFFECT_COMPOSITION_WORLD_RESOURCE& 
         stagedChild.iDurationMs = static_cast<std::uint32_t>((std::max)(1.0,std::ceil(double(motion.durationMs)/motion.playbackSpeed)));
         if (motion.animationTracks.size() > 1u || clip.startMs != 0u)
             Note(status, "Imported the first native clip only; ordered clip switching/start offsets remain in World Object Motion.");
-        if (physics.count != 1u || physics.intervalMs != 0u || physics.spreadDegrees != 0.f)
+        if (physics.count != 1u || physics.intervalMs != 0u || physics.spreadDegrees != 0.f || !Zero(physics.spawnHalfExtents))
             Note(status, "Native Mesh imports one actor; emission count/interval/spread require a Particle element.");
         Note(status, "Native clip=" + staged.strAnimationClip + ". Physical clip availability is checked when Preview is prepared.");
     }

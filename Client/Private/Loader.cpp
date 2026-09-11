@@ -47,6 +47,7 @@
 #include <cmath>
 #include <exception>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace
 {
@@ -801,6 +802,14 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
+	Set_Status(TEXT("KoukuSaydon: deploy environment prototypes"));
+	if (FAILED(Ready_DeployPropArea(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		pEntry->pMapAreaId)))
+	{
+		return E_FAIL;
+	}
+
 	Set_Status(TEXT("KoukuSaydon arena loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -897,6 +906,11 @@ HRESULT CLoader::Ready_MapArea(
 	Set_Status(TEXT("Map: explicit area catalog"));
 	if (!mapCatalog.Load_Area(areaId))
 	{
+		// Recovery records this status; keep the catalog reason, not only its phase.
+		{
+			lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+			g_ActiveStatus = "Map " + areaId + ": " + mapCatalog.Get_Status();
+		}
 		OutputDebugStringA((
 			"[Loader][Map] " +
 			mapCatalog.Get_Status() +
@@ -933,6 +947,9 @@ HRESULT CLoader::Ready_MapArea(
 		XMMatrixScaling(0.01f, 0.01f, 0.01f);
 	const size_t requiredModelCount = loadScope.isEnabled ?
 		requiredAssetIds.size() : mapCatalog.Get_Entries().size();
+    // All map entries here use the same pretransform. Material/RNM variants
+    // share immutable GPU meshes through the first admitted physical model.
+    std::unordered_map<std::wstring, const CModel*> geometryPrototypes;
 	size_t loadedModelCount = {};
 	for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
 	{
@@ -959,12 +976,12 @@ HRESULT CLoader::Ready_MapArea(
 		loadDesc.assetRoot = CRuntimeAssetRoot::Get();
 		loadDesc.meshPath = entry.resolvedModelPath;
 		loadDesc.materialOverrides = entry.materialOverrides;
-		auto pModel = CModel::Create(
-			m_pDevice,
-			m_pContext,
-			MODEL::NONANIM,
-			loadDesc,
-			mapAssetTransform);
+        const std::wstring geometryKey = entry.resolvedModelPath.lexically_normal().wstring();
+        const auto sharedGeometry = geometryPrototypes.find(geometryKey);
+        auto pModel = sharedGeometry == geometryPrototypes.end() ?
+            CModel::Create(m_pDevice, m_pContext, MODEL::NONANIM, loadDesc, mapAssetTransform) :
+            CModel::Create_MaterialVariant(*sharedGeometry->second, loadDesc);
+        const CModel* admittedGeometry = pModel.get();
 		if (nullptr == pModel ||
 			FAILED(CGameInstance::Get().Add_Prototype(
 				iLevelIndex,
@@ -980,6 +997,8 @@ HRESULT CLoader::Ready_MapArea(
 			OutputDebugStringW(detail.c_str());
 			return E_FAIL;
 		}
+        if (sharedGeometry == geometryPrototypes.end())
+            geometryPrototypes.emplace(geometryKey, admittedGeometry);
 		++loadedModelCount;
 	}
 	if (loadedModelCount != requiredModelCount)

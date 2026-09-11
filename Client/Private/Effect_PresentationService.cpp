@@ -63,6 +63,24 @@ namespace
 	constexpr f32_t ARTIST_SOURCE_BONE_COMBINED_SCALE = 0.01f;
 	constexpr f32_t ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE = 0.00005f;
 	constexpr f32_t ARTIST_SOURCE_BONE_UNIFORM_SCALE_TOLERANCE = 0.000005f;
+	// Source-bone scale manifest for the separately measured Warlord Q document.
+	struct SOURCE_BONE_IMPORT_SCALE_CONTRACT final
+	{
+		std::string_view strEffectAssetId;
+		f32_t fPrototypeAdmissionScale;
+		f32_t fRigRootScale;
+		f32_t fCombinedAnchorScale;
+		f32_t fReciprocal;
+	};
+	constexpr SOURCE_BONE_IMPORT_SCALE_CONTRACT WARLORD_Q_SOURCE_BONE_SCALE = {
+		"effect.warlord.skill.17030.full.restore", 0.0001f, 100.f, 0.01f, 100.f };
+	static_assert(WARLORD_Q_SOURCE_BONE_SCALE.fPrototypeAdmissionScale *
+		WARLORD_Q_SOURCE_BONE_SCALE.fRigRootScale ==
+		WARLORD_Q_SOURCE_BONE_SCALE.fCombinedAnchorScale);
+	static_assert(WARLORD_Q_SOURCE_BONE_SCALE.fCombinedAnchorScale ==
+		ARTIST_SOURCE_BONE_COMBINED_SCALE);
+	static_assert(WARLORD_Q_SOURCE_BONE_SCALE.fReciprocal *
+		WARLORD_Q_SOURCE_BONE_SCALE.fCombinedAnchorScale == 1.f);
 	constexpr f32_t SOURCE_BONE_ORTHOGONAL_TOLERANCE = 0.001f;
 	constexpr f32_t SOURCE_BONE_AFFINE_TOLERANCE = 0.00001f;
 	constexpr f32_t SOURCE_BONE_MINIMUM_BASIS_LENGTH = 0.00000001f;
@@ -205,6 +223,7 @@ namespace
         f32_t fElapsedCueTimeSeconds = 0.f;
         f32_t fPendingInitialSampleTimeSeconds = 0.f;
         bool_t bPendingInitialSeek = true;
+        bool_t bSupersededRecoveryCue = false;
 		bool_t bFollowAnchorMissing = false;
 		std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests;
 		std::unordered_map<std::string, float4x4_t> SourceAnchorWorldsScratch;
@@ -785,7 +804,8 @@ namespace
 	{
 		Client::EFFECT_SCENE_BUDGET_COST Result;
 		for (const ACTIVE_EFFECT& Effect : g_ActiveEffects)
-			Add_BudgetCost(Result, Effect.AdmissionCost);
+			if (!Effect.bSupersededRecoveryCue)
+				Add_BudgetCost(Result, Effect.AdmissionCost);
 		return Result;
 	}
 
@@ -812,7 +832,7 @@ namespace
 		Client::EFFECT_SCENE_BUDGET_COST OwnerTotal;
 		for (const ACTIVE_EFFECT& Effect : g_ActiveEffects)
 		{
-			if (Same_Owner(Resolve_Owner(Effect), Owner))
+			if (!Effect.bSupersededRecoveryCue && Same_Owner(Resolve_Owner(Effect), Owner))
 				Add_BudgetCost(OwnerTotal, Effect.AdmissionCost);
 		}
 		if (bIncludePending)
@@ -1304,7 +1324,9 @@ namespace
                 AddRequest({
                     Element.ActionCueAttachment.strRuntimeAnchorSlotId,
                     Element.ActionCueAttachment.strRuntimeBoneName,
-                    Element.ActionCueAttachment.SocketLocalTransform, false,
+                    Element.ActionCueAttachment.SocketLocalTransform,
+                    Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
+                        Document.strEffectAssetId),
 					Element.ActionCueAttachment.eOrientation });
             }
             for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
@@ -2455,6 +2477,48 @@ namespace
         }
         g_ActiveEffects.erase(g_ActiveEffects.begin() + iIndex);
     }
+
+    void Retire_PreviousRecoveryCueBeforeAdmission(
+        const Client::EFFECT_SPAWN_DESC& Desc,
+        const EFFECT_OWNER_VIEW& Owner)
+    {
+        if (Client::EFFECT_STOP_POLICY::CUE_END != Desc.eStopPolicy ||
+            nullptr == Owner.pCharacter ||
+            !Owner.pCharacter->Is_EffectActionCurrent(Desc.iActionStartTick))
+            return;
+        const auto Camera = g_ProductCameraCache.find(Desc.strEffectAssetId);
+        if (Camera == g_ProductCameraCache.end() || !Camera->second.value ||
+            Camera->second.value->rows.empty())
+            return;
+
+        // A new action may arrive before the previous cue's final service update.
+        // Retire only that action's same camera cue, so its reserved budget cannot reject the replay.
+        const auto IsPreviousCue = [&Desc, &Owner](const auto& Cue, const EFFECT_OWNER_VIEW& CueOwner)
+        {
+            return Same_Owner(CueOwner, Owner) &&
+                Client::EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
+                Cue.iActionStartTick != Desc.iActionStartTick &&
+                Cue.strEffectAssetId == Desc.strEffectAssetId &&
+                Cue.strOccurrenceId == Desc.strOccurrenceId;
+        };
+        g_PendingEffectSpawns.erase(std::remove_if(
+            g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+            [&IsPreviousCue](const PENDING_EFFECT_SPAWN& Pending)
+            {
+                return IsPreviousCue(Pending.Desc, Resolve_Owner(Pending.Desc));
+            }), g_PendingEffectSpawns.end());
+        for (size_t i = g_ActiveEffects.size(); i-- > 0u;)
+        {
+            auto& previous = g_ActiveEffects[i];
+            if (IsPreviousCue(previous, Resolve_Owner(previous)))
+            {
+                // Spawn can run during Character/Layer update. Defer container
+                // removal to the service update, while releasing this stale reservation.
+                previous.bSupersededRecoveryCue = true;
+                if (previous.pObject) previous.pObject->Set_Visible(false);
+            }
+        }
+    }
 }
 
 bool_t Client::CEffectPresentationService::Estimate_DocumentBudget(
@@ -3400,6 +3464,24 @@ bool_t Client::CEffectPresentationService::Reload_SelectedProductEffect(
 	return false;
 }
 
+bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
+	const std::string& strEffectAssetId)
+{
+	// Source particles are already meters. These measured Warlord/Lance
+	// combined bones retain a 0.01 import basis while translations are meters.
+	// Normalize that basis once; preserve source StartSize and model geometry.
+	return strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||
+		strEffectAssetId == "effect.lancemaster.skill.34610.clip1.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34610.clip2.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34610.clip3.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34650.clip1.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34650.clip2.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34630.clip1.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34630.clip2.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34630.clip3.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34630.clip4.full.restore";
+}
+
 bool_t Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
 	const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
 	float4x4_t& OutWorld)
@@ -4228,6 +4310,8 @@ bool_t Client::CEffectPresentationService::Spawn(
 	}
 	const auto Budget = g_ProductEffectBudgetCosts.find(
 		Desc.strEffectAssetId);
+	if (Budget != g_ProductEffectBudgetCosts.end())
+		Retire_PreviousRecoveryCueBeforeAdmission(Desc, Owner);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
 		!Can_AdmitBudget(Owner,
 			Budget == g_ProductEffectBudgetCosts.end() ?
@@ -4622,6 +4706,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	}
 	const auto Budget = g_ProductEffectBudgetCosts.find(
 		Desc.strEffectAssetId);
+	if (Budget != g_ProductEffectBudgetCosts.end())
+		Retire_PreviousRecoveryCueBeforeAdmission(Desc, Owner);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
 		!Can_AdmitBudget(Owner,
 			Budget == g_ProductEffectBudgetCosts.end() ?
@@ -4860,6 +4946,11 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
     for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
     {
         ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
+        if (Effect.bSupersededRecoveryCue)
+        {
+            Remove_At(iEffect);
+            continue;
+        }
 		const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Effect);
 		const std::shared_ptr<CCharacter>& pCharacterOwner = Owner.pCharacter;
 		if (nullptr != Effect.pObject &&

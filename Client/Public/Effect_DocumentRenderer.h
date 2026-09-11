@@ -86,6 +86,7 @@ struct EFFECT_RENDER_PREWARM_PROBE final
 
 struct EFFECT_DECAL_SHADER_PROJECTION_DESC final
 {
+    float4_t vSourceProjection = { -50.f, 50.f, 100.f, 0.f };
 	float2_t vSize = { 1.f, 1.f };
 	f32_t fDepth = 1.f;
 	f32_t fEdgeFade = 0.f;
@@ -268,6 +269,7 @@ private:
 		std::array<float4_t, 32u> LanceVASourceMaterialParameters{};
 		bool_t bSourceRequiresSceneColor = false;
 		bool_t bSourceRequiresSceneDepth = false;
+		ComPtr<ID3D11BlendState> pNativeOneLayerBlend;
 		uint32_t iSourceMeshHasUV1 = 0u;
 		std::array<float4_t, 16u> LinearFlowParameters{};
 		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
@@ -554,6 +556,31 @@ public:
 		{
 			return false;
 		}
+        if (Element.pElement->Material.SourceMaterial.strRuntimeShaderProfileId.starts_with("effect.ue3.kouku-"))
+        {
+            const EFFECT_SOURCE_MODULE_DESC* TypeData = nullptr;
+            for (const auto& Module : Element.pElement->SourceRecipe.Modules)
+                if (Module.strClassName == "efparticlemoduletypedatadecal")
+                { if (TypeData) return false; TypeData = &Module; }
+            if (!TypeData || !Element.bWorldOwnsDecalProjectionVolume) return false;
+            const auto ReadPlane = [&](std::string_view Name, float Default, float& Value)
+            {
+                Value = Default;
+                bool Found = false;
+                for (const auto& Literal : TypeData->Literals)
+                    if (Literal.strPropertyPath == Name)
+                    {
+                        if (Found || Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+                            !std::isfinite(Literal.fNumber)) return false;
+                        Value = static_cast<float>(Literal.fNumber); Found = true;
+                    }
+                return std::isfinite(Value);
+            };
+            float Near = 0.f, Far = 0.f;
+            if (!ReadPlane("nearplane", 0.f, Near) || !ReadPlane("farplane", 0.f, Far) || Far <= Near)
+                return false;
+            Staged.vSourceProjection = {Near, Far, Far - Near, (Near + Far) * .5f};
+        }
 		OutProjection = Staged;
 		return true;
 	}
@@ -660,6 +687,7 @@ public:
 		std::string& strOutError);
 	bool_t Has_NonBlendModelCues() const;
 	bool_t Has_WorldMarkElements() const;
+	bool_t Has_ActiveSceneBackdrop(const EFFECT_EVALUATED_FRAME& Frame) const;
 	HRESULT Render_NonBlendModelCues(const EFFECT_EVALUATED_FRAME& Frame);
 	HRESULT Render_WorldMarks(
 		const EFFECT_EVALUATED_FRAME& Frame,

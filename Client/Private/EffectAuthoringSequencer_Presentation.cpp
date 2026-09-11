@@ -64,10 +64,10 @@ bool Collider_Resource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& res
         !Presentation_Text(resource.strDisplayName, 512u) ||
         !Presentation_Text(resource.strResourceKind, 128u, true) ||
         !Presentation_Text(resource.strDefaultAnchorKind, 128u, true) ||
-        (resource.strShape != "BOX" && resource.strShape != "CIRCLE" && resource.strShape != "SECTOR") ||
+        (resource.strShape != "BOX" && resource.strShape != "CIRCLE" && resource.strShape != "SECTOR" && resource.strShape != "REVERSE_SECTOR") ||
         !Presentation_Time(0u, resource.iDurationMs) ||
         !std::isfinite(resource.fRadiusM) || resource.fRadiusM < .001 || resource.fRadiusM > 10000.0 ||
-        !std::isfinite(resource.fHalfAngleDegrees) || resource.fHalfAngleDegrees < .001 ||
+        !std::isfinite(resource.fHalfAngleDegrees) || (resource.strShape == "REVERSE_SECTOR" ? resource.fHalfAngleDegrees < 0.0 : resource.fHalfAngleDegrees < .001) ||
         resource.fHalfAngleDegrees > 180.0)
         return false;
     return std::all_of(resource.HalfExtents.begin(), resource.HalfExtents.end(), [](double value)
@@ -96,6 +96,13 @@ HIT_AREA_SHAPE Collider_Wire(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURC
         shape.iAreaRange = static_cast<int32_t>((std::min)(
             resource.fRadiusM * (std::max)(scale.x, scale.z) * 100.0, 1000000000.0));
         shape.iAreaAngle = static_cast<int32_t>(resource.fHalfAngleDegrees * 2.0);
+        if (shape.iAreaType == 3)
+        {
+            shape.fSectorRadiusXM = static_cast<float>(resource.fRadiusM * scale.x);
+            shape.fSectorRadiusZM = static_cast<float>(resource.fRadiusM * scale.z);
+            shape.fSectorAngleDegrees = static_cast<float>(resource.fHalfAngleDegrees * 2.0);
+            shape.bReverseSector = resource.strShape == "REVERSE_SECTOR";
+        }
     }
     return shape;
 }

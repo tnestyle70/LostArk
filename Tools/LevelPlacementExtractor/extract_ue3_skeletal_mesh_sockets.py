@@ -13,7 +13,7 @@ from typing import Any
 
 
 SOCKET_BLOCK = re.compile(
-    r"Sockets\[(?P<index>\d+)\]\s*=\s*\{(?P<body>.*?)\n\s*\}",
+    r"Sockets\[(?P<index>\d+)\]\s*=\s*\{(?=\s*(?:SocketName|BoneName)\s*=)(?P<body>.*?)\n\s*\}",
     re.DOTALL,
 )
 COMPACT_SOCKET = re.compile(

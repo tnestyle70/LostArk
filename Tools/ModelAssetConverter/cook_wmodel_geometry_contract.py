@@ -37,6 +37,7 @@ WINT_LEGACY_VERSION_MINOR = 0
 WINT_GEOMETRY_VERSION_MINOR = 1
 WINT_UV1_VERSION_MINOR = 2
 WINT_SKINNED_UV_VERSION_MINOR = 3
+WINT_STATIC_UV2_VERSION_MINOR = 4
 SKINNED_UV_HEADER = struct.Struct("<4sIII32s")
 STRIDE_SKINNED = 76
 MESH_BONE_SIZE = 128
@@ -70,6 +71,8 @@ MGEF_UPK_TO_GLTF_EXACT = 1 << 12
 MGEF_PIVOT_EXACT = 1 << 13
 MGEF_TEXCOORD1_PRESERVED_FROM_GLTF = 1 << 14
 MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED = 1 << 15
+MGEF_NATIVE_PARALLEL_BASIS_PRESERVED = 1 << 16
+MGEF_TEXCOORD2_PRESERVED_FROM_GLTF = 1 << 17
 MGEF_REQUIRED_PAYLOAD = (
     MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF
     | MGEF_BOUNDS_WMODEL_SPACE
@@ -90,6 +93,8 @@ MGEF_KNOWN = (
     | MGEF_COLOR0_PRESERVED_FROM_GLTF
     | MGEF_TEXCOORD1_PRESERVED_FROM_GLTF
     | MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED
+    | MGEF_NATIVE_PARALLEL_BASIS_PRESERVED
+    | MGEF_TEXCOORD2_PRESERVED_FROM_GLTF
     | MGEF_PRODUCT_PROVENANCE
 )
 
@@ -435,6 +440,7 @@ class GeometryProvenanceEvidence:
     source_export_receipt_sha256: bytes
     legacy_cook_receipt_sha256: bytes
     tangent_handedness_project_reconstructed: bool = False
+    native_parallel_basis_preserved: bool = False
 
 
 @dataclass(frozen=True)
@@ -460,6 +466,7 @@ class SourcePrimitive:
     indices: tuple[int, ...]
     has_color0: bool
     has_uv1: bool = False
+    has_uv2: bool = False
 
 
 def accessor_values(
@@ -542,6 +549,7 @@ def accessor_values(
 def require_nondegenerate_basis(
     normal: tuple[float, float, float],
     tangent: tuple[float, float, float],
+    allow_native_parallel: bool = False,
 ) -> None:
     normal_length_squared = sum(value * value for value in normal)
     tangent_length_squared = sum(value * value for value in tangent)
@@ -552,6 +560,9 @@ def require_nondegenerate_basis(
         and tangent_length_squared > 1e-12,
         "normal/tangent basis has a zero or non-finite axis",
     )
+    raw_cross = (normal[1]*tangent[2]-normal[2]*tangent[1], normal[2]*tangent[0]-normal[0]*tangent[2], normal[0]*tangent[1]-normal[1]*tangent[0])
+    if allow_native_parallel and all(value == 0.0 for value in raw_cross):
+        return
     normal_length = math.sqrt(normal_length_squared)
     tangent_length = math.sqrt(tangent_length_squared)
     normalized_normal = tuple(value / normal_length for value in normal)
@@ -640,6 +651,7 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
     primitives: list[SourcePrimitive] = []
     color_presence: set[bool] = set()
     uv1_presence: set[bool] = set()
+    uv2_presence: set[bool] = set()
     for mesh in document.get("meshes") or []:
         for primitive in mesh.get("primitives") or []:
             require(int(primitive.get("mode", 4)) == 4, "glTF primitive is not triangles")
@@ -664,6 +676,12 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 require(evidence["TEXCOORD_1"]["type"] == "VEC2"
                     and evidence["TEXCOORD_1"]["componentType"] == 5126,
                     "TEXCOORD_1 must be float2")
+            has_uv2 = "TEXCOORD_2" in attributes
+            uv2_presence.add(has_uv2)
+            require(not has_uv2 or has_uv1, "TEXCOORD_2 requires TEXCOORD_1")
+            if has_uv2:
+                decoded["TEXCOORD_2"], evidence["TEXCOORD_2"] = accessor_values(document, path.parent, int(attributes["TEXCOORD_2"]), buffer_cache)
+                require(evidence["TEXCOORD_2"]["type"] == "VEC2" and evidence["TEXCOORD_2"]["componentType"] == 5126, "TEXCOORD_2 must be float2")
             has_color0 = "COLOR_0" in attributes
             color_presence.add(has_color0)
             if has_color0:
@@ -684,12 +702,24 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 and index_evidence["componentType"] in (5121, 5123, 5125),
                 "glTF indices must be unsigned scalar values",
             )
+            native_parallel = primitive.get("extras", {}).get("lostarkNativeParallelBasis", {})
+            parallel_indices = native_parallel.get("vertexIndices", [])
+            require(isinstance(parallel_indices, list) and all(type(v) is int for v in parallel_indices)
+                and len(parallel_indices) == len(set(parallel_indices)), "native parallel vertex list is invalid")
+            if native_parallel:
+                require(set(native_parallel) == {"vertexIndices", "nativeSerialSHA256"}
+                    and isinstance(native_parallel["nativeSerialSHA256"], str)
+                    and len(native_parallel["nativeSerialSHA256"]) == 64
+                    and all(c in "0123456789abcdef" for c in native_parallel["nativeSerialSHA256"])
+                    and parallel_indices, "native parallel source evidence is invalid")
             count = len(decoded["POSITION"])
+            require(all(0 <= v < count for v in parallel_indices), "native parallel vertex index is invalid")
             require(
                 count > 0
                 and all(len(decoded[name]) == count for name in required)
                 and (not has_color0 or len(decoded["COLOR_0"]) == count)
-                and (not has_uv1 or len(decoded["TEXCOORD_1"]) == count),
+                and (not has_uv1 or len(decoded["TEXCOORD_1"]) == count)
+                and (not has_uv2 or len(decoded["TEXCOORD_2"]) == count),
                 "glTF vertex channel counts differ",
             )
             vertices: list[dict[str, Any]] = []
@@ -700,6 +730,8 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 tangent = tuple(float(value) for value in decoded["TANGENT"][index])
                 uv1 = tuple(float(value) for value in decoded["TEXCOORD_1"][index]) if has_uv1 else None
                 require(uv1 is None or (len(uv1) == 2 and all(math.isfinite(value) for value in uv1)), "TEXCOORD_1 contains invalid values")
+                uv2 = tuple(float(value) for value in decoded["TEXCOORD_2"][index]) if has_uv2 else None
+                require(uv2 is None or (len(uv2) == 2 and all(math.isfinite(value) for value in uv2)), "TEXCOORD_2 contains invalid values")
                 require(
                     len(position) == 3
                     and len(normal) == 3
@@ -709,7 +741,9 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                     and is_valid_tangent_handedness(tangent[3]),
                     "glTF contains an invalid vertex channel value",
                 )
-                require_nondegenerate_basis(normal, tangent[:3])
+                require_nondegenerate_basis(normal, tangent[:3], index in parallel_indices)
+                if index in parallel_indices:
+                    require(all(v == 0.0 for v in (normal[1]*tangent[2]-normal[2]*tangent[1], normal[2]*tangent[0]-normal[0]*tangent[2], normal[0]*tangent[1]-normal[1]*tangent[0])), "native parallel evidence marks a nonparallel basis")
                 color = (
                     bytes(int(value) for value in decoded["COLOR_0"][index])
                     if has_color0
@@ -721,8 +755,10 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                         "normal": normal,
                         "uv0": uv0,
                         "uv1": uv1,
+                        "uv2": uv2,
                         "tangent": tangent,
                         "color0": color,
+                        "nativeParallelBasis": index in parallel_indices,
                     }
                 )
             indices = tuple(int(value[0]) for value in index_values)
@@ -732,10 +768,11 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 and all(0 <= value < count for value in indices),
                 "glTF triangle indices are invalid",
             )
-            primitives.append(SourcePrimitive(tuple(vertices), indices, has_color0, has_uv1))
+            primitives.append(SourcePrimitive(tuple(vertices), indices, has_color0, has_uv1, has_uv2))
     require(primitives, "glTF contains no indexed mesh primitives")
     require(len(color_presence) == 1, "mixed COLOR_0 presence is not supported")
     require(len(uv1_presence) == 1, "mixed TEXCOORD_1 presence is not supported")
+    require(len(uv2_presence) == 1, "mixed TEXCOORD_2 presence is not supported")
 
     buffers = document.get("buffers") or []
     buffer_rows = []
@@ -909,7 +946,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
     require(
         magic == b"WINT"
         and major == WINT_VERSION_MAJOR
-        and minor in (WINT_GEOMETRY_VERSION_MINOR, WINT_UV1_VERSION_MINOR)
+        and minor in (WINT_GEOMETRY_VERSION_MINOR, WINT_UV1_VERSION_MINOR, WINT_STATIC_UV2_VERSION_MINOR)
         and flags == 0
         and content_size == len(data) - FILE_HEADER.size,
         "WModel 1.1 outer header is invalid",
@@ -1003,14 +1040,17 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
     ) = header
     has_color0 = bool(vertex_flags & VF_COLOR0)
     has_uv1 = bool(vertex_flags & VF_TEXCOORD1)
-    require(has_uv1 == (minor == WINT_UV1_VERSION_MINOR), "UV1 requires WMSH 1.2")
+    has_uv2 = bool(vertex_flags & VF_TEXCOORD2)
+    require(has_uv1 == (minor >= WINT_UV1_VERSION_MINOR), "UV1 version mismatch")
+    require(has_uv2 == (minor == WINT_STATIC_UV2_VERSION_MINOR), "UV2 requires WMSH 1.4")
     expected_vertex_flags = (
         VF_STATIC_BASE
         | VF_TANGENT_HANDEDNESS
         | (VF_COLOR0 if has_color0 else 0)
         | (VF_TEXCOORD1 if has_uv1 else 0)
+        | (VF_TEXCOORD2 if has_uv2 else 0)
     )
-    expected_vertex_stride = (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + (8 if has_uv1 else 0)
+    expected_vertex_stride = (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + (8 if has_uv1 else 0) + (8 if has_uv2 else 0)
     require(
         mesh_magic == b"WMSH"
         and submesh_count > 0
@@ -1074,6 +1114,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
     )
     reconstructed = bool(metadata_prefix[4] & MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED)
     required_evidence = MGEF_REQUIRED_PAYLOAD & ~MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF if reconstructed else MGEF_REQUIRED_PAYLOAD
+    require(not (metadata_prefix[4] & MGEF_NATIVE_PARALLEL_BASIS_PRESERVED) or (has_uv1 and not reconstructed), "native parallel evidence requires source W and UV1")
     require(not reconstructed or (minor >= WINT_UV1_VERSION_MINOR and not metadata_prefix[4] & MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF), "reconstructed handedness cannot claim source preservation")
     require(
         metadata_prefix[:3] == (b"WGEO", 1, 0)
@@ -1085,6 +1126,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         and bool(metadata_prefix[4] & MGEF_COLOR0_PRESERVED_FROM_GLTF)
         == has_color0
         and bool(metadata_prefix[4] & MGEF_TEXCOORD1_PRESERVED_FROM_GLTF) == has_uv1
+        and bool(metadata_prefix[4] & MGEF_TEXCOORD2_PRESERVED_FROM_GLTF) == has_uv2
         and math.isfinite(source_scale)
         and math.isfinite(geometry_pre_scale)
         and source_scale > 0.0
@@ -1142,11 +1184,13 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
                 and is_valid_tangent_handedness(values[11]),
                 "WMSH 1.1 vertex channel or tangent W is invalid",
             )
-            require_nondegenerate_basis(values[3:6], values[8:11])
+            require_nondegenerate_basis(values[3:6], values[8:11], bool(metadata_prefix[4] & MGEF_NATIVE_PARALLEL_BASIS_PRESERVED))
             color = raw[STRIDE_STATIC:STRIDE_STATIC_COLOR0] if has_color0 else None
             uv1 = struct.unpack_from("<2f", raw, STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) if has_uv1 else None
             require(uv1 is None or all(math.isfinite(value) for value in uv1), "WMSH UV1 is non-finite")
-            vertices.append({"values": values, "color0": color, "uv1": uv1})
+            uv2 = struct.unpack_from("<2f", raw, (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + 8) if has_uv2 else None
+            require(uv2 is None or all(math.isfinite(value) for value in uv2), "WMSH UV2 is non-finite")
+            vertices.append({"values": values, "color0": color, "uv1": uv1, "uv2": uv2})
             vertex_bytes.extend(raw)
         index_format = "<H" if index_stride == 2 else "<I"
         indices = tuple(
@@ -1218,6 +1262,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         "indexStride": index_stride,
         "hasColor0": has_color0,
         "hasTexcoord1": has_uv1,
+        "hasTexcoord2": has_uv2,
         "evidenceFlags": metadata_prefix[4],
         "sourceToWModelScale": metadata_prefix[6],
         "geometryPreScale": metadata_prefix[7],
@@ -1364,6 +1409,7 @@ def verify_source_against_geometry_contract(
                         transformed[10],
                         transformed[11],
                     ),
+                    vertex.get("nativeParallelBasis", False),
                 ),
             )
         source_w_counts.update(f"{vertex['tangent'][3]:.1f}" for vertex in source.vertices)
@@ -1431,7 +1477,14 @@ def verify_reflected_tangent_basis(
     source_tangent: tuple[float, float, float, float],
     runtime_normal: tuple[float, float, float],
     runtime_tangent: tuple[float, float, float, float],
+    allow_native_parallel: bool = False,
 ) -> float:
+    if allow_native_parallel:
+        require_nondegenerate_basis(source_normal, source_tangent[:3], True)
+        require_nondegenerate_basis(runtime_normal, runtime_tangent[:3], True)
+        for normal, tangent in ((source_normal, source_tangent), (runtime_normal, runtime_tangent)):
+            require(all(v == 0.0 for v in (normal[1]*tangent[2]-normal[2]*tangent[1], normal[2]*tangent[0]-normal[0]*tangent[2], normal[0]*tangent[1]-normal[1]*tangent[0])), "native parallel basis was reconstructed")
+        return 0.0
     source_cross = normalized_cross(source_normal, source_tangent[:3])
     source_bitangent = tuple(value * source_tangent[3] for value in source_cross)
     expected_runtime_bitangent = (
@@ -1476,6 +1529,7 @@ def transform_source_vertex(vertex: dict[str, Any], scale: float) -> tuple[tuple
         tuple(float(value) for value in tangent),
         (values[3], values[4], values[5]),
         (values[8], values[9], values[10], values[11]),
+        vertex.get("nativeParallelBasis", False),
     )
     return values, vertex["color0"]
 
@@ -1518,6 +1572,7 @@ def build_submesh_payload(
             require(color is not None and len(color) == 4, "COLOR_0 row is invalid")
             packed += color
         uv1_bytes = struct.pack("<2f", *source_vertex["uv1"]) if source.has_uv1 else b""
+        if source.has_uv2: uv1_bytes += struct.pack("<2f", *source_vertex["uv2"])
         packed += uv1_bytes
         unique_index = unique_lookup.get(packed)
         if unique_index is None:
@@ -1602,13 +1657,20 @@ def build_geometry_metadata(
     geometry_pre_scale: float,
     has_color0: bool,
     has_uv1: bool = False,
+    has_uv2: bool = False,
 ) -> tuple[bytes, int]:
     evidence_flags = MGEF_REQUIRED_PAYLOAD
+    if provenance.native_parallel_basis_preserved:
+        require(has_uv1, "native parallel basis evidence requires WMSH 1.2")
+        evidence_flags |= MGEF_NATIVE_PARALLEL_BASIS_PRESERVED
     if provenance.tangent_handedness_project_reconstructed:
         require(has_uv1, "project reconstructed handedness requires WMSH 1.2")
         evidence_flags = (evidence_flags & ~MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF) | MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED
     if has_uv1:
         evidence_flags |= MGEF_TEXCOORD1_PRESERVED_FROM_GLTF
+    if has_uv2:
+        require(has_uv1, "UV2 requires UV1")
+        evidence_flags |= MGEF_TEXCOORD2_PRESERVED_FROM_GLTF
     if has_color0:
         evidence_flags |= MGEF_COLOR0_PRESERVED_FROM_GLTF
     prefix = GEOMETRY_METADATA_PREFIX.pack(
@@ -1651,10 +1713,12 @@ def build_mesh_section(
     require(len(source_primitives) == len(legacy_submeshes), "glTF/WModel primitive count differs")
     has_color0 = source_primitives[0].has_color0
     has_uv1 = source_primitives[0].has_uv1
+    has_uv2 = source_primitives[0].has_uv2
+    require(all(value.has_uv2 == has_uv2 for value in source_primitives), "mixed TEXCOORD_2 presence")
     require(all(value.has_uv1 == has_uv1 for value in source_primitives), "mixed TEXCOORD_1 presence")
     require(all(value.has_color0 == has_color0 for value in source_primitives), "mixed COLOR_0 presence")
     index_stride = 4 if any(len(value.vertices) > 0xFFFF for value in source_primitives) else 2
-    vertex_stride = (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + (8 if has_uv1 else 0)
+    vertex_stride = (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + (8 if has_uv1 else 0) + (8 if has_uv2 else 0)
     vertex_blocks: list[bytes] = []
     index_blocks: list[bytes] = []
     bounds_rows: list[tuple[float, ...]] = []
@@ -1691,6 +1755,7 @@ def build_mesh_section(
         | VF_TANGENT_HANDEDNESS
         | (VF_COLOR0 if has_color0 else 0)
         | (VF_TEXCOORD1 if has_uv1 else 0)
+        | (VF_TEXCOORD2 if has_uv2 else 0)
     )
     mesh_header = MESH_HEADER.pack(
         b"WMSH",
@@ -1720,21 +1785,23 @@ def build_mesh_section(
         geometry_pre_scale,
         has_color0,
         has_uv1,
+        has_uv2,
     )
     content = payload + metadata
     section = FILE_HEADER.pack(
         b"WINT",
         WINT_VERSION_MAJOR,
-        WINT_UV1_VERSION_MINOR if has_uv1 else WINT_GEOMETRY_VERSION_MINOR,
+        WINT_STATIC_UV2_VERSION_MINOR if has_uv2 else WINT_UV1_VERSION_MINOR if has_uv1 else WINT_GEOMETRY_VERSION_MINOR,
         0,
         len(content),
     ) + content
     return section, {
-        "formatVersion": "1.2" if has_uv1 else "1.1",
+        "formatVersion": "1.4" if has_uv2 else "1.2" if has_uv1 else "1.1",
         "vertexFormatFlags": vertex_flags,
         "vertexStride": vertex_stride,
         "hasColor0": has_color0,
         "hasTexcoord1": has_uv1,
+        "hasTexcoord2": has_uv2,
         "hasWModelSpaceBounds": True,
         "tangentHandednessTransform": "runtimeW=-sourceW_after_Z_reflection",
         "tangentHandednessOrigin": "PROJECT_RECONSTRUCTED_FROM_UV_DIFFERENTIAL" if provenance.tangent_handedness_project_reconstructed else "PRESERVED_FROM_GLTF",
@@ -1982,6 +2049,8 @@ def cook_wmodel_geometry_contract(
         "sourceToWModelScale and geometryPreScale must be finite positive inverses",
     )
     source_primitives, source_gltf_sha256, source_buffer_set_sha256 = parse_source_gltf(source_gltf)
+    require(provenance.native_parallel_basis_preserved == any(v.get("nativeParallelBasis", False) for primitive in source_primitives for v in primitive.vertices),
+        "native parallel basis source evidence and output flag disagree")
     legacy_bytes = legacy_wmodel.read_bytes()
     legacy_sha256 = sha256_bytes(legacy_bytes)
     if expected_source_gltf_sha256 is not None:

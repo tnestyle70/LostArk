@@ -58,6 +58,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
 
 	uint64_t Get_PlacementId() const { return m_iPlacementId; }
@@ -112,6 +113,7 @@ private:
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 
 private:
+	MAP_ASSET_RENDER_PROFILE Get_MaterialRenderProfile(uint32_t meshIndex) const;
 	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
 		const std::wstring& modelPrototypeTag);
 	HRESULT Bind_ShaderResources(

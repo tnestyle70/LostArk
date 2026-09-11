@@ -813,6 +813,12 @@
     <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\StatusEffectTextView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\DungeonTimerView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1252,6 +1258,15 @@
 	<ClInclude Include="..\Public\SourceCharacterMaterialParameters.h">
 	  <Filter>02.GameObjects\00. Character</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\SourceMapForwardMaterialParameters.h">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
+    <ClInclude Include="..\Public\SourceMapWaterMaterialParameters.h">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
+    <ClInclude Include="..\Public\SourceMapTranslucentMaterialParameters.h">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h">
 	  <Filter>02.GameObjects\00. Character</Filter>
 	</ClInclude>
@@ -1406,6 +1421,12 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\KoukuMadnessGaugeView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\StatusEffectTextView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DungeonTimerView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BossImmuneGaugeView.h">
@@ -2044,6 +2065,66 @@
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.shards.receipt.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_MaterialExtra00.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_MaterialExtra00.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM00.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM00.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM01.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM01.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM02.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM02.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM03.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM03.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM04.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM04.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM05.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM05.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM06.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM06.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM07.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM07.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM08.mapassets">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_RNM08.mapplacements">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_BASE.mapassets">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -2275,6 +2356,9 @@
     <None Include="..\..\Data\UI\KoukuSaydon\MadnessGauge_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\KoukuSaydon\DungeonTimer_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\KoukuSaydon\KoukuHudModes.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -2394,7 +2478,25 @@
     <None Include="..\Bin\ShaderFiles\Shader_MapMaterialSurface.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapForwardPrograms.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapWaterPrograms.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapTranslucentPrograms.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapDirectPrograms.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceSpecialSurface.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageSurface.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapmaterials.json">
@@ -2410,6 +2512,9 @@
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapmaterials.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapmaterials.json">
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
@@ -2434,6 +2539,18 @@
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.full.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.clip1.full.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.lancemaster.skill.34630.clip2.full.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.warlord.skill.17250.clip1.full.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.warlord.skill.17250.clip2.full.restore.effectsequence.json">
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCubeSampleScene.hlsli">
@@ -2803,6 +2920,8 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord1152.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord1984.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord960.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.4219877.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.4219801.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba2.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -2892,5 +3011,18 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.clip3.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.clip4.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_StaticShadowMap.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SceneHeightFog.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2304.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2304.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2304.hlsli"><Filter>97.ShaderFiles</Filter></None>
   </ItemGroup>
 </Project>

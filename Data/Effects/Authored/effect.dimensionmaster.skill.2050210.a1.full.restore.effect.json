@@ -273,7 +273,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0900000036,
+          "startDelaySeconds": 0.290000004,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -2101,7 +2101,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.389999986,
+          "startDelaySeconds": 0.589999986,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -3929,7 +3929,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.689999998,
+          "startDelaySeconds": 0.889999998,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -5757,7 +5757,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.08950901,
+          "startDelaySeconds": 1.28950901,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -7585,7 +7585,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.5,
+          "startDelaySeconds": 1.7,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -9485,7 +9485,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0900000036,
+          "startDelaySeconds": 0.290000004,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -11369,7 +11369,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.389999986,
+          "startDelaySeconds": 0.589999986,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -13253,7 +13253,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.689999998,
+          "startDelaySeconds": 0.889999998,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -15137,7 +15137,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.08950901,
+          "startDelaySeconds": 1.28950901,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -17021,7 +17021,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.5,
+          "startDelaySeconds": 1.7,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -18737,7 +18737,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -20970,7 +20970,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.899999976,
+          "startDelaySeconds": 1.099999976,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -23203,7 +23203,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.29999995,
+          "startDelaySeconds": 1.49999995,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -25436,7 +25436,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.600000024,
+          "startDelaySeconds": 0.800000024,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -27671,7 +27671,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -29482,7 +29482,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -30671,7 +30671,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -32544,7 +32544,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -32611,7 +32611,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -34815,7 +34815,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.600000024,
+          "startDelaySeconds": 0.800000024,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -36952,7 +36952,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -37019,7 +37019,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.899999976,
+          "startDelaySeconds": 1.099999976,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -39156,7 +39156,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -39223,7 +39223,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.29999995,
+          "startDelaySeconds": 1.49999995,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -41146,7 +41146,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -41213,7 +41213,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -43333,7 +43333,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.600000024,
+          "startDelaySeconds": 0.800000024,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -45386,7 +45386,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -45453,7 +45453,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.899999976,
+          "startDelaySeconds": 1.099999976,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -47506,7 +47506,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -47573,7 +47573,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.29999995,
+          "startDelaySeconds": 1.49999995,
           "lifeTimeSeconds": 1,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -49705,7 +49705,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -55099,7 +55099,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -57796,7 +57796,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -60569,7 +60569,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -64909,7 +64909,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -67079,7 +67079,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -69062,7 +69062,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -72570,7 +72570,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -74324,7 +74324,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -76513,7 +76513,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -81095,7 +81095,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -83386,7 +83386,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -85643,7 +85643,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -90211,7 +90211,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -92495,7 +92495,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -94565,7 +94565,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -98827,7 +98827,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -100958,7 +100958,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -102930,7 +102930,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -102997,7 +102997,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -104710,7 +104710,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.600000024,
+          "startDelaySeconds": 0.800000024,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -106356,7 +106356,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -106423,7 +106423,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.899999976,
+          "startDelaySeconds": 1.099999976,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -108069,7 +108069,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -108136,7 +108136,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.29999995,
+          "startDelaySeconds": 1.49999995,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -109865,7 +109865,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -115435,7 +115435,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -118220,7 +118220,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -120891,7 +120891,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -120958,7 +120958,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.25,
+          "startDelaySeconds": 0.45,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -122654,7 +122654,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.600000024,
+          "startDelaySeconds": 0.800000024,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -124283,7 +124283,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -124350,7 +124350,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.899999976,
+          "startDelaySeconds": 1.099999976,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -125979,7 +125979,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [
@@ -126046,7 +126046,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 1.29999995,
+          "startDelaySeconds": 1.49999995,
           "lifeTimeSeconds": 0.300000012,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -127767,7 +127767,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0,
+          "startDelaySeconds": 0.2,
           "lifeTimeSeconds": 0.100000001,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
@@ -129255,7 +129255,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             0.5
           ],
           "rotationDegrees": [
@@ -132973,7 +132973,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.899999976,
+            0.800000012,
             -0.300000012
           ],
           "rotationDegrees": [
@@ -134832,7 +134832,7 @@
         "transform": {
           "position": [
             0.5,
-            -0.800000012,
+            0.800000012,
             -0.600000024
           ],
           "rotationDegrees": [

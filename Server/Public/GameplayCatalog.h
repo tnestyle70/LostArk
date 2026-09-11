@@ -627,6 +627,8 @@ namespace LostArk::Server
 		std::string strMotionInstanceId;
 	};
 
+	enum class BOSS_LOGIC_PUSH_DIRECTION : std::uint8_t { AWAY_FROM_BOSS, BOSS_FORWARD };
+
 	struct BOSS_PATTERN_LOGIC_RESULT final
 	{
 		BOSS_PATTERN_LOGIC_RESULT_KIND eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::NONE;
@@ -643,6 +645,7 @@ namespace LostArk::Server
         std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
 		float fPushRangeM = 0.f;
 		std::uint32_t iPushMs = 0u;
+		BOSS_LOGIC_PUSH_DIRECTION ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS;
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
@@ -673,12 +676,14 @@ namespace LostArk::Server
 		std::string strRegionId;
 		BOSS_LOGIC_REGION_ANCHOR eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD;
 		bool bSector = false;
+		bool bReverseSector = false;
 		bool bCircle = false;
 		BOSS_LOGIC_WORLD_TRANSFORM_TRACK WorldTrack;
 		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
 		float fYawDegrees = 0.f;
 		float fHalfX = 1.f, fHalfY = 1.f, fHalfZ = 1.f;
 		float fRadiusM = 1.f, fHalfAngleDegrees = 45.f;
+		float fRadiusXM = 0.f, fRadiusZM = 0.f; // Optional sector axes; zero retains legacy radius.
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardSymbol = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 		LostArk::Shared::MECHANIC_CARD_COLOR eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
 	};
@@ -724,6 +729,7 @@ namespace LostArk::Server
 		std::uint32_t iContactPriority = 0u;
 		bool bHasContactGroup = false;
 		float fBossChargeDistanceM = 0.f;
+        float fChargeYawOffsetDegrees = 0.f;
         std::string strHoldLogicOccurrenceId;
 	};
 
@@ -1216,7 +1222,7 @@ namespace LostArk::Server
 	{
 	public:
 		bool Load();
-		bool Load_PublishedKoukuProduct();
+		bool Load_PublishedKoukuProduct(const CGameplayCatalog& activeGameplay);
 		/* Load one immutable candidate artifact by its exact canonical path. The
 		content hash is checked before parsing/commit; a successful load exposes
 		the verified parent manifest revision, not the child bootstrap hash. */
@@ -1256,8 +1262,8 @@ namespace LostArk::Server
 		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
 		[[nodiscard]] std::uint32_t Find_KoukuSaydonProductSourceRevision(
 			const std::string& encounterId) const noexcept;
-		/* A Kouku audition imports only this domain. Every other authored row,
-		   including player/boss profiles, damage and Valtan, must stay exact. */
+		/* Kouku reload joins published encounter rows with the active process baseline.
+		   Player/boss profiles, damage and Valtan remain exact even when disk differs. */
 		[[nodiscard]] bool Has_SameNonKoukuGameplay(
 			const CGameplayCatalog& other) const noexcept;
 		/* Madness gauge policy of one encounter, or nullptr when it authored none. */
@@ -1300,6 +1306,10 @@ namespace LostArk::Server
 	private:
 		bool Load_BootstrapPath(
 			const std::filesystem::path& bootstrapPath,
+			const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
+			const LostArk::Shared::GameplayDataRevision* parentRevision);
+		bool Load_BootstrapBytes(
+			const std::string& bootstrapBytes,
 			const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
 			const LostArk::Shared::GameplayDataRevision* parentRevision);
 		/* Shared by the per-skill and per-stage rows so both read one packed
@@ -1357,6 +1367,8 @@ namespace LostArk::Server
 		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision
 			m_ValtanPresentationGenerationId{};
+		std::string m_KoukuBootstrapRows;
+		std::string m_NonKoukuBootstrapRows;
 		std::string m_strStatus;
 	};
 }

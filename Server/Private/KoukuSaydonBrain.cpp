@@ -284,7 +284,10 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			break;
 		}
         if (!std::isfinite(window.fBossChargeDistanceM) || window.fBossChargeDistanceM < 0.f ||
-            window.fBossChargeDistanceM > 1000.f || (window.fBossChargeDistanceM > 0.f &&
+            window.fBossChargeDistanceM > 1000.f || !std::isfinite(window.fChargeYawOffsetDegrees) ||
+            std::abs(window.fChargeYawOffsetDegrees) > 360.f ||
+            (window.fChargeYawOffsetDegrees != 0.f && window.fBossChargeDistanceM <= 0.f) ||
+            (window.fBossChargeDistanceM > 0.f &&
             (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || pattern.BossMotion)))
             valuesValid = false;
         if (window.fBossChargeDistanceM > 0.f)
@@ -323,6 +326,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 			{
 				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > 20.f ||
+					(result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD) ||
+					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.fPushRangeM <= 0.f) ||
 					result.iPushMs > 600000u || ((result.fPushRangeM > 0.f) != (result.iPushMs > 0u)) ||
 					(result.fPushRangeM > 0.f && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE))
 					return false;

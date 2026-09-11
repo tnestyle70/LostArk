@@ -476,11 +476,76 @@ namespace
 		const auto actionGood = action.Get_LastGood();
 		const auto sequenceGood = sequence.Get_LastGood();
 		Require(sequenceGood.strCompositionId == "boss.composition.kakulsaydon.sequencer" &&
-			sequenceGood.iRevision == 1u && sequenceGood.Patterns.size() == 2u &&
+			sequenceGood.iRevision >= 2u && sequenceGood.Patterns.size() == 2u &&
 			std::all_of(sequenceGood.Patterns.begin(), sequenceGood.Patterns.end(), [](const auto& row) {
 				return row.strLoadError.empty() && row.strAuthoringStatus == "DRAFT" &&
 					!row.WorldOccurrences.empty() && !row.PresentationOccurrences.empty(); }),
 			"Sequence seed did not retain both valid World/Camera DRAFT timelines");
+		const auto& opening = sequenceGood.Patterns.front();
+		Require(opening.WorldOccurrences.size() == 7u && opening.Stages.size() == 1u &&
+			opening.Stages.front().iDurationMs == 37800u &&
+			std::all_of(opening.WorldOccurrences.begin(), opening.WorldOccurrences.begin() + 5,
+				[](const auto& box) { return box.iStartMs == 0u && box.iDurationMs == 4507u && box.fPlaybackSpeed == 1.f; }) &&
+			opening.WorldOccurrences[5].iDurationMs == 37800u && opening.WorldOccurrences[6].iDurationMs == 37800u,
+			"opening map must finish unfolding at native 4507ms while book and Saydon keep the 37800ms scene");
+		CKoukuSaydonActionWorkbench sequenceWorkbench(true);
+		RequireEditorStep(sequenceWorkbench.Reload(status), status, "load Sequence playback workspace");
+		const auto firstSequenceId = sequenceGood.Patterns[0].strPatternId;
+		const auto secondSequenceId = sequenceGood.Patterns[1].strPatternId;
+		const auto consumeSequence = [&](const std::string& expectedId, const bool expectedPaused = false) {
+			KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+			std::uint32_t clockMs = 999u;
+			bool_t paused = false;
+			std::string target;
+			Require(sequenceWorkbench.Consume_PatternPreviewRequest(pattern, clockMs, paused, target) &&
+				pattern.strPatternId == expectedId && clockMs == 0u && paused == expectedPaused && target.empty(),
+				"Complete Play lost the source order, zero start, pause state or existing preview route");
+			Require(!sequenceWorkbench.Consume_PatternPreviewRequest(pattern, clockMs, paused, target),
+				"Complete Play submitted the same sequence twice");
+		};
+		RequireEditorStep(sequenceWorkbench.Select_PatternById(secondSequenceId, status), status,
+			"select finale before Complete Play");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status,
+			"Complete Play always begins at the first Gate sequence");
+		Require(sequenceWorkbench.Get_SelectedPatternId() == firstSequenceId &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId),
+			"unadmitted sequence advanced or Complete Play kept the finale selection");
+		Require(sequenceWorkbench.Request_PreviewPause(), "queued Complete Play could not pause");
+		consumeSequence(firstSequenceId, true);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "paused at zero");
+		Require(!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId),
+			"unrelated completion advanced the active sequence");
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId) &&
+			sequenceWorkbench.Get_SelectedPatternId() == secondSequenceId &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId),
+			"natural completion failed to queue the finale exactly once");
+		consumeSequence(secondSequenceId);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(false, "WORLD source unavailable");
+		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId) &&
+			sequenceWorkbench.Get_Status().find("WORLD source unavailable") != std::string::npos,
+			"failed admission advanced Complete Play or discarded the failure reason");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "restart complete run");
+		consumeSequence(firstSequenceId);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "first ready");
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId), "first sequence did not finish");
+		consumeSequence(secondSequenceId);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "second ready");
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId) &&
+			!sequenceWorkbench.Is_CompleteSequencePlaying(), "Complete Play looped after the finale");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "queue before owner loss");
+		sequenceWorkbench.Cancel_CompleteSequencePlay();
+		KOUKU_SAYDON_COMPOSITION_PATTERN cancelled;
+		std::uint32_t cancelledClock = 0u; bool_t cancelledPaused = false; std::string cancelledTarget;
+		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
+			!sequenceWorkbench.Consume_PatternPreviewRequest(cancelled, cancelledClock, cancelledPaused, cancelledTarget),
+			"owner loss retained an automatic next-sequence request");
+		sequenceWorkbench.Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE2);
+		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status), "empty Gate replayed another Gate's sequences");
+		CKoukuSaydonActionWorkbench actionWorkbench;
+		Require(!actionWorkbench.Request_CompleteSequencePlay(status), "Action workspace admitted Sequence Complete Play");
+		Require(!sequenceWorkbench.Is_Dirty() && ReadText(sequencePath) == sequenceBytes && ReadText(actionPath) == actionBytes,
+			"Complete Play or its failure path changed the authored documents");
 		auto wrongAction = actionGood;
 		wrongAction.strCompositionId = sequenceGood.strCompositionId;
 		Require(!action.Save_Atomic(wrongAction, status) && action.Get_LastGood() == actionGood &&
@@ -1078,6 +1143,37 @@ namespace
 		Require(findWindow(second.strLogicOccurrenceId).OnSuccessLogicIds.front() == firstDamage &&
 			findWindow(first.strLogicOccurrenceId).OnSuccessLogicIds.front() != firstDamage,
 			"damage tuning rewrote another Collider's Result");
+		KOUKU_COLLIDER_DAMAGE_SETTINGS pushDamage;
+		pushDamage.iPercent = 20; pushDamage.bRepeatAfterKnockback = true;
+		pushDamage.fPushRangeM = 2.0; pushDamage.iPushMs = 242u;
+		pushDamage.strPushDirection = "BOSS_FORWARD";
+		const auto secondWindowBeforePush = findWindow(second.strLogicOccurrenceId);
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, first, pushDamage, status), status,
+			"edit damage, repeat and boss-forward push directly on Collider");
+		const auto pushedWindow = findWindow(first.strLogicOccurrenceId);
+		const auto& pushedLogics = workbench.Get_Composition().Logics;
+		const auto pushedResult = std::find_if(pushedLogics.begin(), pushedLogics.end(),
+			[&](const auto& row) { return row.strLogicId == pushedWindow.OnSuccessLogicIds.front(); });
+		const auto pushedTrigger = std::find_if(pushedLogics.begin(), pushedLogics.end(),
+			[&](const auto& row) { return row.strLogicId == pushedWindow.strLogicId; });
+		Require(pushedResult != pushedLogics.end() && pushedResult->iPercent == 20u &&
+			pushedResult->fPushRangeM == 2.0 && pushedResult->iPushMs == 242u && pushedResult->strPushDirection == "BOSS_FORWARD" &&
+			pushedTrigger != pushedLogics.end() && pushedTrigger->bRepeatAfterKnockback && !pushedTrigger->bRearmOnExit &&
+			findWindow(second.strLogicOccurrenceId) == secondWindowBeforePush,
+			"direct Collider damage lost push settings or changed another Collider's shared Trigger/Result");
+		const auto pushOrdinal = workbench.Get_Composition().iNextLogicOrdinal;
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, first, pushDamage, status), status,
+			"reapply identical Collider damage settings");
+		Require(workbench.Get_Composition().iNextLogicOrdinal == pushOrdinal,
+			"identical direct damage settings created duplicate definitions");
+		RequireEditorRoundtrip(workbench);
+		const auto lastPushGood = workbench.Get_Composition();
+		auto invalidPush = pushDamage; invalidPush.iPushMs = 0u;
+		Require(!workbench.Set_ColliderTriggerDamage(patternId, first, invalidPush, status) && workbench.Get_Composition() == lastPushGood,
+			"unpaired push values changed the saved Collider draft");
+		invalidPush = pushDamage; invalidPush.bRearmOnExit = true;
+		Require(!workbench.Set_ColliderTriggerDamage(patternId, first, invalidPush, status) && workbench.Get_Composition() == lastPushGood,
+			"incompatible contact repeat modes changed the saved Collider draft");
 		const auto beforeDebug = workbench.Get_Composition();
 		const auto beforeDebugGeneration = workbench.Get_DraftGeneration();
 		auto expectedDebug = beforeDebug;
@@ -2742,7 +2838,7 @@ namespace
 		}
 		Require(ReadText(sourcePath) == colliderSavedBytes, "first Trigger fixture changed the separate Collider source");
 
-		// A linked circular Sector cannot persist an ellipse that the publisher rejects.
+		// Linked Sector geometry supports independent X/Z scales in preview, Save and gameplay.
 		{
 			const auto sectorDataRoot = scratchRoot / "Sector/Data";
 			const auto sectorSourcePath = sectorDataRoot / relativeSource;
@@ -2771,66 +2867,60 @@ namespace
 			RequireEditorStep(sectorWorkbench.Reload(status), status, "load linked Sector save fixture");
 			const auto sectorBaseline = sectorWorkbench.Get_Composition();
 			const auto sectorBytes = ReadText(sectorSourcePath);
-			const auto sectorGeneration = sectorWorkbench.Get_DraftGeneration();
 			sectorWorkbench.Set_PreviewState(state);
 			auto ellipse = sectorBox; ellipse.Scale = {3.0, 1.0, 1.0};
-			ellipse.strLogicOccurrenceId.clear(); // Unapplied Detail fields cannot bypass the saved link.
-			Require(!sectorWorkbench.Request_PresentationGeometryPreview(patternId, ellipse, status) && !status.empty(),
-				"linked Sector accepted unequal X/Z preview scale by clearing only its unapplied Detail link");
-			Require(!sectorWorkbench.Save(status) && !status.empty() && sectorWorkbench.Is_Dirty() &&
-				sectorWorkbench.Get_Composition() == sectorBaseline && sectorWorkbench.Get_DraftGeneration() == sectorGeneration &&
-				ReadText(sectorSourcePath) == sectorBytes, "elliptical Sector Save changed the applied draft or previous source");
+			ellipse.strLogicOccurrenceId.clear(); // Detail preview changes geometry only.
+			RequireEditorStep(sectorWorkbench.Request_PresentationGeometryPreview(patternId, ellipse, status), status,
+				"preview independent Sector X/Z scale while retaining its applied link");
 			KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST sectorPreview;
-			Require(!sectorWorkbench.Consume_PresentationGeometryPreviewRequest(sectorPreview), "rejected Sector ellipse replaced the visible geometry");
-			auto appliedEllipse = ellipse; appliedEllipse.strLogicOccurrenceId = sectorBox.strLogicOccurrenceId;
-			const auto requireRejectedSectorApply = [&](const bool accepted, const char* message) {
-				Require(!accepted && !status.empty() && sectorWorkbench.Is_Dirty() &&
-					sectorWorkbench.Get_Composition() == sectorBaseline && sectorWorkbench.Get_DraftGeneration() == sectorGeneration &&
-					ReadText(sectorSourcePath) == sectorBytes, message);
-				Require(!sectorWorkbench.Save(status) && ReadText(sectorSourcePath) == sectorBytes,
-					"rejected Sector Apply discarded the pending invalid geometry and enabled Save");
-			};
-			requireRejectedSectorApply(sectorWorkbench.Set_PresentationBox(patternId, appliedEllipse, status),
-				"Collider Apply bypassed the linked Sector scale constraint or changed the previous source");
-			requireRejectedSectorApply(sectorWorkbench.Set_ColliderLogicValues(patternId, appliedEllipse, contact, status),
-				"Logic Apply committed an invalid linked Sector or consumed its pending geometry");
-			requireRejectedSectorApply(sectorWorkbench.Set_ColliderTriggerDamage(patternId, appliedEllipse, 25u, status),
-				"Trigger Damage Apply committed an invalid linked Sector or changed its Logic definitions");
-			auto circular = sectorBox; circular.Scale = {3.0, 1.0, 3.0};
-			RequireEditorStep(sectorWorkbench.Request_PresentationGeometryPreview(patternId, circular, status), status,
-				"restore equal X/Z Sector scale to enlarge its circular radius");
-			RequireEditorStep(sectorWorkbench.Save(status), status, "Save corrected circular Sector geometry without Apply");
-			auto expectedSector = sectorBaseline; ++expectedSector.iRevision;
-			for (auto& pattern : expectedSector.Patterns) if (pattern.strPatternId == patternId)
-				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == circular.strOccurrenceId) row.Scale = circular.Scale;
-			CKoukuSaydonActionWorkbench reopenedSector;
-			RequireEditorStep(reopenedSector.Reload(status), status, "reopen corrected Sector geometry in a new Workbench");
-			Require(!sectorWorkbench.Is_Dirty() && sectorWorkbench.Get_Composition() == expectedSector &&
-				reopenedSector.Get_Composition() == expectedSector, "Sector Save/Reload lost equal X/Z scale or its applied Logic link");
+			Require(sectorWorkbench.Consume_PresentationGeometryPreviewRequest(sectorPreview), "Sector ellipse did not reach geometry preview");
+			Require(sectorWorkbench.Get_Composition() == sectorBaseline && ReadText(sectorSourcePath) == sectorBytes,
+				"Sector geometry preview prematurely replaced the applied source");
+			RequireEditorRoundtrip(sectorWorkbench);
+			const auto expectedSector = sectorWorkbench.Get_Composition();
+			const auto& savedPattern = EditorPattern(sectorWorkbench, patternId);
+			const auto savedBox = std::find_if(savedPattern.PresentationOccurrences.begin(), savedPattern.PresentationOccurrences.end(),
+				[&](const auto& row) { return row.strOccurrenceId == ellipse.strOccurrenceId; });
+			Require(savedBox != savedPattern.PresentationOccurrences.end() && savedBox->Scale == ellipse.Scale &&
+				savedBox->strLogicOccurrenceId == sectorBox.strLogicOccurrenceId,
+				"Sector Save/Reload lost independent X/Z scale or its applied Logic link");
+			auto appliedEllipse = *savedBox;
+			RequireEditorStep(sectorWorkbench.Set_PresentationBox(patternId, appliedEllipse, status), status, "apply elliptical Collider geometry");
+			RequireEditorStep(sectorWorkbench.Set_ColliderLogicValues(patternId, appliedEllipse, contact, status), status, "apply elliptical Collider Logic");
+			RequireEditorStep(sectorWorkbench.Set_ColliderTriggerDamage(patternId, appliedEllipse, 25u, status), status, "apply elliptical damage Collider");
+			RequireEditorRoundtrip(sectorWorkbench);
 
-			// Geometry becomes gameplay-owned when Apply connects the first Logic window.
-			auto unlinkedSource = expectedSector;
-			auto unlinkedEllipse = ellipse;
-			for (auto& pattern : unlinkedSource.Patterns) if (pattern.strPatternId == patternId)
-				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == unlinkedEllipse.strOccurrenceId) row = unlinkedEllipse;
-			Require(WriteText(sectorSourcePath, CKoukuSaydonCompositionDocument::Serialize(unlinkedSource)),
-				"could not write unlinked Sector connection fixture");
-			CKoukuSaydonActionWorkbench unlinkedSector;
-			RequireEditorStep(unlinkedSector.Reload(status), status, "load unlinked elliptical Sector authoring fixture");
-			const auto unlinkedBaseline = unlinkedSector.Get_Composition();
-			const auto unlinkedBytes = ReadText(sectorSourcePath);
-			const auto unlinkedGeneration = unlinkedSector.Get_DraftGeneration();
-			const auto requireRejectedSectorConnect = [&](const bool accepted, const char* message) {
-				Require(!accepted && !status.empty() && !unlinkedSector.Is_Dirty() &&
-					unlinkedSector.Get_Composition() == unlinkedBaseline && unlinkedSector.Get_DraftGeneration() == unlinkedGeneration &&
-					ReadText(sectorSourcePath) == unlinkedBytes, message);
-			};
-			requireRejectedSectorConnect(unlinkedSector.Connect_ColliderLogic(patternId, unlinkedEllipse, contact.strLogicId, status),
-				"connecting the first Logic window admitted unequal Sector X/Z scale");
-			requireRejectedSectorConnect(unlinkedSector.Set_ColliderLogicValues(patternId, unlinkedEllipse, contact, status),
-				"Logic Apply created a window for an unlinked elliptical Sector");
-			requireRejectedSectorConnect(unlinkedSector.Set_ColliderTriggerDamage(patternId, unlinkedEllipse, 25u, status),
-				"Trigger Damage Apply created a damage window for an unlinked elliptical Sector");
+			// A newly connected ellipse and its reverse use the same authoring path.
+			for (const bool reverse : {false, true})
+			{
+				auto unlinkedSource = expectedSector;
+				auto unlinkedEllipse = ellipse;
+				for (auto& resource : unlinkedSource.PresentationResources)
+					if (resource.strResourceId == sectorResource.strResourceId)
+					{ resource.strShape = reverse ? "REVERSE_SECTOR" : "SECTOR"; resource.fHalfAngleDegrees = reverse ? 0.0 : 30.0; }
+				for (auto& pattern : unlinkedSource.Patterns) if (pattern.strPatternId == patternId)
+					for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == unlinkedEllipse.strOccurrenceId) row = unlinkedEllipse;
+				Require(WriteText(sectorSourcePath, CKoukuSaydonCompositionDocument::Serialize(unlinkedSource)),
+					"could not write unlinked elliptic Sector fixture");
+				CKoukuSaydonActionWorkbench unlinkedSector;
+				RequireEditorStep(unlinkedSector.Reload(status), status, "load regular/reverse elliptic Sector");
+				RequireEditorStep(unlinkedSector.Connect_ColliderLogic(patternId, unlinkedEllipse, contact.strLogicId, status), status,
+					"connect first Logic window to elliptic Sector");
+				RequireEditorRoundtrip(unlinkedSector);
+				const auto& connected = EditorPattern(unlinkedSector, patternId);
+				const auto box = std::find_if(connected.PresentationOccurrences.begin(), connected.PresentationOccurrences.end(),
+					[&](const auto& row) { return row.strOccurrenceId == unlinkedEllipse.strOccurrenceId; });
+				Require(box != connected.PresentationOccurrences.end() && box->Scale == ellipse.Scale && !box->strLogicOccurrenceId.empty(),
+					"regular/reverse Sector lost elliptical scale during connection");
+				const auto boxCopy = *box;
+				RequireEditorStep(unlinkedSector.Set_ColliderTriggerDamage(patternId, boxCopy, 25u, status), status,
+					"connect damage directly to regular/reverse elliptic Sector");
+				RequireEditorRoundtrip(unlinkedSector);
+				const auto lastGood = unlinkedSector.Get_Composition();
+				auto invalid = boxCopy; invalid.Scale[0] = 0.0;
+				Require(!unlinkedSector.Set_ColliderTriggerDamage(patternId, invalid, 25u, status) &&
+					unlinkedSector.Get_Composition() == lastGood, "invalid ellipse size replaced the last-good damage draft");
+			}
 		}
 		Require(ReadText(sourcePath) == colliderSavedBytes, "Sector fixture changed the separate Collider source");
 
@@ -3190,7 +3280,7 @@ int Run_KoukuSequenceDocumentContractTests()
 		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
 		Require(environment.Set(dataRoot), "could not select the isolated Sequence test Data root");
 		VerifyKoukuSequenceDocumentIsolation(dataRoot / relativeAction, dataRoot / relativeSequence);
-		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation passed\n";
+		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation/complete-sequence-order-zero-start-pause-failure-cancel passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

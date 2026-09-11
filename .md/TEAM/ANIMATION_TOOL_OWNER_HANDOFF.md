@@ -273,6 +273,23 @@ Animation inventory는 WModel metadata를 읽고 기존 CharacterPreviewPanel에
 clip 클릭은 Animation Tool의 창 열기 요청을 보내지 않는다. generated resolved Product를 재생하는 두 번째
 runtime이나 모든 보스/owner를 저장하는 거대 writer를 추가하지 않는다.
 
+Valtan의 Boss Pattern 목록은 실제 Product 전체를 표시하며, 관리 패턴만 기존 split writer와
+Server Play로 편집·실행한다. compatibility 항목은 참조와 기존 local Preview로 구분한다.
+`World Objects` 탭과 타임라인은 독립 combat object의 소유 Pattern/Stage를 선택하고 기존
+ring/axe 수치 편집 및 Pattern Play로 연결한다. 도넛은 Server가 생성 위치를 소유하는 독립
+오브젝트이며, 이 목록에서 임의 mesh를 새로운 Server archetype으로 생성하지 않는다.
+
+V2 box는 stable `bindingId`로 선택한다. animation occurrence clock은 해당 clip source 구간을
+Stage 시간으로 환산해 표시하며 저장 clock을 Stage로 바꾸지 않는다. 상세의 `Apply V2 Binding`은
+clock/occurrence, anchor/follow/rotation basis, local TRS와 repeat/stop 수정분을 현재 draft에
+반영한다. `Save`가 기존 owner transaction으로 저장하며 잘못된 입력이나 변경된 원본은 기존
+snapshot과 파일을 유지한다. Group의 child body는 계속 Effect Tool V2에서 수정한다.
+
+Valtan 전체 Effect/Sound/Camera/World 검증은 `Server Playback → Play on Server`를 사용한다.
+일반 `Play`는 지원 Animation/Effect의 local preview다. Server submit 성공 시 기존 발탄 preview
+clone을 해제하고 자동 재생성을 억제하며, 명시적 local Stage/Retry와 Level 변경에서 다시 허용한다.
+submit 실패 시 기존 preview와 dirty 문서는 유지한다.
+
 ## 8. Character Preview Panel이 소유하는 것
 
 공용 Character Preview Panel은 다음을 소유한다.
@@ -1029,6 +1046,9 @@ Boss는 부모 Object의 `anchorBossArchetypeId`와 BODY `anchorBone`을 지정�
 Product는 살아 있는 복제 보스, Model View는 선택한 preview actor를 사용하고 다른 보스로 대체하지 않는다.
 원본 쿠크·세이튼의 `b_wp_1`은 오른손, `b_wp_2`는 왼손이다. 손 소품의 local Transform은
 Object 상태에서 편집하며 Composition World는 `anchorKind=NONE`으로 추가한다.
+부모 Object Detail의 `Object Position`/`Object Rotation`은 Default Motion 첫 key를 기준으로
+연결된 모든 Motion key의 위치·회전을 같은 변화량으로 조절한다. key 시간과 Motion별 상대 값은
+유지한다. `Object Scale`은 모든 Motion의 공통 모델 크기다. 개별 key는 자식 Motion에서 편집한다.
 `BOSS_SPAWN`은 생성 당시 위치를 고정하는 별도 용도이며 손 추적에 사용하지 않는다.
 Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
 Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
@@ -1058,6 +1078,11 @@ Append하면 같은 Pattern에 배치된 Object들이 정지된 첫 pose로 함�
 Rotation, Scale을 조절하면 해당 occurrence의 보이는 Object에 즉시 반영하며 Save는 절대 월드 좌표를 저장한다.
 다른 Preview가 실행 중이거나 해당 카드가 사라진 경우에는 선택 Pattern의 배치 Preview를 연다.
 `Preview placements`로 저장한 배치를 다시 확인할 수 있다.
+BOSS/PLAYER Object의 Box Detail에도 Position/Rotation/Scale을 표시한다. 이 `placement`는
+저장 Motion의 local Transform 뒤, 살아 있는 Boss/BODY bone 또는 Character anchor 앞에 합성하는
+박스별 local 보정이다. WORLD Object는 기존 절대 배치 의미를 유지한다. 이 local 보정은 Motion
+원본이나 다른 박스를 변경하지 않는다. Client presentation과 publisher는 같은 값을 보존하며,
+Server의 고정 WORLD Object collision/접촉 대상은 계속 고정 WORLD anchor만 허용한다.
 새 Object 박스의 기본 수명은 커서부터 Pattern 끝까지다. 시간은 Box Detail에서 조절한다.
 커튼·룰렛은 기존 Map group/sequence를 사용하며 독립 모델 카드용 placement로 자동 바꾸지 않는다.
 동반 Effect 연결은 해당 WORLD Box Detail의 `Attached Effect`에 있다.
@@ -1077,7 +1102,10 @@ Server bootstrap이 소유한다. 별도 source나 두 번째 실행 경로는 �
 쿠크 Pattern/Logic 수정은 Publish 성공 뒤 다음 Complete Play에서 Server가 정확한 source revision을
 검증해 적용한다. 현재 재생과 Restart는 기존 Pattern 정의·Logic·애니메이션 binding을 유지하며,
 새 게시본은 Stop Server Play 뒤 새 Complete Play로 시작한다. 후보 파일 누락·손상·revision 불일치,
-게시 진행 중·다른 encounter/player/boss balance 변경은 기존 상태를 보존하고 이유를 표시한다.
+게시 진행 중에는 기존 상태를 보존하고 이유를 표시한다. 게시된 쿠크 소유 행은 현재 Server의
+검증된 나머지 행과 합쳐 같은 parser로 재검증하므로, 디스크의 별도 encounter/player/boss balance
+변경은 가져오지 않고 현재 balance를 유지한다. 새 쿠크 정의가 현재 balance에서 없는 참조를 요구하면 거부한다.
+승인 대기는 최대5초, 승인 뒤 시작 대기는 최대15초이며 거절 후 이전 Waiting 문구를 표시하지 않는다.
 다른 PC에서 게시하면 Server 호스트와 Client에도 동일 Product가 전달되어야 한다.
 World placement와 일반 balance 변경은 여전히 Server 재시작으로 적용한다. 외부 World/Camera/Effect
 리소스 원문은 각각의 기존 게시·수명 계약을 따르며 Pattern source revision과 동일한 버전 계약은 아니다.
@@ -1150,6 +1178,17 @@ SECTOR collider 2개를 STAGGER_WINDOW Logic에 연결하며 Server가 반사 �
 서비스의 독립 handle을 사용한다. Play/seek/pause/Stop은 Preview clock과 함께 움직이며 owner 종료 때
 자기 instance만 정리한다. Scene Profile은 즉시 적용/복원한다. blendMs 시간 보간은 현재 범위가 아니다.
 G1 카드 8종은 Server의 문양·색 snapshot을 따라 머리 위에 지속 표시하고 NONE/owner 종료 때 정리한다.
+
+V1_EFFECT/V1_ELEMENT는 기존 `CEffectPresentationService::Spawn_LevelPlacement/Seek_WorldRoot`를
+사용한다. V1을 포함한 pattern의 파생 `sourceAnchorAnimations`는 stage를 합산한 pattern 시작 시각,
+원본 clip/sourceStartMs/playMs/playRate/endPolicy/blendInMs를 보존한다. Composition 정본의 새
+편집 데이터가 아니라 publish 출력의 optional field다. 원본 외부 follow socket은 실제 보스 CModel의
+요청 시각 pose를 읽기 전용으로 샘플해 고정 시간 provider의 `SourceAnchorWorlds`로 공급한다.
+missing clip/bone과 잘못된 matrix는 해당 occurrence를 격리하며 현재 pose를 과거 위치로 대체하지 않는다.
+본 source local 값의 cm→m 변환과 actor 표현 배율은 별도로 유지한다. `followBoss=false`는 occurrence의
+시작 root를 고정하되 원본 follow socket 애니메이션을 멈추지 않는다. 실제 과거 root 기록이 없는 움직이는
+보스의 `followBoss=true` seek는 지원 완료로 취급하지 않는다. Product camera-view source attachment도
+과거 카메라 기록이 없으면 거절한다. model-cue attachment는 기존 Effect renderer가 계속 소유한다.
 
 룰렛 Collider는 `ROULETTE_CARD_REGION`으로 정의한다. 각 box의 `logicOccurrenceId`로 한 판정 창의
 8개 지역을 기존 DURATION에 연결하고 RESULT를 공유한다. 3회차의 24 box에서 각 창과 문양·색은
@@ -1238,6 +1277,11 @@ Detail의 값 변경은 같은 scope와 cursor에서 미리보기를 갱신하�
 `Stop`은 임시 행을 닫고 기존 저장행을 다시 표시한다. 선택 element 행은 미리보기 전용이므로
 Append/Save할 수 없다. 전체 Effect를 저장행에 추가하려면 Stop 또는 전체 Preview 후 Append한다.
 
+쿠크 `.restore`의 Play All/Current Effect Play/Solo는 저장된 Composition의 V1 resource와 유일한
+pattern 연결로 모델과 원본 animation을 선택한다. 같은 `CEffectCompositionModelPreview`가 실제
+CNpc/CModel을 제공하고, Sequencer는 원본 소켓의 60Hz 과거 pose를 기록한 뒤 현재 cursor를 복구한다.
+패턴 연결이 없거나 여러 pattern이 모호하게 공유하면 임의 캐릭터로 대체하지 않고 상태 메시지를 표시한다.
+
 상단 시간 눈금의 원하는 지점을 누르거나 drag하면 노란 커서로 여섯 트랙을 함께 seek한다.
 박스 본체는 이동, 양 끝은 trim이며 mouse release 때 유효한 값을 적용한다. 겹치는 박스는 같은
 트랙 안에서 아래로 나뉜다. `Details` / `Window → Box Detail`에서 시작·길이·Mute와 해당 종류의
@@ -1278,3 +1322,9 @@ DURATION의 GAZE_REAL_BOSS는 판정 구간이 끝날 때 플레이어 시야 �
 `insideOutcome`은 SUCCESS가 기본이며 기존 진짜 세이튼 찾기는 이 값을 유지한다.
 파1빨2는 FAIL을 저장해 바라본 플레이어에게 Fail의 FEAR를 적용하고 시야 밖은 Success로 처리한다.
 Workbench의 Facing boss outcome에서 선택하며 원본 Save와 Publish가 같은 필드를 전달한다.
+
+### 쿠크 손 소품 재질과 돌진 몸 방향
+
+worldsequences v3의 objectResources는 optional materialProfile(materialName/sourceMaterial/family/parameters/textures)을 저장한다. texture는 expressionIndex와 Resources 상대 assetId, colorSpace를 가지며 publisher와 기존 CModel material override가 같은 계약을 검증한다. 잘못된 입력은 이전 문서를 보존한다. 쿠크 공의 source.character.monster-pbr-masked.v1은 원본41개 parameter·8개 texture와 program21을 사용한다.
+
+ENTER_AREA의 bossChargeDistanceM이 양수일 때 optional chargeYawOffsetDegrees를 저장할 수 있다. Workbench의 Charge Facing Offset은 포착한 이동 벡터와 끝점을 바꾸지 않고 body yaw에만 더한다. 기본값0은 기존 동작을 유지하며, 양수 돌진 거리 없이 offset만 설정하거나 범위[-360,360] 밖/비유한 값은 거부한다. Composition→projector→Gameplay publisher→Server charge가 동일한 값을 소비한다.

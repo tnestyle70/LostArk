@@ -553,6 +553,7 @@ enum class EFFECT_COMPOSITION_LAYER : uint8_t
 {
 	NORMAL,
 	WORLD_MARK,
+	SCENE_BACKDROP,
 	END
 };
 
@@ -1463,6 +1464,12 @@ inline bool_t Is_EffectSourceIdentityOrPortableCopy(
 		(Element.strSourceNode ==
 			std::string(EFFECT_PORTABLE_AUTHORED_COPY_PREFIX) +
 				std::string(strExpectedElementId));
+}
+
+inline bool_t Is_EffectSceneBackdropCarrier(const EFFECT_ELEMENT_DESC& Element)
+{
+    return Element.eKind == EFFECT_ELEMENT_KIND::MESH &&
+        Element.Material.eRenderProfile == EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
 }
 
 inline bool_t Is_EffectWorldMarkCarrier(const EFFECT_ELEMENT_DESC& Element)
