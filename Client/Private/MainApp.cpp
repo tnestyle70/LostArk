@@ -6230,15 +6230,6 @@ HRESULT CMainApp::Ready_Prototype_For_Static()
 			VTXTEX::iNumElements))) ||
 		FAILED(CGameInstance::Get().Add_Prototype(
 			ETOUI(LEVEL::STATIC),
-			CClickMoveEffect::GLOW_SHADER_TAG,
-			CShader::Create(
-				m_pDevice,
-				m_pContext,
-				TEXT("../Bin/ShaderFiles/Shader_VtxClickMoveGlow.hlsl"),
-				VTXTEX::Elements,
-				VTXTEX::iNumElements))) ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-			ETOUI(LEVEL::STATIC),
 			TEXT("Prototype_Component_VIBuffer_Rect"),
 			CVIBuffer_Rect::Create(m_pDevice, m_pContext))))
 	{

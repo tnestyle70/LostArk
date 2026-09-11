@@ -2,44 +2,23 @@
 
 #include "Client_Defines.h"
 #include "GameObject.h"
-
-NS_BEGIN(Engine)
-class CShader;
-class CTexture;
-class CVIBuffer_Rect;
-NS_END
+#include "Effect_PresentationService.h"
 
 NS_BEGIN(Client)
+class CCharacter;
 
-/* Client-only cosmetic right-click move marker. Not a combat Effect Catalog
-   asset -- it carries no skill/boss semantics, so it is a small standalone
-   ground quad pair driven directly by CPlayerController, the same pattern
-   CSkillGroundTargetPreview already uses for its own non-combat ground marker.
-
-   Real source: Lost Ark's own click-move burst (ark.ui.cursorEffect.
-   CursorEffectFrame / CursorEffect_Default_0, package cursoreffect.gfx) is a
-   12-frame, 40fps Scaleform animation: a ring quad (depth 3) growing 1.0 ->
-   0.6 -> 0.7 -> 0.8 -> 0.9 -> 1.0 scale then fading, plus an ADD-blended glow
-   accent quad (depth 5) growing 0.2 -> 1.0 in lockstep then fading on its own
-   (brighter) alpha curve. The real bitmap fill (cursoreffect_i5.tga, a crunch
-   -compressed external GFx image) could not be pixel-decoded -- Lost Ark's
-   crunch bitstream variant defeated both a self-built crn_decomp.h decoder
-   and the independent texture2ddecoder package, confirmed against two
-   unrelated assets this session. Only the real motion/timing survives; the
-   ring/glow textures here are placeholder grayscale coverage masks. */
+/* Cosmetic feedback for a submitted typed move command, never Server navigation
+   approval. The existing Product Effect owner renders these prepared World assets. */
 class CClickMoveEffect final : public CGameObject
 {
 public:
 	static constexpr const wchar_t* PROTOTYPE_TAG =
 		L"Prototype_GameObject_ClickMoveEffect";
-	static constexpr const wchar_t* RING_SHADER_TAG =
-		L"Prototype_Component_Shader_SkillGroundTargetPreview";
-	static constexpr const wchar_t* GLOW_SHADER_TAG =
-		L"Prototype_Component_Shader_ClickMoveGlow";
+	static bool_t Uses_LevelMarkers(LEVEL level);
+	static std::vector<std::string> Queue_LevelResources(LEVEL level);
 
 private:
-	CClickMoveEffect(
-		ComPtr<ID3D11Device> pDevice,
+	CClickMoveEffect(ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
 	CClickMoveEffect(const CClickMoveEffect& prototype);
 
@@ -49,28 +28,25 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
-
-	bool_t Initialize_Textures();
-	void Play(const float3_t& worldPosition);
-
-private:
-	HRESULT Render_Quad(
-		const shared_ptr<Engine::CShader>& shader,
-		const shared_ptr<Engine::CTexture>& texture,
-		const float3_t& position,
-		f32_t diameter,
-		const float4_t& tint);
+	bool_t Initialize_Effects(uint32_t levelIndex);
+	void Play(const float3_t& worldPosition,
+		const shared_ptr<CCharacter>& character);
+	void Clear();
 
 private:
-	shared_ptr<Engine::CShader> m_pRingShader;
-	shared_ptr<Engine::CShader> m_pGlowShader;
-	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
-	shared_ptr<Engine::CTexture> m_pRingTexture;
-	shared_ptr<Engine::CTexture> m_pGlowTexture;
-
+	void Clear_Destination();
+	void Report_Failure(const std::string& status);
+	bool_t Sample_Destination(bool_t rebuildHistory);
+	uint32_t m_iLevelIndex = ETOUI(LEVEL::END);
+	EFFECT_WORLD_ROOT_HANDLE m_ClickHandle;
+	EFFECT_WORLD_ROOT_HANDLE m_DestinationHandle;
+	weak_ptr<CCharacter> m_pCharacter;
 	float3_t m_WorldPosition{};
-	f32_t m_fElapsedSeconds = 0.f;
-	bool_t m_isActive = false;
+	float4x4_t m_RootWorld{};
+	f32_t m_fClickSeconds = 0.f;
+	f32_t m_fDestinationSeconds = 0.f;
+	bool_t m_hasObservedMovement = false;
+	std::string m_strLastFailure;
 
 public:
 	static unique_ptr<CClickMoveEffect> Create(
@@ -78,5 +54,4 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 };
-
 NS_END

@@ -2,14 +2,21 @@
 
 ## G00. 범위와 현재 판정
 
-사용자 첨부 두 이미지를 열람하고 원본 resource/module/material을 대조했다. 이번 소비자는
-F1 Effect Tool V1이며 gameplay mouse command나 쿠크 패턴의 Server 선택 로직은 바꾸지 않았다.
+사용자 첨부 두 이미지를 열람하고 원본 resource/module/material을 대조했다. 최초 구현은
+F1 Effect Tool V1 소비자까지였고, 후속 요청으로 현재는 기존 `CClickMoveEffect`를 통해 실제
+typed 이동 명령 제출 성공 위치에도 연결했다. 청록 클릭 pulse는 모든 playable level,
+금색 circle/arrow는 쿠크 level에서 사용한다. Server 이동·navigation·패턴 선택 권위는 유지한다.
+게임플레이 연결과 CPU 검증은 G06을 따른다. 최신 통합 Debug Product 빌드는
+2026-09-11 23:23:36 KST에 Engine/Shared/Server/Client 모두 PASS했으며,
+이번 연결이 포함된 EXE의 사용자 화면 판정은 **USER_PENDING**이다.
+사용자 결정에 따라 실행 준비와 직접 버그 검증을 먼저 진행하며, PR merge/main sync와
+외부 리소스 공유는 그 이후로 보류한다. 로컬 리소스 준비를 외부 공유 완료로 기록하지 않는다.
 성능 작업은 최신 캡처 분석과 후속 요청의 CPU/GPU 계측·Composition Profiler 패널 구현이다.
 [계측 구현 결과](2026-09-11_PROFILER_CPU_GPU_STAGE_MEASUREMENT_RESULT.md)를 함께 따른다. JobSystem·GPU 최적화를 이번에 구현해
 11FPS 문제를 해결했다는 의미가 아니다. 자세한 수치는
 [Profiler 분석 보고서](2026-09-11_WARLORD_ALT_V_PROFILER_ANALYSIS_REPORT.md)를 따른다.
 
-조사·구현 기준은 `codex/kouku-gate1-sequence-playback`, HEAD
+최초 조사·구현 기준은 `codex/kouku-gate1-sequence-playback`, HEAD
 `2d7b96693fb93c397a26632c221d5d29bf4a2ae1`이다. 시작 시 LAN sync, git status/fetch와
 기존 PLAN/RESULT를 확인했다. 기존 대규모 미커밋 변경을 보존했으며 자동 stage/commit/push는
 하지 않았다. Client/UI를 실행·조작하거나 화면을 캡처하지 않았다. 최종 화면 판정은 USER_PENDING이다.
@@ -58,9 +65,9 @@ Stop·선택 교체는 기존 occurrence 해제 경로를 따른다.
 분리돼 있다. 클릭은 1200ms 한 번, 이동은 7000ms 반복을 기본으로 둔다. 이동 source의
 9개 emitter는 생략된 Required emitterLoops=0인 반복이고 3개는 명시 loops=1인 초기 pulse다.
 문서의 bounded simulation duration에는 particle tail이 더해져 클릭 약2.2초·이동12초가 된다.
-그 끝까지 기다린 뒤 loop하면 arrow가 먼저 사라지므로 Tool만 7초에서 되감는다.
-전체 Tool loop마다 초기 pulse도 다시 시작하는 동작이며 무기한 gameplay marker의 수명 계약을
-새로 정의한 것은 아니다.
+그 끝까지 기다린 뒤 loop하면 arrow가 먼저 사라지므로 최초 Tool 구현은 7초에서 되감았다.
+전체 Tool loop마다 초기 pulse도 다시 시작한다. 후속 gameplay marker도 같은 7초 재생창을
+사용하지만, 목적지 표시의 유지·종료와 입력 권위는 G06의 별도 owner 정책을 따른다.
 
 반복은 이미 준비된 occurrence를 `Sample`로 되감는다. 자원을 매번 재stage하지 않고,
 일반 `Seek`의 paused=true 부작용으로 두 번째 loop가 멈추지 않도록 했다.
@@ -103,7 +110,7 @@ Resources binary는 Git 관리 대상에 추가하지 않았다. 다른 PC에서
 13개 Resources 참조, mesh geometry 및 texture dimension, Python 문법과 변경부 공백 검사를
 통과했다. Tool의 루프 경로에서 pause 부작용을 코드 검토로 발견해 수정했다.
 
-최종 통합 Debug Product compile/link/deploy는 2026-09-11 19:20:48 KST에 Engine/Shared/Server/Client
+최초 Tool/리소스 단계의 통합 Debug Product compile/link/deploy는 2026-09-11 19:20:48 KST에 Engine/Shared/Server/Client
 모두 PASS했다. receipt는 `out/BuildPipeline/runs/20260911T102048234Z-debug-product.json`이다.
 기존 경고는 남아 있으나 최종 오류는 없다. 실제 JSON/16 emitter/13 resources closure와 Client
 project/filter XML 검사를 최종 데이터로 다시 통과했다. native mesh/particle/decal 최종 fxc3종도 PASS다.
@@ -135,6 +142,67 @@ Visual Studio의 `Server + Client` profile을 Ctrl+F5로 시작하고 기존 Lob
 4. **Open Editor**의 Elements에서 각 component를 선택해 Solo를 확인한다. Resources의
    Saved Effects → V1 → World에서도 두 문서를 열거나 Preview할 수 있다.
 
-표시는 Play 시점 player root를 빌린 Tool preview다. 실제 마우스 피킹 위치에 자동 생성하거나
-게임플레이 이동 command에 붙인 결과는 아니다. 위치·크기·색·카메라에 대한 방향과 반복 이음새의
-최종 fidelity는 사용자의 서면 관찰로 판단한다.
+위 1~4는 Play 시점 player root를 빌린 Tool preview 확인 경로다. 후속 gameplay 연결은
+완료된 최신 Product 빌드로 F1/제품 UI 밖의 바닥을 우클릭해 별도로 확인한다. 모든 playable level에서
+청록 pulse, 쿠크에서 금색 목적지 표시의 반복·재지정·도착 정리를 확인한다. 위치·크기·색·카메라에
+대한 방향과 반복 이음새의 최종 fidelity는 사용자의 서면 관찰로 판단한다.
+
+## G06. 실제 이동 제출과 World marker 연결
+
+`Client/Private/PlayerController.cpp`의 기존 `Request_MoveToPoint`가
+`IPlayerCommandSink::Request_MoveGoal`에 성공한 뒤 `CClickMoveEffect::Play`를 호출한다.
+기존 viewport/ground-plane pick, mouse UI 차단, gameplay enable, capture, ground-target 취소,
+resend/deadzone 조건을 보존했다. 이 성공은 **명령 제출 성공**이며 서버 navigation 승인이나
+최종 경로 도착점 수신을 의미하지 않는다. 현재 기존 pick은 플레이어 높이의 ground plane이고,
+Client가 navigation 정답이나 Transform을 서버에 대신 확정하지 않는다.
+
+`ClickMoveEffect.h/.cpp`의 기존 GameObject owner는 임시 ring/glow quad와 placeholder DDS 동기
+로드를 제거하고 기존 `CEffectPresentationService`의 prepared level-placement handle을 사용한다.
+새 GameObject 종류·이펙트 런타임·캐시를 만들지 않았다.
+
+| 표시 | 현재 게임플레이 정책 |
+|---|---|
+| `effect.world.mouse_click` | Character Select/Bern/Valtan/Kouku/Development의 제출 성공 지점에서 1.2초 pulse. 다음 제출은 이전 pulse를 정리하고 준비된 새 occurrence를 재생 |
+| `effect.world.move_destination` | 쿠크 전용. 같은 handle을 새 목적지로 옮기고 0초로 되감으며 7초마다 반복. 반복·위치 교체에서 Spawn/Stage를 다시 하지 않음 |
+
+금색은 `bExternallySampled`와 고정 world-root transform provider를 사용한다. 기존
+`Seek_WorldRoot`의 외부 history 경로는 보통 프레임을 incremental fixed-step으로 진행하고,
+처음·7초 wrap·위치 교체만 history를 다시 계산한다. Tool의 일반 Seek가 pause를 설정하는 경로와
+구분된다. 동시 표시 수는 청록 1개와 금색 1개를 넘지 않는다.
+
+금색은 XZ 0.35m 도착, 관찰된 replicated locomotion 종료, 이동을 아직 관찰하지 못한 idle 0.75초,
+NONE 이외 action 또는 15초 상한에서 정리한다. death/capture, class/body rebind,
+gameplay 비활성화/free camera, Mario 입력, level 이탈·owner 소멸도 정리한다. 이 수치는
+cosmetic lifetime 정책이며 서버 승인/거절 판정이 아니다. 서버가 목표를 투영하거나 거절하면
+표시 위치가 실제 목적지와 다를 수 있으며 위 종료 조건으로 사라진다.
+
+`Level_Loading.cpp`의 기존 EffectLoadJob 등록/worker/ACK commit 경로에 marker를 추가했다.
+Bern/Development는 World target만, 기존 세 아레나는 class/boss target과 함께 준비한다.
+청록은 모든 playable level, 금색은 쿠크에서만 준비하며 클릭에서는 파일 parse/GPU resource
+stage를 수행하지 않는다. 각 optional target 등록·준비 실패는 독립적으로 격리하고 기존
+terminal-isolation 정책에 따라 level 입장을 유지한다. spawn/sample 실패도 해당 표시만 정리하며
+같은 실패 로그의 반복을 억제한다. Loader.cpp 자체나 별도 worker는 추가하지 않았다.
+
+미사용 ClickMoveGlow shader prototype 생성 9줄과 Client project/filter의 단독 FxCompile 등록을
+제거했다. 별도 소비자가 있는 SkillGroundTargetPreview shader와 공용 rect는 유지했다.
+shader 원본·기존 World Data/Resources는 이 후속 작업에서 변경하지 않았다. Bern NPC 접근의
+기존 `Request_MoveToPoint` 두 호출도 동일한 typed 제출 성공 feedback을 사용한다.
+
+후속 검증은 `out/WorldMoveClick20260911`에 기록했다. 실제 ClickMoveEffect, PlayerController,
+Level_Loading, MainApp 네 CPP의 out 전용 Debug focused compile, World JSON 2개/프로젝트 XML
+parse와 변경부 diff-check가 통과했다. 실제 생산 메서드를 추출하고 service/character를 stand-in으로
+둔 console 검사에서 다음을 확인했다.
+
+- sink 거절/capture는 spawn 0, 제출 성공은 최대 2 handles.
+- 900틱 동안 7초 wrap 2회에 golden handle 유지·추가 loop spawn 0.
+- 200회 목적지 교체에서 golden handle 유지·동시 handle 최대 2.
+- pulse 종료, 도착, idle grace/이동 종료, action 중단, 15초 상한, level 이탈, 비-쿠크 pulse-only와 한쪽 준비 실패 격리.
+
+증거는 `compile.log`, `run.log`, `source_checks.json`, `production_methods.inl`이다. 이 console
+검사는 실제 네트워크 승인·Effect GPU draw·사용자 입력 조작을 실행한 검사가 아니다. 이번 연결을
+포함한 최신 Debug Product 빌드는 2026-09-11 23:23:36 KST에 Engine/Shared/Server/Client 모두
+PASS했다. 증거는 `out/BuildPipeline/runs/20260911T142336444Z-debug-product.json`이며
+총 867183ms, `missingRuntimeInputs=[]`다. 최초 19:20 receipt와 구분한다. 사용자 화면은
+USER_PENDING이고 PR merge/main sync·외부 공유 보류는 유지한다.
+F1 Action Workbench의 별도 첫 열기 배열 assertion 수정은
+[ImGui 결과 G07](2026-09-11_IMGUI_PROFILING_AND_TOOL_OPTIMIZATION_RESULT.md#g07-action-workbench-첫-열기-배열-범위-수정)을 따른다.

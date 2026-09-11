@@ -784,7 +784,6 @@
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
 	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxSkillGroundTargetPreview.hlsl" />
-	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxClickMoveGlow.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
