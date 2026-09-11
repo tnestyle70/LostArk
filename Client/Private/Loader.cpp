@@ -906,6 +906,11 @@ HRESULT CLoader::Ready_MapArea(
 	Set_Status(TEXT("Map: explicit area catalog"));
 	if (!mapCatalog.Load_Area(areaId))
 	{
+		// Recovery records this status; keep the catalog reason, not only its phase.
+		{
+			lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+			g_ActiveStatus = "Map " + areaId + ": " + mapCatalog.Get_Status();
+		}
 		OutputDebugStringA((
 			"[Loader][Map] " +
 			mapCatalog.Get_Status() +

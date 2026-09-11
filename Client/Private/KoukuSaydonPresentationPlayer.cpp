@@ -1890,10 +1890,16 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
                 m_fPreviewClockMs = m_iPreviewDurationMs - 1u;
                 Pause_Preview(true);
             }
-            else Stop_Preview();
+            else
+            {
+                // MainApp applies this frame's Pause/Seek/Stop before consuming completion.
+                // Keep the real clock and borrowed actors alive until that decision.
+                m_fPreviewClockMs = m_iPreviewDurationMs;
+                m_strCompletedPreviewPatternId = Preview_IsBundle() ? m_PreviewBundleId : m_PreviewPattern.strPatternId;
+            }
         }
         // Bundle members own their independent WORLD players, sampled before effects.
-        if (Preview_IsBundle()) Sample_BundlePreview();
+        if (Preview_IsBundle() && m_strCompletedPreviewPatternId.empty()) Sample_BundlePreview();
         // MainApp samples single-pattern WORLD first, then its presentation.
     }
     Refresh_SharedPresentation();
@@ -2363,6 +2369,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_Preview(std::uint32_t clockM
 
 void Client::CKoukuSaydonPresentationPlayer::Pause_Preview(bool paused)
 {
+    m_strCompletedPreviewPatternId.clear();
     m_bPreviewPaused = paused;
     if (!paused && m_bPreviewPlaying && m_iPreviewDurationMs && m_fPreviewClockMs >= m_iPreviewDurationMs)
         Seek_Preview(0u);
@@ -2381,6 +2388,7 @@ void Client::CKoukuSaydonPresentationPlayer::Pause_Preview(bool paused)
 
 void Client::CKoukuSaydonPresentationPlayer::Seek_Preview(std::uint32_t clockMs)
 {
+    m_strCompletedPreviewPatternId.clear();
     m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
     if (m_fPreviewClockMs >= m_iPreviewDurationMs) Pause_Preview(true);
     // Stop/paused scrubbing must retain the observed birth history and a
@@ -2404,8 +2412,17 @@ void Client::CKoukuSaydonPresentationPlayer::Seek_Preview(std::uint32_t clockMs)
     Refresh_SharedPresentation();
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Consume_CompletedPreview(std::string& patternId)
+{
+    if (m_strCompletedPreviewPatternId.empty()) return false;
+    patternId = std::move(m_strCompletedPreviewPatternId);
+    Stop_Preview();
+    return true;
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
 {
+    m_strCompletedPreviewPatternId.clear();
     ++m_iPreviewGeneration;
     m_bModelReferencePreview = false;
     Release_BundlePreviewMembers(m_BundlePreviewMembers);

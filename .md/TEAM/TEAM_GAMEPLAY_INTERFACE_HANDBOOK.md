@@ -856,6 +856,10 @@ F1 Action Workbench 바로 아래 `Open Sequencer Benchmark`는 동일한 Timeli
 `boss.composition.kakulsaydon.sequencer`이며 기존 Action 문서와 교차 Save/Reload를 거부한다.
 같은 Preview backend의 재생 소유자를 입력 focus와 분리하여 다른 창을 열거나 닫아도 활성 미리보기를
 덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않으며 파티 생성은 후속 Summon/Logic 작업이다.
+Sequence의 `Complete Play`는 선택 Gate의 첫 연출 0ms부터 문서 순서대로 한 번씩 재생한다.
+Pause/Resume은 현재 연출 시간을 유지하고 Stop/Reset·재생 실패·다른 Preview 소유자 전환은 연속 재생을 취소한다.
+현재 1관문은 팝업북 다음 피날레이며, 팝업북의 맵 펼침이 끝나면 고정 전투 아레나 배치를 표시한다.
+Sequence의 Complete Play도 같은 저작 Preview이며 Action Workbench의 Server Complete Play와 실행 경계가 다르다.
 
 Kouku `Publish All Patterns`는 Product, 쿠크 범위 World, Gameplay balance를 같은 게시 작업으로 처리한다.
 F1 Boss Tuning의 Save가 기록한 `Gameplay.world.json` 위치·방향도 Server worldbootstrap에 포함한다.

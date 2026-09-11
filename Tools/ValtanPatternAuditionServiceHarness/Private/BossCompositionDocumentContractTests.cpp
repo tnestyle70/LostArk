@@ -476,11 +476,76 @@ namespace
 		const auto actionGood = action.Get_LastGood();
 		const auto sequenceGood = sequence.Get_LastGood();
 		Require(sequenceGood.strCompositionId == "boss.composition.kakulsaydon.sequencer" &&
-			sequenceGood.iRevision == 1u && sequenceGood.Patterns.size() == 2u &&
+			sequenceGood.iRevision >= 2u && sequenceGood.Patterns.size() == 2u &&
 			std::all_of(sequenceGood.Patterns.begin(), sequenceGood.Patterns.end(), [](const auto& row) {
 				return row.strLoadError.empty() && row.strAuthoringStatus == "DRAFT" &&
 					!row.WorldOccurrences.empty() && !row.PresentationOccurrences.empty(); }),
 			"Sequence seed did not retain both valid World/Camera DRAFT timelines");
+		const auto& opening = sequenceGood.Patterns.front();
+		Require(opening.WorldOccurrences.size() == 7u && opening.Stages.size() == 1u &&
+			opening.Stages.front().iDurationMs == 37800u &&
+			std::all_of(opening.WorldOccurrences.begin(), opening.WorldOccurrences.begin() + 5,
+				[](const auto& box) { return box.iStartMs == 0u && box.iDurationMs == 4507u && box.fPlaybackSpeed == 1.f; }) &&
+			opening.WorldOccurrences[5].iDurationMs == 37800u && opening.WorldOccurrences[6].iDurationMs == 37800u,
+			"opening map must finish unfolding at native 4507ms while book and Saydon keep the 37800ms scene");
+		CKoukuSaydonActionWorkbench sequenceWorkbench(true);
+		RequireEditorStep(sequenceWorkbench.Reload(status), status, "load Sequence playback workspace");
+		const auto firstSequenceId = sequenceGood.Patterns[0].strPatternId;
+		const auto secondSequenceId = sequenceGood.Patterns[1].strPatternId;
+		const auto consumeSequence = [&](const std::string& expectedId, const bool expectedPaused = false) {
+			KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+			std::uint32_t clockMs = 999u;
+			bool_t paused = false;
+			std::string target;
+			Require(sequenceWorkbench.Consume_PatternPreviewRequest(pattern, clockMs, paused, target) &&
+				pattern.strPatternId == expectedId && clockMs == 0u && paused == expectedPaused && target.empty(),
+				"Complete Play lost the source order, zero start, pause state or existing preview route");
+			Require(!sequenceWorkbench.Consume_PatternPreviewRequest(pattern, clockMs, paused, target),
+				"Complete Play submitted the same sequence twice");
+		};
+		RequireEditorStep(sequenceWorkbench.Select_PatternById(secondSequenceId, status), status,
+			"select finale before Complete Play");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status,
+			"Complete Play always begins at the first Gate sequence");
+		Require(sequenceWorkbench.Get_SelectedPatternId() == firstSequenceId &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId),
+			"unadmitted sequence advanced or Complete Play kept the finale selection");
+		Require(sequenceWorkbench.Request_PreviewPause(), "queued Complete Play could not pause");
+		consumeSequence(firstSequenceId, true);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "paused at zero");
+		Require(!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId),
+			"unrelated completion advanced the active sequence");
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId) &&
+			sequenceWorkbench.Get_SelectedPatternId() == secondSequenceId &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId),
+			"natural completion failed to queue the finale exactly once");
+		consumeSequence(secondSequenceId);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(false, "WORLD source unavailable");
+		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId) &&
+			sequenceWorkbench.Get_Status().find("WORLD source unavailable") != std::string::npos,
+			"failed admission advanced Complete Play or discarded the failure reason");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "restart complete run");
+		consumeSequence(firstSequenceId);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "first ready");
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId), "first sequence did not finish");
+		consumeSequence(secondSequenceId);
+		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "second ready");
+		Require(sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId) &&
+			!sequenceWorkbench.Is_CompleteSequencePlaying(), "Complete Play looped after the finale");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "queue before owner loss");
+		sequenceWorkbench.Cancel_CompleteSequencePlay();
+		KOUKU_SAYDON_COMPOSITION_PATTERN cancelled;
+		std::uint32_t cancelledClock = 0u; bool_t cancelledPaused = false; std::string cancelledTarget;
+		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
+			!sequenceWorkbench.Consume_PatternPreviewRequest(cancelled, cancelledClock, cancelledPaused, cancelledTarget),
+			"owner loss retained an automatic next-sequence request");
+		sequenceWorkbench.Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE2);
+		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status), "empty Gate replayed another Gate's sequences");
+		CKoukuSaydonActionWorkbench actionWorkbench;
+		Require(!actionWorkbench.Request_CompleteSequencePlay(status), "Action workspace admitted Sequence Complete Play");
+		Require(!sequenceWorkbench.Is_Dirty() && ReadText(sequencePath) == sequenceBytes && ReadText(actionPath) == actionBytes,
+			"Complete Play or its failure path changed the authored documents");
 		auto wrongAction = actionGood;
 		wrongAction.strCompositionId = sequenceGood.strCompositionId;
 		Require(!action.Save_Atomic(wrongAction, status) && action.Get_LastGood() == actionGood &&
@@ -3215,7 +3280,7 @@ int Run_KoukuSequenceDocumentContractTests()
 		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
 		Require(environment.Set(dataRoot), "could not select the isolated Sequence test Data root");
 		VerifyKoukuSequenceDocumentIsolation(dataRoot / relativeAction, dataRoot / relativeSequence);
-		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation passed\n";
+		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation/complete-sequence-order-zero-start-pause-failure-cancel passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

@@ -104,6 +104,7 @@ public:
     // Only the selected Collider/Effect placement changes; clocks and unrelated cues remain live.
     bool Preview_PresentationGeometry(const std::string& patternId,
         const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
+    bool Consume_CompletedPreview(std::string& patternId);
     bool Preview_OwnsClock() const { return m_bOwnPreviewClock; }
     bool Preview_IsColliderResource() const { return m_bColliderResourcePreview; }
     bool Preview_Playing() const { return m_bPreviewPlaying; }
@@ -254,6 +255,7 @@ private:
     KOUKU_SAYDON_COMPOSITION_PATTERN m_PreviewPattern;
     float4x4_t m_PreviewPivot{};
     std::weak_ptr<Engine::CModel> m_PreviewModel;
+    std::string m_strCompletedPreviewPatternId;
     bool m_bOwnPreviewClock = false, m_bPreviewPlaying = false, m_bPreviewPaused = false;
     bool m_bPreviewPivotReady = false;
     bool m_bColliderResourcePreview = false;

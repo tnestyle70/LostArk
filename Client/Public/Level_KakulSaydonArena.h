@@ -152,8 +152,8 @@ public:
 	bool_t Debug_HasVisibleCompositionWorldBox(std::string_view occurrenceId) const;
 	bool_t Debug_SetCompositionWorldPlacement(const std::string& occurrenceId,
 		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement, std::string& status);
-	void Debug_SampleCompositionWorldPreview(const std::string& patternId,
-		bool_t playing, uint32_t clockMs);
+	bool_t Debug_SampleCompositionWorldPreview(const std::string& patternId,
+		bool_t playing, uint32_t clockMs, std::string& status);
 	void Debug_StopCompositionWorldPreview();
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
@@ -391,6 +391,7 @@ private:
 	std::vector<std::pair<uint64_t, bool_t>> m_CompositionWorldPreviewArenaVisibility;
 	std::string m_strCompositionWorldPreviewPattern;
 	bool_t m_bCompositionWorldPreviewClockBound = false;
+	bool_t m_bCompositionWorldPreviewStandingArenaVisible = false;
 #endif
 	bool_t m_bCutsceneBossVisible = false;
 	bool_t m_bCutsceneSetVisible = false;

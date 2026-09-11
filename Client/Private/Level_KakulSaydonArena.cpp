@@ -640,11 +640,12 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 			bool_t visible = false;
 			if (!CMapPlacementRuntime::Try_GetRuntimeVisible(entry, visible))
 			{ status = "WORLD preview could not capture standing arena visibility."; return false; }
-			if (visible) previousArenaVisibility.emplace_back(entry.record.placementId, visible);
+			previousArenaVisibility.emplace_back(entry.record.placementId, visible);
 		}
 	}
 	m_CompositionWorldPreviewDeployStates = std::move(previousDeployStates);
 	m_CompositionWorldPreviewArenaVisibility = std::move(previousArenaVisibility);
+	m_bCompositionWorldPreviewStandingArenaVisible = false;
 	if (!visibleDeployStates.empty() && !m_DeployRuntime.Set_States(visibleDeployStates))
 	{
 		status = "WORLD preview could not show its bound Deploy targets: " + m_DeployRuntime.Get_Status();
@@ -715,7 +716,8 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 		auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), row->first);
 		bool_t visible = false;
 		if (entry && (!CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, visible) ||
-			(!visible && !CMapPlacementRuntime::Set_RuntimeVisible(*entry, row->second))))
+			(visible == m_bCompositionWorldPreviewStandingArenaVisible && visible != row->second &&
+				!CMapPlacementRuntime::Set_RuntimeVisible(*entry, row->second))))
 		{
 			OutputDebugStringA("[KoukuWorldPreview] Standing arena visibility restore pending.\n");
 			++row;
@@ -726,19 +728,21 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 	m_bCompositionWorldPreviewClockBound = false;
 }
 
-void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
-	const std::string& patternId, const bool_t playing, const uint32_t clockMs)
+bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
+	const std::string& patternId, const bool_t playing, const uint32_t clockMs, std::string& status)
 {
-	if (m_CompositionWorldPreviewCues.empty()) return;
+	status.clear();
+	if (m_CompositionWorldPreviewCues.empty()) return true;
 	if (!playing || patternId != m_strCompositionWorldPreviewPattern)
 	{
 		// A pending Animation target admission takes one frame. Wait for that
 		// first matching clock; after binding, a changed owner releases WORLD.
 		if (m_bCompositionWorldPreviewClockBound) Debug_StopCompositionWorldPreview();
-		return;
+		return true;
 	}
 	m_bCompositionWorldPreviewClockBound = true;
 	auto targets = Make_WorldSequenceTargets();
+	bool_t cutsceneMapPending = false;
 	for (auto& [id, playback] : m_CompositionWorldPreviewCues)
 	{
 		const auto& cue = playback.cue;
@@ -756,6 +760,17 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 				return CWorldSequencePlayer::Resolve_BossBoneAnchor(view.Model, view.BoneRoot, bone, out, status);
 			};
 		const auto span = player.Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
+		const auto* instance = player.Get_Document().Find_Instance(cue.instanceId);
+		if (instance && (clockMs < cue.startMs || clockMs - cue.startMs < span))
+			for (const auto& binding : instance->bindings)
+			{
+				uint64_t targetId = 0u;
+				if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
+					CWorldSequencePlayer::Try_ParseTargetId(binding, targetId) &&
+					KAKULSAYDON_CUTSCENE_SET_FIRST_ID <= targetId &&
+					targetId < KAKULSAYDON_CUTSCENE_SET_END_ID)
+					cutsceneMapPending = true;
+			}
 		if (clockMs < cue.startMs || clockMs - cue.startMs >= span)
 		{
 			player.Stop_All(targets, true);
@@ -764,18 +779,43 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		if (!player.Is_Playing(cue.instanceId) &&
 			!player.Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs, cue.placement))
 		{
-			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
+			status = "WORLD preview failed: " + cue.occurrenceId + ": " + player.Get_Status();
+			OutputDebugStringA(("[KoukuWorldPreview] " + status + "\n").c_str());
 			Debug_StopCompositionWorldPreview();
-			return;
+			return false;
 		}
 		if (!player.Seek_InstanceToMs(cue.instanceId,
 			static_cast<f32_t>(clockMs - cue.startMs), targets))
 		{
-			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
+			status = "WORLD preview failed: " + cue.occurrenceId + ": " + player.Get_Status();
+			OutputDebugStringA(("[KoukuWorldPreview] " + status + "\n").c_str());
 			Debug_StopCompositionWorldPreview();
-			return;
+			return false;
 		}
 	}
+	// Finished unfold boxes release their animated copies before the real arena
+	// (including its placement lighting) is shown. Scrubbing reverses the swap.
+	const bool_t showStandingArena = !cutsceneMapPending;
+	if (!m_CompositionWorldPreviewArenaVisibility.empty() &&
+		showStandingArena != m_bCompositionWorldPreviewStandingArenaVisible)
+	{
+		std::vector<MAP_RUNTIME_PLACED_ENTRY*> changed;
+		for (const auto& previous : m_CompositionWorldPreviewArenaVisibility)
+		{
+			auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), previous.first);
+			if (!entry || !CMapPlacementRuntime::Set_RuntimeVisible(*entry, showStandingArena))
+			{
+				for (auto* applied : changed)
+					(void)CMapPlacementRuntime::Set_RuntimeVisible(*applied, m_bCompositionWorldPreviewStandingArenaVisible);
+				status = "WORLD preview could not switch the unfolded and standing arena.";
+				Debug_StopCompositionWorldPreview();
+				return false;
+			}
+			changed.push_back(entry);
+		}
+		m_bCompositionWorldPreviewStandingArenaVisible = showStandingArena;
+	}
+	return true;
 }
 #endif
 

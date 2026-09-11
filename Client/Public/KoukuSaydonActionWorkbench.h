@@ -189,6 +189,14 @@ namespace Client
 		// Play restarts at the end; paused scrubbing keeps the exact endpoint pose.
 		bool_t Request_PatternPreview(std::string_view patternId,
 			std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused = false);
+		// Sequence workspace uses source order within the selected Gate, always from zero.
+		bool_t Request_CompleteSequencePlay(std::string& outStatus);
+		void Notify_SequencePreviewAdmission(bool_t succeeded, const std::string& status);
+		bool_t Advance_CompleteSequencePlay(std::string_view completedPatternId);
+		void Cancel_CompleteSequencePlay();
+		[[nodiscard]] bool_t Is_CompleteSequencePlaying() const noexcept {
+			return !m_CompleteSequencePatternIds.empty();
+		}
 		bool_t Request_PreviewPause();
 		bool_t Request_PatternScrub(std::string_view patternId, std::uint32_t clockMs, std::string& outStatus);
 		bool_t Request_BundleScrub(std::uint32_t clockMs);
@@ -628,6 +636,9 @@ namespace Client
 		void Select_TimelineBox(const std::string& stageId,
 			const std::string& occurrenceId, bool_t toggle);
 		void Render_Transport();
+		bool_t Queue_CompleteSequenceItem(std::vector<std::string> patternIds,
+			std::size_t index, std::string& outStatus);
+		void Render_CompleteSequenceTransport();
 		void Stop_Preview();
 		void Render_Details();
 		void Render_ReloadConfirmation();
@@ -766,6 +777,9 @@ namespace Client
 		KOUKU_SAYDON_COMPOSITION_PATTERN m_PendingPatternPreview;
 		std::string m_strPendingPreviewTargetAsset;
 		KOUKU_PREVIEW_STATE m_PreviewState;
+		std::vector<std::string> m_CompleteSequencePatternIds;
+		std::size_t m_iCompleteSequenceIndex = 0u;
+		bool_t m_bCompleteSequenceAdmitted = false;
 		KOUKU_PREVIEW_TRANSPORT m_ePendingTransport = KOUKU_PREVIEW_TRANSPORT::NONE;
 		std::uint32_t m_iPendingSeekMs = 0u;
 		std::uint32_t m_iCursorMs = 0u;

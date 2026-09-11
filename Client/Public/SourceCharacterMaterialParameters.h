@@ -50,6 +50,11 @@ inline bool Read(const DATA_JSON_VALUE& parameters, PARAMETER_VALUES& result)
 inline bool Configure(const std::string& family, const PARAMETER_VALUES& parameters,
     Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& result)
 {
+    // Named forward families share the numbered translucent prefix.
+    if (family == "source.map.translucent-tiled.v1" ||
+        family == "source.map.translucent-reflection.v1" ||
+        family == "source.map.translucent-bump.v1")
+        return SourceMapForwardMaterial::Configure(family, parameters, result);
     if (family.rfind("source.map.translucent-", 0u) == 0u)
         return SourceMapTranslucentMaterial::Configure(family, parameters, result);
     if (family.rfind("source.map.water-", 0u) == 0u)
