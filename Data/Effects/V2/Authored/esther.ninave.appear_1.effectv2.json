@@ -41,7 +41,6 @@
     "uvStart": [0.0, 0.0],
     "uvSpeed": [0.0, -0.2],
     "uvTileCount": [1.0, 1.0],
-    "uvMode": "Planar",
     "noiseStrength": 0.0,
     "noiseScale": 1.0,
     "noisePan": [0.0, 0.0],
