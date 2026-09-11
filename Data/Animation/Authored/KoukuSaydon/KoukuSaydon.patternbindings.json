@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 8,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 243,
+  "sourceRevision": 254,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -1281,6 +1281,16 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.64",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.animation.64",
+      "clip": "rpcz00_att_battle_10_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1500,
       "playRate": 1,
       "endPolicy": "EXACT"
     },
@@ -8056,8 +8066,62 @@
       "gateId": "GATE2",
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
-      "durationMs": 14667,
-      "presentationOccurrences": []
+      "durationMs": 16167,
+      "presentationOccurrences": [
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.45",
+          "kind": "EFFECT",
+          "assetId": "boss.kouku.pizza.aura",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            0,
+            1.4500000476837158,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.1",
+          "startMs": 5293,
+          "durationMs": 7647,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_21",
