@@ -350,8 +350,12 @@ namespace LostArk::Server
 
 		static constexpr std::uint8_t KILL_TARGET = 3u;
 		static constexpr std::uint32_t TARGETS_PER_SUIT = 1u;
-		/* Where in the 3000 ms hammer press the head lands, in 30 Hz ticks. */
-		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 12u;
+		/* Where in the hammer press the head lands, in 30 Hz ticks. Measured on
+		rpcz00p_project_tuned_hammer (75 ticks): the head is still winding up
+		behind the body until tick 27, comes over the top and reaches the ground
+		in front at tick 30, and rests there through tick 42. 12 was inside the
+		wind-up, so a swing counted before anything had been hit. */
+		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 30u;
 		static constexpr float HAMMER_RANGE_M = 2.4f;
 		/* cos(60 degrees): the swing covers a 120 degree arc in front. */
 		static constexpr float HAMMER_HALF_ANGLE_COS = 0.5f;

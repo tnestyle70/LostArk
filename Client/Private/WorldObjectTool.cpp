@@ -1256,6 +1256,8 @@ void CWorldObjectTool::Render_Detail()
             sequence->durationMs = duration;
             if (sequence->objectMotion.count > 1)
                 sequence->objectMotion.intervalMs = (std::min)(sequence->objectMotion.intervalMs, (sequence->effectTracks.empty() ? duration - 1 : CWorldSequenceDocument::MAX_DURATION_MS - duration) / (sequence->objectMotion.count - 1));
+            for (auto& emission : sequence->objectMotion.emissions)
+                emission.startDelayMs = (std::min)(emission.startDelayMs, sequence->effectTracks.empty() ? duration - 1 : CWorldSequenceDocument::MAX_DURATION_MS - duration);
             changed = true;
         }
         else m_Status = "Lifetime must leave at least one millisecond between every existing key or clip.";
@@ -1335,15 +1337,102 @@ void CWorldObjectTool::Render_Detail()
         changed |= ImGui::DragFloat3("Self Rotation (deg/s)", &motion.angularVelocityDegrees.x, .5f);
         changed |= ImGui::DragFloat3("Revolution (deg/s)", &motion.revolutionDegreesPerSecond.x, .5f);
         changed |= ImGui::DragFloat3("Revolution Offset (m)", &motion.revolutionOffset.x, .05f);
+        auto& emissions = motion.emissions;
+        ImGui::BeginDisabled(!emissions.empty());
         changed |= EditUInt("Count", motion.count, 128, 1);
         const uint32_t maxInterval = motion.count > 1 ? (sequence->effectTracks.empty() ? sequence->durationMs - 1 :
             CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs) / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
         if (motion.intervalMs > maxInterval) { motion.intervalMs = maxInterval; changed = true; }
         changed |= EditUInt("Creation Interval (ms)", motion.intervalMs, maxInterval);
         changed |= ImGui::DragFloat(sequence->effectTracks.empty() ? "Spread (deg)" : "Horizontal Spread (deg)", &motion.spreadDegrees, .5f, 0.f, sequence->effectTracks.empty() ? 180.f : 360.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
         changed |= ImGui::DragFloat3("Spawn Half Extents (m)", &motion.spawnHalfExtents.x, .05f, 0.f, 100000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::TextDisabled("Width / height / depth = twice these values. Set Y to 0 for a ground rectangle.");
         changed |= EditUInt("Seed", motion.seed, INT_MAX);
+        ImGui::SeparatorText("Authored Emissions");
+        ImGui::TextWrapped("Rows replace the seeded spread. Each row replays this Motion's keys, physics and revolution from its own local offset, yaw and delay. Leave the list empty to keep Count / Creation Interval / Spread.");
+        const uint32_t maxDelay = sequence->effectTracks.empty() ? sequence->durationMs - 1 : CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs;
+        size_t removeRow = emissions.size(), duplicateRow = emissions.size();
+        if (!emissions.empty() && ImGui::BeginTable("AuthoredEmissions", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+        {
+            ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28.f);
+            ImGui::TableSetupColumn("Offset X (m)");
+            ImGui::TableSetupColumn("Offset Y (m)");
+            ImGui::TableSetupColumn("Offset Z (m)");
+            ImGui::TableSetupColumn("Yaw (deg)");
+            ImGui::TableSetupColumn("Start Delay (ms)");
+            ImGui::TableSetupColumn("##rowActions", ImGuiTableColumnFlags_WidthFixed, 84.f);
+            ImGui::TableHeadersRow();
+            for (size_t row = 0; row < emissions.size(); ++row)
+            {
+                auto& emission = emissions[row];
+                ImGui::PushID(static_cast<int>(row));
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("%zu", row);
+                ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-FLT_MIN);
+                changed |= ImGui::DragFloat("##offsetX", &emission.positionOffset.x, .05f, -100000.f, 100000.f, "%.3f");
+                ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-FLT_MIN);
+                changed |= ImGui::DragFloat("##offsetY", &emission.positionOffset.y, .05f, -100000.f, 100000.f, "%.3f");
+                ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-FLT_MIN);
+                changed |= ImGui::DragFloat("##offsetZ", &emission.positionOffset.z, .05f, -100000.f, 100000.f, "%.3f");
+                ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-FLT_MIN);
+                changed |= ImGui::DragFloat("##yaw", &emission.yawDegrees, .5f, -36000.f, 36000.f, "%.1f");
+                ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-FLT_MIN);
+                changed |= EditUInt("##delay", emission.startDelayMs, static_cast<int>(maxDelay));
+                ImGui::TableNextColumn();
+                if (ImGui::SmallButton("Dup")) duplicateRow = row;
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Del")) removeRow = row;
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+        if (duplicateRow < emissions.size() && emissions.size() < 128u)
+        { emissions.insert(emissions.begin() + duplicateRow + 1, emissions[duplicateRow]); changed = true; }
+        if (removeRow < emissions.size()) { emissions.erase(emissions.begin() + removeRow); changed = true; }
+        ImGui::BeginDisabled(emissions.size() >= 128u);
+        if (ImGui::Button("Add Emission"))
+        {
+            WORLD_SEQUENCE_OBJECT_EMISSION emission;
+            if (!emissions.empty()) emission = emissions.back();
+            emissions.push_back(emission);
+            changed = true;
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(emissions.empty());
+        if (ImGui::Button("Clear Emissions")) { emissions.clear(); changed = true; }
+        ImGui::EndDisabled();
+        ImGui::SetNextItemWidth(110.f);
+        ImGui::DragInt("Ring Count", &m_RingCount, 1.f, 1, 128, "%d", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(110.f);
+        ImGui::DragFloat("Ring Start (deg)", &m_RingStartDegrees, .5f, -360.f, 360.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SameLine();
+        if (ImGui::Button("Distribute on Ring"))
+        {
+            /* A row's yaw also turns Revolution Offset, so a row at phase p rides
+               R(p)*o and an offset of R(p)*o puts every row on one circle centred
+               on the saved position itself. */
+            const vector_t orbitOffset = XMLoadFloat3(&motion.revolutionOffset);
+            emissions.clear();
+            for (int index = 0; index < m_RingCount; ++index)
+            {
+                WORLD_SEQUENCE_OBJECT_EMISSION emission;
+                emission.yawDegrees = m_RingStartDegrees + 360.f * static_cast<float>(index) / static_cast<float>(m_RingCount);
+                XMStoreFloat3(&emission.positionOffset, XMVector3TransformNormal(orbitOffset,
+                    XMMatrixRotationY(XMConvertToRadians(emission.yawDegrees))));
+                emissions.push_back(emission);
+            }
+            changed = true;
+        }
+        ImGui::TextDisabled("Ring rows circle the saved position at this Motion's Revolution Offset radius; use Revolution (deg/s) for the orbit speed.");
+        if (!emissions.empty())
+        {
+            motion.count = static_cast<uint32_t>(emissions.size());
+            motion.intervalMs = 0u;
+            motion.spreadDegrees = 0.f;
+        }
     }
     if (changed) Mark_Dirty();
     if (!alias) Render_EffectRows(*sequence);

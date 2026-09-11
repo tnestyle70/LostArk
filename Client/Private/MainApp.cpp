@@ -8714,6 +8714,7 @@ void CMainApp::RefreshWorldObjectResources()
 			}
 			for (const auto& animation : sequence->animationTracks)
 				row.AnimationClips.push_back(animation.clipName);
+			row.iEmissionCount = sequence->objectMotion.EmissionCount();
 			const double span = instance.startDelayMs + static_cast<double>(sequence->durationMs) / instance.playbackSpeed;
 			row.iDurationMs = static_cast<uint32_t>((std::clamp)(span, 1.0, static_cast<double>(UINT32_MAX)));
 			float3_t placedPosition;

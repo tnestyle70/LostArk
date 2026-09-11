@@ -1,6 +1,7 @@
 #include "WorldSequencePlayer.h"
 
 #include "DeployPropObject.h"
+#include "EffectV2_Catalog.h"
 #include "GameInstance.h"
 #include "MapAssetObject.h"
 #include "Model.h"
@@ -25,6 +26,7 @@ namespace
 		CWorldSequenceDocument document;
 		WORLD_SEQUENCE_PLACEMENT_MAP placements;
 		WORLD_SEQUENCE_DEPLOY_MAP deploy;
+		std::unordered_map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> effectSnapshots;
 	};
 	std::mutex g_PreparedAreaMutex;
 	std::unique_ptr<PREPARED_WORLD_SEQUENCE_AREA> g_PreparedArea;
@@ -288,6 +290,25 @@ bool_t CWorldSequencePlayer::Prepare_AreaLoad(const uint32_t levelIndex,
 	if (!staged->document.Load(path, areaId, staged->placements, staged->deploy, status))
 		return fail("World sequence load failed: " + status);
 	if (cancelled()) return false;
+	if (levelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	{
+		// These source-ball leaves are Server-triggered, rather than sequence
+		// tracks. Parse them on the same Loader worker and commit with the Area.
+		static constexpr const char* smokeLeaves[] = {
+			"boss.kouku.ball.smoke.red_1", "boss.kouku.ball.smoke.blue_1", "boss.kouku.ball.smoke.yellow_1" };
+		for (const char* leaf : smokeLeaves)
+		{
+			if (cancelled()) return false;
+			std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+			if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(
+				EFFECT_V2_RESOURCE_KIND::LEAF, leaf, snapshot, status))
+				return fail("World sequence Area effect preparation failed: " + std::string(leaf) + " / " + status);
+			// AREA_LEAF stores CPU-only snapshots; LEAF/GROUP entries used by
+			// Object tracks still mean their existing GPU prewarm has completed.
+			staged->effectSnapshots.emplace("AREA_LEAF:" + std::string(leaf), std::move(snapshot));
+		}
+	}
+	if (cancelled()) return false;
 	staged->ready = true;
 	staged->status = "World sequence prepared: " +
 		std::to_string(staged->document.Get_Instances().size()) + " instances";
@@ -338,10 +359,17 @@ bool_t CWorldSequencePlayer::Load_PreparedArea(const std::string& areaId, const 
 	{ m_Status = "World sequence Loader targets changed before activation; existing presentation preserved"; return false; }
 	Stop_All(targets, true);
 	m_ObjectModels.clear();
-	m_EffectSnapshots.clear();
+	m_EffectSnapshots = std::move(staged->effectSnapshots);
 	m_Document = std::move(staged->document);
 	m_Status = "Committed " + staged->status;
 	return true;
+}
+
+std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>
+CWorldSequencePlayer::Find_PreparedLeafSnapshot(const std::string& leafId) const
+{
+	const auto found = m_EffectSnapshots.find("AREA_LEAF:" + leafId);
+	return found == m_EffectSnapshots.end() ? nullptr : found->second;
 }
 
 void CWorldSequencePlayer::Clear()
@@ -789,6 +817,19 @@ bool_t CWorldSequencePlayer::Apply_ObjectMotion(const std::string& targetInstanc
 	return true;
 }
 
+void CWorldSequencePlayer::Set_PlacementSuppressed(const uint64_t placementId, const bool_t suppressed)
+{
+	if (suppressed)
+		m_SuppressedPlacements.insert(placementId);
+	else
+		m_SuppressedPlacements.erase(placementId);
+}
+
+bool_t CWorldSequencePlayer::Is_PlacementSuppressed(const uint64_t placementId) const
+{
+	return m_SuppressedPlacements.contains(placementId);
+}
+
 bool_t CWorldSequencePlayer::Is_Playing(const std::string& instanceId) const
 {
 	return m_Active.end() != std::find_if(m_Active.begin(), m_Active.end(),
@@ -844,7 +885,8 @@ void CWorldSequencePlayer::Stop_Instance(
 			if (auto* entry = Find_Placement(*targets.pPlacements, baseline.placementId))
 			{
 				auto record = baseline.record;
-				record.visible = baseline.restoreRuntimeVisible;
+				record.visible = baseline.restoreRuntimeVisible &&
+					!m_SuppressedPlacements.contains(baseline.placementId);
 				(void)Apply_RuntimeRecord(targets, m_ModelCache, *entry, record);
 			}
 	Release_DeployPreviews(*found, targets);
@@ -954,9 +996,9 @@ f32_t CWorldSequencePlayer::Get_InstanceElapsedSpanMs(const std::string& instanc
         double tail = sequence->durationMs;
         for (const auto& effect : sequence->effectTracks)
             tail = (std::max)(tail, static_cast<double>(sequence->EffectStartMs(effect) + effect.durationMs));
-        for (uint32_t emitter = 0; emitter < sequence->objectMotion.count; ++emitter)
+        for (uint32_t emitter = 0; emitter < sequence->objectMotion.EmissionCount(); ++emitter)
         {
-            double birth = start + static_cast<double>(emitter) * sequence->objectMotion.intervalMs / rate;
+            double birth = start + static_cast<double>(sequence->objectMotion.EmissionDelayMs(emitter)) / rate;
             if (birth >= cutoff) continue;
             if (loop) birth += (std::max)(0., std::ceil((cutoff - birth) / period) - 1.) * period;
             span = (std::max)(span, birth + tail / rate);
@@ -1221,6 +1263,8 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			sampled.position.y += active.positionOffset.y;
 			sampled.position.z += active.positionOffset.z;
 		}
+		if (m_SuppressedPlacements.contains(targetId))
+			sampled.visible = false;
 		if (!Apply_RuntimeRecord(targets, m_ModelCache, *entry, sampled))
 			return APPLY_RESULT::FAILED;
 		active.sampledPlacements[targetId] = std::move(sampled);

@@ -105,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v66 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v80 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -320,7 +320,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 69의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 80의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -384,6 +384,14 @@ stage 2/3/4는 authored `MarioN_go` 목적지와 같은 상세 navregion인지 �
 HP·소품 상태·trigger membership은 초기화하지 않는다. 새 요청 순서를 검사하고 중복에는 이전 verdict만 반환한다.
 Release Server는 점프에 `REJECTED_DISABLED`를 반환한다. F1 `Mario Controls (Debug Jump)`에 승인/거절 이유를 표시한다.
 
+마리오의 원본 공은 Q 뿅망치로 터진다. `Publish-WorldGameplay.ps1`이 worldbootstrap v11의 `MARIOBALL`
+행(stage, layout, slot, color, placementId, x, y, z)으로 싣고 slot은 해당 layout WorldSequence의 바인딩
+인덱스와 같은 순서다. Server는 몬스터와 같은 전방 120°·2.4m 원뿔에 공 반지름 0.47m를 더하고 높이 창
+1.2m로 판정해 `iMarioPoppedBallMask` 비트를 세우며, 한 색이 그 layout에서 전부 터지면
+`iMarioCurseReleasedMask`의 해당 비트(0 빨강, 1 파랑, 2 노랑)를 세운다. 공은 엔티티가 아니므로
+damage event를 만들지 않고, 스테이지가 비어 초기화되면 두 마스크도 0으로 돌아간다. Client는 표시만
+담당한다(배치 숨김, `boss.kouku.ball.smoke.<색>_1` 1회, 중앙 문구 3초).
+
 ### 4.3 마리오 원본 배치 선택
 
 Shared protocol 76의 `PLAYER_SNAPSHOT.iMarioLayoutVariant`는 0=미선택, 1–3=원본 색 공 Case다.
@@ -415,7 +423,7 @@ Client는 기존 IDLE/CHASE/ATTACK/DEAD snapshot으로 catalog의 원본 clip을
 피해/사망은 ServerCombatHitRuntime에서 확정하고 W는 Q 피해를 공유하지 않는다.
 Mario modelYawDegrees=-90은 모델 +X 앞축을 Server yaw의 +Z 앞축으로 정렬한다.
 이는 원본 AI·표적 집계·폭탄 피해의 복원 완료를 의미하지 않는다.
-Server와 Client를 protocol 76으로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
+Server와 Client를 protocol 80으로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
 
 ## 5. Character와 Animation
 
@@ -780,7 +788,7 @@ Composition v3는 `GATE1/GATE2/GATE3/BINGO`, 부모 폴더, 재생 묶음, 대�
 `teleportPosition`은 서버 navigation과 collision으로 검증하는 미로 중앙 목적지다. 참가자 전원
 검증 뒤 같은 tick에 이동·표시 복구·MAZE HUD를 적용하고 기존 중앙 Q 망원경 진행을 사용한다.
 입장 실패나 패턴 Stop은 이 연출이 숨긴 참가자를 다시 표시하며, 실패하면 전원 원래 위치를 유지한다.
-Shared protocol 79의 `CARD_MAZE_PRESENTATION.flags` bit16이 표시 상태를 복제한다.
+Shared protocol 80의 `CARD_MAZE_PRESENTATION.flags` bit16이 표시 상태를 복제한다.
 Server/Client를 함께 다시 빌드하고 publish 뒤 Server를 재시작한다.
 Effect occurrence의 dissolve 시작·끝은 lifetime 정규화 시간이다. 같은 값은 기존 runtime의 즉시
 전환 규칙을 사용하며 1/1은 lifetime 끝까지 dissolve-out을 하지 않는다. 역전된 구간은 거부한다.
@@ -843,8 +851,10 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 78로 함께 빌드·재시작한다. FEAR snapshot 상태와
-빙고·마리오·갈고리 attachment wire를 함께 포함하므로 이전73/77 실행 파일과 혼용하지 않는다.
+Server/Shared/Client는 같은 protocol 80으로 함께 빌드·재시작한다. FEAR snapshot 상태와
+빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
+`iMarioCurseReleasedMask`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다. 두 기능이 별도 branch에서
+각각 79를 사용했으므로 두 종류의 v79 및 이전73/77/78 실행 파일과 혼용하지 않는다.
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
 함께 지정하는 optional `resetBossYawDegrees`는 유한한 -360~360도의 절대 yaw로, 매 재생 같은 방향을 snapshot에 반영한다.
 누락하면 기존 yaw를 유지한다. 이 필드를 배포할 때는 확장된 PATTERNSPAWNRESET을 읽는 Server도 함께 빌드·재시작한다.
@@ -1338,7 +1348,7 @@ WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }
 
 ### 카드미로 진행·관전 계약
 
-MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 79의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
+MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 80의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
 
 카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
 

@@ -24,11 +24,12 @@ HOOK_DURATION = 8000
 # fire wandering off the map.
 CENTER = (0.0, 942.08)
 BOUNDARY_RADIUS = 13.19
-# The wall of flame stands just inside the beads, on the floor itself.
+# Outermost row stays just inside the beads. The other two rows give the fire
+# wall depth, without moving it outside the floor. These are authored values,
+# not recovered source-game coordinates. Tuple: radius metres, phase degrees.
 RADIUS = 12.6
-# The reference frames show an unbroken wall, not spaced torches. The flame
-# billboards are 1.46 - 2.06 m wide once scaled, so 60 of them (1.32 m apart,
-# close to the 1.14 m bead pitch) overlap into a continuous wall.
+FIRE_RING_LAYOUT = {"d": (12.6, 0.0), "e": (11.7, 6.0), "f": (10.8, 12.0)}
+# Reuse the same 60 billboards: 20 per row, staggered by six degrees.
 FIRE_COUNT = 60
 ORBIT_DEGREES_PER_SECOND = 24.0
 HOOK_WAVES = 6
@@ -36,14 +37,14 @@ HOOK_WAVE_INTERVAL_MS = 5000
 HOOK_LANE_OFFSET_MS = 400
 HOOK_FIRST_START_MS = 1000
 
-# Every flame is a flat billboard. D and E are flat in Z, so the axis that has to
-# face out of the ring is their local +Z; F is flat in X, so its outward axis is
-# local +X. Giving all three the same yaw stood F ninety degrees out of the wall.
-# (measured spans at modelPreScale 0.01: D 1.72 x 2.23 m, E 1.22 x 1.35 m,
-#  F 2.27 x 0.79 m, each about 0.02 m thick.)
+# Installed WMSH vertices, not the source export axes, define this transform.
+# All three are thin in X (0.01625 m) and wide in Z: D 2.25285, E 1.82747,
+# F 4.49399 m at modelPreScale 0.01. Local +X must point radially outward.
+# The origin Y compensates the scaled mesh minimum onto the arena floor 1.30.
+FIRE_ORIGIN_Y = {"d": 1.3, "e": 1.3167, "f": 1.3134}
 FIRE_ASSETS = (
-    ("MAP_CFEDE8067300_BG_RAD_KOUKUSATON_DECO24D_SM_KHB", "d", "z", (1.2, 1.5, 1.2)),
-    ("MAP_B71A2EC9D778_BG_RAD_KOUKUSATON_DECO24E_SM_KHB", "e", "z", (1.2, 1.5, 1.2)),
+    ("MAP_CFEDE8067300_BG_RAD_KOUKUSATON_DECO24D_SM_KHB", "d", "x", (1.2, 1.5, 1.2)),
+    ("MAP_B71A2EC9D778_BG_RAD_KOUKUSATON_DECO24E_SM_KHB", "e", "x", (1.2, 1.5, 1.2)),
     ("MAP_7AC8BB3D2FEE_BG_RAD_KOUKUSATON_DECO24F_SM_KHB", "f", "x", (0.7, 2.5, 0.7)),
 )
 
@@ -185,10 +186,11 @@ def build(root: Path):
         if not (root / "Client/Bin/Resources" / model_id).is_file():
             raise ValueError(f"Missing physical fire model: {model_id}")
         object_id = f"world.object.kouku.g3.outer_fire.{suffix}"
-        # The pivot has to be the arena centre. The centre sits RADIUS away along
+        # The pivot has to be the arena centre. The centre sits one row radius along
         # the flame's own inward axis, and revolutionOffset is (object - pivot) in
-        # the flame's local frame, so it is RADIUS along the outward axis.
-        offset = (RADIUS, 0, 0) if outward == "x" else (0, 0, RADIUS)
+        # the flame's local frame, so it is the row radius along the outward axis.
+        radius = FIRE_RING_LAYOUT[suffix][0]
+        offset = (radius, 0, 0) if outward == "x" else (0, 0, radius)
         first_iid = None
         for sign, tag in ((1.0, "cw"), (-1.0, "ccw")):
             iid = PREFIX + f".extra_fire_{suffix}_{tag}"
@@ -214,17 +216,21 @@ def build(root: Path):
                           "sequenceInstanceId": "", "defaultMotionInstanceId": first_iid})
 
     for i in range(FIRE_COUNT):
-        theta = 2 * math.pi * i / FIRE_COUNT
-        degrees = math.degrees(theta)
-        x = CENTER[0] + RADIUS * math.cos(theta)
-        z = CENTER[1] + RADIUS * math.sin(theta)
         world_index = i % len(fire_worlds)
+        suffix = FIRE_ASSETS[world_index // 2][1]
+        radius, phase = FIRE_RING_LAYOUT[suffix]
+        slot_in_row = (i // len(fire_worlds)) * 2 + world_index % 2
+        degrees = slot_in_row * (360.0 / (FIRE_COUNT // len(FIRE_ASSETS))) + phase
+        theta = math.radians(degrees)
+        x = CENTER[0] + radius * math.cos(theta)
+        z = CENTER[1] + radius * math.sin(theta)
         outward = FIRE_ASSETS[world_index // 2][2]
         # Turn the billboard so its outward axis points away from the centre,
         # which lays its flat face along the ring.
         yaw = (90.0 - degrees) if outward == "z" else (-degrees)
         cue(fire_worlds[world_index], 0, DURATION,
-            {"position": [x, 0.05, z], "rotationDegrees": [0, yaw, 0], "scale": [1, 1, 1]})
+            {"position": [x, FIRE_ORIGIN_Y[FIRE_ASSETS[world_index // 2][1]], z],
+             "rotationDegrees": [0, yaw, 0], "scale": [1, 1, 1]})
 
     hook = next(r for r in ws["objectResources"] if r["objectId"] == "world.object.kouku.hook")
     if not (root / "Client/Bin/Resources" / hook["modelAssetId"]).is_file():

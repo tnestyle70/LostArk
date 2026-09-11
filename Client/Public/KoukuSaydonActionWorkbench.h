@@ -65,6 +65,8 @@ namespace Client
 		std::string strAnchorKind = "WORLD";
 		bool_t bDefaultMotion = false;
 		std::vector<std::string> AnimationClips;
+		// Authored emission rows of this Motion (1 for seeded emitters); Box Detail offers the row index.
+		std::uint32_t iEmissionCount = 1u;
 	};
 
 	struct KOUKU_PRESENTATION_PREVIEW_REQUEST final

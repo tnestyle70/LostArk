@@ -824,9 +824,9 @@ namespace LostArk::Shared
 
 	constexpr std::size_t KOUKU_HUD_SLOT_COUNT = 8u;
 	constexpr std::int8_t KOUKU_HUD_SLOT_EMPTY = -1;
-	/* Every interaction HUD skill runs on one fixed timeline today: the press
-	locks the player into INTERACTION for this long and the Client plays the
-	clip that the mode assigns to the pressed slot. */
+	/* One interaction HUD press locks the player into INTERACTION while the
+	Client plays the clip the mode assigns to the pressed slot. This is the
+	ceiling, used by a slot with no authored length of its own. */
 	constexpr std::uint32_t KOUKU_INTERACTION_ACTION_MS = 3000u;
 	constexpr std::uint32_t KOUKU_INTERACTION_COOLDOWN_MS = 3000u;
 	/* The card maze hammer keeps the authored swing above, because the Client
@@ -834,6 +834,32 @@ namespace LostArk::Shared
 	action ends. Only the cooldown is shortened, so a hunter who cancels the
 	recovery with their own next input can swing again at once. */
 	constexpr std::uint32_t KOUKU_MAZE_HAMMER_COOLDOWN_MS = 400u;
+	/* The Client scrubs an interaction clip by the action's age and clamps at
+	the clip's last frame, so a lock longer than the clip leaves the doll
+	frozen on that frame for the remainder. Each slot therefore ends on the
+	length its clip is authored at in
+	Data/Animation/Authored/KoukuSaydon/Clown.interactionbindings.json,
+	measured on MN_RPCZ_00-1 at the runtime's 30 ticks per second. A slot
+	outside a mode's authored set keeps the ceiling, and so does the card maze
+	escape teleport, which borrows this same action with no slot of its own. */
+	constexpr std::uint32_t Kouku_InteractionActionMs(
+		const KOUKU_HUD_MODE mode, const std::uint32_t slotSkillIndex) noexcept
+	{
+		switch (mode)
+		{
+		case KOUKU_HUD_MODE::POLYMORPH:
+			return 2u == slotSkillIndex ? 1000u :
+				slotSkillIndex < 2u ? 1500u : KOUKU_INTERACTION_ACTION_MS;
+		case KOUKU_HUD_MODE::MARIO:
+			return 0u == slotSkillIndex ? 2500u :
+				1u == slotSkillIndex ? 1500u : KOUKU_INTERACTION_ACTION_MS;
+		case KOUKU_HUD_MODE::MAZE:
+			return 0u == slotSkillIndex ? 2500u : KOUKU_INTERACTION_ACTION_MS;
+		default:
+			/* The four dance poses are authored at exactly the ceiling. */
+			return KOUKU_INTERACTION_ACTION_MS;
+		}
+	}
 
 	/* The KoukuSaydon bingo board. The authored FLOOR03 floor tiles already
 	form it: 25 tiles at yaw 0, 3.04 m apart, x -6.08..6.08 and z
@@ -1329,6 +1355,11 @@ namespace LostArk::Shared
 		std::uint8_t iMarioStage = 0u;
 		// Server-selected source layout: 0 unselected, 1..3 original cases.
 		std::uint8_t iMarioLayoutVariant = 0u;
+		/* Source balls of that layout the Server has popped, bit = the layout's
+		binding slot (9 on stages 1-3, 12 on stage 4). Zero outside Mario. */
+		std::uint16_t iMarioPoppedBallMask = 0u;
+		// Bit 0 red, 1 blue, 2 yellow: every ball of that colour is popped.
+		std::uint8_t iMarioCurseReleasedMask = 0u;
 		/* Card maze truth. NONE carries suit NONE and zero counts; a HUNTER
 		carries the suit it was dealt and kills <= the kill target. */
 		CARD_MAZE_ROLE eCardMazeRole = CARD_MAZE_ROLE::NONE;

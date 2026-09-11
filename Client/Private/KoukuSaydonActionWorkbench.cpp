@@ -8059,6 +8059,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 					edit.strWorldOccurrenceId = worldBox.strOccurrenceId;
 			ImGui::EndCombo();
 		}
+		if (!edit.strWorldId.empty())
+		{
+			const auto* emissionWorld = Find_World(m_Draft, edit.strWorldId);
+			const auto emissionSource = nullptr != emissionWorld ? std::find_if(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
+				[&](const auto& row) { return row.strInstanceId == emissionWorld->strSequenceInstanceId; }) : m_WorldSequenceResources.end();
+			const int emissionCount = emissionSource != m_WorldSequenceResources.end() ? static_cast<int>(emissionSource->iEmissionCount) : 1;
+			if (emissionCount > 1)
+			{
+				int emissionIndex = static_cast<int>(edit.iWorldEmissionIndex);
+				if (ImGui::DragInt("Emission index##Anchor", &emissionIndex, 1.f, 0, emissionCount - 1, "%d", ImGuiSliderFlags_AlwaysClamp))
+					edit.iWorldEmissionIndex = static_cast<std::uint32_t>((std::clamp)(emissionIndex, 0, emissionCount - 1));
+				ImGui::TextDisabled("This Object motion emits %d authored rows; the box follows the selected row.", emissionCount);
+			}
+			else edit.iWorldEmissionIndex = 0u;
+		}
 	}
 	if (edit.strAnchorKind == "BOSS")
 	{

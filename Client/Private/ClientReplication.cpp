@@ -1561,7 +1561,7 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			float3_t(
 				Pending.Snapshot.fSkillTargetX,
 				Pending.Snapshot.fSkillTargetY,
-				Pending.Snapshot.fSkillTargetZ), Pending.Snapshot.eKoukuHudMode))
+				Pending.Snapshot.fSkillTargetZ), Pending.Snapshot.eKoukuHudMode, Pending.Snapshot.eAttachmentSlot))
 	{
 		Clear_DeferredLocalCharacterClassReplacement();
 		m_strPendingPresentationFailure =
@@ -4095,7 +4095,7 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 			float3_t(
 				player.fSkillTargetX,
 				player.fSkillTargetY,
-				player.fSkillTargetZ), player.eKoukuHudMode))
+				player.fSkillTargetZ), player.eKoukuHudMode, player.eAttachmentSlot))
 	{
 		allSucceeded = false;
 	}

@@ -213,6 +213,7 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("anchorKind")) box.strAnchorKind = Text(row, "anchorKind");
     if (row.Find("worldId")) box.strWorldId = Text(row, "worldId", true);
     if (row.Find("worldOccurrenceId")) box.strWorldOccurrenceId = Text(row, "worldOccurrenceId", true);
+    if (row.Find("worldEmissionIndex")) box.iWorldEmissionIndex = UInt(row, "worldEmissionIndex", 0u, 127u);
     if (box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" &&
         !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
         !(kind == KIND::EFFECT && box.strAnchorKind == "MAP"))
@@ -1235,14 +1236,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 if ((box.strWorldOccurrenceId.empty() || id == box.strWorldOccurrenceId) &&
                     player->Is_Playing(world->strSequenceInstanceId))
                 { if (selected) return false; selected = player.get(); }
-            return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor);
+            return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex);
         }
         const auto* level = CLevel_KakulSaydonArena::Get_Active();
         if (!level) return false;
         if (session.runEpoch)
             return level->Try_GetOwnedCompositionWorldPivot(session.runEpoch, session.memberId,
-                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor);
-        return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId);
+                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex);
+        return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex);
     };
     // Observe future anchored cues as well as active ones. Their first emission
     // can then interpolate the real samples bracketing the box start even when
@@ -2574,10 +2575,11 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
             i = m_BingoMarks.erase(i);
         }
     }
-    /* Bingo bombs. The Server owns both phases and their clock: a mark
-       rides its carrier, and a planted bomb stays where that carrier was
-       standing when the mark expired. Height and size live in the two
-       authored documents, so the pivot here is only the ground point. */
+    /* The bingo bomb's mark. It rides one named carrier and the Server can
+       cancel it mid-flight, so it stays a followed state rather than a
+       timeline. Height and size live in the authored document, so the pivot
+       here is only the ground point under its carrier. The planted half is a
+       World Sequence the Server names the moment it plants. */
     {
         const auto& bombBoard = CCombatHUDViewModel::Get().Get_BingoBoard();
         std::set<std::int32_t> liveBombs;
@@ -2599,12 +2601,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
                     carrierWorld._41, carrierWorld._42, carrierWorld._43));
                 bombAsset = "bingo.bomb.mark";
             }
-            else if (LostArk::Shared::BINGO_BOMB_PHASE::PLANTED == bomb.ePhase)
-            {
-                XMStoreFloat4x4(&bombPivot, XMMatrixTranslation(
-                    bomb.fPositionX, 0.f, bomb.fPositionZ));
-                bombAsset = "bingo.bomb";
-            }
+            /* PLANTED falls through: dropping the slot out of liveBombs is
+               what takes the mark off the carrier, and the sequence has already
+               started where it stood. */
             else continue;
             const std::int32_t slot = static_cast<std::int32_t>(index);
             liveBombs.insert(slot);
@@ -2617,68 +2616,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
             i = m_BingoBombs.erase(i);
         }
     }
-    /* The bingo hammer. The Server owns the anchor and the phase window;
-       this only interpolates that window against the replicated tick, so
-       the sweep stays smooth between snapshots without the Client ever
-       deciding where the hammer is. */
-    {
-        using namespace LostArk::Shared;
-        const auto& hammer = CCombatHUDViewModel::Get().Get_BingoBoard().Hammer;
-        const CLevel_KakulSaydonArena* hammerArena = CLevel_KakulSaydonArena::Get_Active();
-        if (BINGO_HAMMER_PHASE::NONE == hammer.ePhase ||
-            !Is_KoukuBingoHammerAnchor(hammer.iAnchor) ||
-            hammer.iPhaseEndTick <= hammer.iPhaseStartTick ||
-            nullptr == hammerArena)
-        {
-            if (m_BingoHammer.handle) CEffectV2Runtime::Stop_Group(m_BingoHammer.handle);
-            m_BingoHammer = {};
-        }
-        else
-        {
-            const BINGO_HAMMER_PATH path = Kouku_BingoHammerPath(hammer.iAnchor);
-            const std::uint32_t tick = hammerArena->Get_PresentationServerTick();
-            const float window = float(hammer.iPhaseEndTick - hammer.iPhaseStartTick);
-            const float elapsed = tick > hammer.iPhaseStartTick ?
-                float(tick - hammer.iPhaseStartTick) : 0.f;
-            const float ratio = (std::min)(1.f, elapsed / window);
-            /* The model is authored hanging: head at the origin, chain up
-               its own +Y. So the pivot is simply where the head goes. */
-            float x = path.fStartX, z = path.fStartZ, y = KOUKU_BINGO_HAMMER_SKY_Y;
-            if (BINGO_HAMMER_PHASE::DESCENDING == hammer.ePhase)
-            {
-                /* Smoothstep so the drop eases in and settles instead of
-                   dropping at a constant rate. */
-                const float fall = ratio * ratio * (3.f - 2.f * ratio);
-                y = KOUKU_BINGO_HAMMER_SKY_Y * (1.f - fall);
-            }
-            float lean = 0.f;
-            if (BINGO_HAMMER_PHASE::SWEEPING == hammer.ePhase)
-            {
-                y = 0.f;
-                x = path.fStartX + (path.fEndX - path.fStartX) * ratio;
-                z = path.fStartZ + (path.fEndZ - path.fStartZ) * ratio;
-                /* The head stays down; only the lean changes, so the
-                   hammer is flung rather than swung up. */
-                const float t = (std::min)(1.f,
-                    ratio / (std::max)(KOUKU_BINGO_HAMMER_LEAN_RATIO, 0.01f));
-                lean = XMConvertToRadians(KOUKU_BINGO_HAMMER_LEAN_DEGREES) *
-                    t * t * (3.f - 2.f * t);
-            }
-            /* The drum is a cylinder about the model's own X, so its two
-               flat faces are what it strikes with. Yaw puts that X down the
-               line so a face leads instead of the barrel's side, and the
-               lean then tips the chain toward travel by rotating about the
-               model's Z, which is the axis left across the line. */
-            const float dx = path.fEndX - path.fStartX;
-            const float dz = path.fEndZ - path.fStartZ;
-            float4x4_t hammerPivot;
-            XMStoreFloat4x4(&hammerPivot,
-                XMMatrixRotationZ(-lean) *
-                XMMatrixRotationY(std::atan2(-dz, dx)) *
-                XMMatrixTranslation(x, y, z));
-            Sync_MazeMark(m_BingoHammer, "bingo.hammer", hammerPivot);
-        }
-    }
+    /* The bingo hammer is authored now: four World Sequence templates, one
+       per sweep direction, and one instance per anchor. The Server names the
+       instance when it rolls the anchor, so there is nothing to pose here. */
     removeStale(m_MazePlayerMarks, livePlayers);
     removeStale(m_MazeTargetMarks, liveTargets);
     removeStale(m_MazeExits, liveExits);
@@ -2705,8 +2645,6 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (const auto& [slot, bomb] : m_BingoBombs)
         if (bomb.handle) CEffectV2Runtime::Stop_Group(bomb.handle);
     m_BingoBombs.clear();
-    if (m_BingoHammer.handle) CEffectV2Runtime::Stop_Group(m_BingoHammer.handle);
-    m_BingoHammer = {};
     for (const auto& [id, exit] : m_MazeExits)
         if (exit.handle) CEffectV2Runtime::Stop_Group(exit.handle);
     m_MazeExits.clear();

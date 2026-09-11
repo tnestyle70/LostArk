@@ -756,6 +756,11 @@ HRESULT CLoader::Ready_MapArea(
 		if (!CMapPlacementRuntime::Read_Placements(
 			mapCatalog, scopedPlacements, placementStatus))
 		{
+			{
+				lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+				g_ActiveStatus = "Map " + areaId +
+					": product load scope: " + placementStatus;
+			}
 			OutputDebugStringA(("[Loader][Map] " + placementStatus + "\n").c_str());
 			return E_FAIL;
 		}
@@ -764,7 +769,12 @@ HRESULT CLoader::Ready_MapArea(
 		for (const MAP_PLACEMENT_RECORD& record : scopedPlacements)
 			requiredAssetIds.insert(record.assetId);
 		if (requiredAssetIds.empty())
+		{
+			lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+			g_ActiveStatus = "Map " + areaId +
+				": product load scope selected no placements";
 			return E_FAIL;
+		}
 		CMapPlacementRuntime::Cache_LoadStage(
 			areaId,
 			loadScope,

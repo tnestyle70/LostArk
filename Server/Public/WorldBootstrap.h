@@ -145,6 +145,16 @@ namespace LostArk::Server
 		float endX = 0.f, endY = 0.f, endZ = 0.f;
 	};
 
+	/* One source ball of a Mario stage layout: slot is the binding index of the
+	   layout's WorldSequence instance and the bit the popped mask carries;
+	   color 0 red, 1 blue, 2 yellow. Metres, pivot at the ball's base. */
+	struct MARIO_SOURCE_BALL final
+	{
+		std::uint8_t stage = 0u, layout = 0u, slot = 0u, color = 0u;
+		std::uint64_t placementId = 0u;
+		float x = 0.f, y = 0.f, z = 0.f;
+	};
+
 	class CWorldBootstrap final
 	{
 	public:
@@ -160,11 +170,13 @@ namespace LostArk::Server
 		std::uint32_t Get_Revision() const { return m_iRevision; }
 		const std::vector<std::string>& Get_SequenceInstanceIds() const { return m_SequenceInstanceIds; }
 		const std::vector<CARD_MAZE_MARCH_LANE>& Get_CardMazeLanes() const { return m_CardMazeLanes; }
+		const std::vector<MARIO_SOURCE_BALL>& Get_MarioBalls() const { return m_MarioBalls; }
 
 	private:
 		std::vector<WORLD_BOOTSTRAP_PLACEMENT> m_Placements;
 		std::vector<std::string> m_SequenceInstanceIds;
 		std::vector<CARD_MAZE_MARCH_LANE> m_CardMazeLanes;
+		std::vector<MARIO_SOURCE_BALL> m_MarioBalls;
 		std::string m_strAreaId;
 		std::string m_strStatus;
 		std::uint32_t m_iRevision = 0;

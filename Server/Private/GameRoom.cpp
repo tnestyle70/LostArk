@@ -3510,11 +3510,23 @@ void LostArk::Server::CGameRoom::Handle_DebugBingoHammer(
 			static_cast<std::uint64_t>(m_iServerTick) * 1099511628211ull +
 			static_cast<std::uint64_t>(sessionId)) %
 		static_cast<std::uint64_t>(KOUKU_BINGO_HAMMER_ANCHOR_COUNT));
-	m_strStatus = m_KoukuBingo.Start_Hammer(anchor, m_iServerTick,
+	/* The motion is authored: one World Sequence template per sweep direction
+	and one instance per anchor, so naming the instance is all the presentation
+	needs. The phase clock below stays authoritative - the sequence shows those
+	same five seconds rather than deciding them. */
+	if (m_KoukuBingo.Start_Hammer(anchor, m_iServerTick,
 		m_iServerTick +
-			(KOUKU_BINGO_HAMMER_RAISE_MS * SERVER_TICK_HZ + 999u) / 1000u) ?
-		"Bingo hammer started by Debug request" :
-		"Bingo hammer refused: one is already running";
+			(KOUKU_BINGO_HAMMER_RAISE_MS * SERVER_TICK_HZ + 999u) / 1000u))
+	{
+		Broadcast_WorldSequencePlay(
+			"world.sequence.instance.kouku.bingo.hammer.anchor." +
+			std::to_string(anchor));
+		m_strStatus = "Bingo hammer started by Debug request";
+	}
+	else
+	{
+		m_strStatus = "Bingo hammer refused: one is already running";
+	}
 #else
 	(void)sessionId;
 	(void)request;
@@ -3565,6 +3577,14 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 		{
 			m_KoukuBingo.Plant_Bomb(slot, carrier->fPositionX, carrier->fPositionZ,
 				tick + (KOUKU_BINGO_BOMB_FUSE_MS * SERVER_TICK_HZ + 999u) / 1000u);
+			/* The burning bomb is authored. One instance per slot, because a
+			second play of the same instance restarts it in place, and the plant
+			point rides the cue as its position offset. The fuse above stays
+			authoritative; the sequence shows those same two seconds. */
+			Broadcast_WorldSequencePlay(
+				"world.sequence.instance.kouku.bingo.bomb.planted.slot." +
+				std::to_string(slot), 1.f,
+				carrier->fPositionX, 0.f, carrier->fPositionZ);
 		}
 	}
 }
@@ -4190,6 +4210,7 @@ std::uint8_t LostArk::Server::CGameRoom::Begin_MarioStageObjects(const std::uint
 
 void LostArk::Server::CGameRoom::Reset_MarioStageObjects(const std::uint8_t stage)
 {
+	if (stage < 5u) m_MarioPoppedBalls[stage] = 0u;
 	const std::string groupId = "spawn.mario" + std::to_string(stage) + ".source";
 	for (auto entity = m_WorldEntities.begin(); entity != m_WorldEntities.end();)
 	{
@@ -4245,6 +4266,7 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 			return;
 		}
 		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		player.eKoukuAreaHudMode = KOUKU_HUD_MODE::MARIO;
 		if (!player.bMarioRailReady && !player.TriggerMove.isActive &&
 			PLAYER_ACTION_STATE::NONE == player.eAction)
 			(void)Configure_MarioRail(player, player.strMarioRailArrivalId);
@@ -4269,6 +4291,11 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 		player.ePreMarioForm = player.eMadnessForm;
 		player.iMarioStage = stage;
 		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		/* MARIO is what deals the two interaction slots and what the Client
+		checks before it submits Q/W at all. The only authored source is
+		Mario1_go's movePlayer, and every MarioN_go is a disabled config row
+		whose action never fires, so the stage sets it here instead. */
+		player.eKoukuAreaHudMode = KOUKU_HUD_MODE::MARIO;
 		player.strMarioRailArrivalId = "Mario" + std::to_string(stage) + "_go";
 		player.bMarioRailReady = false;
 		player.iMarioMoveExpiryTick = 0u;
@@ -11138,6 +11165,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
 		snapshot.iMarioStage = player.iMarioStage;
 		snapshot.iMarioLayoutVariant = player.iMarioLayoutVariant;
+		snapshot.iMarioPoppedBallMask = player.iMarioStage >= 1u && player.iMarioStage <= 4u ?
+			m_MarioPoppedBalls[player.iMarioStage] : std::uint16_t{};
+		snapshot.iMarioCurseReleasedMask = Mario_CurseReleasedMask(player.iMarioStage, player.iMarioLayoutVariant);
 		snapshot.eCardMazeRole = player.eCardMazeRole;
 		snapshot.eCardMazeSuit = player.eCardMazeSuit;
 		snapshot.iCardMazeKills = player.iCardMazeKills;
@@ -14510,6 +14540,42 @@ void LostArk::Server::CGameRoom::Resolve_MarioHammerHit(
 		hit.iServerTick = updateTick;
 		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(entity, hit, m_TickDamageEvents);
 	}
+	/* Source balls are Client placements with no entity. The bootstrap carries
+	the stage layout's slots; a popped slot bit is what the Client hides. The
+	ball pivot sits at its base, so the height window is under one floor step. */
+	constexpr float BALL_RADIUS_M = .47f, BALL_HEIGHT_WINDOW_M = 1.2f;
+	if (player.iMarioStage > 4u) return;
+	for (const auto& ball : m_WorldBootstrap.Get_MarioBalls())
+	{
+		const std::uint16_t bit = static_cast<std::uint16_t>(1u << ball.slot);
+		if (ball.stage != player.iMarioStage || ball.layout != player.iMarioLayoutVariant ||
+			(m_MarioPoppedBalls[player.iMarioStage] & bit) ||
+			std::abs(ball.y - player.fPositionY) > BALL_HEIGHT_WINDOW_M)
+			continue;
+		const float dx = ball.x - player.fPositionX;
+		const float dz = ball.z - player.fPositionZ;
+		const float distance = std::hypot(dx, dz);
+		if (distance > CKoukuCardMazeRuntime::HAMMER_RANGE_M + BALL_RADIUS_M ||
+			(distance > .01f && (dx * forwardX + dz * forwardZ) / distance <
+				CKoukuCardMazeRuntime::HAMMER_HALF_ANGLE_COS))
+			continue;
+		m_MarioPoppedBalls[player.iMarioStage] |= bit;
+	}
+}
+
+std::uint8_t LostArk::Server::CGameRoom::Mario_CurseReleasedMask(
+	const std::uint8_t stage, const std::uint8_t layout) const
+{
+	if (stage < 1u || stage > 4u) return 0u;
+	std::uint8_t present = 0u, remaining = 0u;
+	for (const auto& ball : m_WorldBootstrap.Get_MarioBalls())
+	{
+		if (ball.stage != stage || ball.layout != layout) continue;
+		present |= static_cast<std::uint8_t>(1u << ball.color);
+		if (!(m_MarioPoppedBalls[stage] & (1u << ball.slot)))
+			remaining |= static_cast<std::uint8_t>(1u << ball.color);
+	}
+	return static_cast<std::uint8_t>(present & ~remaining);
 }
 
 void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
@@ -15182,7 +15248,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
 				serverTick, player.iAttachmentReleaseTick))
 		{
 			(void)Release_PlayerAttachment(
-				player, ownerEntityId, 0.f, 0u, false, 0u,
+				player, ownerEntityId, 0.f, 0u, liveOwner, liveOwner ? 1500u : 0u,
 				0u == serverTick ? 1u : serverTick);
 			return false;
 		}
@@ -15520,11 +15586,21 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		{
 			Resolve_MarioHammerHit(player, updateTick);
 		}
-		/* A KoukuSaydon interaction press is the same kind of fixed lock. */
+		/* A KoukuSaydon interaction press is the same kind of lock, but it ends
+		with the clip the pressed slot was authored on so the Client is never
+		left holding a frozen last frame. An escape teleport borrows this action
+		with no slot of its own, and INVALID_SKILL_ID is 0 -- the same value as
+		slot 0 -- so it is separated by its transfer tick, not by the skill id. */
+		const std::uint32_t interactionTicks =
+			0u == player.CardMaze.transferStartTick ?
+			CKoukuSaydonLogicRuntime::Ticks_FromMs(
+				LostArk::Shared::Kouku_InteractionActionMs(
+					player.eKoukuHudMode, player.iCurrentSkillId)) :
+			KOUKU_INTERACTION_TICKS;
 		const bool interactionElapsed =
 			LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
-				(player.iActionStartTick + KOUKU_INTERACTION_TICKS)) >= 0;
+				(player.iActionStartTick + interactionTicks)) >= 0;
 		if (estherCastElapsed || interactionElapsed)
 		{
 			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;

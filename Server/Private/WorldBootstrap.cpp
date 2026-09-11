@@ -206,13 +206,17 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t count = 0;
 	std::uint32_t sequenceCount = 0;
 	std::uint32_t laneCount = 0;
-	if ((6u != header.size() && 7u != header.size() && 8u != header.size()) ||
+	std::uint32_t ballCount = 0;
+	if ((6u != header.size() && 7u != header.size() && 8u != header.size() && 9u != header.size()) ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || (8u != version && 9u != version && 10u != version) ||
+		!ParseNumber(header[1], version) || (8u != version && 9u != version && 10u != version && 11u != version) ||
 		(8u == version && 6u != header.size()) ||
 		(9u == version && (7u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u)) ||
 		(10u == version && (8u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u ||
 			!ParseNumber(header[7], laneCount) || (laneCount != 0u && laneCount != 36u))) ||
+		(11u == version && (9u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u ||
+			!ParseNumber(header[7], laneCount) || (laneCount != 0u && laneCount != 36u) ||
+			!ParseNumber(header[8], ballCount) || ballCount > 4096u)) ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -691,6 +695,29 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		lane.instanceId = f[0];
 		lanes.push_back(std::move(lane));
 	}
+	std::vector<MARIO_SOURCE_BALL> balls;
+	std::vector<std::uint8_t> ballSlots(4u * 3u, 0u);
+	for (std::uint32_t i = 0u; i < ballCount; ++i)
+	{
+		if (!std::getline(input, line)) { m_strStatus = "Mario ball rows truncated"; return false; }
+		StripCarriageReturn(line);
+		const auto f = SplitTabs(line);
+		MARIO_SOURCE_BALL ball;
+		/* Slots arrive 0,1,2.. per (stage, layout) so the mask bit is the
+		Client's binding index; only stage 4 reaches twelve. */
+		if (worldId != WORLD_ID::KAKULSAYDON_ARENA || f.size() != 9u || "MARIOBALL" != f[0] ||
+			!ParseNumber(f[1], ball.stage) || ball.stage < 1u || ball.stage > 4u ||
+			!ParseNumber(f[2], ball.layout) || ball.layout < 1u || ball.layout > 3u ||
+			!ParseNumber(f[3], ball.slot) || ball.slot != ballSlots[(ball.stage - 1u) * 3u + ball.layout - 1u] ||
+			ball.slot >= (4u == ball.stage ? 12u : 9u) ||
+			!ParseNumber(f[4], ball.color) || ball.color > 2u ||
+			!ParseNumber(f[5], ball.placementId) || 0u == ball.placementId ||
+			!ParseNumber(f[6], ball.x) || !ParseNumber(f[7], ball.y) || !ParseNumber(f[8], ball.z) ||
+			!std::isfinite(ball.x) || !std::isfinite(ball.y) || !std::isfinite(ball.z))
+		{ m_strStatus = "Mario ball row is invalid"; return false; }
+		++ballSlots[(ball.stage - 1u) * 3u + ball.layout - 1u];
+		balls.push_back(ball);
+	}
 	if (std::getline(input, line))
 	{
 		m_strStatus = "World bootstrap has trailing rows";
@@ -724,6 +751,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	m_Placements = std::move(staged);
 	m_SequenceInstanceIds = std::move(sequences);
 	m_CardMazeLanes = std::move(lanes);
+	m_MarioBalls = std::move(balls);
 	m_strAreaId = stagedAreaId;
 	m_iRevision = revision;
 	m_strStatus = "Loaded world bootstrap: " +

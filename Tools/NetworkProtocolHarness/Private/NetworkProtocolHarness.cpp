@@ -2282,10 +2282,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 79u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 80u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 79");
+			"Mario direction packet retains its appended identity in protocol 80");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2399,6 +2399,35 @@ namespace
 		snapshot.Players[0].iMarioLayoutVariant = 1u;
 		CPacketWriter orphanLayout;
 		testRunner.Require(!Write_Message(orphanLayout, snapshot), "Mario layout cannot survive leaving the stage");
+		snapshot.Players[0].iMarioStage = 2u;
+		snapshot.Players[0].iMarioLayoutVariant = 1u;
+		snapshot.Players[0].iMarioPoppedBallMask = 0x0FFFu;
+		snapshot.Players[0].iMarioCurseReleasedMask = 7u;
+		snapshot.Players[0].CardMaze.flags = CARD_MAZE_ENTRY_HIDDEN;
+		{
+			CPacketWriter writer;
+			const bool written = Write_Message(writer, snapshot);
+			CPacketReader reader{writer.Get_Buffer()};
+			S2C_WORLD_SNAPSHOT decoded;
+			testRunner.Require(written && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+				decoded.Players.size() == 1u && decoded.Players[0].iMarioPoppedBallMask == 0x0FFFu &&
+				decoded.Players[0].iMarioCurseReleasedMask == 7u &&
+				decoded.Players[0].CardMaze.flags == CARD_MAZE_ENTRY_HIDDEN,
+				"Merged protocol preserves Mario masks and card maze visibility together");
+		}
+		snapshot.Players[0].iMarioPoppedBallMask = 0x1000u;
+		CPacketWriter badPopped;
+		testRunner.Require(!Write_Message(badPopped, snapshot) && badPopped.Get_Buffer().empty(),
+			"Mario popped mask rejects slots above twelve before writing");
+		snapshot.Players[0].iMarioPoppedBallMask = 1u;
+		snapshot.Players[0].iMarioCurseReleasedMask = 8u;
+		CPacketWriter badCurse;
+		testRunner.Require(!Write_Message(badCurse, snapshot), "Mario curse mask rejects bits above yellow");
+		snapshot.Players[0].iMarioCurseReleasedMask = 0u;
+		snapshot.Players[0].iMarioStage = 0u;
+		snapshot.Players[0].iMarioLayoutVariant = 0u;
+		CPacketWriter orphanPopped;
+		testRunner.Require(!Write_Message(orphanPopped, snapshot), "Mario popped mask cannot survive leaving the stage");
 	}
 
 	void Test_CardMazeSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2680,14 +2709,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 79u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 80u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 78 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 80 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2748,7 +2777,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 79u, "World Object owner lifecycle and fear use protocol 79");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 80u, "World Object owner lifecycle and fear use protocol 80");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2761,7 +2790,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) == 80u &&
 			static_cast<std::uint8_t>(PLAYER_ACTION_STATE::FEAR) == 9u &&
 			static_cast<std::uint8_t>(PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP) == 2u,
-			"Protocol 78 preserves main identities and bundle state");
+			"Protocol 80 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -3101,8 +3130,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 79u,
-			"Protocol 78 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 80u,
+			"Protocol 80 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3218,8 +3247,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(78u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 78");
+			testRunner.Require(80u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 80");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3590,7 +3619,8 @@ namespace
 		the eight mode-skill slot indices to every player row. */
 		constexpr std::size_t playerInteractionBytes = 1 + 1 + 1 + KOUKU_HUD_SLOT_COUNT;
 		// Protocol 62 adds the Mario stage; protocol 76 adds its source layout.
-		constexpr std::size_t playerMarioStageBytes = 1 + 1;
+		// Protocol 80 adds the popped-ball U16 and curse-release U8 masks.
+		constexpr std::size_t playerMarioStageBytes = 1 + 1 + 2 + 1;
         constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
         constexpr std::size_t playerFearBytes = 4 + 2;
@@ -6429,8 +6459,8 @@ namespace
 		}
 
 		testRunner.Require(
-			78u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 79");
+			80u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 80");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -6457,8 +6487,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			78u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 78");
+			80u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 80");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

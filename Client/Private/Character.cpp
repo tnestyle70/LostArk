@@ -1352,6 +1352,8 @@ bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
 	const f32_t scale = isMario ? 1.5f / CLOWN_REFERENCE_HEIGHT_METERS : 1.f;
 	// Scale sets absolute axis lengths; Scaling would shrink on every snapshot.
 	bodyTransform->Scale(scale, scale, scale);
+	/* The weapon needs nothing here: it rides this same part transform as
+	its socket root (see Ready_Parts), so it scales with the body. */
 	return true;
 }
 
@@ -1442,7 +1444,8 @@ bool_t CCharacter::Apply_NetworkAction(
 	const std::uint8_t comboStage,
 	const bool_t hasSkillTarget,
 	const float3_t& skillTarget,
-	const LostArk::Shared::KOUKU_HUD_MODE interactionMode)
+	const LostArk::Shared::KOUKU_HUD_MODE interactionMode,
+	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT grabSlot)
 {
 	using namespace LostArk::Shared;
 	if (0u == serverTick || !std::isfinite(actionFacingYawDegrees) ||
@@ -1616,10 +1619,22 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
-		/* Translation belongs to Update_NetworkAttachmentTransform (owner socket)
-		or, without an owner presentation, to the Server attachment snapshot. A
-		neutral loop keeps class root motion from fighting either writer. */
-		Set_Animation(CHARACTER_ANIM::IDLE, true);
+		m_eNetworkGrabSlot = grabSlot;
+		// Ground drag is not a boss hand capture. Use the existing original
+		// down pose; Server snapshots remain the only position writer.
+		if (PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP == grabSlot)
+		{
+			if (!Set_Animation(CHARACTER_ANIM::DOWN_LOOP, true) &&
+				Set_Animation(CHARACTER_ANIM::KNOCKDOWN_LAND, false))
+			{
+				const auto animation = m_pBodyModel->Get_CurrentAnimIndex();
+				f32_t position = 0.f, duration = 0.f;
+				if (m_pBodyModel->Get_AnimationProgress(animation, position, duration))
+					m_pBodyModel->Set_AnimTrackPosition(animation, duration);
+			}
+		}
+		else
+			Set_Animation(CHARACTER_ANIM::IDLE, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
 		m_bHasEffectActionFacingYaw = false;
@@ -1722,9 +1737,16 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iChainStep = 0;
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
-		if (!Set_Animation(CHARACTER_ANIM::KNOCKDOWN, false))
-			Set_Animation(CHARACTER_ANIM::HIT, false);
-		m_eKnockdownStep = KNOCKDOWN_STEP::FALLING;
+		const bool_t hookImpact = m_eNetworkAction == PLAYER_ACTION_STATE::GRABBED &&
+			m_eNetworkGrabSlot == PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
+		if (hookImpact && Set_Animation(CHARACTER_ANIM::KNOCKDOWN_LAND, false))
+			m_eKnockdownStep = KNOCKDOWN_STEP::LANDING;
+		else
+		{
+			if (!Set_Animation(CHARACTER_ANIM::KNOCKDOWN, false))
+				Set_Animation(CHARACTER_ANIM::HIT, false);
+			m_eKnockdownStep = KNOCKDOWN_STEP::FALLING;
+		}
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
 		m_bHasEffectActionFacingYaw = false;
@@ -3168,6 +3190,15 @@ HRESULT CCharacter::Ready_PartObjects()
 		weaponDesc.pSocketBoneName = m_pSpec->pWeapons[i].pSocketBone;
 		weaponDesc.fSocketYawDegrees = m_pSpec->pWeapons[i].fSocketYawDegrees;
 		weaponDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
+		/* The body is drawn as skinned vertex * bone * body-part transform *
+		root. A socketed weapon composes its own transform * bone * root, so a
+		body-part transform that is not identity -- the Mario doll is scaled to
+		1.5 m through it -- would leave the weapon at the full-size hand. Riding
+		the body part's matrix as the socket root makes both compositions the
+		same, and is a no-op for a class whose body part stays at identity. */
+		if (const auto bodyTransform = dynamic_pointer_cast<CTransform>(
+			__super::Get_Component(TEXT("Part_00_Body"), TEXT("Com_Transform"))))
+			weaponDesc.pSocketRootMatrix = bodyTransform->Get_WorldMatrixPtr();
 
 		if (FAILED(__super::Add_PartObject(
 			m_iPrototypeLevelIndex,

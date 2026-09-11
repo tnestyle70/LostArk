@@ -1096,13 +1096,54 @@ function Convert-WorldDocument {
             $mazeLanes.Add(($fields -join "`t"))
         }
     }
+    # Mario source balls: the same layout bindings the Client plays, in binding
+    # order, so the slot bit the Server pops is the binding the Client hides.
+    $marioBalls = [Collections.Generic.List[string]]::new()
+    if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+        $ballPlacementPath = [IO.Path]::GetFullPath((Join-Path $repoRoot "Data/Maps/Authoring/$AreaId/$AreaId.mapplacements"))
+        if (-not [IO.File]::Exists($ballPlacementPath)) { throw "Mario balls need Data/Maps/Authoring/$AreaId/$AreaId.mapplacements." }
+        $ballRows = @{}
+        $ballColors = @{ RED_STAR = 0; BLUE = 1; YELLOW = 2 }
+        foreach ($line in [IO.File]::ReadAllLines($ballPlacementPath)) {
+            if ($line -cmatch '^(\d+) "[^"]*" "[^"]*" "actor" "MAP_MARIO_(RED_STAR|BLUE|YELLOW)_BALL" (\S+) (\S+) (\S+) ') {
+                $ballRows[$Matches[1]] = @{ Color = $ballColors[$Matches[2]]; X = $Matches[3]; Y = $Matches[4]; Z = $Matches[5] }
+            }
+        }
+        $layoutInstances = @($sequenceDocument.instances | Where-Object { $_.instanceId -like 'world.sequence.instance.mario*.source.layout*' -and $_.enabled })
+        foreach ($instance in $layoutInstances) {
+            if (-not ($instance.instanceId -cmatch '^world\.sequence\.instance\.mario([1-4])\.source\.layout([1-3])$')) { throw "Invalid Mario layout ID: $($instance.instanceId)" }
+            $stage = [int]$Matches[1]
+            $layout = [int]$Matches[2]
+            $bindings = @($instance.bindings)
+            $expectedBalls = if ($stage -eq 4) { 12 } else { 9 }
+            if ($bindings.Count -ne $expectedBalls) { throw "Mario stage $stage layout $layout must bind $expectedBalls balls; got $($bindings.Count)." }
+            $boundBalls = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            for ($slot = 0; $slot -lt $bindings.Count; ++$slot) {
+                $binding = $bindings[$slot]
+                $targetId = [string]$binding.targetId
+                if ($binding.targetKind -cne 'MAP_PLACEMENT' -or -not $ballRows.ContainsKey($targetId) -or -not $boundBalls.Add($targetId)) {
+                    throw "Mario layout binding is not a distinct ball placement: $($instance.instanceId) $($binding.slotId)"
+                }
+                $ball = $ballRows[$targetId]
+                $fields = @([string]$stage, [string]$layout, [string]$slot, [string]$ball.Color, $targetId)
+                foreach ($value in @($ball.X, $ball.Y, $ball.Z)) {
+                    $number = 0.0
+                    if (-not [double]::TryParse($value, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$number) -or
+                        [double]::IsNaN($number) -or [double]::IsInfinity($number)) { throw "Mario ball $targetId has an unreadable position." }
+                    $fields += $number.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+                }
+                $marioBalls.Add(($fields -join "`t"))
+            }
+        }
+    }
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t10`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)`t$($mazeLanes.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t11`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)`t$($mazeLanes.Count)`t$($marioBalls.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }
     foreach ($sequenceId in @($sequenceIds | Sort-Object)) { $lines.Add($sequenceId) }
     foreach ($lane in $mazeLanes) { $lines.Add($lane) }
+    foreach ($ball in $marioBalls) { $lines.Add("MARIOBALL`t$ball") }
     return [ordered]@{
         WorldId = $WorldId
         AreaId = $AreaId

@@ -256,7 +256,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v65 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v80 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -408,6 +408,16 @@ F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed �
 Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift 점프/마우스 이동/일반 스킬은 차단한다.
 키 해제 또는 300ms 입력 만료 시 서버 이동이 정지한다. 기존 퇴장·다른 F1 이동·책 컷신 배치는 전용 상태를
 해제하고 입장 전 외형을 복원한다. 조작·패킷·착지 조건은 팀 인터페이스 사용서 4.2절이 정본이다.
+마리오 1~4의 빨강·파랑·노랑 원본 공은 Q 뿅망치로 터진다. Server 권위이며 공은 엔티티가 아니라
+`Publish-WorldGameplay.ps1`이 worldbootstrap v11의 `MARIOBALL` 행으로 싣는 좌표다. 행의 슬롯 번호는
+`world.sequence.instance.marioN.source.layoutM`의 바인딩 인덱스와 같은 순서이며 부트스트랩 파서가
+연속성을 검사한다. `Resolve_MarioHammerHit`이 몬스터와 같은 전방 120°·2.4m 원뿔(공 반지름 0.47m
+가산, 높이 창 1.2m)로 판정해 `PLAYER_SNAPSHOT.iMarioPoppedBallMask` 비트를 세우고, 한 색의 공이 그
+레이아웃에서 전부 터지면 `iMarioCurseReleasedMask`가 그 색 비트를 세운다. Client는 그 비트로 배치를
+`CWorldSequencePlayer`의 억제 집합에 넣어 숨기고 `boss.kouku.ball.smoke.<색>_1` 연기를 한 번 재생하며
+`빨간/파란/노란 인형의 저주 해제` 문구를 화면 중앙에 3초 표시한다. 뿅망치 접촉 틱은 카드미로와 공용인
+`HAMMER_HIT_TICK_OFFSET`이며 실측 스윙에 맞춘 30틱(1.0초)이다. 이 배치는 protocol 80을 쓰므로
+Server와 Client를 같은 버전으로 함께 빌드·재시작한다.
 카드미로 문양 몬스터는 Server 권위다. 미로 중앙의 `cardmaze.telescope` 상자(`claimCardMazeTelescope` trigger action,
 Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모드 뿅망치로 먼저 가격한 플레이어가 망원경 담당이 되고, 그 순간
 `CKoukuCardMazeRuntime`이 나머지 살아 있는 플레이어(최대 3명)에게 4문양 중 3개를 서로 다르게 랜덤 배정한 뒤
@@ -482,7 +492,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v65의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v80의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -563,6 +573,13 @@ formatVersion 3이다. `Save` 하나로 source를 원자 저장하고 기존 Map
 기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
 `objectResources`는 CModel 모델·diffuse·기본 scale·기본 `anchorKind`(WORLD/PLAYER) 또는 기존 sequence alias를,
 template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
+`objectMotion`의 optional `emissions`는 seed 분산 대신 저작한 사본 목록이다. 행마다
+`positionOffset`·`yawDegrees`·`startDelayMs`를 가지며 행 yaw가 로컬 이동과 공전을 함께 돌린다.
+행이 있으면 `count`는 행 수와 같고 `intervalMs`·`spreadDegrees`는 0이며, 최대 지연은 Lifetime보다 작아야 한다.
+행이 없으면 기존 seed emitter와 동일하다. Object Detail의 `Authored Emissions` 표와
+`Distribute on Ring`이 이 목록을 편집하고, `Distribute on Ring`은 저장 위치를 중심으로
+`revolutionOffset` 반경의 원을 만든다. Composition Collider는 optional `worldEmissionIndex`로
+따라갈 행을 고르며 projector가 그 값을 기존 Server baseline에 굽는다. protocol과 Server 계약은 그대로다.
 WORLD/PLAYER anchor의 표현은 기존 `CWorldSequencePlayer`가 Prototype/Clone/Layer로 샘플링한다.
 Create의 Map/Character 선택과 Resource Anchor 변경을 새 상태와 연결 상태에 반영한다.
 기존 v3에서 resource anchor가 없으면 Map으로 읽고 기존 instance anchor는 보존한다. 배치 alias는 Map 전용이다.
