@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 NS_BEGIN(Client)
 class CUI_Sprite;
@@ -192,6 +193,12 @@ private:
 	};
 
 private:
+	enum class SLOT_REQUIREMENT { ANY, FLIPBOOK, KEYFRAME };
+	void Append_Slot(RUNTIME_SLOT Slot);
+	RUNTIME_SLOT* Find_Slot(const string& strId,
+		SLOT_REQUIREMENT eRequirement = SLOT_REQUIREMENT::ANY);
+	const RUNTIME_SLOT* Find_Slot(const string& strId,
+		SLOT_REQUIREMENT eRequirement = SLOT_REQUIREMENT::ANY) const;
 	HRESULT Load();
 	/* Registers strPath as a Texture prototype under LEVEL::STATIC (keyed by that same
 	Resources-relative path) the first time this factory sees it, generalizing
@@ -222,6 +229,9 @@ private:
 	f32_t							m_fScaleY = 1.f;
 
 	vector<RUNTIME_SLOT>			m_Slots;
+	/* Runtime lookup only; document order and sprite ownership stay in m_Slots. Duplicate
+	IDs retain their ordered candidates because animation calls skip ineligible slots. */
+	std::unordered_map<string, vector<size_t>> m_SlotIndices;
 	vector<wstring_t>				m_RegisteredTexturePrototypes;
 	map<string, KEYFRAME_ANIM_DOCUMENT>	m_KeyframeAnimationCache;
 	/* For Set_SlotTexture's runtime swap path and every keyframe/flipbook frame texture -- the

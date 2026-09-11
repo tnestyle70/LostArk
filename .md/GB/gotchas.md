@@ -972,3 +972,18 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - `Map: product load scope`는 진행 단계다. 실패 시 `Read_Placements`의 실제 parser 이유와 Area ID를 `CLoader::Get_ActiveStatus()`에 보존해 `Recover_FromFailure`의 세션 진단 JSON까지 전달한다. scope 결과에 배치가 없는 경우도 명시적인 이유를 남긴다.
 - 실행 `.mapplacements`는 `LOSTARK_MAP_PLACEMENTS` 헤더의 게시 출력이어야 한다. LFS pointer나 conflict marker가 남은 파일의 header 거부를 resource 누락이나 GPU 문제로 오판하지 않는다. 같은 Area의 worldsequences도 확인하고, 통합한 `Data/Maps/Authoring` 정본으로 Area publisher와 Check를 수행한다. 생성물을 직접 편집하거나 parser를 완화하지 않으며 일반 C++ 빌드를 publisher로 간주하지 않는다.
 - 충돌 제거·게시·컴파일 성공과 최종 Client의 arena 진입은 별도 증거다. 당시 원인과 게시 후 정상 상태는 [PR360 통합 결과](09-11/2026-09-11_PR360_WORLD_OBJECT_RESOURCE_MERGE_IMPLEMENTATION_RESULT.md)에 구분한다.
+
+### 스킬 애니메이션만 동작하고 한 직업의 모든 Effect가 없으면 animevents 전체 로드를 확인한다
+
+- `.animevents`의 헤더 총행수는 원본 참고 event와 제품 `effectref=asset` 행을 모두 포함한다. clip cue 병합·삭제 뒤 실제 행 수를 갱신하지 않으면 parser가 문서 전체를 거부한다. 개별 Effect JSON·catalog 존재만 확인하면 이 실패를 놓친다. 통합 도구에서 최종 행 수를 산출하고 실제 Product prewarm 및 설치 모델 clip/bone을 사용한 cue Load를 검사한다.
+- Artist와 LanceMaster ALT V에서 같은 결함이 재발했다. Lance의 선언3139/실제3136을 맞춘 뒤43cue가 정상 admission됐으며, 이미 실패한 prepared 문서는 Client 재시작으로 다시 읽는다. 헤더 검사를 완화하거나 이 데이터 수정에 EXE/Server 재빌드를 요구하지 않는다. [상세 원인과 검증](09-11/2026-09-11_TIGER_HORSE_ANIMATION_AND_LANCEMASTER_ALTV_RESULT.md#g07-창술사-전체-이펙트-미출력의-실제-로더-회귀)을 따른다.
+
+### Effect Tool에서 읽힌 큰 문서도 제품 준비 경로를 확인한다
+
+- Lance ALT V의 20,049,144-byte full 문서는 Codec의 64MiB 한도에는 들어왔지만 Product Catalog의 별도 16MiB 한도에서 거부됐다. standalone Codec/Renderer Stage만으로 스킬 제품 준비를 검증하지 않는다. 실제 Catalog request와 `Stage_LoadingProductTarget`을 연결해 확인한다.
+- 저작·제품 문서는 `CEffectDocumentCodec::MAXIMUM_DOCUMENT_BYTES`의 64MiB 상한과 bounded Load를 공유한다. catalog index의 16MiB 한도와 JSON depth/value/identity 검사는 별도 계약이다. 임의 minify로 현재 파일만 통과시키면 F1 Save 후 재발할 수 있다. [실제 실패와 교정 결과](09-11/2026-09-11_TIGER_HORSE_ANIMATION_AND_LANCEMASTER_ALTV_RESULT.md#g08-alt-v-제품-로더의-16mib--64mib-불일치)를 따른다.
+
+### 손 부착 창이 돌아가면 source TypeData 회전 누락을 먼저 구분한다
+
+- MeshRotation distribution의 quarter-turn과 TypeData의 degree 회전은 별개다. Lance V/ALT V source pitch=-90이 typed detail에서 빠져 있으면 실제 +Y 메시가 손본 -Z로 향한다. `[roll,pitch,yaw]`를 기존 `sourceTypeDataRotationDegrees`에 한 번 투영하고 local/socket 회전이나 offset을 임의로 덧붙이지 않는다.
+- source import scale 보정은 방향을 회전시키지 않지만 기존 방향·offset 오류를 크게 드러낼 수 있다. 실제 손본 pose와 설치 mesh vertex의 world 결과로 크기·원점·방향을 따로 비교한다. synthetic axis만 finite라는 검사로 실제 손 부착이 맞다고 기록하지 않는다.

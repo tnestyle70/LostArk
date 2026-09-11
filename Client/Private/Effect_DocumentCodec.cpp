@@ -13636,7 +13636,7 @@ bool_t Client::CEffectDocumentCodec::Parse(
 {
 	DATA_JSON_VALUE Root;
 	DATA_JSON_PARSE_LIMITS EffectDocumentLimits;
-	EffectDocumentLimits.iMaximumBytes = 64u * 1024u * 1024u;
+	EffectDocumentLimits.iMaximumBytes = MAXIMUM_DOCUMENT_BYTES;
 	EffectDocumentLimits.iMaximumDepth = 64u;
 	EffectDocumentLimits.iMaximumValues = 3'000'000u;
 	if (!CDataJson::Parse(Json, Root, strOutError, EffectDocumentLimits))
@@ -14421,20 +14421,35 @@ bool_t Client::CEffectDocumentCodec::Load(
 	EFFECT_DOCUMENT_DESC& OutDocument,
 	std::string& strOutError)
 {
-	std::ifstream Input(Path, std::ios::binary);
+	std::ifstream Input(Path, std::ios::binary | std::ios::ate);
 	if (!Input)
 	{
 		strOutError = "Effect document could not be opened.";
 		return false;
 	}
-	std::ostringstream Buffer;
-	Buffer << Input.rdbuf();
-	if (!Input.eof() && Input.fail())
+	const std::streamoff FileBytes = Input.tellg();
+	if (FileBytes < 0)
 	{
-		strOutError = "Effect document read failed.";
+		strOutError = "Effect document byte count could not be read.";
 		return false;
 	}
-	return Parse(Buffer.str(), OutDocument, strOutError);
+	if (0 == FileBytes ||
+		static_cast<uint64_t>(FileBytes) > MAXIMUM_DOCUMENT_BYTES)
+	{
+		strOutError = "Effect document byte count is outside its limit: actualBytes=" +
+			std::to_string(FileBytes) + ", limitBytes=" +
+			std::to_string(MAXIMUM_DOCUMENT_BYTES) + ".";
+		return false;
+	}
+	std::string Text(static_cast<size_t>(FileBytes), '\0');
+	Input.seekg(0, std::ios::beg);
+	Input.read(Text.data(), static_cast<std::streamsize>(FileBytes));
+	if (!Input || Input.peek() != std::char_traits<char>::eof() || Input.bad())
+	{
+		strOutError = "Effect document read was incomplete or its byte count changed.";
+		return false;
+	}
+	return Parse(Text, OutDocument, strOutError);
 }
 
 namespace

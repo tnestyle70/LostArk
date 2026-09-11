@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3139
+LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3136
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
 "flm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig

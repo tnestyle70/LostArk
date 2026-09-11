@@ -270,8 +270,7 @@ void Client::CCharacterInfoWindowView::Load_DisplayData()
 
 void Client::CCharacterInfoWindowView::Hide()
 {
-	for (const string& strId : m_SlotIds)
-		m_pView->Set_SlotVisible(strId, false);
+	m_pView->Set_AllSlotsVisible(false);
 	m_bPortraitValid = false;
 	m_bDraggingPanel = false;
 	m_bDraggingPortrait = false;

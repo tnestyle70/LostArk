@@ -317,6 +317,9 @@ F6 자유 카메라에서 `Move Player`를 누르면 mouse-look을 끄고 지면
 Esc/우클릭/follow 복귀는 미제출 선택을 취소하고 Tab으로 mouse-look을 다시 켠다.
 이 명시적 Debug 저작 명령은 Server의 navigation 높이·walkability·collision 검증과 typed 응답을 거치며
 일반 gameplay 입력을 다시 활성화하지 않는다. Server/Client는 같은 protocol로 빌드·재시작해야 한다.
+Client 메인 루프는 대기 중 Windows 메시지를 처리한 뒤 실제 frame delta로 Update/Render를 실행하며,
+60fps 소프트웨어 제한을 두지 않는다. `Timer_60`은 기존 UI 소비자를 위한 이름만 유지한 frame clock이다.
+Server fixed tick은 Client FPS와 독립이며, Profiler CPU frame time과 실제 프레임 간격은 구분한다.
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
 F1 → `Open Composition Profiler`는 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을

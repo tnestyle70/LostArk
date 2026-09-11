@@ -112091,7 +112091,8 @@
         },
         "mesh": {
           "useModelMaterial": false,
-          "modelPreScale": 0.01
+          "modelPreScale": 0.01,
+          "sourceTypeDataRotationDegrees": [0.0, -90.0, 0.0]
         },
         "sprite": {
           "billboard": true
@@ -113801,7 +113802,8 @@
         },
         "mesh": {
           "useModelMaterial": false,
-          "modelPreScale": 0.01
+          "modelPreScale": 0.01,
+          "sourceTypeDataRotationDegrees": [0.0, -90.0, 0.0]
         },
         "sprite": {
           "billboard": true
