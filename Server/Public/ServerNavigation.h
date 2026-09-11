@@ -46,10 +46,33 @@ namespace LostArk::Server
 		bool bChanged = false;
 	};
 
+	// Cumulative since Load; queried and mutated only by the owning room thread.
+	// Durations are inclusive, so SmoothPath and its LineOfSight calls overlap.
+	struct SERVER_NAVIGATION_QUERY_METRICS final
+	{
+		std::uint64_t iCalls = 0u;
+		std::uint64_t iTotalNanoseconds = 0u;
+		std::uint64_t iMaximumNanoseconds = 0u;
+		std::uint64_t iExpandedNodes = 0u;
+		std::uint64_t iReturnedPathPoints = 0u;
+	};
+
+	struct SERVER_NAVIGATION_PERFORMANCE_METRICS final
+	{
+		SERVER_NAVIGATION_QUERY_METRICS FindPath;
+		SERVER_NAVIGATION_QUERY_METRICS ReachablePath;
+		SERVER_NAVIGATION_QUERY_METRICS ProjectPoint;
+		SERVER_NAVIGATION_QUERY_METRICS SmoothPath;
+		SERVER_NAVIGATION_QUERY_METRICS TraversalStep;
+		SERVER_NAVIGATION_QUERY_METRICS LineOfSight;
+	};
+
 	class CServerNavigation final
 	{
 	public:
 		bool Load(const std::string& areaId);
+		// Includes leaf detail grids once; region dispatch itself is not timed.
+		SERVER_NAVIGATION_PERFORMANCE_METRICS Get_PerformanceMetrics() const;
 		bool Find_Path(
 			float startX,
 			float startZ,
@@ -193,6 +216,7 @@ namespace LostArk::Server
 		}
 
 	private:
+		mutable SERVER_NAVIGATION_PERFORMANCE_METRICS m_PerformanceMetrics{};
 		std::uint32_t m_iWidth = 0;
 		std::uint32_t m_iHeight = 0;
 		float m_fCellSize = 0.f;

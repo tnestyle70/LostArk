@@ -455,6 +455,11 @@ bool Client::CKoukuSaydonBossTool::Reload(std::string& outStatus)
 	m_iSourceRevision = stagedSourceRevision;
 	m_bHasSavedComposition = true;
 	Normalize_Selection();
+	if (!m_bFlowDirty)
+	{
+		std::string flowStatus;
+		if (!Load_PatternFlows(flowStatus)) outStatus += "\n" + flowStatus;
+	}
 	m_strStatus = outStatus;
 	outStatus = m_strStatus;
 	return true;
@@ -525,17 +530,211 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view
 
 bool Client::CKoukuSaydonBossTool::Play_All(std::string& outStatus)
 {
-	if (!Reload(outStatus)) return false;
-	if (!m_bHasSavedComposition ||
-		m_PlayAllPatternIds.empty())
+	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
+	return Play_CompositionAll(gates[(std::clamp)(m_iSelectedGate, 0, 3)], outStatus);
+}
+
+bool Client::CKoukuSaydonBossTool::Load_PatternFlows(std::string& status)
+{
+	if (!m_FlowDocument.Reload(status)) return false;
+	m_FlowDraft = m_FlowDocument.Get_LastGood().PatternFlows;
+	m_bFlowDirty = false;
+	m_strSelectedFlowEntryId.clear();
+	status = "Loaded saved Pattern Flows.";
+	return true;
+}
+
+bool Client::CKoukuSaydonBossTool::Save_PatternFlows(std::string& status)
+{
+	if (!m_FlowDocument.Has_LastGood())
+	{ status = "Load the Composition before saving Pattern Flow."; return false; }
+	auto candidate = m_FlowDocument.Get_LastGood();
+	candidate.PatternFlows = m_FlowDraft;
+	if (!m_FlowDocument.Save_Atomic(candidate, status)) return false;
+	m_FlowDraft = m_FlowDocument.Get_LastGood().PatternFlows;
+	m_bFlowDirty = false;
+	status = "Saved Pattern Flow. Publish Saved Patterns before Complete Play.";
+	return true;
+}
+
+const Client::KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW*
+Client::CKoukuSaydonBossTool::Get_SavedFlow(const std::string_view gateId) const
+{
+	if (!m_FlowDocument.Has_LastGood()) return nullptr;
+	const auto& flows = m_FlowDocument.Get_LastGood().PatternFlows;
+	const auto found = std::find_if(flows.begin(), flows.end(),
+		[&](const auto& flow) { return flow.strGateId == gateId; });
+	return found == flows.end() ? nullptr : &*found;
+}
+
+Client::KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW*
+Client::CKoukuSaydonBossTool::Find_DraftFlow(const std::string_view gateId)
+{
+	const auto found = std::find_if(m_FlowDraft.begin(), m_FlowDraft.end(),
+		[&](const auto& flow) { return flow.strGateId == gateId; });
+	return found == m_FlowDraft.end() ? nullptr : &*found;
+}
+
+std::string Client::CKoukuSaydonBossTool::Describe_FlowEntry(
+	const KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY& entry, const std::string_view gateId,
+	std::string& error) const
+{
+	error.clear();
+	if (entry.strKind == "PATTERN")
 	{
-		outStatus = "The published composition has no executable Play All order.";
+		const auto found = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
+			[&](const auto& pattern) { return pattern.strPatternId == entry.strTargetId; });
+		if (found != m_ProductPatterns.end())
+		{
+			error = found->strGateId != gateId ? "Pattern belongs to another Gate." : found->strLoadError;
+			if (error.empty() && found->Stages.empty()) error = "Pattern has no published stages.";
+			return found->strDisplayName;
+		}
+	}
+	else if (entry.strKind == "BUNDLE")
+	{
+		const auto found = std::find_if(m_ProductBundles.begin(), m_ProductBundles.end(),
+			[&](const auto& bundle) { return bundle.strBundleId == entry.strTargetId; });
+		if (found != m_ProductBundles.end())
+		{
+			error = found->strGateId != gateId ? "Bundle belongs to another Gate." : found->strLoadError;
+			if (error.empty() && found->Members.empty()) error = "Bundle has no published members.";
+			return found->strDisplayName;
+		}
+	}
+	error = "Saved target is missing from All Patterns. Publish Saved Patterns or replace this row.";
+	return entry.strTargetId;
+}
+
+bool Client::CKoukuSaydonBossTool::Prepare_PatternFlow(const std::string_view gateId,
+	KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW& flow, std::string& status)
+{
+	if (!Reload(status)) return false;
+	CKoukuSaydonCompositionDocument saved;
+	if (!saved.Reload(status)) return false;
+	if (saved.Get_LastGood().iRevision != m_iSourceRevision)
+	{ status = m_strStatus = "Saved Pattern Flow and published Patterns differ. Publish Saved Patterns before Complete Play."; return false; }
+	const auto& flows = saved.Get_LastGood().PatternFlows;
+	const auto found = std::find_if(flows.begin(), flows.end(),
+		[&](const auto& row) { return row.strGateId == gateId; });
+	if (found == flows.end() || found->Entries.empty())
+	{ status = m_strStatus = "This Gate has no saved Pattern Flow. Add Pattern or Bundle rows in Boss Tool > Pattern Flow and Save Pattern Flow."; return false; }
+	for (const auto& entry : found->Entries)
+	{
+		std::string error;
+		const auto name = Describe_FlowEntry(entry, gateId, error);
+		if (!error.empty())
+		{ status = m_strStatus = "Pattern Flow '" + name + "': " + error; return false; }
+	}
+	flow = *found;
+	status = "Saved Pattern Flow is ready.";
+	return true;
+}
+
+bool Client::CKoukuSaydonBossTool::Validate_PatternFlow(const std::string_view gateId, std::string& status)
+{
+	KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
+	return Prepare_PatternFlow(gateId, flow, status);
+}
+
+bool Client::CKoukuSaydonBossTool::Play_PatternFlow(const std::string_view gateId, std::string& status)
+{
+	KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
+	if (!Prepare_PatternFlow(gateId, flow, status)) return false;
+	std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> entries;
+	for (const auto& source : flow.Entries)
+	{
+		KOUKU_SAYDON_PATTERN_FLOW_ENTRY entry;
+		entry.strEntryId = source.strEntryId;
+		entry.iWaitAfterMs = source.iWaitAfterMs;
+		if (source.strKind == "BUNDLE")
+		{
+			const auto bundle = std::find_if(m_ProductBundles.begin(), m_ProductBundles.end(),
+				[&](const auto& row) { return row.strBundleId == source.strTargetId; });
+			entry.strBundleId = source.strTargetId;
+			entry.strBossPlacementId = bundle->Members.front().strTargetBossPlacementId;
+		}
+		else
+		{
+			const auto pattern = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
+				[&](const auto& row) { return row.strPatternId == source.strTargetId; });
+			entry.strPatternId = source.strTargetId;
+			entry.strBossPlacementId = pattern->strTargetBossPlacementId;
+		}
+		entry.strBossArchetypeId = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(entry.strBossPlacementId);
+		entries.push_back(std::move(entry));
+	}
+	const auto& revision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
+	const bool played = CKoukuSaydonPatternAuditionService::Get().Play_Flow(gateId, entries, revision, m_iSourceRevision, status);
+	m_strStatus = status;
+	return played;
+}
+
+bool Client::CKoukuSaydonBossTool::Play_CompositionAll(const std::string_view gateId, std::string& status)
+{
+	if (!Reload(status)) return false;
+	std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> entries;
+	std::unordered_set<std::string> addedBundles;
+	for (const auto& patternId : m_PlayAllPatternIds)
+	{
+		const auto pattern = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
+			[&](const auto& row) { return row.strPatternId == patternId && row.strGateId == gateId; });
+		if (pattern == m_ProductPatterns.end() || !pattern->strLoadError.empty()) continue;
+		bool bundled = false;
+		for (const auto& bundle : m_ProductBundles)
+		{
+			if (bundle.strGateId != gateId || !bundle.strLoadError.empty() || bundle.Members.empty() ||
+				!std::any_of(bundle.Members.begin(), bundle.Members.end(),
+					[&](const auto& member) { return member.strPatternId == patternId; })) continue;
+			bundled = true;
+			if (!addedBundles.insert(bundle.strBundleId).second) continue;
+			KOUKU_SAYDON_PATTERN_FLOW_ENTRY entry;
+			entry.strEntryId = "all.bundle." + std::to_string(entries.size() + 1u);
+			entry.strBundleId = bundle.strBundleId;
+			entry.strBossPlacementId = bundle.Members.front().strTargetBossPlacementId;
+			entry.strBossArchetypeId = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(entry.strBossPlacementId);
+			entries.push_back(std::move(entry));
+		}
+		if (bundled) continue;
+		KOUKU_SAYDON_PATTERN_FLOW_ENTRY entry;
+		entry.strEntryId = "all.pattern." + std::to_string(entries.size() + 1u);
+		entry.strPatternId = patternId;
+		entry.strBossPlacementId = pattern->strTargetBossPlacementId;
+		entry.strBossArchetypeId = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(entry.strBossPlacementId);
+		entries.push_back(std::move(entry));
+	}
+	if (entries.empty())
+	{ status = m_strStatus = "This Gate has no published Pattern or Bundle to play."; return false; }
+	const auto& revision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
+	const bool played = CKoukuSaydonPatternAuditionService::Get().Play_Flow(gateId, entries, revision, m_iSourceRevision, status);
+	m_strStatus = status;
+	return played;
+}
+
+bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_view gateId,
+	int& selectionKind, std::string& selectedId) const
+{
+	const auto* flow = Get_SavedFlow(gateId);
+	if (!flow || flow->Entries.empty())
+	{
+		ImGui::TextWrapped("No saved Pattern Flow for this Gate. Open Boss Tool > Pattern Flow to choose the battle order.");
+		selectionKind = 0; selectedId.clear();
 		return false;
 	}
-	const auto& revision =
-		CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
-	return CKoukuSaydonPatternAuditionService::Get().Play_All(
-		revision, m_iSourceRevision, outStatus);
+	ImGui::TextUnformatted(flow->strDisplayName.c_str());
+	for (std::size_t i = 0u; i < flow->Entries.size(); ++i)
+	{
+		const auto& entry = flow->Entries[i];
+		std::string error;
+		const std::string name = Describe_FlowEntry(entry, gateId, error);
+		const int kind = entry.strKind == "BUNDLE" ? 2 : 3;
+		const std::string label = std::to_string(i + 1u) + ". [" + entry.strKind + "] " + name +
+			(error.empty() ? "" : " [Unavailable]") + "##" + entry.strEntryId;
+		if (ImGui::Selectable(label.c_str(), selectionKind == kind && selectedId == entry.strTargetId))
+		{ selectionKind = kind; selectedId = entry.strTargetId; }
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nWait after: %u ms\n%s", entry.strTargetId.c_str(), entry.iWaitAfterMs, error.c_str());
+	}
+	return true;
 }
 
 bool Client::CKoukuSaydonBossTool::Play_PatternById(
@@ -662,10 +861,178 @@ bool Client::CKoukuSaydonBossTool::Render_PatternTree(
 	return gateHasProduct;
 }
 
+void Client::CKoukuSaydonBossTool::Render_PatternFlowEditor(const std::string_view gateId)
+{
+	if (!m_FlowDocument.Has_LastGood())
+	{
+		if (ImGui::Button("Load Pattern Flow")) (void)Load_PatternFlows(m_strStatus);
+		ImGui::TextWrapped("Pattern Flow could not be loaded. The previous saved Composition is preserved.");
+		return;
+	}
+	if (ImGui::Button("Load Pattern Flow"))
+	{
+		if (m_bFlowDirty) ImGui::OpenPopup("Discard Pattern Flow edits?");
+		else (void)Load_PatternFlows(m_strStatus);
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_bFlowDirty);
+	if (ImGui::Button("Save Pattern Flow")) (void)Save_PatternFlows(m_strStatus);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_bFlowDirty);
+	if (ImGui::Button("Publish Saved Patterns")) m_bPublishRequested = true;
+	ImGui::EndDisabled();
+	if (ImGui::BeginPopupModal("Discard Pattern Flow edits?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextUnformatted("Load replaces unsaved Pattern Flow edits for every Gate.");
+		if (ImGui::Button("Discard and Load"))
+		{ (void)Load_PatternFlows(m_strStatus); ImGui::CloseCurrentPopup(); }
+		ImGui::SameLine();
+		if (ImGui::Button("Keep Editing")) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+	}
+	ImGui::TextDisabled("%s | Source revision %u | Published revision %u", m_bFlowDirty ? "Unsaved Flow" : "Saved Flow",
+		m_FlowDocument.Get_LastGood().iRevision, m_iSourceRevision);
+	ImGui::TextWrapped("Choose the battle order for this Gate. A Bundle plays every member together; the next row waits for Server completion.");
+	auto& service = CKoukuSaydonPatternAuditionService::Get();
+	const auto& run = service.Get_FlowSnapshot();
+	const auto* saved = Get_SavedFlow(gateId);
+	ImGui::BeginDisabled(m_bFlowDirty || !saved || saved->Entries.empty() ||
+		m_FlowDocument.Get_LastGood().iRevision != m_iSourceRevision || service.Get_Snapshot().Is_InFlight() || run.bActive);
+	if (ImGui::Button("Play Saved Pattern Flow")) (void)Play_PatternFlow(gateId, m_strStatus);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!run.bActive && !service.Get_Snapshot().Is_InFlight());
+	if (ImGui::Button("Stop Playback")) (void)service.Stop(m_strStatus);
+	ImGui::EndDisabled();
+	if (!run.strStatus.empty()) ImGui::TextWrapped("%s", run.strStatus.c_str());
+	ImGui::Separator();
+	if (ImGui::Button("Add From All Patterns...")) ImGui::OpenPopup("Add From All Patterns");
+	if (ImGui::BeginPopup("Add From All Patterns"))
+	{
+		const char* kinds[] = { "Pattern", "Bundle" };
+		ImGui::SetNextItemWidth(180.f);
+		ImGui::Combo("Type", &m_iFlowAddKind, kinds, 2);
+		ImGui::TextDisabled("%.*s | Click an available row to append it.", static_cast<int>(gateId.size()), gateId.data());
+		ImGui::BeginChild("##FlowAvailableRows", ImVec2(530.f, 350.f), ImGuiChildFlags_Borders);
+		const auto append = [&](const std::string& targetId, const char* kind)
+		{
+			auto* flow = Find_DraftFlow(gateId);
+			if (!flow)
+			{
+				KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW created;
+				created.strFlowId = "flow." + std::string(gateId);
+				created.strGateId = gateId;
+				created.strDisplayName = std::string(gateId) + " Pattern Flow";
+				m_FlowDraft.push_back(std::move(created));
+				flow = &m_FlowDraft.back();
+			}
+			if (flow->Entries.size() >= 256u)
+			{ m_strStatus = "Pattern Flow supports at most 256 rows."; return; }
+			std::uint32_t ordinal = 1u;
+			std::string entryId;
+			do { entryId = flow->strFlowId + ".entry." + std::to_string(ordinal++); }
+			while (std::any_of(flow->Entries.begin(), flow->Entries.end(), [&](const auto& row) { return row.strEntryId == entryId; }));
+			KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY entry;
+			entry.strEntryId = entryId; entry.strKind = kind; entry.strTargetId = targetId;
+			flow->Entries.push_back(std::move(entry));
+			m_strSelectedFlowEntryId = entryId;
+			m_bFlowDirty = true;
+			m_strStatus = "Appended " + targetId + ". Save Pattern Flow keeps this order.";
+		};
+		if (m_iFlowAddKind == 0)
+		{
+			for (const auto& pattern : m_ProductPatterns)
+			{
+				if (pattern.strGateId != gateId) continue;
+				const bool ready = pattern.strLoadError.empty() && !pattern.Stages.empty();
+				ImGui::BeginDisabled(!ready);
+				if (ImGui::Selectable((pattern.strDisplayName + (ready ? "" : " [Unavailable]") + "##add." + pattern.strPatternId).c_str()))
+					append(pattern.strPatternId, "PATTERN");
+				ImGui::EndDisabled();
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+					ImGui::SetTooltip("%s\n%s", pattern.strPatternId.c_str(), pattern.strLoadError.c_str());
+			}
+		}
+		else
+		{
+			for (const auto& bundle : m_ProductBundles)
+			{
+				if (bundle.strGateId != gateId) continue;
+				const bool ready = bundle.strLoadError.empty() && !bundle.Members.empty();
+				ImGui::BeginDisabled(!ready);
+				if (ImGui::Selectable((bundle.strDisplayName + " [" + std::to_string(bundle.Members.size()) + " actors]" +
+					(ready ? "" : " [Unavailable]") + "##add." + bundle.strBundleId).c_str())) append(bundle.strBundleId, "BUNDLE");
+				ImGui::EndDisabled();
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+					ImGui::SetTooltip("%s\n%s", bundle.strBundleId.c_str(), bundle.strLoadError.c_str());
+			}
+		}
+		ImGui::EndChild();
+		if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+	}
+	auto* flow = Find_DraftFlow(gateId);
+	if (!flow || flow->Entries.empty())
+	{ ImGui::TextWrapped("The Flow is empty. Add only the Patterns and Bundles used in this Gate's battle."); return; }
+	ImGui::SameLine();
+	ImGui::Text("%zu rows", flow->Entries.size());
+	const auto selected = std::find_if(flow->Entries.begin(), flow->Entries.end(),
+		[&](const auto& entry) { return entry.strEntryId == m_strSelectedFlowEntryId; });
+	const std::size_t index = static_cast<std::size_t>(selected - flow->Entries.begin());
+	const bool hasSelection = index < flow->Entries.size();
+	ImGui::BeginDisabled(!hasSelection || index == 0u);
+	if (ImGui::Button("Up")) { std::swap(flow->Entries[index], flow->Entries[index - 1u]); m_bFlowDirty = true; }
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!hasSelection || index + 1u >= flow->Entries.size());
+	if (ImGui::Button("Down")) { std::swap(flow->Entries[index], flow->Entries[index + 1u]); m_bFlowDirty = true; }
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!hasSelection);
+	if (ImGui::Button("Remove"))
+	{
+		flow->Entries.erase(flow->Entries.begin() + index);
+		m_strSelectedFlowEntryId.clear();
+		m_bFlowDirty = true;
+	}
+	ImGui::EndDisabled();
+	if (ImGui::BeginTable("##KoukuPatternFlowRows", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
+		ImVec2(0.f, (std::max)(140.f, ImGui::GetContentRegionAvail().y))))
+	{
+		ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 34.f);
+		ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthFixed, 68.f);
+		ImGui::TableSetupColumn("Pattern / Bundle", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Wait after (ms)", ImGuiTableColumnFlags_WidthFixed, 115.f);
+		ImGui::TableHeadersRow();
+		for (std::size_t i = 0u; i < flow->Entries.size(); ++i)
+		{
+			auto& entry = flow->Entries[i];
+			std::string error;
+			const auto name = Describe_FlowEntry(entry, gateId, error);
+			ImGui::PushID(entry.strEntryId.c_str());
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0); ImGui::Text("%02zu", i + 1u);
+			ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(entry.strKind.c_str());
+			ImGui::TableSetColumnIndex(2);
+			if (ImGui::Selectable((name + (error.empty() ? "" : " [Unavailable]")).c_str(), m_strSelectedFlowEntryId == entry.strEntryId))
+				m_strSelectedFlowEntryId = entry.strEntryId;
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", entry.strTargetId.c_str(), error.c_str());
+			ImGui::TableSetColumnIndex(3);
+			int wait = static_cast<int>(entry.iWaitAfterMs);
+			ImGui::SetNextItemWidth(-1.f);
+			if (ImGui::InputInt("##wait", &wait, 0, 0))
+			{ entry.iWaitAfterMs = static_cast<std::uint32_t>((std::clamp)(wait, 0, 600000)); m_bFlowDirty = true; }
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+	}
+}
+
 void Client::CKoukuSaydonBossTool::Render()
 {
 	Open();
-	ImGui::SetNextWindowSize(ImVec2(760.f, 520.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(900.f, 650.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin(
 		"KoukuSaydon Boss Tool###KoukuSaydonBossTool", &m_bOpen))
 	{
@@ -677,6 +1044,7 @@ void Client::CKoukuSaydonBossTool::Render()
 		CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
 	const bool exactLiveProduct = audition.Is_Live(
 		audition.strLivePatternId, m_iSourceRevision);
+	const bool flowActive = CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive;
 	if (ImGui::Button("Reload Published Patterns"))
 	{
 		std::string status;
@@ -687,15 +1055,15 @@ void Client::CKoukuSaydonBossTool::Render()
 	const auto* selectedBundle = Find_SelectedBundle();
 	const bool ready = selectedBundle ? selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty() :
 		selectedPattern && selectedPattern->strLoadError.empty();
-	ImGui::BeginDisabled(!m_bHasSavedComposition || !ready || audition.Is_InFlight());
+	ImGui::BeginDisabled(!m_bHasSavedComposition || !ready || audition.Is_InFlight() || flowActive);
 	if (ImGui::Button(selectedBundle ? "Play Bundle" : "Play Isolated"))
 		(void)Play_Selected(m_strStatus);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
 		!m_bHasSavedComposition ||
-		m_PlayAllPatternIds.empty() || audition.Is_InFlight());
-	if (ImGui::Button("Start Full Pattern"))
+		m_PlayAllPatternIds.empty() || audition.Is_InFlight() || flowActive);
+	if (ImGui::Button("Composition Play All"))
 		(void)Play_All(m_strStatus);
 	ImGui::EndDisabled();
 
@@ -729,6 +1097,21 @@ void Client::CKoukuSaydonBossTool::Render()
 	}
 
 	ImGui::Separator();
+	static const char* gateLabels[] = { "1\xEA\xB4\x80\xEB\xAC\xB8", "2\xEA\xB4\x80\xEB\xAC\xB8", "3\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
+	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
+	m_iSelectedGate = (std::clamp)(m_iSelectedGate, 0, 3);
+	ImGui::SetNextItemWidth(180.f);
+	if (ImGui::Combo("Gate##KoukuBossTree", &m_iSelectedGate, gateLabels, 4))
+	{ m_iSelectedInventoryKind = 0; m_strSelectedInventoryId.clear(); m_strSelectedFlowEntryId.clear(); }
+	if (ImGui::BeginTabBar("##KoukuBossTabs"))
+	{
+	if (ImGui::BeginTabItem("Pattern Flow"))
+	{
+		Render_PatternFlowEditor(gates[m_iSelectedGate]);
+		ImGui::EndTabItem();
+	}
+	if (ImGui::BeginTabItem("All Patterns"))
+	{
 	if (ImGui::BeginTable(
 		"##KoukuBossSplit", 2,
 		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV,
@@ -739,11 +1122,6 @@ void Client::CKoukuSaydonBossTool::Render()
 		ImGui::TableSetupColumn("Server Playback", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
-		static const char* gateLabels[] = { "1\xEA\xB4\x80\xEB\xAC\xB8", "2\xEA\xB4\x80\xEB\xAC\xB8", "3\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
-		static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
-		m_iSelectedGate = (std::clamp)(m_iSelectedGate, 0, 3);
-		if (ImGui::Combo("Gate##KoukuBossTree", &m_iSelectedGate, gateLabels, 4))
-		{ m_iSelectedInventoryKind = 0; m_strSelectedInventoryId.clear(); }
 		(void)Render_PatternTree(gates[m_iSelectedGate], m_iSelectedInventoryKind, m_strSelectedInventoryId);
 
 		ImGui::TableSetColumnIndex(1);
@@ -797,6 +1175,10 @@ void Client::CKoukuSaydonBossTool::Render()
 			}
 		}
 		ImGui::EndTable();
+	}
+	ImGui::EndTabItem();
+	}
+	ImGui::EndTabBar();
 	}
 	ImGui::End();
 }

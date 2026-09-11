@@ -13,6 +13,7 @@
 #include "KoukuSaydonPresentationPlayer.h"
 #include "PlayerSkillCatalog.h"
 #include "ProjectDataRoot.h"
+#include "Transform.h"
 #include "ValtanPatternTree.h"
 #include <algorithm>
 #include <cmath>
@@ -126,9 +127,10 @@ const CEffectAuthoringSequencer::MODEL_SEQUENCE* CEffectAuthoringSequencer::Sele
 }
 std::uint32_t CEffectAuthoringSequencer::DurationMs() const
 {
-    std::uint32_t result = m_UseKouku ? m_Kouku.DurationMs() : 0u;
-    if (const auto* sequence = Selected_Sequence(); !m_UseKouku && !m_CustomAnimation && sequence) result = sequence->durationMs;
-    if (m_CustomAnimation) for (const auto& row : m_AnimationRows) result = (std::max)(result, row.startMs + row.durationMs);
+    if (Is_ElementPreview()) return (std::clamp)(m_Transient->durationMs, 1u, MAX_MS);
+    std::uint32_t result = !m_KoukuEffectPreview && m_UseKouku ? m_Kouku.DurationMs() : 0u;
+    if (const auto* sequence = Selected_Sequence(); !m_KoukuEffectPreview && !m_UseKouku && !m_CustomAnimation && sequence) result = sequence->durationMs;
+    if (!m_KoukuEffectPreview && m_CustomAnimation) for (const auto& row : m_AnimationRows) result = (std::max)(result, row.startMs + row.durationMs);
     for (const auto& row : m_TransientAnimationRows) result = (std::max)(result, row.startMs + row.durationMs);
     if (!m_Transient)
     {
@@ -341,43 +343,81 @@ bool CEffectAuthoringSequencer::Select_CharacterSkill(const std::string& asset, 
     return Select_ModelSequence(stageIndex ? id + ".stage." + std::to_string(*stageIndex) : id);
 }
 
-bool CEffectAuthoringSequencer::Select_KoukuEffect(const std::string& assetId)
+bool CEffectAuthoringSequencer::Select_KoukuEffect(const std::string& assetId, const bool requiresSourceModel,
+    const bool reusePlayerAnchor)
 {
-    // Stage the saved owner before stopping the current preview. A failed
-    // source read or ambiguous Effect join preserves its existing selection.
-    CEffectCompositionModelPreview staged;
-    staged.Set_Player(m_Player);
-    if (!staged.Reload()) { m_Status = staged.Status(); return false; }
-    const auto& document = staged.Get_Document();
-    std::set<std::string> resources;
-    for (const auto& resource : document.PresentationResources)
-        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strAssetId == assetId &&
-            (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
-            resources.insert(resource.strResourceId);
-    std::string selected;
-    for (const auto& pattern : document.Patterns)
-        if (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
-            [&](const auto& occurrence) { return resources.contains(occurrence.strResourceId); }))
-        {
-            if (!selected.empty())
-            { m_Status = "Kouku Effect is used by multiple patterns; select its Model View pattern explicitly."; return false; }
-            selected = pattern.strPatternId;
-        }
-    if (selected.empty())
-    { m_Status = "Kouku Effect has no saved Composition model/animation binding."; return false; }
-    if (!staged.Select_Pattern(selected)) { m_Status = staged.Status(); return false; }
-    if (staged.Actors().size() != 1u || !staged.Actors().front().status.empty() || staged.Rows().empty())
-    { m_Status = "Kouku Effect has no valid saved model/animation target: " + staged.Status(); return false; }
+    return Select_SceneEffectTarget(assetId, requiresSourceModel, reusePlayerAnchor, std::nullopt);
+}
 
-    // Play All owns a fresh pattern clock. Element Solo reuses an active
-    // resource in its caller and does not pass through this restart.
-    Stop();
-    m_Kouku = std::move(staged);
-    m_BoxDetailDraft.reset(); m_UseKouku = true; m_CustomAnimation = false;
-    m_AnimationRows.clear(); m_ClockMs = 0;
-    m_AnchorMember = m_Kouku.Actors().front().memberId;
-    m_DefaultAnchorSlotId = "root";
-    m_Dirty = true; m_Status = m_Kouku.Status(); return true;
+bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, const bool reusePlayerAnchor)
+{
+    if (!assetId.starts_with("effect.world."))
+    { m_Status = "Select a saved World Effect before preparing its scene anchor."; return false; }
+    const std::optional<std::uint32_t> duration = assetId == "effect.world.mouse_click" ? std::optional<std::uint32_t>(1200u) :
+        assetId == "effect.world.move_destination" ? std::optional<std::uint32_t>(7000u) : std::nullopt;
+    return Select_SceneEffectTarget(assetId, false, reusePlayerAnchor, assetId == "effect.world.move_destination", duration);
+}
+
+bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& assetId, const bool requiresSourceModel,
+    const bool reusePlayerAnchor, const std::optional<bool> loopPolicy,
+    const std::optional<std::uint32_t> previewDurationMs)
+{
+    m_PendingKoukuEffectPreview.reset();
+    const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId;
+    if (reuseTarget && m_KoukuEffectPreview->model.has_value() == requiresSourceModel &&
+        m_KoukuEffectPreview->loopPolicy == loopPolicy &&
+        m_KoukuEffectPreview->previewDurationMs == previewDurationMs) return true;
+    const auto character = CAnimationTargetService::Resolve_SceneCharacter();
+    const auto transform = character ? character->Get_Transform() : nullptr;
+    if (!transform)
+    { m_Status = "Enter an arena with a scene player before Play All. The player is the Effect anchor."; return false; }
+    const auto& world = *transform->Get_WorldMatrixPtr();
+    for (const auto& row : world.m)
+        for (const auto component : row)
+            if (!std::isfinite(component))
+            { m_Status = "The scene player's Effect anchor is not finite."; return false; }
+    const float forwardLength = world._31 * world._31 + world._33 * world._33;
+    if (!std::isfinite(forwardLength) || forwardLength < 1e-12f)
+    { m_Status = "The scene player's Effect anchor has no usable horizontal facing."; return false; }
+    KOUKU_EFFECT_PREVIEW_TARGET target;
+    target.assetId = assetId;
+    target.loopPolicy = loopPolicy;
+    target.previewDurationMs = previewDurationMs;
+    XMStoreFloat4x4(&target.playerRoot, XMMatrixRotationY(std::atan2(world._31, world._33)) *
+        XMMatrixTranslation(world._41, world._42, world._43));
+    if (reuseTarget) target.playerRoot = m_KoukuEffectPreview->playerRoot;
+    if (requiresSourceModel)
+    {
+        // Only actual source-bone attachments require a saved model binding.
+        // Pure root/camera Effects retain their authored motion at the player.
+        target.model.emplace();
+        auto& staged = *target.model;
+        staged.Set_Player(m_Player);
+        if (!staged.Reload()) { m_Status = staged.Status(); return false; }
+        const auto& document = staged.Get_Document();
+        std::set<std::string> resources;
+        for (const auto& resource : document.PresentationResources)
+            if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strAssetId == assetId &&
+                (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
+                resources.insert(resource.strResourceId);
+        std::string selected;
+        for (const auto& pattern : document.Patterns)
+            if (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                [&](const auto& occurrence) { return resources.contains(occurrence.strResourceId); }))
+            {
+                if (!selected.empty())
+                { m_Status = "Kouku source-bone Effect has multiple Composition patterns; its model binding is ambiguous."; return false; }
+                selected = pattern.strPatternId;
+            }
+        if (selected.empty())
+        { m_Status = "Kouku source-bone Effect has no saved Composition model/animation binding."; return false; }
+        if (!staged.Select_Pattern(selected)) { m_Status = staged.Status(); return false; }
+        if (staged.Actors().size() != 1u || !staged.Actors().front().status.empty() || staged.Rows().empty())
+        { m_Status = "Kouku Effect has no valid saved model/animation target: " + staged.Status(); return false; }
+    }
+    m_PendingKoukuEffectPreview = std::move(target);
+    m_Status = "Prepared Effect preview at the scene player's position and facing.";
+    return true;
 }
 
 bool CEffectAuthoringSequencer::Select_ModelSequence(const std::string& id)
@@ -398,6 +438,16 @@ bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool b
 }
 bool CEffectAuthoringSequencer::Begin_Model()
 {
+    if (m_KoukuEffectPreview && !m_KoukuEffectPreview->model) return true;
+    if (m_KoukuEffectPreview)
+    {
+        if (g_ModelClockOwner && g_ModelClockOwner != this) g_ModelClockOwner->Stop();
+        g_ModelClockOwner = this;
+        auto& model = *m_KoukuEffectPreview->model;
+        if (!model.Is_Active() && !model.Begin(ClockMs(), true))
+        { m_Status = model.Status(); return false; }
+        return Sample_Model(ClockMs());
+    }
     if (g_ModelClockOwner && g_ModelClockOwner != this) g_ModelClockOwner->Stop();
     g_ModelClockOwner = this;
     if (m_UseKouku)
@@ -421,6 +471,13 @@ bool CEffectAuthoringSequencer::Begin_Model()
 }
 bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
 {
+    if (m_KoukuEffectPreview)
+    {
+        if (!m_KoukuEffectPreview->model) return true;
+        if (!m_KoukuEffectPreview->model->Sample(clockMs, true))
+        { m_Status = "Kouku source animation preview owner changed."; return false; }
+        return true;
+    }
     if (m_UseKouku)
     {
         if (!m_Kouku.Is_Active() || !m_Kouku.Sample(clockMs, true)) { m_Status = "Kouku model preview owner changed."; return false; }
@@ -466,6 +523,7 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
 }
 bool CEffectAuthoringSequencer::Resolve_Root(float4x4_t& root)
 {
+    if (m_KoukuEffectPreview) { root = m_KoukuEffectPreview->playerRoot; return true; }
     if (m_UseKouku)
     {
         EFFECT_V2_TARGET target; EFFECT_V2_TARGET_VIEW view;
@@ -544,7 +602,7 @@ bool CEffectAuthoringSequencer::Record_RowPivot(EFFECT_ROW& row, const float4x4_
     }
     // Named pivots move with animation. Reuse the source-anchor 60 Hz pose
     // sampling contract instead of seeding earlier births with today's pose.
-    const bool ownsSequence = m_UseKouku || m_CustomAnimation || !m_SelectedSequence.empty();
+    const bool ownsSequence = Has_ModelSequence() || m_KoukuEffectPreview.has_value();
     if (age > 0.f && row.recordedAge < 0.f && !ownsSequence)
     { m_Status = "Bone-anchor seek requires recorded history or a selected saved animation sequence."; return false; }
     bool moved = false, success = true;
@@ -580,7 +638,7 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
     if (!row.key.Is_Valid() || !row.durationMs || row.durationMs > MAX_MS || row.startMs > MAX_MS - row.durationMs)
     { m_Status = "Invalid Effect resource or occurrence timing."; return false; }
     if (!Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku)) return false;
-    if (!row.previewElementId.empty() && (row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || row.startMs != 0u))
+    if (!row.previewElementIds.empty() && (row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || row.startMs != 0u))
     { m_Status = "Element preview requires a V1 document at its original time origin."; return false; }
     if (row.screenPost && row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF)
     { m_Status = "Screen Post tracks require a saved Screen Post leaf."; return false; }
@@ -588,16 +646,16 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
     if (row.key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
     {
         if (!m_V1Factory || !m_V1Release) { m_Status = "Effect document playback owner is unavailable."; return false; }
-        if (!m_V1Factory(row.key, row.previewElementId, root, row.v1, m_Status) || !row.v1)
+        if (!m_V1Factory(row.key, row.previewElementIds, root, row.v1, row.previewStartMs, row.durationMs, m_Status) || !row.v1)
         { Release_Row(row); return false; }
-        if (!row.previewElementId.empty())
-        {
-            const double duration = std::ceil(static_cast<double>(row.v1->Get_PreviewDurationSeconds()) * 1000.0);
-            if (!std::isfinite(duration) || duration < 1.0 || duration > MAX_MS)
-            { m_Status = "The selected element has no valid preview duration."; Release_Row(row); return false; }
-            // Refresh follows edited source delay/lifetime. Hidden model-cue anchors do not extend this duration.
-            row.durationMs = static_cast<std::uint32_t>(duration);
-        }
+        // The factory recomputes selected-element tails on Play/Refresh too.
+        // Reapply only this temporary target's bounded source cycle afterward.
+        if (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == row.key.strStableId &&
+            m_KoukuEffectPreview->previewDurationMs)
+            row.durationMs = *m_KoukuEffectPreview->previewDurationMs;
+        if (!row.previewElementIds.empty() &&
+            (!row.durationMs || row.durationMs > MAX_MS || row.previewStartMs >= row.durationMs))
+        { m_Status = "The selected elements have no valid preview window."; Release_Row(row); return false; }
         row.v1->Set_Playing(false); row.v1->Set_Visible(false); return true;
     }
     if (!row.snapshot)
@@ -696,7 +754,11 @@ bool CEffectAuthoringSequencer::Resolve_KoukuSourceAnchors(
 {
     EFFECT_V2_TARGET target;
     EFFECT_V2_TARGET_VIEW view;
-    if (!m_UseKouku || !m_Kouku.Resolve_Target(m_AnchorMember, target, view))
+    const auto* model = m_KoukuEffectPreview ?
+        (m_KoukuEffectPreview->model ? &*m_KoukuEffectPreview->model : nullptr) : &m_Kouku;
+    const auto member = m_KoukuEffectPreview && model && !model->Actors().empty() ?
+        model->Actors().front().memberId : m_AnchorMember;
+    if (!Uses_KoukuSourceModel() || !model || !model->Resolve_Target(member, target, view))
     { error = "The selected Kouku animation target is unavailable."; return false; }
     return CKoukuSaydonPresentationPlayer::Resolve_SourceAnchorWorlds(document, view, root, anchors, error);
 }
@@ -705,7 +767,7 @@ bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4
 {
     if (!m_V1Anchors) { m_Status = "V1 source-anchor provider is unavailable."; return false; }
     std::unordered_map<std::string, float4x4_t> current;
-    if (!m_V1Anchors(row.v1, pivot, m_UseKouku, current, m_Status)) return false;
+    if (!m_V1Anchors(row.v1, pivot, Uses_KoukuSourceModel(), current, m_Status)) return false;
     if (current.empty())
     {
         if (row.anchorHistory && !row.anchorHistory->slots.empty())
@@ -732,7 +794,7 @@ bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4
         // Sampling the saved model clips and restoring the cursor avoids
         // substituting today's hand pose for earlier particle births.
         const bool needsPast = age > 0.f && history.recordedAge < 0.f;
-        const bool ownsSequence = m_UseKouku || m_CustomAnimation || !m_SelectedSequence.empty();
+        const bool ownsSequence = Has_ModelSequence() || m_KoukuEffectPreview.has_value();
         if (needsPast && !ownsSequence)
         { m_Status = "Source-anchor seek requires recorded pose history or a selected saved model animation sequence."; return false; }
         bool movedModel = false, success = true;
@@ -750,7 +812,7 @@ bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4
                 { success = false; break; }
                 XMStoreFloat4x4(&historicalPivot, XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * XMLoadFloat4x4(&owner));
                 std::unordered_map<std::string, float4x4_t> worlds;
-                if (!m_V1Anchors(row.v1, historicalPivot, m_UseKouku, worlds, m_Status) || !record(seconds, worlds)) { success = false; break; }
+                if (!m_V1Anchors(row.v1, historicalPivot, Uses_KoukuSourceModel(), worlds, m_Status) || !record(seconds, worlds)) { success = false; break; }
             }
         }
         const auto failure = m_Status;
@@ -779,7 +841,7 @@ bool CEffectAuthoringSequencer::Play(const bool paused)
     if (!Validate_CameraRows(m_Transient ? m_TransientCameraRows : m_CameraRows)) return false;
     if (!m_TransientAnimationRows.empty())
     { if (!Validate_AnimationRows(m_TransientAnimationRows)) return false; }
-    else if (m_CustomAnimation && !Validate_AnimationRows(m_AnimationRows)) return false;
+    else if (!m_KoukuEffectPreview && m_CustomAnimation && !Validate_AnimationRows(m_AnimationRows)) return false;
     if (!m_Transient)
     {
         if (!Validate_SoundRows(m_Sounds) || !Validate_ColliderRows(m_Colliders)) return false;
@@ -793,7 +855,9 @@ bool CEffectAuthoringSequencer::Play(const bool paused)
     const auto prepareRow = [&](EFFECT_ROW& row)
     {
         row.v1.reset(); row.v2 = 0u; row.sampledAge = -1.f;
-        if (!wasActive || m_ClockMs == 0.0) { row.history.reset(); row.anchorHistory.reset(); row.recordedAge = -1.f; }
+        if (!wasActive || m_ClockMs == 0.0 ||
+            (!row.previewElementIds.empty() && m_ClockMs == row.previewStartMs))
+        { row.history.reset(); row.anchorHistory.reset(); row.recordedAge = -1.f; }
         else if (row.history) row.history = std::make_shared<EFFECT_V2_PIVOT_HISTORY>(*row.history);
         if (row.anchorHistory) row.anchorHistory = std::make_shared<V1_ANCHOR_HISTORY>(*row.anchorHistory);
     };
@@ -833,7 +897,7 @@ bool CEffectAuthoringSequencer::Play(const bool paused)
 }
 bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs, const bool screenPost)
 {
-    if (m_Transient && !m_Transient->previewElementId.empty())
+    if (m_Transient && !m_Transient->previewElementIds.empty())
     { m_Status = "Element preview is temporary. Stop it or preview the whole document before appending a sequence row."; return false; }
     if (m_Transient && m_Transient->key == key)
     {
@@ -872,76 +936,157 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
 }
 bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs)
 {
+    // The Resources tree reaches this entry without an active Tool document.
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.world.") &&
+        (!m_PendingKoukuEffectPreview || m_PendingKoukuEffectPreview->assetId != key.strStableId) &&
+        !Select_WorldEffect(key.strStableId)) return false;
     std::vector<CAMERA_ROW> cameras; std::vector<CLIP> animations;
     if (!Read_RecoveryCameras(key, cameras, animations)) return false;
     const bool cameraOnlyV4 = m_Status.starts_with("Recovery camera preview uses");
-    for (auto& row : cameras)
+    const bool replaceTarget = m_PendingKoukuEffectPreview.has_value() ||
+        (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId != key.strStableId);
+    if (m_PendingKoukuEffectPreview && m_PendingKoukuEffectPreview->assetId != key.strStableId)
+    { m_Status = "The staged scene player anchor belongs to another Effect."; return false; }
+    std::optional<KOUKU_EFFECT_PREVIEW_TARGET> previousTarget;
+    if (replaceTarget)
     {
-        if (ClockMs() > MAX_MS - row.startMs - row.cue.iDurationMs)
-        { m_Status = "Recovery camera rows exceed the sequence duration at this cursor."; return false; }
-        row.startMs += ClockMs();
+        previousTarget = std::move(m_KoukuEffectPreview);
+        m_KoukuEffectPreview = std::move(m_PendingKoukuEffectPreview);
+        m_PendingKoukuEffectPreview.reset();
     }
-    for (auto& row : animations)
-    {
-        if (ClockMs() > MAX_MS - row.startMs - row.durationMs)
-        { m_Status = "Recovery animation exceeds the sequence duration at this cursor."; return false; }
-        row.startMs += ClockMs();
-    }
-    EFFECT_ROW staged; staged.id = "effect.preview"; staged.key = key; staged.startMs = ClockMs(); staged.durationMs = durationMs;
-    staged.anchorSlotId = m_DefaultAnchorSlotId;
     const bool wasActive = m_Active;
+    const double previousClock = m_ClockMs;
     auto previousAnimations = std::move(m_TransientAnimationRows);
-    m_TransientAnimationRows = std::move(animations);
+    if (m_KoukuEffectPreview) m_ClockMs = 0.0;
     const auto rollback = [&]()
     {
         const auto failure = m_Status;
+        if (replaceTarget)
+        {
+            if (m_KoukuEffectPreview && m_KoukuEffectPreview->model) m_KoukuEffectPreview->model->Stop();
+            m_KoukuEffectPreview = std::move(previousTarget);
+        }
+        m_ClockMs = previousClock;
         m_TransientAnimationRows = std::move(previousAnimations);
         if (!wasActive) Stop();
         else
         {
             float4x4_t priorRoot;
-            if (!Sample_Model(ClockMs()) || !Resolve_Root(priorRoot) || !Sample_Camera(ClockMs(), priorRoot)) Stop();
+            if (!Begin_Model() || !Resolve_Root(priorRoot) || !Sample_Camera(ClockMs(), priorRoot)) Stop();
         }
         m_Status = failure;
     };
+    for (auto& row : cameras)
+    {
+        if (ClockMs() > MAX_MS - row.startMs - row.cue.iDurationMs)
+        { m_Status = "Recovery camera rows exceed the sequence duration at this cursor."; rollback(); return false; }
+        row.startMs += ClockMs();
+    }
+    for (auto& row : animations)
+    {
+        if (ClockMs() > MAX_MS - row.startMs - row.durationMs)
+        { m_Status = "Recovery animation exceeds the sequence duration at this cursor."; rollback(); return false; }
+        row.startMs += ClockMs();
+    }
+    EFFECT_ROW staged; staged.id = "effect.preview"; staged.key = key; staged.startMs = ClockMs(); staged.durationMs = durationMs;
+    staged.previewLoop = m_KoukuEffectPreview ? m_KoukuEffectPreview->loopPolicy.value_or(m_Loop) : m_Loop;
+    staged.anchorSlotId = m_KoukuEffectPreview ? "root" : m_DefaultAnchorSlotId;
+    m_TransientAnimationRows = std::move(animations);
     if (!Begin_Model()) { rollback(); return false; }
     float4x4_t root;
     if (!Resolve_Root(root)) { rollback(); return false; }
-    if (!Sample_Camera(ClockMs(), root, &cameras) || !Stage_Row(staged, root) || !Sample_Row(staged, root))
+    if (!Sample_Camera(ClockMs(), root, &cameras) || !Stage_Row(staged, root))
     { Release_Row(staged); rollback(); return false; }
+    if (m_KoukuEffectPreview && m_KoukuEffectPreview->loopPolicy.has_value() && staged.v1)
+    {
+        // A persistent marker loops its source emission window before the
+        // bounded playback tail fades out; the source simulation stays unchanged.
+        const double actualDuration = m_KoukuEffectPreview->previewDurationMs ?
+            static_cast<double>(*m_KoukuEffectPreview->previewDurationMs) :
+            std::ceil(static_cast<double>(staged.v1->Get_PreviewDurationSeconds()) * 1000.0);
+        if (!std::isfinite(actualDuration) || actualDuration < 1.0 || actualDuration > MAX_MS)
+        { m_Status = "The World Effect has no valid playback duration."; Release_Row(staged); rollback(); return false; }
+        staged.durationMs = static_cast<std::uint32_t>(actualDuration);
+    }
+    if (!Sample_Row(staged, root)) { Release_Row(staged); rollback(); return false; }
     for (auto& row : m_Effects) Release_Row(row);
     if (m_Transient) Release_Row(*m_Transient);
+    if (previousTarget && previousTarget->model) previousTarget->model->Stop();
+    if (m_KoukuEffectPreview)
+    {
+        m_Kouku.Stop();
+        if (!m_KoukuEffectPreview->model && g_ModelClockOwner == this) g_ModelClockOwner = nullptr;
+    }
     m_Transient = std::move(staged); m_TransientCameraRows = std::move(cameras);
     Stop_Sounds();
     m_SelectedCamera.clear(); m_Active = true; m_Paused = false;
     m_SkipNextPlaybackDelta = true; m_Interaction = true;
     if (!Sample_Camera(ClockMs(), root)) { Stop(); return false; }
-    m_Status = "Previewing " + key.strStableId + ". Append adds it to the saved sequence.";
+    m_Status = m_KoukuEffectPreview ? "Playing all Elements at the captured player anchor: " + key.strStableId :
+        "Previewing " + key.strStableId + ". Append adds it to the saved sequence.";
     if (cameraOnlyV4) m_Status += " Load sequence restores its additional Sound and Collider tracks.";
     return true;
 }
+
 bool CEffectAuthoringSequencer::Preview_Element(const EFFECT_RESOURCE_KEY& key, const std::string& elementId,
     const std::string& label, const std::uint32_t durationMs, const std::uint32_t focusMs)
 {
+    return Preview_Elements(key, {elementId}, label, durationMs, focusMs, m_Loop);
+}
+bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
+    const std::vector<std::string>& elementIds, const std::string& label,
+    const std::uint32_t durationMs, const std::uint32_t focusMs, const bool loop)
+{
     Preserve_ClockDuringAuthoring();
-    if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || elementId.empty() ||
+    if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || elementIds.empty() ||
+        std::any_of(elementIds.begin(), elementIds.end(), [](const auto& id) { return id.empty(); }) ||
         !durationMs || durationMs > MAX_MS || focusMs >= durationMs)
     { m_Status = "Select a document element and a focus time inside its preview duration."; return false; }
 
+    const bool replaceTarget = m_PendingKoukuEffectPreview.has_value() ||
+        (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId != key.strStableId);
+    if (m_PendingKoukuEffectPreview && m_PendingKoukuEffectPreview->assetId != key.strStableId)
+    { m_Status = "The staged scene player anchor belongs to another Effect."; return false; }
+    std::optional<KOUKU_EFFECT_PREVIEW_TARGET> previousTarget;
+    if (replaceTarget)
+    {
+        previousTarget = std::move(m_KoukuEffectPreview);
+        m_KoukuEffectPreview = std::move(m_PendingKoukuEffectPreview);
+        m_PendingKoukuEffectPreview.reset();
+    }
+    const auto restoreTarget = [&]()
+    {
+        if (!replaceTarget) return;
+        if (m_KoukuEffectPreview && m_KoukuEffectPreview->model) m_KoukuEffectPreview->model->Stop();
+        m_KoukuEffectPreview = std::move(previousTarget);
+    };
     EFFECT_ROW staged;
     staged.id = "effect.preview.element"; staged.key = key;
-    staged.previewElementId = elementId; staged.previewElementLabel = label;
-    staged.startMs = 0u; staged.durationMs = durationMs; staged.anchorSlotId = m_DefaultAnchorSlotId;
+    staged.previewElementIds = elementIds; staged.previewElementLabel = label;
+    staged.previewStartMs = focusMs;
+    staged.previewLoop = m_KoukuEffectPreview ? m_KoukuEffectPreview->loopPolicy.value_or(loop) : loop;
+    staged.startMs = 0u; staged.durationMs = m_KoukuEffectPreview ?
+        m_KoukuEffectPreview->previewDurationMs.value_or(durationMs) : durationMs;
+    staged.anchorSlotId = m_KoukuEffectPreview ? "root" : m_DefaultAnchorSlotId;
     float4x4_t root;
     // A first Kouku Solo needs its typed model before the root can resolve.
     // Existing character targets and an active Kouku preview keep their order.
-    const bool startedKoukuModel = m_UseKouku && !m_Kouku.Is_Active();
-    if (startedKoukuModel && !Begin_Model()) return false;
+    const bool startedKoukuModel = Uses_KoukuSourceModel() &&
+        (m_KoukuEffectPreview ? !m_KoukuEffectPreview->model->Is_Active() : !m_Kouku.Is_Active());
     const auto releaseStaged = [&]()
     {
+        const auto failure = m_Status;
         Release_Row(staged);
-        if (startedKoukuModel && !m_Active) Stop();
+        restoreTarget();
+        if (m_Active)
+        {
+            float4x4_t priorRoot;
+            if (!Begin_Model() || !Resolve_Root(priorRoot) || !Sample_Camera(ClockMs(), priorRoot)) Stop();
+        }
+        else if (startedKoukuModel || replaceTarget) Stop();
+        m_Status = failure;
     };
+    if (startedKoukuModel && !Begin_Model()) { releaseStaged(); return false; }
     // Resource preparation must not release the previous preview or move its clock.
     if (!Resolve_Root(root) || !Stage_Row(staged, root)) { releaseStaged(); return false; }
     if (focusMs >= staged.durationMs)
@@ -962,9 +1107,10 @@ bool CEffectAuthoringSequencer::Preview_Element(const EFFECT_RESOURCE_KEY& key, 
         const auto failure = m_Status;
         Release_Row(staged);
         m_ClockMs = previousClock;
+        restoreTarget();
         m_TransientAnimationRows = std::move(previousAnimations);
         if (!wasActive) Stop();
-        else if (!Sample_Model(ClockMs()) || !Resolve_Root(root) || !Sample_Camera(ClockMs(), root))
+        else if (!Begin_Model() || !Resolve_Root(root) || !Sample_Camera(ClockMs(), root))
         {
             const auto restoreFailure = m_Status;
             Stop();
@@ -977,13 +1123,20 @@ bool CEffectAuthoringSequencer::Preview_Element(const EFFECT_RESOURCE_KEY& key, 
 
     for (auto& row : m_Effects) Release_Row(row);
     if (m_Transient) Release_Row(*m_Transient);
+    if (previousTarget && previousTarget->model) previousTarget->model->Stop();
+    if (m_KoukuEffectPreview)
+    {
+        m_Kouku.Stop();
+        if (!m_KoukuEffectPreview->model && g_ModelClockOwner == this) g_ModelClockOwner = nullptr;
+    }
     m_Transient = std::move(staged); m_TransientCameraRows.clear();
     Stop_Sounds();
-    m_Active = true; m_Paused = true; m_SkipNextPlaybackDelta = true; m_Interaction = true;
+    m_Active = true; m_Paused = false; m_SkipNextPlaybackDelta = true; m_Interaction = true;
     m_BoxDetailDraft.reset();
     Select_TimelineRow(TRACK_KIND::EFFECT, m_Transient->id);
-    m_Status = "Element preview: " + (label.empty() ? elementId : label) + " at " + std::to_string(focusMs) +
-        " ms of the original document. Scrub or Play; Stop returns to the saved sequence.";
+    m_Status = (loop ? "Looping selected elements: " : "Playing element: ") +
+        (label.empty() ? elementIds.front() : label) + " from " + std::to_string(focusMs) +
+        " ms of the original document. Stop returns to the saved sequence.";
     return true;
 }
 
@@ -1015,6 +1168,8 @@ void CEffectAuthoringSequencer::Stop()
     Release_Camera(); m_TransientCameraRows.clear(); m_TransientAnimationRows.clear();
     for (auto& row : m_Effects) Release_Row(row);
     if (m_Transient) { Release_Row(*m_Transient); m_Transient.reset(); }
+    if (m_KoukuEffectPreview && m_KoukuEffectPreview->model) m_KoukuEffectPreview->model->Stop();
+    m_KoukuEffectPreview.reset(); m_PendingKoukuEffectPreview.reset();
     m_Kouku.Stop();
     if (const auto model = m_Model.lock(); model && model == CAnimationTargetService::Resolve_Model() && m_ModelGeneration == CAnimationTargetService::Resolve_TargetGeneration())
     {
@@ -1037,9 +1192,18 @@ void CEffectAuthoringSequencer::Update(const float dt, const bool active)
     if (!Sample()) { Stop(); return; }
     if (!m_Paused && m_ClockMs >= DurationMs())
     {
-        if (m_Loop)
+        const bool elementPreview = Is_ElementPreview();
+        if (Uses_TransientLoop() ? m_Transient->previewLoop : m_Loop)
         {
-            Stop_Sounds(); m_ClockMs = 0; Play();
+            Stop_Sounds();
+            m_ClockMs = elementPreview ? m_Transient->previewStartMs : 0u;
+            if (m_KoukuEffectPreview && m_KoukuEffectPreview->loopPolicy.has_value())
+            {
+                // World markers keep the staged occurrence and rewind its clock;
+                // repeated GPU preparation and a skipped delta would interrupt the loop.
+                if (!Sample(true)) Stop();
+            }
+            else if (!Play()) Stop();
         }
         else Pause(true);
     }
@@ -1228,7 +1392,7 @@ bool CEffectAuthoringSequencer::Save_Sequence()
 {
     if (m_Transient)
     {
-        m_Status = m_Transient->previewElementId.empty() ? "Append the preview and camera rows before saving the sequence." :
+        m_Status = m_Transient->previewElementIds.empty() ? "Append the preview and camera rows before saving the sequence." :
             "Element preview is temporary. Stop it before saving the existing sequence.";
         return false;
     }

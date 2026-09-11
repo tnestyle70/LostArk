@@ -118,6 +118,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 		return;
 
 	m_pLocalCharacter = character;
+	if (m_pClickMoveEffect) m_pClickMoveEffect->Clear();
 	Cancel_GroundTargeting();
 	m_iNextMoveSequence = 1;
 	m_iNextActionSequence = 1;
@@ -141,6 +142,7 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	if (m_pLocalCharacter.lock() == character)
 		return;
 	m_pLocalCharacter = character;
+	if (m_pClickMoveEffect) m_pClickMoveEffect->Clear();
 	Cancel_GroundTargeting();
 	// This is the same Server player, not a new input session. Preserve physical
 	// press/release gates even when the restored body arrives after the Mario
@@ -185,6 +187,8 @@ void Client::CPlayerController::Update(
 		isLeftMousePhysicallyDown, isControlCaptured || marioControlsActive);
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE,
 		isRightMousePhysicallyDown, isControlCaptured || marioControlsActive);
+	if (m_pClickMoveEffect && (!gameplayCommandsEnabled || isControlCaptured || marioControlsActive))
+		m_pClickMoveEffect->Clear();
 	if (isControlCaptured || marioControlsActive)
 	{
 		Cancel_GroundTargeting();
@@ -1287,7 +1291,7 @@ bool_t Client::CPlayerController::Initialize_ClickMoveEffect(
 	shared_ptr<CClickMoveEffect> clickMoveEffect =
 		dynamic_pointer_cast<CClickMoveEffect>(object);
 	if (nullptr == clickMoveEffect ||
-		!clickMoveEffect->Initialize_Textures())
+		!clickMoveEffect->Initialize_Effects(levelIndex))
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			levelIndex, TEXT("Layer_ClickMoveEffect"), object);
@@ -1448,7 +1452,7 @@ bool_t Client::CPlayerController::Request_MoveToPoint(const float3_t& goal)
 	m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
 	m_LastSentMoveGoal = goal;
 	if (nullptr != m_pClickMoveEffect)
-		m_pClickMoveEffect->Play(goal);
+		m_pClickMoveEffect->Play(goal, m_pLocalCharacter.lock());
 	m_BasicAttackResendGate.Suppress_UntilRelease();
 	++m_iNextMoveSequence;
 	if (0 == m_iNextMoveSequence)

@@ -50,3 +50,28 @@ V에 이미 추가된 F17140 native446의4개 wave는 원본 F와 같은 geometr
 Q full의 원본 native PS12개는 실제 Playback119행을 소비한357case에서 nonfinite0이며 붉은 HDR 출력이 있다. 제품 Warlord admission transform0.0001과 -90도 yaw를 적용한 실제 CModel의 손·worldzero·spine bone은 축0.01과 이미 m단위인 translation을 함께 가진다. 일반 source follow가 이0.01을 이미 m단위인 particle 크기에 다시 곱해 핵심 효과가 작아진다. 실제 Renderer/현재CSO 대조에서 축만 정규화하면 동일0.6667초의 maxRGB0.119533이81.4834로 증가했다.
 
 `Effect_PresentationService.h/cpp`의 기존 엄격한0.01 검증과 translation 보존 함수를 재사용한다. 새 선택 helper는 `effect.warlord.skill.17030.full.restore`만 허용하며 다른 class·slot·기존 Artist31470 경로는 확장하지 않는다. `Effect_Tool.cpp`의 현재 pose와 과거 pose source anchor, Product source anchor가 같은 선택과 matrix 함수를 소비한다. Q JSON·shader 수식·원본 색과 발생 수는 보존한다. 새 파일이나 project/filter 등록은 없다. 변경 번역 단위 최소 컴파일과 actual CModel/Playback/Renderer GPU 숫자 대조, diff check를 수행하고 Client/UI와 화면 판정은 사용자에게 남긴다.
+
+## G07. 2026-09-11 Alt V에 F의 황금 낙뢰 직접 연결
+
+현재 Alt V17250 clip1/clip2는218/180행이고 F17140의 native446 mesh 낙뢰는0개다.
+이전 패치가 F 낙뢰를 추가한 문서는 V17170뿐이다. Alt V에는 별도 native1166 sprite의
+b_effectroot FOLLOW6개를 복제했으므로 사용자 요청한 F의 재생 경로가 연결되지 않았다.
+실제 F의 `authored.source-particle.full-warlord-f.7ba81a7899d33b48c48c`는 root snapshot,
+source basis yaw-90, vertexcolor electric mesh와 native446 WPO/dynamic/dissolve를 사용한다.
+
+기존 `Tools/EffectPipeline/patch_warlord_v_guardian_lightning.py`에 `--altv-f-gold-only`
+선택을 추가한다. Alt V 실제 제품 clip 두 문서에 F 낙뢰를 그대로 복제하고 각 발생의
+시각·독립 seed·반경 및 startcolor만 저작한다. F의 HDR peak5를 유지한 황금 RGB
+[5,3.6,0.4]와 기존 grayscale ColorScaleOverLife를 사용한다. 낮은 SDR 색으로 원본
+방출량을 덮지 않는다. 실제 재질·geometry·수명·버스트4개·Dynamic과 root snapshot은
+그대로 사용한다. clip1은0.6473/0.8472/1.0472/1.247/1.447/1.647초마다 두 반경
+200~220/360~400cm의12개 파동, clip2는0.172/0.526/0.876초에 같은 두 반경의6개
+파동을 연결한다. 합계18개 발생, 명시 burst72개이며 기존 Alt V 요소398개를 유지한다.
+
+원본 F와 기존 V 문서, camera sidecar와 skillbindings/animevents는 수정하지 않는다.
+현재 Alt V 두 문서 ID의 제품 cue가 이미 연결되어 있으므로 별도 연결·publish나
+새 runtime·C++·project/filter 등록은 필요 없다. 출력은 기존 단일 Data 정본이다.
+CAS 저장으로 동시에 편집된 문서를 덮지 않고 재실행 시 기존 복제 행을 유지한다.
+변경 JSON parse, 실제 리소스 존재, 보존·멱등성·기존 Effect 구조 검사와 가능한 기존
+codec/playback 수치 검사를 수행한다. 제품 통합 빌드는 root가 소유한다. 최종 황금색,
+개수와 크기 확인은 사용자가 Character Select → Warlord → Alt+V에서 수행한다.

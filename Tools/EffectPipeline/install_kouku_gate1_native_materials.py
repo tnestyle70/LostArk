@@ -1,14 +1,14 @@
 """Install the selected Kouku native material tables without replacing peers.
 
 The existing Artist material interpreter owns the runtime. This tool updates
-only program IDs 2304..2341 and emits ordinary sourceMaterial patches. It does
+only supplied program IDs within 2304..2495 and emits sourceMaterial patches. It does
 not rewrite the renderer or Has_ArtistMaterialContract implementation.
 """
 from pathlib import Path
 import argparse, copy, hashlib, json, re
 
 ROOT=Path(__file__).resolve().parents[2]
-FIRST,LAST=2304,2341
+FIRST,LAST=2304,2495
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def write(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -20,7 +20,8 @@ def profile_id(parent):
 def install(contract_path,evidence,header_path):
     contract=read(contract_path);programs=copy.deepcopy(contract['programs'])
     assert not contract.get('deferredPrograms'),('native programs are incomplete',contract.get('deferredPrograms'))
-    assert {p['program'] for p in programs}==set(range(FIRST,LAST+1)),('native program set differs',len(programs))
+    owned={p['program'] for p in programs}
+    assert owned and len(owned)==len(programs) and owned<=set(range(FIRST,LAST+1)),('native program set differs',len(programs))
     programs.sort(key=lambda p:p['program']);materials=[];arrays=[];entries=[]
     for p in programs:
         i=p['program'];parent=p['parentMaterial'];pid=profile_id(parent);runtime=f'effect.ue3.kouku-{i}-native.v1'
@@ -47,7 +48,7 @@ def install(contract_path,evidence,header_path):
     try:original=payload.decode('utf-8');encoding='utf-8'
     except UnicodeDecodeError:original=payload.decode('cp949');encoding='cp949'
     newline='\r\n' if '\r\n' in original else '\n';text=original
-    own='(?:'+'|'.join(str(i) for i in range(FIRST,LAST+1))+')'
+    own='(?:'+'|'.join(str(i) for i in sorted(owned))+')'
     text=re.sub(r'inline constexpr std::array<(?:std::string_view|ARTIST_PARAMETER_DESC|ARTIST_SWITCH_DESC),\d+> ARTIST_(?:TEXTURES|PARAMETERS|SWITCHES)_'+own+r' = \{\{.*?\}\};\r?\n','',text,flags=re.S)
     text=re.sub(r'^    \{'+own+r'u,.*(?:\r?\n|$)','',text,flags=re.M)
     marker='inline constexpr std::array<ARTIST_PROGRAM_DESC,';start=text.index(marker);end=text.index('}};',start)+3
@@ -62,7 +63,7 @@ def install(contract_path,evidence,header_path):
     assert header_path.read_bytes()==raw,'header changed concurrently; rerun against current source'
     if result!=raw:header_path.write_bytes(result)
     write(evidence/'native_material_patch.json',dict(programs=materials))
-    write(evidence/'native_table_installation.json',dict(programCount=len(programs),first=FIRST,last=LAST,header=str(header_path),encoding=encoding,changed=result!=raw))
+    write(evidence/'native_table_installation.json',dict(programCount=len(programs),first=min(owned),last=max(owned),header=str(header_path),encoding=encoding,changed=result!=raw))
     print('Kouku native tables',len(programs),'header changed',result!=raw)
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--contract',type=Path,default=ROOT/'out/KoukuGate1Restore20260911/native_runtime_contract.json');parser.add_argument('--evidence-root',type=Path,default=ROOT/'out/KoukuGate1FullRestore20260911');parser.add_argument('--header',type=Path,default=ROOT/'Client/Public/Effect_ArtistMaterial.h');args=parser.parse_args()

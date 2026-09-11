@@ -1,4 +1,6 @@
 #include "Model.h"
+#include "Profiler.h"
+#include "GameInstance.h"
 
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
@@ -191,6 +193,7 @@ void CModel::Begin_AnimBlend(f32_t fBlendSeconds)
 
 void CModel::Update_AnimBlend(f32_t fTimeDelta)
 {
+    Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Blend");
     if (m_fBlendElapsed >= m_fBlendDuration ||
         m_BlendFromPose.size() != m_Bones.size())
         return;
@@ -325,6 +328,7 @@ bool_t CModel::Sample_AnimationTransitionBoneCombinedMatrices(
 bool_t CModel::Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose,
     vector<float4x4_t>& local, vector<float4x4_t>& combined, float3_t* unscaledRoot) const
 {
+    Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Transition.Build");
     if (m_Bones.empty() || m_BoneRestLocalTransforms.size() != m_Bones.size() ||
         !std::isfinite(pose.durationSeconds) || pose.durationSeconds <= 0.f || pose.durationSeconds > 1.f ||
         !std::isfinite(pose.elapsedSeconds) || pose.elapsedSeconds < 0.f ||
@@ -341,9 +345,12 @@ bool_t CModel::Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& po
     vector<float4x4_t> from;
     if (!sample(pose.sourceIndex, pose.sourceTicks, from) || !sample(pose.targetIndex, pose.targetTicks, local)) return false;
     const float alpha = (std::min)(pose.elapsedSeconds / pose.durationSeconds, 1.f);
+    {
+        Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Blend");
     for (size_t i = 0; i < local.size(); ++i)
         if (!m_Bones[i] || !Is_FiniteMatrix(from[i]) || !Is_FiniteMatrix(local[i]) ||
             (alpha < 1.f && !Try_BlendLocalMatrix(from[i], alpha, local[i]))) return false;
+    }
     if (m_iRootMotionBoneIndex >= 0)
     {
         if (size_t(m_iRootMotionBoneIndex) >= local.size()) return false;
@@ -351,6 +358,8 @@ bool_t CModel::Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& po
         if (unscaledRoot) *unscaledRoot = {root._41, root._42, root._43};
         Apply_RootMotionTranslation(local[m_iRootMotionBoneIndex]);
     }
+    {
+        Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Bones.Combine");
     combined.resize(local.size());
     for (size_t i = 0; i < local.size(); ++i)
     {
@@ -360,11 +369,13 @@ bool_t CModel::Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& po
             (parent == -1 ? XMLoadFloat4x4(&m_PreTransformMatrix) : XMLoadFloat4x4(&combined[parent])));
         if (!Is_FiniteMatrix(combined[i])) return false;
     }
+    }
     return true;
 }
 
 bool_t CModel::Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose)
 {
+    Engine::CProfilerModelAnimationScope modelAnimationScope(CGameInstance::Get().Get_Profiler(), this);
     vector<float4x4_t> local, combined;
     float3_t unscaledRoot = m_vRootMotionUnscaledTranslation;
     if (!Build_AnimationTransitionPose(pose, local, combined, &unscaledRoot)) return false;
@@ -432,6 +443,7 @@ bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
 	const std::span<const uint32_t> BoneIndices,
 	const std::span<float4x4_t> OutCombinedMatrices) const
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.History.Sample");
 	if ((bUseCurrentPoseAndBlend && iExpectedAnimationIndex != m_iCurrentAnimIndex) ||
 		iExpectedAnimationIndex >= m_Animations.size() ||
 		nullptr == m_Animations[iExpectedAnimationIndex] ||
@@ -586,6 +598,8 @@ bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
 		return false;
 
 #if defined(_DEBUG)
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.History.DebugVerify");
 	std::vector<float4x4_t> DeterministicCombined;
 	if (!BuildCombined(DeterministicCombined) ||
 		iCurrentAnimationBefore != m_iCurrentAnimIndex ||
@@ -616,6 +630,7 @@ bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
 		{
 			return false;
 		}
+	}
 	}
 #endif
 
@@ -683,6 +698,7 @@ uint32_t CModel::Pose_BonesFrom(const CModel& source)
 
 void CModel::Refresh_BoneCombinedMatrices()
 {
+    Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Bones.Combine");
     for (auto& pBone : m_Bones)
     {
         pBone->Update_CombinedTransformationMatrix(
@@ -900,10 +916,12 @@ HRESULT CModel::Render(uint32_t iMeshIndex)
     if (FAILED(m_Meshes[iMeshIndex]->Bind_Resources()))
         return E_FAIL;
 
-    if (FAILED(m_Meshes[iMeshIndex]->Render()))
+    const HRESULT drawResult = m_Meshes[iMeshIndex]->Render();
+    if (FAILED(drawResult))
         return E_FAIL;
-
-
+    if (S_OK == drawResult)
+        if (auto* profiler = CGameInstance::Get().Get_Profiler())
+            profiler->Record_ModelSubmitted(this);
     return S_OK;
 }
 
@@ -917,8 +935,12 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
         return E_INVALIDARG;
     }
 
-    return m_Meshes[iMeshIndex]->Render_Instanced(
+    const HRESULT drawResult = m_Meshes[iMeshIndex]->Render_Instanced(
         pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset);
+    if (S_OK == drawResult)
+        if (auto* profiler = CGameInstance::Get().Get_Profiler())
+            profiler->Record_ModelSubmitted(this);
+    return drawResult;
 }
 
 bool_t CModel::Can_UseOrderedStaticGeometry(
@@ -1050,18 +1072,24 @@ HRESULT CModel::Render_OrderedStaticGeometryInstanced(const uint32_t iHandle,
             continue;
         if (!Can_UseOrderedStaticGeometry(Geometry->iFirstMesh, Geometry->iMeshCount))
             return S_FALSE;
-        return Geometry->pMesh->Render_Instanced(
+        const HRESULT drawResult = Geometry->pMesh->Render_Instanced(
             pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset);
+        if (S_OK == drawResult)
+            if (auto* profiler = CGameInstance::Get().Get_Profiler())
+                profiler->Record_ModelSubmitted(this);
+        return drawResult;
     }
     return E_INVALIDARG;
 }
 
 bool_t CModel::Play_Animation(f32_t fTimeDelta)
 {
+    Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Play");
     if (m_bExplicitAnimationPose && m_isAnimPaused) return false;
     if (m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size())
         return false;
 
+    Engine::CProfilerModelAnimationScope modelAnimationScope(CGameInstance::Get().Get_Profiler(), this);
     // Default scale leaves external local-pose edits untouched. Only a scaled
     // pose needs restoration before an unkeyed channel or blend consumes it.
     if (m_fRootMotionVerticalScale != 1.f && m_iRootMotionBoneIndex >= 0 &&
@@ -1097,9 +1125,12 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     }
 
     /* 뼈들 자체 행렬은 갱신이 됐지만, 최종행렬은 아직 미완성(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
+    {
+        Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Bones.Combine");
     for (auto& pBone : m_Bones)
     {
         pBone->Update_CombinedTransformationMatrix(m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+    }
     }
 
     return isFinished;
@@ -2043,8 +2074,14 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
 HRESULT CModel::Ready_BinaryModel(
 	const MODEL_ASSET_LOAD_DESC& loadDesc)
 {
+    Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Binary");
 	MODEL_ASSET_DATA asset{};
-	if (!CModelDecoderRegistry::Get().Decode(loadDesc, asset))
+	bool decoded = false;
+	{
+		Engine::CProfilerScope decodeScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Decode");
+		decoded = CModelDecoderRegistry::Get().Decode(loadDesc, asset);
+	}
+	if (!decoded)
 	{
 		const MODEL_DECODE_REPORT report = CModelDecoderRegistry::Get().Get_LastReport();
 		OutputDebugStringA(("[CModel] Binary decode failed for " +
@@ -2137,6 +2174,7 @@ HRESULT CModel::Ready_BinaryModel(
 
 HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
 {
+    Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Meshes");
     m_iNumMeshes = static_cast<uint32_t>(asset.meshes.size());
     m_Meshes.reserve(m_iNumMeshes);
 	for (const MODEL_MESH_DATA& mesh : asset.meshes)
@@ -2202,20 +2240,106 @@ void CModel::Include_LocalPosition(fvector_t vPosition)
 
 HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)
 {
-    m_iNumMaterials = static_cast<uint32_t>(asset.materials.size());
-    m_Materials.reserve(m_iNumMaterials);
-    for (const MODEL_MATERIAL_DATA& material : asset.materials)
+    Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Materials");
+    // Each slot owns its material and device-only texture preparation. Publish
+    // the complete vector only after every worker has finished successfully.
+    vector<shared_ptr<CMaterial>> staged(asset.materials.size());
+    static std::atomic_uint backgroundWorkers{ 0u };
+    struct MATERIAL_PREPARATION final
     {
-        auto pMaterial = CMaterial::Create(m_pDevice, m_pContext, material);
-        if (nullptr == pMaterial)
-            return E_FAIL;
-        m_Materials.push_back(pMaterial);
+        const vector<MODEL_MATERIAL_DATA>& inputs;
+        vector<shared_ptr<CMaterial>>& outputs;
+        ComPtr<ID3D11Device> device;
+        ComPtr<ID3D11DeviceContext> context;
+        std::atomic_uint& backgroundWorkers;
+        std::atomic_size_t next{ 0u };
+        std::atomic<HRESULT> result{ S_OK };
+
+        void Run() noexcept
+        {
+            try
+            {
+                while (SUCCEEDED(result.load(std::memory_order_relaxed)))
+                {
+                    const size_t index = next.fetch_add(1u, std::memory_order_relaxed);
+                    if (index >= inputs.size()) return;
+                    auto material = CMaterial::Create(device, context, inputs[index]);
+                    if (!material) { result.store(E_FAIL, std::memory_order_relaxed); return; }
+                    outputs[index] = std::move(material);
+                }
+            }
+            catch (const std::bad_alloc&) { result.store(E_OUTOFMEMORY, std::memory_order_relaxed); }
+            catch (...) { result.store(E_FAIL, std::memory_order_relaxed); }
+        }
+
+        static void CALLBACK Work(PTP_CALLBACK_INSTANCE, void* parameter, PTP_WORK)
+        {
+            auto& batch = *static_cast<MATERIAL_PREPARATION*>(parameter);
+            const HRESULT apartment = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+            if (SUCCEEDED(apartment) || apartment == RPC_E_CHANGED_MODE)
+            {
+                try
+                {
+                    Engine::CProfilerScope workerScope(CGameInstance::Get().Get_Profiler(), "Model.Load.MaterialWorker");
+                    batch.Run();
+                }
+                catch (const std::bad_alloc&) { batch.result.store(E_OUTOFMEMORY, std::memory_order_relaxed); }
+                catch (...) { batch.result.store(E_FAIL, std::memory_order_relaxed); }
+            }
+            // If COM preparation fails the owning loader drains the same queue.
+            if (SUCCEEDED(apartment)) CoUninitialize();
+            batch.backgroundWorkers.fetch_sub(1u, std::memory_order_relaxed);
+        }
+    } batch{ asset.materials, staged, m_pDevice, m_pContext, backgroundWorkers };
+
+    // Small/static map materials stay serial. At most three extra workers
+    // across all simultaneous model loads use Windows' existing thread pool.
+    const unsigned processors = static_cast<unsigned>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
+    const unsigned limit = processors > 2u ? (std::min)(3u, processors - 2u) : 0u;
+    PTP_WORK work = asset.hasSkeleton && asset.materials.size() >= 3u && limit != 0u &&
+        0u == (m_pDevice->GetCreationFlags() & D3D11_CREATE_DEVICE_SINGLETHREADED) ?
+        CreateThreadpoolWork(&MATERIAL_PREPARATION::Work, &batch, nullptr) : nullptr;
+    struct WORK_JOIN final
+    {
+        PTP_WORK work;
+        ~WORK_JOIN()
+        {
+            if (!work) return;
+            WaitForThreadpoolWorkCallbacks(work, FALSE);
+            CloseThreadpoolWork(work);
+        }
+    } join{ work };
+    if (work)
+    {
+        for (size_t index = 1u; index < asset.materials.size(); ++index)
+        {
+            unsigned active = backgroundWorkers.load(std::memory_order_relaxed);
+            while (active < limit && !backgroundWorkers.compare_exchange_weak(
+                active, active + 1u, std::memory_order_relaxed)) {}
+            if (active >= limit) break;
+            SubmitThreadpoolWork(work);
+        }
     }
+    batch.Run();
+    if (work)
+    {
+        Engine::CProfilerScope waitScope(CGameInstance::Get().Get_Profiler(), "Model.Load.MaterialJoin");
+        WaitForThreadpoolWorkCallbacks(work, FALSE);
+        CloseThreadpoolWork(work);
+        join.work = nullptr;
+    }
+    const HRESULT result = batch.result.load(std::memory_order_relaxed);
+    if (FAILED(result)) return result;
+    if (std::any_of(staged.begin(), staged.end(), [](const auto& material) { return !material; }))
+        return E_FAIL;
+    m_iNumMaterials = static_cast<uint32_t>(staged.size());
+    m_Materials = std::move(staged);
     return S_OK;
 }
 
 HRESULT CModel::Ready_Bones(const MODEL_ASSET_DATA& asset)
 {
+    Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Bones");
     m_Bones.reserve(asset.skeleton.bones.size());
     m_BoneRestLocalTransforms.reserve(asset.skeleton.bones.size());
     for (const MODEL_BONE_DATA& bone : asset.skeleton.bones)
@@ -2231,6 +2355,7 @@ HRESULT CModel::Ready_Bones(const MODEL_ASSET_DATA& asset)
 
 HRESULT CModel::Ready_Animations(const MODEL_ASSET_DATA& asset)
 {
+    Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Animations");
     m_iNumAnimations = static_cast<uint32_t>(asset.animations.size());
     m_Animations.reserve(m_iNumAnimations);
     for (const MODEL_ANIMATION_DATA& animation : asset.animations)

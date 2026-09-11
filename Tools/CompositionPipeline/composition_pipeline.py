@@ -3164,7 +3164,7 @@ def _validate_camera_track(track: Any, context: str) -> None:
         _require_exact_fields(
             keyframe,
             ("sceneId", "timeMs", "eye", "lookAt", "fovYDegrees"),
-            (),
+            ("up",),
             key_context,
         )
         scene_id = _require_owner_stable_id(
@@ -3194,6 +3194,15 @@ def _validate_camera_track(track: Any, context: str) -> None:
         )
         if sum((look_at[axis] - eye[axis]) ** 2 for axis in range(3)) <= 0.000001:
             raise CompositionError(f"{key_context} has no view direction")
+        if "up" in keyframe:
+            up = _require_float3(keyframe["up"], f"{key_context}.up", maximum_magnitude=1.0)
+            direction = [look_at[axis] - eye[axis] for axis in range(3)]
+            length_squared = sum(component * component for component in direction)
+            cross = [up[1] * direction[2] - up[2] * direction[1],
+                     up[2] * direction[0] - up[0] * direction[2],
+                     up[0] * direction[1] - up[1] * direction[0]]
+            if sum(component * component for component in cross) / length_squared < 0.000001:
+                raise CompositionError(f"{key_context}.up must not be parallel to its view")
         fov = _require_finite_number(
             keyframe["fovYDegrees"], f"{key_context}.fovYDegrees"
         )

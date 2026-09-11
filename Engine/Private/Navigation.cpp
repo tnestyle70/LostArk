@@ -1,4 +1,5 @@
 ﻿#include "Navigation.h"
+#include "Profiler.h"
 #include "Cell.h"
 
 #include "GameInstance.h"
@@ -301,6 +302,7 @@ PATH_RESULT_CODE CNavigation::Find_Path(
 	uint32_t iMaxExpandedNodes,
 	uint32_t* pOutExpandedNodes)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.FindPath");
 	if (nullptr != pOutExpandedNodes)
 		*pOutExpandedNodes = 0;
 
@@ -447,6 +449,7 @@ void CNavigation::Simplify_Path(
 	f32_t fMaxStepHeight,
 	vector<float3_t>& OutPath) const
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.Simplify");
 	OutPath.clear();
 	if (RawPath.size() <= 2 || nullptr == m_pNavGrid)
 	{
@@ -485,6 +488,7 @@ void CNavigation::Round_PathCorners(
 	f32_t fMaxStepHeight,
 	vector<float3_t>& OutPath) const
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.RoundCorners");
 	OutPath.clear();
 	if (Path.size() <= 2 || nullptr == m_pNavGrid)
 	{

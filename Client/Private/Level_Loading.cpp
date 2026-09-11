@@ -7,6 +7,7 @@
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSpec.h"
+#include "ClickMoveEffect.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"
 #include "Effect_LoadPreparationJob.h"
@@ -33,7 +34,6 @@
 
 namespace
 {
-	std::atomic<uint64_t> g_iNextEffectLoadJobEpoch = 1u;
 
 	/* Fraction of the track the heartbeat segment covers while no lane has published a real
 	fraction yet. */
@@ -127,15 +127,12 @@ HRESULT CLevel_Loading::Initialize(
 	m_pRecoveryView->Set_SlotVisible("LoadingRecovery_Panel", false);
 	m_pRecoveryView->Set_SlotVisible("LoadingRecovery_RetryButton", false);
 
-	const bool_t bUsesEffectLoadJob =
-		LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-		LEVEL::VALTAN_ARENA == m_eNextLevelID ||
-		LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID;
+	const bool_t bUsesEffectLoadJob = CClickMoveEffect::Uses_LevelMarkers(m_eNextLevelID);
 	uint64_t iEffectCatalogRevision = 0u;
 	if (bUsesEffectLoadJob)
 	{
 		m_iEffectLoadJobEpoch =
-			g_iNextEffectLoadJobEpoch.fetch_add(1u, std::memory_order_relaxed);
+			CEffectPresentationService::Allocate_ProductPreparationEpoch();
 		if (0u == m_iEffectLoadJobEpoch)
 			return E_FAIL;
 		iEffectCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
@@ -177,9 +174,7 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 
 	bool_t bTargetPresentationReady = true;
-	if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-		 LEVEL::VALTAN_ARENA == m_eNextLevelID ||
-		 LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID) &&
+	if (CClickMoveEffect::Uses_LevelMarkers(m_eNextLevelID) &&
 		!m_isActivationRequested)
 	{
 		bTargetPresentationReady =
@@ -572,13 +567,18 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID;
 	const bool_t bValtanArena = LEVEL::VALTAN_ARENA == m_eNextLevelID;
 	const bool_t bKoukuArena = LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID;
-	if (!bCharacterSelect && !bValtanArena && !bKoukuArena)
+	if (!CClickMoveEffect::Uses_LevelMarkers(m_eNextLevelID))
 	{
 		return true;
 	}
+	if (!CEffectPresentationService::Drain_RuntimePreparationForLoading())
+	{
+		m_strEffectPreparationStatus = "Waiting for previous Effect worker cleanup.";
+		return false;
+	}
 	const std::string TargetLabel =
 		bCharacterSelect ? "CHARACTER SELECT" :
-		(bValtanArena ? "VALTAN ARENA" : "KOUKUSAYDON ARENA");
+		(bValtanArena ? "VALTAN ARENA" : (bKoukuArena ? "KOUKUSAYDON ARENA" : "PLAYABLE LEVEL"));
 
 	const auto IsolateFailure = [this, &TargetLabel](const std::string& Status)
 	{
@@ -614,6 +614,12 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 	if (!m_isEffectPreparationRegistered)
 	{
 		std::string Status;
+		// Optional World marker registration is owner-thread metadata only. Their
+		// CPU resources join this same Loader worker; per-target failures already
+		// settle as isolated decorations and never require a first-click load.
+		m_EffectPreparationTargets = CClickMoveEffect::Queue_LevelResources(m_eNextLevelID);
+		if (bCharacterSelect || bValtanArena || bKoukuArena)
+		{
 		using LostArk::Shared::CHARACTER_CLASS_ID;
 		CHARACTER_CLASS_ID SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		if (!CCharacterSelectionState::Try_Get_SelectedClass(SelectedClass) ||
@@ -638,7 +644,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			return IsolateFailure(Status);
 		}
-		m_EffectPreparationTargets = std::move(PlayerEffectAssetIds);
+		m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+			PlayerEffectAssetIds.begin(), PlayerEffectAssetIds.end());
 
 		if (bValtanArena)
 		{
@@ -746,6 +753,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				m_EffectPreparationTargets.end());
 		}
 
+		}
 		m_isEffectPreparationRegistered = true;
 		m_iEffectPreparationTargetCount = static_cast<uint32_t>(
 			m_EffectPreparationTargets.size());

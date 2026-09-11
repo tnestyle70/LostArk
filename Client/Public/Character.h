@@ -168,7 +168,8 @@ public:
 		std::uint8_t comboStage = 0,
 		bool_t hasSkillTarget = false,
 		const float3_t& skillTarget = {},
-		LostArk::Shared::KOUKU_HUD_MODE interactionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE);
+		LostArk::Shared::KOUKU_HUD_MODE interactionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE,
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT grabSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE);
 	bool_t Try_Get_NetworkActionState(
 		LostArk::Shared::PLAYER_ACTION_STATE& outAction) const
 	{
@@ -179,6 +180,7 @@ public:
 	}
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
+	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
 	/* Replication hands over the replicated owner presentation while the Server
 	   reports GRABBED. The character keeps only a weak reference and the admitted
 	   grip; every Update re-resolves the socket so a vanished owner falls back to
@@ -371,6 +373,7 @@ private:
 	/* Negative when no delayed idle commit is pending. */
 	f32_t m_fPendingIdleSeconds = { -1.f };
 	wstring_t m_strNavigationPrototypeTag;
+	bool_t m_isNetworkPresentationHidden = false;
 
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
@@ -414,6 +417,8 @@ private:
 	enum class KNOCKDOWN_STEP : std::uint8_t
 	{ NONE, FALLING, LANDING, DOWN, STANDUP };
 	KNOCKDOWN_STEP m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+	// Snapshot-owned grab kind, independent of the optional boss hand socket.
+	LostArk::Shared::PLAYER_ATTACHMENT_SLOT m_eNetworkGrabSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 	LostArk::Shared::PLAYER_STANCE_ID m_eStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	std::uint32_t m_iLastNetworkActionStartTick = 0;
@@ -504,7 +509,7 @@ private:
 	/* IDLE and RUN can belong to the current stance instead of the class. Every
 	other state resolves straight off the spec. */
 	const char_t* Resolve_LocomotionClip(CHARACTER_ANIM eAnim) const;
-	bool_t Load_ClipChains();
+	bool_t Load_ClipChains(bool_t reloadSource = false);
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;

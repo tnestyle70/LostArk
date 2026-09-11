@@ -1883,12 +1883,13 @@ bool_t Client::CMapTool::Sample_ShotCameraTrack(
 		keyframe.vEye = source.eye;
 		keyframe.vLookAt = source.lookAt;
 		keyframe.fFovYDegrees = source.fovYDegrees;
+		keyframe.vUp = source.up; keyframe.hasUp = source.hasUp;
 		cue.Keyframes.push_back(std::move(keyframe));
 	}
 	outPose.vEye = shot.eye;
 	outPose.vLookAt = shot.lookAt;
 	outPose.fFovYDegrees = shot.fovYDegrees;
-	if (cue.Keyframes.size() < 2u)
+	if (cue.Keyframes.empty())
 		return true;
 	return CValtanCinematicCameraController::Sample_Cue(
 		cue, elapsedMs / 1000.f, outPose);
@@ -2000,8 +2001,9 @@ void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 			pose = blended;
 		}
 	}
-	if (!camera->Apply_PresentationPose(CAMERA_SHOT_PREVIEW_OWNER_ID,
-		pose.vEye, pose.vLookAt, pose.fFovYDegrees))
+	if (!(pose.hasUp ? camera->Apply_PresentationPoseWithUp(CAMERA_SHOT_PREVIEW_OWNER_ID,
+		pose.vEye, pose.vLookAt, pose.vUp, pose.fFovYDegrees) :
+		camera->Apply_PresentationPose(CAMERA_SHOT_PREVIEW_OWNER_ID, pose.vEye, pose.vLookAt, pose.fFovYDegrees)))
 	{
 		End_CutsceneCameraTrack();
 	}
@@ -14228,6 +14230,12 @@ bool_t Client::CMapTool::Load_CameraShots(
 				keyframe.sceneId = sceneId->Get_String();
 				keyframe.timeMs = static_cast<int32_t>(timeMs->Get_Number());
 				keyframe.fovYDegrees = static_cast<f32_t>(fov->Get_Number());
+				if (const auto* up = entry.Find("up"))
+				{
+					if (!readFloat3(up, keyframe.up))
+					{ m_CameraShotStatus = "Camera keyframe up is invalid: " + shot.shotId; return false; }
+					keyframe.hasUp = true;
+				}
 				shot.keyframes.push_back(std::move(keyframe));
 			}
 		}
@@ -14331,7 +14339,7 @@ bool_t Client::CMapTool::Save_CameraShots()
 				vector3(shot.followEyeOffset) + ", \"lookAtOffset\": " +
 				vector3(shot.followLookAtOffset) + " }";
 		}
-		if (2u <= shot.keyframes.size())
+		if (!shot.keyframes.empty())
 		{
 			text += ",\n      \"cameraTrack\": {\n";
 			text += "        \"durationMs\": " +
@@ -14350,7 +14358,8 @@ bool_t Client::CMapTool::Save_CameraShots()
 					"\", \"timeMs\": " + std::to_string(keyframe.timeMs) +
 					", \"eye\": " + vector3(keyframe.eye) +
 					", \"lookAt\": " + vector3(keyframe.lookAt) +
-					", \"fovYDegrees\": " + number(keyframe.fovYDegrees) + " }";
+					", \"fovYDegrees\": " + number(keyframe.fovYDegrees) +
+					(keyframe.hasUp ? ", \"up\": " + vector3(keyframe.up) : "") + " }";
 				text += (keyIndex + 1u == shot.keyframes.size()) ? "\n" : ",\n";
 			}
 			text += "        ]\n      }";

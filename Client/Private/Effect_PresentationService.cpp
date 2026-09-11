@@ -19,6 +19,9 @@
 #include "Transform.h"
 #include "Valtan.h"
 
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 #include <algorithm>
 #include <array>
 #include <cfloat>
@@ -35,6 +38,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+struct Client::EFFECT_PRODUCT_CAMERA_PREPARATION final
+    {
+        std::string asset;
+        uint32_t skillId = 0u;
+        std::vector<Client::EFFECT_CAMERA_ROW> rows;
+        std::vector<std::string> localOnlyElementIds;
+    };
 
 namespace
 {
@@ -188,13 +199,7 @@ namespace
 	};
 
 
-    struct PRODUCT_CAMERA_PREPARED final
-    {
-        std::string asset;
-        uint32_t skillId = 0u;
-        std::vector<Client::EFFECT_CAMERA_ROW> rows;
-        std::vector<std::string> localOnlyElementIds;
-    };
+    using PRODUCT_CAMERA_PREPARED = Client::EFFECT_PRODUCT_CAMERA_PREPARATION;
 
     struct ACTIVE_EFFECT final
     {
@@ -330,6 +335,147 @@ namespace
 	uint64_t g_iArtist31470GameplayConsumeCount = 0u;
 	std::string g_strStatus = "Effect presentation service is idle.";
 
+	// Only immutable device-stage inputs cross this single persistent worker.
+	// Catalog publication, queue ownership and result ACK remain on the main thread.
+	class PRODUCT_PREPARATION_WORKER final
+	{
+	public:
+		~PRODUCT_PREPARATION_WORKER() { Stop(); }
+		bool Submit(ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+			const std::shared_ptr<Client::CEffectLoadPreparationJob>& job)
+		{
+			std::lock_guard lock(m_Mutex);
+			if (!m_Done.load(std::memory_order_acquire) || m_Stop) return false;
+			m_Device = std::move(device); m_Context = std::move(context); m_Job = job;
+			m_Done.store(false, std::memory_order_release);
+			m_HasWork = true;
+			try
+			{
+				if (!m_Thread.joinable()) m_Thread = std::thread([this] { Run(); });
+			}
+			catch (...)
+			{
+				m_Job.reset(); m_Device.Reset(); m_Context.Reset(); m_HasWork = false;
+				m_Done.store(true, std::memory_order_release);
+				return false;
+			}
+			m_Wake.notify_one();
+			return true;
+		}
+		bool Is_Done() const { return m_Done.load(std::memory_order_acquire); }
+		HRESULT Result() const { return m_Result.load(std::memory_order_relaxed); }
+		void Stop()
+		{
+			if (!m_Thread.joinable()) return;
+			std::shared_ptr<Client::CEffectLoadPreparationJob> job;
+			{
+				std::lock_guard lock(m_Mutex); m_Stop = true; job = m_Job;
+			}
+			if (job && !job->Is_Closed() && !job->Is_Cancelled())
+			{
+				std::optional<Client::EFFECT_LOAD_JOB_COMMAND> displaced;
+				std::string status;
+				(void)job->Post_Command(Client::EFFECT_LOAD_JOB_COMMAND::Cancel(
+					job->Get_CurrentEpoch(), job->Get_CurrentCatalogRevision()), displaced, status);
+			}
+			m_Wake.notify_one();
+			const HANDLE handle = static_cast<HANDLE>(m_Thread.native_handle());
+			CancelSynchronousIo(handle);
+			if (WAIT_OBJECT_0 != WaitForSingleObject(handle, 10000u))
+			{
+				OutputDebugStringA("[EffectPreparation] Worker did not stop within 10 seconds.\n");
+				TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
+				std::terminate();
+			}
+			m_Thread.join();
+			m_Job.reset(); m_Device.Reset(); m_Context.Reset();
+			m_HasWork = false; m_Stop = false; m_Done.store(true, std::memory_order_release);
+		}
+	private:
+		void Run() noexcept
+		{
+			const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+			for (;;)
+			{
+				std::shared_ptr<Client::CEffectLoadPreparationJob> job;
+				ComPtr<ID3D11Device> device; ComPtr<ID3D11DeviceContext> context;
+				{
+					std::unique_lock lock(m_Mutex);
+					m_Wake.wait(lock, [this] { return m_Stop || m_HasWork; });
+					if (m_Stop) break;
+					job = m_Job; device = m_Device; context = m_Context; m_HasWork = false;
+				}
+				HRESULT result = com;
+				try
+				{
+					if (SUCCEEDED(com)) result = Client::CEffectPresentationService::Run_ProductPreparationWorker(
+						device, context, job);
+				}
+				catch (...) { result = E_FAIL; }
+				// Retire queued payload on this worker before completion reaches the frame.
+				if (job)
+				{
+					Client::EFFECT_LOAD_JOB_RESULT retired;
+					while (job->Try_Pop_Result(retired)) retired = {};
+				}
+				// All target payload and retired cache references die before completion is visible.
+				job.reset(); device.Reset(); context.Reset();
+				{
+					std::lock_guard lock(m_Mutex);
+					m_Job.reset(); m_Device.Reset(); m_Context.Reset();
+				}
+				m_Result.store(result, std::memory_order_relaxed);
+				m_Done.store(true, std::memory_order_release);
+			}
+			if (SUCCEEDED(com)) CoUninitialize();
+		}
+		std::mutex m_Mutex;
+		std::condition_variable m_Wake;
+		std::thread m_Thread;
+		ComPtr<ID3D11Device> m_Device;
+		ComPtr<ID3D11DeviceContext> m_Context;
+		std::shared_ptr<Client::CEffectLoadPreparationJob> m_Job;
+		std::atomic<bool> m_Done{true};
+		std::atomic<HRESULT> m_Result{S_OK};
+		bool m_HasWork = false;
+		bool m_Stop = false;
+	};
+
+	std::atomic<uint64_t> g_NextProductPreparationEpoch{1u};
+	std::shared_ptr<Client::CEffectLoadPreparationJob> g_RuntimePreparationJob;
+	uint64_t g_RuntimePreparationEpoch = 0u;
+	std::string g_RuntimePreparationEffectId;
+	std::string g_RuntimePreparationFailureStatus;
+	bool g_RuntimePreparationAbandoned = false;
+	uint64_t g_RuntimePreparationFailureRevision = 0u;
+	PRODUCT_PREPARATION_WORKER g_RuntimePreparationWorker;
+
+	void Fail_RuntimePreparationTarget(const std::string& effectId,
+		const uint64_t revision, const HRESULT result, const std::string& status)
+	{
+		if (revision != g_ProductPrewarmQueue.Get_CatalogRevision() ||
+			g_ProductPrewarmQueue.Is_Prepared(effectId) ||
+			g_ProductPrewarmQueue.Find_FailureReceipt(effectId)) return;
+		Client::EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT failure;
+		failure.iCatalogRevision = revision;
+		failure.iJobEpoch = g_ProductPrewarmQueue.Get_LoadingOwnerEpoch(effectId);
+		failure.strEffectAssetId = effectId;
+		failure.iRootCode = FAILED(result) ? result : E_FAIL;
+		failure.strRootMessage = status;
+		Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN token;
+		std::string commitStatus;
+		if (g_ProductPrewarmQueue.Prevalidate_Front(effectId, revision,
+			failure.iJobEpoch, false, &failure, token, commitStatus))
+			g_ProductPrewarmQueue.Commit_PrevalidatedFront(std::move(token));
+		else
+		{
+			// A broken queue identity must not turn into an unbounded retry every frame.
+			g_RuntimePreparationFailureRevision = revision;
+			g_strStatus = status + " Failure receipt could not settle: " + commitStatus;
+		}
+	}
+
+
     struct PRODUCT_CAMERA_CACHE_ENTRY final
     {
         uint64_t revision = 0u;
@@ -349,30 +495,41 @@ namespace
         g_CameraEffect.reset(); g_CameraCharacter.reset();
     }
 
-    void Prepare_ProductCamera(const std::string& effectId, const uint64_t revision, const bool force = false)
+    bool Stage_ProductCamera(const std::string& effectId,
+        std::shared_ptr<const PRODUCT_CAMERA_PREPARED>& value, std::string& error)
     {
-        if (!effectId.ends_with(".restore")) return;
-        auto& entry = g_ProductCameraCache[effectId];
-        if (!force && entry.revision == revision) return;
-        entry.revision = revision;
-        Client::EFFECT_RECOVERY_CAMERA_DOCUMENT source; std::string error;
-        if (!Client::CEffectRecoveryCamera::Load(effectId, source, error))
-        {
-            // A broken optional camera does not destroy an admitted Effect or a prior camera definition.
-            OutputDebugStringA(("[Client][EffectCamera] " + effectId + ": " + error + "\n").c_str());
-            return;
-        }
-        if (!source.exists || (source.rows.empty() && source.localOnlyElementIds.empty())) { entry.value.reset(); return; }
+        value.reset();
+        Client::EFFECT_RECOVERY_CAMERA_DOCUMENT source;
+        if (!Client::CEffectRecoveryCamera::Load(effectId, source, error)) return false;
+        if (!source.exists || (source.rows.empty() && source.localOnlyElementIds.empty())) return true;
         constexpr std::string_view prefix = "skill.";
         uint32_t skillId = 0u;
         const auto first = source.sequence.data() + (std::min)(prefix.size(), source.sequence.size());
         const auto last = source.sequence.data() + source.sequence.size();
         const auto parsed = std::from_chars(first, last, skillId);
         if (!source.sequence.starts_with(prefix) || parsed.ec != std::errc{} || parsed.ptr != last || !skillId)
-        { OutputDebugStringA("[Client][EffectCamera] Recovery sequence has no Product skill identity.\n"); return; }
+        { error = "Recovery sequence has no Product skill identity."; return false; }
         auto prepared = std::make_shared<PRODUCT_CAMERA_PREPARED>();
         prepared->asset = std::move(source.asset); prepared->skillId = skillId; prepared->rows = std::move(source.rows);
         prepared->localOnlyElementIds = std::move(source.localOnlyElementIds);
+        value = std::move(prepared);
+        return true;
+    }
+
+    // Explicit authoring reload only. Runtime registration never calls this reader.
+    void Prepare_ProductCamera(const std::string& effectId, const uint64_t revision, const bool force = false)
+    {
+        if (!effectId.ends_with(".restore")) return;
+        auto& entry = g_ProductCameraCache[effectId];
+        if (!force && entry.revision == revision) return;
+        entry.revision = revision;
+        std::shared_ptr<const PRODUCT_CAMERA_PREPARED> prepared;
+        std::string error;
+        if (!Stage_ProductCamera(effectId, prepared, error))
+        {
+            OutputDebugStringA(("[Client][EffectCamera] " + effectId + ": " + error + "\n").c_str());
+            return;
+        }
         entry.value = std::move(prepared);
     }
 
@@ -743,9 +900,6 @@ namespace
 			return false;
 		}
 
-		// Optional camera parsing belongs to preparation, never Spawn or the frame loop.
-		for (const auto& target : g_ProductPrewarmQueue.Get_Targets())
-			Prepare_ProductCamera(target, iCatalogRevision);
 		if (nullptr != pOutCurrentTargets)
 			*pOutCurrentTargets = std::move(CurrentTargets);
 		strOutStatus = QueueStatus;
@@ -2362,6 +2516,7 @@ namespace
 		decltype(g_ProductEffectBudgetCosts)::node_type BudgetCost;
 		decltype(g_ProductEffectPlaybackDurations)::node_type PlaybackDuration;
 		decltype(g_ProductScreenOverlayTemplates)::node_type ScreenOverlayTemplate;
+		decltype(g_ProductCameraCache)::node_type Camera;
 		bool_t bEraseScreenOverlayTemplate = false;
 	};
 
@@ -2410,6 +2565,13 @@ namespace
 			{
 				Staged.bEraseScreenOverlayTemplate = true;
 			}
+			if (Result.bCameraReceiptValid)
+			{
+				decltype(g_ProductCameraCache) Camera;
+				Camera.emplace(EffectId, PRODUCT_CAMERA_CACHE_ENTRY{
+					Result.pCatalogStage->Request.iCatalogRevision, Result.pCameraPreparation});
+				Staged.Camera = Camera.extract(Camera.begin());
+			}
 			OutCommit = std::move(Staged);
 		}
 		catch (const std::exception& Exception)
@@ -2438,6 +2600,7 @@ namespace
 		   a partially committed target. */
 		if (Commit.BudgetCost.empty() || Commit.PlaybackDuration.empty() ||
 			Commit.BudgetCost.key() != Commit.PlaybackDuration.key() ||
+			(!Commit.Camera.empty() && Commit.BudgetCost.key() != Commit.Camera.key()) ||
 			(Commit.bEraseScreenOverlayTemplate ==
 				!Commit.ScreenOverlayTemplate.empty()) ||
 			(!Commit.ScreenOverlayTemplate.empty() &&
@@ -2446,6 +2609,8 @@ namespace
 			std::terminate();
 		}
 
+		if (!Commit.Camera.empty())
+			Commit_ProductTargetReceiptNode(g_ProductCameraCache, std::move(Commit.Camera));
 		const std::string& EffectId = Commit.BudgetCost.key();
 		if (Commit.bEraseScreenOverlayTemplate)
 		{
@@ -2712,6 +2877,15 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 
 	auto Candidate = std::make_shared<EFFECT_PRODUCT_LOADING_TARGET_STAGE>();
 	Candidate->pCatalogStage = CatalogStage;
+	if (Request.strEffectAssetId.ends_with(".restore"))
+	{
+		std::string CameraStatus;
+		Candidate->bCameraReceiptValid = Stage_ProductCamera(
+			Request.strEffectAssetId, Candidate->pCameraPreparation, CameraStatus);
+		if (!Candidate->bCameraReceiptValid)
+			OutputDebugStringA(("[Client][EffectCamera] " + Request.strEffectAssetId +
+				": " + CameraStatus + "\n").c_str());
+	}
 	if (!Prepare_ProductScreenOverlayTemplateFromBinding(
 			pDevice, Request.strEffectAssetId, Request.pScreenOverlayBinding,
 			Candidate->pScreenOverlayTemplate, strOutStatus))
@@ -2921,6 +3095,7 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 		   resources away from the UI frame. */
 		Staged.reset();
 		WorkerResult.pImmutablePayload.reset();
+		if (pJob == g_RuntimePreparationJob) g_RuntimePreparationFailureStatus = Status;
 		g_strStatus = Status;
 		OutputDebugStringA(("[Client][EffectPresentation] " + Status + "\n").c_str());
 		std::string ReleaseStatus;
@@ -3054,6 +3229,8 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 		return;
 	}
 
+	std::string PreparedStatus;
+	{
 	PRODUCT_TARGET_RECEIPT_COMMIT ReceiptCommit;
 	std::string CommitStatus;
 	if (!Build_ProductTargetReceiptCommit(
@@ -3062,7 +3239,7 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 		FailStructural(CommitStatus);
 		return;
 	}
-	std::string PreparedStatus =
+	PreparedStatus =
 		"Prepared Loader-worker staged Product Effect " + EffectId;
 	EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN PreparedToken;
 	if (!g_ProductPrewarmQueue.Prevalidate_Front(
@@ -3137,6 +3314,7 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 
 	Commit_ProductTargetReceipts(std::move(ReceiptCommit));
 	g_ProductPrewarmQueue.Commit_PrevalidatedFront(std::move(PreparedToken));
+	} // Release catalog receipt references before waking the worker.
 	/* The Loader retains the other bundle reference until this ACK.  Drop all
 	   main-thread references first so maps/session resources swapped out by the
 	   renderer commit are deterministically destroyed on the worker. */
@@ -3194,6 +3372,230 @@ Try_Get_PreparedProductDurationSeconds(
 	return true;
 }
 
+uint64_t Client::CEffectPresentationService::Allocate_ProductPreparationEpoch()
+{
+	return g_NextProductPreparationEpoch.fetch_add(1u, std::memory_order_relaxed);
+}
+
+bool_t Client::CEffectPresentationService::Drain_RuntimePreparationForLoading()
+{
+	if (!g_RuntimePreparationJob) return g_RuntimePreparationWorker.Is_Done();
+	g_RuntimePreparationAbandoned = true;
+	Cancel_LoadingProductCuePreparation(g_RuntimePreparationJob, g_RuntimePreparationEpoch);
+	if (!g_RuntimePreparationWorker.Is_Done()) return false;
+	g_RuntimePreparationJob.reset();
+	g_RuntimePreparationEpoch = 0u;
+	g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear();
+	g_RuntimePreparationAbandoned = false;
+	return true;
+}
+
+HRESULT Client::CEffectPresentationService::Run_ProductPreparationWorker(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+	const std::atomic<bool>* pCancellation)
+{
+	if (nullptr == pJob)
+		return S_OK;
+
+	std::optional<EFFECT_LOAD_JOB_COMMAND> PendingBatchCommand;
+	for (;;)
+	{
+		EFFECT_LOAD_JOB_COMMAND Command;
+		EFFECT_LOAD_MAILBOX_WAIT_RESULT WaitResult =
+			EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND;
+		if (PendingBatchCommand.has_value())
+		{
+			Command = std::move(*PendingBatchCommand);
+			PendingBatchCommand.reset();
+		}
+		else
+		{
+			WaitResult = pJob->Wait_Pop_Command(Command);
+		}
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == WaitResult)
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == WaitResult)
+			return S_OK;
+		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != WaitResult ||
+			!Command.Is_Valid())
+		{
+			return E_FAIL;
+		}
+		if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == Command.eKind)
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == Command.eKind)
+			return S_OK;
+		if (EFFECT_LOAD_JOB_COMMAND_KIND::ACCEPT_DISCOVERY != Command.eKind &&
+			EFFECT_LOAD_JOB_COMMAND_KIND::REBASE != Command.eKind)
+		{
+			return E_FAIL;
+		}
+
+		const auto Batch =
+			std::static_pointer_cast<const EFFECT_PRODUCT_LOAD_STAGE_BATCH>(
+				Command.pImmutablePayload);
+		if (nullptr == Batch ||
+			Batch->Targets.size() != Command.EffectAssetIds.size())
+		{
+			return E_FAIL;
+		}
+		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
+		{
+			if (Batch->Targets[i].strEffectAssetId != Command.EffectAssetIds[i])
+				return E_FAIL;
+		}
+
+		EFFECT_LOAD_PROGRESS_SNAPSHOT Progress;
+		Progress.iJobEpoch = Command.iJobEpoch;
+		Progress.iCatalogRevision = Command.iCatalogRevision;
+		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE;
+		Progress.bDeterminate = true;
+		Progress.iTotal = static_cast<uint32_t>(Batch->Targets.size());
+		Progress.strStatus = "Staging Product Effect resources.";
+		pJob->Publish_Progress(Progress);
+
+		bool_t bEpochRebased = false;
+		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
+		{
+			if ((pCancellation && pCancellation->load(std::memory_order_acquire)) ||
+				pJob->Is_Cancelled())
+			{
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			}
+
+			const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request =
+				Batch->Targets[i];
+			Progress.iCompleted = static_cast<uint32_t>(i);
+			Progress.strCurrentId = Request.strEffectAssetId;
+			Progress.strStatus =
+				"Preparing Product Effect document and device resources.";
+			pJob->Publish_Progress(Progress);
+
+			std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE> Staged;
+			std::string StageStatus;
+			bool_t bStaged = false;
+			{
+				Engine::CProfilerScope targetScope(CGameInstance::Get().Get_Profiler(), "Effect.Prepare.WorkerTarget");
+				bStaged = CEffectPresentationService::Stage_LoadingProductTarget(
+					pDevice, pContext, Request, Staged, StageStatus);
+			}
+			EFFECT_LOAD_JOB_RESULT Result;
+			Result.eKind = EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED;
+			Result.iJobEpoch = Command.iJobEpoch;
+			Result.iCatalogRevision = Command.iCatalogRevision;
+			Result.strEffectAssetId = Request.strEffectAssetId;
+			if (bStaged)
+			{
+				/* Keep one worker-owned reference through the matching ACK.  The
+				   owner-thread renderer commit swaps the previous prepared maps and
+				   shared-asset session into this candidate; retaining this reference
+				   makes their potentially large COM/map destruction happen back on
+				   the Loader worker after the ACK instead of on the UI frame. */
+				Result.pImmutablePayload = Staged;
+			}
+			else
+			{
+				EFFECT_LOAD_FAILURE_RECEIPT Failure;
+				Failure.iJobEpoch = Command.iJobEpoch;
+				Failure.iCatalogRevision = Command.iCatalogRevision;
+				Failure.strEffectAssetId = Request.strEffectAssetId;
+				Failure.iRootCode = E_FAIL;
+				Failure.strRootMessage = StageStatus.empty() ?
+					"Product Effect worker stage failed." : StageStatus;
+				Result.Failure = std::move(Failure);
+				++Progress.iIsolatedFailureCount;
+			}
+
+			const EFFECT_LOAD_RESULT_PUSH_RESULT PushResult =
+				pJob->Push_Result_Wait(std::move(Result));
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == PushResult)
+			{
+				bEpochRebased = true;
+				break;
+			}
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == PushResult)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == PushResult)
+				return S_OK;
+			if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != PushResult)
+				return E_FAIL;
+
+			/* The staged payload remains the worker's current target until the
+			   main-thread owner has committed either its prepared record or its
+			   isolated failure receipt.  This bounds in-flight GPU/resource work
+			   to one target and prevents worker staging from outrunning commit. */
+			Progress.strStatus =
+				"Waiting for Product Effect target commit acknowledgment.";
+			pJob->Publish_Progress(Progress);
+			EFFECT_LOAD_JOB_COMMAND AckCommand;
+			const EFFECT_LOAD_MAILBOX_WAIT_RESULT AckWaitResult =
+				pJob->Wait_Pop_Command(AckCommand);
+			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == AckWaitResult)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == AckWaitResult)
+				return S_OK;
+			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != AckWaitResult ||
+				!AckCommand.Is_Valid())
+			{
+				OutputDebugStringA(
+					"[Loader][Effect] Target commit ACK wait returned an invalid command.\n");
+				return E_FAIL;
+			}
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == AckCommand.eKind)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == AckCommand.eKind)
+				return S_OK;
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::REBASE == AckCommand.eKind)
+			{
+				PendingBatchCommand = std::move(AckCommand);
+				bEpochRebased = true;
+				break;
+			}
+			if (EFFECT_LOAD_JOB_COMMAND_KIND::TARGET_COMMIT_ACK !=
+					AckCommand.eKind ||
+				AckCommand.iJobEpoch != Command.iJobEpoch ||
+				AckCommand.iCatalogRevision != Command.iCatalogRevision ||
+				1u != AckCommand.EffectAssetIds.size() ||
+				AckCommand.EffectAssetIds.front() != Request.strEffectAssetId)
+			{
+				OutputDebugStringA(
+					"[Loader][Effect] Target commit ACK identity does not match the staged target.\n");
+				return E_FAIL;
+			}
+			Progress.iCompleted = static_cast<uint32_t>(i + 1u);
+			Progress.strCurrentId.clear();
+			Progress.strStatus = Progress.iCompleted == Progress.iTotal ?
+				"Finalizing Product Effect staging epoch." :
+				"Product Effect target committed.";
+			pJob->Publish_Progress(Progress);
+		}
+		if (bEpochRebased)
+			continue;
+
+		EFFECT_LOAD_JOB_RESULT Complete;
+		Complete.eKind = EFFECT_LOAD_JOB_RESULT_KIND::EPOCH_STAGE_COMPLETE;
+		Complete.iJobEpoch = Command.iJobEpoch;
+		Complete.iCatalogRevision = Command.iCatalogRevision;
+		const EFFECT_LOAD_RESULT_PUSH_RESULT CompleteResult =
+			pJob->Push_Result_Wait(std::move(Complete));
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == CompleteResult)
+			continue;
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == CompleteResult)
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == CompleteResult)
+			return S_OK;
+		if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != CompleteResult)
+			return E_FAIL;
+		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::EPOCH_STAGE_COMPLETE;
+		Progress.iCompleted = Progress.iTotal;
+		Progress.strCurrentId.clear();
+		Progress.strStatus = "Product Effect resource staging complete.";
+		pJob->Publish_Progress(Progress);
+	}
+}
+
 void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -3211,6 +3613,37 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 			"Product Effect incremental prewarm has invalid frame arguments.";
 		return;
 	}
+	if (g_RuntimePreparationJob)
+	{
+		if (g_RuntimePreparationJob->Get_CurrentCatalogRevision() != iCatalogRevision ||
+			CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOADING))
+		{
+			g_RuntimePreparationAbandoned = true;
+			Cancel_LoadingProductCuePreparation(g_RuntimePreparationJob, g_RuntimePreparationEpoch);
+		}
+		else if (!g_RuntimePreparationAbandoned)
+			Advance_LoadingProductCuePreparation(pDevice, pContext,
+				g_RuntimePreparationJob, g_RuntimePreparationEpoch);
+		if (!g_RuntimePreparationWorker.Is_Done()) return;
+		if (!g_RuntimePreparationAbandoned &&
+			(FAILED(g_RuntimePreparationWorker.Result()) || !g_RuntimePreparationJob->Is_Closed()))
+		{
+			const std::string failure = g_RuntimePreparationFailureStatus.empty() ?
+				"Product Effect preparation worker failed for " + g_RuntimePreparationEffectId +
+				": HRESULT " + std::to_string(g_RuntimePreparationWorker.Result()) : g_RuntimePreparationFailureStatus;
+			g_strStatus = failure;
+			Fail_RuntimePreparationTarget(g_RuntimePreparationEffectId, iCatalogRevision,
+				g_RuntimePreparationWorker.Result(), failure);
+			Cancel_LoadingProductCuePreparation(g_RuntimePreparationJob, g_RuntimePreparationEpoch);
+		}
+		g_RuntimePreparationJob.reset();
+		g_RuntimePreparationEpoch = 0u;
+		g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear();
+		g_RuntimePreparationAbandoned = false;
+	}
+	if (g_RuntimePreparationFailureRevision == iCatalogRevision) return;
+	// The Loading owner already has its own worker and exact target-set gate.
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOADING)) return;
 	if (g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision)
 	{
 		const std::vector<std::string> PreviousTargets(
@@ -3249,38 +3682,29 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		return;
 	}
 
-	std::string PrepareStatus;
-	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> Document =
-		CEffectCatalog::Find(EffectId);
-	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-		Projection = nullptr == Document ? nullptr :
-			CEffectCatalog::Find_VisualProjection(EffectId);
-	PRODUCT_TARGET_PREPARATION_RESULT Prepared = Prepare_ProductTarget(
-		std::move(pDevice), std::move(pContext), iCatalogRevision, EffectId,
-		Document, Projection, MaterialProgramRegistry);
-	const bool_t bPrepared = Prepared.bPrepared;
-	PrepareStatus = Prepared.strStatus;
-
-	std::string CompletionStatus;
-	if (!g_ProductPrewarmQueue.Complete_Front(
-			EffectId, bPrepared, CompletionStatus))
+	const uint64_t epoch = Allocate_ProductPreparationEpoch();
+	auto job = std::make_shared<CEffectLoadPreparationJob>();
+	std::string status;
+	if (epoch == 0u || !job->Open(epoch, iCatalogRevision, status) ||
+		!Begin_LoadingProductCuePreparation(job, epoch, {EffectId}, status))
 	{
-		g_strStatus = CompletionStatus;
-		OutputDebugStringA(("[Client][EffectPresentation] " +
-			g_strStatus + "\n").c_str());
+		Cancel_LoadingProductCuePreparation(job, epoch);
+		g_strStatus = "Product Effect preparation could not start: " + status;
+		Fail_RuntimePreparationTarget(EffectId, iCatalogRevision, E_FAIL, g_strStatus);
 		return;
 	}
-	if (bPrepared)
+	if (!g_RuntimePreparationWorker.Submit(pDevice, pContext, job))
 	{
-		Commit_ProductTargetReceipts(EffectId, std::move(Prepared));
-		g_strStatus = PrepareStatus;
+		Cancel_LoadingProductCuePreparation(job, epoch);
+		g_strStatus = "Product Effect preparation worker could not be started.";
+		Fail_RuntimePreparationTarget(EffectId, iCatalogRevision, E_FAIL, g_strStatus);
 		return;
 	}
-	g_strStatus =
-		"Product Effect incremental prewarm failed closed for " + EffectId +
-		": " + PrepareStatus;
-	OutputDebugStringA(("[Client][EffectPresentation] " +
-			g_strStatus + "\n").c_str());
+	g_RuntimePreparationEpoch = epoch;
+	g_RuntimePreparationEffectId = EffectId;
+	g_RuntimePreparationFailureStatus.clear();
+	g_RuntimePreparationAbandoned = false;
+	g_RuntimePreparationJob = std::move(job);
 }
 
 bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
@@ -3476,6 +3900,7 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip3.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34650.clip1.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34650.clip2.full.restore" ||
+		strEffectAssetId == "effect.lancemaster.skill.34630.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34630.clip1.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34630.clip2.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34630.clip3.full.restore" ||
@@ -5248,6 +5673,11 @@ void Client::CEffectPresentationService::Clear_All()
 
 void Client::CEffectPresentationService::Release_PreparedResources()
 {
+	Cancel_LoadingProductCuePreparation(g_RuntimePreparationJob, g_RuntimePreparationEpoch);
+	g_RuntimePreparationWorker.Stop();
+	g_RuntimePreparationJob.reset(); g_RuntimePreparationEpoch = 0u;
+	g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear(); g_RuntimePreparationAbandoned = false;
+	g_RuntimePreparationFailureRevision = 0u;
     Release_ProductCamera(); g_ProductCameraCache.clear();
 	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();

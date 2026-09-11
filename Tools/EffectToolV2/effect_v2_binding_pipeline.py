@@ -15,6 +15,7 @@ import json
 import math
 import os
 import re
+import struct
 import sys
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
@@ -643,6 +644,28 @@ def _validate_leaf_params(
             )
         ]
         _optional_bool(screen, "intensityLerp", f"{owner}.screenPost", True)
+        smoothstep = _optional_bool(screen, "intensitySmoothstep", f"{owner}.screenPost", False)
+        if "intensityKeys" in screen:
+            keys = screen["intensityKeys"]
+            if not isinstance(keys, list) or not 2 <= len(keys) <= 64:
+                raise BindingContractError(f"{owner}.screenPost.intensityKeys requires 2..64 keys")
+            previous = -1.0
+            for index, key in enumerate(keys):
+                if not isinstance(key, dict) or set(key) != {"timeSeconds", "intensity"}:
+                    raise BindingContractError(f"{owner}.screenPost intensity key requires timeSeconds/intensity")
+                time = _finite_number(key["timeSeconds"], f"{owner}.screenPost.intensityKeys[{index}].timeSeconds")
+                intensity = _finite_number(key["intensity"], f"{owner}.screenPost.intensityKeys[{index}].intensity")
+                if (time < 0.0 or intensity < 0.0 or time > 3.4028234663852886e38 or intensity > 3.4028234663852886e38
+                        or (index == 0 and time != 0.0) or time <= previous
+                        or (lifetime > 0.0 and time > lifetime)):
+                    raise BindingContractError(f"{owner}.screenPost intensity keys must start at 0, increase within lifetime and have non-negative intensity")
+                runtime_time = struct.unpack("<f", struct.pack("<f", time))[0]
+                runtime_lifetime = struct.unpack("<f", struct.pack("<f", lifetime))[0] if 0.0 < lifetime <= 3.4028234663852886e38 else lifetime
+                if (index == 0 and runtime_time != 0.0) or runtime_time <= previous or (runtime_lifetime > 0.0 and runtime_time > runtime_lifetime):
+                    raise BindingContractError(f"{owner}.screenPost intensity key times must remain distinct within runtime float32 lifetime")
+                previous = runtime_time
+        elif smoothstep:
+            raise BindingContractError(f"{owner}.screenPost.intensitySmoothstep requires intensityKeys")
         _optional_vector(
             screen, "tint", f"{owner}.screenPost", 4, (1.0, 1.0, 1.0, 1.0)
         )

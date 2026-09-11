@@ -365,15 +365,16 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
         ImGui::End(); return;
     }
     if (m_SelectedRowId.empty()) { ImGui::TextDisabled("Select a timeline box."); ImGui::End(); return; }
-    if (m_Transient && !m_Transient->previewElementId.empty() && m_SelectedRowId == m_Transient->id &&
+    if (m_Transient && !m_Transient->previewElementIds.empty() && m_SelectedRowId == m_Transient->id &&
         m_SelectedTrack == TRACK_KIND::EFFECT)
     {
         const auto& row = *m_Transient;
-        ImGui::TextWrapped("%s", row.previewElementLabel.empty() ? row.previewElementId.c_str() : row.previewElementLabel.c_str());
-        ImGui::TextWrapped("Element: %s", row.previewElementId.c_str());
+        ImGui::TextWrapped("%s", row.previewElementLabel.empty() ? row.previewElementIds.front().c_str() : row.previewElementLabel.c_str());
+        ImGui::Text("Selected elements: %zu", row.previewElementIds.size());
+        for (const auto& elementId : row.previewElementIds) ImGui::TextWrapped("%s", elementId.c_str());
         ImGui::TextWrapped("Document: %s", row.key.strStableId.c_str());
         ImGui::Text("Original document time: %u / %u ms", ClockMs(), row.durationMs);
-        ImGui::TextWrapped("This temporary row keeps the original element timing. Scrub or Play to inspect it; Stop returns to the saved sequence.");
+        ImGui::TextWrapped("This temporary preview keeps the original element timing. Pause or scrub to inspect it; Stop returns to the saved sequence.");
         ImGui::TextDisabled("Edit the element in Effect Detail. This row is not saved or appended.");
         ImGui::End(); return;
     }

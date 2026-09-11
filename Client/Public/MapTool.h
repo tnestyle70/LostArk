@@ -75,6 +75,8 @@ private:
 		float3_t eye = {};
 		float3_t lookAt = {};
 		f32_t fovYDegrees = 50.f;
+		float3_t up = { 0.f, 1.f, 0.f };
+		bool_t hasUp = false;
 	};
 
 	struct EDITOR_CAMERA_SHOT final
@@ -101,9 +103,8 @@ private:
 		bool_t followsPlayer = false;
 		float3_t followEyeOffset = {};
 		float3_t followLookAtOffset = {};
-		/* Fewer than two keys keeps the single authored pose. Two or more
-		   are sampled on the bound sequence clock exactly as the product
-		   level samples them. */
+		/* An empty list keeps the shot pose; one key holds an explicit pose
+		   and two or more keys animate on the product sequence clock. */
 		std::vector<EDITOR_CAMERA_KEYFRAME> keyframes;
 		int32_t trackDurationMs = 0;
 		int32_t interpolationIndex = 1;

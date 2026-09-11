@@ -33,7 +33,7 @@ namespace
 		"lostark.effect-authoring";
 	constexpr size_t MAX_RESOURCE_ID_BYTES = 512u;
 	constexpr size_t MAX_ELEMENTS = 2048u;
-	constexpr size_t MAX_MODEL_CUES = 8u;
+	constexpr size_t MAX_MODEL_CUES = 16u;
 	constexpr uint64_t MAX_DOCUMENT_PARTICLES = 8192u;
 	constexpr uint64_t MAX_DOCUMENT_TRAIL_POINTS = 2048u;
 	constexpr uint64_t MAX_DOCUMENT_AFTERIMAGES = 256u;
@@ -7062,7 +7062,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	}
 	if (Document.ModelCues.size() > MAX_MODEL_CUES)
 	{
-		strOutError = "Effect Model Cue count exceeds 8.";
+		strOutError = "Effect Model Cue count exceeds 16.";
 		return false;
 	}
 	std::unordered_set<std::string> ModelCueIds;
@@ -7098,6 +7098,19 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		{
 			strOutError =
 				"Effect Model Cue identity, resource, time, or transform is invalid.";
+			return false;
+		}
+		if (!Cue.strSuppressHorizontalRootMotionBone.empty() &&
+			(Cue.strSuppressHorizontalRootMotionBone.size() > 128u ||
+			 !Has_VisibleCharacter(Cue.strSuppressHorizontalRootMotionBone)))
+		{
+			strOutError = "Effect Model Cue horizontal root-motion bone is invalid: " + Cue.strCueId;
+			return false;
+		}
+		if (Cue.bLoop && Cue.bHoldLastFrame)
+		{
+			strOutError = "Effect Model Cue cannot loop and hold its last frame: " +
+				Cue.strCueId;
 			return false;
 		}
 		if (Cue.Material)
@@ -11301,7 +11314,7 @@ namespace
 			bool_t bReflected = false;
 			bool_t bOrbit = false;
 			if (!ReadPortableStringLiteral(Module, "events[0].type", "",
-					strType) || strType != "epet_spawn" ||
+					strType) || (strType != "epet_spawn" && strType != "epet_death") ||
 				!ReadPortableStringLiteral(Module, "events[0].customname", "",
 					strName) || strName.empty() ||
 				!ReadPortableNumberLiteral(Module, "events[0].frequency", 0.0,
@@ -11323,7 +11336,7 @@ namespace
 					false, bOrbit) || bOrbit)
 			{
 				strOutError =
-					"Portable authored particle Spawn-event generator semantics are unsupported.";
+					"Portable authored particle Spawn/Death-event generator semantics are unsupported.";
 				return false;
 			}
 		}
@@ -11335,7 +11348,7 @@ namespace
 			bool_t bInheritVelocity = false;
 			bool_t bUseSystemLocation = false;
 			if (!ReadPortableStringLiteral(Module, "eventgeneratortype", "",
-					strType) || strType != "epet_spawn" ||
+					strType) || (strType != "epet_spawn" && strType != "epet_death") ||
 				!ReadPortableStringLiteral(Module, "eventname", "", strName) ||
 				strName.empty() ||
 				!ReadPortableBoolLiteral(Module, "buseparticletime", false,
@@ -11346,7 +11359,7 @@ namespace
 					bUseSystemLocation) || bUseSystemLocation)
 			{
 				strOutError =
-					"Portable authored particle Spawn-event receiver semantics are unsupported.";
+					"Portable authored particle Spawn/Death-event receiver semantics are unsupported.";
 				return false;
 			}
 		}
@@ -11792,7 +11805,7 @@ namespace
 					std::string_view strType;
 					std::string_view strName;
 					if (!ReadPortableStringLiteral(Module, "events[0].type",
-							"", strType) || strType != "epet_spawn" ||
+							"", strType) || (strType != "epet_spawn" && strType != "epet_death") ||
 						!ReadPortableStringLiteral(Module,
 							"events[0].customname", "", strName) ||
 						strName.empty())
@@ -11811,7 +11824,7 @@ namespace
 					std::string_view strName;
 					if (!ReadPortableStringLiteral(Module,
 							"eventgeneratortype", "", strType) ||
-						strType != "epet_spawn" ||
+						(strType != "epet_spawn" && strType != "epet_death") ||
 						!ReadPortableStringLiteral(Module, "eventname", "",
 							strName) || strName.empty())
 					{
@@ -13764,7 +13777,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				(bSourceContract && !Validate_ExactFields(CueValue,
 					{ "cueId", "modelAssetId", "clipName",
 						"startDelaySeconds", "durationSeconds", "alphaMode",
-						"opacity", "colorMultiply", "holdLastFrame", "visible",
+						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible",
+						"suppressHorizontalRootMotionBone",
 						"localTransform", "assetPreTransform", "material" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
@@ -13792,6 +13806,10 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					&Cue.vColorMultiply.x, 4u, strOutError) ||
 				!Read_OptionalBool(CueValue, "holdLastFrame",
 					Cue.bHoldLastFrame, strOutError) ||
+				!Read_OptionalBool(CueValue, "loop", Cue.bLoop, strOutError) ||
+				(CueValue.Find("suppressHorizontalRootMotionBone") &&
+				 !Read_String(CueValue, "suppressHorizontalRootMotionBone",
+					 Cue.strSuppressHorizontalRootMotionBone, strOutError)) ||
 				!Read_ModelCueTransform(CueValue, Cue, strOutError))
 			{
 				if (strOutError.empty())
@@ -14121,8 +14139,12 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< ", \"opacity\": " << Cue.fOpacity
 			<< ", \"colorMultiply\": ";
 		Write_Float4(Output, Cue.vColorMultiply);
+		if (!Cue.strSuppressHorizontalRootMotionBone.empty())
+			Output << ", \"suppressHorizontalRootMotionBone\": \""
+				<< CDataJson::Escape(Cue.strSuppressHorizontalRootMotionBone) << "\"";
 		Output << ", \"holdLastFrame\": "
 			<< (Cue.bHoldLastFrame ? "true" : "false")
+			<< ", \"loop\": " << (Cue.bLoop ? "true" : "false")
 			<< ", \"alphaMode\": \""
 			<< MODEL_CUE_ALPHA_MODE_TOKENS[static_cast<size_t>(Cue.eAlphaMode)]
 			<< "\""

@@ -10,6 +10,7 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 NS_BEGIN(Engine)
@@ -90,6 +91,17 @@ public:
 	   targets are required because the document is admitted against the
 	   placements and Deploy props this level actually created. */
 	bool_t Load_Area(const std::string& areaId, const TARGET_SET& targets);
+	// Loader-only: parse/validate against its admitted map/Deploy prototypes.
+	// One bounded pending Area is replaced on the next preparation and consumed
+	// once by activation. Cancellation publishes no usable stage.
+	static bool_t Prepare_AreaLoad(uint32_t levelIndex, const std::string& areaId,
+		const MAP_LOAD_SCOPE& loadScope, std::string& status,
+		const std::function<bool_t()>& isCancellationRequested = nullptr);
+	// Product activation never falls back to synchronous file parsing. Failed or
+	// missing preparation preserves this player's document and reports its reason.
+	bool_t Load_PreparedArea(const std::string& areaId, const TARGET_SET& targets);
+	// CPU snapshot admitted by the Loader; lookup performs no IO or GPU work.
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Find_PreparedLeafSnapshot(const std::string& leafId) const;
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
 	bool_t Prepare_InstanceResources(const std::string& instanceId, const TARGET_SET& targets);
 	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,
@@ -97,8 +109,10 @@ public:
 	static void Collect_ValidationTargets(const TARGET_SET& targets,
 		WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy);
 	bool_t Has_ActiveInstances() const { return !m_Active.empty(); }
-	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out) const;
-	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out) const;
+	/* emissionIndex selects one row of an authored emission list; a seeded
+	   emitter keeps the single-object contract and answers index 0 only. */
+	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
+	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 	void Clear();
 
@@ -125,6 +139,11 @@ public:
 	bool_t Apply_ObjectMotion(const std::string& targetInstanceId,
 		const std::string& motionInstanceId, const TARGET_SET& targets);
 	bool_t Is_Playing(const std::string& instanceId) const;
+	/* Placements the Level has taken out of every instance's hands: a popped
+	   Mario ball stays hidden however its layout samples it, until the Level
+	   hands the placement back. */
+	void Set_PlacementSuppressed(uint64_t placementId, bool_t suppressed);
+	bool_t Is_PlacementSuppressed(uint64_t placementId) const;
 	/* The camera cue runs on the cutscene's own clock. Only the player owns
 	   that clock, so it hands out a read-only sample instead of letting a
 	   second owner count the same time. false means the instance is not
@@ -274,6 +293,7 @@ private:
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;
 	std::unordered_map<std::string, OBJECT_MODEL> m_ObjectModels;
 	std::unordered_map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> m_EffectSnapshots;
+	std::unordered_set<uint64_t> m_SuppressedPlacements;
 	std::string m_Status;
 };
 

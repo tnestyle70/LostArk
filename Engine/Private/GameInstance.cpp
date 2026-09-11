@@ -159,21 +159,26 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 	   frame so no screen pass has to be handed a time value. */
 	m_pRenderer->Advance_PresentationClock(fTimeDelta);
 
-	m_pPicking->Update();
-
-	m_pInput_Device->Update();
-
-#ifdef _WIN64
-	m_pSound_Manager->Update();
-#endif
-
 	CProfiler* const pProfiler = m_pProfiler.get();
+	{
+		CProfilerScope scope(pProfiler, "Engine.Input.Update");
+		m_pInput_Device->Update();
+	}
+#ifdef _WIN64
+	{
+		CProfilerScope scope(pProfiler, "Engine.Sound.Update");
+		m_pSound_Manager->Update();
+	}
+#endif
 	{
 		CProfilerScope scope(pProfiler, "Engine.PriorityUpdate");
 		m_pObject_Manager->Priority_Update(fTimeDelta);
 	}
 
-	Refresh_CameraState();
+	{
+		CProfilerScope scope(pProfiler, "Engine.Camera.Update");
+		Refresh_CameraState();
+	}
 
 	{
 		CProfilerScope scope(pProfiler, "Engine.ObjectUpdate");

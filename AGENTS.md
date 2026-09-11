@@ -13,7 +13,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 | 계획서, 설계서, 구현 가이드 | 아래 `계획서 규칙`에서 발견한 첫 번째 규칙 파일 |
 | G별 H/CPP/struct/변수 설명, 전체 코드 출력 원칙 | `.md/GB/계획서하네스규칙.local.md`가 있으면 먼저 읽고, 없으면 `.md/GB/local.md` |
 | 기존 작업 재개 | `.md/GB/<MM-DD>/`의 대응 `*_PLAN.md`, `*_RESULT.md` |
-| 렌더링·캐릭터/무기 재질·이펙트 복원 | `.md/GB/렌더링이펙트복원V2.md`의 현재 연결 범위·반복 결함·Resources 경계 |
+| 렌더링·캐릭터/무기 재질·이펙트 복원 | `.md/GB/렌더링이펙트복원V2.md`의 현재 연결 범위·반복 결함·Resources 경계, `.md/TEAM/EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`, 해당 문서에서 연결한 동일 carrier/증상의 기존 PLAN·RESULT |
 | merge, pull, rebase, 충돌 해결 | `.md/GB/gotchas.md`, 있으면 `.md/GB/gotchas.local.md`, 영향받는 `*_PLAN.md`와 `*_RESULT.md` |
 | 팀 담당 인터페이스, Area 데이터 레이어, 신규 팀원 인계 | `.md/TEAM/README.md`에서 현재 정본 순서대로 읽기 |
 | LostArk 맵 에셋 검색, UModel 추출, ModelAssetConverter, MapTool 적용 | `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md` |
@@ -65,6 +65,11 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.14`로 갱신
 렌더링·이펙트 복원에서 확인된 재사용 원리와 반복 결함, 실제 연결 범위는
 `.md/GB/렌더링이펙트복원V2.md`의 해당 항목을 갱신한다. 날짜별 시행착오·빌드 로그는
 대응 RESULT에 두고, 조사 후보·소스 반영·빌드·사용자 화면 확인을 서로 구분한다.
+기존 차원술사·도화가·창술사·워로드 복구의 shader/carrier/기본값 처리와 같은 증상을 먼저
+대조한다. 슬롯은 실제 skillbinding·cue·asset ID까지, 본 부착은 설치된 WModel의 골격 basis와
+CModel preScale·socket offset·particle 단위를 함께 실측한다. synthetic anchor의 finite/count
+성공을 실제 모델 부착이나 GPU 표시 성공으로 대신 기록하지 않는다. 반복 방지 항목은
+`.md/GB/gotchas.md`에도 남기며, 개별 오류 이력은 AGENTS에 누적하지 않는다.
 
 ## 계획서 규칙
 

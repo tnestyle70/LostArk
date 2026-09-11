@@ -173,7 +173,9 @@ def read_psa(path: Path) -> dict:
     }
 
 
-def validate_gltf(document: dict, gltf_path: Path, psa: dict) -> tuple[Path, list[int]]:
+def validate_gltf(
+    document: dict, gltf_path: Path, psa: dict, allow_bone_order_remap: bool = False
+) -> tuple[Path, list[int]]:
     if document.get("asset", {}).get("version") != "2.0":
         raise RuntimeError("Source is not a glTF 2.0 document")
     buffers = document.get("buffers")
@@ -207,12 +209,18 @@ def validate_gltf(document: dict, gltf_path: Path, psa: dict) -> tuple[Path, lis
         if not isinstance(name, str) or not name:
             raise RuntimeError("glTF joint node has no stable name")
         joint_names.append(name)
-    if joint_names != psa["bones"]:
+    if len(set(joint_names)) != len(joint_names):
+        raise RuntimeError("glTF joint names must be unique")
+    if (joint_names != psa["bones"] and not (allow_bone_order_remap
+            and set(joint_names) == set(psa["bones"]))):
         raise RuntimeError(
             "glTF joint order/names differ from PSA BONENAMES: "
             f"{joint_names} vs {psa['bones']}"
         )
-    return source_buffer, joints
+    # Return animation targets in PSA track order. Never reorder the skin
+    # joints/inverse binds: vertex JOINTS indices still address the source skin.
+    nodes_by_name = dict(zip(joint_names, joints))
+    return source_buffer, [nodes_by_name[name] for name in psa["bones"]]
 
 
 def align4(payload: bytearray) -> None:
@@ -519,6 +527,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
+        "--allow-bone-order-remap", action="store_true",
+        help="Join PSA tracks to unique mesh joint names when their orders differ.",
+    )
+    parser.add_argument(
         "--scale",
         type=float,
         default=1.0,
@@ -547,7 +559,9 @@ def main() -> None:
     if not math.isfinite(args.scale) or args.scale <= 0.0:
         raise RuntimeError("--scale must be a finite positive number")
     psa = read_psa(source_psa)
-    source_buffer, joints = validate_gltf(document, source_gltf, psa)
+    source_buffer, joints = validate_gltf(
+        document, source_gltf, psa, args.allow_bone_order_remap
+    )
     payload = bytearray(source_buffer.read_bytes())
     scaled = scale_bind_geometry(document, payload, args.scale)
     materialized_weights = materialize_skin_weights(document, payload)
@@ -572,6 +586,7 @@ def main() -> None:
             "psaSha256": sha256(source_psa),
         },
         "jointCount": len(joints),
+        "boneOrderRemapped": joints != document["skins"][0]["joints"],
         "scale": args.scale,
         "scaled": scaled,
         "materializedWeightAccessors": materialized_weights,

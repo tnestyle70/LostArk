@@ -16,6 +16,7 @@ PATH_RESULT_CODE CNavPathFollower::Request_Path(
 	f32_t fMaxStepHeight,
 	uint32_t iMaxExpandedNodes)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.Request");
 	m_pNavigation.reset();
 	m_Waypoints.clear();
 	m_iNextWaypoint = 0;
@@ -73,6 +74,7 @@ bool_t CNavPathFollower::Update(
 	f32_t fMoveSpeed,
 	f32_t fTimeDelta)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.Follow");
 	const shared_ptr<CNavigation> pNavigation = m_pNavigation.lock();
 	if (false == m_Waypoints.empty() &&
 		(nullptr == pNavigation ||

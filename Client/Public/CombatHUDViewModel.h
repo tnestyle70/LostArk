@@ -50,6 +50,9 @@ namespace Client
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioLayoutVariant = 0u;
+		// Server-popped layout slots and released colours; zero outside Mario.
+		std::uint16_t iMarioPoppedBallMask = 0u;
+		std::uint8_t iMarioCurseReleasedMask = 0u;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown

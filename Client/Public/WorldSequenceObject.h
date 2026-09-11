@@ -40,6 +40,7 @@ private:
     shared_ptr<Engine::CShader> m_Shader;
     ComPtr<ID3D11ShaderResourceView> m_Diffuse;
     float4x4_t m_World{};
+    f32_t m_SampleTimeSeconds = 0.f;
     bool_t m_Visible = false;
     std::string m_RenderStatus;
 };

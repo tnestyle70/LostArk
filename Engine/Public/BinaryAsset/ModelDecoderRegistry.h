@@ -13,6 +13,7 @@ public:
 
 	void Register(unique_ptr<IModelDecoder> pDecoder);
 	bool_t Decode(const MODEL_ASSET_LOAD_DESC& desc, MODEL_ASSET_DATA& outAsset);
+	// The last decode on the calling thread; other loader jobs cannot replace it.
 	MODEL_DECODE_REPORT Get_LastReport() const;
 
 private:
@@ -25,7 +26,6 @@ private:
 private:
 	mutable mutex m_Mutex;
 	vector<unique_ptr<IModelDecoder>> m_Decoders;
-	MODEL_DECODE_REPORT m_LastReport;
 };
 
 NS_END

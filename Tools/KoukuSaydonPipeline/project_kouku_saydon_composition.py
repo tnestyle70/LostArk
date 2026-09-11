@@ -119,7 +119,7 @@ ROOT_OPTIONAL_KEYS = {
     "nextLogicOrdinal", "logics", "nextSummonOrdinal", "summons",
     "nextWorldOrdinal", "worlds", "nextSceneProfileOrdinal", "sceneProfiles",
     "madnessPolicy", "presentationResources", "nextPresentationResourceOrdinal",
-    "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles",
+    "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles", "patternFlows",
 }
 PATTERN_OPTIONAL_KEYS = {
     "nextLogicOccurrenceOrdinal",
@@ -478,6 +478,17 @@ def _validate_logic_definition(
                 "NONE", "POLYMORPH", "MARIO", "DANCE", "MAZE"
             }:
                 raise CompositionError(f"{context} HUD_ENTER requires a supported hudMode")
+        elif kind == "CARD_MAZE_HIDE_NEXT":
+            if extra != {"triggerKind"}:
+                raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
+        elif kind == "CARD_MAZE_ENTER":
+            if extra != {"triggerKind", "teleportPosition"}:
+                raise CompositionError(f"{context} CARD_MAZE_ENTER requires only teleportPosition")
+            position = logic["teleportPosition"]
+            if not isinstance(position, list) or len(position) != 3:
+                raise CompositionError(f"{context} teleportPosition needs X/Y/Z")
+            for value in position:
+                _number(value, f"{context} teleportPosition", -100000.0, 100000.0)
         elif kind == "REAL_GAZE_TELEPORT":
             if extra - {"faceCenterYawOffsetDegrees"} != {"triggerKind", "teleportPosition", "clonePatternId", "clockHours"}:
                 raise CompositionError(f"{context} REAL_GAZE_TELEPORT values are incomplete")
@@ -647,7 +658,11 @@ def _validate_catalog(
         _keys(row, exact_keys, optional_keys or set(), row_context)
         row_id = _stable_id(row[id_key], f"{row_context} {id_key}")
         generated = generated_re.fullmatch(row_id)
-        if generated is None or int(generated.group(1)) >= next_ordinal:
+        source_prefix = "world.kouku.gate2.intro."
+        source_world = (id_key == "worldId" and row_id.startswith(source_prefix)
+                        and len(row_id) > len(source_prefix)
+                        and row.get("sequenceInstanceId") == "world.sequence.instance.kouku.gate2.intro." + row_id[len(source_prefix):])
+        if not source_world and (generated is None or int(generated.group(1)) >= next_ordinal):
             raise CompositionError(
                 f"{id_key} must use {context}.<N> below {ordinal_key}: {row_id}"
             )
@@ -872,7 +887,7 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
                 for box in current.get("logicOccurrences", []):
                     if not box.get("enabled", True): continue
                     logic = logics.get(box["logicId"], {})
-                    if logic.get("judgementKind") in {"POSE_INPUT", "ROULETTE_CARD_MATCH"} or logic.get("triggerKind") == "HUD_ENTER":
+                    if logic.get("judgementKind") in {"POSE_INPUT", "ROULETTE_CARD_MATCH"} or logic.get("triggerKind") in {"HUD_ENTER", "CARD_MAZE_HIDE_NEXT", "CARD_MAZE_ENTER"}:
                         stateful_members.add(member_id)
                     for slot in OUTCOME_SLOTS:
                         for result_id in outcome_logic_ids(box, slot):
@@ -1014,6 +1029,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
     """Check persisted identities and timing; reference/oracle metadata is advisory."""
 
     _keys(document, ROOT_KEYS, ROOT_OPTIONAL_KEYS, "composition")
+    validate_pattern_flows(document)
     version = _integer(document["formatVersion"], "composition formatVersion", 1, FORMAT_VERSION)
     exact_values = {
         "schema": SCHEMA,
@@ -1541,11 +1557,46 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             )
 
 
+def validate_pattern_flows(document: dict[str, Any]) -> None:
+    """Flow order is authoring metadata; every row reuses a saved execution ID."""
+    flows = _array(document.get("patternFlows", []), "patternFlows", 4)
+    if not flows:
+        return
+    identities: set[str] = set()
+    gates: set[str] = set()
+    patterns = {row.get("patternId"): row for row in document.get("patterns", []) if isinstance(row, dict)}
+    bundles = {row.get("bundleId"): row for row in document.get("bundles", []) if isinstance(row, dict)}
+    for flow in flows:
+        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"}, "Pattern Flow")
+        identity = _stable_id(flow["flowId"], "flowId")
+        gate = _stable_id(flow["gateId"], "Flow gateId")
+        _display_name(flow["displayName"], "Flow displayName")
+        if identity in identities or gate in gates or gate not in {"GATE1", "GATE2", "GATE3", "BINGO"}:
+            raise CompositionError("Pattern Flow requires one distinct saved flow per Gate")
+        identities.add(identity)
+        gates.add(gate)
+        entry_ids: set[str] = set()
+        for entry in _array(flow["entries"], "Flow entries", 256):
+            _exact_keys(entry, {"entryId", "kind", "targetId", "waitAfterMs"}, "Pattern Flow entry")
+            entry_id = _stable_id(entry["entryId"], "Flow entryId")
+            target_id = _stable_id(entry["targetId"], "Flow targetId")
+            _integer(entry["waitAfterMs"], "Flow waitAfterMs", 0, MAX_TIMELINE_MS)
+            if entry_id in entry_ids or entry["kind"] not in {"PATTERN", "BUNDLE"}:
+                raise CompositionError("Pattern Flow entry identity or kind is invalid")
+            entry_ids.add(entry_id)
+            target = (patterns if entry["kind"] == "PATTERN" else bundles).get(target_id)
+            if target is None or target.get("gateId", "GATE1") != gate:
+                raise CompositionError("Pattern Flow target is missing or belongs to another Gate: " + target_id)
+
+
 def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
                            bundle_ids: set[str] | None = None) -> dict[str, Any]:
     # Status is a legacy editing field. Only the private validation copy changes;
     # category, timings, lanes, and the persisted document remain authored values.
     candidate = copy.deepcopy(source)
+    # The Client audition service resolves the saved Flow against this admitted
+    # inventory and submits existing pattern/bundle requests after Server completion.
+    candidate.pop("patternFlows", None)
     candidate["patterns"] = [p for p in candidate["patterns"] if p["patternId"] in pattern_ids]
     candidate["bundles"] = [b for b in candidate.get("bundles", []) if b["bundleId"] in (bundle_ids or set())]
     for row in [*candidate["patterns"], *candidate["bundles"]]:
@@ -1561,6 +1612,8 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
     # Existing validation owns the root, shared definitions, folders and counters.
     # Row bodies are validated separately so one unfinished row cannot hide others.
     skeleton = copy.deepcopy(source)
+    validate_pattern_flows(source)
+    skeleton.pop("patternFlows", None)
     skeleton.update(patterns=[], bundles=[], playAllPatternIds=[])
     validate_document(skeleton, root)
     inventory: dict[str, Any] = {"folders": copy.deepcopy(source.get("folders", [])), "patterns": [], "bundles": []}
@@ -1903,13 +1956,35 @@ def _validate_world_object_motion_result(result, sequences):
     return motion, templates[motion["templateId"]]
 
 
-def _require_single_static_object_motion(template, context):
+def _object_motion_emission(template, emission_index, context):
+    """Authored emission row a collider follows, or None for a seeded single emitter."""
     motion = template.get("objectMotion", {})
-    if motion.get("count", 1) != 1 or motion.get("spreadDegrees", 0) != 0 or any(
+    emissions = motion.get("emissions", [])
+    index = _integer(emission_index, f"{context} worldEmissionIndex", 0, 127)
+    if not emissions:
+        if index != 0:
+            raise CompositionError(f"{context} names emission row {index} but the Object Motion has no authored emissions")
+        return None
+    if not isinstance(emissions, list) or index >= len(emissions):
+        raise CompositionError(f"{context} emission row {index} is outside the authored emissions")
+    row = emissions[index]
+    _vector3(row["positionOffset"], f"{context} emission positionOffset", -100000, 100000)
+    _number(row["yawDegrees"], f"{context} emission yawDegrees", -36000, 36000)
+    _integer(row["startDelayMs"], f"{context} emission startDelayMs", 0, MAX_TIMELINE_MS)
+    return row
+
+
+def _require_single_static_object_motion(template, context, emission_index=0):
+    motion = template.get("objectMotion", {})
+    emissions = motion.get("emissions", [])
+    single = motion.get("count", 1) == 1 if not emissions else (
+        motion.get("count", 1) == len(emissions) and motion.get("intervalMs", 0) == 0)
+    if not single or motion.get("spreadDegrees", 0) != 0 or any(
         any(float(value) != 0 for value in motion.get(key, [0, 0, 0]))
         for key in ("velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond", "revolutionOffset")
     ):
-        raise CompositionError(f"{context} requires count 1 and zero physical Object Motion")
+        raise CompositionError(f"{context} requires count 1 (or one authored emission row) and zero physical Object Motion")
+    _object_motion_emission(template, emission_index, context)
 
 
 def _validate_fixed_target_motion_chain(result, sequences, target_pose, slot_id):
@@ -2090,7 +2165,7 @@ def _project_object_contact_targets(document, pattern, box, logic, logics, seque
             "contactPriority": logic.get("contactPriority", 0)}
 
 
-def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any], cue=None):
+def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any], cue=None, emission_index=0):
     instance = next((r for r in sequences["instances"] if r["instanceId"] == world["sequenceInstanceId"]), None)
     if instance is None or len(instance.get("bindings", [])) != 1:
         raise CompositionError("Collider WORLD anchor needs exactly one bound placement")
@@ -2100,7 +2175,8 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
     if track is None or not track["keys"]:
         raise CompositionError("Collider WORLD has no transform track")
     if binding["targetKind"] == "OBJECT_RESOURCE":
-        _require_single_static_object_motion(template, "Collider WORLD source")
+        _require_single_static_object_motion(template, "Collider WORLD source", emission_index)
+        emission = _object_motion_emission(template, emission_index, "Collider WORLD source")
         resource = next((r for r in sequences.get("objectResources", []) if r["objectId"] == binding["targetId"]), None)
         if resource is None or instance.get("anchorKind", "WORLD") != "WORLD" or resource.get("anchorKind", "WORLD") != "WORLD":
             raise CompositionError("Collider World Object must have a fixed WORLD anchor")
@@ -2108,12 +2184,20 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
         _vector3(position, "Collider World Object position", -100000, 100000)
         scale = resource.get("scale", [1,1,1])
         _vector3(scale, "Collider World Object scale", .0001, 10000)
+        yaw = 0.0
         if cue is not None and "placement" in cue:
             placement = _validate_world_occurrence_placement(cue, world, sequences)
             if placement["rotationDegrees"][0] != 0 or placement["rotationDegrees"][2] != 0 or abs(placement["scale"][0] - placement["scale"][2]) > .0001:
                 raise CompositionError("XZ WORLD Collider placement needs yaw-only rotation and uniform X/Z scale")
-            return instance, template, track, list(placement["position"]), placement["rotationDegrees"][1], [a*b for a,b in zip(scale,placement["scale"])]
-        return instance, template, track, position, 0.0, scale
+            position, yaw, scale = list(placement["position"]), placement["rotationDegrees"][1], [a*b for a,b in zip(scale,placement["scale"])]
+        if emission is not None:
+            # The Client applies the row after the local motion and before the box TRS,
+            # so only the placement scale reaches the offset and the row yaw adds to the baseline.
+            placement_scale = placement["scale"] if cue is not None and "placement" in cue else [1, 1, 1]
+            offset = _rotate_y([a*b for a,b in zip(emission["positionOffset"], placement_scale)], yaw)
+            position = [a+b for a,b in zip(position, offset)]
+            yaw += float(emission["yawDegrees"])
+        return instance, template, track, position, yaw, scale
     if binding["targetKind"] != "MAP_PLACEMENT":
         raise CompositionError("Collider WORLD requires a placement or World Object")
     placement = None
@@ -2203,8 +2287,18 @@ def _slerp_yaw(first, second, factor):
     return _quaternion_yaw_degrees([v/length for v in q])
 
 
-def _project_region_world_track(root, area, sequences, world, box):
-    instance, template, track, position, yaw, scale = _load_region_world(root,area,sequences,world,box)
+def _project_region_world_track(root, area, sequences, world, box, emission_index=0):
+    instance, template, track, position, yaw, scale = _load_region_world(root,area,sequences,world,box,emission_index)
+    emission = _object_motion_emission(template, emission_index, "WORLD Trigger")
+    speed = float(box["playbackSpeed"]) * float(instance.get("playbackSpeed", 1))
+    emission_delay = 0.0
+    if emission is not None and int(emission["startDelayMs"]):
+        if speed <= 0:
+            raise CompositionError("WORLD Trigger playback speed must be positive")
+        emission_delay = int(emission["startDelayMs"]) / speed
+        if abs(emission_delay - round(emission_delay)) > 1e-9:
+            raise CompositionError("WORLD Trigger emission delay must divide evenly by its playback speed")
+        emission_delay = round(emission_delay)
     if not instance.get("enabled", True):
         raise CompositionError("WORLD Trigger anchor instance is disabled")
     if min(scale) <= 0 or abs(scale[0]-scale[2]) > 0.0001:
@@ -2235,18 +2329,21 @@ def _project_region_world_track(root, area, sequences, world, box):
         keys.append({"timeMs":time,"positionOffset":key_position,
                      "rotationY":q[1]/length,"rotationW":q[3]/length,
                      "scaleMultiplier":list(key["scaleMultiplier"]),"visible":_boolean(key.get("visible",True),"WORLD Trigger visible")})
-    return {"startMs":box["startMs"],"startDelayMs":instance.get("startDelayMs",0),"durationMs":template["durationMs"],
+    return {"startMs":box["startMs"],"startDelayMs":instance.get("startDelayMs",0)+int(emission_delay),"durationMs":template["durationMs"],
             "playbackSpeed":float(box["playbackSpeed"])*float(instance.get("playbackSpeed",1)),
             "interpolation":template.get("interpolation","LINEAR"),"baselinePosition":position,
             "baselineYawDegrees":yaw,"baselineScale":scale,"keys":keys}
 
 
 def _sample_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any],
-                         box: dict[str, Any], end_ms: int) -> tuple[list[float], float, list[float]]:
-    instance, template, track, position, base_yaw, scale = _load_region_world(root,area,sequences,world,box)
+                         box: dict[str, Any], end_ms: int, emission_index=0) -> tuple[list[float], float, list[float]]:
+    instance, template, track, position, base_yaw, scale = _load_region_world(root,area,sequences,world,box,emission_index)
+    emission = _object_motion_emission(template, emission_index, "Collider WORLD sample")
+    emission_delay = int(emission["startDelayMs"]) if emission is not None else 0
     # Same ceil-to-fixed-tick edges as LogicRuntime and World cue admission.
+    # The row delay is subtracted after the rate, exactly as the Client does.
     local = ((math.ceil(end_ms*30/1000)-math.ceil(box["startMs"]*30/1000))*1000/30
-             - instance.get("startDelayMs", 0)) * box["playbackSpeed"] * instance.get("playbackSpeed", 1)
+             - instance.get("startDelayMs", 0)) * box["playbackSpeed"] * instance.get("playbackSpeed", 1) - emission_delay
     local = max(0, min(local, template["durationMs"]))
     keys = track["keys"]
     first, second, factor = keys[-1], keys[-1], 0.0
@@ -2624,10 +2721,11 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             end = logic_box["startMs"]+logic_box["durationMs"]
             if world_box["startMs"] > logic_box["startMs"] or world_box["startMs"]+world_box["durationMs"] < end:
                 raise CompositionError("Collider judgement must remain inside its WORLD box lifetime")
+            emission_index = row.get("worldEmissionIndex", 0)
             if kind in {"ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT"}:
-                world_track = _project_region_world_track(root,document["areaId"],sequences,world,world_box)
+                world_track = _project_region_world_track(root,document["areaId"],sequences,world,world_box,emission_index)
             else:
-                origin, world_yaw, world_scale = _sample_region_world(root,document["areaId"],sequences,world,world_box,end)
+                origin, world_yaw, world_scale = _sample_region_world(root,document["areaId"],sequences,world,world_box,end,emission_index)
                 position = [a+b for a,b in zip(origin,_rotate_y([a*b for a,b in zip(position,world_scale)],world_yaw))]
                 yaw += world_yaw
                 scale = [a*b for a,b in zip(scale,world_scale)]
@@ -2895,6 +2993,7 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "volume": 1.0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
+    "worldEmissionIndex": 0,
 }
 
 
@@ -2934,7 +3033,7 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
                 raise CompositionError("presentation assetId must be Resources-relative")
             if kind == "SOUND" and not asset.startswith("Sound/"):
                 raise CompositionError("SOUND assetId must begin with Sound/")
-        if normalized["defaultAnchorKind"] not in {"MAP", "PLAYER", "BOSS"}:
+        if normalized["defaultAnchorKind"] not in ({"MAP", "PLAYER", "BOSS"} if kind == "LIGHT" else {"MAP", "PLAYER", "BOSS", "WORLD"}):
             raise CompositionError("presentation defaultAnchorKind is unsupported")
         if kind == "LIGHT" and normalized["resourceKind"] != "":
             raise CompositionError("LIGHT resourceKind must be empty")
@@ -2998,16 +3097,24 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
                 raise CompositionError("WORLD Collider occurrenceId must match its World definition and anchor")
         if resources[box["resourceId"]]["kind"] == "COLLIDER" and normalized["anchorKind"] == "WORLD":
             _resolve_collider_world_occurrence(pattern, normalized)
+        emission_index = _integer(normalized["worldEmissionIndex"], "presentation worldEmissionIndex", 0, 127)
+        if emission_index and not (resources[box["resourceId"]]["kind"] == "COLLIDER" and normalized["anchorKind"] == "WORLD"):
+            raise CompositionError("worldEmissionIndex belongs only to a WORLD-anchored Collider")
         if normalized["cardSymbol"] not in {"NONE", *CARD_SYMBOLS} or normalized["cardColor"] not in {"NONE", "RED", "BLACK"}:
             raise CompositionError("collider card mapping is invalid")
         light = resources[box["resourceId"]]["kind"] == "LIGHT"
-        if normalized["anchorKind"] not in ({"BOSS", "PLAYER", "MAP"} if light else {"BOSS", "WORLD"}):
+        effect = resources[box["resourceId"]]["kind"] == "EFFECT"
+        allowed_anchors = {"BOSS", "PLAYER", "MAP"} if light else ({"BOSS", "WORLD", "MAP"} if effect else {"BOSS", "WORLD"})
+        if normalized["anchorKind"] not in allowed_anchors:
             raise CompositionError("presentation anchorKind is invalid")
         if light and (normalized["scale"] != [1.0, 1.0, 1.0] or normalized["worldId"] or
                       normalized["logicOccurrenceId"] or
                       (normalized["anchorKind"] != "BOSS" and normalized["bone"]) or
                       (normalized["anchorKind"] == "PLAYER" and not normalized["followBoss"])):
             raise CompositionError("LIGHT requires unit scale, a direct anchor and Character follow without a bone")
+        if effect and normalized["anchorKind"] == "MAP" and (normalized["followBoss"] or
+                normalized["bone"] or normalized["boneTarget"] != "BODY" or normalized["worldId"] or normalized["worldOccurrenceId"]):
+            raise CompositionError("MAP Effect requires a fixed position without a bone or World occurrence")
         if not light and normalized["brightnessMultiplier"] != 1.0:
             raise CompositionError("brightnessMultiplier belongs only to LIGHT")
         for field in ("regionId", "worldId", "logicOccurrenceId"):
@@ -3031,8 +3138,8 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
             raise CompositionError("presentation fades exceed the occurrence duration")
         dissolve_start = _number(normalized["dissolveStart"], "presentation dissolveStart", 0, 1)
         dissolve_end = _number(normalized["dissolveEnd"], "presentation dissolveEnd", 0, 1)
-        if dissolve_start >= dissolve_end:
-            raise CompositionError("presentation dissolve interval is empty or reversed")
+        if dissolve_start > dissolve_end:
+            raise CompositionError("presentation dissolve interval is reversed")
         _number(normalized["volume"], "presentation volume", 0, 1)
         _number(normalized["brightnessMultiplier"], "presentation brightnessMultiplier", 0, 16)
         _boolean(normalized["followBoss"], "presentation followBoss")

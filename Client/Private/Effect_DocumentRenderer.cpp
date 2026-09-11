@@ -3586,6 +3586,7 @@ namespace
 			if (A.strCueId != B.strCueId ||
 				A.strModelAssetId != B.strModelAssetId ||
 				A.strClipName != B.strClipName ||
+				A.strSuppressHorizontalRootMotionBone != B.strSuppressHorizontalRootMotionBone ||
 				A.eAlphaMode != B.eAlphaMode ||
 				A.Material.has_value() != B.Material.has_value() ||
 				(A.Material && (A.Material->strTemplateId != B.Material->strTemplateId ||
@@ -3913,6 +3914,101 @@ namespace
 			XMLoadFloat4x4(&Particle.World) * XMMatrixTranslationFromVector(
 				XMVectorScale(CameraWorld.r[2], Particle.fCameraOffset)));
 		return Result;
+	}
+
+	bool_t Uses_SourceLockedAxisMeshFacing(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		if (!Element.SourceRecipe.bEnabled ||
+			Element.SourceRecipe.strRendererShape != "mesh")
+			return false;
+		bool_t bTypeSpecific = false;
+		bool_t bLockedAxis = false;
+		bool_t bSourceZLocked = false;
+		for (const auto& Module : Element.SourceRecipe.Modules)
+		{
+			if (std::ranges::any_of(Module.Literals, [](const auto& Literal)
+				{ return Literal.strPropertyPath == "benabled" &&
+					Literal.eKind == Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN &&
+					!Literal.bBoolean; }))
+				continue;
+			for (const auto& Literal : Module.Literals)
+			{
+				if (Literal.eKind != Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
+					continue;
+				if (Module.strClassName == "particlemodulerequired" &&
+					Literal.strPropertyPath == "screenalignment")
+					bTypeSpecific = Literal.strString == "psa_typespecific";
+				else if (Module.strClassName == "particlemoduletypedatamesh" &&
+					Literal.strPropertyPath == "meshalignment")
+					bLockedAxis = Literal.strString == "psma_meshfacecamerawithlockedaxis";
+				else if (Module.strClassName == "particlemoduleorientationaxislock" &&
+					Literal.strPropertyPath == "lockaxisflags")
+					bSourceZLocked = Literal.strString == "epal_rotate_z";
+			}
+		}
+		return bTypeSpecific && bLockedAxis && bSourceZLocked;
+	}
+
+	bool_t Make_SourceLockedAxisMeshWorld(
+		const Client::EFFECT_EVALUATED_PARTICLE& Particle,
+		float4x4_t& OutWorld)
+	{
+		OutWorld = Apply_ParticleCameraOffset(Particle);
+		const matrix_t Source = XMLoadFloat4x4(&OutWorld);
+		const f32_t fDeterminant = XMVectorGetX(XMMatrixDeterminant(Source));
+		if (!std::isfinite(fDeterminant)) return false;
+		// Retain the native renderer's existing valid zero-size suppression.
+		if (std::abs(fDeterminant) <= std::numeric_limits<f32_t>::epsilon())
+			return true;
+		const float3_t& Degrees = Particle.pElement->Detail.Mesh.vSourceTypeDataRotationDegrees;
+		// Equivalent to Playback's UE3 Euler matrix conjugated to Client X/Y-up.
+		// Remove only this pre-rotation before extracting size; decomposing the
+		// already pre-rotated nonuniform mesh would lose its authored basis.
+		const matrix_t PreRotation =
+			XMMatrixRotationX(-XMConvertToRadians(Degrees.x)) *
+			XMMatrixRotationZ(XMConvertToRadians(Degrees.y)) *
+			XMMatrixRotationY(XMConvertToRadians(Degrees.z));
+		vector_t Scale, Rotation, Translation;
+		if (!XMMatrixDecompose(&Scale, &Rotation, &Translation,
+			XMMatrixTranspose(PreRotation) * Source))
+			return false;
+		// Playback already maps the source EPAL_Rotate_Z lock to Client Y.
+		if (Particle.eSpriteAlignment != Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Y)
+			return false;
+		const vector_t Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+		const matrix_t CameraWorld = XMLoadFloat4x4(
+			CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW));
+		const auto ProjectFacing = [Up](const vector_t Direction)
+		{
+			return Direction - XMVectorScale(Up,
+				XMVectorGetX(XMVector3Dot(Direction, Up)));
+		};
+		vector_t Facing = ProjectFacing(CameraWorld.r[3] - Translation);
+		f32_t fFacingLengthSq = XMVectorGetX(XMVector3LengthSq(Facing));
+		if (!std::isfinite(fFacingLengthSq)) return false;
+		if (fFacingLengthSq <= 1.e-8f)
+		{
+			// A camera on the locked axis has no unique azimuth. Use the view
+			// direction, then a deterministic perpendicular axis, without NaNs.
+			Facing = ProjectFacing(XMVectorNegate(CameraWorld.r[2]));
+			fFacingLengthSq = XMVectorGetX(XMVector3LengthSq(Facing));
+			if (!std::isfinite(fFacingLengthSq)) return false;
+			if (fFacingLengthSq <= 1.e-8f)
+				Facing = ProjectFacing(std::abs(XMVectorGetX(Up)) < .5f ?
+					XMVectorSet(1.f, 0.f, 0.f, 0.f) : XMVectorSet(0.f, 0.f, 1.f, 0.f));
+		}
+		Facing = XMVector3Normalize(Facing);
+		matrix_t Orientation = XMMatrixIdentity();
+		// Native mesh alignment faces +X toward the camera and locks +Z up;
+		// source-to-Client conversion maps the latter to +Y. PreRotation keeps
+		// the source arrow's five-degree tilt and original mesh-facing basis.
+		Orientation.r[0] = Facing;
+		Orientation.r[1] = Up;
+		Orientation.r[2] = XMVector3Normalize(XMVector3Cross(Facing, Up));
+		XMStoreFloat4x4(&OutWorld, PreRotation * XMMatrixScalingFromVector(Scale) *
+			Orientation * XMMatrixTranslationFromVector(Translation));
+		return true;
 	}
 
 	f32_t SourceLiteralNumber(
@@ -8554,7 +8650,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		std::to_string(Cue.vAssetPreScale.z) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.x) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.y) + "\n" +
-		std::to_string(Cue.vAssetPreRotationDegrees.z);
+		std::to_string(Cue.vAssetPreRotationDegrees.z) + "\n" +
+		Cue.strSuppressHorizontalRootMotionBone;
 	shared_ptr<Engine::CModel> Model;
 	if (nullptr != pSharedAssets)
 	{
@@ -8575,7 +8672,18 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			m_pDevice, m_pContext, MODEL::ANIM,
 			ModelPath.string().c_str(), PreTransform);
 		if (nullptr != Loaded)
+		{
+			// Set the suppression baseline on the unposed prototype. Clones retain
+			// this setting, while their animation clocks remain independent.
+			if (!Cue.strSuppressHorizontalRootMotionBone.empty() &&
+				!Loaded->Enable_RootMotionSuppression(Cue.strSuppressHorizontalRootMotionBone.c_str(), 1))
+			{
+				strOutError = "Animated Model Cue root-motion bone is missing: " +
+					Cue.strCueId + " / " + Cue.strSuppressHorizontalRootMotionBone;
+				return E_FAIL;
+			}
 			Model = std::move(Loaded);
+		}
 	}
 	if (nullptr == Model ||
 		!Model->Set_Animation(Cue.strClipName.c_str(), false))
@@ -8593,7 +8701,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		!Model->Get_AnimationProgress(
 			iAnimation, fPosition, fDurationTicks) ||
 		!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f ||
-		(!Cue.bHoldLastFrame &&
+		(!Cue.bLoop && !Cue.bHoldLastFrame &&
 		 Cue.fDurationSeconds > fDurationTicks / fTicksPerSecond + 0.001f))
 	{
 		strOutError = "Animated Model Cue duration exceeds its source clip: " +
@@ -15764,7 +15872,11 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			{
 				return Row.LocalDecalPacket.has_value();
 			}));
-		if (0u == iTypedAdapterCount ||
+		// Authored v15 trail/ribbon carriers are admitted as supplemental
+		// elements and do not require a LocalDecal material adapter. Their
+		// immutable projection was validated before all resources were staged.
+		if ((0u == iTypedAdapterCount &&
+			pVisualProgramProjection->Get_AdmittedSupplementalElements().empty()) ||
 			Staged->iVisualProgramAdapterCount != iTypedAdapterCount)
 		{
 			strOutError =
@@ -15832,6 +15944,19 @@ bool_t Client::CEffectDocumentRenderer::Validate_PreparedInstanceBuffers(
 	const PREPARED_DOCUMENT& Prepared,
 	std::string& strOutError) const
 {
+	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+	{
+		const auto Resource = Prepared.ModelCuePrototypes.find(Cue.strCueId);
+		if (Resource == Prepared.ModelCuePrototypes.end() ||
+			!std::isfinite(Resource->second.fDurationSeconds) ||
+			Resource->second.fDurationSeconds <= 0.f ||
+			(!Cue.bLoop && !Cue.bHoldLastFrame &&
+			 Cue.fDurationSeconds > Resource->second.fDurationSeconds + 0.001f))
+		{
+			strOutError = "Prepared Model Cue timing is invalid: " + Cue.strCueId;
+			return false;
+		}
+	}
 	uint32_t iRequiredTrailPoints = 0u;
 	if (!Try_ResolveTrailBufferPointCapacity(
 			Document, iRequiredTrailPoints, strOutError))
@@ -17398,6 +17523,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 		0u == m_pPreparedDocument->iCatalogRevision &&
 		Resource_SignatureMatches(m_Document, Document))
 	{
+		// Timing and transform edits reuse models, but still admit their clip window.
+		if (!Validate_PreparedInstanceBuffers(Document, *m_pPreparedDocument, strOutError))
+			return false;
 		// Visibility edits can reuse the same prepared resources. A previously
 		// hidden capture box still needs its occurrence snapshot on first use.
 		if (nullptr == m_pStartingSceneCapture &&
@@ -18621,6 +18749,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	const EFFECT_MATERIAL_DESC* pMaterialOverride,
     const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Material.Bind");
 	const EFFECT_MATERIAL_DESC& Material = nullptr != pMaterialOverride ?
 		*pMaterialOverride : Element.Material;
 	if (nullptr == pShader)
@@ -18637,7 +18766,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	};
     // Fixed decal/trail carriers share the admitted native parameter packet.
     const bool bKoukuFixedNative = nullptr == pShaderProgram &&
-        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2341u &&
+        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2495u &&
         (pShader == m_pDecalShader || pShader == m_pTrailShader);
     if (bKoukuFixedNative)
     {
@@ -19362,6 +19491,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const uint32_t iInstanceByteOffset,
 	const uint32_t iOrderedGeometryHandle)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Mesh.Render");
 	if (nullptr == Resource.pModel || nullptr == Element.pElement)
 		return Fail_RenderOperation(
 			"Mesh resource/model/shader contract is missing.", E_FAIL, true);
@@ -19709,6 +19839,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	}
 	bool_t bSubmitted = false;
 	const uint32_t iMeshDrawCount = Instances.empty() ? Resource.pModel->Get_NumMeshes() : 1u;
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Mesh.BindAndDraw");
 	for (uint32_t iMesh = 0u; iMesh < iMeshDrawCount; ++iMesh)
 	{
 		if (iSourceMaterialIndex != UINT32_MAX)
@@ -19783,6 +19915,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		Record_TestDrawSelection(
 			EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL, iPass + (Instances.empty() ? 0u : 7u));
 #endif
+		{
+			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Mesh.DrawSubmission");
 		if (Instances.empty())
             hResult = Resource.pModel->Render(iMesh);
         else if (iOrderedGeometryHandle != UINT32_MAX)
@@ -19794,6 +19928,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
             hResult = Resource.pModel->Render_Instanced(iMesh,
                 m_pNativeMeshInstanceBuffer.Get(), sizeof(EFFECT_NATIVE_MESH_INSTANCE),
                 static_cast<uint32_t>(Instances.size()), iInstanceByteOffset);
+		}
 		if (S_OK != hResult)
 			return Fail_RenderOperation("Mesh model draw failed.", hResult);
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
@@ -19806,6 +19941,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 #endif
 		bSubmitted = true;
 	}
+	}
 	return bSubmitted ? S_OK : S_FALSE;
 }
 
@@ -19815,6 +19951,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Rect(
 	const f32_t fAlphaScale,
 	const float4x4_t* pWorldOverride)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Rect.Render");
 	if (nullptr == Element.pElement || nullptr == m_pRectShader ||
 		nullptr == m_pRect)
 		return Fail_RenderOperation(
@@ -19884,6 +20021,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Decal.Render");
 	if (nullptr == Element.pElement || nullptr == m_pDecalShader ||
 		nullptr == m_pRect)
 		return Fail_RenderOperation("Decal element/shader/buffer contract is missing.",
@@ -19961,7 +20099,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal material shader bind failed.", hResult);
-    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2341u &&
+    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2495u &&
         FAILED(m_pDecalShader->Bind_RawValue("g_KoukuDecalProjection",
             &Projection.vSourceProjection, sizeof(Projection.vSourceProjection))))
         return Fail_RenderOperation("Kouku source decal plane binding failed.", E_FAIL);
@@ -20213,6 +20351,7 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
         Resource.iSourceMaterialProfile == 42u || Resource.iSourceMaterialProfile == 50u ||
         Resource.iSourceMaterialProfile == 60u || Resource.iSourceMaterialProfile == 66u ||
         Resource.iSourceMaterialProfile == 70u;
+    const bool_t bLockedAxisMeshFacing = Uses_SourceLockedAxisMeshFacing(*pSource);
     const SOURCE_SUBUV_LAYOUT SubUVLayout = Resolve_SourceSubUVLayout(*pSource);
     auto& Instances = m_NativeMeshInstanceScratch;
     auto& Passes = m_NativeMeshPassScratch;
@@ -20220,6 +20359,8 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
     Passes.clear();
     Instances.reserve(Particles.size());
     Passes.reserve(Particles.size());
+    {
+        Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Mesh.InstanceBuild");
     for (const auto& Particle : Particles)
     {
         if (nullptr == Particle.pElement) continue;
@@ -20229,6 +20370,8 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
             return Fail_RenderOperation("Mesh particle source SubUV contract is invalid.", E_INVALIDARG, true);
         EFFECT_NATIVE_MESH_INSTANCE Instance{};
         Instance.World = Apply_ParticleCameraOffset(Particle);
+        if (bLockedAxisMeshFacing && !Make_SourceLockedAxisMeshWorld(Particle, Instance.World))
+            return Fail_RenderOperation("Source locked-axis mesh facing is invalid.", E_INVALIDARG, true);
         const matrix_t World = XMLoadFloat4x4(&Instance.World);
         const f32_t fDeterminant = XMVectorGetX(XMMatrixDeterminant(World));
         if (!std::isfinite(fDeterminant))
@@ -20253,9 +20396,12 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
         Instances.push_back(Instance);
         Passes.push_back(iPass);
     }
+    }
     if (Instances.empty()) return S_FALSE;
     if (Instances.size() > UINT32_MAX / sizeof(EFFECT_NATIVE_MESH_INSTANCE))
         return Fail_RenderOperation("Native mesh instance upload is too large.", E_INVALIDARG, true);
+    {
+        Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Mesh.InstanceUpload");
     if (Instances.size() > m_iNativeMeshInstanceCapacity)
     {
         const uint32_t Capacity = (std::min)(
@@ -20283,6 +20429,7 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
     Record_TestGeometryUpload();
 #endif
+    }
     bool_t bSubmitted = false;
     for (size_t Begin = 0u; Begin < Instances.size();)
     {
@@ -20357,6 +20504,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
             Frame, Particles, *pResource, bNativeBatchHandled);
         if (FAILED(hNativeBatch) || bNativeBatchHandled)
             return hNativeBatch;
+		const bool_t bLockedAxisMeshFacing = Uses_SourceLockedAxisMeshFacing(*pSource);
 		bool_t bSubmitted = false;
 		for (const EFFECT_EVALUATED_PARTICLE& Particle : Particles)
 		{
@@ -20365,6 +20513,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			EFFECT_EVALUATED_ELEMENT MeshParticle;
 			MeshParticle.pElement = Particle.pElement;
 			MeshParticle.World = Apply_ParticleCameraOffset(Particle);
+			if (bLockedAxisMeshFacing && !Make_SourceLockedAxisMeshWorld(Particle, MeshParticle.World))
+				return Fail_RenderOperation("Source locked-axis mesh facing is invalid.", E_INVALIDARG, true);
 			MeshParticle.Color = Particle.pElement->Detail.Color;
 			MeshParticle.Color.vColorMultiply = Particle.Color;
 			MeshParticle.fLocalTimeSeconds = (std::max)(0.f,
@@ -20398,6 +20548,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	const bool_t bSortSourceDepth = Requires_SourceSpriteDepthSort(*pSource);
 	if (bSortSourceDepth)
 	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Sprite.DepthSort");
 		const float4x4_t* pView = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
 		const float4x4_t* pProjection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
 		if (nullptr == pView || nullptr == pProjection)
@@ -20413,6 +20564,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	Instances.clear();
 	if (Instances.capacity() < Particles.size())
 		Instances.reserve(Particles.size());
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Sprite.InstanceBuild");
 	for (size_t iParticle = 0u; iParticle < Particles.size(); ++iParticle)
 	{
 		const EFFECT_EVALUATED_PARTICLE& Particle = bSortSourceDepth ?
@@ -20464,13 +20617,18 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			SubUV.Next,
 			{ Particle.fNormalizedLife, SubUV.fBlend } });
 	}
+	}
 	if (nullptr == pSource || Instances.empty())
 		return S_FALSE;
 
 	const EFFECT_ELEMENT_DESC& Source = *pSource;
-	HRESULT hResult = m_pParticleBuffer->Update_Instances(
+	HRESULT hResult;
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Sprite.InstanceUpload");
+	hResult = m_pParticleBuffer->Update_Instances(
 		std::span<const Engine::VTXEFFECT_PARTICLE>(
 			Instances.data(), Instances.size()));
+	}
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle instance-buffer update failed.", hResult);
@@ -20537,7 +20695,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		}
 		iPass = Adapter.iPassIndex;
 	}
-	if (341u == pResource->iSourceMaterialProfile || 361u == pResource->iSourceMaterialProfile)
+	if (341u == pResource->iSourceMaterialProfile || 361u == pResource->iSourceMaterialProfile ||
+		2349u == pResource->iSourceMaterialProfile)
 	{
 		// Native FMaterialShaderParameters binds BatchElement.WorldToLocal.
 		// The batch uses emitter space only for local-space particles; Playback
@@ -20553,9 +20712,48 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		const f32_t* Values = &SourceInverse._11;
 		if (!std::all_of(Values, Values + 12u, [](f32_t Value) { return std::isfinite(Value); }))
 			return Fail_RenderOperation("Native particle inverse is non-finite.", E_INVALIDARG, true);
-		hResult = pDrawShader->Bind_RawValue("g_SDSourceWorldToLocal", Values, sizeof(float4_t) * 3u);
+		const char* const WorldToLocalUniform = 2349u == pResource->iSourceMaterialProfile ?
+			"g_ArtistSourceWorldToLocal" : "g_SDSourceWorldToLocal";
+		hResult = pDrawShader->Bind_RawValue(WorldToLocalUniform, Values, sizeof(float4_t) * 3u);
 		if (FAILED(hResult))
 			return Fail_RenderOperation("Native particle WorldToLocal binding failed.", hResult, true);
+	}
+	if (2360u == pResource->iSourceMaterialProfile)
+	{
+		// ParticleMacroUV is centred on the source ParticleSystem occurrence,
+		// even when its already-spawned particles simulate in world space.
+		const auto& Macro = Particles.front();
+		const auto* View = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+		const auto* Projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+		if (!Macro.bSourceMacroUV || !View || !Projection ||
+			!std::isfinite(Macro.fSourceMacroUVWorldRadius) || Macro.fSourceMacroUVWorldRadius <= 0.f)
+			return Fail_RenderOperation("Source ParticleMacroUV occurrence input is unavailable.", E_INVALIDARG, true);
+		const vector_t Centre = XMVectorSet(Macro.vSourceMacroUVWorldCenter.x,
+			Macro.vSourceMacroUVWorldCenter.y, Macro.vSourceMacroUVWorldCenter.z, 1.f);
+		const vector_t ViewCentre = XMVector4Transform(Centre, XMLoadFloat4x4(View));
+		const matrix_t Project = XMLoadFloat4x4(Projection);
+		const vector_t Clip = XMVector4Transform(ViewCentre, Project);
+		const vector_t Right = XMVector4Transform(ViewCentre +
+			XMVectorSet(Macro.fSourceMacroUVWorldRadius, 0.f, 0.f, 0.f), Project);
+		const vector_t Up = XMVector4Transform(ViewCentre +
+			XMVectorSet(0.f, Macro.fSourceMacroUVWorldRadius, 0.f, 0.f), Project);
+		const f32_t W = XMVectorGetW(Clip), RightW = XMVectorGetW(Right), UpW = XMVectorGetW(Up);
+		if (!std::isfinite(W) || !std::isfinite(RightW) || !std::isfinite(UpW))
+			return Fail_RenderOperation("Source ParticleMacroUV projection is non-finite.", E_INVALIDARG, true);
+		// A centre on the camera plane has no finite screen-space UV frame.
+		// Skip this draw until it projects; do not poison the remaining Effect.
+		if (std::abs(W) < 0.000001f || std::abs(RightW) < 0.000001f || std::abs(UpW) < 0.000001f)
+			return S_FALSE;
+		const f32_t X = XMVectorGetX(Clip) / W, Y = XMVectorGetY(Clip) / W;
+		const f32_t RadiusX = std::abs(XMVectorGetX(Right) / RightW - X);
+		const f32_t RadiusY = std::abs(XMVectorGetY(Up) / UpW - Y);
+		if (!std::isfinite(RadiusX) || !std::isfinite(RadiusY) || RadiusX < 0.000001f || RadiusY < 0.000001f)
+			return Fail_RenderOperation("Source ParticleMacroUV projected radius is invalid.", E_INVALIDARG, true);
+		// Native PS adds 0.5 after this scale. NDC is +Y up; texture V is down.
+		const float4_t MacroUV = { X, Y, 0.5f / RadiusX, -0.5f / RadiusY };
+		hResult = pDrawShader->Bind_RawValue("g_ArtistSourceMacroUV", &MacroUV, sizeof(MacroUV));
+		if (FAILED(hResult))
+			return Fail_RenderOperation("Source ParticleMacroUV binding failed.", hResult, true);
 	}
 	hResult = Bind_Common(pDrawShader, Source, CommonColor,
 		LocalTime, Normalized, *pResource, 1.f, nullptr, pShaderProgram);
@@ -20651,7 +20849,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		const FLOAT BlendFactor[4]{};
 		m_pContext->OMSetBlendState(pResource->pNativeOneLayerBlend.Get(), BlendFactor, 0xffffffffu);
 	}
-	hResult = m_pParticleBuffer->Render();
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.Sprite.DrawSubmission");
+		hResult = m_pParticleBuffer->Render();
+	}
 	if (S_OK != hResult)
 		return Fail_RenderOperation(
 			"Particle instance-buffer draw failed.", hResult);
@@ -20705,8 +20906,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			bRuntimeMaterialV2Ribbon && !bBakedEdgeHistory;
 		const bool_t bFlowRibbon01 =
 			35u == pResource->iSourceMaterialProfile && !bBakedEdgeHistory;
+		const bool_t bKoukuNativeRibbon =
+			2346u == pResource->iSourceMaterialProfile && !bBakedEdgeHistory &&
+			Trail.pElement->RuntimeCarrier.eKind ==
+				EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1;
 		const bool_t bTypedSourceRibbon =
-			bTypedArtistRibbon || bFlowRibbon01;
+			bTypedArtistRibbon || bFlowRibbon01 || bKoukuNativeRibbon;
 		if (35u == pResource->iSourceMaterialProfile && bBakedEdgeHistory)
 		{
 			return Fail_RenderOperation(
@@ -20740,7 +20945,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				"Trail typed tiling/tessellation contract is invalid.",
 				E_INVALIDARG, true);
 		}
-		if (bFlowRibbon01 &&
+		if ((bFlowRibbon01 || bKoukuNativeRibbon) &&
 			(!std::isfinite(fTilingDistance) || fTilingDistance <= 0.f ||
 			 !std::isfinite(fTessellationStep) || fTessellationStep <= 0.f))
 		{
@@ -20757,7 +20962,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		if (bTypedSourceRibbon)
 		{
 			const auto ValidatePoint = [pResource, &Trail, bFlowRibbon01,
-				bRibbonLiquid01ParentDefault](
+				bKoukuNativeRibbon, bRibbonLiquid01ParentDefault](
 				const EFFECT_EVALUATED_TRAIL_POINT& Point)
 			{
 				const uint32_t iColorMask =
@@ -20774,6 +20979,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					 (iDynamicMask &
 						pResource->iRuntimeMaterialV2DynamicConsumedMask) ==
 							pResource->iRuntimeMaterialV2DynamicConsumedMask);
+				const bool_t bKoukuCarrierContract =
+					iColorMask == 0x0fu && iDynamicMask == 0x0fu &&
+					std::isfinite(Point.fSourceWidth) && Point.fSourceWidth >= 0.f;
 				const bool_t bFlowCarrierContract =
 					iColorMask == 0x0fu && iDynamicMask == 0x0fu &&
 					std::abs(Point.vSourceColor.x - Point.vSourceColor.y) <= 1e-4f &&
@@ -20781,8 +20989,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					std::abs(Point.vDynamicParameter.x - 0.02f) <= 1e-5f &&
 					std::abs(Point.vDynamicParameter.y - 1.f) <= 1e-5f &&
 					std::isfinite(Point.fSourceWidth) && Point.fSourceWidth >= 0.f;
-				return (bFlowRibbon01 ? bFlowCarrierContract :
-					bArtistCarrierContract) &&
+				return (bKoukuNativeRibbon ? bKoukuCarrierContract :
+					bFlowRibbon01 ? bFlowCarrierContract : bArtistCarrierContract) &&
 					std::isfinite(Point.vWorldPosition.x) &&
 					std::isfinite(Point.vWorldPosition.y) &&
 					std::isfinite(Point.vWorldPosition.z) &&
@@ -20930,7 +21138,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Point.fCumulativeDistance / fTilingDistance :
 					static_cast<f32_t>(iPair);
                 const bool bKoukuNativeTrail = pResource->iSourceMaterialProfile >= 2304u &&
-                    pResource->iSourceMaterialProfile <= 2341u;
+                    pResource->iSourceMaterialProfile <= 2495u;
                 if (bKoukuNativeTrail && Point.iSourceColorComponentMask != 0x0fu)
                     return Fail_RenderOperation("Kouku source trail color payload is incomplete.", E_INVALIDARG, true);
                 const float4_t Color = bKoukuNativeTrail ? Point.vSourceColor : bRuntimeMaterialV2Ribbon ?
@@ -20961,6 +21169,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					 (iDynamicMask &
 						pResource->iRuntimeMaterialV2DynamicConsumedMask) ==
 							pResource->iRuntimeMaterialV2DynamicConsumedMask);
+				const bool_t bKoukuCarrierContract =
+					iColorMask == 0x0fu && iDynamicMask == 0x0fu &&
+					std::isfinite(Point.fSourceWidth) && Point.fSourceWidth >= 0.f;
 				const bool_t bFlowCarrierContract =
 					iColorMask == 0x0fu && iDynamicMask == 0x0fu &&
 					std::isfinite(Point.fSourceWidth) && Point.fSourceWidth >= 0.f &&
@@ -20968,8 +21179,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					std::abs(Point.vSourceColor.x - Point.vSourceColor.z) <= 1e-4f &&
 					std::abs(Point.vDynamicParameter.x - 0.02f) <= 1e-5f &&
 					std::abs(Point.vDynamicParameter.y - 1.f) <= 1e-5f;
-				if (!(bFlowRibbon01 ? bFlowCarrierContract :
-						bArtistCarrierContract) ||
+				if (!(bKoukuNativeRibbon ? bKoukuCarrierContract :
+						bFlowRibbon01 ? bFlowCarrierContract : bArtistCarrierContract) ||
 					!std::isfinite(Point.fCumulativeDistance) ||
 					Point.fCumulativeDistance < 0.f ||
 					!std::isfinite(Point.vSourceColor.w) ||
@@ -21007,7 +21218,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				continue;
 			}
 			const f32_t Age = Point.fNormalizedAge;
-			const f32_t Width = bFlowRibbon01 ? Point.fSourceWidth :
+			const f32_t Width = (bFlowRibbon01 || bKoukuNativeRibbon) ? Point.fSourceWidth :
 				Trail.pElement->Detail.Trail.fStartWidth +
 				(Trail.pElement->Detail.Trail.fEndWidth -
 					Trail.pElement->Detail.Trail.fStartWidth) * Age;
@@ -21015,7 +21226,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			const f32_t U = fTilingDistance > 0.f ?
 				Point.fCumulativeDistance / fTilingDistance :
 				static_cast<f32_t>(iPoint);
-			const float4_t Color = bFlowRibbon01 ?
+			const float4_t Color = bKoukuNativeRibbon ? Point.vSourceColor : bFlowRibbon01 ?
 				float4_t(Point.vSourceColor.x, Point.vDynamicParameter.z,
 					Point.vDynamicParameter.w, Point.vSourceColor.w) :
 				(bTypedArtistRibbon ?
@@ -21198,7 +21409,8 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 	const f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
 	float4x4_t& OutWorld, std::string& strOutError)
 {
-	if (!Resource.pModel || !std::isfinite(fSampleTimeSeconds))
+	if (!Resource.pModel || !std::isfinite(fSampleTimeSeconds) ||
+		!std::isfinite(Resource.fDurationSeconds) || Resource.fDurationSeconds <= 0.f)
 	{
 		strOutError = "Model Cue pose input is invalid: " + Cue.strCueId;
 		return false;
@@ -21208,9 +21420,13 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 	const f32_t fLocalTime = std::clamp(fSampleTimeSeconds - Cue.fStartDelaySeconds,
 		0.f, Cue.fDurationSeconds);
 	Engine::CModel& Model = *Resource.pModel;
-	const f32_t fAnimationTime = Cue.bHoldLastFrame ?
-		(std::min)(fLocalTime, Resource.fDurationSeconds) :
-		fLocalTime;
+	// Seek from the effect clock so scrubbing and replay use the same loop phase.
+	// Authored translation uses cue time. Optional root suppression is already
+	// configured on this clone so source X/Z locomotion cannot rewind at a wrap.
+	const f32_t fAnimationTime = Cue.bLoop ?
+		std::fmod(fLocalTime, Resource.fDurationSeconds) :
+		(Cue.bHoldLastFrame ? (std::min)(fLocalTime, Resource.fDurationSeconds) :
+		 fLocalTime);
 	if (!Model.Set_AnimTrackPosition(Resource.iAnimationIndex,
 		fAnimationTime * Resource.fTicksPerSecond))
 	{

@@ -24,6 +24,7 @@
 #include "MapNavigationContract.h"
 #include "MapPlacementRuntime.h"
 #include "MapStaticBatchObject.h"
+#include "WorldSequencePlayer.h"
 #include "Navigation.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
@@ -190,6 +191,22 @@ HRESULT CLoader::Initialize(
 		}
 	}
 
+	// Stage mutable catalog membership/skills on the owner thread. The loader
+	// worker reads this immutable selection even if an explicit F1 reload occurs.
+	if (eNextLevelID != LEVEL::LOBBY)
+	{
+		m_ePreparedCharacterClass = CNetworkManager::Get().Get_LocalCharacterClass();
+		// Lobby's accepted enter-world generation preserves this exact class.
+		// The optional character-selection UI cache is not admission authority.
+		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(m_ePreparedCharacterClass))
+		{
+			Set_Status(TEXT("Character preparation rejected: Server admission has no supported class."));
+			OutputDebugStringA("[Loader] Missing/invalid Server-approved character class.\n");
+			return E_INVALIDARG;
+		}
+		m_pCharacterAuthoringInput = CPlayableCharacterAssetService::Capture_AuthoringInput(m_ePreparedCharacterClass);
+		if (!m_pCharacterAuthoringInput) return E_FAIL;
+	}
 	m_eNextLevelID = eNextLevelID;
 	m_iResult.store(S_FALSE, std::memory_order_release);
 	m_eState.store(STATE::RUNNING, std::memory_order_release);
@@ -236,201 +253,8 @@ HRESULT CLoader::Start_Loading()
 
 HRESULT CLoader::Run_EffectLoadPreparation()
 {
-	if (nullptr == m_pEffectLoadJob)
-		return S_OK;
-
-	std::optional<EFFECT_LOAD_JOB_COMMAND> PendingBatchCommand;
-	for (;;)
-	{
-		EFFECT_LOAD_JOB_COMMAND Command;
-		EFFECT_LOAD_MAILBOX_WAIT_RESULT WaitResult =
-			EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND;
-		if (PendingBatchCommand.has_value())
-		{
-			Command = std::move(*PendingBatchCommand);
-			PendingBatchCommand.reset();
-		}
-		else
-		{
-			WaitResult = m_pEffectLoadJob->Wait_Pop_Command(Command);
-		}
-		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == WaitResult)
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == WaitResult)
-			return S_OK;
-		if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != WaitResult ||
-			!Command.Is_Valid())
-		{
-			return E_FAIL;
-		}
-		if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == Command.eKind)
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == Command.eKind)
-			return S_OK;
-		if (EFFECT_LOAD_JOB_COMMAND_KIND::ACCEPT_DISCOVERY != Command.eKind &&
-			EFFECT_LOAD_JOB_COMMAND_KIND::REBASE != Command.eKind)
-		{
-			return E_FAIL;
-		}
-
-		const auto Batch =
-			std::static_pointer_cast<const EFFECT_PRODUCT_LOAD_STAGE_BATCH>(
-				Command.pImmutablePayload);
-		if (nullptr == Batch ||
-			Batch->Targets.size() != Command.EffectAssetIds.size())
-		{
-			return E_FAIL;
-		}
-		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
-		{
-			if (Batch->Targets[i].strEffectAssetId != Command.EffectAssetIds[i])
-				return E_FAIL;
-		}
-
-		EFFECT_LOAD_PROGRESS_SNAPSHOT Progress;
-		Progress.iJobEpoch = Command.iJobEpoch;
-		Progress.iCatalogRevision = Command.iCatalogRevision;
-		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE;
-		Progress.bDeterminate = true;
-		Progress.iTotal = static_cast<uint32_t>(Batch->Targets.size());
-		Progress.strStatus = "Staging Product Effect resources.";
-		m_pEffectLoadJob->Publish_Progress(Progress);
-
-		bool_t bEpochRebased = false;
-		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
-		{
-			if (m_isCancellationRequested.load(std::memory_order_acquire) ||
-				m_pEffectLoadJob->Is_Cancelled())
-			{
-				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			}
-
-			const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request =
-				Batch->Targets[i];
-			Progress.iCompleted = static_cast<uint32_t>(i);
-			Progress.strCurrentId = Request.strEffectAssetId;
-			Progress.strStatus =
-				"Preparing Product Effect document and device resources.";
-			m_pEffectLoadJob->Publish_Progress(Progress);
-
-			std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE> Staged;
-			std::string StageStatus;
-			const bool_t bStaged =
-				CEffectPresentationService::Stage_LoadingProductTarget(
-					m_pDevice, m_pContext, Request, Staged, StageStatus);
-			EFFECT_LOAD_JOB_RESULT Result;
-			Result.eKind = EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED;
-			Result.iJobEpoch = Command.iJobEpoch;
-			Result.iCatalogRevision = Command.iCatalogRevision;
-			Result.strEffectAssetId = Request.strEffectAssetId;
-			if (bStaged)
-			{
-				/* Keep one worker-owned reference through the matching ACK.  The
-				   owner-thread renderer commit swaps the previous prepared maps and
-				   shared-asset session into this candidate; retaining this reference
-				   makes their potentially large COM/map destruction happen back on
-				   the Loader worker after the ACK instead of on the UI frame. */
-				Result.pImmutablePayload = Staged;
-			}
-			else
-			{
-				EFFECT_LOAD_FAILURE_RECEIPT Failure;
-				Failure.iJobEpoch = Command.iJobEpoch;
-				Failure.iCatalogRevision = Command.iCatalogRevision;
-				Failure.strEffectAssetId = Request.strEffectAssetId;
-				Failure.iRootCode = E_FAIL;
-				Failure.strRootMessage = StageStatus.empty() ?
-					"Product Effect worker stage failed." : StageStatus;
-				Result.Failure = std::move(Failure);
-				++Progress.iIsolatedFailureCount;
-			}
-
-			const EFFECT_LOAD_RESULT_PUSH_RESULT PushResult =
-				m_pEffectLoadJob->Push_Result_Wait(std::move(Result));
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == PushResult)
-			{
-				bEpochRebased = true;
-				break;
-			}
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == PushResult)
-				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == PushResult)
-				return S_OK;
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != PushResult)
-				return E_FAIL;
-
-			/* The staged payload remains the worker's current target until the
-			   main-thread owner has committed either its prepared record or its
-			   isolated failure receipt.  This bounds in-flight GPU/resource work
-			   to one target and prevents worker staging from outrunning commit. */
-			Progress.strStatus =
-				"Waiting for Product Effect target commit acknowledgment.";
-			m_pEffectLoadJob->Publish_Progress(Progress);
-			EFFECT_LOAD_JOB_COMMAND AckCommand;
-			const EFFECT_LOAD_MAILBOX_WAIT_RESULT AckWaitResult =
-				m_pEffectLoadJob->Wait_Pop_Command(AckCommand);
-			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == AckWaitResult)
-				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == AckWaitResult)
-				return S_OK;
-			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != AckWaitResult ||
-				!AckCommand.Is_Valid())
-			{
-				OutputDebugStringA(
-					"[Loader][Effect] Target commit ACK wait returned an invalid command.\n");
-				return E_FAIL;
-			}
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == AckCommand.eKind)
-				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == AckCommand.eKind)
-				return S_OK;
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::REBASE == AckCommand.eKind)
-			{
-				PendingBatchCommand = std::move(AckCommand);
-				bEpochRebased = true;
-				break;
-			}
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::TARGET_COMMIT_ACK !=
-					AckCommand.eKind ||
-				AckCommand.iJobEpoch != Command.iJobEpoch ||
-				AckCommand.iCatalogRevision != Command.iCatalogRevision ||
-				1u != AckCommand.EffectAssetIds.size() ||
-				AckCommand.EffectAssetIds.front() != Request.strEffectAssetId)
-			{
-				OutputDebugStringA(
-					"[Loader][Effect] Target commit ACK identity does not match the staged target.\n");
-				return E_FAIL;
-			}
-			Progress.iCompleted = static_cast<uint32_t>(i + 1u);
-			Progress.strCurrentId.clear();
-			Progress.strStatus = Progress.iCompleted == Progress.iTotal ?
-				"Finalizing Product Effect staging epoch." :
-				"Product Effect target committed.";
-			m_pEffectLoadJob->Publish_Progress(Progress);
-		}
-		if (bEpochRebased)
-			continue;
-
-		EFFECT_LOAD_JOB_RESULT Complete;
-		Complete.eKind = EFFECT_LOAD_JOB_RESULT_KIND::EPOCH_STAGE_COMPLETE;
-		Complete.iJobEpoch = Command.iJobEpoch;
-		Complete.iCatalogRevision = Command.iCatalogRevision;
-		const EFFECT_LOAD_RESULT_PUSH_RESULT CompleteResult =
-			m_pEffectLoadJob->Push_Result_Wait(std::move(Complete));
-		if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == CompleteResult)
-			continue;
-		if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == CompleteResult)
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == CompleteResult)
-			return S_OK;
-		if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != CompleteResult)
-			return E_FAIL;
-		Progress.ePhase = EFFECT_LOAD_PROGRESS_PHASE::EPOCH_STAGE_COMPLETE;
-		Progress.iCompleted = Progress.iTotal;
-		Progress.strCurrentId.clear();
-		Progress.strStatus = "Product Effect resource staging complete.";
-		m_pEffectLoadJob->Publish_Progress(Progress);
-	}
+	return CEffectPresentationService::Run_ProductPreparationWorker(
+		m_pDevice, m_pContext, m_pEffectLoadJob, &m_isCancellationRequested);
 }
 
 void CLoader::Set_Status(const tchar_t* pStatus)
@@ -547,15 +371,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 		OutputDebugStringA(("[Loader][NpcPresentation] " +
 			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
 	}
-	using LostArk::Shared::CHARACTER_CLASS_ID;
-	CHARACTER_CLASS_ID initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-	if (!CCharacterSelectionState::Try_Get_SelectedClass(initialClass) ||
-		!LostArk::Shared::Is_Supported_Playable_Character_Class(initialClass))
-	{
-		initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-	}
-
-	const std::array characterClasses = { initialClass };
+	const std::array characterClasses = { m_ePreparedCharacterClass };
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::CHARACTER_SELECT));
@@ -633,7 +449,7 @@ HRESULT CLoader::Ready_For_Bern()
 	Set_Status(TEXT("BERN: session character bundle"));
 	const std::array selectedClass =
 	{
-		CNetworkManager::Get().Get_LocalCharacterClass()
+		m_ePreparedCharacterClass
 	};
 	if (FAILED(Ready_Character_Rendering(
 		ETOUI(LEVEL::BERN),
@@ -676,7 +492,7 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	Set_Status(TEXT("VALTAN: network player rendering"));
 	const std::array selectedClass =
 	{
-		CNetworkManager::Get().Get_LocalCharacterClass()
+		m_ePreparedCharacterClass
 	};
 	if (FAILED(Ready_Character_Rendering(
 		ETOUI(LEVEL::VALTAN_ARENA),
@@ -781,7 +597,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 	Set_Status(TEXT("KoukuSaydon: server-approved character rendering"));
 	const std::array selectedClass =
 	{
-		CNetworkManager::Get().Get_LocalCharacterClass()
+		m_ePreparedCharacterClass
 	};
 	if (FAILED(Ready_Character_Rendering(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA),
@@ -808,6 +624,19 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		pEntry->pMapAreaId)))
 	{
 		return E_FAIL;
+	}
+
+	Set_Status(TEXT("KoukuSaydon: world sequence document"));
+	std::string worldSequenceStatus;
+	if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		pEntry->pMapAreaId, pEntry->MapLoadScope, worldSequenceStatus,
+		[this]() { return m_isCancellationRequested.load(std::memory_order_acquire); }))
+	{
+		if (m_isCancellationRequested.load(std::memory_order_acquire))
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		// Preserve the Level's optional-presentation failure boundary. Activation
+		// consumes this exact failure and never reparses on the game frame.
+		OutputDebugStringA(("[Loader][WorldSequence] " + worldSequenceStatus + "\n").c_str());
 	}
 
 	Set_Status(TEXT("KoukuSaydon arena loading complete"));
@@ -871,7 +700,7 @@ HRESULT CLoader::Ready_For_Development()
 
 	const std::array selectedClass =
 	{
-		CNetworkManager::Get().Get_LocalCharacterClass()
+		m_ePreparedCharacterClass
 	};
 	Set_Status(TEXT("TEST: server-approved character rendering"));
 	if (FAILED(Ready_Character_Rendering(
@@ -927,6 +756,11 @@ HRESULT CLoader::Ready_MapArea(
 		if (!CMapPlacementRuntime::Read_Placements(
 			mapCatalog, scopedPlacements, placementStatus))
 		{
+			{
+				lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+				g_ActiveStatus = "Map " + areaId +
+					": product load scope: " + placementStatus;
+			}
 			OutputDebugStringA(("[Loader][Map] " + placementStatus + "\n").c_str());
 			return E_FAIL;
 		}
@@ -935,7 +769,12 @@ HRESULT CLoader::Ready_MapArea(
 		for (const MAP_PLACEMENT_RECORD& record : scopedPlacements)
 			requiredAssetIds.insert(record.assetId);
 		if (requiredAssetIds.empty())
+		{
+			lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+			g_ActiveStatus = "Map " + areaId +
+				": product load scope selected no placements";
 			return E_FAIL;
+		}
 		CMapPlacementRuntime::Cache_LoadStage(
 			areaId,
 			loadScope,
@@ -1221,6 +1060,7 @@ HRESULT CLoader::Ready_Character_Rendering(
 		++classIndex)
 	{
 		const auto characterClass = characterClasses[classIndex];
+		if (characterClass != m_ePreparedCharacterClass || !m_pCharacterAuthoringInput) return E_INVALIDARG;
 		const auto progress = [
 			this,
 			classIndex,
@@ -1253,7 +1093,8 @@ HRESULT CLoader::Ready_Character_Rendering(
 			iLevelIndex,
 			characterClass,
 			&m_isCancellationRequested,
-			progress)))
+			progress,
+			m_pCharacterAuthoringInput)))
 		{
 			return E_FAIL;
 		}

@@ -212,3 +212,73 @@ Engine/Shared/Server/Client 컴파일·링크·EXE/DLL/셰이더 배포는 PASS�
 이 기록은 위의 Product 통합 대기 상태를 갱신한다. 세부 게시 revision·새 Server 검사·남은 사용자
 화면 확인은09-10 KOUKU_PATTERN_EFFECT_ANCHOR_FEAR_AUTHORING_IMPLEMENTATION_RESULT의 G10에 있다.
 빌드 근거: `out/BuildPipeline/runs/20260910T091016153Z-debug-product.json`. Client/UI 실행·캡처와 최종 육안 승인은 수행하지 않았다.
+
+## G14. 2026-09-11 Alt V의 F 방식 황금 낙뢰 연결
+
+사용자는 Alt+V 번개가 전혀 보이지 않으며 F의 번개를 그대로 사용해 개수를 늘리고
+황금색으로 표시해 달라고 요청했다. 현재 정본을 대조하면 F native446는 V17170에만
+연결되어 있고 Alt V17250에는0개였다. 이전 Alt V 보강은 F와 다른 native1166 sprite의
+b_effectroot FOLLOW6개를12개로 복제한 것이다. F와 같은 번개를 재생하라는 요청이
+실제 Alt V 입력에 연결되지 않은 차이를 확인했다. 기존1166 자체의 화면 미발생 원인을
+사용자 화면 없이 확정한 것은 아니다.
+
+실제 Alt V clip1/clip2 두 문서에 F의 native446 mesh 낙뢰18개를 추가했다.
+clip1은218→230행, clip2는180→186행이고 기존398개는 모든 field를 보존했다.
+0.6473/0.8472/1.0472/1.247/1.447/1.647초의 clip1 6회, 0.172/0.526/0.876초의
+clip2 3회에 각각 안쪽200~220cm와 바깥360~400cm 두 반경으로 재생한다.
+독립 seed18개, F와 같은 발생당 burst4개로 총72개 명시 낙뢰를 추가했다.
+기존 Alt V sprite48개는 삭제·재색칠·일괄 확대하지 않았다.
+
+F의 root snapshot과 source yaw-90, vertexcolor electric mesh, native446 material,
+WPO/Dynamic/dissolve, emitter·particle lifetime와 grayscale ColorScaleOverLife를
+그대로 복제했다. startcolor만 원본 peak5를 유지한 황금 HDR [5,3.6,0.4]로 저작했다.
+파란 source color에 황색 multiply를 곱해 어둡게 만드는 경로를 사용하지 않는다.
+이 황금색과 추가 파동은 사용자가 요청한 PROJECT_TUNED이며 원본 발생 복원과 구분한다.
+
+수정 재현 명령은 다음과 같다.
+
+```powershell
+python -X utf8 Tools/EffectPipeline/patch_warlord_v_guardian_lightning.py --altv-f-gold-only --output-root out/WarlordAltVGold20260911
+```
+
+기존 patch 스크립트에 위 선택을 추가했고 CAS 저장 및 동일 ID 재실행 보존을 유지했다.
+F 원문 SHA256는 `04d6dc2e93450e02b84f3053008ec32804a7173573934e7e14176bdbbeda28f1`이다.
+F·V 문서, camera sidecar, skillbindings와 animevents는 변경하지 않았다.
+현재 Alt V 두 asset의 Product animevent가 이미 연결되어 Data 정본을 직접 읽으므로
+별도 publish/새 catalog 항목/새 runtime 경로는 없다.
+
+| 자동 검사 | 실제 결과 |
+|---|---|
+| 변경 JSON parse·stable ID·seed·burst·F의 material/geometry/attachment 대조 |PASS |
+| 기존 Alt V398개 모든 field와 문서 상위 값 보존 |PASS |
+| 패치 재실행 두 JSON과 F bytes 동일 |PASS |
+| 공식 문서 검사 함수의 color-space/native sprite/module override/attachment 검사 |변경 두 문서416행 PASS |
+| 공식 Resources closure 함수 |270개/80,005,436bytes PASS |
+| Python 구문 컴파일·git diff --check |PASS |
+| 전체 Validate-EffectSources |실패. 이번에 수정하지 않은 Artist unified31000 BA1~4와31050 clip2의 runtime consumer5개 누락 보고 |
+| 실제 Product codec/stage/playback |두 문서 230/186개 admission PASS, 추가 황금 18개 모두 실제 CPU particle 생성·양수 alpha·HDR 비율·수명 범위 PASS |
+| 제품 최소 컴파일·배포 |통합 root의 최종 빌드 기록 참조 |
+| 사용자 새 Alt V 입력과 최종 황금색·크기·개수 확인 |미실행 |
+
+변경 전 bytes와 적용 기록은 `out/WarlordAltVGold20260911/lightning_resume_before/`,
+`altv-f-native-gold.json`에 있으며 보존/멱등성과 공식 scoped 검사 결과는 같은 폴더의
+`verification.json`, `official-scoped-validation.json`이다. 기존 CPU 경로로 검사한
+`cpu_probe_result.json`, `cpu_focused_checks.json`도 같은 폴더에 있다. 신규 제품 하네스는
+추가하지 않았다. 명시 burst는 72개이며 F의 continuous rate도 보존했으므로,
+각 요소의 관측 peak 5 particle을 총 고유 발생 개수로 해석하지 않는다.
+
+새 Resources는 없다. 기존 `Effect/Warlord/FullRestore/Meshes/fm_d_electric_05_vertexcolor.wmodel`,
+`Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_049.dds`,
+`Effect/Warlord/Textures/FX_TEX_04/fx_i_thunder_02_ycl.dds`를 사용한다.
+C++/shader/project/filter/XML 변경과 Resources Git 추가는 없다.
+Client/UI 실행·조작·캡처는 하지 않았다. 사용자 경로는 Server + Client profile Ctrl+F5 →
+Lobby → Character Select → Warlord → F 비교 후 Alt+V다.
+
+## G15. 2026-09-11 Alt+V 최종 통합 빌드
+
+황금 F-native 번개18개 묶음을 포함한 최신 워크트리에서 Debug Product의
+Engine/Shared/Server/Client compile·link·deploy가 모두 PASS다.
+`out/BuildPipeline/runs/20260911T073907619Z-debug-product.json`, Client.exe16:39:07 KST.
+두 Alt+V 문서의 JSON parse와 실제 Resources 참조, 최종 `git diff --check`를 확인했다.
+서버/Client는 마지막 확인에서 종료 상태이며, 사용자가 Server + Client profile을 실행하고
+Character Select의 Warlord F와 Alt+V를 비교한다. 황금색/개수/타이밍의 시각 확인은 USER_PENDING이다.

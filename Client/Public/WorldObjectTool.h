@@ -81,6 +81,9 @@ private:
     CLevel_KakulSaydonArena* m_PreviewLevel = nullptr;
     f32_t m_ClockMs = 0.f;
     f32_t m_VerticalArcHeight = 2.f;
+    // Distribute on Ring preset inputs; rows are the saved truth, not these.
+    int m_RingCount = 10;
+    f32_t m_RingStartDegrees = 0.f;
     f32_t m_Zoom = 100.f;
     CWorldSequenceDocument m_Document;
     CWorldSequenceDocument m_SavedDocument;

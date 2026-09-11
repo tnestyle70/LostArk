@@ -154,6 +154,8 @@ HRESULT CMapStaticBatchObject::Render()
 		static_cast<uint32_t>(
 			m_VisibleInstances.size());
 
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.BindAndDraw");
 	for (uint32_t meshIndex = 0;
 		meshIndex < m_pModelCom->Get_NumMeshes();
 		++meshIndex)
@@ -177,6 +179,7 @@ HRESULT CMapStaticBatchObject::Render()
 		{
 			return E_FAIL;
 		}
+	}
 	}
 
 	return S_OK;
@@ -422,6 +425,7 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Visibility");
 	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
 	const uint64_t cameraRevision = hasCameraSnapshot ?
 		cameraSnapshot->revision : 0u;
@@ -442,6 +446,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
 
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.CullAndPack");
 	for (FMapStaticInstance& instance :
 		m_Instances)
 	{
@@ -483,6 +489,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		m_CandidateVisibleInstances.push_back(
 			gpuInstance);
 	}
+	}
 
 	if (Engine::CProfiler* profiler =
 		CGameInstance::Get().Get_Profiler())
@@ -510,6 +517,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		return S_OK;
 	}
 
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.InstanceUpload");
 	if (FAILED(Ensure_InstanceCapacity(
 		static_cast<uint32_t>(
 			m_CandidateVisibleInstances.size()))))
@@ -538,6 +547,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	m_pContext->Unmap(
 		m_pInstanceBuffer.Get(),
 		0);
+	}
 	// Commit only after upload succeeds so a failed Map cannot replace the
 	// CPU payload associated with the previous successful GPU upload.
 	m_VisibleInstances.swap(m_CandidateVisibleInstances);
@@ -550,6 +560,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 
 HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.ShadowPrepare");
 	if (!m_bShadowInstancesDirty)
 		return S_OK;
 
@@ -574,6 +585,8 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 		m_bShadowInstancesDirty = false;
 		return S_OK;
 	}
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.ShadowUpload");
 	if (FAILED(Ensure_ShadowInstanceCapacity(
 		static_cast<uint32_t>(m_ShadowInstances.size()))))
 	{
@@ -593,6 +606,7 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 		m_ShadowInstances.data(),
 		m_ShadowInstances.size() * sizeof(VTXMESHINSTANCE));
 	m_pContext->Unmap(m_pShadowInstanceBuffer.Get(), 0);
+	}
 	m_bShadowInstancesDirty = false;
 	return S_OK;
 }

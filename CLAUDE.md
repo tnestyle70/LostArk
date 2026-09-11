@@ -256,7 +256,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v65 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v80 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -319,6 +319,27 @@ Esc/우클릭/follow 복귀는 미제출 선택을 취소하고 Tab으로 mouse-
 일반 gameplay 입력을 다시 활성화하지 않는다. Server/Client는 같은 protocol로 빌드·재시작해야 한다.
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
+F1 → `Open Composition Profiler`는 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
+보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
+저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
+각 JSON은 저장 시점의 최근 최대 1200프레임이고 세션 전체를 무제한 누적하는 파일은 아니다.
+`Saved JSON` 탭에서 `Refresh files`로 목록을 갱신하고 선택한 파일을 `Delete selected JSON`으로 삭제한다.
+외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
+CPU Self는 자식 구간을 제외하며 GPU pass는 겹치는 inclusive timestamp 구간이다.
+GPU pending/미지원과 미관측 구간은 0ms로 해석하지 않는다. `Updated, not submitted`는 같은
+프레임에 평가했지만 성공한 model draw가 없는 경우이며 frustum 밖 판정과 다르다. Server 권위
+navigation 시간은 별도 프로세스의 기존 `[RoomPerf]` 로그 `Nav...` 필드로 확인한다.
+`ImGui` 탭은 각 툴의 Build/Update, DX11 업로드·제출, platform viewport와 Present를 나누어
+표시하고 draw/vertex/index/upload 작업량을 함께 보여준다. JSON 저장은 창을 닫아도 완료 처리된다.
+`Picking.Readback`은 MapTool/Effect Tool/F1 이동 피킹 요청 때만 현재 화면 한 픽셀을 읽는 경로다.
+일반 프레임의 전체 viewport readback은 하지 않으며 요청의 GPU 대기는 `Picking.MapWait`, 복사량은
+Workload의 picking readback counters로 확인한다. `UI.Runtime.*`은 제품 HUD/UI 업데이트이고 ImGui Build와 구분한다.
+Character Select의 playable class 모델과 presentation 문서는 기존 CModel worker 준비 뒤 main prototype commit으로 반영한다.
+준비 중 기존 캐릭터를 유지하고 최신 선택을 처리한다. 레벨 전환은 취소된 준비·자원 해제의 완료를
+프레임마다 확인한 뒤 진행한다. `CharacterAssets.*`와 `Model.Load.*`로 worker 준비, main commit,
+decode/mesh/material/bone/animation 비용을 구분하며 총 준비 시간과 main frame 정지는 서로 다른 지표다.
+Debug x64는 외부 ImGui core/backend 여섯 소스에만 /O2 /Zi를 적용하므로 해당 내부 stepping은
+최적화된 코드 기준이다. Engine/Client 자체 소스의 Debug 설정과 ImGui assert는 유지한다.
 
 F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
 snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경
@@ -387,6 +408,16 @@ F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed �
 Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift 점프/마우스 이동/일반 스킬은 차단한다.
 키 해제 또는 300ms 입력 만료 시 서버 이동이 정지한다. 기존 퇴장·다른 F1 이동·책 컷신 배치는 전용 상태를
 해제하고 입장 전 외형을 복원한다. 조작·패킷·착지 조건은 팀 인터페이스 사용서 4.2절이 정본이다.
+마리오 1~4의 빨강·파랑·노랑 원본 공은 Q 뿅망치로 터진다. Server 권위이며 공은 엔티티가 아니라
+`Publish-WorldGameplay.ps1`이 worldbootstrap v11의 `MARIOBALL` 행으로 싣는 좌표다. 행의 슬롯 번호는
+`world.sequence.instance.marioN.source.layoutM`의 바인딩 인덱스와 같은 순서이며 부트스트랩 파서가
+연속성을 검사한다. `Resolve_MarioHammerHit`이 몬스터와 같은 전방 120°·2.4m 원뿔(공 반지름 0.47m
+가산, 높이 창 1.2m)로 판정해 `PLAYER_SNAPSHOT.iMarioPoppedBallMask` 비트를 세우고, 한 색의 공이 그
+레이아웃에서 전부 터지면 `iMarioCurseReleasedMask`가 그 색 비트를 세운다. Client는 그 비트로 배치를
+`CWorldSequencePlayer`의 억제 집합에 넣어 숨기고 `boss.kouku.ball.smoke.<색>_1` 연기를 한 번 재생하며
+`빨간/파란/노란 인형의 저주 해제` 문구를 화면 중앙에 3초 표시한다. 뿅망치 접촉 틱은 카드미로와 공용인
+`HAMMER_HIT_TICK_OFFSET`이며 실측 스윙에 맞춘 30틱(1.0초)이다. 이 배치는 protocol 80을 쓰므로
+Server와 Client를 같은 버전으로 함께 빌드·재시작한다.
 카드미로 문양 몬스터는 Server 권위다. 미로 중앙의 `cardmaze.telescope` 상자(`claimCardMazeTelescope` trigger action,
 Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모드 뿅망치로 먼저 가격한 플레이어가 망원경 담당이 되고, 그 순간
 `CKoukuCardMazeRuntime`이 나머지 살아 있는 플레이어(최대 3명)에게 4문양 중 3개를 서로 다르게 랜덤 배정한 뒤
@@ -445,6 +476,10 @@ Complete Play, Restart, Next를 runtime-ready로 표시하지 않는다. consume
 
 Debug F1의 `Effect Tool V1`과 `Effect Tool V2`는 각각 독립 창·입력 focus·닫기 상태를 갖는다.
 V1의 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를 같은 저작 tree로 연다.
+V1 Model/Summon detail의 `Loop Animation`은 cue window 안에서 clip만 반복하고 이동은 계속한다.
+`Hold Last Frame`과 동시에 켤 수 없으며 저장 문서의 생략된 `loop`는 false다. 한 문서는 ModelCue를 최대 16개 가진다.
+Artist D full restore는 앞쪽 두 호랑이, LanceMaster ALT V Full은 네 animation clip과 말·camera를 한 시간축으로 재생한다.
+원본 MeshParticle의 Follow Attachment에서 socket offset/rotation을 편집하면 해당 stable element의 anchor만 변경한다.
 V2는 기존 leaf/group·target attachment 편집을 소유하며 CPU draft와 저장 경로를 유지한다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
 Valtan pattern을 열면 master가 가리키는 Product cue와 stage-authored reference를 중복 없이 나열하고,
 combat-object/도넛 같은 재사용 asset은 최상위 `INDEPENDENT EFFECT` tree에 한 번만 노출한다. 그 아래에는
@@ -457,7 +492,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v65의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v80의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -538,6 +573,13 @@ formatVersion 3이다. `Save` 하나로 source를 원자 저장하고 기존 Map
 기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
 `objectResources`는 CModel 모델·diffuse·기본 scale·기본 `anchorKind`(WORLD/PLAYER) 또는 기존 sequence alias를,
 template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
+`objectMotion`의 optional `emissions`는 seed 분산 대신 저작한 사본 목록이다. 행마다
+`positionOffset`·`yawDegrees`·`startDelayMs`를 가지며 행 yaw가 로컬 이동과 공전을 함께 돌린다.
+행이 있으면 `count`는 행 수와 같고 `intervalMs`·`spreadDegrees`는 0이며, 최대 지연은 Lifetime보다 작아야 한다.
+행이 없으면 기존 seed emitter와 동일하다. Object Detail의 `Authored Emissions` 표와
+`Distribute on Ring`이 이 목록을 편집하고, `Distribute on Ring`은 저장 위치를 중심으로
+`revolutionOffset` 반경의 원을 만든다. Composition Collider는 optional `worldEmissionIndex`로
+따라갈 행을 고르며 projector가 그 값을 기존 Server baseline에 굽는다. protocol과 Server 계약은 그대로다.
 WORLD/PLAYER anchor의 표현은 기존 `CWorldSequencePlayer`가 Prototype/Clone/Layer로 샘플링한다.
 Create의 Map/Character 선택과 Resource Anchor 변경을 새 상태와 연결 상태에 반영한다.
 기존 v3에서 resource anchor가 없으면 Map으로 읽고 기존 instance anchor는 보존한다. 배치 alias는 Map 전용이다.

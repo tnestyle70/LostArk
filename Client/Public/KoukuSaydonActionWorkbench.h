@@ -65,6 +65,8 @@ namespace Client
 		std::string strAnchorKind = "WORLD";
 		bool_t bDefaultMotion = false;
 		std::vector<std::string> AnimationClips;
+		// Authored emission rows of this Motion (1 for seeded emitters); Box Detail offers the row index.
+		std::uint32_t iEmissionCount = 1u;
 	};
 
 	struct KOUKU_PRESENTATION_PREVIEW_REQUEST final
@@ -190,9 +192,11 @@ namespace Client
 		bool_t Request_PatternPreview(std::string_view patternId,
 			std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused = false);
 		// Sequence workspace uses source order within the selected Gate, always from zero.
-		bool_t Request_CompleteSequencePlay(std::string& outStatus);
+		bool_t Request_CompleteSequencePlay(std::string& outStatus, std::string_view gateId = {});
+		void Set_CompleteSequenceAdmission(std::function<bool_t(std::string_view, std::string&)> admission)
+		{ m_CompleteSequenceAdmission = std::move(admission); }
 		void Notify_SequencePreviewAdmission(bool_t succeeded, const std::string& status);
-		bool_t Advance_CompleteSequencePlay(std::string_view completedPatternId);
+		bool_t Advance_CompleteSequencePlay(std::string_view completedPatternId, std::string* completedGate = nullptr);
 		void Cancel_CompleteSequencePlay();
 		[[nodiscard]] bool_t Is_CompleteSequencePlaying() const noexcept {
 			return !m_CompleteSequencePatternIds.empty();
@@ -613,6 +617,7 @@ namespace Client
 		void Render_SummonBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
 		void Render_CameraAuthoring(std::string_view shotId);
+		void Render_CameraWindow();
 		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
 			std::string_view displayName, std::string& outStatus);
@@ -688,6 +693,12 @@ namespace Client
 		std::string m_strPresentationResourceStatus;
 		std::string m_strSelectedPresentationResourceId;
 		std::string m_strSelectedPresentationSourceId;
+		// The Area level owns the validated camera draft; these values are UI state.
+		bool_t m_bCameraWindowOpen = false;
+		std::string m_strCameraWindowShotId;
+		std::string m_strCameraKeyId;
+		int32_t m_iCameraCaptureMs = 1000;
+		char_t m_NewCameraActionName[129]{};
 		int32_t m_iLightResourceCategory = 0;
 		int32_t m_iEffectResourceVersion = 0;
 		std::string m_strExpandedV1EffectId;
@@ -778,6 +789,7 @@ namespace Client
 		std::string m_strPendingPreviewTargetAsset;
 		KOUKU_PREVIEW_STATE m_PreviewState;
 		std::vector<std::string> m_CompleteSequencePatternIds;
+		std::function<bool_t(std::string_view, std::string&)> m_CompleteSequenceAdmission;
 		std::size_t m_iCompleteSequenceIndex = 0u;
 		bool_t m_bCompleteSequenceAdmitted = false;
 		KOUKU_PREVIEW_TRANSPORT m_ePendingTransport = KOUKU_PREVIEW_TRANSPORT::NONE;

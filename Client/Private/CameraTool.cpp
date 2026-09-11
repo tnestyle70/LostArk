@@ -879,7 +879,7 @@ bool_t Client::CCameraTool::Resolve_SceneWorldPose(
 	const VALTAN_CINEMATIC_CAMERA_KEYFRAME& scene,
 	VALTAN_CINEMATIC_CAMERA_POSE& outPose) const
 {
-	outPose = { scene.vEye, scene.vLookAt, scene.fFovYDegrees };
+	outPose = { scene.vEye, scene.vLookAt, scene.fFovYDegrees, scene.vUp, scene.hasUp };
 	if (VALTAN_CINEMATIC_TRACKING_MODE::WORLD == cue.eTrackingMode)
 		return true;
 	VALTAN_CINEMATIC_CAMERA_INPUT input{};
@@ -908,6 +908,8 @@ bool_t Client::CCameraTool::Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE& outPo
 	const vector_t look = XMVector3Normalize(lookBasis);
 	XMStoreFloat3(&outPose.vEye, eye);
 	XMStoreFloat3(&outPose.vLookAt, eye + look * 10.f);
+	XMStoreFloat3(&outPose.vUp, XMVector3Normalize(cameraWorld.r[1]));
+	outPose.hasUp = true;
 	outPose.fFovYDegrees = XMConvertToDegrees(
 		2.f * std::atan(1.f / projection->_22));
 	return Is_ValidAuthoringPose(outPose);
@@ -933,6 +935,7 @@ bool_t Client::CCameraTool::Capture_CurrentPose(
 	outKeyframe.vEye = pose.vEye;
 	outKeyframe.vLookAt = pose.vLookAt;
 	outKeyframe.fFovYDegrees = pose.fFovYDegrees;
+	if (m_bKoukuSource) { outKeyframe.vUp = pose.vUp; outKeyframe.hasUp = true; }
 	return Is_ValidAuthoringPose(pose);
 }
 
@@ -1154,8 +1157,9 @@ bool_t Client::CCameraTool::Apply_PreviewPose()
 	}
 	std::shared_ptr<CCamera_Free> camera = m_pPreviewCamera.lock();
 	if (nullptr == camera ||
-		!camera->Apply_PresentationPose(
-			PREVIEW_OWNER_ID, pose.vEye, pose.vLookAt, pose.fFovYDegrees))
+		!(pose.hasUp ? camera->Apply_PresentationPoseWithUp(
+			PREVIEW_OWNER_ID, pose.vEye, pose.vLookAt, pose.vUp, pose.fFovYDegrees) :
+			camera->Apply_PresentationPose(PREVIEW_OWNER_ID, pose.vEye, pose.vLookAt, pose.fFovYDegrees)))
 	{
 		if (nullptr != camera &&
 			camera->Is_PresentationOverrideOwnedBy(PREVIEW_OWNER_ID))
@@ -1967,6 +1971,7 @@ bool_t Client::CCameraTool::Insert_Keyframe(
 		key.vEye = pose.vEye;
 		key.vLookAt = pose.vLookAt;
 		key.fFovYDegrees = pose.fFovYDegrees;
+		key.vUp = pose.vUp; key.hasUp = pose.hasUp;
 	}
 	cue.Keyframes.insert(cue.Keyframes.begin() + right, key);
 	m_iSelectedKeyframe = static_cast<int32_t>(right);

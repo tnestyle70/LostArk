@@ -75,6 +75,10 @@ namespace LostArk::Server
 		std::map<std::pair<std::string, std::string>, std::uint32_t> AppliedContactMotionPriorities;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
+		// One snapshot of the entry roster: world X descending, then stable PlayerId.
+		bool bCardMazeEntryRosterCaptured = false;
+		std::vector<LostArk::Shared::PLAYER_ID> CardMazeEntryPlayers;
+		std::size_t iCardMazeNextHiddenPlayer = 0u;
 
 		[[nodiscard]] bool Is_Active() const noexcept { return !strPatternId.empty(); }
 	};
@@ -195,6 +199,13 @@ namespace LostArk::Server
 		[[nodiscard]] static std::uint32_t Ticks_FromMs(std::uint32_t ms) noexcept;
 
 	private:
+		static void Capture_CardMazeEntryRoster(KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		static void Reveal_CardMazeEntryPlayers(const KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		static bool Enter_CardMaze(const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
+			KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus);
 		static void Open_Window(
 			SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_LOGIC_WINDOW& window,
@@ -339,8 +350,12 @@ namespace LostArk::Server
 
 		static constexpr std::uint8_t KILL_TARGET = 3u;
 		static constexpr std::uint32_t TARGETS_PER_SUIT = 1u;
-		/* Where in the 3000 ms hammer press the head lands, in 30 Hz ticks. */
-		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 12u;
+		/* Where in the hammer press the head lands, in 30 Hz ticks. Measured on
+		rpcz00p_project_tuned_hammer (75 ticks): the head is still winding up
+		behind the body until tick 27, comes over the top and reaches the ground
+		in front at tick 30, and rests there through tick 42. 12 was inside the
+		wind-up, so a swing counted before anything had been hit. */
+		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 30u;
 		static constexpr float HAMMER_RANGE_M = 2.4f;
 		/* cos(60 degrees): the swing covers a 120 degree arc in front. */
 		static constexpr float HAMMER_HALF_ANGLE_COS = 0.5f;

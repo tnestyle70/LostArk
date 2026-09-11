@@ -2598,6 +2598,71 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				room->m_WorldEntities = std::move(savedEntities);
 				room->m_TickDamageEvents = std::move(savedDamage);
 			}
+			{
+				/* Source balls: the published layout slots pop on the same contact tick,
+				once each and only in front on this floor; a colour's curse lifts with
+				its last ball. Entities are parked so a swing near a patrol changes nothing else. */
+				const auto savedPlayer = player;
+				const auto savedTick = room->m_iServerTick;
+				auto savedEntities = std::move(room->m_WorldEntities);
+				auto savedDamage = std::move(room->m_TickDamageEvents);
+				room->m_WorldEntities.clear(); room->m_TickDamageEvents.clear();
+				std::vector<const MARIO_SOURCE_BALL*> balls;
+				for (const auto& ball : room->m_WorldBootstrap.Get_MarioBalls())
+					if (ball.stage == stage && ball.layout == player.iMarioLayoutVariant) balls.push_back(&ball);
+				bool slotsOrdered = true;
+				for (size_t index = 0; index < balls.size(); ++index) slotsOrdered &= balls[index]->slot == index;
+				tests.Require(balls.size() == (stage == 4u ? 12u : 9u) && slotsOrdered,
+					"Published Mario layout carries every source ball slot in order");
+				player.isCombatReady = true;
+				player.eKoukuHudMode = KOUKU_HUD_MODE::MARIO;
+				player.ModeSkillIndexBySlot[0] = 0; player.ModeSkillIndexBySlot[1] = 1;
+				const auto swing = [&](const float x, const float y, const float z, const float yawDegrees)
+				{
+					player.fPositionX = x; player.fPositionY = y; player.fPositionZ = z;
+					player.fYawDegrees = yawDegrees;
+					player.eAction = PLAYER_ACTION_STATE::NONE;
+					room->m_iServerTick += 100u;
+					C2S_INTERACTION_SLOT press{};
+					press.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+					press.eSlot = static_cast<INTERACTION_SLOT>(0);
+					press.iRequestSequence = player.iLastKoukuInteractionSequence + 1u;
+					room->Handle_InteractionSlot(player.iSessionId, press);
+					if (player.eAction != PLAYER_ACTION_STATE::INTERACTION) return false;
+					room->m_iServerTick = player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET - 1u;
+					room->Update_Players(1.f / 30.f);
+					return true;
+				};
+				if (balls.size() >= 2u)
+				{
+					const auto& first = *balls[0];
+					// Facing +Z from one metre behind the ball: ahead, on this floor.
+					tests.Require(swing(first.x, first.y, first.z - 1.f, 0.f) &&
+						room->m_MarioPoppedBalls[stage] == 1u, "Mario Q pops the source ball in front on the contact tick");
+					tests.Require(swing(first.x, first.y, first.z - 1.f, 0.f) &&
+						room->m_MarioPoppedBalls[stage] == 1u, "A popped ball stays popped under a second swing");
+					std::uint16_t expected = 1u;
+					for (const auto* ball : balls)
+						if (ball->color == first.color && ball->slot != first.slot)
+						{
+							tests.Require(swing(ball->x, ball->y, ball->z - 1.f, 0.f), "Mario Q swings at each remaining ball of the colour");
+							expected |= static_cast<std::uint16_t>(1u << ball->slot);
+						}
+					tests.Require(room->m_MarioPoppedBalls[stage] == expected &&
+						room->Mario_CurseReleasedMask(stage, player.iMarioLayoutVariant) == (1u << first.color),
+						"Popping every ball of one colour releases exactly that colour's curse");
+					const auto* other = *std::find_if(balls.begin(), balls.end(),
+						[&first](const auto* ball) { return ball->color != first.color; });
+					// Ball behind the swing, then the same ball from one floor up: neither pops.
+					tests.Require(swing(other->x, other->y, other->z + 1.f, 0.f) &&
+						swing(other->x, other->y + 2.56f, other->z - 1.f, 0.f) &&
+						room->m_MarioPoppedBalls[stage] == expected, "Mario Q leaves balls behind the swing or on another floor");
+				}
+				room->m_MarioPoppedBalls[stage] = 0u;
+				player = savedPlayer; room->m_iServerTick = savedTick;
+				room->m_WorldEntities = std::move(savedEntities);
+				room->m_TickDamageEvents = std::move(savedDamage);
+			}
 			C2S_DEBUG_MARIO_JUMP request{};
 			request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 			request.iClientSequence = 1u;
@@ -29897,6 +29962,74 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	{
 		auto& p = players[id]; p.iPlayerId = id; p.iNetEntityId = 100u + id; p.iCurrentHp = 50000u;
 		p.fPositionX = Maze::CENTER_X; p.fPositionY = -.01f; p.fPositionZ = Maze::CENTER_Z;
+	}
+	{
+		CGameplayCatalog catalog;
+		BOSS_PATTERN_DEFINITION pattern{};
+		pattern.strPatternId = "cardmaze.entry.contract";
+		CServerCollisionSystem collision;
+		std::string collisionStatus;
+		tests.Require(collision.Initialize(bootstrap.Get_Placements(), collisionStatus), "Maze entry loads the published collision layer");
+		BOSS_PATTERN_MECHANIC_TRIGGER enter{};
+		enter.strTriggerId = "entry"; enter.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
+		enter.iStartMs = 5000u; enter.iDurationMs = 200u;
+		enter.fTeleportX = Maze::CENTER_X; enter.fTeleportY = -.01f; enter.fTeleportZ = Maze::CENTER_Z;
+		pattern.MechanicTriggers.push_back(enter); // File order is deliberately not time order.
+		for (std::uint32_t index = 0u; index < 4u; ++index)
+		{
+			auto hide = enter; hide.strTriggerId = "hide." + std::to_string(index);
+			hide.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT;
+			hide.iStartMs = (index + 1u) * 1000u;
+			pattern.MechanicTriggers.push_back(hide);
+		}
+		SERVER_WORLD_ENTITY boss{}; boss.iPatternSequence = 1u; boss.iCurrentHp = boss.iMaximumHp = 1000u;
+		boss.strPatternId = pattern.strPatternId;
+		KOUKUSAYDON_LOGIC_LEDGER ledger;
+		auto entrants = players;
+		for (auto& [id, player] : entrants) { player.fPositionX = float(id); player.fPositionZ = 324.f; player.isCombatReady = true; }
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		std::vector<DAMAGE_EVENT> damage;
+		KOUKUSAYDON_LOGIC_OUTPUT output;
+		const auto update = [&](std::uint32_t elapsedMs, const CServerNavigation* nav) {
+			output = {};
+			CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, entrants, catalog, nullptr,
+				10u + CKoukuSaydonLogicRuntime::Ticks_FromMs(elapsedMs), damage, output, nav, &collision);
+		};
+		update(1000u, &navigation);
+		tests.Require((entrants[4u].CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN) && entrants[3u].CardMaze.flags == 0u,
+			"First maze cue hides the rightmost player");
+		entrants[1u].fPositionX = 99.f;
+		update(2000u, &navigation);
+		tests.Require((entrants[3u].CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN) && entrants[1u].CardMaze.flags == 0u,
+			"Movement after first hide cannot reorder the captured roster");
+		update(5000u, &navigation);
+		tests.Require(std::all_of(entrants.begin(), entrants.end(), [&](const auto& row) {
+			return !(row.second.CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN) && row.second.fPositionX == Maze::CENTER_X &&
+				row.second.fPositionZ == Maze::CENTER_Z && row.second.eKoukuAreaHudMode == KOUKU_HUD_MODE::MAZE;
+		}), "Late tick processes remaining hides before one transactional maze entry");
+		CKoukuSaydonLogicRuntime::Update_PlayerModes(entrants, &ledger, nullptr, 160u);
+		tests.Require(entrants[1u].eKoukuHudMode == KOUKU_HUD_MODE::MAZE && entrants[1u].eMadnessForm == PLAYER_MADNESS_FORM::NORMAL,
+			"Card maze entry enables Q while preserving the normal class body");
+		entrants = players;
+		for (auto& [id, player] : entrants) { player.fPositionX = float(id); player.fPositionZ = 324.f; player.isCombatReady = true; }
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(5000u, nullptr);
+		tests.Require(std::all_of(entrants.begin(), entrants.end(), [](const auto& row) {
+			return row.second.fPositionZ == 324.f && !(row.second.CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN);
+		}) && output.strStatus.find("preserved") != std::string::npos,
+			"Missing maze navigation preserves every position and reveals the roster");
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(1000u, &navigation);
+		entrants[2u].TriggerMove.isActive = true;
+		update(5000u, &navigation);
+		tests.Require(std::all_of(entrants.begin(), entrants.end(), [](const auto& row) {
+			return row.second.fPositionZ == 324.f && !(row.second.CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN);
+		}), "One busy participant prevents partial entry and reveals everyone");
+		entrants[2u].TriggerMove = {};
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(1000u, &navigation);
+		CKoukuSaydonLogicRuntime::Discard(ledger, entrants, &boss);
+		tests.Require(!(entrants[4u].CardMaze.flags & CARD_MAZE_ENTRY_HIDDEN), "Stopping the cutscene reveals hidden participants");
 	}
 	Maze maze;
 	std::vector<Maze::SPAWN_REQUEST> spawns;

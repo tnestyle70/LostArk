@@ -86,8 +86,8 @@ namespace Client
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, LANCE_MASTER, 1216u, 1279u, "Shader_VtxEffectParticleLanceMaster1216.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, LANCE_MASTER, 1280u, 1343u, "Shader_VtxEffectParticleLanceMaster1280.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, LANCE_MASTER, 1344u, 1407u, "Shader_VtxEffectParticleLanceMaster1344.hlsl"),
-        EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 2304u, 2367u, "Shader_VtxEffectMeshKouku2304.hlsl"),
-        EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 2304u, 2367u, "Shader_VtxEffectParticleKouku2304.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 2304u, 2495u, "Shader_VtxEffectMeshKouku2304.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 2304u, 2495u, "Shader_VtxEffectParticleKouku2304.hlsl"),
     }};
 #undef EFFECT_SHADER_PROGRAM_ROW
 #undef EFFECT_SHADER_WIDEN

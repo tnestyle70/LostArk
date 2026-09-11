@@ -446,6 +446,28 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
 	constexpr std::string_view CLOWN_READY_KEY = "avatar.kouku-saydon.clown";
 	constexpr const char_t* CLOWN_IDLE_CLIP = "rpcz00p_idle_battle_1";
 	constexpr const char_t* CLOWN_RUN_CLIP = "rpcz00p_run_battle_1";
+	/* The hammer the doll swings is the Mario-1 monster's (WP_MN_RHKP_07). It
+	is a submesh of REUP.wmodel carried by one Biped bone; the static cook
+	beside REUP holds it in the monster's right-hand frame, in metres, and
+	shares REUP's textures. The doll's skeleton chain bakes x100 into every
+	bone, so a socketed metre-authored mesh receives 100 x 0.012053 per unit;
+	in a Mario stage the doll is further scaled to 1.5 m (0.632). This
+	pre-scale is 1 / (100 x 0.012053 x 0.632), so the hammer in the stage is
+	the monster's 1.05 m, not shrunk with the doll. The cook is in the hand
+	frame with the head along local +Y and the head's star faces along local
+	X; on this doll's hand that put the head behind the character, so the
+	pitch (about X) turns it round without moving the star faces. Sampled
+	from the first key of rpcz00p_idle_battle_1, hand -Y after 180 points
+	straight forward and hand +Z points mostly down, so pitch past 180 raises
+	the head; the hand's Z is not vertical, so 40 degrees of pitch is 30
+	degrees of elevation. 220 puts the head 30 degrees above forward in the
+	idle stance. */
+	constexpr std::string_view CLOWN_HAMMER_ASSET =
+		"Character/Monster/MarioOriginal/REUP/WP_MN_RHKP_07_Static.wmodel";
+	constexpr f32_t CLOWN_HAMMER_PRE_SCALE = 1.313f;
+	constexpr f32_t CLOWN_HAMMER_PITCH_DEGREES = 220.f;
+	constexpr f32_t CLOWN_HAMMER_YAW_DEGREES = 0.f;
+	constexpr f32_t CLOWN_HAMMER_ROLL_DEGREES = 0.f;
 	if (nullptr == pDevice || nullptr == pContext || iLevelIndex >= ETOUI(LEVEL::END))
 		return E_INVALIDARG;
 
@@ -471,8 +493,29 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
 	}
 	if (!Has_Clip(*body, CLOWN_IDLE_CLIP) || !Has_Clip(*body, CLOWN_RUN_CLIP))
 		return Reject("KoukuSaydon clown body is missing its idle/run clips.");
+	/* Without the model the doll mimes its own swing clip. The socket bone is
+	checked before the body is moved from. A class weapon is a static part on
+	the static shader, so the hammer is admitted exactly that way; the rigged
+	original would be refused as NONANIM and take the body down with it. */
+	if (!body->Has_Bone(KOUKU_CLOWN_HAMMER_SOCKET_BONE))
+		return Reject("KoukuSaydon clown body has no right-hand bone for the hammer.");
+	const std::filesystem::path hammerPath =
+		CRuntimeAssetRoot::Resolve(CLOWN_HAMMER_ASSET);
+	if (hammerPath.empty())
+		return Reject("KoukuSaydon clown hammer asset path is invalid.");
+	unique_ptr<Engine::CModel> hammer = Engine::CModel::Create(
+		pDevice, pContext, MODEL::NONANIM, hammerPath.string().c_str(),
+		XMMatrixRotationRollPitchYaw(
+			XMConvertToRadians(CLOWN_HAMMER_PITCH_DEGREES),
+			XMConvertToRadians(CLOWN_HAMMER_YAW_DEGREES),
+			XMConvertToRadians(CLOWN_HAMMER_ROLL_DEGREES)) *
+		XMMatrixScaling(CLOWN_HAMMER_PRE_SCALE,
+			CLOWN_HAMMER_PRE_SCALE, CLOWN_HAMMER_PRE_SCALE));
+	if (nullptr == hammer || 0u == hammer->Get_NumMeshes())
+		return Reject("KoukuSaydon clown hammer static cook did not load.");
 	std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
 	staged.emplace_back(KOUKU_CLOWN_BODY_PROTOTYPE_TAG, std::move(body));
+	staged.emplace_back(KOUKU_CLOWN_HAMMER_PROTOTYPE_TAG, std::move(hammer));
 	if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
 		return Reject("KoukuSaydon clown body prototype commit failed.");
 	ready.insert(std::string(CLOWN_READY_KEY));

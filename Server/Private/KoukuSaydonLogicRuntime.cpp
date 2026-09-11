@@ -4,6 +4,7 @@
 #include "PlayerSkillSystem.h"
 #include "KoukuSaydonBrain.h"
 #include "ServerCollisionSystem.h"
+#include "ServerNavigation.h"
 #include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
@@ -138,6 +139,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 		cue.iStartTick = Add_Ticks(startTick, Ticks_FromMs(pattern.MechanicTriggers[index].iStartMs));
 		ledger.MechanicTriggers.push_back(cue);
 	}
+	std::stable_sort(ledger.MechanicTriggers.begin(), ledger.MechanicTriggers.end(), [&](const auto& a, const auto& b) {
+		return pattern.MechanicTriggers[a.iIndex].iStartMs < pattern.MechanicTriggers[b.iIndex].iStartMs;
+	});
 	for (std::size_t index = 0u; index < pattern.WorldSequences.size(); ++index)
 	{
 		KOUKUSAYDON_LOGIC_CUE_STATE cue{};
@@ -292,7 +296,8 @@ namespace
 		const LostArk::Server::BOSS_LOGIC_REGION& region,
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss, const std::uint32_t patternElapsedTicks,
 		const std::uint32_t windowIndex, const std::uint32_t regionIndex,
-		const std::uint32_t releaseTick, const std::uint32_t serverTick) noexcept
+		const std::uint32_t releaseTick, const std::uint32_t serverTick,
+		const LostArk::Server::CServerNavigation* navigation) noexcept
 	{
 		using namespace LostArk::Shared;
 		LOGIC_REGION_TRANSFORM transform;
@@ -302,14 +307,21 @@ namespace
 			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))
 			return false;
+		/* The hook lanes cross cells this Area never baked as walkable, so a
+		navigation refusal must not cancel the catch. Sample the floor when the
+		grid can answer and otherwise keep the height the runner already had. */
+		LostArk::Server::SERVER_NAV_POINT ground{};
+		const bool hasGround = nullptr != navigation &&
+			navigation->Resolve_TraversalStep(player.fPositionX, player.fPositionZ,
+				transform.centerX, transform.centerZ, ground);
 		player.iAttachmentOwnerNetEntityId = boss.iNetEntityId;
 		player.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
 		player.iAttachmentPatternSequence = boss.iPatternSequence;
 		player.fAttachmentLocalOffsetX = 0.f;
 		player.fAttachmentLocalOffsetY = 0.f;
 		player.fAttachmentLocalOffsetZ = 0.f;
-		// Caught facing whatever way they were running: keep that on the hook.
-		player.fAttachmentYawOffsetDegrees = Wrap180(player.fYawDegrees - transform.yaw);
+		// Hook travels on local +X; player animations face local +Z.
+		player.fAttachmentYawOffsetDegrees = 90.f;
 		player.iAttachmentWindowIndex = windowIndex;
 		player.iAttachmentRegionIndex = regionIndex;
 		player.iAttachmentReleaseTick = releaseTick;
@@ -327,7 +339,9 @@ namespace
 		player.iMovePathIndex = 0u;
 		player.isCombatReady = false;
 		player.fPositionX = transform.centerX;
+		if (hasGround) player.fPositionY = ground.y;
 		player.fPositionZ = transform.centerZ;
+		player.fYawDegrees = Wrap180(transform.yaw + 90.f);
 		return true;
 	}
 
@@ -336,14 +350,24 @@ namespace
 	bool Drag_HookedPlayer(LostArk::Server::SERVER_PLAYER& player,
 		const LostArk::Server::BOSS_LOGIC_REGION& region,
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
-		const std::uint32_t patternElapsedTicks) noexcept
+		const std::uint32_t patternElapsedTicks,
+		const LostArk::Server::CServerNavigation* navigation) noexcept
 	{
 		LOGIC_REGION_TRANSFORM transform;
 		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
 			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))
 			return false;
+		/* The caught body rides the hook, so it follows the authored path even
+		where the grid has no walkable cell to offer. The path already ends
+		inside the arena and its last key is invisible, which is what ends the
+		drag above; a missing cell must not strand the player behind the hook. */
+		LostArk::Server::SERVER_NAV_POINT ground{};
+		const bool hasGround = nullptr != navigation &&
+			navigation->Resolve_TraversalStep(player.fPositionX, player.fPositionZ,
+				transform.centerX, transform.centerZ, ground);
 		player.fPositionX = transform.centerX;
+		if (hasGround) player.fPositionY = ground.y;
 		player.fPositionZ = transform.centerZ;
 		player.fYawDegrees = Wrap180(transform.yaw + player.fAttachmentYawOffsetDegrees);
 		player.hasMoveGoal = false;
@@ -377,7 +401,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
 	using namespace LostArk::Shared;
 	if (!ledger.Is_Active())
 		return;
-	(void)players;
+	Reveal_CardMazeEntryPlayers(ledger, players);
 	if (nullptr != pBoss)
 	{
 		pBoss->bKoukuShieldActive = false;
@@ -387,6 +411,79 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
         CBossCombatRuntime::Clear_PatternOutcomes(*pBoss);
 	}
 	ledger = {};
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Capture_CardMazeEntryRoster(
+	KOUKUSAYDON_LOGIC_LEDGER& ledger, const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	if (ledger.bCardMazeEntryRosterCaptured) return;
+	ledger.bCardMazeEntryRosterCaptured = true;
+	for (const auto& [id, player] : players)
+		if (Is_Judgeable(player) && player.eCardMazeRole == LostArk::Shared::CARD_MAZE_ROLE::NONE)
+			ledger.CardMazeEntryPlayers.push_back(id);
+	std::sort(ledger.CardMazeEntryPlayers.begin(), ledger.CardMazeEntryPlayers.end(), [&](auto left, auto right) {
+		const float lx = players.at(left).fPositionX, rx = players.at(right).fPositionX;
+		return lx != rx ? lx > rx : left < right;
+	});
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Reveal_CardMazeEntryPlayers(
+	const KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	for (const auto id : ledger.CardMazeEntryPlayers)
+		if (auto found = players.find(id); found != players.end())
+			found->second.CardMaze.flags &= static_cast<std::uint8_t>(~LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN);
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Enter_CardMaze(
+	const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, KOUKUSAYDON_LOGIC_LEDGER& ledger,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus)
+{
+	using namespace LostArk::Shared;
+	Capture_CardMazeEntryRoster(ledger, players);
+	const auto reject = [&](const char* reason) {
+		Reveal_CardMazeEntryPlayers(ledger, players);
+		outStatus = std::string("Card maze entry preserved all player positions: ") + reason;
+		return false;
+	};
+	SERVER_NAV_POINT ground{};
+	if (!navigation || !navigation->Is_Loaded() ||
+		!navigation->Is_PointWalkableExact(trigger.fTeleportX, trigger.fTeleportZ) ||
+		!navigation->Sample_Position(trigger.fTeleportX, trigger.fTeleportZ, ground) ||
+		std::abs(ground.y - trigger.fTeleportY) > 1.f ||
+		!CKoukuCardMazeRuntime::In_SafeZone(trigger.fTeleportX, trigger.fTeleportZ))
+		return reject("destination is not on the maze central navigation");
+	std::vector<std::pair<PLAYER_ID, SERVER_PLAYER>> staged;
+	for (const auto id : ledger.CardMazeEntryPlayers)
+	{
+		const auto found = players.find(id);
+		if (found == players.end() || !found->second.iCurrentHp) continue;
+		const auto& source = found->second;
+		if (!Is_Judgeable(source) || source.bPatternBound || source.TriggerMove.isActive ||
+			source.bArenaEjectionActive || source.CardMaze.transferStartTick ||
+			source.eCardMazeRole != CARD_MAZE_ROLE::NONE ||
+			(collision && !collision->Is_PlayerPositionClear(trigger.fTeleportX, ground.y, trigger.fTeleportZ, source.iNetEntityId)))
+			return reject("a participant or destination is unavailable");
+		SERVER_PLAYER player = source;
+		player.Clear_CardMazeState();
+		player.Clear_KoukuInteractionState();
+		player.eKoukuAreaHudMode = KOUKU_HUD_MODE::MAZE;
+		player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+		player.fPositionX = trigger.fTeleportX; player.fPositionY = ground.y; player.fPositionZ = trigger.fTeleportZ;
+		player.hasMoveGoal = false; player.MovePath.clear(); player.iMovePathIndex = 0u;
+		player.PendingCommand.Clear(); player.Clear_SkillTarget(); player.Projectiles.clear();
+		player.eAction = PLAYER_ACTION_STATE::NONE; player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.iActionStartTick = 0u; player.fActionElapsedSeconds = 0.f;
+		player.iComboStage = 0u; player.hasBufferedComboInput = false;
+		player.fKnockbackRemainingSeconds = 0.f;
+		staged.emplace_back(id, std::move(player));
+	}
+	if (staged.empty()) return reject("no living entry participant remains");
+	for (auto& [id, player] : staged) players.at(id) = std::move(player);
+	Reveal_CardMazeEntryPlayers(ledger, players);
+	outStatus = "Card maze entry committed; strike the central telescope with Q to begin";
+	return true;
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
@@ -785,7 +882,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		if (hanging.iAttachmentRegionIndex >= carrier.CardRegions.size())
 			continue;
 		if (!Drag_HookedPlayer(hanging, carrier.CardRegions[hanging.iAttachmentRegionIndex],
-			boss, serverTick - ledger.iPatternStartTick))
+			boss, serverTick - ledger.iPatternStartTick, navigation))
 			hanging.iAttachmentReleaseTick = serverTick;
 	}
 	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.MechanicTriggers)
@@ -797,6 +894,18 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		const auto& trigger = pattern.MechanicTriggers[cue.iIndex];
 		if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER == trigger.eKind)
 			ledger.eHudMode = trigger.eHudMode;
+		else if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT == trigger.eKind)
+		{
+			Capture_CardMazeEntryRoster(ledger, players);
+			if (ledger.iCardMazeNextHiddenPlayer < ledger.CardMazeEntryPlayers.size())
+			{
+				const auto found = players.find(ledger.CardMazeEntryPlayers[ledger.iCardMazeNextHiddenPlayer++]);
+				if (found != players.end() && Is_Judgeable(found->second))
+					found->second.CardMaze.flags |= LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN;
+			}
+		}
+		else if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER == trigger.eKind)
+			(void)Enter_CardMaze(trigger, ledger, players, navigation, collision, outOutput.strStatus);
 		else
 			outOutput.MechanicTriggers.push_back(trigger);
 	}
@@ -1140,7 +1249,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					(void)Hang_PlayerOnRegion(player, *caught, boss,
 						serverTick - ledger.iPatternStartTick, state.iWindowIndex,
 						static_cast<std::uint32_t>(caught - window.CardRegions.begin()),
-						state.iEndTick, serverTick);
+						state.iEndTick, serverTick, navigation);
 			}
 			if (reachedEnd) Close_Window(boss, window, state, players);
 			break;

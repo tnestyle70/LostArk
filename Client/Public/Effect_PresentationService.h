@@ -9,6 +9,7 @@
 #include "Effect_ReconstructedExecution.h"
 #include "ValtanPatternEffectCueDocument.h"
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -20,6 +21,7 @@ NS_BEGIN(Client)
 class CCharacter;
 class CCamera_Free;
 class CEffectLoadPreparationJob;
+struct EFFECT_PRODUCT_CAMERA_PREPARATION;
 class CEffectObject;
 class CEffectScreenOverlayPresentation;
 class CValtan;
@@ -130,6 +132,9 @@ struct EFFECT_PRODUCT_LOADING_TARGET_STAGE final
 	f32_t fPlaybackDurationSeconds = 0.f;
 	std::shared_ptr<const CEffectScreenOverlayPresentation>
 		pScreenOverlayTemplate;
+	// Optional camera parsing also finishes on the preparation worker.
+	bool_t bCameraReceiptValid = false;
+	std::shared_ptr<const EFFECT_PRODUCT_CAMERA_PREPARATION> pCameraPreparation;
 };
 
 struct EFFECT_SCENE_BUDGET_PROBE final
@@ -288,6 +293,15 @@ public:
 		f32_t& fOutDurationSeconds);
 	/* Called once from the main thread.  It consumes at most one queued
 	   document and performs no work on the registration frame. */
+	// One stage/ACK implementation serves Loading and in-level class preparation.
+	static uint64_t Allocate_ProductPreparationEpoch();
+	// Main-thread poll: cancels runtime staging and yields until worker cleanup finishes.
+	static bool_t Drain_RuntimePreparationForLoading();
+	static HRESULT Run_ProductPreparationWorker(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
+		const std::atomic<bool>* pCancellation = nullptr);
 	static void Advance_ProductCuePreparation(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);

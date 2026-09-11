@@ -301,6 +301,27 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             invalid = copy.deepcopy(source)
             mutate(invalid)
             cases.append((name, invalid, False))
+        # Authored emission rows replace the seeded emitter: count follows the rows, interval/spread stay 0,
+        # every delay stays inside the lifetime, and NEXT keeps requiring a single emission.
+        emitted = copy.deepcopy(source)
+        emitted["templates"][-1]["objectMotion"].update(count=3, intervalMs=0, spreadDegrees=0, emissions=[
+            {"positionOffset": [0, 0, 0], "yawDegrees": 0, "startDelayMs": 0},
+            {"positionOffset": [4, 0, 0], "yawDegrees": 90, "startDelayMs": 200},
+            {"positionOffset": [-4, 0, 0], "yawDegrees": -90, "startDelayMs": 400}])
+        cases.append(("authored_emissions_valid", emitted, True))
+        for name, mutate in (
+            ("count_mismatch", lambda d: d["templates"][-1]["objectMotion"].update(count=2)),
+            ("interval_with_rows", lambda d: d["templates"][-1]["objectMotion"].update(intervalMs=100)),
+            ("spread_with_rows", lambda d: d["templates"][-1]["objectMotion"].update(spreadDegrees=30)),
+            ("delay_after_lifetime", lambda d: d["templates"][-1]["objectMotion"]["emissions"][-1].update(startDelayMs=1000)),
+            ("unknown_row_field", lambda d: d["templates"][-1]["objectMotion"]["emissions"][0].update(phase=1)),
+            ("missing_row_field", lambda d: d["templates"][-1]["objectMotion"]["emissions"][0].pop("yawDegrees")),
+            ("fractional_delay", lambda d: d["templates"][-1]["objectMotion"]["emissions"][1].update(startDelayMs=200.5)),
+            ("empty_rows", lambda d: d["templates"][-1]["objectMotion"].update(count=1, emissions=[])),
+        ):
+            invalid = copy.deepcopy(emitted)
+            mutate(invalid)
+            cases.append(("authored_emissions_invalid_" + name, invalid, False))
         publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
         definitions = []
         for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument"):
@@ -926,14 +947,14 @@ class AnimatedPropAuthoringContractTests(unittest.TestCase):
             body.index("m_DeployRuntime = std::move(stagedRuntime);"),
         )
 
-    def test_korean_help_is_escaped_utf8_because_map_tool_has_no_utf8_flag(self) -> None:
+    def test_korean_help_remains_valid_escaped_utf8(self) -> None:
         project = ET.parse(ROOT / "Client/Default/Client.vcxproj")
         namespace = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
         map_tool = project.find(
             ".//msb:ClCompile[@Include='..\\Private\\MapTool.cpp']", namespace
         )
         self.assertIsNotNone(map_tool)
-        self.assertEqual(0, len(list(map_tool)), "MapTool.cpp must stay on the default charset")
+        # MapTool now explicitly compiles as UTF-8; escaped help remains valid.
 
         blocks = re.findall(
             r"static const char_t\* const (ANIMATED_PROP_HELP_\w+)\s*=\s*"

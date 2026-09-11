@@ -46,6 +46,19 @@ sampler MaterialAnisotropicSampler = sampler_state
     AddressW = WRAP;
 };
 
+// Animated scenery uses the same recovered map surface evaluator as static scenery.
+Texture2D g_DetailNormalTexture;
+Texture2D g_ReflectionTexture;
+Texture2D g_OpacityTexture;
+uint g_HasOpacityTexture = 0u;
+float2 g_UVScale = 1.f;
+float2 g_UVOffset = 0.f;
+float g_Opacity = 1.f;
+float g_OpacityPower = 1.f;
+float g_TriplanarHeightScale = 0.f;
+float4 g_ColorTint = 1.f;
+float4 g_vCamPosition;
+#include "Shader_MapMaterialSurface.hlsli"
 #include "Shader_SourceCharacterMaterial.hlsli"
 
 // Optional source skeletal material shares this shader's existing skinned VS.
@@ -151,6 +164,21 @@ PS_OUT Evaluate_Material(
     VS_OUT input, bool alphaClip, float alphaClipThreshold, bool frontFace)
 {
     PS_OUT output = (PS_OUT)0;
+    if (g_SurfaceProgram == 8u)
+    {
+        const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vTexcoord, 1.f,
+            input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz);
+        const float diffuseScale = max(1.f, max(surface.diffuse.r, max(surface.diffuse.g, surface.diffuse.b)));
+        output.vDiffuse = float4(surface.diffuse.rgb / diffuseScale, surface.diffuse.a);
+        output.vNormal = float4(surface.worldNormal * .5f + .5f, 0.f);
+        output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+            input.vProjPos.w / 1000.f, g_SurfaceSpecularPower, 8.f);
+        output.vPickPos = float4(input.vWorldPos.xyz, EncodeMapSurfaceGeometricNormal(input.vNormal.xyz, false));
+        output.vMaterialSpecular = float4(surface.specular, diffuseScale);
+        output.vCharacterSurface = float4(surface.rimlightRadiance, float(g_SourceBgFlags & 1023u));
+        output.vEmissive = float4(surface.subspecularRadiance + EvaluateMapSurfaceEmissive(input.vTexcoord), 0.f);
+        return output;
+    }
     if (g_SourceCharacterProgram != 0u)
     {
         SOURCE_CHARACTER_GBUFFER source = EvaluateSourceCharacterGeometry(input.vTexcoord,

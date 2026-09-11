@@ -290,7 +290,8 @@ bool_t CNpc::Play_DefaultIdle(const f32_t fBlendSeconds)
 bool_t CNpc::Apply_NetworkState(
 	const float3_t& position,
 	const f32_t yawDegrees,
-	const std::uint32_t iServerTick)
+	const std::uint32_t iServerTick,
+	const bool_t snapToSnapshot)
 {
 	if (nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) ||
@@ -313,8 +314,15 @@ bool_t CNpc::Apply_NetworkState(
 		Apply_ImmediateTransform(position, yawDegrees);
 		return true;
 	}
-	return m_NetworkTransformInterpolator.Push(
-		position, yawDegrees, iServerTick);
+	// A new Server pattern can commit a discontinuous position and facing.
+	// Seed both the rendered root and interpolation history before its first cue.
+	if (snapToSnapshot)
+		m_NetworkTransformInterpolator.Reset();
+	if (!m_NetworkTransformInterpolator.Push(position, yawDegrees, iServerTick))
+		return false;
+	if (snapToSnapshot)
+		Apply_ImmediateTransform(position, yawDegrees);
+	return true;
 }
 
 void CNpc::Trigger_HitFlash()

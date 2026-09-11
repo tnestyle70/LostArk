@@ -1,4 +1,4 @@
-"""Restore F lightning color and duplicate the requested AltV lightning rows.
+"""Restore V lightning and connect F's native mesh lightning to AltV.
 
 The four extra waves are project-authored user tuning, not recovered V counts.
 Existing transforms/times, F, and the V startup clip are preserved. The two old
@@ -6,6 +6,7 @@ fixed-color overrides are restored only while equal to this script's original
 values. User-edited distributions and already duplicated rows are never replaced.
 """
 from pathlib import Path
+import argparse
 import copy
 import hashlib
 import json
@@ -20,6 +21,7 @@ ALT_LIGHTNING_IDS = (
     "981227451bbcb3791340", "522d5a0e988cf10a2c8a", "a7e449ba34d000861ce8",
     "8bce29d1c389261ef8bd", "ce6fd53e38bad2acbe3b", "da9e99a88cbcaee64d0e",
 )
+ALT_F_PREFIX = "authored.warlord.altv.f-golden-lightning."
 
 
 def read(path):
@@ -124,7 +126,88 @@ def duplicate_altv_lightning(receipt):
     }
 
 
+def connect_altv_f_gold(original, receipt):
+    """Add independently seeded F bursts to both product AltV clip documents."""
+    gold_color = [5.0, 3.6, 0.4]
+    documents = []
+    for clip, starts in (
+            (1, (0.6473, 0.8472, 1.0472, 1.247, 1.447, 1.647)),
+            (2, (0.172, 0.526, 0.876))):
+        path = AUTHORED / f"effect.warlord.skill.17250.clip{clip}.full.restore.effect.json"
+        before_bytes = path.read_bytes()
+        document = read(path)
+        before = copy.deepcopy(document)
+        existing_ids = {e["id"] for e in document["elements"]}
+        inserted = []
+        for wave, start in enumerate(starts, 1):
+            for ring, radius in enumerate(((200.0, 220.0), (360.0, 400.0)), 1):
+                element_id = f"{ALT_F_PREFIX}clip{clip}.{wave}.{ring}"
+                if element_id in existing_ids:
+                    continue
+                element = copy.deepcopy(original)
+                element.update(
+                    id=element_id,
+                    displayName=f"Alt V Golden F Lightning {clip}-{wave}-{ring}",
+                    groupId=ALT_F_PREFIX.rstrip("."),
+                    sourceNode="authored-copy:" + original["id"])
+                element["detail"]["timing"]["startDelaySeconds"] = start
+                element["detail"]["particle"]["randomSeed"] = \
+                    1725000 + clip * 100 + wave * 2 + ring
+                edited = set()
+                for module in element["sourceRecipe"]["modules"]:
+                    for index, distribution in enumerate(module["distributions"]):
+                        name = distribution["propertyPath"]
+                        if name == "startcolor":
+                            # Preserve F's HDR peak and its grayscale lifetime
+                            # modulation; only the requested hue is authored.
+                            module["distributions"][index] = constant(distribution, gold_color)
+                            edited.add(name)
+                        elif name == "startradius":
+                            distribution["lookupTable"] = list(radius) * 3
+                            edited.add(name)
+                assert edited == {"startcolor", "startradius"}
+                element["sourcePresentation"].update(
+                    enabled=False, profileId="", status="unresolved", sourceObjectPath="",
+                    sourceActionCueId="", sourceEventId="", sourceOccurrenceIndex=0,
+                    sourceTimeSeconds=0.0, parameters=[])
+                # F's root snapshot, source yaw, mesh, native material and
+                # Dynamic/WPO contract stay intact; no bone import scale is added.
+                assert element["actionCueAttachment"] == original["actionCueAttachment"]
+                assert element["material"] == original["material"]
+                assert element["resources"] == original["resources"]
+                document["elements"].append(element)
+                inserted.append(element_id)
+        assert document["elements"][:len(before["elements"])] == before["elements"]
+        assert {k: v for k, v in document.items() if k != "elements"} == \
+            {k: v for k, v in before.items() if k != "elements"}
+        if inserted:
+            install(path, before_bytes, document)
+        documents.append({
+            "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+            "preservedElementCount": len(before["elements"]),
+            "finalElementCount": len(document["elements"]),
+            "waveCount": len(starts) * 2, "burstParticles": len(starts) * 2 * 4,
+            "insertedIds": inserted,
+            "beforeSha256": hashlib.sha256(before_bytes).hexdigest(),
+            "afterSha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "allPreviousElementFieldsPreserved": True})
+    receipt["altVFNativeGold"] = {
+        "sourceElementId": original["id"],
+        "runtimeShaderProfileId": "effect.ue3.warlord-446-native.v1",
+        "startColor": gold_color, "sourceBurstPerWave": 4,
+        "totalWaveCount": 18, "totalBurstParticles": 72, "documents": documents}
+
+
 def main():
+    global OUT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--altv-f-gold-only", action="store_true",
+                        help="Only add F-native golden lightning to the two AltV product clips")
+    parser.add_argument("--output-root", type=Path,
+                        help="Directory for the change receipt and original document backups")
+    args = parser.parse_args()
+    if args.output_root:
+        OUT = args.output_root.resolve()
     source_path = AUTHORED / "effect.warlord.skill.17140.full.restore.effect.json"
     source_bytes = source_path.read_bytes()
     source = read(source_path)
@@ -132,6 +215,18 @@ def main():
                     "authored.source-particle.full-warlord-f.7ba81a7899d33b48c48c")
     assert original["material"]["sourceProfile"]["runtimeShaderProfileId"] == \
         "effect.ue3.warlord-446-native.v1"
+    if args.altv_f_gold_only:
+        receipt = {"classification": "USER_REQUESTED_PROJECT_TUNING",
+                   "source": str(source_path.relative_to(ROOT)).replace("\\", "/"),
+                   "sourceSha256": hashlib.sha256(source_bytes).hexdigest(),
+                   "unchangedF": True}
+        connect_altv_f_gold(original, receipt)
+        assert source_path.read_bytes() == source_bytes
+        OUT.mkdir(parents=True, exist_ok=True)
+        (OUT / "altv-f-native-gold.json").write_text(
+            json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(receipt, ensure_ascii=True))
+        return
 
     waves = []
     for ordinal, (start, radius) in enumerate(
@@ -198,6 +293,7 @@ def main():
             "restoredFColor": repaired,
             "allOtherPreviousElementFieldsPreserved": True})
     duplicate_altv_lightning(receipt)
+    connect_altv_f_gold(original, receipt)
     assert source_path.read_bytes() == source_bytes
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "v-altv-lightning-resume.json").write_text(

@@ -175,6 +175,7 @@ def acquire(evidence):
                 modules = [index.objects[k] for p,k in module_refs]
                 kind, _, shape = imported.classify({'sourceSystemId':system}, modules)
                 if any('typedataanimtrail' in m.class_name for m in modules): kind, shape = 'trail', 'animationTrail'
+                elif any('typedataribbon' in m.class_name for m in modules): kind, shape = 'trail', 'ribbon'
                 required = next(m for m in modules if m.class_name == 'particlemodulerequired')
                 material = next((p for prop,p in required.reference_paths if prop == 'material'), '')
                 mesh = next((p for m in modules for prop,p in m.reference_paths if prop == 'mesh'), '')
@@ -330,8 +331,9 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
     docs={sid:dict(schema='lostark.effect-authoring',version=15 if sid==4219877 else 13,effectAssetId=f'effect.kouku.gate1.{sid}.full.restore',
         displayName='쿠크 1관문 '+label+' 전체 복원',particleSystem=dict(uniformScaleMultiplier=1,yawOffsetDegrees=0,directionYawDegrees=0,initialSpeedMultiplier=1),modelCues=[],elements=[])
         for sid,(_,label) in SELECTED.items()}
-    history=trail_history(evidence)
-    docs[4219877]['runtimeExtensions']=dict(formatVersion=1,bakedEdgeHistories=[history])
+    if 4219877 in docs:
+        history=trail_history(evidence)
+        docs[4219877]['runtimeExtensions']=dict(formatVersion=1,bakedEdgeHistories=[history])
     changes=[]
     for ordinal,o in enumerate(occurrences):
         n=by_notify[o['sourceNotify']];cue=n['cue']
@@ -365,6 +367,11 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
         life=[d for m in recipe['modules'] if m['className']=='particlemodulelifetime' for d in m['distributions'] if d['propertyPath']=='lifetime']
         if life:detail['particle']['lifeTimeSeconds']=list(distribution_bounds(life[0]))
         required=next(m for m in modules if m.class_name=='particlemodulerequired')
+        # acquire() has already merged the class default and archetype. An absent
+        # bUseLocalSpace is Cascade's false default, not the legacy importer's
+        # provisional true. The socket owns births; world-space particles retain
+        # their birth transform when the head/weapon subsequently moves.
+        detail['particle']['localSpace']=bool(imported.prop(required.properties,'buselocalspace',False))
         for field,prop in [('emitterDurationSeconds','emitterduration'),('emitterDelaySeconds','emitterdelay'),('emitterLoopCount','emitterloops')]:
             if prop in required.properties:recipe[field]=imported.prop(required.properties,prop)
         active=o['sourceDurationSeconds'] or recipe['emitterDurationSeconds']*max(1,recipe['emitterLoopCount'])+recipe['emitterDelaySeconds']

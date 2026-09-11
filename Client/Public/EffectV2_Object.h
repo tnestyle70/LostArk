@@ -188,10 +188,17 @@ public:
 
 	struct SCREEN_POST_PARAMS final
 	{
+		struct INTENSITY_KEY final
+		{
+			f32_t fTimeSeconds = 0.f;
+			f32_t fIntensity = 0.f;
+		};
 		SCREEN_POST_PROFILE eProfile = SCREEN_POST_PROFILE::ZOOM_BLUR;
 		f32_t fIntensityStart = 2.f;
 		f32_t fIntensityEnd = 0.f;
 		bool_t bIntensityLerp = true;
+		std::vector<INTENSITY_KEY> IntensityKeys;
+		bool_t bIntensitySmoothstep = false;
 		f32_t fSecondaryIntensity = 0.f;
 		f32_t fFrequency = 1.f;
 		float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
@@ -204,6 +211,25 @@ public:
 		f32_t fOverlayExitStart = 0.75f;
 		f32_t fOverlayRotationDegrees = 0.f;
 		bool_t bDisplaySpace = false; // Composite after scene tone mapping.
+
+		f32_t Evaluate_Intensity(const f32_t fTimeSeconds, const f32_t fLifeRatio) const
+		{
+			if (IntensityKeys.empty())
+				return (std::max)(0.f, bIntensityLerp ?
+					fIntensityStart + (fIntensityEnd - fIntensityStart) * fLifeRatio : fIntensityStart);
+			if (fTimeSeconds <= IntensityKeys.front().fTimeSeconds)
+				return IntensityKeys.front().fIntensity;
+			for (size_t i = 1u; i < IntensityKeys.size(); ++i)
+			{
+				const INTENSITY_KEY& To = IntensityKeys[i];
+				if (fTimeSeconds > To.fTimeSeconds) continue;
+				const INTENSITY_KEY& From = IntensityKeys[i - 1u];
+				f32_t fRatio = (fTimeSeconds - From.fTimeSeconds) / (To.fTimeSeconds - From.fTimeSeconds);
+				if (bIntensitySmoothstep) fRatio = fRatio * fRatio * (3.f - 2.f * fRatio);
+				return From.fIntensity + (To.fIntensity - From.fIntensity) * fRatio;
+			}
+			return IntensityKeys.back().fIntensity;
+		}
 
 		float2_t Evaluate_OverlayPosition(const f32_t fLifeRatio) const
 		{

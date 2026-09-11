@@ -5,6 +5,7 @@
 #include "BinaryAsset/ModelAssetData.h"
 #include "Shader.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 
 #include <algorithm>
 #include <array>
@@ -287,20 +288,47 @@ namespace
         const std::wstring key = std::to_wstring(reinterpret_cast<uintptr_t>(device.Get())) + L":" +
             normalized + L":" + std::to_wstring(srgb) + L":" + std::to_wstring(forceLinear) + L":" +
             std::to_wstring(size) + L":" + std::to_wstring(modified.time_since_epoch().count());
-        static std::mutex mutex;
-        static std::unordered_map<std::wstring, std::weak_ptr<ComPtr<ID3D11ShaderResourceView>>> cache;
+        struct TEXTURE_LOAD_ENTRY final
+        {
+            std::mutex loadMutex;
+            std::weak_ptr<ComPtr<ID3D11ShaderResourceView>> texture;
+        };
+        static std::mutex cacheMutex;
+        static std::unordered_map<std::wstring, std::shared_ptr<TEXTURE_LOAD_ENTRY>> cache;
         static size_t insertions = 0u;
-        std::lock_guard<std::mutex> lock(mutex);
-        const auto found = cache.find(key);
-        auto shared = found == cache.end() ? nullptr : found->second.lock();
+        std::shared_ptr<TEXTURE_LOAD_ENTRY> entry;
+        {
+            Engine::CProfilerScope lookupScope(CGameInstance::Get().Get_Profiler(), "Texture.Cache.Lookup");
+            std::lock_guard<std::mutex> lock(cacheMutex);
+            const auto found = cache.find(key);
+            if (found != cache.end()) entry = found->second;
+            else
+            {
+                // Only idle entries can be inspected or removed under the map
+                // lock. An active loader owns an additional strong reference.
+                if ((++insertions % 256u) == 0u)
+                    std::erase_if(cache, [](const auto& pair) {
+                        if (pair.second.use_count() != 1) return false;
+                        std::unique_lock idleLock(pair.second->loadMutex, std::try_to_lock);
+                        return idleLock.owns_lock() && pair.second->texture.expired();
+                    });
+                entry = std::make_shared<TEXTURE_LOAD_ENTRY>();
+                cache.emplace(key, entry);
+            }
+        }
+        std::unique_lock<std::mutex> loadLock;
+        {
+            Engine::CProfilerScope waitScope(CGameInstance::Get().Get_Profiler(), "Texture.Cache.SameKeyWait");
+            loadLock = std::unique_lock<std::mutex>(entry->loadMutex);
+        }
+        auto shared = entry->texture.lock();
         if (!shared)
         {
+            Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Texture.Load.FileAndUpload");
             shared = std::make_shared<ComPtr<ID3D11ShaderResourceView>>();
             const HRESULT result = LoadTexture(device, path, srgb, *shared, forceLinear);
             if (FAILED(result)) return result;
-            if ((++insertions % 256u) == 0u)
-                std::erase_if(cache, [](const auto& pair) { return pair.second.expired(); });
-            cache[key] = shared;
+            entry->texture = shared;
         }
         view = *shared;
         owners.push_back(std::move(shared));

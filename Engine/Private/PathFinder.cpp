@@ -1,4 +1,6 @@
 #include "PathFinder.h"
+#include "Profiler.h"
+#include "GameInstance.h"
 
 #include <algorithm>
 #include <cmath>
@@ -55,6 +57,7 @@ PATH_RESULT CPathFinder::Find_Path(
 	const CNavGrid& NavGrid,
 	const PATH_QUERY& Query)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.AStar");
 	PATH_RESULT Result{};
 
 	if (false == Is_ValidGrid(NavGrid))

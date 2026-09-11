@@ -60,6 +60,15 @@ struct WORLD_SEQUENCE_MATERIAL_PROFILE
     bool operator==(const WORLD_SEQUENCE_MATERIAL_PROFILE&) const = default;
 };
 
+struct WORLD_SEQUENCE_MAP_MATERIAL_BINDING
+{
+    std::string materialName;
+    std::string sourceAssetId;
+    std::string sourceMaterialName;
+    std::string diffuseTextureAssetId;
+    bool operator==(const WORLD_SEQUENCE_MAP_MATERIAL_BINDING&) const = default;
+};
+
 struct WORLD_SEQUENCE_OBJECT_RESOURCE
 {
 	std::string objectId;
@@ -73,6 +82,10 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string diffuseTextureAssetId;
 	// Immutable source material input shared by every Motion of this resource.
 	std::optional<WORLD_SEQUENCE_MATERIAL_PROFILE> materialProfile;
+    // Baked cinematic meshes retain an explicit original actor material owner.
+    std::string materialSourceModelAssetId;
+    // Reuse admitted map surface inputs, without a static placement's baked light.
+    std::vector<WORLD_SEQUENCE_MAP_MATERIAL_BINDING> mapMaterialBindings;
 	f32_t modelPreScale = 0.01f;
 	bool_t animated = false;
 	float3_t scale = {1.f, 1.f, 1.f};
@@ -80,6 +93,17 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string sequenceInstanceId;
 	// Empty means no initial Motion has been chosen; never infer vector order.
 	std::string defaultMotionInstanceId;
+};
+
+/* One authored emission of an Object motion. Offset and yaw sit in the motion's
+   local frame before the WORLD placement, so every row replays the same keys,
+   physics and revolution from its own lane, heading and delay instead of a
+   copied motion. */
+struct WORLD_SEQUENCE_OBJECT_EMISSION
+{
+	float3_t positionOffset = {};
+	f32_t yawDegrees = 0.f;
+	uint32_t startDelayMs = 0u;
 };
 
 struct WORLD_SEQUENCE_OBJECT_MOTION
@@ -95,6 +119,23 @@ struct WORLD_SEQUENCE_OBJECT_MOTION
 	uint32_t intervalMs = 0u;
 	f32_t spreadDegrees = 0.f;
 	uint32_t seed = 1u;
+	/* Empty keeps the seeded count/interval/spread emitter. Authored rows own
+	   the count (count == emissions.size()) and force interval/spread to 0. */
+	std::vector<WORLD_SEQUENCE_OBJECT_EMISSION> emissions;
+	uint32_t EmissionCount() const noexcept
+	{ return emissions.empty() ? count : static_cast<uint32_t>(emissions.size()); }
+	uint32_t EmissionDelayMs(const uint32_t emitter) const noexcept
+	{
+		if (emissions.empty()) return emitter * intervalMs;
+		return emissions[(std::min)(static_cast<size_t>(emitter), emissions.size() - 1u)].startDelayMs;
+	}
+	uint32_t LastEmissionDelayMs() const noexcept
+	{
+		if (emissions.empty()) return (count - 1u) * intervalMs;
+		uint32_t last = 0u;
+		for (const auto& emission : emissions) last = (std::max)(last, emission.startDelayMs);
+		return last;
+	}
 };
 
 enum class WORLD_SEQUENCE_INTERPOLATION
@@ -163,13 +204,13 @@ struct WORLD_SEQUENCE_TEMPLATE
 	uint32_t EffectStartMs(const WORLD_SEQUENCE_EFFECT_TRACK& effect) const noexcept
 	{ return effect.timing == "MOTION_END" ? durationMs : effect.startMs; }
 	uint32_t ObjectSpanMs() const noexcept
-	{ return durationMs + (effectTracks.empty() ? 0u : (objectMotion.count - 1u) * objectMotion.intervalMs); }
+	{ return durationMs + (effectTracks.empty() ? 0u : objectMotion.LastEmissionDelayMs()); }
 	uint32_t PresentationSpanMs() const noexcept
 	{
 		uint32_t span = durationMs;
 		for (const auto& effect : effectTracks)
 			span = (std::max)(span, EffectStartMs(effect) + effect.durationMs);
-		return span + (effectTracks.empty() ? 0u : (objectMotion.count - 1u) * objectMotion.intervalMs);
+		return span + (effectTracks.empty() ? 0u : objectMotion.LastEmissionDelayMs());
 	}
 };
 

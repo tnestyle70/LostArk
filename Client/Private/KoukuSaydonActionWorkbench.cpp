@@ -3,9 +3,13 @@
 #include "KoukuSaydonActionWorkbench.h"
 #include "CompositionTimeline.h"
 #include "Level_KakulSaydonArena.h"
+#include "CameraTool.h"
+#include "ValtanCinematicCameraController.h"
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 #include "AnimationTargetService.h"
+#include "Character.h"
+#include "Transform.h"
 #include "Model.h"
 #include "Effect_Catalog.h"
 #include "Effect_AuthoringDocument.h"
@@ -42,7 +46,8 @@ namespace
 	std::uint32_t Camera_DefaultDuration(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource)
 	{
 		if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
-			if (const auto* shot = Find_AuthoringCamera(resource.strAssetId)) return shot->iBlendInMs + shot->iDefaultHoldMs;
+			if (const auto* shot = Find_AuthoringCamera(resource.strAssetId)) return shot->hasCameraTrack ?
+				shot->CameraTrack.iDurationMs : shot->iBlendInMs + shot->iDefaultHoldMs;
 		return resource.iDurationMs;
 	}
 
@@ -911,6 +916,7 @@ Client::CKoukuSaydonActionWorkbench::~CKoukuSaydonActionWorkbench()
 
 bool_t Client::CKoukuSaydonActionWorkbench::Reload(std::string& outStatus)
 {
+	m_bLoadAttempted = true;
 	if (Is_Dirty())
 	{
 		outStatus = "KoukuSaydon composition Reload requires an explicit draft discard.";
@@ -3001,6 +3007,8 @@ void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 void Client::CKoukuSaydonActionWorkbench::Render_Toolbar()
 {
 	const bool_t publishing = Is_PublishRunning();
+	if (ImGui::Button("Composition Camera")) m_bCameraWindowOpen = true;
+	ImGui::SameLine();
 	if (!m_bSharedWorkspaceActive)
 	{
 		ImGui::Checkbox("Resources", &m_bResourcesOpen);
@@ -3186,7 +3194,16 @@ bool_t Client::CKoukuSaydonActionWorkbench::Link_BundlePattern(const std::string
 
 void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 {
-	ImGui::SeparatorText(m_bSequenceWorkspace ? "Sequences by Gate" : "Patterns by Gate");
+	ImGui::SeparatorText(m_bSequenceWorkspace ? "Sequences by Gate" : "Boss Patterns");
+	ImGui::BeginDisabled(Is_PublishRunning() || Is_Dirty());
+	if (ImGui::Button("Reload Patterns")) { std::string status; (void)Reload(status); }
+	ImGui::EndDisabled();
+	if (!m_bHasDraft)
+	{
+		ImGui::TextWrapped("Patterns could not load: %s", m_strStatus.c_str());
+		return;
+	}
+	ImGui::SameLine();
 	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh() || !Is_Dirty());
 	if (ImGui::Button("Save##PatternsByGate"))
 	{
@@ -3200,13 +3217,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 		ImGui::SetTooltip("%s", m_bSequenceWorkspace ?
 			"Save stores all sequences in this independent workspace." :
 			"Save stores changes across all gates, parents, bundles and patterns. Publish All Patterns synchronizes F1 separately.");
-	if (ImGui::BeginCombo("Gate##Composition", Gate_Label(m_strSelectedGateId)))
+	if (m_bSequenceWorkspace && ImGui::BeginCombo("Gate##Composition", Gate_Label(m_strSelectedGateId)))
 	{
 		for (const auto* gate : {"GATE1", "GATE2", "GATE3", "BINGO"})
 			if (ImGui::Selectable(Gate_Label(gate), m_strSelectedGateId == gate)) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, gate);
 		ImGui::EndCombo();
 	}
-	if (ImGui::BeginCombo("Model View", m_strModelViewProfile.empty() ? "All" : Actor_Label(m_strModelViewProfile)))
+	if (m_bSequenceWorkspace && ImGui::BeginCombo("Model View", m_strModelViewProfile.empty() ? "All" : Actor_Label(m_strModelViewProfile)))
 	{
 		std::string status;
 		if (ImGui::Selectable("All", m_strModelViewProfile.empty())) (void)Select_ActorProfile({}, status);
@@ -3215,17 +3232,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 				ImGui::Selectable(Actor_Label(actor), m_strModelViewProfile == actor)) (void)Select_ActorProfile(actor, status);
 		ImGui::EndCombo();
 	}
-	const auto matches = [&](const auto& pattern) { return pattern.strGateId == m_strSelectedGateId && (m_strModelViewProfile.empty() || pattern.strActorProfileId == m_strModelViewProfile); };
-	const auto bundleMatches = [&](const auto& bundle) { return m_strModelViewProfile.empty() || std::any_of(bundle.Members.begin(), bundle.Members.end(), [&](const auto& member) { const auto* p = Find_Pattern(m_Draft, member.strPatternId); return p && matches(*p); }); };
 	if (ImGui::BeginChild("##KoukuPatternList", ImVec2(0.f, 480.f), ImGuiChildFlags_Borders))
 	{
-		if (ImGui::Selectable(Gate_Label(m_strSelectedGateId), m_ePatternSelection == KOUKU_PATTERN_SELECTION::GATE)) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, m_strSelectedGateId);
+		for (const auto* visibleGate : { "GATE1", "GATE2", "GATE3", "BINGO" })
+		{
+		if (m_bSequenceWorkspace && m_strSelectedGateId != visibleGate) continue;
+		const auto matches = [&](const auto& pattern) { return pattern.strGateId == visibleGate; };
+		const auto bundleMatches = [&](const auto& bundle) { return bundle.strGateId == visibleGate; };
+		const bool gateOpen = ImGui::TreeNodeEx((std::string(Gate_Label(visibleGate)) + "##" + visibleGate).c_str(),
+			ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow |
+			(m_ePatternSelection == KOUKU_PATTERN_SELECTION::GATE && m_strSelectedGateId == visibleGate ? ImGuiTreeNodeFlags_Selected : 0));
+		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, visibleGate);
+		if (!gateOpen) continue;
 		for (const auto& folder : m_Draft.Folders)
 		{
-			if (folder.strGateId != m_strSelectedGateId) continue;
-			if (!m_strModelViewProfile.empty() &&
-				!std::any_of(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& b) { return b.strFolderId == folder.strFolderId && bundleMatches(b); }) &&
-				!std::any_of(m_Draft.Patterns.begin(), m_Draft.Patterns.end(), [&](const auto& p) { return p.strFolderId == folder.strFolderId && matches(p); })) continue;
+			if (folder.strGateId != visibleGate) continue;
 			const auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen |
 				(m_ePatternSelection == KOUKU_PATTERN_SELECTION::FOLDER && m_strSelectedFolderId == folder.strFolderId ? ImGuiTreeNodeFlags_Selected : 0);
 			const bool open = ImGui::TreeNodeEx((folder.strDisplayName + " [Parent]##" + folder.strFolderId).c_str(), flags);
@@ -3269,10 +3290,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 		{
 			const auto* parent = Find_Folder(m_Draft, pattern.strFolderId);
 			if (!matches(pattern) || (parent && parent->strGateId == pattern.strGateId)) continue;
-			const bool linked = std::any_of(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& b) { return std::any_of(b.Members.begin(), b.Members.end(), [&](const auto& m) { return m.strPatternId == pattern.strPatternId; }); });
+			const bool linked = std::any_of(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& b) {
+				const auto* folder = Find_Folder(m_Draft, b.strFolderId);
+				return b.strGateId == visibleGate && folder && folder->strGateId == visibleGate &&
+					std::any_of(b.Members.begin(), b.Members.end(), [&](const auto& m) { return m.strPatternId == pattern.strPatternId; }); });
 			if (linked) continue;
 			if (ImGui::Selectable((pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId) + "]##" + pattern.strPatternId).c_str(), m_strSelectedPatternId == pattern.strPatternId))
 			{ m_strBundleReturnId.clear(); m_strCreateBundleId.clear(); std::string status; (void)Select_PatternById(pattern.strPatternId, status); }
+		}
+		ImGui::TreePop();
 		}
 	}
 	ImGui::EndChild();
@@ -4057,20 +4083,25 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PatternPreview(
 	return true;
 }
 
-bool_t Client::CKoukuSaydonActionWorkbench::Request_CompleteSequencePlay(std::string& outStatus)
+bool_t Client::CKoukuSaydonActionWorkbench::Request_CompleteSequencePlay(std::string& outStatus, const std::string_view gateId)
 {
 	if (!m_bSequenceWorkspace || !m_bHasDraft)
 	{ outStatus = m_strStatus = "Complete sequence playback requires the Sequence workspace."; return false; }
 	std::vector<std::string> patternIds;
+	const std::string gate = gateId.empty() ? m_strSelectedGateId : std::string(gateId);
+	if (!CKoukuSaydonCompositionDocument::Is_KnownGate(gate))
+	{ outStatus = m_strStatus = "Unknown Gate for Complete Play."; return false; }
 	for (const auto& pattern : m_Draft.Patterns)
 	{
-		if (pattern.strGateId != m_strSelectedGateId) continue;
+		if (pattern.strGateId != gate) continue;
 		if (!pattern.strLoadError.empty() || Pattern_DurationMs(pattern) == 0u)
 		{ outStatus = m_strStatus = "Complete Play cannot queue invalid sequence: " + pattern.strPatternId; return false; }
 		patternIds.push_back(pattern.strPatternId);
 	}
 	if (patternIds.empty())
 	{ outStatus = m_strStatus = "The selected Gate has no sequences to play."; return false; }
+	if (m_CompleteSequenceAdmission && !m_CompleteSequenceAdmission(gate, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	return Queue_CompleteSequenceItem(std::move(patternIds), 0u, outStatus);
 }
 
@@ -4104,13 +4135,15 @@ void Client::CKoukuSaydonActionWorkbench::Notify_SequencePreviewAdmission(
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Advance_CompleteSequencePlay(
-	const std::string_view completedPatternId)
+	const std::string_view completedPatternId, std::string* completedGate)
 {
+	if (completedGate) completedGate->clear();
 	if (!m_bCompleteSequenceAdmitted || !Is_CompleteSequencePlaying() ||
 		m_CompleteSequencePatternIds[m_iCompleteSequenceIndex] != completedPatternId) return false;
 	const auto next = m_iCompleteSequenceIndex + 1u;
 	if (next == m_CompleteSequencePatternIds.size())
 	{
+		if (completedGate) *completedGate = m_strSelectedGateId;
 		Cancel_CompleteSequencePlay();
 		m_strStatus = "Complete Play finished all sequences in the selected Gate.";
 		return true;
@@ -4136,7 +4169,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_CompleteSequenceTransport()
 	{ std::string status; (void)Request_CompleteSequencePlay(status); }
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Play every sequence in the selected Gate in source order, starting at 0 ms.");
+		ImGui::SetTooltip("Play this Gate's sequences from 0 ms, return to the player camera, then start its Saved Pattern Flow.");
 	if (!Is_CompleteSequencePlaying()) return;
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!m_PreviewState.bPlaying && !m_bPatternPreviewRequestPending);
@@ -7496,7 +7529,7 @@ void Client::CKoukuSaydonActionWorkbench::Queue_PresentationPreview(
 		if (occurrence->iDurationMs == 0u || occurrence->iDurationMs > MAX_EDITOR_TIME_MS ||
 			static_cast<std::uint64_t>(occurrence->iFadeInMs) + occurrence->iFadeOutMs > occurrence->iDurationMs ||
 			!std::isfinite(occurrence->fDissolveStart) || !std::isfinite(occurrence->fDissolveEnd) ||
-			occurrence->fDissolveStart < 0.0 || occurrence->fDissolveStart >= occurrence->fDissolveEnd ||
+			occurrence->fDissolveStart < 0.0 || occurrence->fDissolveStart > occurrence->fDissolveEnd ||
 			occurrence->fDissolveEnd > 1.0 || !finite(occurrence->PositionOffset, -100000.0, 100000.0) ||
 			!finite(occurrence->RotationDegrees, -36000.0, 36000.0) || !finite(occurrence->Scale, 0.001, 10000.0) ||
 			!std::isfinite(occurrence->fVolume) || occurrence->fVolume < 0.0 || occurrence->fVolume > 1.0)
@@ -7525,6 +7558,8 @@ void Client::CKoukuSaydonActionWorkbench::Queue_PresentationPreview(
 
 void Client::CKoukuSaydonActionWorkbench::Render_CameraAuthoring(const std::string_view shotId)
 {
+	if (ImGui::Button("Open Composition Camera"))
+	{ m_strCameraWindowShotId = std::string(shotId); m_strCameraKeyId.clear(); m_bCameraWindowOpen = true; }
 	auto* level = CLevel_KakulSaydonArena::Get_Active();
 	const auto* selected = Find_AuthoringCamera(shotId);
 	if (!level || !selected) { ImGui::TextDisabled("Enter KoukuSaydon to edit this Area Camera shot."); return; }
@@ -7546,7 +7581,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraAuthoring(const std::stri
 	if (ImGui::Combo("Shot anchor", &anchor, "WORLD\0PLAYER\0"))
 	{
 		shot.followsPlayer = anchor == 1;
-		if (shot.followsPlayer) { shot.vFollowEyeOffset = shot.vEye; shot.vFollowLookAtOffset = shot.vLookAt; }
+		if (shot.followsPlayer) { shot.hasCameraTrack = false; shot.vFollowEyeOffset = shot.vEye; shot.vFollowLookAtOffset = shot.vLookAt; }
 		changed = true;
 	}
 	if (changed) (void)level->Update_CameraShot(shot, m_strStatus);
@@ -7563,6 +7598,203 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraAuthoring(const std::stri
 	ImGui::TextWrapped("Set Camera Pos captures eye, lookAt and FOV together. PLAYER captures offsets from the local player. Save writes the Area source immediately; Preview needs no publish.");
 	ImGui::TextWrapped("Append uses blend-in + default hold. The box end begins the separate return tail. Use F6 Follow before Play to keep gameplay movement and return to the moving player.");
 	ImGui::PopID();
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
+{
+	if (!m_bCameraWindowOpen) return;
+	ImGui::SetNextWindowSize({ 660.f, 740.f }, ImGuiCond_FirstUseEver);
+	const char* title = m_bSequenceWorkspace ? "Composition Camera###SequenceCompositionCamera" :
+		"Composition Camera###ActionCompositionCamera";
+	if (!ImGui::Begin(title, &m_bCameraWindowOpen)) { ImGui::End(); return; }
+	auto* level = CLevel_KakulSaydonArena::Get_Active();
+	if (!level || !level->Ensure_CameraShotAuthoring(m_strStatus))
+	{ ImGui::TextWrapped("Enter KoukuSaydon to author its camera actions. %s", m_strStatus.c_str()); ImGui::End(); return; }
+	if (ImGui::Button("Create Camera Action")) ImGui::OpenPopup("Create Camera Action##Camera");
+	if (ImGui::BeginPopupModal("Create Camera Action##Camera", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::InputText("Name", m_NewCameraActionName, std::size(m_NewCameraActionName));
+		ImGui::TextWrapped("The current view becomes the first position. Capture later positions at their arrival times.");
+		ImGui::BeginDisabled(!m_NewCameraActionName[0]);
+		if (ImGui::Button("Create"))
+		{
+			std::string id;
+			if (level->Create_CameraShot(m_NewCameraActionName, id, m_strStatus))
+			{
+				m_strCameraWindowShotId = id; m_strCameraKeyId.clear(); m_iCameraCaptureMs = 1000;
+				m_strSelectedPresentationSourceId = std::to_string(static_cast<int>(KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)) + "::" + id;
+				m_NewCameraActionName[0] = '\0'; m_bPresentationResourceRefreshRequested = true;
+				ImGui::CloseCurrentPopup();
+			}
+		}
+		ImGui::EndDisabled(); ImGui::SameLine();
+		if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+		ImGui::TextWrapped("%s", m_strStatus.c_str());
+		ImGui::EndPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Save Camera"))
+		if (level->Save_CameraShots(m_strStatus)) m_bPresentationResourceRefreshRequested = true;
+	const auto& shots = level->Get_CameraShots();
+	const auto* selected = Find_AuthoringCamera(m_strCameraWindowShotId);
+	if (ImGui::BeginCombo("Camera Action", selected ? selected->strDisplayName.c_str() : "Choose camera action"))
+	{
+		for (const auto& item : shots)
+			if (ImGui::Selectable((item.strDisplayName + "###" + item.strShotId).c_str(), item.strShotId == m_strCameraWindowShotId))
+			{ m_strCameraWindowShotId = item.strShotId; m_strCameraKeyId.clear(); }
+		ImGui::EndCombo();
+	}
+	selected = Find_AuthoringCamera(m_strCameraWindowShotId);
+	if (!selected) { ImGui::TextWrapped("%s", m_strStatus.c_str()); ImGui::End(); return; }
+	auto shot = *selected;
+	auto cue = CLevel_KakulSaydonArena::CameraShot_ToCue(shot);
+	ImGui::PushID(shot.strShotId.c_str());
+	ImGui::TextDisabled("%s | %zu positions | %u ms", shot.strShotId.c_str(), cue.Keyframes.size(), cue.iDurationMs);
+	if (shot.followsPlayer)
+	{
+		ImGui::TextWrapped("This action follows PLAYER. Capture a world path explicitly to replace that follow framing.");
+		if (ImGui::Button("Convert to world camera path"))
+		{
+			VALTAN_CINEMATIC_CAMERA_POSE pose;
+			if (CCameraTool::Capture_ViewPose(pose))
+			{
+				shot.followsPlayer = false; shot.hasCameraTrack = true;
+				cue.Keyframes = {{ shot.strShotId + ".p1", 0u, pose.vEye, pose.vLookAt, pose.fFovYDegrees, pose.vUp, true }};
+				shot.CameraTrack = cue; shot.vEye = pose.vEye; shot.vLookAt = pose.vLookAt;
+				shot.fFovYDegrees = pose.fFovYDegrees;
+				(void)level->Update_CameraShot(shot, m_strStatus);
+			}
+			else m_strStatus = "Current camera pose is unavailable; the action was preserved.";
+		}
+		ImGui::TextWrapped("%s", m_strStatus.c_str()); ImGui::PopID(); ImGui::End(); return;
+	}
+	bool changed = false;
+	char name[129]{}; (void)Copy_Text(name, std::size(name), shot.strDisplayName);
+	if (ImGui::InputText("Action name", name, std::size(name))) { shot.strDisplayName = name; changed = true; }
+	int entry = static_cast<int>(shot.iBlendInMs), exit = static_cast<int>(shot.iBlendOutMs);
+	if (ImGui::InputInt("Entry blend ms", &entry)) { shot.iBlendInMs = std::clamp(entry, 0, 10000); changed = true; }
+	if (ImGui::InputInt("Return ms", &exit)) { shot.iBlendOutMs = std::clamp(exit, 0, 10000); changed = true; }
+	int interpolation = static_cast<int>(cue.eInterpolation), easing = static_cast<int>(cue.eEasing);
+	if (ImGui::Combo("Position path", &interpolation, "Linear\0Catmull-Rom\0"))
+	{ cue.eInterpolation = static_cast<VALTAN_CINEMATIC_CAMERA_INTERPOLATION>(interpolation); changed = true; }
+	if (ImGui::Combo("Segment easing", &easing, "Linear\0Smoothstep\0Hold\0"))
+	{ cue.eEasing = static_cast<VALTAN_CINEMATIC_CAMERA_EASING>(easing); changed = true; }
+	ImGui::InputInt("Capture arrival ms", &m_iCameraCaptureMs);
+	m_iCameraCaptureMs = std::clamp(m_iCameraCaptureMs, 0, 120000);
+	if (ImGui::Button("Capture Pos + Rot"))
+	{
+		VALTAN_CINEMATIC_CAMERA_POSE pose;
+		if (!CCameraTool::Capture_ViewPose(pose)) m_strStatus = "Current camera pose is unavailable; the action was preserved.";
+		else
+		{
+			const auto time = static_cast<std::uint32_t>(m_iCameraCaptureMs);
+			auto found = std::find_if(cue.Keyframes.begin(), cue.Keyframes.end(), [time](const auto& key) { return key.iTimeMs == time; });
+			if (found == cue.Keyframes.end() && cue.Keyframes.size() >= 64u) m_strStatus = "Camera position limit is 64.";
+			else
+			{
+				VALTAN_CINEMATIC_CAMERA_KEYFRAME key;
+				key.iTimeMs = time; key.vEye = pose.vEye; key.vLookAt = pose.vLookAt;
+				key.fFovYDegrees = pose.fFovYDegrees; key.vUp = pose.vUp; key.hasUp = true;
+				if (found != cue.Keyframes.end()) { key.strSceneId = found->strSceneId; *found = key; }
+				else
+				{
+					for (std::uint32_t ordinal = 1u; ordinal <= 65u; ++ordinal)
+					{
+						key.strSceneId = shot.strShotId + ".p" + std::to_string(ordinal);
+						if (std::none_of(cue.Keyframes.begin(), cue.Keyframes.end(), [&](const auto& row) { return row.strSceneId == key.strSceneId; })) break;
+					}
+					cue.Keyframes.push_back(key);
+				}
+				m_strCameraKeyId = key.strSceneId; changed = true;
+				m_iCameraCaptureMs = (std::min)(120000, m_iCameraCaptureMs + 1000);
+			}
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Stop camera preview")) { m_bPresentationPreviewRequestPending = false; level->Stop_CompositionCamera(true); }
+	if (ImGui::BeginListBox("Positions", { -1.f, 150.f }))
+	{
+		for (const auto& key : cue.Keyframes)
+		{
+			const auto label = std::to_string(key.iTimeMs) + " ms / " + key.strSceneId;
+			if (ImGui::Selectable(label.c_str(), m_strCameraKeyId == key.strSceneId)) m_strCameraKeyId = key.strSceneId;
+		}
+		ImGui::EndListBox();
+	}
+	auto key = std::find_if(cue.Keyframes.begin(), cue.Keyframes.end(), [&](const auto& item) { return item.strSceneId == m_strCameraKeyId; });
+	if (key == cue.Keyframes.end() && !cue.Keyframes.empty()) { key = cue.Keyframes.begin(); m_strCameraKeyId = key->strSceneId; }
+	if (key != cue.Keyframes.end())
+	{
+		int time = static_cast<int>(key->iTimeMs);
+		if (ImGui::InputInt("Arrival time ms", &time)) { key->iTimeMs = std::clamp(time, 0, 120000); changed = true; }
+		const auto direction = XMLoadFloat3(&key->vLookAt) - XMLoadFloat3(&key->vEye);
+		const auto forward = XMVector3Normalize(direction);
+		float3_t look; XMStoreFloat3(&look, forward);
+		const float pitch = std::asin(std::clamp(-look.y, -1.f, 1.f)), yaw = std::atan2(look.x, look.z);
+		const auto basis = XMMatrixRotationRollPitchYaw(pitch, yaw, 0.f);
+		const auto up = XMLoadFloat3(&key->vUp);
+		const float roll = key->hasUp ? std::atan2(-XMVectorGetX(XMVector3Dot(up, basis.r[0])), XMVectorGetX(XMVector3Dot(up, basis.r[1]))) : 0.f;
+		float3_t rotation{ XMConvertToDegrees(pitch), XMConvertToDegrees(yaw), XMConvertToDegrees(roll) };
+		float3_t position = key->vEye;
+		const bool positionChanged = ImGui::DragFloat3("Pos", &position.x, .05f);
+		const bool rotationChanged = ImGui::DragFloat3("Rot / pitch yaw roll", &rotation.x, .1f);
+		if (positionChanged || rotationChanged)
+		{
+			const auto edited = XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotation.x), XMConvertToRadians(rotation.y), XMConvertToRadians(rotation.z));
+			key->vEye = position;
+			XMStoreFloat3(&key->vLookAt, XMLoadFloat3(&position) + edited.r[2] * XMVectorGetX(XMVector3Length(direction)));
+			XMStoreFloat3(&key->vUp, edited.r[1]); key->hasUp = true; changed = true;
+		}
+		changed |= ImGui::DragFloat("FOV Y", &key->fFovYDegrees, .1f, 1.01f, 178.99f);
+		if (key != cue.Keyframes.begin())
+		{
+			const auto& previous = *std::prev(key);
+			const float distance = XMVectorGetX(XMVector3Length(XMLoadFloat3(&key->vEye) - XMLoadFloat3(&previous.vEye)));
+			const auto span = static_cast<int64_t>(key->iTimeMs) - previous.iTimeMs;
+			ImGui::Text("Segment: %.3f units / %.3f s = %.3f units/s (straight-line average)", distance,
+				span * .001, span > 0 ? distance * 1000.0 / span : 0.0);
+		}
+		ImGui::BeginDisabled(cue.Keyframes.size() <= 1u);
+		if (ImGui::Button("Delete position"))
+		{
+			cue.Keyframes.erase(key); m_strCameraKeyId.clear(); changed = true;
+			const auto firstTime = cue.Keyframes.front().iTimeMs;
+			for (auto& row : cue.Keyframes) row.iTimeMs -= firstTime;
+		}
+		ImGui::EndDisabled();
+	}
+	if (cue.Keyframes.size() == 1u)
+	{
+		int duration = static_cast<int>(cue.iDurationMs);
+		if (ImGui::InputInt("Static duration ms", &duration)) { cue.iDurationMs = std::clamp(duration, 1, 120000); changed = true; }
+	}
+	if (changed)
+	{
+		std::stable_sort(cue.Keyframes.begin(), cue.Keyframes.end(), [](const auto& left, const auto& right) { return left.iTimeMs < right.iTimeMs; });
+		if (cue.Keyframes.size() > 1u) cue.iDurationMs = cue.Keyframes.back().iTimeMs;
+		shot.hasCameraTrack = true; shot.CameraTrack = cue;
+		shot.iDefaultHoldMs = cue.iDurationMs > shot.iBlendInMs ? cue.iDurationMs - shot.iBlendInMs : 0u;
+		shot.vEye = cue.Keyframes.front().vEye; shot.vLookAt = cue.Keyframes.front().vLookAt;
+		shot.fFovYDegrees = cue.Keyframes.front().fFovYDegrees;
+		if (shot.iBlendInMs > cue.iDurationMs) m_strStatus = "Entry blend exceeds the camera action duration; the previous action was preserved.";
+		else (void)level->Update_CameraShot(shot, m_strStatus);
+	}
+	// Re-read after validation so rejected edits cannot become preview or resource input.
+	if (const auto* committed = Find_AuthoringCamera(m_strCameraWindowShotId))
+	{
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
+		resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::CAMERA; resource.strResourceKind.clear();
+		resource.strAssetId = committed->strShotId; resource.strDisplayName = committed->strDisplayName;
+		resource.iDurationMs = Camera_DefaultDuration(resource);
+		if (ImGui::Button("Play Camera")) Queue_PresentationPreview(resource);
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!m_bHasDraft);
+		if (ImGui::Button("Append Camera at Cursor")) { std::string status; (void)Append_PresentationSource(resource, status); }
+		ImGui::EndDisabled();
+	}
+	ImGui::TextWrapped("F6 Free camera: place the view, then capture. Times set travel speed; rotation includes roll. Save Camera writes the Area source. Append and Composition Save keep the stable shot reference for Sequencer Play.");
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	ImGui::PopID(); ImGui::End();
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOUKU_SAYDON_PRESENTATION_KIND kind)
@@ -7615,7 +7847,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOU
 				KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE source;
 				source.eKind = kind; source.strResourceKind.clear();
 				source.strAssetId = shot.strShotId; source.strDisplayName = shot.strDisplayName;
-				source.iDurationMs = shot.iBlendInMs + shot.iDefaultHoldMs;
+				source.iDurationMs = shot.hasCameraTrack ? shot.CameraTrack.iDurationMs : shot.iBlendInMs + shot.iDefaultHoldMs;
 				sources.push_back(std::move(source));
 			}
 		}
@@ -7783,15 +8015,30 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 {
 	if (ImGui::BeginCombo("Anchor", edit.strAnchorKind.c_str()))
 	{
-		for (const char* kind : { "BOSS", "WORLD" })
-			if (ImGui::Selectable(kind, edit.strAnchorKind == kind))
+		for (const char* kind : { "BOSS", "WORLD", "MAP" })
+			if ((effect || std::string_view(kind) != "MAP") && ImGui::Selectable(kind, edit.strAnchorKind == kind))
 			{
 				edit.strAnchorKind = kind;
 				edit.strWorldOccurrenceId.clear();
-				if (edit.strAnchorKind == "BOSS") edit.strWorldId.clear();
-				else { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
+				if (edit.strAnchorKind != "WORLD") edit.strWorldId.clear();
+				if (edit.strAnchorKind != "BOSS") { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
+				if (edit.strAnchorKind == "MAP") edit.bFollowBoss = false;
 			}
 		ImGui::EndCombo();
+	}
+	if (effect && edit.strAnchorKind == "MAP")
+	{
+		ImGui::TextWrapped("Fixed map position in metres. This Effect stays here when the boss moves.");
+		const auto character = CAnimationTargetService::Resolve_SceneCharacter();
+		const auto transform = character ? character->Get_Transform() : nullptr;
+		ImGui::BeginDisabled(!transform);
+		if (ImGui::Button("Use Player Position##EffectMapAnchor") && transform)
+		{
+			float3_t position; XMStoreFloat3(&position, transform->Get_State(STATE::POSITION));
+			if (std::isfinite(position.x) && std::isfinite(position.y) && std::isfinite(position.z))
+				edit.PositionOffset = {position.x, position.y, position.z};
+		}
+		ImGui::EndDisabled();
 	}
 	if (edit.strAnchorKind == "WORLD")
 	{
@@ -7811,6 +8058,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 				if (worldBox.strWorldId == edit.strWorldId && ImGui::Selectable(worldBox.strOccurrenceId.c_str(), edit.strWorldOccurrenceId == worldBox.strOccurrenceId))
 					edit.strWorldOccurrenceId = worldBox.strOccurrenceId;
 			ImGui::EndCombo();
+		}
+		if (!edit.strWorldId.empty())
+		{
+			const auto* emissionWorld = Find_World(m_Draft, edit.strWorldId);
+			const auto emissionSource = nullptr != emissionWorld ? std::find_if(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
+				[&](const auto& row) { return row.strInstanceId == emissionWorld->strSequenceInstanceId; }) : m_WorldSequenceResources.end();
+			const int emissionCount = emissionSource != m_WorldSequenceResources.end() ? static_cast<int>(emissionSource->iEmissionCount) : 1;
+			if (emissionCount > 1)
+			{
+				int emissionIndex = static_cast<int>(edit.iWorldEmissionIndex);
+				if (ImGui::DragInt("Emission index##Anchor", &emissionIndex, 1.f, 0, emissionCount - 1, "%d", ImGuiSliderFlags_AlwaysClamp))
+					edit.iWorldEmissionIndex = static_cast<std::uint32_t>((std::clamp)(emissionIndex, 0, emissionCount - 1));
+				ImGui::TextDisabled("This Object motion emits %d authored rows; the box follows the selected row.", emissionCount);
+			}
+			else edit.iWorldEmissionIndex = 0u;
 		}
 	}
 	if (edit.strAnchorKind == "BOSS")
@@ -7901,7 +8163,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		for (std::size_t i = 0u; i < 3u; ++i) values[i] = v[i];
 		return true;
 	};
-	bool geometryChanged = vectorControl("Position offset (m)##PresentationBox", edit.PositionOffset, -100000.f, 100000.f);
+	bool geometryChanged = vectorControl(edit.strAnchorKind == "MAP" ? "Map position (m)##PresentationBox" : "Position offset (m)##PresentationBox", edit.PositionOffset, -100000.f, 100000.f);
 	const bool gameplayCollider = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
 		(!edit.strLogicOccurrenceId.empty() || !m_strColliderLogicDefinitionId.empty() || (m_strColliderExecutionEditId == occurrenceId && m_bColliderDamageMode));
 	if (gameplayCollider)
@@ -7952,7 +8214,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	}
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
 		Render_PresentationAnchor(pattern, edit, definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT);
-	if (!cameraBox && (!light || edit.strAnchorKind == "BOSS")) ImGui::Checkbox("Follow anchor##PresentationBox", &edit.bFollowBoss);
+	if (!cameraBox && edit.strAnchorKind != "MAP" && (!light || edit.strAnchorKind == "BOSS")) ImGui::Checkbox("Follow anchor##PresentationBox", &edit.bFollowBoss);
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
 	{
 		int fadeIn = static_cast<int>(edit.iFadeInMs), fadeOut = static_cast<int>(edit.iFadeOutMs);
@@ -9085,11 +9347,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	else if ("TRIGGER" == logic.strLogicType)
 	{
-		const std::array<std::pair<const char*, const char*>, 5u> triggerKinds = {{
+		const std::array<std::pair<const char*, const char*>, 7u> triggerKinds = {{
 			{"", "(choose what activates this Trigger)"},
 			{"ENTER_AREA", "Player contact (ENTER_AREA)"},
 			{"OBJECT_CONTACT", "World object contact (OBJECT_CONTACT)"},
 			{"HUD_ENTER", "Switch player HUD at start (HUD_ENTER)"},
+			{"CARD_MAZE_HIDE_NEXT", "Hide next player from the right (CARD_MAZE_HIDE_NEXT)"},
+			{"CARD_MAZE_ENTER", "Move entry participants into the card maze (CARD_MAZE_ENTER)"},
 			{"REAL_GAZE_TELEPORT", "Teleport real Saydon and spawn decoys (REAL_GAZE_TELEPORT)"}
 		}};
 		const auto selectedKind = std::find_if(triggerKinds.begin(), triggerKinds.end(),
@@ -9104,6 +9368,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					draft = KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION{ logic.strLogicId, logic.strDisplayName, logic.strLogicType };
 					draft.strTriggerKind = kind;
 					if (draft.strTriggerKind == "HUD_ENTER") draft.strHudMode = "NONE";
+					if (draft.strTriggerKind == "CARD_MAZE_ENTER") draft.TeleportPosition = { .28, -.01, 1351.65 };
 					if (draft.strTriggerKind == "OBJECT_CONTACT") draft.fTargetRadiusM = 1.0;
 					if (draft.strTriggerKind == "REAL_GAZE_TELEPORT") draft.ClockHours = { 4u, 7u, 10u };
 				}
@@ -9159,6 +9424,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					}
 				}
 			ImGui::TextWrapped("Append card WORLD boxes to this Pattern first. Select the placements that may be hit. Each is judged once during the Trigger window; no contact produces no reaction. Bone anchors follow the hammer tip in XZ. Match the window to the strike moment; height alone does not activate contact.");
+		}
+		else if (draft.strTriggerKind == "CARD_MAZE_HIDE_NEXT")
+			ImGui::TextWrapped("Each occurrence hides one participant. The first occurrence fixes the order by world X descending, then PlayerId. Stop restores visibility.");
+		else if (draft.strTriggerKind == "CARD_MAZE_ENTER")
+		{
+			float position[3] = { float(draft.TeleportPosition[0]), float(draft.TeleportPosition[1]), float(draft.TeleportPosition[2]) };
+			if (ImGui::InputFloat3("Maze central position (m)", position))
+				for (std::size_t axis = 0; axis < 3; ++axis) draft.TeleportPosition[axis] = position[axis];
+			ImGui::TextWrapped("The Server validates central maze navigation, moves the captured living participants together and reveals them. Q on the central telescope begins the existing maze mechanic.");
 		}
 		else if (draft.strTriggerKind == "HUD_ENTER")
 		{
@@ -10008,6 +10282,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorkbenchPane(COMPOSITION_WORKB
 void Client::CKoukuSaydonActionWorkbench::End_WorkbenchFrame()
 {
 	Render_ReloadConfirmation();
+	Render_CameraWindow();
 	m_bSharedWorkspaceActive = false;
 }
 
@@ -10028,6 +10303,7 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 	{
 		ImGui::End();
 		Render_ResourcesWindow();
+		Render_CameraWindow();
 		return;
 	}
 	Render_Toolbar();
@@ -10053,4 +10329,5 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 	Render_ReloadConfirmation();
 	ImGui::End();
 	Render_ResourcesWindow();
+	Render_CameraWindow();
 }

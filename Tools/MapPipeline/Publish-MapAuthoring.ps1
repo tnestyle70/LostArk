@@ -1423,7 +1423,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1470,6 +1470,37 @@ function Read-WorldSequenceDocument {
                 if ($null -ne $resource.PSObject.Properties['diffuseTextureAssetId']) {
                     if ($resource.diffuseTextureAssetId -isnot [string]) { throw 'World object diffuse path must be a string' }
                     if ($resource.diffuseTextureAssetId -ne '') { Assert-SequenceAssetPath $resource.diffuseTextureAssetId $false }
+                }
+            }
+            if ($null -ne $resource.PSObject.Properties['materialSourceModelAssetId']) {
+                if ($alias -or $resource.materialSourceModelAssetId -isnot [string] -or $resource.materialSourceModelAssetId -eq '') { throw 'Invalid world object material source model' }
+                Assert-SequenceAssetPath $resource.materialSourceModelAssetId $true
+                $sourceNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.materialSourceModelAssetId)).Names
+                $targetNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.modelAssetId)).Names
+                foreach ($name in $sourceNames.Keys) {
+                    if (-not $targetNames.ContainsKey($name)) { throw "Cinematic model lost source material slot: $name" }
+                }
+            }
+            if ($null -ne $resource.PSObject.Properties['mapMaterialBindings']) {
+                if ($alias -or $resource.mapMaterialBindings -isnot [array] -or $resource.mapMaterialBindings.Count -gt 64) { throw 'Invalid world object map material bindings' }
+                $boundMaterials = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                if ($null -ne $resource.PSObject.Properties['materialProfile']) { [void]$boundMaterials.Add($resource.materialProfile.materialName) }
+                $targetNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.modelAssetId)).Names
+                if ($null -eq $cinematicMapMaterials) {
+                    try { $cinematicMapMaterials = ([IO.File]::ReadAllText($authoringMaterialPath, [Text.UTF8Encoding]::new($false, $true)) | ConvertFrom-Json).materials }
+                    catch { throw "World Object map material source JSON parse failed: $authoringMaterialPath" }
+                }
+                foreach ($binding in $resource.mapMaterialBindings) {
+                    $bindingFields = @('materialName','sourceAssetId','sourceMaterialName')
+                    if ($null -ne $binding.PSObject.Properties['diffuseTextureAssetId']) { $bindingFields += 'diffuseTextureAssetId'; Assert-SequenceAssetPath $binding.diffuseTextureAssetId $false }
+                    Assert-ExactJsonProperties $binding $bindingFields 'World object map material binding'
+                    $sourceRows = @($cinematicMapMaterials | Where-Object { $_.assetId -ceq $binding.sourceAssetId -and $_.materialName -ceq $binding.sourceMaterialName })
+                    if (-not $targetNames.ContainsKey($binding.materialName) -or $sourceRows.Count -ne 1 -or $sourceRows[0].family -cne 'bg-source-opaque-masked') { throw 'World Object map material slot/source is absent or unsupported' }
+                    if ($null -ne $binding.PSObject.Properties['diffuseTextureAssetId'] -and -not [IO.File]::Exists((Join-Path $runtimeResourceRoot $binding.diffuseTextureAssetId))) { throw 'World Object map surface texture is absent' }
+                    if ($binding.sourceAssetId -isnot [string] -or $binding.sourceAssetId -cnotmatch $stableId -or -not $boundMaterials.Add($binding.materialName)) { throw 'Invalid or duplicate map material binding' }
+                    foreach ($name in @($binding.materialName,$binding.sourceMaterialName)) {
+                        if ($name -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($name) -notin 1..63 -or $name -match '[\x00-\x1f\x7f]') { throw 'Invalid map material binding name' }
+                    }
                 }
             }
             if ($null -ne $resource.PSObject.Properties['materialProfile']) {
@@ -1556,6 +1587,7 @@ function Read-WorldSequenceDocument {
                     throw 'World object spawn half extents must be nonnegative'
                 }
             }
+            if ($null -ne $motion.PSObject.Properties['emissions']) { $motionProperties += 'emissions' }
             Assert-ExactJsonProperties $motion $motionProperties 'World object motion'
             foreach ($field in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
                 Assert-SequenceVector $motion.$field "World object motion $field"
@@ -1564,9 +1596,29 @@ function Read-WorldSequenceDocument {
                 if (-not (Test-JsonNumber $motion.$field) -or [double]$motion.$field -lt 0 -or
                     [double]$motion.$field -gt 4294967295 -or [double]$motion.$field -ne [math]::Floor([double]$motion.$field)) { throw "Invalid object motion $field" }
             }
+            $lastEmissionMs = ([double]$motion.count - 1) * [double]$motion.intervalMs
+            if ($null -ne $motion.PSObject.Properties['emissions']) {
+                # Authored rows own the count; interval and spread are the seeded emitter's and must stay zero.
+                $emissions = @($motion.emissions)
+                if ($motion.emissions -isnot [System.Array] -or $emissions.Count -lt 1 -or $emissions.Count -gt 128 -or
+                    [double]$motion.count -ne $emissions.Count -or [double]$motion.intervalMs -ne 0 -or [double]$motion.spreadDegrees -ne 0) {
+                    throw "World object emissions must be 1..128 rows with count equal to the row count and zero interval/spread: $($template.sequenceId)"
+                }
+                $lastEmissionMs = 0
+                foreach ($emission in $emissions) {
+                    Assert-ExactJsonProperties $emission @('positionOffset','yawDegrees','startDelayMs') 'World object emission'
+                    Assert-SequenceVector $emission.positionOffset 'World object emission positionOffset'
+                    if (-not (Test-JsonNumber $emission.yawDegrees) -or [double]$emission.yawDegrees -lt -36000 -or [double]$emission.yawDegrees -gt 36000 -or
+                        -not (Test-JsonNumber $emission.startDelayMs) -or [double]$emission.startDelayMs -lt 0 -or [double]$emission.startDelayMs -gt 600000 -or
+                        [double]$emission.startDelayMs -ne [math]::Floor([double]$emission.startDelayMs)) {
+                        throw "Invalid World object emission row: $($template.sequenceId)"
+                    }
+                    if ([double]$emission.startDelayMs -gt $lastEmissionMs) { $lastEmissionMs = [double]$emission.startDelayMs }
+                }
+            }
             if ($motion.count -lt 1 -or $motion.count -gt 128 -or $motion.intervalMs -gt 600000 -or
                 (($null -eq $template.PSObject.Properties['effectTracks'] -or @($template.effectTracks).Count -eq 0) -and
-                    ([double]$motion.count - 1) * [double]$motion.intervalMs -ge [double]$template.durationMs) -or
+                    $lastEmissionMs -ge [double]$template.durationMs) -or
                 -not (Test-JsonNumber $motion.spreadDegrees) -or $motion.spreadDegrees -lt 0 -or $motion.spreadDegrees -gt $(if ($null -ne $template.PSObject.Properties['effectTracks'] -and @($template.effectTracks).Count -gt 0) { 360 } else { 180 })) {
                 throw 'World object spawn count, interval or spread exceeds its lifetime'
             }
@@ -1689,6 +1741,12 @@ function Read-WorldSequenceDocument {
             $emissionMs = 0
             if ($null -ne $template.PSObject.Properties['objectMotion']) {
                 $emissionMs = ($template.objectMotion.count - 1) * $template.objectMotion.intervalMs
+                if ($null -ne $template.objectMotion.PSObject.Properties['emissions']) {
+                    $emissionMs = 0
+                    foreach ($emission in @($template.objectMotion.emissions)) {
+                        if ([double]$emission.startDelayMs -gt $emissionMs) { $emissionMs = [double]$emission.startDelayMs }
+                    }
+                }
             }
             foreach ($effect in $template.effectTracks) {
                 Assert-ExactJsonProperties $effect @('effectTrackId','slotId','resourceKind','resourceId','timing','startMs','durationMs','positionOffset','rotationDegrees','scale') 'World Object effect track'

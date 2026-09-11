@@ -29,8 +29,8 @@ void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* 
     {
         m_pAuthoringSequencer = std::make_unique<CEffectAuthoringSequencer>(m_pDevice, m_pContext, m_pCharacterPreviewPanel);
         m_pAuthoringSequencer->Set_V1Callbacks(
-            [this](const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root, std::shared_ptr<CEffectObject>& object, std::string& error)
-            { return Create_AuthoringOccurrence(key, elementId, root, object, error); },
+            [this](const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root, std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error)
+            { return Create_AuthoringOccurrence(key, elementIds, root, object, previewStartMs, previewEndMs, error); },
             [this](const std::shared_ptr<CEffectObject>& object)
             {
                 const auto found = m_AuthoringOccurrenceLevels.find(object.get());
@@ -185,8 +185,8 @@ void CEffect_Tool::Attach_AuthoringSaved()
         m_strDocumentStatus += " Effect saved; tree placement needs retry: " + status;
 }
 
-bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root,
-    std::shared_ptr<CEffectObject>& object, std::string& error)
+bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root,
+    std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error)
 {
     if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || !key.Is_Valid())
     { error = "Invalid V1 Effect reference."; return false; }
@@ -209,11 +209,13 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     }
     if (document.strEffectAssetId != key.strStableId)
     { error = "Saved Effect identity does not match the selected row."; return false; }
-    if (!elementId.empty())
+    if (!elementIds.empty())
     {
         if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
         EFFECT_DOCUMENT_DESC selected;
-        if (!Build_ElementPreviewDocument(document, elementId, selected, error)) return false;
+        if (!Build_ElementsPreviewDocument(document, elementIds, selected, error)) return false;
+        std::string label;
+        if (!Resolve_ElementsPreviewWindow(selected, elementIds, previewStartMs, previewEndMs, label, error)) return false;
         document = std::move(selected);
         std::erase_if(document.RuntimeExtensions.BakedEdgeHistories, [&document](const auto& history)
         {
@@ -226,7 +228,7 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     const auto immutableDocument = std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(document));
     std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> projection;
     std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> prepared;
-    const bool ordinaryElementSolo = !elementId.empty() &&
+    const bool ordinaryElementSolo = !elementIds.empty() &&
         std::all_of(immutableDocument->Elements.begin(), immutableDocument->Elements.end(),
             [](const auto& element) { return element.RuntimeCarrier.Is_Empty(); });
     if (ordinaryElementSolo && !immutableDocument->RuntimeExtensions.Is_Empty())

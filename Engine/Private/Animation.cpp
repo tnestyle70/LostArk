@@ -1,4 +1,6 @@
 #include "Animation.h"
+#include "Profiler.h"
+#include "GameInstance.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Channel.h"
 
@@ -60,6 +62,7 @@ HRESULT CAnimation::Initialize(const MODEL_ANIMATION_DATA& animation,
 /* 현재 이 애니메이션이 컨트롤해야하는 뼈들의 상태행렬을 갱신해준다. */
 bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<shared_ptr<class CBone>>& Bones, bool_t isLoop)
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Channels.Update");
 	/* 현재 재생 위치를 계산해준다. */
 	if (!isfinite(fTimeDelta) || m_fDuration <= 0.f ||
 		m_fTickPerSecond <= 0.f)
@@ -119,6 +122,7 @@ bool_t CAnimation::Sample_LocalBoneTransforms(
 	const f32_t fTrackPosition,
 	const std::span<float4x4_t> InOutLocalTransforms) const
 {
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Channels.Sample");
 	if (!std::isfinite(fTrackPosition) ||
 		!std::isfinite(m_fDuration) || fTrackPosition < 0.f ||
 		fTrackPosition > m_fDuration || m_fDuration <= 0.f ||

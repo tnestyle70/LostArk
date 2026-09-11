@@ -353,6 +353,8 @@ namespace Client
 		std::string strWorldId;
 		std::string strLogicOccurrenceId;
 		std::string strWorldOccurrenceId;
+		// Row of that World box's authored emission list this box follows; 0 for single emitters.
+		std::uint32_t iWorldEmissionIndex = 0u;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE&) const = default;
 	};
 
@@ -459,6 +461,24 @@ namespace Client
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_BUNDLE&) const = default;
 	};
 
+	struct KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY final
+	{
+		std::string strEntryId;
+		std::string strKind;
+		std::string strTargetId;
+		std::uint32_t iWaitAfterMs = 0u;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY&) const = default;
+	};
+
+	struct KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW final
+	{
+		std::string strFlowId;
+		std::string strGateId;
+		std::string strDisplayName;
+		std::vector<KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY> Entries;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_DOCUMENT final
 	{
 		std::uint32_t iFormatVersion = 3u;
@@ -487,6 +507,8 @@ namespace Client
 		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN> Patterns;
 		std::vector<KOUKU_SAYDON_COMPOSITION_FOLDER> Folders;
 		std::vector<KOUKU_SAYDON_COMPOSITION_BUNDLE> Bundles;
+		// Gate playback order references the existing saved Patterns and Bundles.
+		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW> PatternFlows;
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_DOCUMENT&) const = default;
 	};

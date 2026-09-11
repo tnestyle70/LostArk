@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "KoukuSaydonCompositionDocument.h"
 
 #include <cstdint>
 #include <string>
@@ -9,9 +10,8 @@
 
 namespace Client
 {
-	/* K-only Server playback surface. Authoring stays in the separate Action
-	   Workbench; this tool lists the full published Boss Patterns tree and never imports a
-	   Valtan pattern tree, flow, counter, effect, sound, or arena controller. */
+	/* K-only Server playback and ordered Pattern Flow authoring. Pattern/Bundle
+	   definitions stay in Composition; Flow stores stable references to them. */
 	class CKoukuSaydonBossTool final
 	{
 	public:
@@ -66,6 +66,13 @@ namespace Client
 			std::string& outStatus);
 		/* Start Full Pattern: the executable published Play All order on the Server. */
 		bool Play_All(std::string& outStatus);
+		bool Play_CompositionAll(std::string_view gateId, std::string& status);
+		bool Validate_PatternFlow(std::string_view gateId, std::string& status);
+		bool Play_PatternFlow(std::string_view gateId, std::string& status);
+		const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Get_SavedFlow(std::string_view gateId) const;
+		bool Render_SavedPatternFlow(std::string_view gateId, int& selectionKind, std::string& selectedId) const;
+		bool Consume_PublishRequest() { const bool requested = m_bPublishRequested; m_bPublishRequested = false; return requested; }
+		void Set_Status(std::string status) { m_strStatus = std::move(status); }
 		/* Read-only inventory for the F1 hub's KoukuSaydon Complete Play list.
 		The tool stays the single owner of reload, selection and Server play. */
 		[[nodiscard]] bool Has_SavedComposition() const noexcept
@@ -99,12 +106,24 @@ namespace Client
 		[[nodiscard]] const PRODUCT_PATTERN*
 			Find_SelectedPattern() const;
 		[[nodiscard]] const PRODUCT_BUNDLE* Find_SelectedBundle() const;
+		bool Load_PatternFlows(std::string& status);
+		bool Save_PatternFlows(std::string& status);
+		bool Prepare_PatternFlow(std::string_view gateId, KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW& flow, std::string& status);
+		void Render_PatternFlowEditor(std::string_view gateId);
+		KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Find_DraftFlow(std::string_view gateId);
+		std::string Describe_FlowEntry(const KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY& entry, std::string_view gateId, std::string& error) const;
 
 	private:
 		std::vector<PRODUCT_FOLDER> m_ProductFolders;
 		std::vector<PRODUCT_BUNDLE> m_ProductBundles;
 		std::vector<PRODUCT_PATTERN> m_ProductPatterns;
 		std::vector<std::string> m_PlayAllPatternIds;
+		CKoukuSaydonCompositionDocument m_FlowDocument;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW> m_FlowDraft;
+		std::string m_strSelectedFlowEntryId;
+		bool m_bFlowDirty = false;
+		bool m_bPublishRequested = false;
+		int m_iFlowAddKind = 0;
 		std::string m_strSelectedInventoryId;
 		int m_iSelectedInventoryKind = 0;
 		int m_iSelectedGate = 0;

@@ -1,0 +1,87 @@
+{
+  "schema": "lostark.effect-v2",
+  "formatVersion": 1,
+  "effectId": "kouku.gate2.intro.fade.black",
+  "displayName": "2관문 진입 / 원본 암전",
+  "effectType": "ScreenPost",
+  "slots": {
+    "mesh": "",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+    "noise": "",
+    "mask": "",
+    "emissive": "",
+    "dissolve": ""
+  },
+  "params": {
+    "lifetime": 27.0,
+    "loop": false,
+    "playRate": 1.0,
+    "alphaInEnd": 0.0,
+    "alphaOutStart": 1.0,
+    "screenPost": {
+      "profile": "TexturedOverlay",
+      "intensityStart": 1.0,
+      "intensityEnd": 1.0,
+      "intensityLerp": false,
+      "intensitySmoothstep": true,
+      "intensityKeys": [
+        {
+          "timeSeconds": 0.0,
+          "intensity": 1
+        },
+        {
+          "timeSeconds": 0.97,
+          "intensity": 0
+        },
+        {
+          "timeSeconds": 11.66,
+          "intensity": 0
+        },
+        {
+          "timeSeconds": 13.48,
+          "intensity": 1
+        },
+        {
+          "timeSeconds": 14.72,
+          "intensity": 1
+        },
+        {
+          "timeSeconds": 16.29,
+          "intensity": 0
+        },
+        {
+          "timeSeconds": 25.59,
+          "intensity": 0
+        },
+        {
+          "timeSeconds": 27.0,
+          "intensity": 1
+        }
+      ],
+      "tint": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "overlayPositionStart": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionHold": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionEnd": [
+        0.5,
+        0.5
+      ],
+      "overlayScale": [
+        1,
+        1
+      ],
+      "displaySpace": true
+    }
+  },
+  "parts": []
+}

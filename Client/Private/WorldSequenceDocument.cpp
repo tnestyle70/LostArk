@@ -1,6 +1,8 @@
 #include "WorldSequenceDocument.h"
 
 #include "DataJson.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 #include "SourceCharacterMaterialParameters.h"
 
 #include <algorithm>
@@ -169,6 +171,22 @@ namespace
         return true;
     }
 
+	/* Authored rows must agree with the seeded fields they replace, so a
+	   document never carries two different answers for the emission count. */
+	bool_t Is_ValidEmissionList(const WORLD_SEQUENCE_OBJECT_MOTION& motion)
+	{
+		if (motion.emissions.empty()) return true;
+		if (motion.emissions.size() > 128u || motion.count != motion.emissions.size() ||
+			0u != motion.intervalMs || 0.f != motion.spreadDegrees) return false;
+		for (const auto& emission : motion.emissions)
+		{
+			if (!Is_BoundedFloat3(emission.positionOffset) || !std::isfinite(emission.yawDegrees) ||
+				emission.yawDegrees < -36000.f || emission.yawDegrees > 36000.f ||
+				emission.startDelayMs > CWorldSequenceDocument::MAX_DURATION_MS) return false;
+		}
+		return true;
+	}
+
 	bool_t Read_Uint32(
 		const DATA_JSON_VALUE* value,
 		uint32_t& outValue,
@@ -308,6 +326,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 	const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
 	std::string& outStatus)
 {
+	CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "WorldSequence.Document.Load");
 	std::error_code existsError;
 	if (!std::filesystem::exists(path, existsError))
 	{
@@ -360,7 +379,12 @@ bool_t Client::CWorldSequenceDocument::Load(
 	}
 	DATA_JSON_VALUE root;
 	std::string parseError;
-	if (!CDataJson::Parse(text, root, parseError) ||
+	bool_t parsed = false;
+	{
+		CProfilerScope parseScope(CGameInstance::Get().Get_Profiler(), "WorldSequence.Document.Parse");
+		parsed = CDataJson::Parse(text, root, parseError);
+	}
+	if (!parsed ||
 		!Is_ObjectShape(root,
 			{ "schema", "formatVersion", "areaId", "revision",
 			  "templates", "instances" }, { "objectResources" }))
@@ -410,7 +434,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -448,6 +472,35 @@ bool_t Client::CWorldSequenceDocument::Load(
 				(std::string(key) == "sequenceInstanceId" ? object.sequenceInstanceId :
 					object.diffuseTextureAssetId) = field->Get_String();
 			}
+            if (const auto* source = row.Find("materialSourceModelAssetId"))
+            {
+                if (!source->Is_String() || !Is_ResourcePath(source->Get_String(), true))
+                { outStatus = "Invalid world object material source model: " + object.objectId; return false; }
+                object.materialSourceModelAssetId = source->Get_String();
+            }
+            if (const auto* bindings = row.Find("mapMaterialBindings"))
+            {
+                if (!bindings->Is_Array() || bindings->Get_Array().size() > 64u)
+                { outStatus = "Invalid world object map material bindings"; return false; }
+                for (const auto& binding : bindings->Get_Array())
+                {
+                    if (!Is_ObjectShape(binding, { "materialName", "sourceAssetId", "sourceMaterialName" }, { "diffuseTextureAssetId" }) ||
+                        !binding.Find("materialName")->Is_String() || !binding.Find("sourceAssetId")->Is_String() ||
+                        !binding.Find("sourceMaterialName")->Is_String())
+                    { outStatus = "Invalid world object map material binding"; return false; }
+                    WORLD_SEQUENCE_MAP_MATERIAL_BINDING material;
+                    material.materialName = binding.Find("materialName")->Get_String();
+                    material.sourceAssetId = binding.Find("sourceAssetId")->Get_String();
+                    material.sourceMaterialName = binding.Find("sourceMaterialName")->Get_String();
+                    if (const auto* diffuse = binding.Find("diffuseTextureAssetId"))
+                    {
+                        if (!diffuse->Is_String() || !Is_ResourcePath(diffuse->Get_String(), false))
+                        { outStatus = "Invalid map material diffuse texture"; return false; }
+                        material.diffuseTextureAssetId = diffuse->Get_String();
+                    }
+                    object.mapMaterialBindings.push_back(std::move(material));
+                }
+            }
             if (const auto* value = row.Find("materialProfile"))
             {
                 WORLD_SEQUENCE_MATERIAL_PROFILE profile;
@@ -528,7 +581,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			auto& value = parsedTemplate.objectMotion;
 			if (parsedFormatVersion < 3u || !Is_ObjectShape(*motion,
 				{ "velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond",
-				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }, { "spawnHalfExtents" }) ||
+				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }, { "spawnHalfExtents", "emissions" }) ||
 				!Read_Float3(motion->Find("velocity"), value.velocity) ||
 				!Read_Float3(motion->Find("acceleration"), value.acceleration) ||
 				!Read_Float3(motion->Find("angularVelocityDegrees"), value.angularVelocityDegrees) ||
@@ -542,6 +595,27 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				outStatus = "World object motion is invalid";
 				return false;
+			}
+			if (const DATA_JSON_VALUE* emissions = motion->Find("emissions"))
+			{
+				if (!emissions->Is_Array() || emissions->Get_Array().size() > 128u)
+				{
+					outStatus = "World object emissions are invalid";
+					return false;
+				}
+				for (const DATA_JSON_VALUE& emissionValue : emissions->Get_Array())
+				{
+					WORLD_SEQUENCE_OBJECT_EMISSION emission;
+					if (!Is_ExactObject(emissionValue, { "positionOffset", "yawDegrees", "startDelayMs" }) ||
+						!Read_Float3(emissionValue.Find("positionOffset"), emission.positionOffset) ||
+						!Read_FiniteFloat(emissionValue.Find("yawDegrees"), emission.yawDegrees) ||
+						!Read_Uint32(emissionValue.Find("startDelayMs"), emission.startDelayMs, MAX_DURATION_MS))
+					{
+						outStatus = "World object emission row is invalid";
+						return false;
+					}
+					value.emissions.push_back(emission);
+				}
 			}
 		}
 
@@ -836,6 +910,22 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< "\",\n      \"anchorBone\": \"" << CDataJson::Escape(object.anchorBone) << "\"";
 		if (!object.defaultMotionInstanceId.empty())
 			output << ",\n      \"defaultMotionInstanceId\": \"" << CDataJson::Escape(object.defaultMotionInstanceId) << "\"";
+        if (!object.materialSourceModelAssetId.empty())
+            output << ",\n      \"materialSourceModelAssetId\": \"" << CDataJson::Escape(object.materialSourceModelAssetId) << "\"";
+        if (!object.mapMaterialBindings.empty())
+        {
+            output << ",\n      \"mapMaterialBindings\": [";
+            for (size_t i = 0; i < object.mapMaterialBindings.size(); ++i)
+            {
+                const auto& binding = object.mapMaterialBindings[i];
+                output << (i ? "," : "") << "\n        {\"materialName\": \"" << CDataJson::Escape(binding.materialName)
+                    << "\", \"sourceAssetId\": \"" << CDataJson::Escape(binding.sourceAssetId)
+                    << "\", \"sourceMaterialName\": \"" << CDataJson::Escape(binding.sourceMaterialName) << "\"";
+                if (!binding.diffuseTextureAssetId.empty()) output << ", \"diffuseTextureAssetId\": \"" << CDataJson::Escape(binding.diffuseTextureAssetId) << "\"";
+                output << "}";
+            }
+            output << "\n      ]";
+        }
         if (object.materialProfile)
         {
             const auto& profile = *object.materialProfile;
@@ -888,7 +978,21 @@ bool_t Client::CWorldSequenceDocument::Save(
 		if (motion.spawnHalfExtents.x != 0.f || motion.spawnHalfExtents.y != 0.f || motion.spawnHalfExtents.z != 0.f)
 			writeVector("spawnHalfExtents", motion.spawnHalfExtents);
 		output << "        \"count\": " << motion.count << ", \"intervalMs\": " << motion.intervalMs
-			<< ", \"spreadDegrees\": " << motion.spreadDegrees << ", \"seed\": " << motion.seed << "\n      },\n"
+			<< ", \"spreadDegrees\": " << motion.spreadDegrees << ", \"seed\": " << motion.seed;
+		if (!motion.emissions.empty())
+		{
+			output << ",\n        \"emissions\": [";
+			for (size_t emissionIndex = 0; emissionIndex < motion.emissions.size(); ++emissionIndex)
+			{
+				const auto& emission = motion.emissions[emissionIndex];
+				output << (0u == emissionIndex ? "\n" : ",\n")
+					<< "          {\"positionOffset\": [" << emission.positionOffset.x << ", " << emission.positionOffset.y
+					<< ", " << emission.positionOffset.z << "], \"yawDegrees\": " << emission.yawDegrees
+					<< ", \"startDelayMs\": " << emission.startDelayMs << "}";
+			}
+			output << "\n        ]";
+		}
+		output << "\n      },\n"
 			<< "      \"tracks\": [";
 		for (size_t trackIndex = 0; trackIndex < value.tracks.size(); ++trackIndex)
 		{
@@ -1017,6 +1121,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 	const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
 	std::string& outStatus) const
 {
+	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "WorldSequence.Document.Validate");
 	if (m_AreaId.empty() || m_AreaId.size() > 128u || 0u == m_iRevision ||
 		m_Templates.size() > MAX_TEMPLATE_COUNT ||
 		m_Instances.size() > MAX_INSTANCE_COUNT || m_ObjectResources.size() > MAX_INSTANCE_COUNT)
@@ -1047,6 +1152,17 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid or duplicate world object resource: " + object.objectId;
 			return false;
 		}
+        if ((!object.materialSourceModelAssetId.empty() && (alias || !Is_ResourcePath(object.materialSourceModelAssetId, true))) ||
+            object.mapMaterialBindings.size() > 64u || (alias && !object.mapMaterialBindings.empty()))
+        { outStatus = "Invalid world object material source: " + object.objectId; return false; }
+        std::unordered_set<std::string> materialNames;
+        if (object.materialProfile) materialNames.insert(object.materialProfile->materialName);
+        for (const auto& binding : object.mapMaterialBindings)
+            if (binding.materialName.empty() || binding.materialName.size() > 63u || !Is_ValidUtf8DisplayText(binding.materialName) ||
+                !Is_ValidStableId(binding.sourceAssetId) || binding.sourceMaterialName.empty() || binding.sourceMaterialName.size() > 63u ||
+                !Is_ValidUtf8DisplayText(binding.sourceMaterialName) || !materialNames.insert(binding.materialName).second ||
+                (!binding.diffuseTextureAssetId.empty() && !Is_ResourcePath(binding.diffuseTextureAssetId, false)))
+            { outStatus = "Invalid or duplicate world object map material binding: " + object.objectId; return false; }
         if (object.materialProfile && (alias || !Validate_MaterialProfile(*object.materialProfile)))
         { outStatus = "Invalid world object material profile: " + object.objectId; return false; }
 		if (!object.defaultMotionInstanceId.empty())
@@ -1088,7 +1204,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			!Is_BoundedFloat3(motion.spawnHalfExtents) || motion.spawnHalfExtents.x < 0.f ||
 			motion.spawnHalfExtents.y < 0.f || motion.spawnHalfExtents.z < 0.f ||
 			motion.count < 1u || motion.count > 128u || motion.intervalMs > MAX_DURATION_MS ||
-			(value.effectTracks.empty() && static_cast<uint64_t>(motion.count - 1u) * motion.intervalMs >= value.durationMs) ||
+			(value.effectTracks.empty() && motion.LastEmissionDelayMs() >= value.durationMs) ||
+			!Is_ValidEmissionList(motion) ||
 			!std::isfinite(motion.spreadDegrees) || motion.spreadDegrees < 0.f || motion.spreadDegrees > (value.effectTracks.empty() ? 180.f : 360.f))
 		{ outStatus = "Invalid object motion in template: " + value.sequenceId; return false; }
 		std::unordered_set<std::string> effectIds;
@@ -1502,6 +1619,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.anchorBone != right.anchorBone ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
             left.materialProfile != right.materialProfile ||
+            left.materialSourceModelAssetId != right.materialSourceModelAssetId || left.mapMaterialBindings != right.mapMaterialBindings ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
 			left.defaultMotionInstanceId != right.defaultMotionInstanceId) return false;
@@ -1525,9 +1643,16 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			!sameFloat3(left.objectMotion.revolutionOffset, right.objectMotion.revolutionOffset) ||
 			!sameFloat3(left.objectMotion.spawnHalfExtents, right.objectMotion.spawnHalfExtents) ||
 			left.objectMotion.count != right.objectMotion.count || left.objectMotion.intervalMs != right.objectMotion.intervalMs ||
-			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed)
+			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed ||
+			left.objectMotion.emissions.size() != right.objectMotion.emissions.size())
 		{
 			return false;
+		}
+		for (size_t index = 0; index < left.objectMotion.emissions.size(); ++index)
+		{
+			const auto& a = left.objectMotion.emissions[index]; const auto& b = right.objectMotion.emissions[index];
+			if (!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat(a.yawDegrees, b.yawDegrees) ||
+				a.startDelayMs != b.startDelayMs) return false;
 		}
 		for (size_t index = 0; index < left.effectTracks.size(); ++index)
 		{

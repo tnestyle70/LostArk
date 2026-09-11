@@ -1849,6 +1849,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	std::string strCueId;
 	std::string strModelAssetId;
 	std::string strClipName;
+	// Optional source bone: suppress X/Z translation and keep its animated Y jump.
+	std::string strSuppressHorizontalRootMotionBone;
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fDurationSeconds = 1.f;
 	EFFECT_TRANSFORM_DESC LocalTransform;
@@ -1859,6 +1861,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	EFFECT_MODEL_CUE_ALPHA_MODE eAlphaMode =
 		EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE;
 	bool_t bHoldLastFrame = false;
+	// Repeat the source clip within this cue window; mutually exclusive with hold-last.
+	bool_t bLoop = false;
 	bool_t bVisible = true;
 	// Absent preserves the cooked CMaterial; present owns the recovered skeletal material.
 	std::optional<EFFECT_MATERIAL_DESC> Material;

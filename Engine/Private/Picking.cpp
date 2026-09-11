@@ -1,5 +1,8 @@
 #include "Picking.h"
 #include "GameInstance.h"
+#include "Profiler.h"
+
+#include <cstring>
 
 CPicking::CPicking(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : m_pDevice { pDevice }
@@ -14,97 +17,98 @@ CPicking::~CPicking()
 
 HRESULT CPicking::Initialize(HWND hWnd)
 {
+    if (!m_pDevice || !m_pContext || m_pContext->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE)
+        return E_INVALIDARG;
     m_hWnd = hWnd;
-
-    m_vViewportSize = CGameInstance::Get().Get_ViewportSize();
-
-    D3D11_TEXTURE2D_DESC            TextureDesc{};
-
-    TextureDesc.Width = m_vViewportSize.x;
-    TextureDesc.Height = m_vViewportSize.y;
-    TextureDesc.MipLevels = 1;
-    TextureDesc.ArraySize = 1;
-    TextureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-    TextureDesc.SampleDesc.Quality = 0;
-    TextureDesc.SampleDesc.Count = 1;
-    TextureDesc.Usage = D3D11_USAGE_STAGING;
-    TextureDesc.BindFlags = 0;
-    TextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
-    TextureDesc.MiscFlags = 0;
-
-    if (FAILED(m_pDevice->CreateTexture2D(&TextureDesc, nullptr, &m_pTexture2D)))
-        return E_FAIL;
-
-    m_pWorldPositions = make_shared<float4_t[]>(TextureDesc.Width * TextureDesc.Height);
-
-    return S_OK;
+    m_iOwnerThreadId = GetCurrentThreadId();
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = 1u;
+    desc.Height = 1u;
+    desc.MipLevels = 1u;
+    desc.ArraySize = 1u;
+    desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    desc.SampleDesc.Count = 1u;
+    desc.Usage = D3D11_USAGE_STAGING;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    return m_pDevice->CreateTexture2D(&desc, nullptr, &m_pTexture2D);
 }
 
-void CPicking::Update()
-{    
-    /* 픽킹이 될 픽셀의 월드위치를 그려놓은 렌더타겟을 동적인 텍스쳐에 복사해준다. */
-    CGameInstance::Get().Copy_RT_Resource(TEXT("Target_PickPos"), m_pTexture2D);
+bool_t CPicking::Read_Pixel(ID3D11Texture2D* pSource, const uint32_t x,
+    const uint32_t y, float4_t& vOut, CProfiler* pProfiler)
+{
+    if (!pSource || !m_pTexture2D || GetCurrentThreadId() != m_iOwnerThreadId)
+        return false;
+    ComPtr<ID3D11Device> sourceDevice;
+    pSource->GetDevice(&sourceDevice);
+    if (sourceDevice.Get() != m_pDevice.Get()) return false;
+    D3D11_TEXTURE2D_DESC sourceDesc{};
+    pSource->GetDesc(&sourceDesc);
+    if (sourceDesc.Format != DXGI_FORMAT_R32G32B32A32_FLOAT ||
+        sourceDesc.SampleDesc.Count != 1u || sourceDesc.ArraySize != 1u ||
+        x >= sourceDesc.Width || y >= sourceDesc.Height)
+        return false;
 
-    /* 복사한 텍스쳐의 락, 언락을 호출해서 텍스쳐에 저장되어있는 월드위치를 미리 다 꺼내놓자. */
-    D3D11_MAPPED_SUBRESOURCE            MappedSubResource{};
-
-    if (FAILED(m_pContext->Map(m_pTexture2D.Get(), 0, 
-        D3D11_MAP_READ_WRITE, 0, &MappedSubResource)))
-        return;
-
-    memcpy(m_pWorldPositions.get(), MappedSubResource.pData, 
-        sizeof(float4_t) * m_vViewportSize.x * m_vViewportSize.y);
-
-    m_pContext->Unmap(m_pTexture2D.Get(), 0);
+    // Each request reads exactly its current cursor pixel from the current RT.
+    // No previous-cursor or delayed-frame sample can become a gameplay command.
+    const D3D11_BOX box{ x, y, 0u, x + 1u, y + 1u, 1u };
+    {
+        CProfilerScope copyScope(pProfiler, "Picking.CopyPixel");
+        CProfilerGpuScope gpuCopyScope(pProfiler, "Picking.CopyPixel");
+        m_pContext->CopySubresourceRegion(m_pTexture2D.Get(), 0u, 0u, 0u, 0u,
+            pSource, 0u, &box);
+        if (pProfiler)
+        {
+            pProfiler->Add_Counter(EProfilerCounter::PickingReadbacks);
+            pProfiler->Add_Counter(EProfilerCounter::PickingReadbackBytes, sizeof(float4_t));
+        }
+    }
+    D3D11_MAPPED_SUBRESOURCE mapped{};
+    {
+        // Exact requested position: this bounded on-demand Map may wait for the
+        // rendering/copy command. Idle gameplay never submits a readback.
+        CProfilerScope mapScope(pProfiler, "Picking.MapWait");
+        if (FAILED(m_pContext->Map(m_pTexture2D.Get(), 0u, D3D11_MAP_READ, 0u, &mapped)))
+            return false;
+    }
+    float4_t position{};
+    {
+        CProfilerScope readScope(pProfiler, "Picking.ReadPixel");
+        const bool_t readable = mapped.pData && mapped.RowPitch >= sizeof(position);
+        if (readable) std::memcpy(&position, mapped.pData, sizeof(position));
+        m_pContext->Unmap(m_pTexture2D.Get(), 0u);
+        if (!readable) return false;
+    }
+    if (position.w == 0.f) return false;
+    vOut = position;
+    // PBR target W may hold finite auxiliary normal bits; public picking is a position.
+    vOut.w = 1.f;
+    return true;
 }
 
 bool_t CPicking::Picking(float4_t& vOut)
 {
-    if (nullptr == m_pWorldPositions)
+    if (GetCurrentThreadId() != m_iOwnerThreadId) return false;
+    CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope scope(pProfiler, "Picking.Readback");
+    ::POINT mouse{};
+    if (!m_hWnd || !GetCursorPos(&mouse) || !ScreenToClient(m_hWnd, &mouse) ||
+        mouse.x < 0 || mouse.y < 0)
         return false;
-
-    ::POINT ptMouse = {};
-
-    if (FALSE == GetCursorPos(&ptMouse) ||
-        FALSE == ScreenToClient(m_hWnd, &ptMouse))
+    // Resolve the resource for every demand: resize/recreation cannot retain an
+    // old texture or its dimensions, and no full-viewport CPU copy is needed.
+    const auto sourceView = CGameInstance::Get().Get_RT_SRV(TEXT("Target_PickPos"));
+    if (!sourceView) return false;
+    D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc{};
+    sourceView->GetDesc(&viewDesc);
+    if (viewDesc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D ||
+        viewDesc.Texture2D.MostDetailedMip != 0u)
         return false;
-
-    const LONG iViewportWidth =
-        static_cast<LONG>(m_vViewportSize.x);
-    const LONG iViewportHeight =
-        static_cast<LONG>(m_vViewportSize.y);
-
-    if (iViewportWidth <= 0 || iViewportHeight <= 0)
-        return false;
-
-    if (ptMouse.x < 0 ||
-        ptMouse.y < 0 ||
-        ptMouse.x >= iViewportWidth ||
-        ptMouse.y >= iViewportHeight)
-        return false;
-
-    const size_t iIndex =
-        static_cast<size_t>(ptMouse.y) *
-        static_cast<size_t>(iViewportWidth) +
-        static_cast<size_t>(ptMouse.x);
-
-    const size_t iPixelCount =
-        static_cast<size_t>(iViewportWidth) *
-        static_cast<size_t>(iViewportHeight);
-
-    if (iIndex >= iPixelCount)
-        return false;
-
-    if (0.f != m_pWorldPositions[iIndex].w)
-    {
-        vOut = m_pWorldPositions[iIndex];
-        // PBR pixels retain finite auxiliary normal bits in target W. Picking
-        // returns a homogeneous position independently of that GPU payload.
-        vOut.w = 1.f;
-        return true;
-    }
-
-    return false;
+    ComPtr<ID3D11Resource> resource;
+    sourceView->GetResource(&resource);
+    ComPtr<ID3D11Texture2D> source;
+    if (!resource || FAILED(resource.As(&source))) return false;
+    return Read_Pixel(source.Get(), static_cast<uint32_t>(mouse.x),
+        static_cast<uint32_t>(mouse.y), vOut, pProfiler);
 }
 
 unique_ptr<CPicking> CPicking::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, HWND hWnd)

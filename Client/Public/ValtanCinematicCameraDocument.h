@@ -20,6 +20,10 @@ struct VALTAN_CINEMATIC_CAMERA_KEYFRAME final
 	float3_t vEye = {};
 	float3_t vLookAt = {};
 	f32_t fFovYDegrees = 60.f;
+	/* Optional orientation basis for Composition Camera. Legacy look-at keys
+	   keep their existing interpolation; explicit up preserves captured roll. */
+	float3_t vUp = { 0.f, 1.f, 0.f };
+	bool_t hasUp = false;
 };
 
 /* LINEAR preserves the existing authored camera path. CATMULL_ROM connects

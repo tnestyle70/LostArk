@@ -1636,11 +1636,7 @@ void Client::CEffectV2Object::Late_Update(const f32_t fTimeDelta)
 
 f32_t Client::CEffectV2Object::ScreenPost_Intensity() const
 {
-	const SCREEN_POST_PARAMS& S = m_Params.ScreenPost;
-	if (!S.bIntensityLerp)
-		return (std::max)(0.f, S.fIntensityStart);
-	return (std::max)(0.f,
-		S.fIntensityStart + (S.fIntensityEnd - S.fIntensityStart) * Life_Ratio());
+	return m_Params.ScreenPost.Evaluate_Intensity(m_fTime, Life_Ratio());
 }
 
 HRESULT Client::CEffectV2Object::Submit_Presentation()

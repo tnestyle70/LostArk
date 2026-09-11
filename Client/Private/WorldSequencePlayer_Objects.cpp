@@ -133,8 +133,32 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             if (path.empty())
             { m_Status = "World Object model path is invalid: " + resource->modelAssetId; return false; }
             MODEL_ASSET_LOAD_DESC load;
-            if (!CActorCatalog::Build_ModelLoadDescription(resource->modelAssetId, load, m_Status))
-                return false;
+            const auto& materialSource = resource->materialSourceModelAssetId.empty() ? resource->modelAssetId : resource->materialSourceModelAssetId;
+            if (!CActorCatalog::Build_ModelLoadDescription(materialSource, load, m_Status)) return false;
+            if (!resource->materialSourceModelAssetId.empty() && load.materialOverrides.empty())
+            { m_Status = "World Object original actor materials are unavailable: " + materialSource; return false; }
+            load.meshPath = path;
+            for (const auto& binding : resource->mapMaterialBindings)
+            {
+                const auto* asset = targets.pCatalog->Find(binding.sourceAssetId);
+                if (!asset) { m_Status = "World Object map material asset is missing: " + binding.sourceAssetId; return false; }
+                const auto found = std::find_if(asset->materialOverrides.begin(), asset->materialOverrides.end(),
+                    [&](const auto& row) { return row.materialName == binding.sourceMaterialName; });
+                if (found == asset->materialOverrides.end() || found->surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED)
+                { m_Status = "World Object map surface binding is missing or unsupported: " + binding.sourceMaterialName; return false; }
+                auto material = *found;
+                material.materialName = binding.materialName;
+                material.surface.hasBakedLighting = false;
+                material.surface.hasStaticShadow = false;
+                material.bakedAveragePath.clear(); material.bakedDirectionalPath.clear(); material.staticShadowPath.clear();
+                if (!binding.diffuseTextureAssetId.empty())
+                {
+                    material.surfaceDiffusePath = CRuntimeAssetRoot::Resolve(binding.diffuseTextureAssetId);
+                    if (material.surfaceDiffusePath.empty()) { m_Status = "World Object surface texture is invalid"; return false; }
+                }
+                std::erase_if(load.materialOverrides, [&](const auto& prior) { return prior.materialName == material.materialName; });
+                load.materialOverrides.push_back(std::move(material));
+            }
             if (resource->materialProfile)
             {
                 MODEL_MATERIAL_OVERRIDE material;
@@ -215,13 +239,31 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
     active.objects.clear();
 }
 
-bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out) const
+bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out,
+    const uint32_t emissionIndex) const
 {
     const auto active = std::find_if(m_Active.begin(), m_Active.end(),
         [&](const auto& value) { return value.instanceId == instanceId; });
-    if (active == m_Active.end() || active->objects.size() != 1 || !active->objects.front().object ||
-        !active->objects.front().object->Is_Visible()) return false;
-    out = active->objects.front().object->Get_SampledWorld();
+    if (active == m_Active.end()) return false;
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    const auto* sequence = nullptr != instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (nullptr == sequence || sequence->objectMotion.emissions.empty())
+    {
+        if (0u != emissionIndex || active->objects.size() != 1 || !active->objects.front().object ||
+            !active->objects.front().object->Is_Visible()) return false;
+        out = active->objects.front().object->Get_SampledWorld();
+        return true;
+    }
+    // An authored row is one clone per anchor; a WORLD motion has exactly one anchor.
+    const CWorldSequenceObject* found = nullptr;
+    for (const auto& entry : active->objects)
+    {
+        if (entry.emissionIndex != emissionIndex || !entry.object) continue;
+        if (found) return false;
+        found = entry.object.get();
+    }
+    if (!found || !found->Is_Visible()) return false;
+    out = found->Get_SampledWorld();
     return true;
 }
 
@@ -301,7 +343,12 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
         XMConvertToRadians(motion.revolutionDegreesPerSecond.y * seconds),
         XMConvertToRadians(motion.revolutionDegreesPerSecond.z * seconds));
     const vector_t orbit = XMLoadFloat3(&motion.revolutionOffset);
-    const vector_t position = (((active.placement && instance.anchorKind == "WORLD") || anchor.emissionOverride) ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) + spawnOffset +
+    const bool hasAuthoredEmissions = !motion.emissions.empty();
+    const bool hasInstanceOffset = !((active.placement && instance.anchorKind == "WORLD") || anchor.emissionOverride);
+    // Legacy emitters keep their existing addition order. Authored rows rotate
+    // their local motion first, then add the instance's untranslated ring centre.
+    const vector_t instanceOffset = hasInstanceOffset ? XMLoadFloat3(&instance.position) : XMVectorZero();
+    const vector_t position = (hasAuthoredEmissions ? XMVectorZero() : instanceOffset) + XMLoadFloat3(&key.positionOffset) + spawnOffset +
         velocity * seconds + XMLoadFloat3(&motion.acceleration) * (.5f * seconds * seconds) +
         XMVector3TransformNormal(orbit, revolution) - orbit;
     const vector_t scale = XMLoadFloat3(&resource.scale) * XMLoadFloat3(&key.scaleMultiplier);
@@ -318,6 +365,16 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
             XMConvertToRadians(motion.angularVelocityDegrees.y * seconds),
             XMConvertToRadians(motion.angularVelocityDegrees.z * seconds));
     matrix_t world = XMMatrixScalingFromVector(scale) * rotation * XMMatrixTranslationFromVector(position);
+    /* An authored row turns the whole local motion, orbit and seeded spawn
+       offset included, before the existing placement / live-anchor composition. */
+    if (hasAuthoredEmissions)
+    {
+        const auto& emission = motion.emissions[(std::min)(static_cast<size_t>(emitter), motion.emissions.size() - 1u)];
+        world *= XMMatrixRotationY(XMConvertToRadians(emission.yawDegrees)) *
+            XMMatrixTranslationFromVector(XMLoadFloat3(&emission.positionOffset));
+        if (hasInstanceOffset)
+            world *= XMMatrixTranslationFromVector(instanceOffset);
+    }
     const bool localPlacement = active.placement && (instance.anchorKind == "BOSS" || instance.anchorKind == "PLAYER");
     if (!anchor.emissionOverride && !localPlacement) world *= basis;
     if (active.placement)
@@ -383,11 +440,12 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
         if (!resource || model == m_ObjectModels.end())
         { m_Status = "World Object model was not prepared: " + binding.targetId; return false; }
         for (const auto& anchor : anchors)
-            for (uint32_t emitter = 0; emitter < motion.count; ++emitter)
+            for (uint32_t emitter = 0; emitter < motion.EmissionCount(); ++emitter)
             {
-                const f32_t ageMs = localMs - static_cast<f32_t>(emitter) * motion.intervalMs;
+                const f32_t delayMs = static_cast<f32_t>(motion.EmissionDelayMs(emitter));
+                const f32_t ageMs = localMs - delayMs;
                 if (ageMs < 0.f || (!holdFinalPose && !sequence.effectTracks.empty() && ageMs >= sequence.durationMs)) continue;
-                const f32_t birthMs = emissionStartMs + emitter * static_cast<f32_t>(motion.intervalMs) / emissionRate;
+                const f32_t birthMs = emissionStartMs + delayMs / emissionRate;
                 if (!sequence.effectTracks.empty() && active.durationMs && birthMs >= active.durationMs) continue;
                 PLAYER_ANCHOR emissionAnchor;
                 const auto emissionKey = emissionMotionId + ":" + std::to_string(emissionStartMs) + ":" + std::to_string(emitter);
@@ -477,9 +535,9 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                 if (snapshot == m_EffectSnapshots.end())
                 { m_Status = "World Object effect was not prepared: " + effect.resourceId; return false; }
                 const f32_t trigger = static_cast<f32_t>(sequence->EffectStartMs(effect));
-                for (uint32_t emitter = 0; emitter < sequence->objectMotion.count; ++emitter)
+                for (uint32_t emitter = 0; emitter < sequence->objectMotion.EmissionCount(); ++emitter)
                 {
-                    const f32_t birth = emitter * static_cast<f32_t>(sequence->objectMotion.intervalMs) + trigger;
+                    const f32_t birth = static_cast<f32_t>(sequence->objectMotion.EmissionDelayMs(emitter)) + trigger;
                     if (localMs < birth) continue;
                     const bool loop = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP;
                     const uint64_t last = loop ? static_cast<uint64_t>(std::floor((localMs - birth) / period)) : 0u;
@@ -562,9 +620,12 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
     return true;
 }
 
-bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out) const
+bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out,
+ const uint32_t emissionIndex) const
 {
- if (Try_GetObjectPivot(instanceId, out)) return true;
+ if (Try_GetObjectPivot(instanceId, out, emissionIndex)) return true;
+ // Placed map aliases have no emission rows; only row 0 can name them.
+ if (0u != emissionIndex) return false;
  const auto* instance = Get_Document().Find_Instance(instanceId);
  if (!instance) return false;
  const WORLD_SEQUENCE_BINDING* binding = nullptr;

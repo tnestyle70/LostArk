@@ -9,7 +9,8 @@ namespace
 	bool_t IsValidLightAttenuation(const LIGHT_DESC& LightDesc)
 	{
 		if (LightDesc.staticShadowChannel > 15u || (LightDesc.eReceiver != LIGHT_RECEIVER::ALL &&
-			LightDesc.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) ||
+			LightDesc.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER &&
+			LightDesc.eReceiver != LIGHT_RECEIVER::UNBAKED) ||
 			(LIGHT::POINT != LightDesc.eType &&
 			LIGHT::SPOT != LightDesc.eType &&
 			LIGHT::DIRECTIONAL != LightDesc.eType) ||

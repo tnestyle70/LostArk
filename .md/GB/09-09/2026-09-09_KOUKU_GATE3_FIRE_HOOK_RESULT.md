@@ -309,3 +309,179 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1
 - **visual PASS 아님.** 갈고리가 실제로 끝을 앞세우고 지나가는지, 매달린 자세가 원본과 같은지는
   사용자의 실제 화면 확인이 필요하다. 특히 8.1의 실측은 파일 기준이고 화면 판정을 대신하지 않는다.
 - 잡힌 뒤의 피해, 탈출 입력, 전용 애니메이션은 요구에 없어 넣지 않았다.
+
+## 9. 불이 바닥에 파묻혀 있던 것과 테두리 전구 링 (2026-09-10)
+
+사용자가 실행 화면을 보고 세 가지를 지적했다. 불이 아레나 밖에 있다, 아레나 위에서 돌아야 한다,
+바닥에 박혀 있다, 그리고 아레나 테두리의 노랑·보라 표시를 없애 달라.
+
+### 9.1 아레나 실측
+
+추측하지 않고 두 경로로 쟀다.
+
+- `Data/Navigation/LV_LUT_MIDNIGHTC_ED.navsource`(셀 4m, 원점 −1960/−1780, 행 형식 `col row ? walkable height`):
+  중심 셀 높이 **1.3176**, 반경 4~12m 구간 **1.30**, 반경 12m부터 걷기 불가로 바뀐다.
+- 메시: `FLOOR08 × 0.95`의 반평면 **13.44m**, `FLOOR08A × 0.95`(반경 6.45m) 윗면 1.318.
+- 교차 확인: `Gameplay.world.json`의 `boss.kakulsaydon.g3.saydon` 스폰 Y가 **1.32**로 중심 셀과 일치.
+
+즉 **아레나 걷는 면은 Y ≈ 1.30, 유효 반경 약 12m, 바닥 디스크 13.44m**다.
+
+### 9.2 원인 — 불이 맵 지면 높이에 저작돼 있었다
+
+추가 불 60개가 전부 **Y 0.05**였다. 그건 맵의 지면이지 아레나 바닥이 아니어서 **약 1.25m 파묻혀**
+있었다. 그래서 화면에는 반경 14~16m의 기존 정적 배치만 보였고, 사용자가 "불이 아레나 밖에 있다"고
+본 것이다.
+
+**회전은 원래 맞았다.** 엔진의 `Sample_ObjectWorld` 공전 항을 그대로 재현해 확인한 결과 60개 전부
+아레나 중심 기준 **반경 12.60m 정원**, 벗어남 **0.000m**, 15초에 한 바퀴다. 돌지 않았던 게 아니라
+바닥 밑에서 돌고 있었다.
+
+### 9.3 고친 것 — 종류별 높이 보정
+
+불마다 밑면 위치와 세로 배율이 다르므로(D·E는 `scale.y 1.5`, F는 `2.5`) 공통값을 쓰지 않고
+`Y = 1.30 − (모델 최저 정점 × scale.y)`로 계산했다.
+
+| 불 | 모델 최저 정점(m) | scale.y | 저작 Y |
+|---|---|---|---|
+| D (`DECO24D`) | +0.0000 | 1.5 | 1.3000 |
+| E (`DECO24E`) | −0.0111 | 1.5 | 1.3167 |
+| F (`DECO24F`) | −0.0054 | 2.5 | 1.3134 |
+
+`KAKULSAYDON_G1_PATTERN_18`의 불 60개에 적용했다. `PATTERN_19`는 "갈고리만 확인용 불없음"이라
+불 occurrence가 없다. Composition revision 230 → 231.
+
+참고로 D형은 넓은 면이 방사 방향이라 반경 12.60m에서 바깥 끝이 약 13.95m까지 간다. 바닥 디스크
+끝이 13.44m이므로 0.5m 정도 걸친다. 화면에서 어색하면 반경만 당기면 된다.
+
+### 9.4 노랑·보라 표시 — 이펙트가 아니라 맵 배치였다
+
+사용자가 지목한 텍스처 `Effect/.../EFMASTER_MATERIAL_PROLOGUE/tex/t_tds_specular04.dds`는
+**스페큘러 맵**이고 `paperstage`와 `_Lever_ITR_02283` 메시의 재질 입력으로만 쓰인다. 지우면 그
+메시들의 음영이 깨지므로 건드리지 않았다. `Data/` 어디에도 이 텍스처를 참조하는 이펙트 문서는 없다.
+
+이펙트 층 전체를 배제했다. 패턴 18/19에는 EFFECT occurrence가 0개이고(콜라이더 18개뿐),
+Composition의 EFFECT 리소스 21개는 전부 패턴 1·2·5·6·9·11·13·15에만 배치돼 있으며,
+`Independent.json`의 53개 그룹에도 테두리 링을 그릴 항목이 없다. 지워도 계속 나온 이유가 이것이다.
+
+실제 정체는 **맵 배치**였다. `BG_EVT_CHRISTMAS_LIGHTING01` 72개가 **Y 1.30, 반경 13.12~13.31m,
+정확히 5°씩 360° 균등**으로 아레나 테두리를 두르고 있고, 그 메시는 서커스 천막의 emissive 텍스처
+`bg_lut_pearhabit_circustent01a_e_artree.dds`를 쓴다. 이것이 노랑·파랑 구슬이다.
+
+그 72행의 placement `visible` 플래그를 **0**으로 바꿨다. `visible=0` 행은 런타임에서 아예 생성되지
+않으며(`MapPlacementRuntime.cpp`), 1로 되돌리면 그대로 복구된다. 행을 지우지 않았다.
+같은 반경 안의 천장 줄 46개(Y 35~39)와 그 밖 310개는 건드리지 않았다.
+
+### 9.5 검증
+
+- Composition 구조 검증 통과(생성물 stale은 저작 변경 후 정상, 다음 publish에서 해소).
+- `Publish-MapAuthoring.ps1 -Scope Area -Mode Validate` **exit 0**, placement 3368개(쓰기 없는 경로).
+- 배치 파일 바이트 무결성: CRLF 3369개·행 수 3368 둘 다 변동 없음.
+- 화면 확인은 사용자 몫이다. 어떤 항목도 visual PASS가 아니다.
+
+## 10. 2026-09-10 — 첨부 영상 비교 후 외곽 불 재질·방향 교정
+
+사용자가 아재패턴.mp4와 3관문 불 갈고리.mp4를 첨부하고 아레나 둘레의 불만 수정 요청했다.
+첨부 영상을 디코딩해 원본의 붉고 노란 종이 불꽃과 구현 영상의 희고 보라색인 조각을 비교했다.
+Client 실행/자동 조작/화면 캡처는 하지 않았다. 이번 변경은 C++/shader가 아닌 데이터·설치 리소스 수정이다.
+
+### 10.1 이전 진단을 바로잡은 실측
+
+- 설치된 D/E/F 세 WMSH 정점 모두 X 두께 약0.01625m, 넓은 축은 Z다(modelPreScale0.01).
+  이전 생성기의 'D/E는 Z가 얇다'는 설명은 틀렸다. D/E40개의 면이 원의 접선이 아니라 방사 방향이었다.
+- 세 WModel의 WMA2 slot0 emissivePath에 실제로
+  textures/b2378a8f80d6_t_tds_specular04.dds가 기록돼 있었다. 이 파일을 열면 노랑·보라 반사광이다.
+  WMaterialReader가 그 필드를 emissive로 읽고 CMaterial이 EMISSIVE texture로 로드하며,
+  Shader_VtxMeshBinary PS_MAIN은 그 픽셀을 vEmissive에 더한다.
+- 따라서9.4절의 'paperstage와 Lever 재질에서만 사용'은 잘못된 결론이었다.
+  Data JSON 텍스트 검색만으로 WModel 내장 재질 입력을 배제할 수 없다.
+  노랑·보라색 원인의 전부를 CHRISTMAS_LIGHTING01 배치로 확정한 설명도 철회한다.
+  해당72개 visible=0 기존 변경은 이번에 되돌리거나 추가 변경하지 않았다.
+
+### 10.2 반영 내용
+
+- Composition revision231→232. 패턴18의 D/E 불40개 yaw에서90도 차감.
+- WorldSequences revision426→427. D/E CW/CCW4개 revolutionOffset을 [0,0,12.6]→[12.6,0,0]으로 변경.
+  yaw와 공전 offset을 함께 바꿔 중심과 반경을 보존한다.
+- 설치된 D/E/F WModel 각 slot0의 잘못 연결된 emissivePath520바이트만0으로 초기화.
+  원본 DDS/게임 UPK, mesh/UV, diffuse/normal/specular/다른 material record는 변경하지 않았다.
+  원본 material equation 전체를 복원한 것이 아니라 확인된 오접속을 제거한 것이다.
+- 재적용 도구 Tools/KoukuSaydonPipeline/repair_gate3_fire_materials.py 추가.
+  정확한 asset/material/diffuse/기존 emissive identity와 WMA2 layout을 검증하고,
+  전체 대상 사전 검증·백업 후 수정한다. 이미 수정된 리소스는 재실행해도 바꾸지 않는다.
+- 기존 author_gate3_fire_hook_fragments.py의 D/E 축과 측정 주석을 교정하고,
+  재생성시 바닥밑Y0.05로 돌아가지 않도록 현재 종류별 originY도 반영했다.
+  생성기를 실행해 패턴이나 갈고리를 재생성하지는 않았다.
+
+불60개·반경12.6·속도±24도/초·scale·현재 바닥높이·갈고리18개·패턴19 및 나머지 패턴은
+요청 전 저장 데이터와 의미 비교해 동일함을 확인했다. Source branch는 codex/kouku-arena-fire-0910.
+다른 작업의 미커밋 소스는 수정·stage·commit하지 않았다.
+
+### 10.3 실행한 검증과 배포
+
+- 불60개×721시점(0~36초,0.05초 간격), 기존 Sample_ObjectWorld 식 재현:
+  중심반경 오차<1e-6m, 면의 법선과 반경 방향 내적>0.999999.
+- JSON 의미 비교:40 yaw·4 offset·2 revision 외 변화0. 갈고리·기타 패턴 불변.
+- 세 바이너리:백업과 비교하여 지정 emissive 필드 외 바이트변화0, 두번째 repair 결과 변화0.
+- Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision232:
+  koukusaydon.product/map.kakulsaydon/world.gameplay/gameplay.balance 전부PASS, exit0.
+  기존 저작 mapplacements의72개 숨김도 정본 Area publisher가 실행 데이터에 반영했다.
+- project_kouku_saydon_composition.py --mode validate: revision232, exit0.
+- Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences -Mode Check: exit0.
+- git diff --check: 오류0(일부 파일의 Git CRLF 변환 안내만 존재).
+- 신규 C++/shader/project 변경 없음: 추가 컴파일은 실행하지 않았다.
+  gameplay publisher가 보고한 기존 타 직업 hit-shape coverage 경고는 이 불꽃 수정과 별개이며 변경하지 않았다.
+
+수정 전 데이터: out/FireRingFixBackup/20260910-151408.
+수정 전 WModel: out/KoukuGate3FireMaterialBackup의 asset별 backup.
+설치 리소스는 Git 추적 대상이 아니므로 다른 PC 전달시 아래 세 폴더의 같은 이름 WModel도 함께 전달한다.
+
+Resources 상대 위치(물리 root는 C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/Resources):
+
+- Map/LV_LUT_MIDNIGHTC_ED/MAP_CFEDE8067300_BG_RAD_KOUKUSATON_DECO24D_SM_KHB/
+- Map/LV_LUT_MIDNIGHTC_ED/MAP_B71A2EC9D778_BG_RAD_KOUKUSATON_DECO24E_SM_KHB/
+- Map/LV_LUT_MIDNIGHTC_ED/MAP_7AC8BB3D2FEE_BG_RAD_KOUKUSATON_DECO24F_SM_KHB/
+
+### 10.4 사용자 확인 대기 — visual PASS 아님
+
+Server와 Client를 재시작한다(Client working directory: Client/Default).
+쿠크3관문에서 이전과 같은 '3관문_외곽불회전_갈고리대각선_시각테스트'(패턴18)를 재생한다.
+Boss Tool에서는 해당 패턴 선택 후 Play Isolated, Action Workbench에서는 Complete Play (Server).
+'갈고리만_확인용_불없음'(패턴19)은 확인 대상이 아니다.
+붉고 노란 불꽃의 넓은 면이 테두리를 따라 이어지고 노랑·보라 반사광 조각이 사라지는지 사용자가 판단한다.
+원본과의 최종 색감·크기·밀도 일치나 화면 완료는 아직 승인되지 않았다.
+
+## 11. 2026-09-10 — 앞뒤 간격이 있는 세 줄 불꽃
+
+사용자는 3관문 불불.mp4를 첨부해 현재 불 느낌은 맞지만 원본처럼 앞뒤로2~3줄을 원한다고 요청했다.
+첨부 영상 프레임에서 현재 단일 반경의 얇은 불벽과 원본의 앞뒤 겹침을 비교했다.
+이 서면 피드백은 기존 색/형상 방향에 대한 확인이며 모든 visual fidelity의 최종 승인은 아니다.
+
+### 이번 변경
+
+- 패턴18의 동일한 불60개를 종류별20개씩 세 줄로 재배치했다.
+  D 바깥줄12.6m, E 중간줄11.7m, F 안쪽줄10.8m. 줄 간격0.9m.
+- 각 줄 처음 배치 간격18도, 시작각0/6/12도로 엇갈리게 배치.
+  줄의 반경과 offset을 동시에 변경해 회전 중 원의 중심이 어긋나지 않게 했다.
+- 기존 갈고리·다른 패턴·재질·크기·Y·지속시간·속도±24도/초·회전 방향은 그대로다.
+  바깥줄을 확장하지 않았고, 불 개수나 새 WORLD/Resource ID도 추가하지 않았다.
+- Composition revision232→233, sequence427→428.
+  변경 정본은 KoukuSaydonComposition.json의 불 XZ/yaw, WorldSequences의 E/F4개 공전offset,
+  기존 author_gate3_fire_hook_fragments.py의 FIRE_RING_LAYOUT와 배치 계산이다.
+- 0.9m와 시작각은 원본에서 추출한 절대수치가 아닌, 사용자 영상 피드백에 맞춘 저작값이다.
+
+### 검사·배포
+
+- 이전 파일과 JSON 의미 비교: 불의XZ/yaw, 네 orbit offset, 두 revision 외 변화0.
+- 60개×721시점(0~36초) 공전 검사: 반경 오차 최대0.000000006m, 방사방향 법선 내적1.0.
+  세 줄 각20개와 초기18도간격·0/6/12도 엇갈림 확인.
+- KoukuSaydon owner publisher revision233: product/map/world/gameplay 전부PASS, exit0.
+- project_kouku_saydon_composition.py --mode validate 및 WorldSequences publisher Check: exit0.
+- git diff --check 오류0. C++/Shader/Resources 파일을 바꾸지 않아 컴파일은 실행하지 않았다.
+- 이전 데이터3개는 out/FireRowsFixBackup/20260910-155604에 보존했다.
+  직접 Client 실행·조작·캡처는 하지 않았다. 자동 검사 결과는 육안 완료 판정이 아니다.
+
+### 사용자 확인
+
+Server/Client 재시작 → 쿠크3관문 → 기존 '3관문_외곽불회전_갈고리대각선_시각테스트' 재생.
+불꽃이 한 반경에 몰리지 않고 앞뒤로 세 줄 겹쳐 돌아가는지 확인한다.
+패턴19 '갈고리만_확인용_불없음'은 불 확인용이 아니다.

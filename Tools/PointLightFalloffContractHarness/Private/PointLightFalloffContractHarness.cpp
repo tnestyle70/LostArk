@@ -9,6 +9,7 @@
 #include <Windows.h>
 
 #include <bit>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -23,7 +24,7 @@
 using namespace Client;
 using namespace Engine;
 
-static_assert(sizeof(LIGHT_DESC) == 100u);
+static_assert(sizeof(LIGHT_DESC) == 108u);
 static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
 static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
 static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
@@ -175,6 +176,88 @@ namespace
 			0 == std::memcmp(&Before, &Output, sizeof Output);
 	}
 
+    bool_t CheckUnbakedReceiverPixels(const ComPtr<ID3D11Device>& device,
+        const ComPtr<ID3D11DeviceContext>& context, const std::shared_ptr<CShader>& shader,
+        const std::shared_ptr<CVIBuffer_Rect>& buffer)
+    {
+        D3D11_TEXTURE2D_DESC desc{};
+        desc.Width = desc.Height = desc.MipLevels = desc.ArraySize = desc.SampleDesc.Count = 1u;
+        desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+        desc.Usage = D3D11_USAGE_DEFAULT; desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+        ComPtr<ID3D11Texture2D> result[2], staging;
+        ComPtr<ID3D11RenderTargetView> targets[2];
+        for (unsigned i = 0; i < 2; ++i)
+        {
+            const HRESULT th = device->CreateTexture2D(&desc, nullptr, result[i].GetAddressOf());
+            const HRESULT rh = SUCCEEDED(th) ? device->CreateRenderTargetView(result[i].Get(), nullptr, targets[i].GetAddressOf()) : th;
+            if (FAILED(rh)) { std::cerr << "light texture/RT failure=" << std::hex << th << "/" << rh << " removed=" << device->GetDeviceRemovedReason() << "\n"; return false; }
+        }
+        desc.Usage = D3D11_USAGE_STAGING; desc.BindFlags = 0; desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        if (FAILED(device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf()))) { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
+        desc.Usage = D3D11_USAGE_DEFAULT; desc.BindFlags = D3D11_BIND_SHADER_RESOURCE; desc.CPUAccessFlags = 0;
+        const auto texture = [&](const char* name, const float4_t& value) -> bool
+        {
+            ComPtr<ID3D11Texture2D> tex;
+            ComPtr<ID3D11ShaderResourceView> srv;
+            D3D11_SUBRESOURCE_DATA input{&value, sizeof(value), 0u};
+            return SUCCEEDED(device->CreateTexture2D(&desc, &input, tex.GetAddressOf())) &&
+                SUCCEEDED(device->CreateShaderResourceView(tex.Get(), nullptr, srv.GetAddressOf())) &&
+                SUCCEEDED(shader->Bind_Texture(name, srv));
+        };
+        float4x4_t identity, fullScreen;
+        XMStoreFloat4x4(&identity, XMMatrixIdentity());
+        XMStoreFloat4x4(&fullScreen, XMMatrixScaling(2.f, 2.f, 1.f));
+        if (FAILED(shader->Bind_Matrix("g_WorldMatrix", &fullScreen))) { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
+        for (const char* name : {"g_ViewMatrix", "g_ProjMatrix", "g_ViewMatrixInverse", "g_ProjMatrixInverse"})
+            if (FAILED(shader->Bind_Matrix(name, &identity))) { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
+        const float4_t camera(0.f, 0.f, -10.f, 1.f);
+        const uint32_t zero = 0u;
+        if (FAILED(shader->Bind_RawValue("g_vCamPosition", &camera, sizeof(camera))) ||
+            FAILED(shader->Bind_RawValue("g_SourceCharacterRow", &zero, sizeof(zero))) ||
+            !texture("g_NormalTexture", {.5f,.5f,0.f,0.f}) ||
+            !texture("g_MaterialSpecularTexture", {0.f,0.f,0.f,1.f}) ||
+            !texture("g_EmissiveTexture", {0.f,0.f,0.f,0.f}) ||
+            !texture("g_CharacterSurfaceTexture", {0.f,0.f,0.f,0.f})) { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
+        ID3D11RenderTargetView* views[] = {targets[0].Get(), targets[1].Get()};
+        context->OMSetRenderTargets(2u, views, nullptr);
+        const D3D11_VIEWPORT viewport{0.f,0.f,1.f,1.f,0.f,1.f};
+        context->RSSetViewports(1u, &viewport);
+        if (FAILED(buffer->Bind_Resources())) return false;
+        LIGHT_DESC light = MakeValidPointLight();
+        light.vPosition = {0.f,0.f,-1.f,1.f};
+        light.vDiffuse = {1.f,1.f,1.f,1.f}; light.vAmbient = {0.f,0.f,0.f,0.f};
+        const float clear[4]{};
+        unsigned cases = 0;
+        for (const auto receiver : {LIGHT_RECEIVER::ALL, LIGHT_RECEIVER::SOURCE_CHARACTER, LIGHT_RECEIVER::UNBAKED})
+            for (const bool baked : {false, true})
+            {
+                light.eReceiver = receiver;
+                if (!texture("g_DepthTexture", {.5f,.001f,50.f,8.f}) ||
+                    !texture("g_GeometricNormalTexture", {0.f,0.f,0.f,std::bit_cast<float>(baked ? 0x00400000u : 0u)})) { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
+                context->ClearRenderTargetView(views[0], clear); context->ClearRenderTargetView(views[1], clear);
+                if (FAILED(CLight::Render_Desc(light, shader, buffer))) { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
+                context->CopyResource(staging.Get(), result[0].Get());
+                D3D11_MAPPED_SUBRESOURCE mapped{};
+                if (FAILED(context->Map(staging.Get(), 0u, D3D11_MAP_READ, 0u, &mapped))) {
+                    ComPtr<ID3D11InfoQueue> queue; device.As(&queue);
+                    if (queue) for (UINT64 m = 0; m < queue->GetNumStoredMessages(); ++m) {
+                        SIZE_T bytes=0; queue->GetMessage(m,nullptr,&bytes); std::vector<unsigned char> storage(bytes);
+                        auto* message=reinterpret_cast<D3D11_MESSAGE*>(storage.data()); queue->GetMessage(m,message,&bytes);
+                        std::cerr << message->pDescription << "\n";
+                    }
+                    std::cerr << "readback failed removed=" << std::hex << device->GetDeviceRemovedReason() << "\n"; return false;
+                }
+                const float actual = static_cast<const float*>(mapped.pData)[0];
+                context->Unmap(staging.Get(), 0u);
+                const bool expected = receiver == LIGHT_RECEIVER::ALL || (receiver == LIGHT_RECEIVER::UNBAKED && !baked);
+                if (!std::isfinite(actual) || (expected ? actual <= .1f : std::abs(actual) > .000001f))
+                { std::cerr << "receiver pixel mismatch: " << unsigned(receiver) << "/" << baked << "=" << actual << "\n"; { std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; } }
+                ++cases;
+            }
+        std::cout << "Deferred receiver WARP pixels: " << cases << " passed\n";
+        return true;
+    }
+
 	bool_t RenderWithDeferredShader(
 		const std::filesystem::path& RepoRoot,
 		const LIGHT_DESC& Reconstructed,
@@ -191,7 +274,7 @@ namespace
 			Device.GetAddressOf(), &FeatureLevel, Context.GetAddressOf())) ||
 			D3D_FEATURE_LEVEL_11_0 != FeatureLevel)
 		{
-			return false;
+			{ std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
 		}
 
 		const std::filesystem::path ShaderPath = RepoRoot /
@@ -201,11 +284,11 @@ namespace
 			VTXTEX::Elements, VTXTEX::iNumElements);
 		auto BufferPrototype = CVIBuffer_Rect::Create(Device, Context);
 		if (nullptr == ShaderPrototype || nullptr == BufferPrototype)
-			return false;
+			{ std::cerr << "light GPU check failed line " << __LINE__ << "\n"; return false; }
 
 		std::shared_ptr<CShader> Shader(std::move(ShaderPrototype));
 		std::shared_ptr<CVIBuffer_Rect> Buffer(std::move(BufferPrototype));
-		const bool_t bRendered = SUCCEEDED(CLight::Render_Desc(
+		const bool_t bRendered = CheckUnbakedReceiverPixels(Device, Context, Shader, Buffer) && SUCCEEDED(CLight::Render_Desc(
 			Reconstructed, Shader, Buffer, true)) &&
 			SUCCEEDED(CLight::Render_Desc(Legacy, Shader, Buffer)) &&
 			SUCCEEDED(CLight::Render_Desc(MakeValidSpotLight(), Shader, Buffer, true));
@@ -390,6 +473,24 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 		!AuthoredReopened.Parse(AuthoredMap.Serialize(), "LV_LUT_MIDNIGHTC_ED", MapLightStatus) ||
 		!AuthoredReopened.Get_Lights().empty())
 		return Fail("empty authored v2 map lights did not round trip");
+
+    CMapLightDocument KoukuLights;
+    const auto KoukuPath = RepoRoot / L"Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json";
+    if (!KoukuLights.Load(KoukuPath, "LV_LUT_MIDNIGHTC_ED", MapLightStatus))
+        return Fail("Kouku UNBAKED source lights failed admission");
+    size_t UnbakedLights = 0;
+    for (const auto& Light : KoukuLights.Get_Lights()) if (Light.receiver == LIGHT_RECEIVER::UNBAKED) ++UnbakedLights;
+    const auto KoukuSaved = KoukuLights.Serialize();
+    CMapLightDocument ReopenedKouku;
+    if (UnbakedLights != 84u || !ReopenedKouku.Parse(KoukuSaved, "LV_LUT_MIDNIGHTC_ED", MapLightStatus) ||
+        ReopenedKouku.Serialize() != KoukuSaved) return Fail("Kouku UNBAKED receiver roundtrip changed lights");
+    auto InvalidReceiver = KoukuLights.Get_Lights();
+    InvalidReceiver.front().receiver = static_cast<LIGHT_RECEIVER>(99u);
+    if (KoukuLights.Replace_Authored(InvalidReceiver, KoukuLights.Get_NextLightOrdinal(), MapLightStatus) ||
+        KoukuLights.Serialize() != KoukuSaved) return Fail("invalid receiver replaced admitted lights");
+    auto UnbakedPoint = MakeValidPointLight();
+    UnbakedPoint.eReceiver = LIGHT_RECEIVER::UNBAKED;
+    if (!CLight::Create(UnbakedPoint)) return Fail("UNBAKED light rejected at renderer boundary");
 
 	const LIGHT_DESC DefaultDesc{};
 	if (!SameBits(DefaultDesc.fFalloffExponent, 1.f))
@@ -628,7 +729,7 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 		InvalidSpots.push_back(Invalid);
 	}
 	LIGHT_DESC InvalidSpot = Spot;
-	InvalidSpot.fSpotInnerCos = 1.f;
+	InvalidSpot.fSpotInnerCos = 1.0001f;
 	InvalidSpots.push_back(InvalidSpot);
 	InvalidSpot = Spot;
 	InvalidSpot.fSpotOuterCos = 0.98f;
