@@ -2241,15 +2241,99 @@ void CModel::Include_LocalPosition(fvector_t vPosition)
 HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)
 {
     Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Materials");
-    m_iNumMaterials = static_cast<uint32_t>(asset.materials.size());
-    m_Materials.reserve(m_iNumMaterials);
-    for (const MODEL_MATERIAL_DATA& material : asset.materials)
+    // Each slot owns its material and device-only texture preparation. Publish
+    // the complete vector only after every worker has finished successfully.
+    vector<shared_ptr<CMaterial>> staged(asset.materials.size());
+    static std::atomic_uint backgroundWorkers{ 0u };
+    struct MATERIAL_PREPARATION final
     {
-        auto pMaterial = CMaterial::Create(m_pDevice, m_pContext, material);
-        if (nullptr == pMaterial)
-            return E_FAIL;
-        m_Materials.push_back(pMaterial);
+        const vector<MODEL_MATERIAL_DATA>& inputs;
+        vector<shared_ptr<CMaterial>>& outputs;
+        ComPtr<ID3D11Device> device;
+        ComPtr<ID3D11DeviceContext> context;
+        std::atomic_uint& backgroundWorkers;
+        std::atomic_size_t next{ 0u };
+        std::atomic<HRESULT> result{ S_OK };
+
+        void Run() noexcept
+        {
+            try
+            {
+                while (SUCCEEDED(result.load(std::memory_order_relaxed)))
+                {
+                    const size_t index = next.fetch_add(1u, std::memory_order_relaxed);
+                    if (index >= inputs.size()) return;
+                    auto material = CMaterial::Create(device, context, inputs[index]);
+                    if (!material) { result.store(E_FAIL, std::memory_order_relaxed); return; }
+                    outputs[index] = std::move(material);
+                }
+            }
+            catch (const std::bad_alloc&) { result.store(E_OUTOFMEMORY, std::memory_order_relaxed); }
+            catch (...) { result.store(E_FAIL, std::memory_order_relaxed); }
+        }
+
+        static void CALLBACK Work(PTP_CALLBACK_INSTANCE, void* parameter, PTP_WORK)
+        {
+            auto& batch = *static_cast<MATERIAL_PREPARATION*>(parameter);
+            const HRESULT apartment = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+            if (SUCCEEDED(apartment) || apartment == RPC_E_CHANGED_MODE)
+            {
+                try
+                {
+                    Engine::CProfilerScope workerScope(CGameInstance::Get().Get_Profiler(), "Model.Load.MaterialWorker");
+                    batch.Run();
+                }
+                catch (const std::bad_alloc&) { batch.result.store(E_OUTOFMEMORY, std::memory_order_relaxed); }
+                catch (...) { batch.result.store(E_FAIL, std::memory_order_relaxed); }
+            }
+            // If COM preparation fails the owning loader drains the same queue.
+            if (SUCCEEDED(apartment)) CoUninitialize();
+            batch.backgroundWorkers.fetch_sub(1u, std::memory_order_relaxed);
+        }
+    } batch{ asset.materials, staged, m_pDevice, m_pContext, backgroundWorkers };
+
+    // Small/static map materials stay serial. At most three extra workers
+    // across all simultaneous model loads use Windows' existing thread pool.
+    const unsigned processors = static_cast<unsigned>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
+    const unsigned limit = processors > 2u ? (std::min)(3u, processors - 2u) : 0u;
+    PTP_WORK work = asset.hasSkeleton && asset.materials.size() >= 3u && limit != 0u &&
+        0u == (m_pDevice->GetCreationFlags() & D3D11_CREATE_DEVICE_SINGLETHREADED) ?
+        CreateThreadpoolWork(&MATERIAL_PREPARATION::Work, &batch, nullptr) : nullptr;
+    struct WORK_JOIN final
+    {
+        PTP_WORK work;
+        ~WORK_JOIN()
+        {
+            if (!work) return;
+            WaitForThreadpoolWorkCallbacks(work, FALSE);
+            CloseThreadpoolWork(work);
+        }
+    } join{ work };
+    if (work)
+    {
+        for (size_t index = 1u; index < asset.materials.size(); ++index)
+        {
+            unsigned active = backgroundWorkers.load(std::memory_order_relaxed);
+            while (active < limit && !backgroundWorkers.compare_exchange_weak(
+                active, active + 1u, std::memory_order_relaxed)) {}
+            if (active >= limit) break;
+            SubmitThreadpoolWork(work);
+        }
     }
+    batch.Run();
+    if (work)
+    {
+        Engine::CProfilerScope waitScope(CGameInstance::Get().Get_Profiler(), "Model.Load.MaterialJoin");
+        WaitForThreadpoolWorkCallbacks(work, FALSE);
+        CloseThreadpoolWork(work);
+        join.work = nullptr;
+    }
+    const HRESULT result = batch.result.load(std::memory_order_relaxed);
+    if (FAILED(result)) return result;
+    if (std::any_of(staged.begin(), staged.end(), [](const auto& material) { return !material; }))
+        return E_FAIL;
+    m_iNumMaterials = static_cast<uint32_t>(staged.size());
+    m_Materials = std::move(staged);
     return S_OK;
 }
 

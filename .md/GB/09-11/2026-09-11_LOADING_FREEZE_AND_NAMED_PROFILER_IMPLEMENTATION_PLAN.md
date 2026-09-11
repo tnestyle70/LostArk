@@ -31,3 +31,14 @@ Profiler 집계가 매 refresh마다 모든 raw scope를 정렬하고 map lookup
 사용자가 제공한 최신 ALT V 캡처에서 load stall과 정상 재생 프레임, Profiler 자체 간섭을 분리한다. 새로운 수치가 지목하는 반복 연산·할당·복사·제출을 먼저 고친다. 확인된 전체 viewport PickPos readback은 실제 피킹 요청의 1픽셀 readback으로 바꾸고 좌표·resource·RowPitch·no-hit을 유지한다. Spawn 0개의 불필요한 행렬 계산과 immutable particle module 반복 검색은 기존 prepared cache로 줄이며 fixed-step/RNG 순서를 보존한다. work stealing/fiber/GPU particle을 이름만으로 도입하지 않고 실제 순수 CPU 작업과 dependency를 근거로 결정한다.
 
 기존 인코딩/dirty 변경을 보존한다. 새 제품 CPP 파일을 추가하면 해당 project/filter에만 등록한다. 현재는 기존 파일 확장을 우선한다. 실제 임시 데이터의 save/list/delete, stale/cancel/rollback, 준비 worker와 main commit 경계, aggregate 결과 동일성, focused Debug compile을 검증한다. 전체 제품 빌드는 사용자 실행/빌드 프로세스와 충돌하지 않는 때 수행하며, Client/UI 조작과 화면 판정은 사용자가 한다. RESULT는 소스 반영·컴파일·수치 검사·사용자 화면 및 FPS를 분리한다.
+
+
+## G07. 준비 중 입력 보존과 디코더 직렬화 제거
+
+새 class 모델과 해당 Effect target이 준비되기 전에는 기존 character의 UI·이동·스킬 입력을 유지한다. 준비 완료 뒤 typed Server class-change를 한 번 보내고 snapshot commit 동안만 gameplay 입력을 막는다. 준비 실패는 기존 character와 정확한 원인을 보존한다.
+
+ModelDecoderRegistry의 mutex가 파일 probe와 전체 decode까지 감싸는 경계를 등록 목록 snapshot에만 제한한다. decoder는 등록 후 제거하지 않고 const decode의 모든 가변 입력·출력을 호출자가 소유한다. 기존 Get_LastReport 소비자는 같은 thread의 마지막 결과를 받도록 바꿔 다른 worker의 실패가 섞이지 않게 한다. WModel animation의 독립 clip별 CPU 작업은 기존 parser의 검증과 순서·실패 계약을 유지하며 실제 시간과 결과 일치에 따라 병렬화 적용을 결정한다. 작은 파일은 직렬로 유지하고 매 clip마다 worker를 생성하지 않는다.
+
+공유 Material texture cache도 서로 다른 texture의 파일 읽기와 device 생성 전체를 한 mutex로 직렬화하고 있다. map lookup만 짧게 잠그고 동일 key의 최초 준비만 entry별 mutex로 합쳐 GPU 중복 생성을 막는다. 실패는 캐시 성공으로 저장하지 않는다. 기존 weak resource 수명·device/path/color/size/mtime key를 유지하고 active entry를 지우지 않는다. Profiler에 cache lookup, 동일 key 대기, 파일·GPU 업로드 구간을 추가한다.
+
+실제 Warlord Catalog materialOverrides를 포함한 WARP 검사에서 9모델+2애니메이션셋 CModel 생성 29.52초 중 Material 28.14초가 관측됐다. CModel의 기존 Ready_Materials 안에서 skinned 3개 이상 material의 독립 준비만 Windows default threadpool로 나눈다. 동시 모델 전체에서 추가 worker는 최대3, CPU2개를 남기며 SINGLETHREADED device와 작은/static 입력은 직렬이다. 각 callback은 COM apartment와 자기 material slot만 소유하고 immediate context를 호출하지 않는다. owner도 같은 큐를 처리하고 완료를 기다린 뒤 모두 성공한 vector만 교체한다. 기존 loader의 협력 취소·종료 책임은 유지되며 모델 내부 진행 중의 resource load는 완료 후 회수한다. Worker/Join 구간은 별도 계측한다. 실제 시간 개선과 자원 결과 일치는 같은 Catalog 입력으로 검증한다.

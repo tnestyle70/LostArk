@@ -84,6 +84,8 @@ private:
 	void Consume_ClassChangeResults();
 	bool_t Advance_DeferredClassPresentation();
 	bool_t Is_ClassPresentationPreparationPending() const;
+	bool_t Is_AuthoritativeClassReplacementPending() const;
+	void Reset_RequestedClassEffectPreparation();
 	void Reset_ClassPresentationPreparation();
 	bool_t Synchronize_LocalCharacter();
 	void Fail_ServerArena(
@@ -269,6 +271,9 @@ private:
 	std::optional<size_t> m_iRequestedClassIndex;
 	std::optional<size_t> m_iPreparingClassIndex;
 	unique_ptr<CPlayableCharacterAssetService> m_pClassAssetPreparation;
+	std::optional<size_t> m_iRequestedClassEffectIndex;
+	std::uint64_t m_iRequestedClassEffectRevision = 0u;
+	std::vector<std::string> m_RequestedClassEffectTargets;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
 	std::uint32_t m_iNextDespawnRequestSequence = 1u;
 	std::uint32_t m_iNextKakulArenaRequestSequence = 1u;
