@@ -11,6 +11,8 @@
     { "childId": "child.authored.00004", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.glow_3" }, "startMs": 2000, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
     { "childId": "child.authored.00005", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.glow_4" }, "startMs": 2200, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
     { "childId": "child.authored.00006", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.corn_1" }, "startMs": 2200, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
-    { "childId": "child.authored.00007", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.glow_5" }, "startMs": 2250, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
+    { "childId": "child.authored.00007", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.glow_5" }, "startMs": 2250, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.authored.00008", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.beam_1" }, "startMs": 2200, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.authored.00009", "resource": { "kind": "LEAF", "id": "boss.kouku.laser.corn_2" }, "startMs": 2200, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
   ]
 }
