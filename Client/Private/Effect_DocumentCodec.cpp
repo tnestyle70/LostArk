@@ -7100,6 +7100,13 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				"Effect Model Cue identity, resource, time, or transform is invalid.";
 			return false;
 		}
+		if (!Cue.strSuppressHorizontalRootMotionBone.empty() &&
+			(Cue.strSuppressHorizontalRootMotionBone.size() > 128u ||
+			 !Has_VisibleCharacter(Cue.strSuppressHorizontalRootMotionBone)))
+		{
+			strOutError = "Effect Model Cue horizontal root-motion bone is invalid: " + Cue.strCueId;
+			return false;
+		}
 		if (Cue.bLoop && Cue.bHoldLastFrame)
 		{
 			strOutError = "Effect Model Cue cannot loop and hold its last frame: " +
@@ -13771,6 +13778,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					{ "cueId", "modelAssetId", "clipName",
 						"startDelaySeconds", "durationSeconds", "alphaMode",
 						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible",
+						"suppressHorizontalRootMotionBone",
 						"localTransform", "assetPreTransform", "material" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
@@ -13799,6 +13807,9 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				!Read_OptionalBool(CueValue, "holdLastFrame",
 					Cue.bHoldLastFrame, strOutError) ||
 				!Read_OptionalBool(CueValue, "loop", Cue.bLoop, strOutError) ||
+				(CueValue.Find("suppressHorizontalRootMotionBone") &&
+				 !Read_String(CueValue, "suppressHorizontalRootMotionBone",
+					 Cue.strSuppressHorizontalRootMotionBone, strOutError)) ||
 				!Read_ModelCueTransform(CueValue, Cue, strOutError))
 			{
 				if (strOutError.empty())
@@ -14128,6 +14139,9 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< ", \"opacity\": " << Cue.fOpacity
 			<< ", \"colorMultiply\": ";
 		Write_Float4(Output, Cue.vColorMultiply);
+		if (!Cue.strSuppressHorizontalRootMotionBone.empty())
+			Output << ", \"suppressHorizontalRootMotionBone\": \""
+				<< CDataJson::Escape(Cue.strSuppressHorizontalRootMotionBone) << "\"";
 		Output << ", \"holdLastFrame\": "
 			<< (Cue.bHoldLastFrame ? "true" : "false")
 			<< ", \"loop\": " << (Cue.bLoop ? "true" : "false")

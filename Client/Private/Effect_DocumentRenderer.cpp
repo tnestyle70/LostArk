@@ -3586,6 +3586,7 @@ namespace
 			if (A.strCueId != B.strCueId ||
 				A.strModelAssetId != B.strModelAssetId ||
 				A.strClipName != B.strClipName ||
+				A.strSuppressHorizontalRootMotionBone != B.strSuppressHorizontalRootMotionBone ||
 				A.eAlphaMode != B.eAlphaMode ||
 				A.Material.has_value() != B.Material.has_value() ||
 				(A.Material && (A.Material->strTemplateId != B.Material->strTemplateId ||
@@ -8649,7 +8650,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		std::to_string(Cue.vAssetPreScale.z) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.x) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.y) + "\n" +
-		std::to_string(Cue.vAssetPreRotationDegrees.z);
+		std::to_string(Cue.vAssetPreRotationDegrees.z) + "\n" +
+		Cue.strSuppressHorizontalRootMotionBone;
 	shared_ptr<Engine::CModel> Model;
 	if (nullptr != pSharedAssets)
 	{
@@ -8670,7 +8672,18 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			m_pDevice, m_pContext, MODEL::ANIM,
 			ModelPath.string().c_str(), PreTransform);
 		if (nullptr != Loaded)
+		{
+			// Set the suppression baseline on the unposed prototype. Clones retain
+			// this setting, while their animation clocks remain independent.
+			if (!Cue.strSuppressHorizontalRootMotionBone.empty() &&
+				!Loaded->Enable_RootMotionSuppression(Cue.strSuppressHorizontalRootMotionBone.c_str(), 1))
+			{
+				strOutError = "Animated Model Cue root-motion bone is missing: " +
+					Cue.strCueId + " / " + Cue.strSuppressHorizontalRootMotionBone;
+				return E_FAIL;
+			}
 			Model = std::move(Loaded);
+		}
 	}
 	if (nullptr == Model ||
 		!Model->Set_Animation(Cue.strClipName.c_str(), false))
@@ -21408,7 +21421,8 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 		0.f, Cue.fDurationSeconds);
 	Engine::CModel& Model = *Resource.pModel;
 	// Seek from the effect clock so scrubbing and replay use the same loop phase.
-	// Translation uses the unclipped cue time and therefore never rewinds at a wrap.
+	// Authored translation uses cue time. Optional root suppression is already
+	// configured on this clone so source X/Z locomotion cannot rewind at a wrap.
 	const f32_t fAnimationTime = Cue.bLoop ?
 		std::fmod(fLocalTime, Resource.fDurationSeconds) :
 		(Cue.bHoldLastFrame ? (std::min)(fLocalTime, Resource.fDurationSeconds) :

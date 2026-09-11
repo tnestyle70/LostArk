@@ -1849,6 +1849,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	std::string strCueId;
 	std::string strModelAssetId;
 	std::string strClipName;
+	// Optional source bone: suppress X/Z translation and keep its animated Y jump.
+	std::string strSuppressHorizontalRootMotionBone;
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fDurationSeconds = 1.f;
 	EFFECT_TRANSFORM_DESC LocalTransform;
