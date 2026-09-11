@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 1,
+  "revision": 2,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -1554,35 +1554,35 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.1",
           "worldId": "kakulsaydon.g1.world.7",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 4507,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.2",
           "worldId": "kakulsaydon.g1.world.8",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 4507,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.3",
           "worldId": "kakulsaydon.g1.world.9",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 4507,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.4",
           "worldId": "kakulsaydon.g1.world.10",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 4507,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.5",
           "worldId": "kakulsaydon.g1.world.11",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 4507,
           "playbackSpeed": 1
         },
         {

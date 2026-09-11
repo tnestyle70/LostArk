@@ -931,6 +931,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Reload(std::string& outStatus)
 		return false;
 	}
 
+	if (Is_CompleteSequencePlaying()) Stop_Preview();
 	const std::string previousPatternId = m_strSelectedPatternId;
 	m_Draft = m_Document.Get_LastGood();
 	m_strLogicValueDraftId.clear();
@@ -1283,6 +1284,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_PresentationPreviewRequest(
 	KOUKU_PRESENTATION_PREVIEW_REQUEST& outRequest)
 {
 	if (!m_bPresentationPreviewRequestPending) return false;
+	Cancel_CompleteSequencePlay();
 	outRequest = std::move(m_PendingPresentationPreviewRequest);
 	m_PendingPresentationPreviewRequest = {};
 	m_bPresentationPreviewRequestPending = false;
@@ -1312,6 +1314,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_AnimationPreviewRequest(
 {
 	if (!m_bPreviewRequestPending)
 		return false;
+	Cancel_CompleteSequencePlay();
 	outRequest = std::move(m_PendingPreviewRequest);
 	m_PendingPreviewRequest = {};
 	m_bPreviewRequestPending = false;
@@ -1326,6 +1329,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_PatternPreviewRequest(
 {
 	if (!m_bPatternPreviewRequestPending)
 		return false;
+	if (Is_CompleteSequencePlaying() &&
+		m_CompleteSequencePatternIds[m_iCompleteSequenceIndex] != m_PendingPatternPreview.strPatternId)
+		Cancel_CompleteSequencePlay();
 	outPattern = std::move(m_PendingPatternPreview);
 	outStartClockMs = m_iPendingPreviewStartMs;
 	outStartPaused = m_bPendingPreviewStartPaused;
@@ -3354,6 +3360,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 bool_t Client::CKoukuSaydonActionWorkbench::Consume_BundlePreviewRequest(std::string& id, std::uint32_t& clockMs, bool_t& paused)
 {
 	if (!m_bBundlePreviewRequestPending) return false;
+	Cancel_CompleteSequencePlay();
 	id = std::move(m_strPendingBundlePreviewId); clockMs = m_iPendingPreviewStartMs; paused = m_bPendingPreviewStartPaused;
 	m_bBundlePreviewRequestPending = false;
 	m_bPreviewResultStatusPending = true;
@@ -4018,6 +4025,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PatternPreview(
 		outStatus = m_strStatus = "Select an editable Pattern with a positive lifetime to play.";
 		return false;
 	}
+	Cancel_CompleteSequencePlay();
 	const auto durationMs = Pattern_DurationMs(*pattern);
 	m_PendingPresentationGeometryPreviews.clear();
 	m_strPresentationGeometryPreviewPatternId.clear();
@@ -4047,6 +4055,104 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PatternPreview(
 	m_iCursorMs = m_iPendingPreviewStartMs;
 	outStatus = m_strStatus = "Pattern preview requested from " + std::to_string(m_iCursorMs) + " ms.";
 	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Request_CompleteSequencePlay(std::string& outStatus)
+{
+	if (!m_bSequenceWorkspace || !m_bHasDraft)
+	{ outStatus = m_strStatus = "Complete sequence playback requires the Sequence workspace."; return false; }
+	std::vector<std::string> patternIds;
+	for (const auto& pattern : m_Draft.Patterns)
+	{
+		if (pattern.strGateId != m_strSelectedGateId) continue;
+		if (!pattern.strLoadError.empty() || Pattern_DurationMs(pattern) == 0u)
+		{ outStatus = m_strStatus = "Complete Play cannot queue invalid sequence: " + pattern.strPatternId; return false; }
+		patternIds.push_back(pattern.strPatternId);
+	}
+	if (patternIds.empty())
+	{ outStatus = m_strStatus = "The selected Gate has no sequences to play."; return false; }
+	return Queue_CompleteSequenceItem(std::move(patternIds), 0u, outStatus);
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Queue_CompleteSequenceItem(
+	std::vector<std::string> patternIds, const std::size_t index, std::string& outStatus)
+{
+	const std::string patternId = patternIds.at(index);
+	// Normal selection clears the previous request; restore only this validated run afterwards.
+	if (!Select_PatternById(patternId, outStatus) ||
+		!Request_PatternPreview(patternId, 0u, outStatus))
+	{
+		Cancel_CompleteSequencePlay();
+		outStatus = m_strStatus = "Complete Play stopped: " + outStatus;
+		return false;
+	}
+	m_CompleteSequencePatternIds = std::move(patternIds);
+	m_iCompleteSequenceIndex = index;
+	m_bCompleteSequenceAdmitted = false;
+	outStatus = m_strStatus = "Complete Play: sequence " + std::to_string(index + 1u) +
+		" / " + std::to_string(m_CompleteSequencePatternIds.size()) + " from 0 ms.";
+	return true;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Notify_SequencePreviewAdmission(
+	const bool_t succeeded, const std::string& status)
+{
+	if (!Is_CompleteSequencePlaying()) return;
+	if (succeeded) { m_bCompleteSequenceAdmitted = true; return; }
+	Cancel_CompleteSequencePlay();
+	m_strStatus = "Complete Play stopped: " + status;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Advance_CompleteSequencePlay(
+	const std::string_view completedPatternId)
+{
+	if (!m_bCompleteSequenceAdmitted || !Is_CompleteSequencePlaying() ||
+		m_CompleteSequencePatternIds[m_iCompleteSequenceIndex] != completedPatternId) return false;
+	const auto next = m_iCompleteSequenceIndex + 1u;
+	if (next == m_CompleteSequencePatternIds.size())
+	{
+		Cancel_CompleteSequencePlay();
+		m_strStatus = "Complete Play finished all sequences in the selected Gate.";
+		return true;
+	}
+	std::string status;
+	(void)Queue_CompleteSequenceItem(m_CompleteSequencePatternIds, next, status);
+	return true;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Cancel_CompleteSequencePlay()
+{
+	if (Is_CompleteSequencePlaying()) m_bPatternPreviewRequestPending = false;
+	m_CompleteSequencePatternIds.clear();
+	m_iCompleteSequenceIndex = 0u;
+	m_bCompleteSequenceAdmitted = false;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_CompleteSequenceTransport()
+{
+	if (!m_bSequenceWorkspace) return;
+	ImGui::BeginDisabled(!m_bHasDraft);
+	if (ImGui::Button("Complete Play"))
+	{ std::string status; (void)Request_CompleteSequencePlay(status); }
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Play every sequence in the selected Gate in source order, starting at 0 ms.");
+	if (!Is_CompleteSequencePlaying()) return;
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_PreviewState.bPlaying && !m_bPatternPreviewRequestPending);
+	if (ImGui::Button(m_PreviewState.bPaused ? "Resume##CompleteSequence" : "Pause##CompleteSequence"))
+	{
+		if (m_PreviewState.bPaused) m_ePendingTransport = KOUKU_PREVIEW_TRANSPORT::RESUME;
+		else (void)Request_PreviewPause();
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Stop##CompleteSequence")) Stop_Preview();
+	else
+	{
+		ImGui::SameLine();
+		ImGui::Text("Sequence %zu / %zu", m_iCompleteSequenceIndex + 1u, m_CompleteSequencePatternIds.size());
+	}
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Request_PreviewPause()
@@ -4281,6 +4387,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_ColliderBoxPreview(
 
 void Client::CKoukuSaydonActionWorkbench::Stop_Preview()
 {
+	Cancel_CompleteSequencePlay();
 	m_PendingPresentationGeometryPreviews.clear();
 	m_strPresentationGeometryPreviewPatternId.clear();
 	m_strPresentationGeometryPreviewOccurrenceId.clear();
@@ -4294,6 +4401,7 @@ void Client::CKoukuSaydonActionWorkbench::Stop_Preview()
 
 void Client::CKoukuSaydonActionWorkbench::Render_Transport()
 {
+	Render_CompleteSequenceTransport();
 	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE) { Render_BundleTransport(); return; }
 	if (m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN) { ImGui::TextDisabled("Select a playback bundle or Pattern."); return; }
 	const auto* pattern = Find_Pattern(m_Draft, m_strSelectedPatternId);
@@ -4333,7 +4441,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Transport()
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Stop"))
-		(void)Request_PreviewPause();
+	{ if (m_bSequenceWorkspace) Stop_Preview(); else (void)Request_PreviewPause(); }
 	ImGui::SameLine();
 	if (ImGui::Button("Reset")) Stop_Preview();
 	ImGui::EndDisabled();
@@ -4782,6 +4890,7 @@ void Client::CKoukuSaydonActionWorkbench::Select_TimelineBox(
 
 void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 {
+	Render_CompleteSequenceTransport();
 	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE) { Render_BundleTimeline(); return; }
 	if (m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN) { ImGui::TextDisabled("Select a playback bundle or Pattern to edit its sequence."); return; }
 	if (m_strTimelineSelectionPatternId != m_strSelectedPatternId)
@@ -4829,7 +4938,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!m_PreviewState.bPlaying &&
 		!m_bPatternPreviewRequestPending && !m_bPreviewRequestPending);
-	if (ImGui::Button("Stop##KoukuSequencer")) (void)Request_PreviewPause();
+	if (ImGui::Button("Stop##KoukuSequencer"))
+	{ if (m_bSequenceWorkspace) Stop_Preview(); else (void)Request_PreviewPause(); }
 	ImGui::SameLine(); if (ImGui::Button("Reset##KoukuSequencer")) Stop_Preview();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
