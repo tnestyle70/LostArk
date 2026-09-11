@@ -1622,6 +1622,48 @@ bool_t Client::CEffectV2Catalog::Stage_UpdateBossValtanStageBindingStart(
 		BOSS_VALTAN_BINDING_MUTATION::UPDATE_BINDING_START, strOutError);
 }
 
+bool_t Client::CEffectV2Catalog::Stage_UpdateBossValtanBinding(
+	const EFFECT_V2_BINDING& Candidate,
+	std::string& strOutError)
+{
+	const EFFECT_V2_STAGE_BINDING_KEY Key =
+		EFFECT_V2_STAGE_BINDING_KEY::From_Binding(Candidate);
+	if (!Validate_StageBindingIdentity(Key, strOutError))
+		return false;
+	try
+	{
+		const std::lock_guard Lock(m_SnapshotMutex);
+		if (nullptr == m_pSnapshot || !m_pSnapshot->Is_Ready())
+			return Fail(strOutError, "Reload the Effect V2 catalog before editing a binding.");
+		std::vector<EFFECT_V2_BINDING> Bindings = m_pSnapshot->m_BossValtanBindings;
+		size_t iSource = 0u;
+		if (!Resolve_UniqueStageBindingIndex(Bindings, Key, iSource, strOutError))
+			return false;
+		const EFFECT_V2_BINDING& Source = Bindings[iSource];
+		if (Candidate.strPatternId != Source.strPatternId ||
+			Candidate.strStageId != Source.strStageId ||
+			Candidate.strActionId != Source.strActionId ||
+			Candidate.eResourceKind != Source.eResourceKind ||
+			Candidate.strResourceId != Source.strResourceId)
+		{
+			return Fail(strOutError,
+				"Effect V2 detail edit cannot replace its owning scope or resource.");
+		}
+		Bindings[iSource] = Candidate;
+		return Commit_BossValtanBindingsLocked(
+			std::move(Bindings), "detail update", strOutError);
+	}
+	catch (const std::exception& Exception)
+	{
+		return Fail(strOutError, "Effect V2 detail edit failed before commit: " +
+			std::string(Exception.what()));
+	}
+	catch (...)
+	{
+		return Fail(strOutError, "Effect V2 detail edit failed before commit.");
+	}
+}
+
 bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(
 	std::string& strOutBaselineBytes,
 	std::string& strOutCandidateBytes,

@@ -930,7 +930,8 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_FloatArray(*pScreenPost, "overlayScale", &S.vOverlayScale.x, 2u, strOutError) ||
 			!Read_Number(*pScreenPost, "overlayEnterEnd", S.fOverlayEnterEnd, strOutError) ||
 			!Read_Number(*pScreenPost, "overlayExitStart", S.fOverlayExitStart, strOutError) ||
-			!Read_Number(*pScreenPost, "overlayRotationDegrees", S.fOverlayRotationDegrees, strOutError))
+			!Read_Number(*pScreenPost, "overlayRotationDegrees", S.fOverlayRotationDegrees, strOutError) ||
+			!Read_Bool(*pScreenPost, "displaySpace", S.bDisplaySpace, strOutError))
 		{
 			return false;
 		}
@@ -1490,7 +1491,8 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "      \"overlayScale\": " + Json_Float2(S.vOverlayScale) + ",\n";
 	Text += "      \"overlayEnterEnd\": " + Json_Number(S.fOverlayEnterEnd) + ",\n";
 	Text += "      \"overlayExitStart\": " + Json_Number(S.fOverlayExitStart) + ",\n";
-	Text += "      \"overlayRotationDegrees\": " + Json_Number(S.fOverlayRotationDegrees) + "\n";
+	Text += "      \"overlayRotationDegrees\": " + Json_Number(S.fOverlayRotationDegrees) + ",\n";
+	Text += std::string("      \"displaySpace\": ") + Json_Bool(S.bDisplaySpace) + "\n";
 	Text += "    }\n";
 	Text += "  },\n";
 	Text += "  \"parts\": [\n";

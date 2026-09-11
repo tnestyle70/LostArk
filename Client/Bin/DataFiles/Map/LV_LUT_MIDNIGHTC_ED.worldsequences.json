@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 426,
+  "revision": 427,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -324004,8 +324004,9 @@
           0,
           0
         ],
+        "spawnHalfExtents": [3, 0, 2],
         "count": 10,
-        "intervalMs": 300,
+        "intervalMs": 180,
         "spreadDegrees": 360,
         "seed": 1
       },

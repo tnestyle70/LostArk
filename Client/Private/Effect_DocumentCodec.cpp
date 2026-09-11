@@ -102,7 +102,7 @@ namespace
 	};
 	constexpr const char_t* COMPOSITION_LAYER_TOKENS[] =
 	{
-		"normal", "worldMark"
+		"normal", "worldMark", "sceneBackdrop"
 	};
 	constexpr const char_t* ATTACHMENT_ORIENTATION_TOKENS[] =
 	{
@@ -7408,7 +7408,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		const bool_t bCompositionLayerValid =
 			Element.eCompositionLayer < EFFECT_COMPOSITION_LAYER::END &&
 			(Element.eCompositionLayer == EFFECT_COMPOSITION_LAYER::NORMAL ||
-			 Is_EffectWorldMarkCarrier(Element));
+             (Element.eCompositionLayer == EFFECT_COMPOSITION_LAYER::WORLD_MARK && Is_EffectWorldMarkCarrier(Element)) ||
+             (Element.eCompositionLayer == EFFECT_COMPOSITION_LAYER::SCENE_BACKDROP && Is_EffectSceneBackdropCarrier(Element)));
 		const bool_t bMeshTransformMotionCarrier =
 			Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
 			bMeshParticle;
@@ -10770,9 +10771,10 @@ namespace
 {
 	using namespace Client;
 
-	constexpr std::array<std::string_view, 45u>
+	constexpr std::array<std::string_view, 46u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemoduleacceleration",
+			"particlemoduleaccelerationoverlifetime",
 			"particlemodulecameraoffset",
 			"particlemodulecolor",
 			"particlemodulecoloroverlife",
@@ -10819,10 +10821,11 @@ namespace
 			"particlemodulevortex"
 		};
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 70u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 71u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
 			std::pair{ "efparticlemoduleacceleration", "acceldata" },
 			std::pair{ "particlemoduleacceleration", "acceleration" },
+			std::pair{ "particlemoduleaccelerationoverlifetime", "acceloverlife" },
 			std::pair{ "particlemodulecameraoffset", "cameraoffset" },
 			std::pair{ "particlemodulecolor", "startalpha" },
 			std::pair{ "particlemodulecolor", "startcolor" },
@@ -11217,6 +11220,7 @@ namespace
 	}
 
 	bool_t ValidatePortableParticleModuleSemantics(
+		const EFFECT_ELEMENT_DESC& Element,
 		const EFFECT_SOURCE_MODULE_DESC& Module,
 		const std::string_view strNormalizedClass,
 		std::string& strOutError)
@@ -11393,7 +11397,11 @@ namespace
 					  Literal.strPropertyPath == "nearplane" ||
 					  Literal.strPropertyPath == "farplane") && bNumber) ||
 					(Literal.strPropertyPath == "balwaysdecalupdate" &&
-					 bBoolean);
+					 bBoolean) ||
+					(Literal.strPropertyPath == "rotation.degrees.roll" && bNumber &&
+					 Module.strClassName == "efparticlemoduletypedatadecal" &&
+					 Element.Material.SourceMaterial.strRuntimeShaderProfileId.starts_with("effect.ue3.kouku-") &&
+					 std::isfinite(Literal.fNumber) && std::abs(Literal.fNumber) <= 3600.0);
 				if (!bSupported)
 				{
 					strOutError =
@@ -11551,7 +11559,7 @@ namespace
 				return false;
 			}
 			if (!ValidatePortableParticleModuleSemantics(
-					Module, NormalizedClass, strOutError))
+					Element, Module, NormalizedClass, strOutError))
 			{
 				return false;
 			}

@@ -818,6 +818,11 @@ projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 �
 1..600000ms를 사용한다. 0은 기존 요청의 authored 수명을 사용한다. 구간은 playback speed와
 별도로 측정한다. Object Motion은 이 구간 안에서 생성한 객체의 이동과 MOTION_END Effect 수명을
 마저 재생한 뒤 정리한다. 명시적 Stop은 원래 배치를 복구하고 생성한 객체를 즉시 정리한다.
+Object Motion의 optional `spawnHalfExtents: [x,y,z]`는 기준 위치 주변 생성 범위의 반폭이며
+생략하면 `[0,0,0]`으로 기존 위치를 유지한다. X/Z를 독립적으로 지정해 직사각형에서
+생성하고 기존 seed와 emitter 시계를 사용한다. World Object Tool 저장·Map publisher·runtime이
+같은 값을 소비한다. 생성 간격 `intervalMs`는 이동 수명과 별도이며 마지막 생성의 이동과
+MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
@@ -874,6 +879,23 @@ endsPatternOnSuccess로 그로기 후속 재생을 연결한다.
 ENTER_AREA의 optional bossChargeDistanceM은 Trigger 시작 시 살아 있는 target의 방향을 한 번 확정해
 해당 occurrence duration 동안 지정 거리를 이동한다. navigation/collision이 막으면 경계에서 멈추고,
 이동한 Server pose로 같은 tick의 접촉을 검사한다. 절대 bossMotion과의 중복 소유는 거부한다.
+
+단순 피해 영역은 Collider의 Box Detail에서 데미지 모드를 선택하고 최대 HP 대비 피해율,
+반복 접촉 정책, 밀림 거리/시간/방향을 직접 편집한다. 내부적으로 기존 ENTER_AREA와
+MAX_HP_PERCENT_DAMAGE Result를 원자적으로 연결하며, 별도 Client 피해 런타임을 만들지 않는다.
+같은 설정의 definition은 재사용하되 설정 변경은 선택한 occurrence의 연결만 바꾼다.
+다른 영역과 공유하는 Trigger/Result를 직접 수정하지 않고, 기존 특수 Logic과 outcome은 보존한다.
+Result의 optional `pushDirection`은 `AWAY_FROM_BOSS`가 기본이며 `BOSS_FORWARD`는
+해당 hit 시점 보스의 yaw를 사용한다. 후자는 양수 pushRangeM/pushMs 쌍이 있어야 한다.
+navigation/collision과 snapshot은 기존 Server hit reaction 경로가 계속 소유한다.
+
+Geometry Collider resource의 `SECTOR`와 `REVERSE_SECTOR`는 occurrence Scale X/Z를
+독립적으로 사용한다. 각도는 축척 전 원의 각이며, Reverse는 같은 타원 안에서 지정한
+safe sector를 제외한 영역이다. reverse halfAngle0은 전체 타원,180은 빈 영역이다.
+생성된 region의 optional `radiusXM/radiusZM`은 쌍으로 저장하며 누락 시 기존 radiusM을
+양 축에 사용한다. Shared ellipse-sector 교차는 metre 단위 플레이어 원과 타원 arc/방사
+선분의 실제 최단거리를 사용한다. Client wire는 같은 독립 반경·각·reverse를 표시한다.
+Collider 자체의 X/Z 축척을 허용하는 변경이며 World Track의 기존 균일 X/Z 축척 계약은 유지한다.
 
 잡기는 짧은 ENTER_AREA Trigger의 Success에 CAPTURE_PLAYER를 연결하고, occurrence의
 `holdLogicOccurrenceId`로 같은 패턴의 DURATION `ATTACHMENT_HOLD`를 참조한다. Hold는 판정이나

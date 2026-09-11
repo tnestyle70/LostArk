@@ -27,7 +27,7 @@ namespace Client
 #define EFFECT_SHADER_WIDEN(Value) EFFECT_SHADER_WIDEN_INNER(Value)
 #define EFFECT_SHADER_PROGRAM_ROW(Carrier, Family, First, Last, File) \
     { EFFECT_SHADER_CARRIER::Carrier, EFFECT_SHADER_FAMILY::Family, First, Last, File, EFFECT_SHADER_WIDEN(File) }
-    inline constexpr std::array<EFFECT_SHADER_PROGRAM_DESC, 58u> EFFECT_SHADER_PROGRAMS = {{
+    inline constexpr std::array<EFFECT_SHADER_PROGRAM_DESC, 60u> EFFECT_SHADER_PROGRAMS = {{
         EFFECT_SHADER_PROGRAM_ROW(MESH, GENERIC, 0u, 4294967295u, "Shader_VtxEffectMeshPreview.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, DIMENSIONMASTER_Q, 0u, 4294967295u, "Shader_VtxEffectMeshDimensionMasterQ.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, DIMENSIONMASTER_V, 0u, 4294967295u, "Shader_VtxEffectMeshDimensionMasterV.hlsl"),
@@ -86,6 +86,8 @@ namespace Client
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, LANCE_MASTER, 1216u, 1279u, "Shader_VtxEffectParticleLanceMaster1216.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, LANCE_MASTER, 1280u, 1343u, "Shader_VtxEffectParticleLanceMaster1280.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, LANCE_MASTER, 1344u, 1407u, "Shader_VtxEffectParticleLanceMaster1344.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 2304u, 2367u, "Shader_VtxEffectMeshKouku2304.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 2304u, 2367u, "Shader_VtxEffectParticleKouku2304.hlsl"),
     }};
 #undef EFFECT_SHADER_PROGRAM_ROW
 #undef EFFECT_SHADER_WIDEN

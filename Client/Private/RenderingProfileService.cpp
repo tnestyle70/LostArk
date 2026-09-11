@@ -109,7 +109,9 @@ namespace
 		const DATA_JSON_VALUE* pValue = Required(
 			object, pName, DATA_JSON_TYPE::NUMBER);
 		if (nullptr == pValue || !isfinite(pValue->Get_Number()) ||
-			pValue->Get_Number() < minimum || pValue->Get_Number() > maximum)
+            !isfinite(static_cast<f32_t>(pValue->Get_Number())) ||
+            static_cast<f32_t>(pValue->Get_Number()) < minimum ||
+            static_cast<f32_t>(pValue->Get_Number()) > maximum)
 		{
 			return false;
 		}
@@ -312,6 +314,69 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 	m_EffectiveQuality = effective;
 	strOutStatus = "Runtime catalog reloaded and active scene reapplied.";
 	return true;
+}
+
+bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, string& status)
+{
+    const auto* profile = Get_ActiveProfile();
+    if (!profile || profile->EnvironmentRegions.empty()) return true;
+    if (!Is_FiniteRange(deltaSeconds, 0.f, 60.f))
+    { status = "Environment frame delta is invalid; existing scene preserved."; return false; }
+    const auto* camera = CGameInstance::Get().Get_CamPosition();
+    if (!camera || !isfinite(camera->x) || !isfinite(camera->y) || !isfinite(camera->z))
+    { status = "Environment region camera is invalid; existing scene preserved."; return false; }
+    const SCENE_ENVIRONMENT_REGION* selected = nullptr;
+    float selectedVolume = FLT_MAX;
+    for (const auto& region : profile->EnvironmentRegions)
+    {
+        const auto& a = region.vBoundsMinimum; const auto& b = region.vBoundsMaximum;
+        if (camera->x < a.x || camera->x > b.x || camera->y < a.y || camera->y > b.y || camera->z < a.z || camera->z > b.z) continue;
+        if (any_of(region.Planes.begin(), region.Planes.end(), [camera](const auto& p)
+            { return p.x*camera->x+p.y*camera->y+p.z*camera->z+p.w > .001f; })) continue;
+        const float volume = (b.x-a.x)*(b.y-a.y)*(b.z-a.z);
+        if (!selected || volume < selectedVolume) { selected = &region; selectedVolume = volume; }
+    }
+    const string regionId = profile->strProfileId + ":" + (selected ? selected->strRegionId : "base");
+    const auto previousFog = CGameInstance::Get().Get_HeightFogSettings();
+    if (regionId != m_strAppliedEnvironmentRegion)
+    {
+        m_EnvironmentFogFrom = previousFog;
+        const auto& lights = CGameInstance::Get().Get_SceneLights();
+        m_EnvironmentLightFrom = lights.empty() ? profile->Light : lights.front();
+        m_fEnvironmentElapsed = 0.f;
+        m_fEnvironmentDuration = selected ? selected->fBlendTimeIn : m_fEnvironmentExitDuration;
+        m_fEnvironmentExitDuration = selected ? selected->fBlendTimeOut : 1.f;
+        m_strAppliedEnvironmentRegion = regionId;
+    }
+    else if (m_fEnvironmentElapsed >= m_fEnvironmentDuration) return true;
+    const float elapsed = min(m_fEnvironmentDuration, m_fEnvironmentElapsed + deltaSeconds);
+    const float blend = m_fEnvironmentDuration > 0.f ? elapsed / m_fEnvironmentDuration : 1.f;
+    const auto mix = [blend](float a, float b) { return a + (b-a)*blend; };
+    const auto mixColor = [&mix](const float4_t& a, const float4_t& b)
+    { return float4_t(mix(a.x,b.x), mix(a.y,b.y), mix(a.z,b.z), mix(a.w,b.w)); };
+    auto fog = selected ? selected->Fog : profile->Fog;
+    const auto& from = m_EnvironmentFogFrom;
+    fog.vColor = mixColor(from.vColor, fog.vColor);
+    fog.vInscatteringColor = mixColor(from.vInscatteringColor, fog.vInscatteringColor);
+    fog.fDensity = mix(from.fDensity, fog.fDensity);
+    fog.fHeightFalloff = mix(from.fHeightFalloff, fog.fHeightFalloff);
+    fog.fTopHeight = mix(from.fTopHeight, fog.fTopHeight);
+    fog.fStartDistance = mix(from.fStartDistance, fog.fStartDistance);
+    fog.fMaximumOpacity = mix(from.fMaximumOpacity, fog.fMaximumOpacity);
+    fog.vFogLightDirection.w = mix(from.vFogLightDirection.w, fog.vFogLightDirection.w);
+    auto light = profile->Light;
+    if (selected) { light.vDiffuse = selected->vDirectionalColor; light.vAmbient = selected->vAmbientColor; }
+    light.vDiffuse = mixColor(m_EnvironmentLightFrom.vDiffuse, light.vDiffuse);
+    light.vAmbient = mixColor(m_EnvironmentLightFrom.vAmbient, light.vAmbient);
+    if (FAILED(CGameInstance::Get().Apply_HeightFog(fog)))
+    { status = "Environment region fog rejected; existing scene preserved."; return false; }
+    if (FAILED(CGameInstance::Get().Add_Light(light)))
+    {
+        CGameInstance::Get().Apply_HeightFog(previousFog);
+        status = "Environment region light rejected; existing scene preserved."; return false;
+    }
+    m_fEnvironmentElapsed = elapsed;
+    return true;
 }
 
 bool_t CRenderingProfileService::Has_Profile(
@@ -552,7 +617,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		if (!Has_ExactFields(value,
 			{ "profileId", "exposureMultiplier", "bloomIntensityMultiplier",
 			  "light", "shadow", "fog" },
-			{ "displayName", "qualityOverride", "mapLightIntensityMultiplier", "environment" }))
+			{ "displayName", "qualityOverride", "mapLightIntensityMultiplier", "environment", "environmentRegions" }))
 		{
 			strOutStatus = "Scene profile has missing or unsupported fields.";
 			return false;
@@ -603,7 +668,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 				  "driftSpeed", "driftHeightAmplitude",
 				  "driftDensityAmplitude", "coveragePercent",
 				  "windDirectionX", "windDirectionZ", "windSpeed",
-				  "patchScale", "patchSoftness" }))
+				  "patchScale", "patchSoftness" }, { "sourceExponential" }))
 		{
 			strOutStatus = "Scene profile light contract is invalid.";
 			return false;
@@ -687,6 +752,68 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		profile.ShadowSettings.bEnabled =
 			pShadowEnabled->Get_Boolean();
 		profile.Fog.bEnabled = pFogEnabled->Get_Boolean();
+        if (const auto* source = pFog->Find("sourceExponential"))
+        {
+            if (!Has_ExactFields(*source, { "inscatteringColor", "lightDirection" }) ||
+                !Read_Float4(*source, "inscatteringColor", profile.Fog.vInscatteringColor) ||
+                !Read_Float4(*source, "lightDirection", profile.Fog.vFogLightDirection))
+            { strOutStatus = "Invalid source exponential fog parameters."; return false; }
+            profile.Fog.bSourceExponential = true;
+        }
+        if (const auto* regions = value.Find("environmentRegions"))
+        {
+            if (!regions->Is_Array() || regions->Get_Array().empty() || regions->Get_Array().size() > 64u)
+            { strOutStatus = "Environment regions require 1 to 64 convex volumes."; return false; }
+            set<string> regionIds;
+            for (const auto& row : regions->Get_Array())
+            {
+                SCENE_ENVIRONMENT_REGION region;
+                region.Fog = profile.Fog;
+                const auto* id = Required(row, "regionId", DATA_JSON_TYPE::STRING);
+                const auto* planes = Required(row, "planes", DATA_JSON_TYPE::ARRAY);
+                const auto* fog = Required(row, "fog", DATA_JSON_TYPE::OBJECT);
+                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }) ||
+                    !id || !Is_StableId(id->Get_String()) || !regionIds.insert(id->Get_String()).second ||
+                    !Read_Float3(row, "boundsMinimum", region.vBoundsMinimum) ||
+                    !Read_Float3(row, "boundsMaximum", region.vBoundsMaximum) ||
+                    !Read_Float4(row, "directionalColor", region.vDirectionalColor) ||
+                    !Read_Float4(row, "ambientColor", region.vAmbientColor) ||
+                    !Read_Float(row, "blendTimeIn", 0.f, 60.f, region.fBlendTimeIn) ||
+                    !Read_Float(row, "blendTimeOut", 0.f, 60.f, region.fBlendTimeOut) ||
+                    !planes || planes->Get_Array().size() < 4u || planes->Get_Array().size() > 64u ||
+                    !fog || !Has_ExactFields(*fog, { "density", "heightFalloff", "topHeight", "startDistance", "maximumOpacity", "color", "inscatteringColor", "lightDirection" }) ||
+                    !Read_Float(*fog, "density", 0.f, 8.f, region.Fog.fDensity) ||
+                    !Read_Float(*fog, "heightFalloff", .0001f, 4.f, region.Fog.fHeightFalloff) ||
+                    !Read_Float(*fog, "topHeight", -10000.f, 10000.f, region.Fog.fTopHeight) ||
+                    !Read_Float(*fog, "startDistance", 0.f, 100000.f, region.Fog.fStartDistance) ||
+                    !Read_Float(*fog, "maximumOpacity", 0.f, 1.f, region.Fog.fMaximumOpacity) ||
+                    !Read_Float4(*fog, "color", region.Fog.vColor) ||
+                    !Read_Float4(*fog, "inscatteringColor", region.Fog.vInscatteringColor) ||
+                    !Read_Float4(*fog, "lightDirection", region.Fog.vFogLightDirection))
+                { strOutStatus = "Invalid source environment volume or fog."; return false; }
+                region.strRegionId = id->Get_String();
+                region.Fog.bEnabled = true;
+                region.Fog.bSourceExponential = true;
+                for (const auto& plane : planes->Get_Array())
+                {
+                    if (!plane.Is_Array() || plane.Get_Array().size() != 4u)
+                    { strOutStatus = "Environment plane requires four finite numbers."; return false; }
+                    float values[4]{};
+                    for (size_t axis = 0u; axis < 4u; ++axis)
+                    {
+                        const auto& number = plane.Get_Array()[axis];
+                        if (!number.Is_Number() || !isfinite(number.Get_Number()) || abs(number.Get_Number()) > 100000.)
+                        { strOutStatus = "Invalid environment plane coordinate."; return false; }
+                        values[axis] = static_cast<float>(number.Get_Number());
+                    }
+                    if (abs(values[0]*values[0]+values[1]*values[1]+values[2]*values[2]-1.f) > .001f)
+                    { strOutStatus = "Environment plane normal must be a unit vector."; return false; }
+                    region.Planes.emplace_back(values[0], values[1], values[2], values[3]);
+                }
+                profile.EnvironmentRegions.push_back(move(region));
+            }
+        }
+
 		if (!Validate_Profile(profile, strOutStatus))
 		{
 			return false;
@@ -801,6 +928,39 @@ bool_t CRenderingProfileService::Validate_Profile(
 	const SCENE_RENDERING_PROFILE& Profile,
 	string& strOutStatus)
 {
+    const auto validSourceFog = [](const HEIGHT_FOG_SETTINGS& fog)
+    {
+        const auto& d = fog.vFogLightDirection;
+        return Is_ValidColor(fog.vColor) && Is_ValidColor(fog.vInscatteringColor) &&
+            Is_FiniteRange(d.x, -1.f, 1.f) && Is_FiniteRange(d.y, -1.f, 1.f) &&
+            Is_FiniteRange(d.z, -1.f, 1.f) && Is_FiniteRange(d.w, -1.f, 1.f) &&
+            abs(d.x*d.x+d.y*d.y+d.z*d.z-1.f) <= .001f;
+    };
+    if (Profile.Fog.bSourceExponential && !validSourceFog(Profile.Fog))
+    { strOutStatus = "Invalid source fog colour or light direction."; return false; }
+    if (Profile.EnvironmentRegions.size() > 64u)
+    { strOutStatus = "Too many environment regions."; return false; }
+    set<string> regionIds;
+    for (const auto& region : Profile.EnvironmentRegions)
+    {
+        const auto& a = region.vBoundsMinimum; const auto& b = region.vBoundsMaximum;
+        if (!Is_StableId(region.strRegionId) || !regionIds.insert(region.strRegionId).second ||
+            !Is_FiniteRange(a.x, -100000.f, 100000.f) || !Is_FiniteRange(a.y, -100000.f, 100000.f) ||
+            !Is_FiniteRange(a.z, -100000.f, 100000.f) || !Is_FiniteRange(b.x, -100000.f, 100000.f) ||
+            !Is_FiniteRange(b.y, -100000.f, 100000.f) || !Is_FiniteRange(b.z, -100000.f, 100000.f) ||
+            a.x >= b.x || a.y >= b.y || a.z >= b.z || region.Planes.size() < 4u || region.Planes.size() > 64u ||
+            !validSourceFog(region.Fog) || !Is_ValidColor(region.vDirectionalColor) || !Is_ValidColor(region.vAmbientColor) ||
+            !Is_FiniteRange(region.fBlendTimeIn, 0.f, 60.f) || !Is_FiniteRange(region.fBlendTimeOut, 0.f, 60.f) ||
+            !Is_FiniteRange(region.Fog.fDensity, 0.f, 8.f) || !Is_FiniteRange(region.Fog.fHeightFalloff, .0001f, 4.f) ||
+            !Is_FiniteRange(region.Fog.fTopHeight, -10000.f, 10000.f) ||
+            !Is_FiniteRange(region.Fog.fStartDistance, 0.f, 100000.f) || !Is_FiniteRange(region.Fog.fMaximumOpacity, 0.f, 1.f))
+        { strOutStatus = "Invalid source environment region."; return false; }
+        for (const auto& plane : region.Planes)
+            if (!Is_FiniteRange(plane.w, -100000.f, 100000.f) ||
+                !isfinite(plane.x) || !isfinite(plane.y) || !isfinite(plane.z) ||
+                abs(plane.x*plane.x+plane.y*plane.y+plane.z*plane.z-1.f) > .001f)
+            { strOutStatus = "Invalid source environment plane."; return false; }
+    }
 	const auto& color = Profile.vEnvironmentColor;
 	const auto& rotation = Profile.vEnvironmentRotationIntensity;
 	if ((!Profile.strEnvironmentCubeAssetId.empty() && !Is_EnvironmentAssetId(Profile.strEnvironmentCubeAssetId)) ||
@@ -926,6 +1086,7 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		strOutStatus = "Light manager rejected the staged scene light; active state preserved.";
 		return false;
 	}
+	m_strAppliedEnvironmentRegion.clear();
 	CGameInstance::Get().Commit_RenderEnvironment(stagedEnvironment);
 	CMapLightPresentationRuntime::Commit_SceneIntensityMultiplier(
 		Profile.fMapLightIntensityMultiplier);
@@ -1050,9 +1211,42 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			profile.Fog.fWindDirectionZ << ",\n"
 			"        \"windSpeed\": " << profile.Fog.fWindSpeed << ",\n"
 			"        \"patchScale\": " << profile.Fog.fPatchScale << ",\n"
-			"        \"patchSoftness\": " << profile.Fog.fPatchSoftness << "\n"
-			"      }\n    }" <<
-			(++index == Catalog.Profiles.size() ? "\n" : ",\n");
+            "        \"patchSoftness\": " << profile.Fog.fPatchSoftness;
+        if (profile.Fog.bSourceExponential)
+        {
+            output << ",\n        \"sourceExponential\": {\"inscatteringColor\": ";
+            Write_Float4(output, profile.Fog.vInscatteringColor);
+            output << ", \"lightDirection\": "; Write_Float4(output, profile.Fog.vFogLightDirection);
+            output << "}";
+        }
+        output << "\n      }";
+        if (!profile.EnvironmentRegions.empty())
+        {
+            output << ",\n      \"environmentRegions\": [";
+            size_t regionIndex = 0;
+            for (const auto& region : profile.EnvironmentRegions)
+            {
+                output << "\n        {\"regionId\": " << Quote(region.strRegionId) << ", \"boundsMinimum\": ";
+                Write_Float3(output, region.vBoundsMinimum);
+                output << ", \"boundsMaximum\": "; Write_Float3(output, region.vBoundsMaximum);
+                output << ", \"planes\": [";
+                for (size_t n = 0; n < region.Planes.size(); ++n)
+                { if (n) output << ", "; Write_Float4(output, region.Planes[n]); }
+                output << "], \"directionalColor\": "; Write_Float4(output, region.vDirectionalColor);
+                output << ", \"ambientColor\": "; Write_Float4(output, region.vAmbientColor);
+                output << ", \"blendTimeIn\": " << region.fBlendTimeIn << ", \"blendTimeOut\": " << region.fBlendTimeOut;
+                const auto& fog = region.Fog;
+                output << ", \"fog\": {\"density\": " << fog.fDensity << ", \"heightFalloff\": " << fog.fHeightFalloff
+                    << ", \"topHeight\": " << fog.fTopHeight << ", \"startDistance\": " << fog.fStartDistance
+                    << ", \"maximumOpacity\": " << fog.fMaximumOpacity << ", \"color\": ";
+                Write_Float4(output, fog.vColor);
+                output << ", \"inscatteringColor\": "; Write_Float4(output, fog.vInscatteringColor);
+                output << ", \"lightDirection\": "; Write_Float4(output, fog.vFogLightDirection);
+                output << "}}" << (++regionIndex == profile.EnvironmentRegions.size() ? "" : ",");
+            }
+            output << "\n      ]";
+        }
+        output << "\n    }" << (++index == Catalog.Profiles.size() ? "\n" : ",\n");
 	}
 	output << "  ]\n}\n";
 	return output.str();

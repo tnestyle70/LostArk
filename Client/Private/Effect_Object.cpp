@@ -944,6 +944,10 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 		m_strStatus = "Effect presentation provider budget exceeded.";
 		return;
 	}
+    // A local authored backdrop replaces the map/sky for exactly its evaluated
+    // lifetime. Player/Effect draws keep their ordinary depth and lighting path.
+    if (m_pRenderer->Has_ActiveSceneBackdrop(m_Playback.Get_Frame()))
+        CGameInstance::Get().Request_SceneEnvironmentReplacement();
 	if (m_pRenderer->Has_NonBlendModelCues())
 	{
 		/* The exact Dimension Summon uses the ordinary animated-character

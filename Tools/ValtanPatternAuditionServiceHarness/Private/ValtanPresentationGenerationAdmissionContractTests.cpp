@@ -1,6 +1,8 @@
 #include "ProjectDataRoot.h"
 #include "DataJson.h"
 #include "EffectV2_Document.h"
+#include "EffectV2_Catalog.h"
+#include "EffectV2_Runtime.h"
 #include "ValtanPatternTree.h"
 #include "ValtanPresentationGenerationAdmission.h"
 
@@ -15,8 +17,53 @@
 
 namespace
 {
+	std::uint64_t g_EffectV2CatalogInvalidations = 0u;
+}
+
+/* This existing CPU contract executable has no Effect runtime or GPU objects.
+   Count the catalog invalidation boundary while exercising its real mutation,
+   parser, filesystem baseline and Save receipt code. */
+void Client::CEffectV2Runtime::Invalidate_Caches()
+{
+	++g_EffectV2CatalogInvalidations;
+}
+
+namespace
+{
 	constexpr const char* TEMPORARY_ROOT_PREFIX =
 		"LostArk.ValtanPresentationGenerationAdmission.";
+
+	class SCOPED_RESOURCE_ROOT final
+	{
+	public:
+		SCOPED_RESOURCE_ROOT()
+		{
+			const DWORD required = GetEnvironmentVariableW(
+				L"LOSTARK_RESOURCE_ROOT", nullptr, 0u);
+			if (0u == required) return;
+			std::vector<wchar_t> value(required);
+			const DWORD copied = GetEnvironmentVariableW(
+				L"LOSTARK_RESOURCE_ROOT", value.data(), required);
+			if (0u != copied && copied < required)
+			{
+				m_bHadValue = true;
+				m_Previous.assign(value.data(), copied);
+			}
+		}
+		~SCOPED_RESOURCE_ROOT()
+		{
+			SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT",
+				m_bHadValue ? m_Previous.c_str() : nullptr);
+		}
+		bool Set(const std::filesystem::path& path)
+		{
+			return FALSE != SetEnvironmentVariableW(
+				L"LOSTARK_RESOURCE_ROOT", path.c_str());
+		}
+	private:
+		std::wstring m_Previous;
+		bool m_bHadValue = false;
+	};
 
 	struct SCOPED_TEMPORARY_ROOT final
 	{
@@ -600,6 +647,57 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 			return copied;
 		};
 
+		/* This reader owns BossCatalog's header and Effect V2 references. The
+		   full material rows remain ActorCatalog's responsibility; keep both
+		   valid header forms and malformed optional fields covered here. */
+		SCOPED_TEMPORARY_ROOT catalogFixture;
+		catalogFixture.Path = Create_TemporaryRoot(status);
+		const bool catalogCopied = !catalogFixture.Path.empty() &&
+			copyExactClosure(catalogFixture.Path);
+		require(catalogCopied, "could not prepare the BossCatalog header fixture");
+		if (catalogCopied)
+		{
+			struct CATALOG_HEADER_CASE final
+			{
+				const char* pOptionalFields;
+				bool bAccepted;
+			};
+			const CATALOG_HEADER_CASE cases[]{
+				{ "", true },
+				{ ",\"modelMaterialOverrides\":[]", true },
+				{ ",\"modelMaterialOverrides\":null", false },
+				{ ",\"modelMaterialOverrides\":{}", false },
+				{ ",\"unknownMaterialOverrides\":[]", false },
+			};
+			for (const CATALOG_HEADER_CASE& test : cases)
+			{
+				std::ofstream output(catalogFixture.Path /
+					"Data/Actors/BossCatalog.json",
+					std::ios::binary | std::ios::trunc);
+				output << "{\"schema\":\"lostark.boss-catalog\",\"formatVersion\":8,"
+					"\"bosses\":[{\"archetypeId\":\"BOSS_VALTAN\",\"combatObjectVisuals\":[]}]"
+					<< test.pOptionalFields << "}";
+				output.flush();
+				const bool written = output.good();
+				output.close();
+				require(written, "could not write the BossCatalog header fixture");
+				if (!written) continue;
+				CValtanPresentationGenerationReadAdmission catalogAdmission;
+				auto candidateReceipt = receipt;
+				const bool admitted = catalogAdmission.Acquire_PackagedBaselineFromRoot(
+					catalogFixture.Path, candidateReceipt, status);
+				require(admitted == test.bAccepted,
+					"BossCatalog optional material header admission changed");
+				if (!test.bAccepted)
+				{
+					require(status == "BossCatalog Effect V2 owner header is invalid.",
+						"malformed BossCatalog header lost its exact diagnostic");
+					require(candidateReceipt == receipt,
+						"rejected BossCatalog header changed the previous receipt");
+				}
+			}
+		}
+
 		const std::string v2BindingRelative =
 			"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
 		const std::string v2GroupRelative =
@@ -746,6 +844,87 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 				"duplicate Effect V2 bindingId: " + duplicatedBindingId;
 			require(!admitted && status == expectedDuplicateStatus,
 				"duplicate Effect V2 binding identity was not rejected with exact diagnostics");
+		}
+	}
+
+	{
+		/* The Product document parser checks the referenced physical assets.
+		   This CPU executable lives below Tools rather than beside Client's
+		   Resources, so supply the real fixture pack through its normal root
+		   contract and restore the process environment when the block exits. */
+		SCOPED_RESOURCE_ROOT resourceRoot;
+		const auto fixtureResourceRoot = Client::CProjectDataRoot::Get().parent_path() /
+			"Client/Bin/Resources";
+		const bool resourceRootConfigured = resourceRoot.Set(fixtureResourceRoot);
+		require(resourceRootConfigured, "could not configure the Effect V2 fixture resource root");
+		auto& catalog = Client::CEffectV2Catalog::Get();
+		const bool loaded = resourceRootConfigured && catalog.Reload_BossValtan(status);
+		require(loaded, "Effect V2 catalog fixture did not load");
+		if (!loaded) std::cerr << "  catalog detail: " << status << '\n';
+		const auto baseline = catalog.Get_Snapshot();
+		if (loaded && baseline && !baseline->Get_BossValtanBindings().empty())
+		{
+			auto candidate = baseline->Get_BossValtanBindings().front();
+			const std::string sourceId = candidate.strBindingId;
+			candidate.strAnchorSlotId = "root";
+			candidate.eFollowPolicy = Client::EFFECT_V2_FOLLOW_POLICY::SNAPSHOT_AT_START;
+			candidate.eRotationBasis = Client::EFFECT_V2_ROTATION_BASIS::WORLD;
+			candidate.LocalTransform.vTranslation = { 1.25f, 2.5f, -0.5f };
+			candidate.LocalTransform.vRotation = { 10.f, 20.f, 30.f };
+			candidate.LocalTransform.vScale = { 1.1f, 1.2f, 1.3f };
+			require(catalog.Stage_UpdateBossValtanBinding(candidate, status),
+				"valid V2 full-detail edit was rejected");
+			const auto staged = catalog.Get_Snapshot();
+			require(staged && staged != baseline && catalog.Has_BossValtanBindingDraft(),
+				"V2 detail edit did not stage one new dirty snapshot");
+			std::string baselineBytes, candidateBytes, readSetBytes;
+			std::uint64_t revision = 0u;
+			bool dirty = false;
+			require(catalog.Prepare_BossValtanBindingDraftSave(baselineBytes,
+				candidateBytes, readSetBytes, revision, dirty, status) && dirty,
+				"valid V2 detail edit did not enter the existing Save preparation");
+			std::vector<Client::EFFECT_V2_BINDING> reopened;
+			require(Client::CEffectV2Document::Parse_Bindings(
+				candidateBytes, "BOSS_VALTAN", reopened, status),
+				"prepared V2 detail bytes did not reopen with the Product parser");
+			bool foundEditedRow = false;
+			for (const auto& row : reopened)
+				if (row.strBindingId == sourceId)
+					foundEditedRow = row.strAnchorSlotId == "root" &&
+						row.eRotationBasis == Client::EFFECT_V2_ROTATION_BASIS::WORLD &&
+						row.LocalTransform.vTranslation.x == 1.25f &&
+						row.LocalTransform.vRotation.z == 30.f &&
+						row.LocalTransform.vScale.y == 1.2f;
+			require(foundEditedRow, "V2 detail Save lost typed anchor/transform or stable identity");
+			const auto invalidations = g_EffectV2CatalogInvalidations;
+			auto invalid = candidate;
+			invalid.strAnchorSlotId.clear();
+			require(!catalog.Stage_UpdateBossValtanBinding(invalid, status) &&
+				catalog.Get_Snapshot() == staged,
+				"invalid V2 anchor replaced the previous snapshot");
+			invalid = candidate;
+			invalid.eClockBasis = Client::EFFECT_V2_CLOCK_BASIS::END;
+			require(!catalog.Stage_UpdateBossValtanBinding(invalid, status) &&
+				catalog.Get_Snapshot() == staged,
+				"invalid V2 clock replaced the previous snapshot");
+			invalid = candidate;
+			invalid.strStageId = "FOREIGN_STAGE";
+			require(!catalog.Stage_UpdateBossValtanBinding(invalid, status) &&
+				catalog.Get_Snapshot() == staged,
+				"V2 detail changed its immutable owning Stage");
+			require(!catalog.Accept_BossValtanBindingDraftSave(
+				revision + 1u, candidateBytes, status) &&
+				catalog.Get_Snapshot() == staged && catalog.Has_BossValtanBindingDraft(),
+				"stale V2 Save receipt discarded the pending draft");
+			require(!catalog.Accept_BossValtanBindingDraftSave(
+				revision, candidateBytes, status) &&
+				catalog.Get_Snapshot() == staged && catalog.Has_BossValtanBindingDraft(),
+				"uncommitted V2 Save bytes were acknowledged as a disk commit");
+			require(g_EffectV2CatalogInvalidations == invalidations,
+				"rejected V2 mutation or Save receipt invalidated runtime caches");
+			require(catalog.Discard_BossValtanBindingDraftAndReload(status) &&
+				!catalog.Has_BossValtanBindingDraft(),
+				"V2 CPU fixture could not discard its memory-only edit");
 		}
 	}
 

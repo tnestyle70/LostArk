@@ -51,10 +51,10 @@ HRESULT Client::CMonsterPresentationAssetService::Ensure_Prototypes(
 	const MONSTER_ACTOR_ENTRY* actor = CActorCatalog::Find_Monster(archetypeId);
 	if (nullptr == actor || actor->runtimeStatus != "supported")
 		return E_FAIL;
-	const std::filesystem::path modelPath =
-		CRuntimeAssetRoot::Resolve(actor->modelAssetId);
-	if (modelPath.empty())
-		return E_FAIL;
+    MODEL_ASSET_LOAD_DESC modelLoad;
+    std::string materialStatus;
+    if (!CActorCatalog::Build_ModelLoadDescription(actor->modelAssetId, modelLoad, materialStatus))
+        return E_FAIL;
 
 	const matrix_t preTransform =
 		XMMatrixScaling(
@@ -67,7 +67,7 @@ HRESULT Client::CMonsterPresentationAssetService::Ensure_Prototypes(
 			pDevice,
 			pContext,
 			MODEL::ANIM,
-			modelPath.string().c_str(),
+			modelLoad,
 			preTransform));
 	if (!g_ReadyObjectLevels.contains(iLevelIndex))
 	{

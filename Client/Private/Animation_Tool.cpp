@@ -1587,6 +1587,7 @@ void Client::CAnimation_Tool::On_LevelChanged()
 	   same enum cannot inherit an earlier failed/successful staging latch. */
 	m_iValtanAutoPreviewAttemptGeneration = 0u;
 	m_iValtanAutoPreviewSuccessGeneration = 0u;
+	m_bValtanAutoPreviewSuppressedForServerPlayback = false;
 	m_bValtanWorkspaceTabInitialized = false;
 	m_ValtanPatternSoundDurationModel.reset();
 	m_ValtanPatternSoundClipDurations.clear();
@@ -1702,6 +1703,7 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
 		CAnimationTargetService::Resolve_TargetGeneration();
 	m_iValtanAutoPreviewSuccessGeneration =
 		m_iValtanAutoPreviewAttemptGeneration;
+	m_bValtanAutoPreviewSuppressedForServerPlayback = false;
 	strOutStatus = "Dedicated Valtan Model View is ready for Action Composition preview.";
 	m_strValtanPatternPreviewStatus = strOutStatus;
 	return true;
@@ -1835,6 +1837,24 @@ void Client::CAnimation_Tool::Stop_ValtanCompositionPattern(
 			"Action Composition preview stopped after its Model View disappeared.");
 	}
 	strOutStatus = m_strValtanPatternMasterStatus;
+}
+
+void Client::CAnimation_Tool::Release_ValtanCompositionPreviewForServerPlayback()
+{
+	m_bValtanAutoPreviewSuppressedForServerPlayback = true;
+	if (nullptr == m_pPreviewPanel || !m_pPreviewPanel->Is_PreviewActive() ||
+		"Valtan" != CAnimationTargetService::Resolve_AssetName() ||
+		nullptr == CAnimationTargetService::Resolve_Boss())
+	{
+		return;
+	}
+	std::string Status;
+	Stop_ValtanCompositionPattern(Status);
+	if (m_bValtanPatternPreviewPlaying)
+		Stop_ValtanPatternPreview(Resolve_Model(), "Local Valtan clip preview released for Server playback.");
+	m_pPreviewPanel->Release(true);
+	m_strValtanPatternMasterStatus =
+		"Local Valtan preview released for Server playback. Local Play opens it again.";
 }
 
 Client::CAnimation_Tool::COMPOSITION_PREVIEW_STATE
@@ -4032,6 +4052,7 @@ void Client::CAnimation_Tool::Render()
 		}
 		m_iValtanAutoPreviewSuccessGeneration = iResolvedTargetGeneration;
 		m_iValtanAutoPreviewAttemptGeneration = iResolvedTargetGeneration;
+		m_bValtanAutoPreviewSuppressedForServerPlayback = false;
 		if (m_AssetName.empty() && Is_ValtanDocumentDirty())
 			m_AssetName = "Valtan";
 		m_Status =
@@ -4051,8 +4072,8 @@ void Client::CAnimation_Tool::Render()
 			m_iValtanAutoPreviewAttemptGeneration = iResolvedTargetGeneration;
 			m_iValtanAutoPreviewSuccessGeneration = iResolvedTargetGeneration;
 		}
-		else if (m_iValtanAutoPreviewAttemptGeneration !=
-			iResolvedTargetGeneration)
+		else if (!m_bValtanAutoPreviewSuppressedForServerPlayback &&
+			m_iValtanAutoPreviewAttemptGeneration != iResolvedTargetGeneration)
 		{
 			m_iValtanAutoPreviewAttemptGeneration = iResolvedTargetGeneration;
 			if (!isTargetLocked || Is_ValtanDocumentDirty())

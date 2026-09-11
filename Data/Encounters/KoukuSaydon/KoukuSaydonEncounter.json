@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 263,
+  "sourceRevision": 323,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -32,7 +32,11 @@
     "KAKULSAYDON_G1_PATTERN_23",
     "KAKULSAYDON_G1_PATTERN_24",
     "KAKULSAYDON_G1_PATTERN_18",
-    "KAKULSAYDON_G1_PATTERN_19"
+    "KAKULSAYDON_G1_PATTERN_19",
+    "KAKULSAYDON_G1_PATTERN_27",
+    "KAKULSAYDON_G1_PATTERN_28",
+    "KAKULSAYDON_G1_PATTERN_29",
+    "KAKULSAYDON_G1_PATTERN_30"
   ],
   "patterns": [
     {
@@ -243,7 +247,9 @@
               "radiusM": 2.148847,
               "halfAngleDegrees": 35.868636,
               "cardSymbol": "NONE",
-              "cardColor": "NONE"
+              "cardColor": "NONE",
+              "radiusXM": 2.148847,
+              "radiusZM": 2.148847
             },
             {
               "regionId": "kouku.stagger.shield.2",
@@ -263,7 +269,9 @@
               "radiusM": 2.148847,
               "halfAngleDegrees": 35.868636,
               "cardSymbol": "NONE",
-              "cardColor": "NONE"
+              "cardColor": "NONE",
+              "radiusXM": 2.148847,
+              "radiusZM": 2.148847
             }
           ],
           "halfAngleDegrees": 0.0,
@@ -2005,7 +2013,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "SPADE",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.2",
@@ -2025,7 +2035,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "CLUB",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.3",
@@ -2045,7 +2057,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "DIAMOND",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.4",
@@ -2065,7 +2079,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "HEART",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.5",
@@ -2085,7 +2101,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "CLUB",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.6",
@@ -2105,7 +2123,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "SPADE",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.7",
@@ -2125,7 +2145,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "HEART",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.1.sector.8",
@@ -2145,7 +2167,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "DIAMOND",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             }
           ],
           "halfAngleDegrees": 0.0,
@@ -2225,7 +2249,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "SPADE",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.2",
@@ -2245,7 +2271,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "CLUB",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.3",
@@ -2265,7 +2293,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "DIAMOND",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.4",
@@ -2285,7 +2315,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "HEART",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.5",
@@ -2305,7 +2337,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "CLUB",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.6",
@@ -2325,7 +2359,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "SPADE",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.7",
@@ -2345,7 +2381,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "HEART",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.2.sector.8",
@@ -2365,7 +2403,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "DIAMOND",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             }
           ],
           "halfAngleDegrees": 0.0,
@@ -2445,7 +2485,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "SPADE",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.2",
@@ -2465,7 +2507,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "CLUB",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.3",
@@ -2485,7 +2529,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "DIAMOND",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.4",
@@ -2505,7 +2551,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "HEART",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.5",
@@ -2525,7 +2573,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "CLUB",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.6",
@@ -2545,7 +2595,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "SPADE",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.7",
@@ -2565,7 +2617,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "HEART",
-              "cardColor": "RED"
+              "cardColor": "RED",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             },
             {
               "regionId": "roulette.round.3.sector.8",
@@ -2585,7 +2639,9 @@
               "radiusM": 8.0,
               "halfAngleDegrees": 22.5,
               "cardSymbol": "DIAMOND",
-              "cardColor": "BLACK"
+              "cardColor": "BLACK",
+              "radiusXM": 8.0,
+              "radiusZM": 8.0
             }
           ],
           "halfAngleDegrees": 0.0,
@@ -2800,8 +2856,8 @@
         {
           "sequenceInstanceId": "world.object.instance.kouku.ball_bounce",
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.world.1",
-          "startMs": 3080,
-          "durationMs": 3000,
+          "startMs": 1708,
+          "durationMs": 5619,
           "playbackSpeed": 0.6666666865348816,
           "positionOffset": [
             0,
@@ -13864,26 +13920,6 @@
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0
-        },
-        {
-          "stageId": "STAGE_4",
-          "actionId": "KAKULSAYDON_G1_PATTERN_17.stage.4",
-          "stageKind": "ACTIVE",
-          "durationMs": 2500,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
         }
       ],
       "resetBossToSpawn": false,
@@ -13921,7 +13957,9 @@
               "radiusM": 9,
               "halfAngleDegrees": 45,
               "cardSymbol": "NONE",
-              "cardColor": "NONE"
+              "cardColor": "NONE",
+              "radiusXM": 9,
+              "radiusZM": 9
             }
           ],
           "halfAngleDegrees": 0.0,
@@ -14229,6 +14267,86 @@
           "downMs": 0
         },
         {
+          "stageId": "STAGE_99",
+          "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.99",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_100",
+          "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.100",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_101",
+          "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.101",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_102",
+          "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.102",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
           "stageId": "STAGE_60",
           "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.60",
           "stageKind": "ACTIVE",
@@ -14349,7 +14467,400 @@
         }
       ],
       "resetBossToSpawn": false,
-      "logicWindows": [],
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.1",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 1210,
+          "durationMs": 231,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.1",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                8.399999618530273,
+                0.3499999940395355,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.2",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 1548,
+          "durationMs": 222,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.2",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                8.399999618530273,
+                0.3499999940395355,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.3",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 1890,
+          "durationMs": 231,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.3",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                8.399999618530273,
+                0.3499999940395355,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.4",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 3523,
+          "durationMs": 231,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.4",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                5.050000190734863,
+                0.949999988079071,
+                -5.050000190734863
+              ],
+              "yawDegrees": 45.900001525878906,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.5",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 3936,
+          "durationMs": 231,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.5",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                8.399999618530273,
+                0.3499999940395355,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.6",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 4328,
+          "durationMs": 231,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.6",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                5.25,
+                0.949999988079071,
+                5.349999904632568
+              ],
+              "yawDegrees": -45,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_21.logic.7",
+          "repeatAfterKnockback": true,
+          "kind": "ENTER_AREA",
+          "startMs": 5173,
+          "durationMs": 231,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_21.presentation.7",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                8.399999618530273,
+                0.3499999940395355,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                7.951000213623047,
+                0.509209068114182,
+                0.3148713845197692
+              ],
+              "radiusM": 23.85300064086914,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": "",
+              "pushRangeM": 2.0,
+              "pushMs": 242,
+              "pushDirection": "BOSS_FORWARD"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        }
+      ],
       "mechanicTriggers": [],
       "worldSequences": [
         {
@@ -14804,6 +15315,126 @@
           "downMs": 0
         },
         {
+          "stageId": "STAGE_16",
+          "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.16",
+          "stageKind": "ACTIVE",
+          "durationMs": 267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_17",
+          "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.17",
+          "stageKind": "ACTIVE",
+          "durationMs": 267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_18",
+          "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.18",
+          "stageKind": "ACTIVE",
+          "durationMs": 267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_19",
+          "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.19",
+          "stageKind": "ACTIVE",
+          "durationMs": 267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_20",
+          "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.20",
+          "stageKind": "ACTIVE",
+          "durationMs": 267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_21",
+          "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.21",
+          "stageKind": "ACTIVE",
+          "durationMs": 267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
           "stageId": "STAGE_4",
           "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.4",
           "stageKind": "ACTIVE",
@@ -14828,10 +15459,11 @@
       "logicWindows": [
         {
           "windowId": "KAKULSAYDON_G1_PATTERN_24.logic.1",
+          "bossChargeDistanceM": 10,
           "repeatAfterKnockback": true,
           "kind": "ENTER_AREA",
           "startMs": 4000,
-          "durationMs": 1602,
+          "durationMs": 3204,
           "sectorCount": 0,
           "sectorSymbols": [],
           "centerX": 0.0,
@@ -14888,7 +15520,7 @@
           "sequenceInstanceId": "world.object.instance.kouku.whirlwind_hammer",
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_24.world.1",
           "startMs": 0,
-          "durationMs": 6502,
+          "durationMs": 8104,
           "playbackSpeed": 1.0,
           "positionOffset": [
             0,
@@ -24300,6 +24932,406 @@
         }
       ],
       "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_27",
+      "gateId": "GATE2",
+      "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
+      "actorProfileId": "MN_RPCT_06",
+      "folderId": "kakulsaydon.folder.11",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "대형세이튼_불뿜기",
+      "actionId": "kakulsaydon.g1.pattern.27",
+      "sourceActionIds": [
+        4221809
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_G2_BIG_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 5500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.3",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_4",
+          "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.4",
+          "stageKind": "ACTIVE",
+          "durationMs": 5500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_28",
+      "gateId": "GATE2",
+      "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+      "actorProfileId": "MN_RPCZ_00",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "쿠크_카드미로연출",
+      "actionId": "kakulsaydon.g1.pattern.28",
+      "sourceActionIds": [
+        4219751
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_G1_KOUKU",
+        "BOSS_KAKULSAYDON_G2_KOUKU"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_27",
+          "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.27",
+          "stageKind": "ACTIVE",
+          "durationMs": 2500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_28",
+          "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.28",
+          "stageKind": "ACTIVE",
+          "durationMs": 2467,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_29",
+          "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.29",
+          "stageKind": "ACTIVE",
+          "durationMs": 1667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_29",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_내려치기C_FullRestore",
+      "actionId": "kakulsaydon.g1.pattern.29",
+      "sourceActionIds": [
+        4219877,
+        0
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_29.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_29.stage.2",
+          "stageKind": "RECOVERY",
+          "durationMs": 4582,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_30",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_불뿜기(원본0-1)_FullRestore",
+      "actionId": "kakulsaydon.g1.pattern.30",
+      "sourceActionIds": [
+        4219801,
+        0
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_30.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 1667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_30.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 3167,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_30.stage.3",
+          "stageKind": "RECOVERY",
+          "durationMs": 6241,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
     }
   ],
   "folders": [
@@ -24317,6 +25349,11 @@
       "folderId": "kakulsaydon.folder.3",
       "gateId": "GATE2",
       "displayName": "조커찾기"
+    },
+    {
+      "folderId": "kakulsaydon.folder.4",
+      "gateId": "GATE2",
+      "displayName": "카드미로"
     },
     {
       "folderId": "kakulsaydon.folder.6",
@@ -24337,6 +25374,11 @@
       "folderId": "kakulsaydon.folder.10",
       "gateId": "GATE2",
       "displayName": "쿠크팡파레"
+    },
+    {
+      "folderId": "kakulsaydon.folder.11",
+      "gateId": "GATE2",
+      "displayName": "대형세이튼_불뿜기"
     }
   ],
   "bundles": [
@@ -24410,11 +25452,27 @@
       ]
     },
     {
+      "bundleId": "kakulsaydon.bundle.4",
+      "gateId": "GATE2",
+      "folderId": "kakulsaydon.folder.4",
+      "displayName": "카드미로_동시",
+      "durationMs": 6634,
+      "members": [
+        {
+          "memberId": "kakulsaydon.bundle.4.member.1",
+          "patternId": "KAKULSAYDON_G1_PATTERN_28",
+          "startOffsetMs": 0,
+          "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+          "actorProfileId": "MN_RPCZ_00"
+        }
+      ]
+    },
+    {
       "bundleId": "kakulsaydon.bundle.7",
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.7",
       "displayName": "거대세이튼잡기_동시",
-      "durationMs": 10000,
+      "durationMs": 7500,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.7.member.1",
@@ -24430,7 +25488,7 @@
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.9",
       "displayName": "쿠크휠윈드_동시",
-      "durationMs": 6502,
+      "durationMs": 8104,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.9.member.1",
@@ -24509,6 +25567,11 @@
         "folderId": "kakulsaydon.folder.10",
         "gateId": "GATE2",
         "displayName": "쿠크팡파레"
+      },
+      {
+        "folderId": "kakulsaydon.folder.11",
+        "gateId": "GATE2",
+        "displayName": "대형세이튼_불뿜기"
       }
     ],
     "patterns": [
@@ -24746,6 +25809,43 @@
         "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
         "actorProfileId": "MN_RPCT_05",
         "unavailableReason": ""
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_27",
+        "displayName": "대형세이튼_불뿜기",
+        "category": "MECHANIC",
+        "gateId": "GATE2",
+        "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
+        "actorProfileId": "MN_RPCT_06",
+        "unavailableReason": "",
+        "folderId": "kakulsaydon.folder.11"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_28",
+        "displayName": "쿠크_카드미로연출",
+        "category": "MECHANIC",
+        "gateId": "GATE2",
+        "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+        "actorProfileId": "MN_RPCZ_00",
+        "unavailableReason": ""
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_29",
+        "displayName": "세이튼_내려치기C_FullRestore",
+        "category": "MECHANIC",
+        "gateId": "GATE1",
+        "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": ""
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_30",
+        "displayName": "세이튼_불뿜기(원본0-1)_FullRestore",
+        "category": "MECHANIC",
+        "gateId": "GATE1",
+        "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": ""
       }
     ],
     "bundles": [
@@ -24811,8 +25911,14 @@
         "gateId": "GATE2",
         "folderId": "kakulsaydon.folder.4",
         "displayName": "카드미로_동시",
-        "members": [],
-        "unavailableReason": "PRODUCT bundle must have at least one member"
+        "members": [
+          {
+            "memberId": "kakulsaydon.bundle.4.member.1",
+            "patternId": "KAKULSAYDON_G1_PATTERN_28",
+            "startOffsetMs": 0
+          }
+        ],
+        "unavailableReason": ""
       },
       {
         "bundleId": "kakulsaydon.bundle.5",

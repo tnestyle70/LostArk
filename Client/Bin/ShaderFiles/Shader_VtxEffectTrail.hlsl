@@ -3,6 +3,9 @@
 #include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Active003RibbonMaterial.hlsli"
 #include "Shader_EffectUe3MaterialFamilies.hlsli"
+#define EFFECT_NATIVE_TRAIL_CARRIER 1
+#define EFFECT_NATIVE_PROFILE_GROUP 2304
+#include "Shader_EffectArtistNative.hlsli"
 
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
@@ -23,6 +26,7 @@ struct VS_OUT
     float2 runtimeUV : TEXCOORD1;
     float4 color : COLOR0;
     float4 dynamicParameter : TEXCOORD2;
+    float sourceProjectionW : TEXCOORD3;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -31,6 +35,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.position = mul(
         float4(input.position, 1.f),
         mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix));
+    output.sourceProjectionW = output.position.w;
     output.uv = input.uv * g_UVScale + g_UVOffset;
     output.runtimeUV = input.uv;
     output.color = input.color;
@@ -62,6 +67,19 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
         clip(-1.f);
         return output;
+    }
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2341u)
+    {
+        ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
+        nativeInput.uv = input.runtimeUV;
+        nativeInput.color = input.color * g_ColorMultiply + g_ColorOffset;
+        nativeInput.vertexColor = input.color;
+        nativeInput.dynamicParameter = input.dynamicParameter;
+        nativeInput.screenUV = ALTVNativeScreenUV(input.position.xy);
+        nativeInput.projectionW = input.sourceProjectionW * 100.f;
+        nativeInput.projectionZ = input.position.z * nativeInput.projectionW;
+        nativeInput.frontFace = true;
+        return Shade_EffectArtistNative(g_SourceMaterialProfile, nativeInput);
     }
     if (35u == g_SourceMaterialProfile)
     {

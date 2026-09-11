@@ -48,7 +48,7 @@
                      "damageProfileCount":  109,
                      "bossProfileCount":  8,
                      "encounterPatternCount":  34,
-                     "fieldEntryCount":  3491,
+                     "fieldEntryCount":  3486,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  9
                  },
@@ -11350,9 +11350,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  4,
+                        "sourceValue":  3,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  4,
+                        "resultValue":  3,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11406,9 +11406,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  510,
+                        "sourceValue":  1400,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  510,
+                        "resultValue":  1400,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11434,9 +11434,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1500,
+                        "sourceValue":  1067,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1500,
+                        "resultValue":  1067,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11448,85 +11448,15 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1500,
+                        "sourceValue":  1067,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1500,
+                        "resultValue":  1067,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
                         "targetField":  "comboStages[1].hitTimeMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  43,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  43,
-                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[1].inputCloseMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  410,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  410,
-                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[1].inputOpenMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  0,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
-                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[2].actionDurationMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1067,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1067,
-                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[2].comboAdvanceMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "balance-tool-authored-override-v1"
-                                   },
-                        "sourceValue":  1067,
-                        "transform":  "Balance Tool authored override",
-                        "resultValue":  1067,
-                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[2].hitTimeMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11540,21 +11470,21 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[2].inputCloseMs",
+                        "targetField":  "comboStages[1].inputCloseMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  494,
+                        "sourceValue":  1067,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  494,
+                        "resultValue":  1067,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[2].inputOpenMs",
+                        "targetField":  "comboStages[1].inputOpenMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11568,7 +11498,7 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[3].actionDurationMs",
+                        "targetField":  "comboStages[2].actionDurationMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11577,12 +11507,12 @@
                         "sourceValue":  1700,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  1700,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[3].comboAdvanceMs",
+                        "targetField":  "comboStages[2].comboAdvanceMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11591,12 +11521,12 @@
                         "sourceValue":  1700,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  1700,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[3].hitTimeMs",
+                        "targetField":  "comboStages[2].hitTimeMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11605,12 +11535,12 @@
                         "sourceValue":  335,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  335,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[3].inputCloseMs",
+                        "targetField":  "comboStages[2].inputCloseMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11619,12 +11549,12 @@
                         "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050010",
-                        "targetField":  "comboStages[3].inputOpenMs",
+                        "targetField":  "comboStages[2].inputOpenMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -11633,7 +11563,7 @@
                         "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

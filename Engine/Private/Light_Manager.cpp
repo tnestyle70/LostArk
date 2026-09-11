@@ -15,7 +15,9 @@ namespace
 
 	bool_t IsValidSceneLight(const LIGHT_DESC& Light)
 	{
-		if ((LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
+		if (Light.staticShadowChannel > 15u || (Light.eReceiver != LIGHT_RECEIVER::ALL &&
+			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) ||
+			(LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
 			LIGHT::DIRECTIONAL != Light.eType) || !IsFinite4(Light.vDiffuse) ||
 			!IsFinite4(Light.vAmbient) || !IsFinite4(Light.vSpecular) ||
 			!std::isfinite(Light.fFalloffExponent) ||
@@ -48,7 +50,7 @@ namespace
 			 std::isfinite(Light.fSpotOuterCos) &&
 			 Light.fSpotOuterCos > 0.f &&
 			 Light.fSpotOuterCos <= Light.fSpotInnerCos &&
-			 Light.fSpotInnerCos < 1.f);
+			 Light.fSpotOuterCos < 1.f && Light.fSpotInnerCos <= 1.f);
 	}
 }
 
@@ -82,18 +84,25 @@ HRESULT CLight_Manager::Replace_SceneLights(vector<LIGHT_DESC> SceneLights)
 HRESULT CLight_Manager::Render_Lights(
 	shared_ptr<class CShader> pShader,
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-	bool_t bEnableSceneDirectionalShadow)
+	bool_t bEnableSceneDirectionalShadow, LIGHT_RECEIVER ePassReceiver)
 {
+    if (ePassReceiver != LIGHT_RECEIVER::ALL && ePassReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) return E_INVALIDARG;
 	HRESULT hResult = S_OK;
 	bool_t bSceneDirectionalShadowConsumed = false;
+    bool_t staticShadowConsumed = false;
     for (const LIGHT_DESC& LightDesc : m_SceneLights)
     {
+        if (LightDesc.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER && ePassReceiver == LIGHT_RECEIVER::ALL) continue;
 		const bool_t bApplyShadow =
 			bEnableSceneDirectionalShadow &&
 			!bSceneDirectionalShadowConsumed &&
 			LIGHT::DIRECTIONAL == LightDesc.eType;
+        // Source component shadow atlases target the scene's existing main
+        // directional light. Later directional/effect lights retain identity.
+        const bool_t applyStaticShadow = !staticShadowConsumed && LIGHT::DIRECTIONAL == LightDesc.eType;
+        if (applyStaticShadow) staticShadowConsumed = true;
 		if (FAILED(CLight::Render_Desc(
-			LightDesc, pShader, pVIBuffer, bApplyShadow)))
+			LightDesc, pShader, pVIBuffer, bApplyShadow, applyStaticShadow)))
 		{
 			hResult = E_FAIL;
 			break;
@@ -106,6 +115,7 @@ HRESULT CLight_Manager::Render_Lights(
 		for (const LIGHT_DESC& LightDesc :
 			CPresentation_Manager::Get().Get_TransientLights())
 		{
+            if (LightDesc.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER && ePassReceiver == LIGHT_RECEIVER::ALL) continue;
 			if (FAILED(CLight::Render_Desc(
 				LightDesc, pShader, pVIBuffer, false)))
 			{

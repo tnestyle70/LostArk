@@ -1,6 +1,7 @@
 #include "DeployPropRuntime.h"
 
 #include "DeployPropObject.h"
+#include "ActorCatalog.h"
 #include "GameInstance.h"
 #include "Model.h"
 
@@ -71,11 +72,14 @@ bool_t CDeployPropRuntime::Ensure_AreaPrototypes(
 		const MODEL modelKind =
 			DEPLOY_PROP_MODEL_KIND::ANIM == asset.kind ?
 			MODEL::ANIM : MODEL::NONANIM;
+        MODEL_ASSET_LOAD_DESC intactLoad;
+        if (!CActorCatalog::Build_ModelLoadDescription(asset.intactRelativePath.generic_string(), intactLoad, outStatus))
+            return false;
 		auto intactModel = CModel::Create(
 			pDevice,
 			pContext,
 			modelKind,
-			asset.intactResolvedPath.string().c_str(),
+			intactLoad,
 			modelTransform);
 		if (nullptr == intactModel ||
 			FAILED(CGameInstance::Get().Add_Prototype(
@@ -92,11 +96,14 @@ bool_t CDeployPropRuntime::Ensure_AreaPrototypes(
 		if (DEPLOY_PROP_MODEL_KIND::STATIC != asset.kind ||
 			asset.fracturedPrototypeTag.empty())
 			continue;
+        MODEL_ASSET_LOAD_DESC fracturedLoad;
+        if (!CActorCatalog::Build_ModelLoadDescription(asset.fracturedRelativePath.generic_string(), fracturedLoad, outStatus))
+            return false;
 		auto fracturedModel = CModel::Create(
 			pDevice,
 			pContext,
 			MODEL::NONANIM,
-			asset.fracturedResolvedPath.string().c_str(),
+			fracturedLoad,
 			modelTransform);
 		if (nullptr == fracturedModel ||
 			FAILED(CGameInstance::Get().Add_Prototype(

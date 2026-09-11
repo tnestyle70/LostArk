@@ -37,6 +37,12 @@ enum class MODEL_SURFACE_FAMILY : uint32_t
 	SOURCE_SPECULAR_OPAQUE = 5,
 	SOURCE_CHARACTER = 6,
 	SOURCE_OVERLAY_OPAQUE = 7,
+	SOURCE_BG_OPAQUE_MASKED = 8,
+	SOURCE_FOLIAGE_MASKED = 9,
+	SOURCE_GRASS_MASKED = 10,
+    SOURCE_SNOWICE_OPAQUE = 11,
+    SOURCE_VERTEXBLEND_OPAQUE = 12,
+    SOURCE_WET_OPAQUE = 13,
 };
 
 /* Per-placement atlas coordinates and decode scales. The texture pair belongs
@@ -46,6 +52,7 @@ struct MODEL_BAKED_LIGHTING_INSTANCE
     float4_t scaleBias = { 0.f, 0.f, 0.f, 0.f };
     float4_t averageScale = { 0.f, 0.f, 0.f, 0.f }; // w: enabled
     float4_t directionalScale = { 0.f, 0.f, 0.f, 0.f };
+    float4_t shadowScaleBias = { 0.f, 0.f, 0.f, 0.f };
 };
 
 /* Selected native character programs share one CModel/CMaterial route. The
@@ -58,6 +65,7 @@ struct MODEL_SOURCE_CHARACTER_PARAMETERS
     uint32_t program = 0u;
     uint32_t baseTextureMask = 0u;
     uint32_t lightTextureMask = 0u;
+    uint32_t requiredExtraUVMask = 0u; // bit 0: TEXCOORD1, bit 1: TEXCOORD2
     std::array<float4_t, SOURCE_CHARACTER_CONSTANT_COUNT> baseConstants{};
     std::array<float4_t, SOURCE_CHARACTER_CONSTANT_COUNT> lightConstants{};
 };
@@ -68,10 +76,61 @@ struct MODEL_SOURCE_CHARACTER_TEXTURE
     bool_t srgb = false;
 };
 
+enum class MODEL_SURFACE_RENDER_MODE : uint32_t
+{
+    INHERIT, DEFERRED, TRANSLUCENT, BACKGROUND, ADDITIVE, WATER
+};
+enum class MODEL_SURFACE_CULL_MODE : uint32_t
+{
+    INHERIT, CULL_BACK, CULL_FRONT, TWO_SIDED
+};
+
+struct MODEL_SOURCE_SPECIAL_PARAMETERS
+{
+    uint32_t flags = 0u; // ice: detail/spec texture; vertex blend: G/B layers
+    f32_t normalTiling = 1.f;
+    float4_t iceCoreColor = {};
+    float4_t iceOuterColor = {};
+    float4_t iceBlend = { 1.f, .5f, .5f, 0.f }; // mask UV, blend, sharpness, emission
+    f32_t iceBumpOffset = .3f;
+    float4_t wetParameters = { 1.f, .5f, 1.f, 1.f }; // normal, sharpness, opacity, specular
+    f32_t wetSpecularPower = 50.f;
+    std::array<float4_t, 4> blendDiffuse{}; // RGB tint, brightness
+    std::array<float4_t, 4> blendSpecular{}; // RGB tint, intensity
+    std::array<float4_t, 4> blendLayers{}; // UV XY, normal strength, specular power
+    f32_t blendSharpness = .5f;
+    bool_t maskSRGB = false;
+    bool_t blendGSRGB = true;
+    bool_t blendBSRGB = true;
+};
+
 struct MODEL_SURFACE_PARAMETERS
 {
+    MODEL_SURFACE_RENDER_MODE renderMode = MODEL_SURFACE_RENDER_MODE::INHERIT;
+    MODEL_SURFACE_CULL_MODE cullMode = MODEL_SURFACE_CULL_MODE::INHERIT;
 	MODEL_SURFACE_FAMILY family = MODEL_SURFACE_FAMILY::LEGACY;
 	MODEL_SOURCE_CHARACTER_PARAMETERS sourceCharacter;
+    // Native BG static-switch branches; selected source textures only are required.
+    // normal=1, bump=2, specular=4, specular texture=8, reflection=16,
+    // world reflection=32, masked=64, vertex-alpha normal=128, simple=256, seamless=512.
+    // Native texture address: diffuse mirror V=1024, normal mirror U=2048, normal mirror V=4096.
+    // linear reflection=8192, fixed base normal UV=16384, detail normal=32768.
+    uint32_t sourceBgFlags = 0u;
+    float4_t sourceBgBump = { 0.f, 0.f, 1.f, 0.f }; // offset, intensity, brightness, reserved
+    float4_t sourceBgUV = { 0.f, 1.f, 0.f, 0.f }; // sin, cos, fixed move X/Y
+    uint32_t sourceBgFlicker = 0u; // 0 steady, 1 nested, 2 linear
+    float2_t sourceBgSubspecular = { 0.f, 60.f }; // independent view lobe: intensity, power
+    float4_t sourceBgRimlight = { 0.f, 0.f, 0.f, 3.f }; // intensity-scaled RGB, power
+    f32_t sourceBgSpecularSaturation = 1.f;
+    float2_t sourceBgPanning = { 0.f, 0.f };
+
+    // Native foliage: normal=1, saturation=2, specular=4, specular texture=8,
+    // transmission=16, emissive=32, emissive flicker=64.
+    MODEL_SOURCE_SPECIAL_PARAMETERS sourceSpecial;
+    uint32_t sourceFoliageFlags = 0u;
+    float4_t sourceFoliageTransmission = { 0.f, 0.f, 0.f, 1.f };
+    bool_t sourceFoliageMaskSRGB = false;
+
     // Source opaque overlay uses vertex R coverage and vertex A normal strength.
     float4_t overlayColor = { 1.f, 1.f, 1.f, 1.f };
     f32_t overlayTiling = 1.f;
@@ -81,6 +140,11 @@ struct MODEL_SURFACE_PARAMETERS
     f32_t overlaySaturation = 1.f;
     f32_t overlaySpecularIntensity = 1.f;
     bool_t overlaySRGB = true;
+    bool_t overlaySeparateSpecular = false;
+    // normal, overlay normal, vertex paint, explicit direction, inverse height,
+    // detail normal, mask, fixed base-normal UV, specular.
+    uint32_t sourceOverlayFlags = 263u;
+    float4_t sourceOverlayDirection = { 0.f, 1.f, 0.f, 0.f }; // runtime world XYZ, amount
 	f32_t diffuseBrightness = 1.f;
 	f32_t normalIntensity = 1.f;
 	f32_t specularIntensity = 1.f;
@@ -124,6 +188,9 @@ struct MODEL_SURFACE_PARAMETERS
 	f32_t vertexAlpha = 1.f;
     bool_t hasBakedLighting = false;
     bool_t bakedLightingSRGB = false;
+    bool_t hasStaticShadow = false;
+    uint32_t staticShadowChannel = 0u;
+    float4_t staticShadowTransfer = { 0.f, 1.f, 1.f, 0.f }; // bias, scale, exponent, reserved
     bool_t hasEnvironmentCube = false;
     float4_t environmentColor = { 1.f, 1.f, 1.f, 0.f };
     float2_t environmentRotation = { 0.f, 1.f };
@@ -143,10 +210,17 @@ struct MODEL_MATERIAL_OVERRIDE
 	filesystem::path overlayNormalPath;
 	filesystem::path detailNormalPath;
 	filesystem::path surfaceORMPath;
+    filesystem::path sourceFoliageMaskPath;
+    filesystem::path sourceSpecialMaskPath;
+    filesystem::path sourceBlendDiffuseGPath;
+    filesystem::path sourceBlendDiffuseBPath;
+    filesystem::path sourceBlendNormalGPath;
+    filesystem::path sourceBlendNormalBPath;
 	filesystem::path surfaceEmissivePath;
 	std::array<MODEL_SOURCE_CHARACTER_TEXTURE, SOURCE_CHARACTER_TEXTURE_COUNT> sourceCharacterTextures;
     filesystem::path bakedAveragePath;
     filesystem::path bakedDirectionalPath;
+    filesystem::path staticShadowPath;
     filesystem::path environmentCubePath;
     filesystem::path environmentBRDFPath;
 };
@@ -176,10 +250,17 @@ struct MODEL_MATERIAL_DATA
 	filesystem::path overlayNormalPath;
 	filesystem::path detailNormalPath;
 	filesystem::path surfaceORMPath;
+    filesystem::path sourceFoliageMaskPath;
+    filesystem::path sourceSpecialMaskPath;
+    filesystem::path sourceBlendDiffuseGPath;
+    filesystem::path sourceBlendDiffuseBPath;
+    filesystem::path sourceBlendNormalGPath;
+    filesystem::path sourceBlendNormalBPath;
 	filesystem::path surfaceEmissivePath;
 	std::array<MODEL_SOURCE_CHARACTER_TEXTURE, SOURCE_CHARACTER_TEXTURE_COUNT> sourceCharacterTextures;
     filesystem::path bakedAveragePath;
     filesystem::path bakedDirectionalPath;
+    filesystem::path staticShadowPath;
     filesystem::path environmentCubePath;
     filesystem::path environmentBRDFPath;
 };
@@ -208,6 +289,8 @@ enum MODEL_GEOMETRY_EVIDENCE_FLAG : uint32_t
 	MODEL_GEOMETRY_PIVOT_EXACT = 1u << 13,
 	MODEL_GEOMETRY_TEXCOORD1_PRESERVED_FROM_GLTF = 1u << 14,
 	MODEL_GEOMETRY_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED = 1u << 15,
+	MODEL_GEOMETRY_NATIVE_PARALLEL_BASIS_PRESERVED = 1u << 16,
+	MODEL_GEOMETRY_TEXCOORD2_PRESERVED_FROM_GLTF = 1u << 17,
 };
 
 struct MODEL_MESH_BOUNDS_DATA

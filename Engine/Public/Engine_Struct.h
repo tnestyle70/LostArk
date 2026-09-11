@@ -28,6 +28,8 @@ namespace Engine
 		uint32_t	iWinSizeX{}, iWinSizeY{};
 	}ENGINE_DESC;
 
+	enum class LIGHT_RECEIVER : uint32_t { ALL = 0u, SOURCE_CHARACTER = 1u };
+
 	typedef struct tagLightDesc
 	{
 		LIGHT		eType;
@@ -38,8 +40,10 @@ namespace Engine
 		XMFLOAT4	vDiffuse, vAmbient, vSpecular;
 		float		fSpotInnerCos = 1.f;
 		float		fSpotOuterCos = 1.f;
+		LIGHT_RECEIVER eReceiver = LIGHT_RECEIVER::ALL;
+        uint32_t staticShadowChannel = 0u;
 	}LIGHT_DESC;
-	static_assert(sizeof(LIGHT_DESC) == 100u);
+	static_assert(sizeof(LIGHT_DESC) == 108u);
 	static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
 	static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
 	static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
@@ -136,6 +140,11 @@ namespace Engine
 		f32_t		fWindSpeed = 0.f;
 		f32_t		fPatchScale = 0.01f;
 		f32_t		fPatchSoftness = 0.15f;
+        // Optional source exponential model; distances/heights are runtime metres.
+        bool_t bSourceExponential = false;
+        float4_t vInscatteringColor = float4_t(0.f, 0.f, 0.f, 0.f);
+        // xyz points toward the directional light; w is terminator-angle cosine.
+        float4_t vFogLightDirection = float4_t(0.f, 1.f, 0.f, 0.f);
 	}HEIGHT_FOG_SETTINGS;
 
 	typedef struct tagKeyFrame
@@ -205,8 +214,9 @@ namespace Engine
 		XMFLOAT2			vTexcoord;
 		XMFLOAT2			vTexcoord1 = {};
 		uint32_t			color0Rgba8 = { 0xffffffffu };
+		XMFLOAT2			vTexcoord2 = {};
 
-		static constexpr uint32_t		iNumElements = { 7 };
+		static constexpr uint32_t		iNumElements = { 8 };
 		static constexpr D3D11_INPUT_ELEMENT_DESC		Elements[] = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -215,9 +225,11 @@ namespace Engine
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 56, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 68, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 	}VTXMESH;
-	static_assert(sizeof(VTXMESH) == 68);
+	static_assert(sizeof(VTXMESH) == 76);
+	static_assert(offsetof(VTXMESH, vTexcoord2) == 68);
 	static_assert(offsetof(VTXMESH, vPosition) == 0);
 	static_assert(offsetof(VTXMESH, vNormal) == 12);
 	static_assert(offsetof(VTXMESH, vTangent) == 24);
@@ -233,8 +245,9 @@ namespace Engine
 		float4_t vLightmapScaleBias = {};
 		float4_t vLightmapAverageScale = {};
 		float4_t vLightmapDirectionalScale = {};
+        float4_t vStaticShadowScaleBias = {};
 
-		static constexpr uint32_t iNumElements = { 18 };
+		static constexpr uint32_t iNumElements = { 19 };
 
 		static constexpr D3D11_INPUT_ELEMENT_DESC Elements[] =
 		{
@@ -276,9 +289,12 @@ namespace Engine
 				1, 144, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 			{ "INSTANCE_LIGHTMAP", 2, DXGI_FORMAT_R32G32B32A32_FLOAT,
 				1, 160, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+            { "INSTANCE_SHADOW", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1, 176, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 		};
 	} VTXMESHINSTANCE;
-	static_assert(sizeof(VTXMESHINSTANCE) == 176);
+	static_assert(sizeof(VTXMESHINSTANCE) == 192);
+    static_assert(offsetof(VTXMESHINSTANCE, vStaticShadowScaleBias) == 176);
 	static_assert(offsetof(VTXMESHINSTANCE, vLightmapScaleBias) == 128);
 	static_assert(offsetof(VTXMESHINSTANCE, vLightmapAverageScale) == 144);
 	static_assert(offsetof(VTXMESHINSTANCE, vLightmapDirectionalScale) == 160);

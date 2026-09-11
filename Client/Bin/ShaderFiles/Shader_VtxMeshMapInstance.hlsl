@@ -81,6 +81,7 @@ struct VS_IN
     float4 vLightmapScaleBias : INSTANCE_LIGHTMAP0;
     float4 vLightmapAverageScale : INSTANCE_LIGHTMAP1;
     float4 vLightmapDirectionalScale : INSTANCE_LIGHTMAP2;
+    float4 vStaticShadowScaleBias : INSTANCE_SHADOW0;
 };
 
 struct VS_OUT
@@ -97,6 +98,7 @@ struct VS_OUT
     float4 vColor : COLOR0;
     nointerpolation float4 vLightmapAverageScale : TEXCOORD5;
     nointerpolation float4 vLightmapDirectionalScale : TEXCOORD6;
+    float2 vStaticShadowUV : TEXCOORD7;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -135,7 +137,7 @@ VS_OUT VS_MAIN(VS_IN input)
 			float4(input.vTangent, 0.f),
 			world).xyz;
 
-    const float3 tangent = normalize(
+    const float3 tangent = dot(input.vBinormal, input.vBinormal) == 0.f ? normalize(tangentLinear) : normalize(
 		tangentLinear -
 		normal * dot(
 			tangentLinear,
@@ -152,8 +154,8 @@ VS_OUT VS_MAIN(VS_IN input)
 			sourceBinormal) < 0.f ?
 			-1.f : 1.f;
 
-    const float3 binormal =
-		normalize(
+    const float3 binormal = dot(input.vBinormal, input.vBinormal) == 0.f ? 0.f :
+		MapGeometryNormalizeOrZero(
 			cross(normal, tangent)) *
 		handedness;
 
@@ -170,6 +172,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.vLightmapUV = input.vLightmapUV * input.vLightmapScaleBias.xy + input.vLightmapScaleBias.zw;
     output.vLightmapAverageScale = input.vLightmapAverageScale;
     output.vLightmapDirectionalScale = input.vLightmapDirectionalScale;
+    output.vStaticShadowUV = input.vLightmapUV * input.vStaticShadowScaleBias.xy + input.vStaticShadowScaleBias.zw;
     output.vTexcoord =
 		input.vTexcoord *
 		g_UVScale +
@@ -254,7 +257,9 @@ PS_OUT PS_MAIN(VS_OUT input)
         output.vNormal = stone.normal;
         output.vDepth = stone.depth;
         output.vPickPos = stone.pickPosition;
+        output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
         output.vEmissive = stone.indirect;
+        output.vEmissive.a = 1.f - EvaluateMapStaticShadow(input.vStaticShadowUV);
         output.vMaterialSpecular = stone.materialSpecular;
         output.vCharacterSurface = stone.surface;
         output.vCharacterGeometry = stone.geometry;
@@ -263,32 +268,41 @@ PS_OUT PS_MAIN(VS_OUT input)
 
     if (g_SurfaceProgram != 0u)
     {
-        const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord,
+        const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord, input.vColor,
             input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz);
         output.vDiffuse = surface.diffuse;
         if (g_SurfaceDebugView == 4u)
             output.vDiffuse.rgb = surface.reflectionDelta;
         const bool pbr = IsMapSurfacePBR();
-        const bool sourceSpecular = IsMapSurfaceSourceSpecular();
+        const bool sourceBG = IsMapSurfaceSourceBG();
+        const bool sourceFoliage = IsMapSurfaceSourceFoliage();
+        const bool sourceSpecial = IsMapSurfaceSourceSpecial();
+        const bool sourceSpecular = IsMapSurfaceSourceSpecular() || sourceBG || sourceFoliage || sourceSpecial;
         const float diffuseScale = sourceSpecular ?
             max(1.f, max(output.vDiffuse.r, max(output.vDiffuse.g, output.vDiffuse.b))) : 1.f;
         output.vDiffuse.rgb /= diffuseScale;
         output.vNormal = float4(surface.worldNormal * 0.5f + 0.5f,
             pbr ? surface.roughness : 0.f);
         output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
-            input.vProjPos.w / 1000.f, pbr ? surface.ambientOcclusion : g_SurfaceSpecularPower,
-            pbr ? 3.f : (sourceSpecular ? 4.f : 1.f));
+            input.vProjPos.w / 1000.f, pbr ? surface.ambientOcclusion : (sourceSpecial ? surface.specularPower : g_SurfaceSpecularPower),
+            pbr ? 3.f : ((sourceFoliage || sourceSpecial) ? float(g_SurfaceProgram) : (sourceBG ? 8.f : (sourceSpecular ? 4.f : 1.f))));
         output.vPickPos = input.vWorldPos;
         if (pbr || sourceSpecular)
             output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
                 g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
+        output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
         // MRT4 carries already shaded source indirect light for selected families.
         // Final resolve adds it as radiance; it is not an emissive material flag.
         output.vEmissive = float4(EvaluateMapSourceIndirectLighting(surface,
             input.vLightmapUV, input.vLightmapAverageScale,
             input.vLightmapDirectionalScale, input.vWorldPos.xyz,
             input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz) +
-            EvaluateMapSurfaceEmissive(input.vRawTexcoord), 0.f);
+            EvaluateMapSurfaceEmissive(input.vRawTexcoord),
+            1.f - EvaluateMapStaticShadow(input.vStaticShadowUV));
+        if (sourceBG) output.vCharacterSurface =
+            float4(surface.rimlightRadiance, float(g_SourceBgFlags & 1023u));
+        if (sourceFoliage) output.vCharacterSurface.rgb = surface.transmission;
+        if (sourceSpecial) output.vCharacterSurface.rgb = surface.rimlightRadiance;
         output.vMaterialSpecular = float4(surface.specular, pbr ? surface.metallic :
             (sourceSpecular ? diffuseScale : 0.f));
         return output;
@@ -536,8 +550,8 @@ PS_OUT_WATER PS_MAIN_WATER(
 
     const float3x3 tangentBasis =
 		float3x3(
-			normalize(input.vTangent.xyz),
-			normalize(input.vBinormal.xyz),
+			MapGeometryNormalizeOrZero(input.vTangent.xyz),
+			MapGeometryNormalizeOrZero(input.vBinormal.xyz),
 			normalize(input.vNormal.xyz));
 
     const float3 worldNormal =
@@ -632,7 +646,20 @@ void PS_MAIN_SHADOW(
     {
         // The four Character Select source overrides are opaque, including
         // diffuse alpha=0. Kouku's original masked programs retain their cutoff.
-        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
+        if (IsMapSurfaceSourceBG())
+        {
+            const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(input.vTangent.xyz),
+                MapGeometryNormalizeOrZero(input.vBinormal.xyz), normalize(input.vNormal.xyz));
+            const float3 tangentView = normalize(mul(tangentToWorld,
+                g_vCamPosition.xyz - input.vWorldPos.xyz));
+            float2 uv; float bumpShade;
+            MapSourceBGDiffuse(input.vRawTexcoord, tangentView, uv, bumpShade);
+        }
+        else if (IsMapSurfaceSourceFoliage())
+            clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).a - 0.3333f);
+        else if (g_SurfaceProgram == 7u && (g_SourceOverlayFlags & 64u) != 0u)
+            clip(SampleMapDiffuseTexture(MapSourceOverlayUV(input.vRawTexcoord), SurfaceAnisotropicSampler).a - 0.3333f);
+        else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
             clip(SampleMapDiffuseTexture(input.vRawTexcoord, LinearSampler).a - 0.3333f);
         return;
     }

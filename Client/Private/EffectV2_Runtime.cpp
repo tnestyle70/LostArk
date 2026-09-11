@@ -310,8 +310,13 @@ namespace
 
 	matrix_t Binding_Local(const Client::EFFECT_V2_BINDING& Binding)
 	{
-		return XMMatrixRotationY(XMConvertToRadians(Binding.fYawDegrees)) *
-			XMMatrixTranslation(Binding.vOffset.x, Binding.vOffset.y, Binding.vOffset.z);
+		const Client::EFFECT_V2_LOCAL_TRANSFORM& Local = Binding.LocalTransform;
+		return XMMatrixScaling(Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(Local.vRotation.x),
+				XMConvertToRadians(Local.vRotation.y),
+				XMConvertToRadians(Local.vRotation.z)) *
+			XMMatrixTranslation(Local.vTranslation.x, Local.vTranslation.y, Local.vTranslation.z);
 	}
 
 	/* Lane time at which a child stops: its own duration, capped by the
@@ -607,12 +612,18 @@ namespace
 				pObject->Set_DissolveOutRange(pPlayback->fDissolveOutStart,
 					pPlayback->fDissolveOutEnd);
 		}
+		float3_t OccurrenceScale = Pending.Binding.LocalTransform.vScale;
 		if (pPlayback)
 		{
 			pObject->Set_PivotSampler(Child_PivotSampler(Pending, *pPlayback));
-			// Pending.Local/Params already own authored child scale; this is only the parent.
-			pObject->Set_OccurrenceScale(Occurrence_PivotScale(Pivot));
+			const float3_t ParentScale = Occurrence_PivotScale(Pivot);
+			OccurrenceScale.x *= ParentScale.x;
+			OccurrenceScale.y *= ParentScale.y;
+			OccurrenceScale.z *= ParentScale.z;
 		}
+		/* Billboard and particle drawing replace the pivot basis. Preserve the
+		   binding size there too; child size remains owned by its existing Params. */
+		pObject->Set_OccurrenceScale(OccurrenceScale);
 		const f32_t StopAge = Pending.fStopSeconds >= 0.f ?
 			(Pending.fStopSeconds - Ms_ToSeconds(Pending.Binding.iStartMs)) / fPlaybackRate : -1.f;
 		const bool_t DrainAtStart = StopAge >= 0.f && fInitialElapsedSeconds >= StopAge &&

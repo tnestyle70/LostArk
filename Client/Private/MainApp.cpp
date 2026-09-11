@@ -1954,6 +1954,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
+    string environmentStatus;
+    if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus))
+        OutputDebugStringA((environmentStatus + "\n").c_str());
 	Apply_LevelRequest();
 }
 
@@ -8660,6 +8663,9 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 	m_strCompletePlayStatus = strOutStatus;
 	if (submitted)
 	{
+		if (nullptr != m_pAnimationTool)
+			m_pAnimationTool->Release_ValtanCompositionPreviewForServerPlayback();
+		ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 		m_bCompletePlayStatusTracking = true;
 		m_strCompletePlayTrackedPatternId = m_strCompletePlayPatternId;
 	}

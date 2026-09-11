@@ -343,6 +343,8 @@ namespace
 			(logic.bRearmOnExit && logic.bRepeatAfterKnockback))
 		{ outStatus = "ENTER_AREA accepts one contact repeat policy."; return false; }
 		if (!std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 || logic.fPushRangeM > 20.0 ||
+			(logic.strPushDirection != "AWAY_FROM_BOSS" && logic.strPushDirection != "BOSS_FORWARD") ||
+			(logic.strPushDirection == "BOSS_FORWARD" && logic.fPushRangeM <= 0.0) ||
 			logic.iPushMs > MAX_TIME_MS || ((logic.fPushRangeM == 0.0) != (logic.iPushMs == 0u)) ||
 			((logic.fPushRangeM != 0.0 || logic.iPushMs != 0u) &&
 			 (logic.strLogicType != "RESULT" || logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE")))
@@ -702,7 +704,7 @@ namespace
 			!Read_PresentationTime(value, "durationMs", row.iDurationMs) ||
 			!Read_PresentationVector(value, "halfExtents", row.HalfExtents, 0.001, 10000.0) ||
 			!Read_PresentationNumber(value, "radiusM", row.fRadiusM, 0.001, 10000.0) ||
-			!Read_PresentationNumber(value, "halfAngleDegrees", row.fHalfAngleDegrees, 0.001, 180.0)) return false;
+			!Read_PresentationNumber(value, "halfAngleDegrees", row.fHalfAngleDegrees, row.strShape == "REVERSE_SECTOR" ? 0.0 : 0.001, 180.0)) return false;
 		for (const auto candidate : { KOUKU_SAYDON_PRESENTATION_KIND::EFFECT,
 			KOUKU_SAYDON_PRESENTATION_KIND::SOUND, KOUKU_SAYDON_PRESENTATION_KIND::CAMERA,
 			KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER, KOUKU_SAYDON_PRESENTATION_KIND::LIGHT })
@@ -1127,7 +1129,7 @@ namespace
 				break;
 			}
 			case KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER:
-				validAsset = row.strAssetId.empty() && (row.strShape == "BOX" || row.strShape == "SECTOR" || row.strShape == "CIRCLE"); break;
+				validAsset = row.strAssetId.empty() && (row.strShape == "BOX" || row.strShape == "SECTOR" || row.strShape == "REVERSE_SECTOR" || row.strShape == "CIRCLE"); break;
 			default: break;
 			}
 			if (!Is_StableId(row.strResourceId) || !Try_ParseGeneratedOrdinal(row.strResourceId,
@@ -1139,7 +1141,7 @@ namespace
 				row.iDurationMs == 0u || row.iDurationMs > MAX_TIME_MS ||
 				!Valid_PresentationVector(row.HalfExtents, 0.001, 10000.0) ||
 				!std::isfinite(row.fRadiusM) || row.fRadiusM <= 0.0 || row.fRadiusM > 10000.0 ||
-				!std::isfinite(row.fHalfAngleDegrees) || row.fHalfAngleDegrees <= 0.0 || row.fHalfAngleDegrees > 180.0)
+				!std::isfinite(row.fHalfAngleDegrees) || (row.strShape == "REVERSE_SECTOR" ? row.fHalfAngleDegrees < 0.0 : row.fHalfAngleDegrees <= 0.0) || row.fHalfAngleDegrees > 180.0)
 			{ outStatus = "Invalid presentation resource: " + row.strResourceId; return false; }
 		}
 
@@ -2003,7 +2005,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					{ "judgementKind", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
-					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
+					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
 					  "followupPatternId", "triggerKind", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
@@ -2071,6 +2073,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("motionInstanceId", stagedLogic.strMotionInstanceId) ||
 				!optionalUnsigned("percent", 100u, stagedLogic.iPercent) ||
 				!optionalUnsigned("durationMs", MAX_TIME_MS, stagedLogic.iDurationMs) ||
+				!optionalText("pushDirection", stagedLogic.strPushDirection) ||
 				!optionalFinite("pushRangeM", 0.0, 20.0, stagedLogic.fPushRangeM) ||
 				!optionalUnsigned("pushMs", MAX_TIME_MS, stagedLogic.iPushMs) ||
 				(nullptr != rearmOnExit && !rearmOnExit->Is_Boolean()) ||
@@ -2097,7 +2100,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			}
 			if (rearmOnExit) stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
 			if (repeatAfterKnockback) stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
-			if ((logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
+			if ((logicValue.Find("pushDirection") && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
+				(logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
 				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
 				((rearmOnExit || repeatAfterKnockback) && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ENTER_AREA")))
 			{ outStatus = "Knockback fields belong together on a damage Result; rearmOnExit belongs to ENTER_AREA."; return false; }
@@ -3119,6 +3123,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			if (logic.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && (logic.fPushRangeM != 0.0 || logic.iPushMs != 0u))
 				output << ",\n      \"pushRangeM\": " << logic.fPushRangeM
 					<< ",\n      \"pushMs\": " << logic.iPushMs;
+			if (logic.strPushDirection != "AWAY_FROM_BOSS")
+				output << ",\n      \"pushDirection\": \"" << logic.strPushDirection << "\"";
 			if (logic.strOutcomeKind == "FEAR")
                 output << ",\n      \"sceneProfileId\": \"" << CDataJson::Escape(logic.strSceneProfileId)
                     << "\",\n      \"effectResourceId\": \"" << CDataJson::Escape(logic.strEffectResourceId)

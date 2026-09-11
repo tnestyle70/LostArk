@@ -6,6 +6,7 @@
 #include "Animation_Tool.h"
 #include "CompositionResourceTree.h"
 #include "CompositionWorkbenchSession.h"
+#include "EffectV2_Document.h"
 #include "EncounterPatternReference.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -55,6 +56,7 @@ public:
 		LOGIC,
 		COLLIDER,
 		CAMERA,
+		WORLD,
 		COUNT,
 	};
 
@@ -65,6 +67,7 @@ public:
 		SOUND,
 		CAMERA,
 		LOGIC,
+		WORLD,
 	};
 
 	enum class EFFECT_RESOURCE_KIND : uint8_t
@@ -91,9 +94,8 @@ public:
 		bool_t bEffectV2Binding = false;
 		bool_t bEffectV2Group = false;
 		uint32_t iEffectV2BindingStartMs = 0u;
-		/* Clip-bound bindings are source rows shared by every matching model
-		   occurrence.  The projected occurrence keeps UI selection unique while
-		   the exact binding key remains clip-qualified. */
+		/* Typed clip bindings name one exact occurrence. Keep that source-window
+		   identity beside the stable bindingId for detail, drag and playback. */
 		std::string strEffectV2ClipOccurrenceId;
 		f32_t fEffectV2ClipPlayRate = 1.f;
 		/* A loop slot ends exactly at the Server Stage clock, so its right
@@ -120,6 +122,8 @@ public:
 	{
 		std::string strPatternId;
 		std::string strStageId;
+		DETAIL_OWNER eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
+		std::string strStableId;
 	};
 
 	enum class PENDING_PATTERN_SELECTION_DECISION : uint8_t
@@ -279,7 +283,9 @@ private:
 	void Normalize_Selection();
 	void Request_PatternSelection(
 		const VALTAN_PATTERN_VIEW& Pattern,
-		const std::string& strStageId = {});
+		const std::string& strStageId = {},
+		DETAIL_OWNER eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE,
+		const std::string& strStableId = {});
 	void Render_PendingPatternSelectionModal();
 	void Resolve_PendingPatternSelection();
 	void Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern);
@@ -319,6 +325,11 @@ private:
 	void Render_Browser(
 		const VALTAN_PATTERN_VIEW* pEffectiveSelectedPattern);
 	void Render_ProductFallbackBrowser();
+	void Render_WorldObjectResources();
+	bool_t Validate_EffectV2BindingClock(
+		const VALTAN_STAGE_VIEW& Stage,
+		const EFFECT_V2_BINDING& Binding,
+		std::string& strOutStatus) const;
 	void Render_SequenceBrowser(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
@@ -719,6 +730,13 @@ private:
 	uint32_t m_iEffectV2AddStartMs = 0u;
 	std::string m_strEffectAddAssetId;
 	std::string m_strEffectAddClipOccurrenceId;
+	/* Box Detail inputs remain a session draft until Apply validates and stages
+	   the exact binding in the existing V2 owner. */
+	EFFECT_V2_BINDING m_EffectV2BindingEditDraft;
+	std::string m_strEffectV2BindingEditId;
+	uint64_t m_iEffectV2BindingEditRevision = 0u;
+	std::array<char_t, 160u> m_EffectV2AnchorSlot{};
+	std::array<char_t, 160u> m_WorldObjectSearch{};
 	std::string m_strEffectEditIdentity;
 	VALTAN_PRODUCT_EFFECT_CUE_VIEW m_EffectCueEditDraft;
 	std::vector<std::size_t> m_FilteredSoundEventIndices;

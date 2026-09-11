@@ -9072,6 +9072,10 @@ EFFECT_PS_OUT Shade_EffectWarlordNative(uint profile, WARLORD_NATIVE_INPUT input
 #endif
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
     case 2004u: nativeColor=WarlordNative2004(input); additive=false; break;
+    case 2005u: nativeColor=WarlordNative2005(input); additive=true; break;
+    case 2006u: nativeColor=WarlordNative2006(input); additive=true; break;
+    case 2007u: nativeColor=WarlordNative2007(input); additive=false; break;
+    case 2008u: nativeColor=WarlordNative2008(input); additive=true; break;
 #endif
 #endif
     default: clip(-1.f); return output;

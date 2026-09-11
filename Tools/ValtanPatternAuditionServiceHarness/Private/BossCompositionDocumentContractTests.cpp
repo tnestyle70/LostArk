@@ -1078,6 +1078,37 @@ namespace
 		Require(findWindow(second.strLogicOccurrenceId).OnSuccessLogicIds.front() == firstDamage &&
 			findWindow(first.strLogicOccurrenceId).OnSuccessLogicIds.front() != firstDamage,
 			"damage tuning rewrote another Collider's Result");
+		KOUKU_COLLIDER_DAMAGE_SETTINGS pushDamage;
+		pushDamage.iPercent = 20; pushDamage.bRepeatAfterKnockback = true;
+		pushDamage.fPushRangeM = 2.0; pushDamage.iPushMs = 242u;
+		pushDamage.strPushDirection = "BOSS_FORWARD";
+		const auto secondWindowBeforePush = findWindow(second.strLogicOccurrenceId);
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, first, pushDamage, status), status,
+			"edit damage, repeat and boss-forward push directly on Collider");
+		const auto pushedWindow = findWindow(first.strLogicOccurrenceId);
+		const auto& pushedLogics = workbench.Get_Composition().Logics;
+		const auto pushedResult = std::find_if(pushedLogics.begin(), pushedLogics.end(),
+			[&](const auto& row) { return row.strLogicId == pushedWindow.OnSuccessLogicIds.front(); });
+		const auto pushedTrigger = std::find_if(pushedLogics.begin(), pushedLogics.end(),
+			[&](const auto& row) { return row.strLogicId == pushedWindow.strLogicId; });
+		Require(pushedResult != pushedLogics.end() && pushedResult->iPercent == 20u &&
+			pushedResult->fPushRangeM == 2.0 && pushedResult->iPushMs == 242u && pushedResult->strPushDirection == "BOSS_FORWARD" &&
+			pushedTrigger != pushedLogics.end() && pushedTrigger->bRepeatAfterKnockback && !pushedTrigger->bRearmOnExit &&
+			findWindow(second.strLogicOccurrenceId) == secondWindowBeforePush,
+			"direct Collider damage lost push settings or changed another Collider's shared Trigger/Result");
+		const auto pushOrdinal = workbench.Get_Composition().iNextLogicOrdinal;
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, first, pushDamage, status), status,
+			"reapply identical Collider damage settings");
+		Require(workbench.Get_Composition().iNextLogicOrdinal == pushOrdinal,
+			"identical direct damage settings created duplicate definitions");
+		RequireEditorRoundtrip(workbench);
+		const auto lastPushGood = workbench.Get_Composition();
+		auto invalidPush = pushDamage; invalidPush.iPushMs = 0u;
+		Require(!workbench.Set_ColliderTriggerDamage(patternId, first, invalidPush, status) && workbench.Get_Composition() == lastPushGood,
+			"unpaired push values changed the saved Collider draft");
+		invalidPush = pushDamage; invalidPush.bRearmOnExit = true;
+		Require(!workbench.Set_ColliderTriggerDamage(patternId, first, invalidPush, status) && workbench.Get_Composition() == lastPushGood,
+			"incompatible contact repeat modes changed the saved Collider draft");
 		const auto beforeDebug = workbench.Get_Composition();
 		const auto beforeDebugGeneration = workbench.Get_DraftGeneration();
 		auto expectedDebug = beforeDebug;
@@ -2742,7 +2773,7 @@ namespace
 		}
 		Require(ReadText(sourcePath) == colliderSavedBytes, "first Trigger fixture changed the separate Collider source");
 
-		// A linked circular Sector cannot persist an ellipse that the publisher rejects.
+		// Linked Sector geometry supports independent X/Z scales in preview, Save and gameplay.
 		{
 			const auto sectorDataRoot = scratchRoot / "Sector/Data";
 			const auto sectorSourcePath = sectorDataRoot / relativeSource;
@@ -2771,66 +2802,60 @@ namespace
 			RequireEditorStep(sectorWorkbench.Reload(status), status, "load linked Sector save fixture");
 			const auto sectorBaseline = sectorWorkbench.Get_Composition();
 			const auto sectorBytes = ReadText(sectorSourcePath);
-			const auto sectorGeneration = sectorWorkbench.Get_DraftGeneration();
 			sectorWorkbench.Set_PreviewState(state);
 			auto ellipse = sectorBox; ellipse.Scale = {3.0, 1.0, 1.0};
-			ellipse.strLogicOccurrenceId.clear(); // Unapplied Detail fields cannot bypass the saved link.
-			Require(!sectorWorkbench.Request_PresentationGeometryPreview(patternId, ellipse, status) && !status.empty(),
-				"linked Sector accepted unequal X/Z preview scale by clearing only its unapplied Detail link");
-			Require(!sectorWorkbench.Save(status) && !status.empty() && sectorWorkbench.Is_Dirty() &&
-				sectorWorkbench.Get_Composition() == sectorBaseline && sectorWorkbench.Get_DraftGeneration() == sectorGeneration &&
-				ReadText(sectorSourcePath) == sectorBytes, "elliptical Sector Save changed the applied draft or previous source");
+			ellipse.strLogicOccurrenceId.clear(); // Detail preview changes geometry only.
+			RequireEditorStep(sectorWorkbench.Request_PresentationGeometryPreview(patternId, ellipse, status), status,
+				"preview independent Sector X/Z scale while retaining its applied link");
 			KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST sectorPreview;
-			Require(!sectorWorkbench.Consume_PresentationGeometryPreviewRequest(sectorPreview), "rejected Sector ellipse replaced the visible geometry");
-			auto appliedEllipse = ellipse; appliedEllipse.strLogicOccurrenceId = sectorBox.strLogicOccurrenceId;
-			const auto requireRejectedSectorApply = [&](const bool accepted, const char* message) {
-				Require(!accepted && !status.empty() && sectorWorkbench.Is_Dirty() &&
-					sectorWorkbench.Get_Composition() == sectorBaseline && sectorWorkbench.Get_DraftGeneration() == sectorGeneration &&
-					ReadText(sectorSourcePath) == sectorBytes, message);
-				Require(!sectorWorkbench.Save(status) && ReadText(sectorSourcePath) == sectorBytes,
-					"rejected Sector Apply discarded the pending invalid geometry and enabled Save");
-			};
-			requireRejectedSectorApply(sectorWorkbench.Set_PresentationBox(patternId, appliedEllipse, status),
-				"Collider Apply bypassed the linked Sector scale constraint or changed the previous source");
-			requireRejectedSectorApply(sectorWorkbench.Set_ColliderLogicValues(patternId, appliedEllipse, contact, status),
-				"Logic Apply committed an invalid linked Sector or consumed its pending geometry");
-			requireRejectedSectorApply(sectorWorkbench.Set_ColliderTriggerDamage(patternId, appliedEllipse, 25u, status),
-				"Trigger Damage Apply committed an invalid linked Sector or changed its Logic definitions");
-			auto circular = sectorBox; circular.Scale = {3.0, 1.0, 3.0};
-			RequireEditorStep(sectorWorkbench.Request_PresentationGeometryPreview(patternId, circular, status), status,
-				"restore equal X/Z Sector scale to enlarge its circular radius");
-			RequireEditorStep(sectorWorkbench.Save(status), status, "Save corrected circular Sector geometry without Apply");
-			auto expectedSector = sectorBaseline; ++expectedSector.iRevision;
-			for (auto& pattern : expectedSector.Patterns) if (pattern.strPatternId == patternId)
-				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == circular.strOccurrenceId) row.Scale = circular.Scale;
-			CKoukuSaydonActionWorkbench reopenedSector;
-			RequireEditorStep(reopenedSector.Reload(status), status, "reopen corrected Sector geometry in a new Workbench");
-			Require(!sectorWorkbench.Is_Dirty() && sectorWorkbench.Get_Composition() == expectedSector &&
-				reopenedSector.Get_Composition() == expectedSector, "Sector Save/Reload lost equal X/Z scale or its applied Logic link");
+			Require(sectorWorkbench.Consume_PresentationGeometryPreviewRequest(sectorPreview), "Sector ellipse did not reach geometry preview");
+			Require(sectorWorkbench.Get_Composition() == sectorBaseline && ReadText(sectorSourcePath) == sectorBytes,
+				"Sector geometry preview prematurely replaced the applied source");
+			RequireEditorRoundtrip(sectorWorkbench);
+			const auto expectedSector = sectorWorkbench.Get_Composition();
+			const auto& savedPattern = EditorPattern(sectorWorkbench, patternId);
+			const auto savedBox = std::find_if(savedPattern.PresentationOccurrences.begin(), savedPattern.PresentationOccurrences.end(),
+				[&](const auto& row) { return row.strOccurrenceId == ellipse.strOccurrenceId; });
+			Require(savedBox != savedPattern.PresentationOccurrences.end() && savedBox->Scale == ellipse.Scale &&
+				savedBox->strLogicOccurrenceId == sectorBox.strLogicOccurrenceId,
+				"Sector Save/Reload lost independent X/Z scale or its applied Logic link");
+			auto appliedEllipse = *savedBox;
+			RequireEditorStep(sectorWorkbench.Set_PresentationBox(patternId, appliedEllipse, status), status, "apply elliptical Collider geometry");
+			RequireEditorStep(sectorWorkbench.Set_ColliderLogicValues(patternId, appliedEllipse, contact, status), status, "apply elliptical Collider Logic");
+			RequireEditorStep(sectorWorkbench.Set_ColliderTriggerDamage(patternId, appliedEllipse, 25u, status), status, "apply elliptical damage Collider");
+			RequireEditorRoundtrip(sectorWorkbench);
 
-			// Geometry becomes gameplay-owned when Apply connects the first Logic window.
-			auto unlinkedSource = expectedSector;
-			auto unlinkedEllipse = ellipse;
-			for (auto& pattern : unlinkedSource.Patterns) if (pattern.strPatternId == patternId)
-				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == unlinkedEllipse.strOccurrenceId) row = unlinkedEllipse;
-			Require(WriteText(sectorSourcePath, CKoukuSaydonCompositionDocument::Serialize(unlinkedSource)),
-				"could not write unlinked Sector connection fixture");
-			CKoukuSaydonActionWorkbench unlinkedSector;
-			RequireEditorStep(unlinkedSector.Reload(status), status, "load unlinked elliptical Sector authoring fixture");
-			const auto unlinkedBaseline = unlinkedSector.Get_Composition();
-			const auto unlinkedBytes = ReadText(sectorSourcePath);
-			const auto unlinkedGeneration = unlinkedSector.Get_DraftGeneration();
-			const auto requireRejectedSectorConnect = [&](const bool accepted, const char* message) {
-				Require(!accepted && !status.empty() && !unlinkedSector.Is_Dirty() &&
-					unlinkedSector.Get_Composition() == unlinkedBaseline && unlinkedSector.Get_DraftGeneration() == unlinkedGeneration &&
-					ReadText(sectorSourcePath) == unlinkedBytes, message);
-			};
-			requireRejectedSectorConnect(unlinkedSector.Connect_ColliderLogic(patternId, unlinkedEllipse, contact.strLogicId, status),
-				"connecting the first Logic window admitted unequal Sector X/Z scale");
-			requireRejectedSectorConnect(unlinkedSector.Set_ColliderLogicValues(patternId, unlinkedEllipse, contact, status),
-				"Logic Apply created a window for an unlinked elliptical Sector");
-			requireRejectedSectorConnect(unlinkedSector.Set_ColliderTriggerDamage(patternId, unlinkedEllipse, 25u, status),
-				"Trigger Damage Apply created a damage window for an unlinked elliptical Sector");
+			// A newly connected ellipse and its reverse use the same authoring path.
+			for (const bool reverse : {false, true})
+			{
+				auto unlinkedSource = expectedSector;
+				auto unlinkedEllipse = ellipse;
+				for (auto& resource : unlinkedSource.PresentationResources)
+					if (resource.strResourceId == sectorResource.strResourceId)
+					{ resource.strShape = reverse ? "REVERSE_SECTOR" : "SECTOR"; resource.fHalfAngleDegrees = reverse ? 0.0 : 30.0; }
+				for (auto& pattern : unlinkedSource.Patterns) if (pattern.strPatternId == patternId)
+					for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == unlinkedEllipse.strOccurrenceId) row = unlinkedEllipse;
+				Require(WriteText(sectorSourcePath, CKoukuSaydonCompositionDocument::Serialize(unlinkedSource)),
+					"could not write unlinked elliptic Sector fixture");
+				CKoukuSaydonActionWorkbench unlinkedSector;
+				RequireEditorStep(unlinkedSector.Reload(status), status, "load regular/reverse elliptic Sector");
+				RequireEditorStep(unlinkedSector.Connect_ColliderLogic(patternId, unlinkedEllipse, contact.strLogicId, status), status,
+					"connect first Logic window to elliptic Sector");
+				RequireEditorRoundtrip(unlinkedSector);
+				const auto& connected = EditorPattern(unlinkedSector, patternId);
+				const auto box = std::find_if(connected.PresentationOccurrences.begin(), connected.PresentationOccurrences.end(),
+					[&](const auto& row) { return row.strOccurrenceId == unlinkedEllipse.strOccurrenceId; });
+				Require(box != connected.PresentationOccurrences.end() && box->Scale == ellipse.Scale && !box->strLogicOccurrenceId.empty(),
+					"regular/reverse Sector lost elliptical scale during connection");
+				const auto boxCopy = *box;
+				RequireEditorStep(unlinkedSector.Set_ColliderTriggerDamage(patternId, boxCopy, 25u, status), status,
+					"connect damage directly to regular/reverse elliptic Sector");
+				RequireEditorRoundtrip(unlinkedSector);
+				const auto lastGood = unlinkedSector.Get_Composition();
+				auto invalid = boxCopy; invalid.Scale[0] = 0.0;
+				Require(!unlinkedSector.Set_ColliderTriggerDamage(patternId, invalid, 25u, status) &&
+					unlinkedSector.Get_Composition() == lastGood, "invalid ellipse size replaced the last-good damage draft");
+			}
 		}
 		Require(ReadText(sourcePath) == colliderSavedBytes, "Sector fixture changed the separate Collider source");
 

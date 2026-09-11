@@ -293,7 +293,7 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 
 - `CCookedModel`과 `CBinaryAssetObject` 경로는 제거됐다. 동등한 두 번째 런타임 모델 경로를 다시 만들지 않는다.
 - `Engine/Public/BinaryAsset/`의 `CBinaryReader`, `IModelDecoder`, `CWModelDecoder` 등 decode 기반 코드는 `CModel` 내부의 `.wmodel` 입력을 지원한다.
-- WModel 1.2는 선택적 UV1을 보존하며 기존 1.0/1.1도 읽는다. map material의 baked lighting을 선택한 모델에는 실제 UV1이 필요하다. 재질·배치별 lightmap 입력 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`의 선택적 map material 절을 따른다.
+- WModel 1.2는 정적 UV1, 1.3은 skinned extra UV, 1.4는 정적 UV1과 선택적 UV2를 보존하며 기존 1.0~1.3도 읽는다. 1.4는 실제 UV2가 있는 정적 자산에만 사용하고 metadata evidence bit 17과 채널·stride·finite 값을 함께 검사한다. 기존 자산을 일괄 재변환하지 않는다. 런타임 `VTXMESH`는 UV2를 끝에 둔 76-byte 구조이며 기존 채널 offset은 유지한다. map material의 baked lighting에는 실제 UV1이 필요하고, source material의 `requiredExtraUVMask` bit 0/1은 각각 UV1/UV2가 없는 모델을 로드 전에 거부한다. 재질·배치별 lightmap 입력 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`의 선택적 map material 절을 따른다.
 - 신규 맵·캐릭터·보스 모델은 `CLoader -> CModel Prototype -> GameObject의 CModel Component` 계약을 사용한다.
 - `.wmodel` 머티리얼에 diffuse와 emissive가 모두 없으면 `CMaterial`이 1×1 회색 diffuse를 만들어 형상 확인을 보장한다. 이는 안전망일 뿐이며 최종 에셋은 실제 텍스처 경로를 가져야 한다.
 - 추출·스케일·텍스처 복구의 상세 주의사항은 `.md/GB/07-29/gotchas.md`를 따른다.

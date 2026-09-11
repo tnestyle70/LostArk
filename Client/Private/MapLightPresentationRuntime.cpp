@@ -3,6 +3,7 @@
 #include "Effect_LightPresentation.h"
 #include "MapAssetCatalog.h"
 #include "Presentation_Manager.h"
+#include "GameInstance.h"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -77,9 +78,13 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 
 	CPresentation_Manager& presentation = CPresentation_Manager::Get();
 	std::vector<LIGHT_DESC> lights;
+	size_t outsideFrustum = 0u;
 	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
 	{
-		if (!record.enabled || s_fSceneIntensityMultiplier == 0.f) continue;
+		if (!record.enabled || record.brightness == 0.f || s_fSceneIntensityMultiplier == 0.f) continue;
+		if (record.kind != LIGHT::DIRECTIONAL && !CGameInstance::Get().isIn_Frustum_InWorldSpace(
+			XMLoadFloat3(&record.position), record.radiusMeters))
+		{ ++outsideFrustum; continue; }
 		const f32_t brightness = record.brightness * s_fSceneIntensityMultiplier;
 		EFFECT_EVALUATED_LIGHT evaluated{};
 		evaluated.vWorldPosition = record.position;
@@ -100,6 +105,8 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 			}
 		}
 		light.eType=record.kind;
+		light.eReceiver=record.receiver;
+        light.staticShadowChannel = record.staticShadowChannel;
 		if (record.kind==LIGHT::SPOT || record.kind==LIGHT::DIRECTIONAL)
 		{
 			const auto& r=record.rotationDegrees;
@@ -112,8 +119,19 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		}
 		lights.push_back(light);
 	}
+	const auto* camera = CGameInstance::Get().Get_CamPosition();
+	std::stable_sort(lights.begin(), lights.end(), [camera](const LIGHT_DESC& a, const LIGHT_DESC& b)
+	{
+		const auto distance = [camera](const LIGHT_DESC& light)
+		{
+			if (light.eType == LIGHT::DIRECTIONAL) return -1.f;
+			const float x=light.vPosition.x-camera->x, y=light.vPosition.y-camera->y, z=light.vPosition.z-camera->z;
+			return x*x+y*y+z*z;
+		};
+		return distance(a)<distance(b);
+	});
 	const size_t used=presentation.Get_TransientLights().size();
-	const size_t budget=used<56u?56u-used:0u;
+	const size_t budget=used<376u?376u-used:0u;
 	const size_t count=(std::min)(lights.size(),budget);
 	presentation.Register_ProviderSubmissionExpectation(count,count,0u,0u);
 	for(size_t i=0;i<count;++i)
@@ -127,7 +145,7 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		}
 	}
 	m_Status = "Map light presentation submitted: " +
-		std::to_string(count) + " lights; skipped by budget: "+std::to_string(lights.size()-count);
+		std::to_string(count) + " lights; outside frustum: "+std::to_string(outsideFrustum)+"; skipped by budget: "+std::to_string(lights.size()-count);
 	return S_OK;
 }
 

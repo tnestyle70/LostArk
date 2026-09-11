@@ -18,6 +18,8 @@ namespace
 
 	std::vector<CHARACTER_ACTOR_ENTRY> g_Characters;
 	std::vector<BOSS_ACTOR_ENTRY> g_Bosses;
+	using ModelMaterials = std::map<std::string, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>, std::less<>>;
+	ModelMaterials g_BossModelMaterials;
 	std::vector<NPC_ACTOR_ENTRY> g_Npcs;
 	std::vector<MONSTER_ACTOR_ENTRY> g_Monsters;
 	std::string g_Status = "Actor catalog is not initialized.";
@@ -148,6 +150,13 @@ namespace
 		return std::filesystem::path(value).extension() == L".wmodel";
 	}
 
+    bool_t IsModelResourceId(const std::string& value)
+    {
+        return !value.empty() && value.find(':') == std::string::npos &&
+            !CRuntimeAssetRoot::Resolve(value).empty() &&
+            std::filesystem::path(value).extension() == L".wmodel";
+    }
+
 	/* A cutin flipbook's "UI/..." Resources-relative frame prefix (the _NNN.dds
 	suffix is appended by the consumer, so no extension here). */
 	bool_t IsUiFramePrefix(const std::string& value)
@@ -176,8 +185,8 @@ namespace
 		return CHARACTER_CLASS_ID::END;
 	}
 
-    bool_t ParseCharacterMaterialOverrides(const DATA_JSON_VALUE& row,
-        CHARACTER_ACTOR_ENTRY& entry)
+    bool_t ParseModelMaterialOverrides(const DATA_JSON_VALUE& row,
+        ModelMaterials& replacements, CHARACTER_ACTOR_ENTRY* character = nullptr)
     {
         const auto* definitions = row.Find("modelMaterialOverrides");
         if (!definitions) return true;
@@ -188,14 +197,14 @@ namespace
             std::string asset, family, sourceIdentity;
             Engine::MODEL_MATERIAL_OVERRIDE replacement;
             if (!definition.Is_Object() ||
-                !ReadRequiredString(definition,"modelAssetId",asset) || !IsResourceId(asset) ||
+                !ReadRequiredString(definition,"modelAssetId",asset) || !IsModelResourceId(asset) ||
                 !ReadRequiredString(definition,"materialName",replacement.materialName) ||
                 !ReadRequiredString(definition,"family",family) ||
                 !ReadRequiredString(definition,"sourceMaterial",sourceIdentity) ||
                 !names.emplace(asset,replacement.materialName).second) return false;
-            if (asset != entry.bodyModel &&
-                std::find(entry.equipmentModels.begin(),entry.equipmentModels.end(),asset)==entry.equipmentModels.end() &&
-                std::find(entry.weaponModels.begin(),entry.weaponModels.end(),asset)==entry.weaponModels.end()) return false;
+            if (character && asset != character->bodyModel &&
+                std::find(character->equipmentModels.begin(),character->equipmentModels.end(),asset)==character->equipmentModels.end() &&
+                std::find(character->weaponModels.begin(),character->weaponModels.end(),asset)==character->weaponModels.end()) return false;
             const auto* parameters=definition.Find("parameters");
             const auto* textures=definition.Find("textures");
             /* The values are kept as well as packed: the creation screen moves named ones
@@ -219,7 +228,7 @@ namespace
                     !ReadRequiredString(texture,"assetId",assetId) ||
                     !ReadRequiredString(texture,"colorSpace",colorSpace) ||
                     (colorSpace!="srgb" && colorSpace!="linear") ||
-                    !assetId.starts_with("Character/") || assetId.find(':')!=std::string::npos)
+                    (character && !assetId.starts_with("Character/")) || assetId.find(':')!=std::string::npos)
                     return false;
                 const auto input=CRuntimeAssetRoot::Resolve(assetId);
                 if (input.empty()) return false;
@@ -228,9 +237,10 @@ namespace
                 supplied|=1u<<index;
             }
             if (supplied!=required) return false;
-            entry.modelMaterialParameters[asset].push_back(
-                CHARACTER_MATERIAL_PARAMETERS{replacement.materialName,family,std::move(values)});
-            entry.modelMaterialOverrides[asset].push_back(std::move(replacement));
+            if (character)
+                character->modelMaterialParameters[asset].push_back(
+                    CHARACTER_MATERIAL_PARAMETERS{replacement.materialName,family,std::move(values)});
+            replacements[asset].push_back(std::move(replacement));
         }
         return true;
     }
@@ -314,7 +324,7 @@ namespace
 					return false;
 				entry.weaponModels.push_back(weapon.Get_String());
 			}
-			if (!ParseCharacterMaterialOverrides(value, entry)) return false;
+			if (!ParseModelMaterialOverrides(value, entry.modelMaterialOverrides, &entry)) return false;
 			const bool_t hasEquipment = !entry.equipmentModels.empty();
 			const bool_t hasWeapon = !entry.weaponModels.empty();
 			if (entry.runtimeStatus == "supported" &&
@@ -343,7 +353,7 @@ namespace
 			nullptr == pVersion || !pVersion->Is_Number() ||
 			pVersion->Get_Number() != 8.0 ||
 			nullptr == pEntries || !pEntries->Is_Array() ||
-			3u != root.Get_Object().size())
+			root.Get_Object().size() != (root.Find("modelMaterialOverrides") ? 4u : 3u))
 		{
 			return false;
 		}
@@ -588,6 +598,9 @@ namespace
 			}
 			staged.push_back(std::move(entry));
 		}
+        ModelMaterials stagedMaterials;
+        if (!ParseModelMaterialOverrides(root, stagedMaterials)) return false;
+        g_BossModelMaterials = std::move(stagedMaterials);
 		g_Bosses = std::move(staged);
 		return !g_Bosses.empty();
 	}
@@ -840,6 +853,7 @@ bool_t Client::CActorCatalog::Initialize()
 	{
 		g_Characters.clear();
 		g_Bosses.clear();
+		g_BossModelMaterials.clear();
 		g_Npcs.clear();
 		g_Monsters.clear();
 		g_Status = "Actor catalog contract mismatch.";
@@ -860,7 +874,7 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
 		return false;
 	}
 	const std::string asset(modelAssetId);
-	if (!IsResourceId(asset))
+	if (!IsModelResourceId(asset))
 	{
 		outStatus = "Model asset is not a Resources-relative identity: " + asset;
 		return false;
@@ -900,6 +914,11 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
 		const auto found = owner->modelMaterialOverrides.find(asset);
 		if (found != owner->modelMaterialOverrides.end()) staged.materialOverrides = found->second;
 	}
+    else
+    {
+        const auto found = g_BossModelMaterials.find(asset);
+        if (found != g_BossModelMaterials.end()) staged.materialOverrides = found->second;
+    }
 	outDesc = std::move(staged);
 	outStatus.clear();
 	return true;

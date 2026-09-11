@@ -147,6 +147,12 @@ public:
 		const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
 		uint32_t iNewStartMs,
 		std::string& strOutError);
+	/* Replace the editable typed payload of one binding. Identity, owning
+	   Pattern/Stage/action and resource stay fixed; the usual snapshot/CAS
+	   transaction rejects invalid payloads without changing the current draft. */
+	bool_t Stage_UpdateBossValtanBinding(
+		const EFFECT_V2_BINDING& Candidate,
+		std::string& strOutError);
 	bool_t Prepare_BossValtanBindingDraftSave(
 		std::string& strOutBaselineBytes,
 		std::string& strOutCandidateBytes,
