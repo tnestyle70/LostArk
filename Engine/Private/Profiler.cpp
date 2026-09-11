@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
+#include <functional>
 #include <limits>
 #include <map>
 
@@ -11,6 +13,14 @@ namespace
 {
     constexpr size_t MAX_SCOPES_PER_FRAME = 4096;
     constexpr size_t MAX_OPEN_SCOPES_PER_THREAD = 64;
+
+    uint64_t AllocateProfilerInstanceId()
+    {
+        static std::atomic_uint64_t nextId{1};
+        const uint64_t id = nextId.fetch_add(1, std::memory_order_relaxed);
+        if (id == 0) std::terminate(); // Never reuse a wrapped cache identity.
+        return id;
+    }
 
     struct FOpenScope final
     {
@@ -32,6 +42,11 @@ namespace
         uint32_t Count;
     };
     thread_local FOpenScopeStack t_OpenScopes{};
+}
+
+CProfiler::CProfiler()
+    : m_InstanceId(AllocateProfilerInstanceId())
+{
 }
 
 HRESULT CProfiler::Initialize(
@@ -624,14 +639,46 @@ uint64_t CProfiler::Query_Tick() const noexcept
 
 uint32_t CProfiler::Intern_Name(std::string_view name)
 {
-    const std::string key(name);
-    std::lock_guard lock(m_Mutex);
-    const auto found = m_ScopeNameLookup.find(key);
-    if (found != m_ScopeNameLookup.end())
-        return found->second;
-    const uint32_t id = static_cast<uint32_t>(m_ScopeNames.size());
-    m_ScopeNames.push_back(key);
-    m_ScopeNameLookup.emplace(m_ScopeNames.back(), id);
+    struct FNameHash final
+    {
+        using is_transparent = void;
+        size_t operator()(std::string_view value) const noexcept
+        {
+            return std::hash<std::string_view>{}(value);
+        }
+    };
+    struct FThreadNameCache final
+    {
+        uint64_t InstanceId = 0;
+        std::unordered_map<std::string, uint32_t, FNameHash, std::equal_to<>> Names;
+    };
+    // Function-local TLS allocates only on threads that actually register a scope.
+    static thread_local FThreadNameCache threadCache;
+    if (threadCache.InstanceId != m_InstanceId)
+    {
+        threadCache.Names.clear();
+        threadCache.InstanceId = m_InstanceId;
+    }
+    const auto cached = threadCache.Names.find(name);
+    if (cached != threadCache.Names.end()) return cached->second;
+
+    uint32_t id;
+    {
+        const std::string key(name);
+        std::lock_guard lock(m_Mutex);
+        const auto found = m_ScopeNameLookup.find(key);
+        if (found != m_ScopeNameLookup.end()) id = found->second;
+        else
+        {
+            id = static_cast<uint32_t>(m_ScopeNames.size());
+            m_ScopeNames.push_back(key);
+            m_ScopeNameLookup.emplace(m_ScopeNames.back(), id);
+        }
+    }
+    // Dynamic names cannot grow one thread's cache without bound. Global IDs
+    // survive this eviction and Reset_History, so a later miss remains stable.
+    if (threadCache.Names.size() >= 512u) threadCache.Names.clear();
+    threadCache.Names.emplace(std::string(name), id);
     return id;
 }
 

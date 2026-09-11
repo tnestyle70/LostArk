@@ -10464,7 +10464,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			bTimelineSoundDraftDirty, TimelineSoundStatus);
 	const bool_t bSoundMoveAdmitted =
 		bMutationAdmitted && nullptr != pTimelineSounds;
-	static constexpr std::array<TIMELINE_LANE, 8u> TIMELINE_LANE_ORDER = {
+	static constexpr std::array TIMELINE_LANE_ORDER = {
 		TIMELINE_LANE::STAGE,
 		TIMELINE_LANE::ANIMATION,
 		TIMELINE_LANE::EFFECT,
@@ -10474,6 +10474,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		TIMELINE_LANE::CAMERA,
 		TIMELINE_LANE::WORLD,
 	};
+	static_assert(TIMELINE_LANE_ORDER.size() == static_cast<std::size_t>(TIMELINE_LANE::COUNT));
 	const VALTAN_STAGE_VIEW* pLaneStage = Find_SelectedStage(pPattern);
 	if (nullptr == pLaneStage && !pPattern->Stages.empty())
 		pLaneStage = &pPattern->Stages.front();
@@ -10491,7 +10492,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	for (const TIMELINE_LANE eLane : TIMELINE_LANE_ORDER)
 	{
 		const std::size_t iSubrowCount =
-			m_TimelineLaneSubrowCounts[iLaneOrdinal];
+			m_TimelineLaneSubrowCounts[static_cast<std::size_t>(eLane)];
 		const float fLaneHeight = TIMELINE_ROW_HEIGHT *
 			static_cast<float>(iSubrowCount);
 		ImGui::AlignTextToFramePadding();

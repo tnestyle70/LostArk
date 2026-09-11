@@ -60,3 +60,9 @@ RenderKoukuSaydonBossTuningControls와 단독 caller, 전용 baseline/load/save 
 
 다른 PC에서 F1만 연 경우, 각 툴, 대형 목록·타임라인, detached viewport의 새 캡처를 비교해 실제
 남은 bottleneck과 FPS를 판단한다. 코드의 제거 작업량/컴파일 최적화를 실게임 FPS 수치로 대신하지 않는다.
+
+## G05. Profiler 이름 등록 비용과 후속 실행 검증
+
+계측 자체의 이름 등록 비용은 기존 `CProfiler::Intern_Name`에 function-local TLS cache를 추가해 줄인다. transparent string_view hit에서 할당·공용 mutex를 피하고, canonical ID는 기존 이름 표가 소유한다. 캐시는 최대512개로 제한하고 주소 대신 constructor의 monotonic instance ID로 재생성을 구분한다. Reset_History의 이름 보존과 End_Scope mutex는 유지한다. 동일 `/Od`의 실제 구현 baseline/after에서 이름·nested·multi-thread·Capture·Reset·재생성 및 비용을 비교하고, Capture off/on과 패널 닫힘/열림의 실제 프레임 영향은 사용자 수동 관찰로 분리한다.
+
+사용자가 버그 수정 EXE를 직접 확인한 뒤 PR merge/push/main sync와 외부 리소스 공유를 진행한다. 현재는 실행 준비와 검증까지 수행하며 Client/UI 직접 조작·화면 판정은 사용자에게 남긴다.

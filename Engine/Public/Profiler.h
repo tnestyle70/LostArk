@@ -216,7 +216,7 @@ public:
     static constexpr double LONG_OPERATION_THRESHOLD_MS = 8.0;
 
 public:
-    CProfiler() = default;
+    CProfiler();
     ~CProfiler() = default;
     HRESULT Initialize(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
     void Begin_Frame();
@@ -313,6 +313,8 @@ private:
     void Commit_CurrentFrame();
 
 private:
+    // Distinguishes a new profiler constructed at a previously used address.
+    const uint64_t m_InstanceId;
     ComPtr<ID3D11Device> m_pDevice;
     ComPtr<ID3D11DeviceContext> m_pContext;
     LARGE_INTEGER m_Frequency{};

@@ -667,7 +667,7 @@ private:
 	bool_t m_bSelectAfterPendingSave = false;
 
 	std::vector<TIMELINE_ITEM> m_TimelineItems;
-	std::array<std::size_t, 7u> m_TimelineLaneSubrowCounts{};
+	std::array<std::size_t, static_cast<std::size_t>(TIMELINE_LANE::COUNT)> m_TimelineLaneSubrowCounts{};
 	std::string m_strTimelineCachePatternId;
 	VALTAN_PATTERN_PREVIEW_PATH m_eTimelineCachePreviewPath =
 		VALTAN_PATTERN_PREVIEW_PATH::END;
