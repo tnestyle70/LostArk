@@ -24,9 +24,9 @@ class DimensionMaster2050010ThreeClickTests(unittest.TestCase):
         )["bindings"]
         binding = next(row for row in bindings if row["skillId"] == 2050010)
         self.assertEqual(binding["clips"], [
-            [{"clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 1400}],
-            ["pc_sp_m_00_sk_att_battle_1_03"],
-            ["pc_sp_m_00_sk_att_battle_1_04"],
+            [{"clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 1400, "playRate": 2.0}],
+            [{"clip": "pc_sp_m_00_sk_att_battle_1_03", "playRate": 2.0}],
+            [{"clip": "pc_sp_m_00_sk_att_battle_1_04", "playRate": 2.0}],
         ])
         skill = next(row for row in self.load_json("Data/Balance/PlayerSkills.json")["skills"]
                      if row["skillId"] == 2050010)

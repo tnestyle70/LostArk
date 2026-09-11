@@ -18593,7 +18593,7 @@ void Client::CEffect_Tool::Render_KoukuAuthoredEffectSection(
 		return;
 
 	ImGui::TextWrapped(
-		"Open an Effect to edit its Elements or use Play All and Solo. Play the linked animation and Effect from Action Workbench > Saydon > Gate 1.");
+		"Play Effect previews the Effect with its linked Kouku animation. Open Editor opens its Elements. Server playback is in Action Workbench > Saydon > Gate 1.");
 	if (EffectIds.empty())
 		ImGui::TextDisabled("No saved KoukuSaydon Effect matches the search.");
 	for (const std::string& strEffectAssetId : EffectIds)
@@ -18622,6 +18622,51 @@ void Client::CEffect_Tool::Render_KoukuAuthoredEffectSection(
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", bActive ?
 				"This Effect is already open in Current Effect." : strEditableStatus.c_str());
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!bActive && nullptr == pEditablePath);
+		if (ImGui::SmallButton("Play Effect"))
+		{
+			bool_t bLoaded = bActive;
+			if (!bLoaded)
+			{
+				std::string strExactStatus;
+				const std::filesystem::path* pExactPath =
+					Resolve_DirectAuthoredEditablePath(strEffectAssetId, strExactStatus);
+				if (nullptr == pExactPath)
+					m_strElementStatus = std::move(strExactStatus);
+				else
+				{
+					const std::filesystem::path ExactPath = *pExactPath;
+					bLoaded = Try_LoadDocumentPath(ExactPath,
+						EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId,
+						EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+					if (!bLoaded)
+					{
+						if (m_PendingDocumentLoad.has_value() &&
+							m_PendingDocumentLoad->Path == ExactPath &&
+							m_PendingDocumentLoad->strSelectionId == strEffectAssetId &&
+							m_PendingDocumentLoad->ePreviewIntent ==
+								EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT)
+						{
+							m_PendingDocumentLoad->strElementSelectionId.clear();
+							m_PendingDocumentLoad->strModelCueSelectionId.clear();
+							m_PendingDocumentLoad->bPlayCompleteAfterLoad = true;
+						}
+						m_strElementStatus = m_strDocumentStatus;
+					}
+				}
+			}
+			if (bLoaded)
+			{
+				(void)Try_PlayActiveUnifiedEffect();
+				m_strElementStatus = m_strPreviewStatus;
+			}
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", !bActive && nullptr == pEditablePath ?
+				strEditableStatus.c_str() :
+				"Preview this Effect and its linked model animation in the KoukuSaydon arena.");
 		ImGui::PopID();
 	}
 	ImGui::TreePop();
@@ -23699,6 +23744,18 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 	}
 	if (Pending.bPlayCompleteAfterLoad)
 	{
+		if (Is_KoukuEffectAssetId(Pending.strSelectionId))
+		{
+			if (!Try_PlayActiveUnifiedEffect())
+			{
+				const std::string Reason = m_strPreviewStatus.empty() ?
+					"Kouku model/Effect preview is unavailable." : m_strPreviewStatus;
+				m_strDocumentStatus = "Loaded saved Effect '" + Pending.strSelectionId +
+					"', but its Kouku preview could not be started. The document remains loaded: " + Reason;
+				m_strElementStatus = m_strDocumentStatus;
+			}
+			return true;
+		}
 		if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))
 			return false;
 		Start_WorldPreviewFromBeginning();
