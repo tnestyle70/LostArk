@@ -119,6 +119,9 @@ struct EFFECT_GENERIC_AUTHORED_REIMPORT_REPORT final
 class CEffectDocumentCodec final
 {
 public:
+	/* Authoring and Product load the same document format and byte ceiling. */
+	static constexpr size_t MAXIMUM_DOCUMENT_BYTES = 64u * 1024u * 1024u;
+
 	static bool_t Validate(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);

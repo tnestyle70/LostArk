@@ -9,6 +9,35 @@ import argparse, collections, copy, json, sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'Tools/ActorXAssetCooker'))
 import retime_wmodel_ticks as animation_ticks
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_artist_31470_reconstructed_runtime_program import source_type_data_mesh_rotation_degrees
+
+
+LANCE_SPEAR_MESHES = {
+    'fx_sm_01.fm_n_flm_ydr_00_sm': 'Effect/LanceMaster/Meshes/Native/FX_SM_01/fm_n_flm_ydr_00_sm.wmodel',
+    'fx_sm_03.fm_x_flm_gdr_01': 'Effect/LanceMaster/Meshes/Native/FX_SM_03/fm_x_flm_gdr_01.wmodel',
+    'fx_sm_03.fm_x_flm_gdr_01_dragon': 'Effect/LanceMaster/Meshes/Native/FX_SM_03/fm_x_flm_gdr_01_dragon.wmodel',
+}
+
+
+def project_lance_spear_type_data_rotation(element):
+    meshes = [row['assetId'] for row in element.get('resources', []) if row.get('slotId') == 'meshModel']
+    if not any(asset in LANCE_SPEAR_MESHES.values() for asset in meshes):
+        return False
+    modules = [row for row in element['sourceRecipe']['modules']
+               if row['className'] == 'particlemoduletypedatamesh']
+    if len(modules) != 1:
+        raise ValueError('Lance spear requires one source TypeDataMesh')
+    source_meshes = [row['value'] for row in modules[0]['literals'] if row['propertyPath'] == 'mesh.objectpath']
+    if len(source_meshes) != 1 or source_meshes[0] not in LANCE_SPEAR_MESHES or meshes != [LANCE_SPEAR_MESHES[source_meshes[0]]]:
+        raise ValueError('Lance spear source/runtime mesh identity mismatch')
+    # UE3 TypeData uses degrees in roll/pitch/yaw order. This is separate
+    # from the source MeshRotation distribution (turns) and user local rotation.
+    rotation = source_type_data_mesh_rotation_degrees(element)
+    detail = element['detail']['mesh']
+    changed = detail.get('sourceTypeDataRotationDegrees') != rotation
+    detail['sourceTypeDataRotationDegrees'] = rotation
+    return changed
 
 
 def read(path):
@@ -75,6 +104,7 @@ def repair_altv_solo_documents(evidence):
                 slot = attachment['modelCueId'] + '.anchor.' + attachment['sourceAnchorSlotId']
                 changed |= slot != attachment['runtimeAnchorSlotId']
                 attachment['runtimeAnchorSlotId'] = slot
+            changed |= project_lance_spear_type_data_rotation(element)
             kept.append(element)
         if changed:
             document['elements'] = kept
@@ -150,6 +180,7 @@ def build(evidence, previous):
                 cooked = geometry[mesh]
                 element['resources'] = [dict(slotId='meshModel', assetId=cooked['assetId'])]
                 element['detail']['mesh'].update(useModelMaterial=False, modelPreScale=cooked['modelPreScale'])
+                project_lance_spear_type_data_rotation(element)
             if program['rendererShape'] == 'screenPost':
                 element['kind'] = 'screenPost'
                 element['sourceRecipe']['rendererShape'] = 'screenPost'

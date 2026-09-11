@@ -2,7 +2,8 @@
 
 This preserves author edits, stable element/provider/anchor IDs, source modules,
 and resources. Only the single output receives action-clock offsets and a common
-horse assembly rotation. Registration and the one Product cue are separate edits.
+horse assembly rotation. The retargeted Product event document is staged under
+output-root/Animation; registration and installation remain separate edits.
 """
 from __future__ import annotations
 
@@ -11,9 +12,12 @@ import copy
 import hashlib
 import json
 import math
+import os
+import re
 from pathlib import Path
 import struct
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "Tools/ActorXAssetCooker"))
@@ -36,10 +40,95 @@ def f32(value):
     return struct.unpack("<f", struct.pack("<f", value))[0]
 
 
+def count_product_event_rows(data):
+    # Match binary-read std::getline: only a truly empty LF row is skipped.
+    rows = data.split(b"\n")[1:]
+    if any(row and not row.strip() for row in rows):
+        raise ValueError("Whitespace-only animevents rows are rejected by the native parser")
+    return sum(bool(row) for row in rows)
+
+
+def retarget_product_events(data):
+    """Preserve unrelated rows and first-cue tuning while collapsing four cues."""
+    parts = data.split(b"\n")
+    lines = [part + b"\n" for part in parts[:-1]] + parts[-1:]
+    header = re.fullmatch(rb'(LOSTARK_ANIM_EVENTS [3-6] "LanceMaster" )(\d+)([ \t]*\r?\n?)',
+                          lines[0] if lines else b"")
+    count = count_product_event_rows(b"".join(lines))
+    if header is None or int(header[2]) != count:
+        raise ValueError("LanceMaster animevents header/count mismatch")
+    legacy = [f"effect.lancemaster.skill.34630.clip{i}.full.restore" for i in range(1, 5)]
+    positions = {asset: [] for asset in [*legacy, ASSET]}
+    for index, line in enumerate(lines[1:], 1):
+        for asset in positions:
+            if f'payload="{asset}"'.encode() not in line:
+                continue
+            clip = CLIPS[legacy.index(asset)] if asset in legacy else CLIPS[0]
+            if (not line.startswith(f'"{clip}" EFFECT startms=0 '.encode())
+                    or re.search(rb'\beffectref=asset(?:\s|$)', line) is None):
+                raise ValueError("Unexpected ALT V Product cue: " + asset)
+            positions[asset].append(index)
+    if positions[ASSET] and not any(positions[asset] for asset in legacy):
+        if len(positions[ASSET]) != 1:
+            raise ValueError("Duplicate combined ALT V Product cue")
+        return data
+    if positions[ASSET] or any(len(positions[asset]) != 1 for asset in legacy):
+        raise ValueError("Expected four original ALT V cues or one combined cue")
+    normalized = []
+    for clip, asset in zip(CLIPS, legacy):
+        normalized.append(lines[positions[asset][0]]
+                          .replace(f'"{clip}"'.encode(), f'"{CLIPS[0]}"'.encode(), 1)
+                          .replace(f'payload="{asset}"'.encode(), f'payload="{ASSET}"'.encode(), 1))
+    if any(line.rstrip(b"\r\n") != normalized[0].rstrip(b"\r\n") for line in normalized[1:]):
+        raise ValueError("Per-clip ALT V cue settings differ; cannot collapse them silently")
+    lines[positions[legacy[0]][0]] = normalized[0]
+    removed = {positions[asset][0] for asset in legacy[1:]}
+    lines = [line for index, line in enumerate(lines) if index not in removed]
+    count = count_product_event_rows(b"".join(lines))
+    lines[0] = header[1] + str(count).encode() + header[3]
+    result = b"".join(lines)
+    if retarget_product_events(result) != result:
+        raise ValueError("Retargeted Product cues failed round-trip validation")
+    return result
+
+
+def write_product_events(output_root):
+    relative = Path("Animation/Authored/LanceMaster/LanceMaster.animevents")
+    source = ROOT / "Data" / relative
+    destination = output_root / relative
+    if destination.resolve() == source.resolve():
+        raise ValueError("Product event output must not overwrite its authored input")
+    original = source.read_bytes()
+    result = retarget_product_events(original)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=".tmp",
+                                                dir=destination.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(result)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if temporary.read_bytes() != result or source.read_bytes() != original:
+            raise ValueError("Product event input/output changed while staging")
+        os.replace(temporary, destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return dict(input=str(source.relative_to(ROOT)), inputSha256=hashlib.sha256(original).hexdigest(),
+                output=str(destination), outputSha256=hashlib.sha256(result).hexdigest(),
+                eventRows=count_product_event_rows(result))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--events-only", action="store_true",
+                        help="Stage only the Product cue migration; do not generate Effect documents")
     args = parser.parse_args()
+    if args.events_only:
+        print(json.dumps(write_product_events(args.output_root)))
+        return
     binding = next(row for row in read(ROOT / "Data/Animation/Authored/LanceMaster/LanceMaster.skillbindings.json")["bindings"]
                    if row["skillId"] == 34630)
     if binding["clips"] != CLIPS:
@@ -139,12 +228,13 @@ def main():
                     memberId="", clipName=name, startMs=offsets[index], durationMs=durations[index], sourceStartMs=0,
                     sourcePlayMs=0, playRate=1.0, loop=False, muted=False) for index, name in enumerate(CLIPS)],
                     soundRows=[], colliderRows=[], localOnlyElementIds=sorted(local_only))
+    product_cues = write_product_events(args.output_root)
     write(args.output_root / "Authored" / (ASSET + ".effect.json"), full)
     write(args.output_root / "Sequences" / (ASSET + ".effectsequence.json"), sequence)
     write(args.output_root / "combine_receipt.json", dict(inputs=receipts, assetId=ASSET,
           elements=len(element_ids), modelCues=len(cue_ids), animationDurationMs=sum(durations),
           sequenceDurationMs=duration, cameraRows=len(cameras), localOnlyElements=len(local_only),
-          assemblyRotationChanges=rotation_changes, originalDocumentsRewritten=False))
+          assemblyRotationChanges=rotation_changes, productCues=product_cues, originalDocumentsRewritten=False))
     print(json.dumps(dict(assetId=ASSET, elements=len(element_ids), modelCues=len(cue_ids),
                          offsetsMs=offsets, animationDurationMs=sum(durations), sequenceDurationMs=duration)))
 

@@ -47,3 +47,25 @@ EffectCatalog, EffectResourceTree, Animation의 기존 animevent를 실제 소�
 변경한 converter의 기존 및 이름 remap 검사를 실행하고, 설치 모델의 chunk/clip/pose 수치와 기존 재질 보존을 확인한다. ModelCue parser/serializer/loop seek의 실제 소비 경로와 기존 no-loop 의미를 검증한다. full 문서의 ID 중복, element/modelcue 수, source dependency, animation/camera 시작점, catalog/tree/project 연결을 검사한다. 변경 C++는 Debug focused compile, JSON/XML parse와 git diff --check를 수행한다.
 
 Client/Server는 사용자가 실행 중이므로 에이전트가 종료하거나 Client/UI를 실행·조작하지 않는다. 전체 제품 DLL/EXE 빌드와 실제 화면 확인은 실행 상태를 구분해 보고한다. 사용자가 F1 Effect Tool v1에서 Artist D full restore와 LanceMaster ALT V full restore를 열어 Play All로 확인하고, 캐릭터 ALT V의 실제 camera/창/말 동작을 판단한다. 수치 검사 결과를 visual PASS로 대신 기록하지 않는다.
+
+## G06. 전체 창술사 이펙트 미출력의 이벤트 헤더 교정
+
+후속 사용자 관찰은 캐릭터 스킬 애니메이션은 동작하지만 모든 창술사 이펙트가 보이지 않는 것이다. 실제 CAnimationEffectCueDocument의 prewarm 및 model clip catalog를 받는 Load 양쪽에서 `Animation event row count does not match the header.`를 재현했다. 기존 ALT V 설치 작업은 네 EFFECT 행을 한 행으로 합치면서 LanceMaster.animevents의 선언 3,139행을 남겼고 실제 행은 3,136개였다. 이 차이가 전체 문서를 거부해 CCharacter에 43개 Effect cue가 설치되지 않았다.
+
+정본 animevents의 헤더를 실제 행 수로 교정하고, 추후 같은 통합 도구가 별도 출력에 최종 event 문서를 생성할 때 행 수를 다시 계산하도록 연결한다. 기존 네 clip 문서와 사용자가 편집 중인 World Effect/tree는 덮지 않는다. parser의 일치 검사나 실패한 문서의 transactional 격리를 완화하지 않는다. 새로운 C++ runtime/API/project 항목은 추가하지 않는다.
+
+실제 C++ 로더 양쪽에서 43개 cue와 동일한 clip/effect/anchor/start/end 대응이 복구되는지 검증한다. 설치된 playable WModel과 추가 animation set에서 decode한 clip·bone 이름을 사용하고 catalog 누락과 anchor 누락이 없는지 확인한다. 생성 도구는 네 행→한 행, 이미 합친 입력의 재실행, 다른 event·comment 보존과 잘못된 입력의 기존 출력 보존을 필요한 범위에서 검사한다. 단순 파일 존재 검사를 cue admission 성공으로 대신하지 않는다.
+
+이 데이터는 CProjectDataRoot가 저장소 Data에서 직접 읽고 준비된 cue 문서는 Client process 메모리에 남는다. C++와 바이너리를 바꾸지 않으므로 재빌드·publisher·Server 재시작은 필요 없고, 수정 후 사용자가 Client를 재시작해 다시 준비한다. PR #360은 이미 사용자에 의해 merge됐으므로 후속 수정은 별도 codex branch와 PR로 게시하고 merge하지 않는다.
+
+## G07. ALT V 제품 문서 크기 계약과 V 손 부착 회귀
+
+사용자가 Client를 재시작한 뒤 V는 출력되지만 손의 생성 창 위치가 달라졌고 ALT V는 캐릭터 애니메이션만 출력된다고 확인했다. 9월 12일 actual Catalog Load → Capture_ProductLoadStageRequest → Stage_LoadingProductTarget에서 통합 문서가 `exceeds 16 MiB`로 거부되는 것을 재현했다. 통합 정본은 20,049,144 bytes다. standalone Codec Parse는 64MiB를 허용하므로 앞선 Codec/Renderer Stage 검사와 실제 제품 준비 경로가 서로 다른 파일 계약을 사용했다.
+
+`Client/Public/Effect_DocumentCodec.h`에 기존 Codec의 64MiB 최대 문서 크기를 공통 상수로 두고 `Effect_DocumentCodec.cpp`의 Parse/Load와 `Effect_Catalog.cpp`의 직접 authored 문서 로드가 이를 함께 소비한다. Load는 읽기 전에 길이를 확인하고 bounded read 이후 불완전 읽기나 크기 변화도 거부한다. catalog index의 기존 16MiB와 문서 depth/형식/ID/의미 검증은 유지한다. 단순 공백 압축은 F1 Save가 다시 큰 문서를 만들 수 있으므로 런타임과 저작 도구의 계약 불일치를 남기는 해결로 사용하지 않는다. 새 C++ 파일이나 프로젝트 등록은 없다.
+
+최신 실제 C++ Catalog·Product Stage로 20MiB 통합 정본의 준비 완료를 확인하고, 공통 상한 초과 입력 거부와 실패 시 기존 출력 보존을 검사한다. Character의 실제 cue scheduling도 설치 모델의 시간과 현재 binding으로 확인한다. 최초 cue 실패를 이후 clip의 별도 spawn으로 숨기거나 통합 문서를 다시 네 제품 cue로 분리하지 않는다.
+
+V의 세 창은 `fm_n_flm_ydr_00_sm`, ALT V의 창은 `fm_x_flm_gdr_01` 및 dragon이므로 같은 자산으로 가정하지 않는다. V 정본은 이전 커밋과 동일하며 9월 11일 추가된 source-bone 단위 보정의 실제 크기·위치·방향 효과를 CModel과 Playback으로 측정한다. 실제 손본 pose와 두 mesh의 축·단위를 대조한 뒤 필요한 부착 수정만 적용한다. 화면상 표현을 근거 없는 공통 90도 회전으로 덮지 않는다. 이 G의 C++ 수정은 새 Client 빌드가 필요하며 G06의 데이터만 변경한 재시작 안내와 구분한다.
+
+실측한 V/ALT V 창은 model-local +Y가 긴 축이고 손의 장착 무기는 +X가 긴 축이다. SourceRecipe의 TypeData `pitch=-90`이 기존 detail에 투영되지 않아 0으로 실행되고 있었으며, 별도 MeshRotation quarter-turn만 적용하면 창의 긴 축이 손본 -Z로 향한다. 세 exact mesh의 기존 `detail.mesh.sourceTypeDataRotationDegrees`에 source `[roll=0,pitch=-90,yaw=0]`을 한 번 투영한다. 기존 `UE3_EulerDegreesToClientRotation`과 곱 순서를 사용하면 +X로 정렬된다. V 3행, 이전 ALT V 10행과 통합 ALT V 10행의 총 23행만 수정하고 offset/scale/local rotation·재질·시간축은 유지한다. 기존 Lance generator의 해당 투영 누락도 수정하며, 통합 generator는 교정된 원본 element를 그대로 복사한다. 실제 mesh vertex와 60Hz CModel/Playback pose로 수정 전후 손 기준 축과 거리를 대조한다.
