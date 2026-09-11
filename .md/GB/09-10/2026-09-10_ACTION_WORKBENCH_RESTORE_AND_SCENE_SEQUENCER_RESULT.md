@@ -185,3 +185,11 @@ ProjectDataRoot C++를 그대로 사용하며 별도 out object에 컴파일했�
 잘못된 family/부족한 입력 1,060건 거부와 출력 보존, 카탈로그 후속 로드 실패 시 기존
 ready/AreaId/entry 보존도 확인했다. 결과는 `out/KoukuGate1CatalogNative20260911/after.log`,
 failures 0이다. 이는 catalog admission 검증이며 사용자 Client의 실제 화면 진입 확인은 아직 남아 있다.
+
+최종 Client Debug object 전체를 기존 MSBuild linker 입력으로 별도 out 경로에 링크하여 exit 0과
+`Client.Gate1Validated.exe` 생성(43,036,160 bytes)을 확인했다. 표준 Shared.lib와 Windows SDK를
+사용했고 링크 출력 경로만 분리했다. 로그는 `out/KoukuGate1CatalogNative20260911/Linked/client-final-link.log`다.
+별도 전체 Build는 변경 없는 MeshBinary shader 재컴파일을 중단했고, 직접 BuildLink의 참조 프로젝트
+OutDir 전파 및 SDK rc.exe 경로 문제를 정리한 뒤 위 C++ 링크가 성공했다. 전체 shader 재빌드나 제품
+설치 완료로 기록하지 않는다. 사용 중인 `Client/Bin/Debug/Client.exe`는 교체하지 않았으며,
+실제 적용에는 Client 종료 후 정상 Client 빌드와 사용자 재진입 확인이 필요하다.
