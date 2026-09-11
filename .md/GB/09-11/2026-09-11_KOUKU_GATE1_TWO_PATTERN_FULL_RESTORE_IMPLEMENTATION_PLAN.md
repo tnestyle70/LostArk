@@ -321,11 +321,11 @@ stage와 presentation occurrence의 재생창은 원본 notify 시각 + emitter 
 
 `Client/Public/Effect_Tool.h`는 Character / Boss 선택에 KOUKU_BOSS를 추가하고 `m_bAllEffectsKoukuBossSelected`와 `Render_KoukuAuthoredEffectSection`을 선언한다. 기존 player/Valtan 선택을 보존하고 Valtan deep link가 열릴 때 Kouku 선택을 해제한다. 새 H/CPP 파일은 만들지 않으므로 C++ project/filter 등록을 추가하지 않는다.
 
-`Client/Private/Effect_Tool.cpp`의 `EffectAsset_DomainId`에 `effect.kouku.` -> `KoukuSaydon`을 추가한다. `Render_KoukuAuthoredEffectSection`은 CEffectCatalog의 실제 ID 목록에서 Kouku DIRECT_AUTHORED_DOCUMENT만 선택하고 정렬·검색해서 보여 준다. 목록 렌더에서는 문서를 파싱하지 않는다. Open Editor만 기존 `Observe_DirectAuthoredEditablePath -> Resolve_DirectAuthoredEditablePath -> Try_LoadDocumentPath(SYNCHRONIZED_PRODUCT)`을 호출한다. Open은 CPU 문서를 읽고, 실제 Kouku model과 animation은 Play/Solo에서 선택한다. `Try_LoadDocumentPathStaged`는 Kouku 문서에 남아 있는 STANDALONE_EFFECT 의도도 pending load를 저장하기 전에 SYNCHRONIZED_PRODUCT로 정규화하여 기존 Valtan-only static model 준비 경로를 제외한다. 누락/손상/unsaved guard는 기존 함수가 처리하고 다른 열린 문서를 보존한다.
+`Client/Private/Effect_Tool.cpp`의 `EffectAsset_DomainId`에 `effect.kouku.` -> `KoukuSaydon`을 추가한다. `Render_KoukuAuthoredEffectSection`은 CEffectCatalog의 실제 ID 목록에서 Kouku DIRECT_AUTHORED_DOCUMENT만 선택하고 정렬·검색해서 보여 준다. 목록 렌더에서는 문서를 파싱하지 않는다. Open Editor는 기존 `Observe_DirectAuthoredEditablePath -> Resolve_DirectAuthoredEditablePath -> Try_LoadDocumentPath(SYNCHRONIZED_PRODUCT)`을 호출한다. 같은 목록 행의 Play Effect는 열린 문서를 다시 읽지 않고 기존 `Try_PlayActiveUnifiedEffect`를 사용한다. 다른 문서는 정확한 catalog 경로와 ID로 먼저 로드한 뒤 같은 함수를 호출한다. unsaved guard가 문서 전환을 보류하면 정확한 path/ID/intent의 pending 요청에만 전체 재생을 예약하고, 전환 완료의 Kouku 분기는 같은 canonical play 함수를 호출한다. 문서 로드가 이미 commit된 뒤 preview 준비만 실패하면 원래 preview 오류를 Document/All Effects 상태에 표시하고, 문서를 유지한 채 전환 모달은 닫는다. Cancel과 읽기 실패는 기존 문서/선택을 보존한다. Play Effect는 Composition Append, Save 또는 publisher를 호출하지 않는다. Open은 CPU 문서를 읽고, 실제 Kouku model과 animation은 Play/Solo에서 선택한다. `Try_LoadDocumentPathStaged`는 Kouku 문서에 남아 있는 STANDALONE_EFFECT 의도도 pending load를 저장하기 전에 SYNCHRONIZED_PRODUCT로 정규화하여 기존 Valtan-only static model 준비 경로를 제외한다. 누락/손상/unsaved guard는 기존 함수가 처리하고 다른 열린 문서를 보존한다.
 
 `Is_KoukuEffectAssetId`는 신규 namespace 판정만 소유한다. Current Effect Play All, Element Solo와 recovery preview 준비는 기존 `.restore` 재생 경로를 유지하되 `Prepare_RecoveryPreviewTarget`에서 Kouku를 먼저 분기한다. `CEffectAuthoringSequencer::Select_KoukuEffect`는 실제 Composition의 V1 resource에서 유일한 pattern을 찾고 기존 CEffectCompositionModelPreview/CNpc를 통해 boss model과 animation을 선택한다. player skill binding 또는 가짜 sequence를 만들지 않는다. 따라서 Tool의 Play/Solo도 실제 패턴 애니메이션과 원본 bone을 사용하며 Server audition은 G01의 Action Benchmark가 소유한다.
 
-`Effect_DirectAuthoredSourceIndex`는 owner join이 없는 정확한 catalog 문서도 편집 가능 항목으로 보존하므로 새로운 Kouku source-index 파일이나 skillbindings 파일이 필요하지 않다. UI 흐름은 `F1 -> Effect Tool V1 -> All Effects -> Character / Boss: KoukuSaydon -> Open Editor -> Current Effect Play All / Element Solo`다.
+`Effect_DirectAuthoredSourceIndex`는 owner join이 없는 정확한 catalog 문서도 편집 가능 항목으로 보존하므로 새로운 Kouku source-index 파일이나 skillbindings 파일이 필요하지 않다. UI 흐름은 `F1 -> Effect Tool V1 -> All Effects -> Character / Boss: KoukuSaydon`에서 `Play Effect` 또는 `Open Editor`를 선택한다. Open Editor 뒤에는 기존 `Current Effect Play All / Element Solo`도 계속 사용한다.
 
 ### 선언·변수와 함수의 한 줄 책임
 
@@ -333,7 +333,7 @@ stage와 presentation occurrence의 재생창은 원본 notify 시각 + emitter 
 |---|---|
 | `KOUKU_BOSS` | player class ID를 만들지 않고 쿠크 owner 선택을 표현한다. |
 | `m_bAllEffectsKoukuBossSelected` | 현재 All Effects가 쿠크 authored 목록을 보여 주는지 저장한다. |
-| `Render_KoukuAuthoredEffectSection` | catalog의 쿠크 V1 문서에 정확한 Open Editor 경로를 제공한다. |
+| `Render_KoukuAuthoredEffectSection` | catalog의 쿠크 V1 문서에 정확한 Open Editor와 canonical Play Effect 경로를 제공한다. |
 | `Is_KoukuEffectAssetId` | 쿠크 문서를 실제 Composition 기반의 typed recovery preview 대상으로 구분한다. |
 
 ### Client/Public/Effect_Tool.h 전체 코드
@@ -20444,7 +20444,7 @@ void Client::CEffect_Tool::Render_KoukuAuthoredEffectSection(
 		return;
 
 	ImGui::TextWrapped(
-		"Open an Effect to edit its Elements or use Play All and Solo. Play the linked animation and Effect from Action Workbench > Saydon > Gate 1.");
+		"Play Effect previews the Effect with its linked Kouku animation. Open Editor opens its Elements. Server playback is in Action Workbench > Saydon > Gate 1.");
 	if (EffectIds.empty())
 		ImGui::TextDisabled("No saved KoukuSaydon Effect matches the search.");
 	for (const std::string& strEffectAssetId : EffectIds)
@@ -20473,6 +20473,51 @@ void Client::CEffect_Tool::Render_KoukuAuthoredEffectSection(
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", bActive ?
 				"This Effect is already open in Current Effect." : strEditableStatus.c_str());
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!bActive && nullptr == pEditablePath);
+		if (ImGui::SmallButton("Play Effect"))
+		{
+			bool_t bLoaded = bActive;
+			if (!bLoaded)
+			{
+				std::string strExactStatus;
+				const std::filesystem::path* pExactPath =
+					Resolve_DirectAuthoredEditablePath(strEffectAssetId, strExactStatus);
+				if (nullptr == pExactPath)
+					m_strElementStatus = std::move(strExactStatus);
+				else
+				{
+					const std::filesystem::path ExactPath = *pExactPath;
+					bLoaded = Try_LoadDocumentPath(ExactPath,
+						EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId,
+						EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+					if (!bLoaded)
+					{
+						if (m_PendingDocumentLoad.has_value() &&
+							m_PendingDocumentLoad->Path == ExactPath &&
+							m_PendingDocumentLoad->strSelectionId == strEffectAssetId &&
+							m_PendingDocumentLoad->ePreviewIntent ==
+								EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT)
+						{
+							m_PendingDocumentLoad->strElementSelectionId.clear();
+							m_PendingDocumentLoad->strModelCueSelectionId.clear();
+							m_PendingDocumentLoad->bPlayCompleteAfterLoad = true;
+						}
+						m_strElementStatus = m_strDocumentStatus;
+					}
+				}
+			}
+			if (bLoaded)
+			{
+				(void)Try_PlayActiveUnifiedEffect();
+				m_strElementStatus = m_strPreviewStatus;
+			}
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", !bActive && nullptr == pEditablePath ?
+				strEditableStatus.c_str() :
+				"Preview this Effect and its linked model animation in the KoukuSaydon arena.");
 		ImGui::PopID();
 	}
 	ImGui::TreePop();
@@ -25550,6 +25595,18 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 	}
 	if (Pending.bPlayCompleteAfterLoad)
 	{
+		if (Is_KoukuEffectAssetId(Pending.strSelectionId))
+		{
+			if (!Try_PlayActiveUnifiedEffect())
+			{
+				const std::string Reason = m_strPreviewStatus.empty() ?
+					"Kouku model/Effect preview is unavailable." : m_strPreviewStatus;
+				m_strDocumentStatus = "Loaded saved Effect '" + Pending.strSelectionId +
+					"', but its Kouku preview could not be started. The document remains loaded: " + Reason;
+				m_strElementStatus = m_strDocumentStatus;
+			}
+			return true;
+		}
 		if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))
 			return false;
 		Start_WorldPreviewFromBeginning();
@@ -37754,3 +37811,342 @@ def select_unique_native_binding_arrays(
 4. root가 KoukuSaydon owner publisher를 한 번 실행하고 생성 Encounter/patternbindings와 Server bootstrap revision을 확인한다.
 5. 변경 JSON/XML parse, 최소 C++ compile 및 native shader compile, `git diff --check`를 수행한다. 이 문서는 실행 전 계획이며 실제 검사 결과는 별도 RESULT가 소유한다.
 6. 사용자가 Server + Client profile을 Ctrl+F5로 시작하고 Gate 1 Action Benchmark에서 두 패턴을 각각 Play/Repeat한다. Effect Tool V1의 All Effects에서 두 문서를 열어 전체/개별 Element를 직접 확인한다. 기존 UI 실행·캡처 경계를 지키며 자동 visual PASS를 기록하지 않는다.
+
+
+## G05. V15 authoring occurrence와 baked edge 수명 연결
+
+`Client/Private/Effect_Tool_Workspace.cpp::Create_AuthoringOccurrence`는 현재 draft 또는 선택한 저장 문서로 만든 immutable 사본을 모델 anchor 조회와 effect playback이 함께 소유하게 한다. 원본 전체 Play와 carrier가 있는 Element Solo는 `Create_DocumentOwnedRuntimeProjection -> Prepare_VisualProgramDocument -> Stage_PrevalidatedVisualProgramDocument`를 사용한다. 원본 문서의 검증을 먼저 통과한 명시적 Solo에서 carrier와 history가 모두 없을 때만 기존 일반 stage를 사용하며 문서 버전은 변경하지 않는다. 선택 사본의 history는 남은 Element가 참조한 항목만 보존한다. 누락 참조나 준비 실패를 다른 재생 경로로 대체하지 않는다. 준비 실패는 clone 전 반환하고 clone 이후 실패는 기존 Layer 제거로 rollback한다.
+
+기존 C++ 파일 한 개와 include만 수정하며 새로운 프로젝트 등록은 없다. Product Debug 컴파일, 기존 metadata/stage-split 회귀 검사, JSON/XML parse와 diff check를 확인한다. Client의 전체 Play·Trail Solo·일반 Solo 화면은 사용자가 직접 검증한다.
+
+### Client/Private/Effect_Tool_Workspace.cpp 전체 코드
+
+```cpp
+#include "imgui.h"
+
+#include "Effect_Tool.h"
+#include "EffectAuthoringResourceTree.h"
+#include "EffectAuthoringSequencer.h"
+#include "Effect_DocumentCodec.h"
+#include "Effect_Object.h"
+#include "Effect_VisualProgramCorpus.h"
+#include "EffectV2_Catalog.h"
+#include "GameInstance.h"
+#include "ProjectDataRoot.h"
+#include <algorithm>
+#include <cstring>
+#include <cstdio>
+
+namespace Client
+{
+namespace
+{
+constexpr const wchar_t* AUTHORING_LAYER = L"Layer_EffectAuthoringSequencer";
+std::string Parent_Key(const EFFECT_RESOURCE_KEY& key)
+{ return std::to_string(static_cast<int>(key.eOwnerKind)) + ":" + key.strStableId; }
+}
+
+void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* player)
+{
+    if (!m_pAuthoringResources) m_pAuthoringResources = std::make_unique<CEffectAuthoringResourceTree>(EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT);
+    if (!m_pAuthoringSequencer)
+    {
+        m_pAuthoringSequencer = std::make_unique<CEffectAuthoringSequencer>(m_pDevice, m_pContext, m_pCharacterPreviewPanel);
+        m_pAuthoringSequencer->Set_V1Callbacks(
+            [this](const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root, std::shared_ptr<CEffectObject>& object, std::string& error)
+            { return Create_AuthoringOccurrence(key, elementId, root, object, error); },
+            [this](const std::shared_ptr<CEffectObject>& object)
+            {
+                const auto found = m_AuthoringOccurrenceLevels.find(object.get());
+                if (found == m_AuthoringOccurrenceLevels.end()) return;
+                object->Set_Visible(false);
+                CGameInstance::Get().Remove_GameObject_from_Layer(found->second, AUTHORING_LAYER, object);
+                m_AuthoringOccurrenceDocuments.erase(object.get());
+                m_AuthoringOccurrenceLevels.erase(found);
+            });
+        m_pAuthoringSequencer->Set_V1AnchorProvider(
+            [this](const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, bool useKouku,
+                std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
+            { return Resolve_AuthoringSourceAnchors(object, root, useKouku, anchors, error); });
+        m_pAuthoringSequencer->Set_V2SnapshotProvider(
+            [this](const EFFECT_RESOURCE_KEY& key, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot, std::string& error)
+            {
+                return CEffectV2Catalog::Get().Load_ResourceSnapshot(
+                    key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_GROUP ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF,
+                    key.strStableId, snapshot, error);
+            });
+    }
+    m_pAuthoringSequencer->Set_Player(player);
+}
+
+void CEffect_Tool::Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player)
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Set_Player(player);
+}
+void CEffect_Tool::Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera)
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Set_Camera(camera);
+}
+void CEffect_Tool::Update_AuthoringWorkspace(float dt, bool active)
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Update(dt, active);
+}
+
+void CEffect_Tool::Deactivate_AuthoringWorkspace()
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
+    m_bPreviewPlaying = false;
+    Release_WorldPreview(true);
+}
+bool CEffect_Tool::Consume_AuthoringInteraction()
+{ return m_pAuthoringSequencer && m_pAuthoringSequencer->Consume_InteractionRequest(); }
+
+bool CEffect_Tool::Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key)
+{
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
+        return Try_LoadDocument(key.strStableId);
+    if (key.Is_Valid())
+    {
+        m_PendingTypedEffectResourceOpen = key;
+        return true;
+    }
+    m_strDocumentStatus = "Effect open rejected an invalid owner or ID.";
+    return false;
+}
+
+void CEffect_Tool::Render_AuthoringResourceTree()
+{
+    ImGui::SetNextWindowPos(ImVec2(1110.f, 35.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(430.f, 660.f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Effect Resources")) { ImGui::End(); return; }
+    m_pAuthoringResources->Set_V1CopySource(
+        m_ActiveDocument ? m_ActiveDocument->strEffectAssetId : std::string{},
+        m_ActiveDocument ? m_ActiveDocument->strDisplayName : std::string{});
+    m_pAuthoringResources->Render();
+    CEffectAuthoringResourceTree::COMMAND command;
+    while (m_pAuthoringResources->Take_Command(command))
+    {
+        const EFFECT_RESOURCE_KEY key{command.eKind, command.strAssetId};
+        if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::OPEN)
+        {
+            m_AuthoringParents[Parent_Key(key)] = command.strParentId;
+            if (Open_AuthoringResource(key)) m_strAuthoringParentId = command.strParentId;
+            else m_pAuthoringResources->Set_Status(m_strDocumentStatus);
+        }
+        else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::CREATE_V1_COPY)
+        {
+            if (!m_ActiveDocument ||
+                m_ActiveDocument->strEffectAssetId != command.strSourceAssetId)
+                m_strDocumentStatus = "The selected V1 copy source changed; select it again before copying.";
+            else
+                (void)Try_SaveDocumentAs(command.strAssetId, command.strDisplayName, command.strParentId);
+            m_pAuthoringResources->Set_Status(m_strDocumentStatus);
+        }
+        else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::CREATE_EFFECT)
+        {
+            bool created = false;
+            if (command.eKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
+            {
+                if (Has_UnsavedWork()) m_strDocumentStatus = "Save or discard the current V1 Effect before creating another Effect.";
+                else
+                {
+                    std::snprintf(m_NewAssetId.data(), m_NewAssetId.size(), "%s", command.strAssetId.c_str());
+                    std::snprintf(m_NewDisplayName.data(), m_NewDisplayName.size(), "%s", command.strDisplayName.c_str());
+                    created = Try_CreateDocument();
+                }
+                m_pAuthoringResources->Set_Status(m_strDocumentStatus);
+            }
+            if (created)
+            {
+                m_strAuthoringParentId = command.strParentId;
+                const auto& createdId = m_ActiveDocument->strEffectAssetId;
+                m_AuthoringParents[Parent_Key({command.eKind, createdId})] = command.strParentId;
+            }
+        }
+        else if (m_pAuthoringSequencer)
+        {
+            Release_WorldPreview(true);
+            const uint32_t duration = m_ActiveDocument && key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+                    m_ActiveDocument->strEffectAssetId == key.strStableId ?
+                    static_cast<uint32_t>((std::max)(0.001f, m_fPreviewDurationSeconds) * 1000.f) : 3000u;
+            const bool ok = command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::APPEND ?
+                m_pAuthoringSequencer->Append(key, duration) : m_pAuthoringSequencer->Preview(key, duration);
+            (void)ok;
+            m_pAuthoringResources->Set_Status(m_pAuthoringSequencer->Status());
+        }
+    }
+    ImGui::End();
+}
+
+
+
+void CEffect_Tool::Render_AuthoringCommands()
+{
+    if (!m_pAuthoringSequencer) return;
+    EFFECT_RESOURCE_KEY selected;
+    if (m_ActiveDocument) selected = {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId};
+    ImGui::BeginDisabled(!selected.Is_Valid());
+    if (ImGui::Button("Append##EffectSequence"))
+    {
+        Release_WorldPreview(true);
+        const uint32_t duration = static_cast<uint32_t>((std::max)(0.001f, m_fPreviewDurationSeconds) * 1000.f);
+        (void)m_pAuthoringSequencer->Append(selected, duration);
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Append this Effect at the Sequencer cursor. Play All, Family and Element buttons keep their preview scopes.");
+    if (!m_pAuthoringSequencer->Status().empty()) ImGui::TextWrapped("%s", m_pAuthoringSequencer->Status().c_str());
+    ImGui::Separator();
+}
+
+void CEffect_Tool::Attach_AuthoringSaved()
+{
+    if (!m_pAuthoringResources || !m_ActiveDocument) return;
+    std::string status;
+    if (!m_pAuthoringResources->Attach_Saved(EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
+        m_ActiveDocument->strEffectAssetId, m_ActiveDocument->strDisplayName,
+        m_AuthoringParents[Parent_Key({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId})], status))
+        m_strDocumentStatus += " Effect saved; tree placement needs retry: " + status;
+}
+
+bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root,
+    std::shared_ptr<CEffectObject>& object, std::string& error)
+{
+    if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || !key.Is_Valid())
+    { error = "Invalid V1 Effect reference."; return false; }
+    EFFECT_DOCUMENT_DESC document;
+    if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId == key.strStableId)
+    {
+        document = *m_ActiveDocument;
+        if (m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(document))
+        { error = "The particle-system draft could not be applied."; return false; }
+        if (m_bDetailDraftDirty && !Apply_DetailDraft(document))
+        { error = m_strDetailStatus; return false; }
+        if (m_bModelCueDraftDirty && !Apply_ModelCueDraft(document))
+        { error = "The model-cue draft could not be applied."; return false; }
+    }
+    else
+    {
+        const auto path = CProjectDataRoot::Resolve(std::filesystem::path(L"Effects") / L"Authored" /
+            (key.strStableId + ".effect.json"));
+        if (!CEffectDocumentCodec::Load(path, document, error)) return false;
+    }
+    if (document.strEffectAssetId != key.strStableId)
+    { error = "Saved Effect identity does not match the selected row."; return false; }
+    if (!elementId.empty())
+    {
+        if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
+        EFFECT_DOCUMENT_DESC selected;
+        if (!Build_ElementPreviewDocument(document, elementId, selected, error)) return false;
+        document = std::move(selected);
+        std::erase_if(document.RuntimeExtensions.BakedEdgeHistories, [&document](const auto& history)
+        {
+            return std::none_of(document.Elements.begin(), document.Elements.end(),
+                [&history](const auto& element)
+                { return element.RuntimeCarrier.strHistoryId == history.strHistoryId; });
+        });
+    }
+    if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
+    const auto immutableDocument = std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(document));
+    std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> projection;
+    std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> prepared;
+    const bool ordinaryElementSolo = !elementId.empty() &&
+        std::all_of(immutableDocument->Elements.begin(), immutableDocument->Elements.end(),
+            [](const auto& element) { return element.RuntimeCarrier.Is_Empty(); });
+    if (ordinaryElementSolo && !immutableDocument->RuntimeExtensions.Is_Empty())
+    { error = "The selected ordinary Element still references runtime history."; return false; }
+    if (immutableDocument->iLoadedFormatVersion == EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION &&
+        !ordinaryElementSolo)
+    {
+        if (!CEffectVisualProgramCorpusCodec::Create_DocumentOwnedRuntimeProjection(
+            immutableDocument, projection, error) || !projection || !projection->Is_Valid() ||
+            projection->Get_DocumentShared().get() != immutableDocument.get())
+        {
+            if (error.empty()) error = "The authored Effect runtime projection is invalid.";
+            return false;
+        }
+        if (!CEffectDocumentRenderer::Prepare_VisualProgramDocument(
+            m_pDevice, m_pContext, projection, prepared, error) || !prepared)
+        {
+            if (error.empty()) error = "The authored Effect runtime resources could not be prepared.";
+            return false;
+        }
+    }
+    const uint32_t level = CGameInstance::Get().Get_CurrentLevelID();
+    CEffectObject::EFFECT_OBJECT_DESC desc{};
+    desc.RootWorld = root; desc.bAutoPlay = false;
+    std::shared_ptr<CGameObject> clone;
+    if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::STATIC),
+        L"Prototype_GameObject_EffectObject", level, AUTHORING_LAYER, &desc, &clone)))
+    { error = "EffectObject prototype is not available in this level."; return false; }
+    auto staged = std::dynamic_pointer_cast<CEffectObject>(clone);
+    const bool isStaged = staged && (projection ?
+        staged->Stage_PrevalidatedVisualProgramDocument(projection, prepared, error) :
+        staged->Stage_Document(*immutableDocument, error));
+    if (!isStaged)
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(level, AUTHORING_LAYER, clone);
+        return false;
+    }
+    staged->Set_RootWorld(root); staged->Set_Playing(false); staged->Set_Visible(false);
+    m_AuthoringOccurrenceLevels.emplace(staged.get(), level);
+    m_AuthoringOccurrenceDocuments.emplace(staged.get(), immutableDocument);
+    object = std::move(staged);
+    return true;
+}
+
+bool CEffect_Tool::Is_AuthoringWorldResource(const std::string& id, EFFECT_RESOURCE_FILE_KIND kind) const
+{
+    if (!m_bAuthoringWorldLoaded || id.empty()) return false;
+    return std::any_of(m_AuthoringWorldObjects.begin(), m_AuthoringWorldObjects.end(), [&](const auto& row)
+    {
+        return row.error.empty() && ((kind == EFFECT_RESOURCE_FILE_KIND::MODEL && row.resource.modelAssetId == id) ||
+            (kind == EFFECT_RESOURCE_FILE_KIND::TEXTURE && row.resource.diffuseTextureAssetId == id));
+    });
+}
+
+bool CEffect_Tool::Render_WorldObjectResourceGrid(bool draft)
+{
+    if (!m_pAuthoringResources) return false;
+    ImGui::PushID(draft ? "WorldObjectSeed" : "WorldObjectBinding");
+    ImGui::Combo("Resource Category", &m_iAuthoringResourceSource, "Effect Assets\0World Object\0");
+    if (m_iAuthoringResourceSource != 1) { ImGui::PopID(); return false; }
+    if (!m_bAuthoringWorldLoaded || ImGui::Button("Refresh World Objects"))
+    {
+        uint32_t revision = 0;
+        std::vector<EFFECT_COMPOSITION_WORLD_RESOURCE> staged;
+        if (Read_EffectCompositionWorldResources("LV_LUT_MIDNIGHTC_ED", staged, revision, m_strAuthoringWorldStatus))
+            m_AuthoringWorldObjects = std::move(staged);
+        m_bAuthoringWorldLoaded = true;
+    }
+    ImGui::TextWrapped("%s", m_strAuthoringWorldStatus.c_str());
+    ImGui::TextDisabled("Select a Mesh or texture slot, then bind the saved Object resource.");
+    for (const auto& entry : m_AuthoringWorldObjects)
+    {
+        ImGui::PushID(entry.resource.objectId.c_str());
+        if (ImGui::TreeNodeEx("Object", 0, "%s", entry.resource.displayName.c_str()))
+        {
+            ImGui::TextWrapped("%s", entry.resource.modelAssetId.c_str());
+            const auto bind = [&](const std::string& id)
+            { return draft ? Try_BindMeshAuthoringResource(id) : Try_BindResource(id); };
+            ImGui::BeginDisabled(entry.resource.modelAssetId.empty());
+            if (ImGui::Button("Bind Model to selected slot")) (void)bind(entry.resource.modelAssetId);
+            ImGui::EndDisabled();
+            ImGui::BeginDisabled(entry.resource.diffuseTextureAssetId.empty());
+            if (ImGui::Button("Bind Texture to selected slot")) (void)bind(entry.resource.diffuseTextureAssetId);
+            ImGui::EndDisabled();
+            for (const auto& motion : entry.motions)
+            {
+                ImGui::Text("Motion: %s (%.3f s)", motion.displayName.c_str(), motion.durationMs / 1000.f);
+                for (const auto& clip : motion.animationTracks) ImGui::BulletText("%s", clip.clipName.c_str());
+            }
+            if (!entry.error.empty()) ImGui::TextWrapped("%s", entry.error.c_str());
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+    ImGui::PopID();
+    return true;
+}
+}
+```

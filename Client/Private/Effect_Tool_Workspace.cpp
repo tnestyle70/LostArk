@@ -5,6 +5,7 @@
 #include "EffectAuthoringSequencer.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_Object.h"
+#include "Effect_VisualProgramCorpus.h"
 #include "EffectV2_Catalog.h"
 #include "GameInstance.h"
 #include "ProjectDataRoot.h"
@@ -210,11 +211,43 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     { error = "Saved Effect identity does not match the selected row."; return false; }
     if (!elementId.empty())
     {
+        if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
         EFFECT_DOCUMENT_DESC selected;
         if (!Build_ElementPreviewDocument(document, elementId, selected, error)) return false;
         document = std::move(selected);
+        std::erase_if(document.RuntimeExtensions.BakedEdgeHistories, [&document](const auto& history)
+        {
+            return std::none_of(document.Elements.begin(), document.Elements.end(),
+                [&history](const auto& element)
+                { return element.RuntimeCarrier.strHistoryId == history.strHistoryId; });
+        });
     }
     if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
+    const auto immutableDocument = std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(document));
+    std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> projection;
+    std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> prepared;
+    const bool ordinaryElementSolo = !elementId.empty() &&
+        std::all_of(immutableDocument->Elements.begin(), immutableDocument->Elements.end(),
+            [](const auto& element) { return element.RuntimeCarrier.Is_Empty(); });
+    if (ordinaryElementSolo && !immutableDocument->RuntimeExtensions.Is_Empty())
+    { error = "The selected ordinary Element still references runtime history."; return false; }
+    if (immutableDocument->iLoadedFormatVersion == EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION &&
+        !ordinaryElementSolo)
+    {
+        if (!CEffectVisualProgramCorpusCodec::Create_DocumentOwnedRuntimeProjection(
+            immutableDocument, projection, error) || !projection || !projection->Is_Valid() ||
+            projection->Get_DocumentShared().get() != immutableDocument.get())
+        {
+            if (error.empty()) error = "The authored Effect runtime projection is invalid.";
+            return false;
+        }
+        if (!CEffectDocumentRenderer::Prepare_VisualProgramDocument(
+            m_pDevice, m_pContext, projection, prepared, error) || !prepared)
+        {
+            if (error.empty()) error = "The authored Effect runtime resources could not be prepared.";
+            return false;
+        }
+    }
     const uint32_t level = CGameInstance::Get().Get_CurrentLevelID();
     CEffectObject::EFFECT_OBJECT_DESC desc{};
     desc.RootWorld = root; desc.bAutoPlay = false;
@@ -223,14 +256,17 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
         L"Prototype_GameObject_EffectObject", level, AUTHORING_LAYER, &desc, &clone)))
     { error = "EffectObject prototype is not available in this level."; return false; }
     auto staged = std::dynamic_pointer_cast<CEffectObject>(clone);
-    if (!staged || !staged->Stage_Document(document, error))
+    const bool isStaged = staged && (projection ?
+        staged->Stage_PrevalidatedVisualProgramDocument(projection, prepared, error) :
+        staged->Stage_Document(*immutableDocument, error));
+    if (!isStaged)
     {
         CGameInstance::Get().Remove_GameObject_from_Layer(level, AUTHORING_LAYER, clone);
         return false;
     }
     staged->Set_RootWorld(root); staged->Set_Playing(false); staged->Set_Visible(false);
     m_AuthoringOccurrenceLevels.emplace(staged.get(), level);
-    m_AuthoringOccurrenceDocuments.emplace(staged.get(), std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(document)));
+    m_AuthoringOccurrenceDocuments.emplace(staged.get(), immutableDocument);
     object = std::move(staged);
     return true;
 }
