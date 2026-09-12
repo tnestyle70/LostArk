@@ -30,20 +30,46 @@ def section(text, name, body, marker):
 
 
 def install(source_dir, append_source_dir=None):
-    contract = json.loads((source_dir / "native_runtime_contract.json").read_bytes())
+    def read_contract(directory):
+        active = directory / "active_native_runtime_contract.json"
+        return json.loads((active if active.is_file() else directory / "native_runtime_contract.json").read_bytes())
+    contract = read_contract(source_dir)
     rows = contract["programs"]
     assert not contract["deferredPrograms"], "Every selected source program must be recovered."
     source = (source_dir / "Shader_EffectArtistNative.hlsli").read_text(encoding="utf8")
     append_directories = ([] if append_source_dir is None else
                           [append_source_dir] if isinstance(append_source_dir, Path) else append_source_dir)
     for directory in append_directories:
-        additional = json.loads((directory / "native_runtime_contract.json").read_bytes())
+        additional = read_contract(directory)
         assert not additional["deferredPrograms"], "Additional source programs must be complete."
         rows += additional["programs"]
         source += "\n" + (directory / "Shader_EffectArtistNative.hlsli").read_text(encoding="utf8")
     identifiers = {r["program"] for r in rows}
-    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 2496))
+    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 3712))
+    # A newly recovered pass may belong to a byte-identical program reused from
+    # an older cohort. Join that pass by its original material/VS/PS identity;
+    # the older base-color function and stable program ID remain authoritative.
+    pass_sources = {}
+    by_id = {row['program']: row for row in rows}
+    for directory in [source_dir] + append_directories:
+        merged_path = directory / 'merged_native_runtime_contract.json'
+        if not merged_path.is_file():
+            continue
+        merged = json.loads(merged_path.read_bytes())
+        assert not merged.get('deferredPrograms'), 'Merged native source closure is incomplete.'
+        for recovered in merged['programs']:
+            existing = by_id.get(recovered['program'])
+            if existing is None and (directory / 'active_native_runtime_contract.json').is_file():
+                assert not recovered.get('distortionPass'), ('Inactive reused pass requires an active identity', recovered['program'])
+                continue
+            assert existing is not None, ('Missing recovered base program', recovered['program'])
+            for field in ('sourceMaterial', 'sourceVS', 'sourcePS', 'rendererShape'):
+                assert existing[field] == recovered[field], ('Reused native identity changed', recovered['program'], field)
+            if recovered.get('distortionPass'):
+                existing['distortionPass'] = recovered['distortionPass']
+                pass_sources[recovered['program']] = directory / recovered['distortionPass']['hlsli']
     blocks = re.findall(r"(#ifndef ARTIST_NATIVE_MODEL_ONLY\n// [^\n]+\nfloat4 ArtistNative(\d+)\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\}\n#endif)", source, re.S)
+    blocks = [(block, identifier) for block, identifier in blocks if int(identifier) in identifiers]
     assert len(blocks) == len(rows) and {int(i) for _, i in blocks} == identifiers
     shaders = ROOT / "Client/Bin/ShaderFiles"
     installed_group = shaders / "Shader_EffectKoukuNativeGroup2304.hlsli"
@@ -51,7 +77,7 @@ def install(source_dir, append_source_dir=None):
         installed = {int(value) for value in re.findall(r"float4 ArtistNative(\d+)\(", installed_group.read_text(encoding="utf8"))}
         assert installed <= identifiers, ("Supply all installed Kouku groups; refusing to remove programs", sorted(installed - identifiers))
     def carrier_for(row):
-        return {"mesh": "MESH", "decal": "DECAL", "animationTrail": "TRAIL", "ribbon": "TRAIL"}.get(row["rendererShape"], "PARTICLE")
+        return {"mesh": "MESH", "decal": "DECAL", "animationTrail": "TRAIL", "animTrail": "TRAIL", "ribbon": "TRAIL", "beam": "TRAIL", "screenPost": "SCREEN_POST"}.get(row["rendererShape"], "PARTICLE")
     def carrier_guard(row):
         return " && ".join(f"!defined(EFFECT_NATIVE_{kind}_CARRIER)" for kind in
             ("MESH", "PARTICLE", "DECAL", "TRAIL", "SCREEN_POST") if kind != carrier_for(row))
@@ -77,8 +103,26 @@ def install(source_dir, append_source_dir=None):
         update(shaders / "Shader_EffectArtistNative.hlsli", bind_world_to_local)
     assert by_program[2310].get("distortionPass"), "Disto05 requires its original accumulation pass."
     extra = ""
-    if by_program[2310].get("distortionPass"):
-        extra = "\n#if " + carrier_guard(by_program[2310]) + "\n" + (source_dir / "KoukuDistortionProgram.hlsli").read_text(encoding="utf8") + "#endif\n"
+    companion_blocks = {}
+    for companion in set(pass_sources.values()):
+        code = companion.read_text(encoding='utf8')
+        found = re.findall(r'(float4 ArtistNative(\d+)Distortion\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\})', code, re.S)
+        assert found, ('No original distortion functions', companion)
+        for block, identifier in found:
+            identifier = int(identifier)
+            assert identifier not in companion_blocks or companion_blocks[identifier] == block
+            companion_blocks[identifier] = block
+    for row in rows:
+        if not row.get('distortionPass'):
+            continue
+        program = row['program']
+        if program in pass_sources:
+            assert program in companion_blocks, ('Missing original distortion function', program)
+            code = companion_blocks[program] + '\n'
+        else:
+            assert program == 2310, ('Unresolved original distortion companion', program)
+            code = (source_dir / 'KoukuDistortionProgram.hlsli').read_text(encoding='utf8')
+        extra += '\n#if !defined(ARTIST_NATIVE_MODEL_ONLY) && ' + carrier_guard(row) + '\n' + code + '#endif\n'
     (shaders / "Shader_EffectKoukuNativeGroup2304.hlsli").write_text(
         "// Original Kouku material programs; native carrier group 2304.\n" +
         "\n\n".join("#if " + carrier_guard(by_program[int(identifier)]) + "\n" + block + "\n#endif"
@@ -118,15 +162,15 @@ def install(source_dir, append_source_dir=None):
         def extend_dispatch(text):
             pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'
             assert len(re.findall(pattern, text)) == expected, name
-            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2495u', text)
+            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u', text)
         update(shaders / name, extend_dispatch)
 
     def table(text):
         for carrier in ("MESH", "PARTICLE"):
             label = carrier.title()
             text = re.sub(rf'EFFECT_SHADER_PROGRAM_ROW\({carrier}, ARTIST, 2304u, \d+u, "Shader_VtxEffect{label}Kouku2304.hlsl"\)',
-                          f'EFFECT_SHADER_PROGRAM_ROW({carrier}, ARTIST, 2304u, 2495u, "Shader_VtxEffect{label}Kouku2304.hlsl")', text)
-            row = f'        EFFECT_SHADER_PROGRAM_ROW({carrier}, ARTIST, 2304u, 2495u, "Shader_VtxEffect{label}Kouku2304.hlsl"),\n'
+                          f'EFFECT_SHADER_PROGRAM_ROW({carrier}, ARTIST, 2304u, 3711u, "Shader_VtxEffect{label}Kouku2304.hlsl")', text)
+            row = f'        EFFECT_SHADER_PROGRAM_ROW({carrier}, ARTIST, 2304u, 3711u, "Shader_VtxEffect{label}Kouku2304.hlsl"),\n'
             if row not in text:
                 text = text.replace("    }};\n#undef EFFECT_SHADER_PROGRAM_ROW", row + "    }};\n#undef EFFECT_SHADER_PROGRAM_ROW", 1)
         count = len(re.findall(r"^        EFFECT_SHADER_PROGRAM_ROW\(", text, re.M))

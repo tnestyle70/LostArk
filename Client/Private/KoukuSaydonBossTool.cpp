@@ -544,6 +544,18 @@ bool Client::CKoukuSaydonBossTool::Load_PatternFlows(std::string& status)
 	return true;
 }
 
+bool Client::CKoukuSaydonBossTool::Request_PublishSavedPatterns(std::string& status)
+{
+	if (m_bFlowDirty)
+	{
+		status = m_strStatus = "Save Pattern Flow edits before publishing saved Patterns.";
+		return false;
+	}
+	m_bPublishRequested = true;
+	status = m_strStatus = "Preparing the saved Patterns publisher.";
+	return true;
+}
+
 bool Client::CKoukuSaydonBossTool::Save_PatternFlows(std::string& status)
 {
 	if (!m_FlowDocument.Has_LastGood())
@@ -880,7 +892,7 @@ void Client::CKoukuSaydonBossTool::Render_PatternFlowEditor(const std::string_vi
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(m_bFlowDirty);
-	if (ImGui::Button("Publish Saved Patterns")) m_bPublishRequested = true;
+	if (ImGui::Button("Publish Saved Patterns")) (void)Request_PublishSavedPatterns(m_strStatus);
 	ImGui::EndDisabled();
 	if (ImGui::BeginPopupModal("Discard Pattern Flow edits?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{

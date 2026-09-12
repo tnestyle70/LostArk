@@ -69,3 +69,17 @@ Client/Server는 사용자가 실행 중이므로 에이전트가 종료하거�
 V의 세 창은 `fm_n_flm_ydr_00_sm`, ALT V의 창은 `fm_x_flm_gdr_01` 및 dragon이므로 같은 자산으로 가정하지 않는다. V 정본은 이전 커밋과 동일하며 9월 11일 추가된 source-bone 단위 보정의 실제 크기·위치·방향 효과를 CModel과 Playback으로 측정한다. 실제 손본 pose와 두 mesh의 축·단위를 대조한 뒤 필요한 부착 수정만 적용한다. 화면상 표현을 근거 없는 공통 90도 회전으로 덮지 않는다. 이 G의 C++ 수정은 새 Client 빌드가 필요하며 G06의 데이터만 변경한 재시작 안내와 구분한다.
 
 실측한 V/ALT V 창은 model-local +Y가 긴 축이고 손의 장착 무기는 +X가 긴 축이다. SourceRecipe의 TypeData `pitch=-90`이 기존 detail에 투영되지 않아 0으로 실행되고 있었으며, 별도 MeshRotation quarter-turn만 적용하면 창의 긴 축이 손본 -Z로 향한다. 세 exact mesh의 기존 `detail.mesh.sourceTypeDataRotationDegrees`에 source `[roll=0,pitch=-90,yaw=0]`을 한 번 투영한다. 기존 `UE3_EulerDegreesToClientRotation`과 곱 순서를 사용하면 +X로 정렬된다. V 3행, 이전 ALT V 10행과 통합 ALT V 10행의 총 23행만 수정하고 offset/scale/local rotation·재질·시간축은 유지한다. 기존 Lance generator의 해당 투영 누락도 수정하며, 통합 generator는 교정된 원본 element를 그대로 복사한다. 실제 mesh vertex와 60Hz CModel/Playback pose로 수정 전후 손 기준 축과 거리를 대조한다.
+
+## G08. T 창 부착을 사용자가 확정한 ALT V 값에 맞춤 — 2026-09-12
+
+사용자는 T 화면의 창이 손에서 떨어져 있고 ALT V 화면은 손에 맞으며 Transform position `[1,0,0]`으로 튜닝을 끝냈다고 확인했다. 현재 저장된 기준은 `effect.lancemaster.skill.34630.clip1.full.restore.effect.json`의 `authored.lance-va.51ef8a58177b1be44454baed`다. 이 dragon 행은 position `[1,0,0]`, TypeData rotation `[0,-90,0]`이며 실제 저장된 attachment는 `Midcontrol -> b_weapon_rhand`, socket position 약 `[0.4,0,0]`다. 사용자가 화면에서 부른 손 이름을 근거로 다른 bone으로 바꾸지 않고 확정된 donor의 실제 계약을 따른다.
+
+T `effect.lancemaster.skill.34650.clip1.full.restore.effect.json`과 `clip2.full.restore.effect.json`의 `fm_x_flm_gdr_01.wmodel` 및 `_dragon.wmodel` 네 행에 `detail.mesh.sourceTypeDataRotationDegrees: [0,-90,0]`을 적용한다. 두 dragon 행의 `detail.transform.position`만 `[1,0,0]`으로 맞춘다. 본체의 position은 donor처럼 `[0,0,0]`이며 이미 같은 attachment, source 분포, 재질, 시간과 사용자 저장 변경은 보존한다.
+
+새 C++·리소스·프로젝트 등록은 없다. 기존 Playback의 TypeData 회전과 Element Transform 소비 경로를 사용한다. 변경 전 bytes를 out에 보존한 뒤 stable ID로 필드만 수정하고, JSON 재파싱·허용한 여섯 필드 외 의미 보존·donor bytes 보존·`git diff --check`를 확인한다. 데이터만 변경하므로 컴파일과 publisher는 필요 없다. 사용자는 T 두 문서를 다시 Load하여 Play All을 확인하고 제품 스킬은 Client 재시작 뒤 확인한다. 화면 부착 결과는 사용자의 후속 관찰로 판단한다.
+
+## G09. T 용 목과 몸통의 시선각 투명도 완화 — 2026-09-12
+
+후속 첨부 화면에서 T 돌진 용의 목과 몸통 사이가 끊겨 보인다. `34650.clip2.full.restore`의 ModelCue section0/1은 동일한 재질·시각·Transform을 사용한다. 실제 native1360은 masked pass가 아닌 translucent pass이며 alpha에 `saturate(6 * abs(NdotV)^5)`를 곱한다. NdotV 0.2/0.3에서 이 계수는 0.00192/0.01458이므로 비스듬한 목 표면을 거의 투명하게 만든다. 화면 한 장으로 지형 depth나 모든 pose 문제를 완전히 배제하지 않으며, 확인된 과도한 시선각 감쇠를 사용자 요청 튜닝으로 완화한다.
+
+두 ModelCue의 `material.sourceProfile.scalars`에서 `32.fresnal_power` 값만 `5 -> 2`로 변경한다. 동일 조건의 계수는 0.24/0.54가 된다. opacity strength6, 노이즈, depth fade, emission의 별도 Fresnel 및 애니메이션·손 부착은 유지한다. 원본 native 프로그램을 복원한 변경으로 표현하지 않고 프로젝트 가독성 조정으로 기록한다. 두 scalar 외 전체 JSON 의미 보존, 0~1 시선각의 alpha 계수 유한성·범위·기존 대비 감소 없음, JSON parse와 diff 검사를 수행한다. 새 C++나 shader가 없어 재빌드는 필요 없다. 최종 목 연결 화면은 사용자가 T clip2 Model/Summon 및 Play All에서 확인한다.

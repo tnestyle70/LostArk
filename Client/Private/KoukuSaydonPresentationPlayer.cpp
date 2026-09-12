@@ -768,6 +768,33 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_SourceAnchorWorlds(
     return Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
+    const EFFECT_DOCUMENT_DESC& document, const EFFECT_V2_TARGET_VIEW& view,
+    const float4x4_t& root, const float seconds, SOURCE_BONES& anchors, std::string& error)
+{
+    if (!document.SourceModelPreview) return Resolve_SourceAnchorWorlds(document, view, root, anchors, error);
+    if (!std::isfinite(seconds) || seconds < 0.f)
+    { error = "Source model animation time must be finite and nonnegative."; return false; }
+    const auto attachments = Source_Attachments(document);
+    std::vector<std::string> names;
+    for (const auto& attachment : attachments)
+        if (attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
+            std::find(names.begin(), names.end(), attachment.strRuntimeBoneName) == names.end())
+            names.push_back(attachment.strRuntimeBoneName);
+    std::vector<ANCHOR_ANIMATION> animations;
+    for (const auto& source : document.SourceModelPreview->Animations)
+    {
+        ANCHOR_ANIMATION animation;
+        animation.strRuntimeClip = source.strRuntimeClip;
+        animation.iStartOffsetMs = source.iStartOffsetMs; animation.iSourceStartMs = source.iSourceStartMs;
+        animation.iPlayMs = source.iPlayMs; animation.fPlayRate = source.fPlayRate; animation.strEndPolicy = source.strEndPolicy;
+        animations.push_back(std::move(animation));
+    }
+    SOURCE_BONES bones;
+    return Sample_SourceBones(view.pModel, animations, seconds * 1000.f, names, bones, error) &&
+        Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
+}
+
 Client::CKoukuSaydonPresentationPlayer::CKoukuSaydonPresentationPlayer(
     ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
     CRenderingProfileService& profiles)
@@ -1888,7 +1915,12 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     Update_FearPresentation(dt, players);
     if (m_bPreviewPlaying && m_bOwnPreviewClock && m_bPreviewPivotReady)
     {
-        if (!m_bPreviewPaused && !m_bModelReferencePreview) m_fPreviewClockMs += double(dt) * 1000.0;
+        // Begin runs after this Update; the next delta includes synchronous WORLD
+        // preparation. Arm the new clock once without charging that setup time.
+        const bool advanceClock = !m_bPreviewClockAwaitingFirstUpdate;
+        m_bPreviewClockAwaitingFirstUpdate = false;
+        if (advanceClock && !m_bPreviewPaused && !m_bModelReferencePreview)
+            m_fPreviewClockMs += double(dt) * 1000.0;
         if (!m_bPreviewPaused && !m_bModelReferencePreview && m_fPreviewClockMs >= m_iPreviewDurationMs)
         {
             if (m_bColliderResourcePreview)
@@ -1939,6 +1971,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
     m_iPreviewDurationMs = duration;
     m_fPreviewClockMs = (std::min)(clockMs, duration);
     m_bOwnPreviewClock = ownClock;
+    m_bPreviewClockAwaitingFirstUpdate = ownClock;
     m_bPreviewPlaying = true;
     m_bPreviewPaused = paused;
     m_bColliderResourcePreview = pattern.strPatternId == "preview.kouku.resource" &&
@@ -1985,6 +2018,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         bundle->Members.empty() || bundle->Members.size() > LostArk::Shared::MAX_KOUKUSAYDON_BUNDLE_MEMBERS)
     { status = "Bundle preview requires an active arena and a valid nonempty bundle."; return false; }
     std::vector<BUNDLE_PREVIEW_MEMBER> staged;
+    std::vector<CWorldSequencePlayer*> stagedWorldPlayers;
     KOUKU_SAYDON_COMPOSITION_PATTERN common;
     common.strPatternId = bundleId;
     common.PresentationOccurrences = bundle->PresentationOccurrences;
@@ -2080,19 +2114,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                     !placementBindings.insert(std::to_string(static_cast<int>(binding.targetKind)) + ":" + binding.targetId).second)
                     return fail("Bundle WORLD members share a mutable map/deploy target.");
             auto player = std::make_shared<CWorldSequencePlayer>();
-            if (!player->Set_Document(sequences, targets, status))
-                return fail(status);
-            if (!player->Prepare_InstanceResources(world->strSequenceInstanceId, targets))
-                return fail(player->Get_Status());
-            if (!player->Validate_ObjectPlacement(world->strSequenceInstanceId, WorldPlacementFromOccurrence(box), status))
-                return fail(status);
-            const auto worldSpan = player->Get_InstanceElapsedSpanMs(
-                world->strSequenceInstanceId, box.fPlaybackSpeed, box.iDurationMs);
-            if (worldSpan <= 0.f) return fail("Bundle WORLD has no finite presentation span.");
-            duration = (std::max)(duration, (std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u +
-                box.iStartMs + static_cast<std::uint64_t>(std::ceil(worldSpan)));
-            if (duration > MAX_TIMELINE_MS) return fail("Bundle WORLD tail exceeds the timeline duration limit.");
-            member.session.previewWorlds.emplace(box.strOccurrenceId, player);
+            const auto [entry, inserted] = member.session.previewWorlds.emplace(box.strOccurrenceId, player);
+            if (!inserted) return fail("Bundle WORLD occurrence is duplicated: " + box.strOccurrenceId);
+            stagedWorldPlayers.push_back(entry->second.get());
             float3_t offset(float(world->PositionOffset[0]), float(world->PositionOffset[1]), float(world->PositionOffset[2]));
             if (!box.Placement && world->strAnchorKind == "BOSS_SPAWN")
             {
@@ -2105,6 +2129,25 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         }
         member.session.key = "bundle-preview:" + bundleId + ":" + member.memberId;
     }
+    if (!stagedWorldPlayers.empty() &&
+        !CWorldSequencePlayer::Set_DocumentBatch(sequences, targets, stagedWorldPlayers, status)) return fail(status);
+    for (auto& member : staged)
+        for (const auto& box : member.pattern.WorldOccurrences)
+        {
+            const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
+                [&](const auto& value) { return value.strWorldId == box.strWorldId; });
+            auto& player = *member.session.previewWorlds.at(box.strOccurrenceId);
+            if (!player.Prepare_InstanceResources(world->strSequenceInstanceId, targets))
+                return fail("Bundle WORLD " + box.strOccurrenceId + ": " + player.Get_Status());
+            if (!player.Validate_ObjectPlacement(world->strSequenceInstanceId, WorldPlacementFromOccurrence(box), status))
+                return fail(status);
+            const auto worldSpan = player.Get_InstanceElapsedSpanMs(
+                world->strSequenceInstanceId, box.fPlaybackSpeed, box.iDurationMs);
+            if (worldSpan <= 0.f) return fail("Bundle WORLD has no finite presentation span.");
+            duration = (std::max)(duration, (std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u +
+                box.iStartMs + static_cast<std::uint64_t>(std::ceil(worldSpan)));
+            if (duration > MAX_TIMELINE_MS) return fail("Bundle WORLD tail exceeds the timeline duration limit.");
+        }
     // All models, clips and WORLD inputs are prepared before replacing the live preview.
     auto stagedDocument = document;
     Stop_Preview();
@@ -2116,6 +2159,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     m_iPreviewDurationMs = static_cast<std::uint32_t>(duration);
     m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
     m_bOwnPreviewClock = m_bPreviewPlaying = m_bPreviewPivotReady = true;
+    m_bPreviewClockAwaitingFirstUpdate = true;
     m_bPreviewPaused = paused;
     XMStoreFloat4x4(&m_PreviewPivot, XMMatrixIdentity());
     Sample_BundlePreview();
@@ -2436,6 +2480,7 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
     Stop_Session(m_PreviewSession);
     m_bPreviewPlaying = false;
     m_bOwnPreviewClock = false;
+    m_bPreviewClockAwaitingFirstUpdate = false;
     m_bPreviewPaused = false;
     m_bPreviewPivotReady = false;
     m_bColliderResourcePreview = false;

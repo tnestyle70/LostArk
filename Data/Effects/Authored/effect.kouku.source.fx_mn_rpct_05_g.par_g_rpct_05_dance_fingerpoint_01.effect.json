@@ -1,0 +1,3499 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01",
+  "displayName": "세이튼_랜덤박스 요청_par_g_rpct_05_dance_fingerpoint_01",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": [
+    {
+      "id": "kouku.248282715.303ec544ad28696798cb",
+      "displayName": "library-root | particlespriteemitter_6",
+      "groupId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01",
+      "sourceNode": "source-system/fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01/library-root|fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlespriteemitter_6",
+      "visible": true,
+      "kind": "particle",
+      "resources": [],
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_light_01_1_ad",
+        "renderProfile": "additive_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",
+          "runtimeShaderProfileId": "effect.ue3.kouku-2858-native.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_light_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "emissive_tex",
+              "sourceObjectPath": "fx_tex_04.fx_f_star_001",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_04/fx_f_star_001.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "use_meshtype",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_subuv_tex",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_nonalpha_chanel",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.0,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": true
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            0.6,
+            0.6
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 3,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.2,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMax": [
+            0.2,
+            0.0,
+            -0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.6,
+            0.6
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": true,
+          "authoringApproximate": false,
+          "sourceScale": {
+            "count": 1,
+            "size": 1,
+            "lifeTime": 1,
+            "speed": 1,
+            "rotation": 1,
+            "alpha": 1,
+            "spawnDelay": 1
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "sprite",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 1.0,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0.0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerequired_6",
+            "className": "particlemodulerequired",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerequired_6",
+            "literals": [
+              {
+                "propertyPath": "ballowimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsquareimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "buselegacyemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "busemaxdrawcount",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "farculldistance",
+                "kind": "number",
+                "value": 2100.0
+              },
+              {
+                "propertyPath": "farfadedistance",
+                "kind": "number",
+                "value": 2000.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "material",
+                "kind": "number",
+                "value": -76.0
+              },
+              {
+                "propertyPath": "material.objectpath",
+                "kind": "string",
+                "value": "fx_m_mi_00.fx_mi.fx_c_pa_light_01_1_ad"
+              },
+              {
+                "propertyPath": "maxdrawcount",
+                "kind": "number",
+                "value": 500.0
+              },
+              {
+                "propertyPath": "nearculldistance",
+                "kind": "number",
+                "value": 25.0
+              },
+              {
+                "propertyPath": "nearfadedistance",
+                "kind": "number",
+                "value": 150.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.z",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.z",
+                "kind": "number",
+                "value": 100.0
+              },
+              {
+                "propertyPath": "offsetcenterx",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "offsetcentery",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "randomimagetime",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_horizontal",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_vertical",
+                "kind": "number",
+                "value": 1.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulelifetime_5",
+            "className": "particlemodulelifetime",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulelifetime_5",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.30000001192092896,
+                  0.30000001192092896,
+                  0.30000001192092896,
+                  0.30000001192092896
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_6",
+            "className": "particlemodulecolorscaleoverlife",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_6",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "alphascaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  0.15587423741817474,
+                  0.4989979863166809,
+                  0.8426227569580078,
+                  1.0,
+                  0.9905309081077576,
+                  0.9600999355316162,
+                  0.9116837978363037,
+                  0.8482590913772583,
+                  0.7728025317192078,
+                  0.6882907152175903,
+                  0.597700297832489,
+                  0.5040079355239868,
+                  0.41019049286842346,
+                  0.31922441720962524,
+                  0.23408636450767517,
+                  0.15775302052497864,
+                  0.09320094436407089,
+                  0.04340701177716255,
+                  0.011347892694175243,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "colorscaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 4,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  3.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  3.0,
+                  3.0,
+                  3.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  3.0,
+                  3.0,
+                  3.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesize_6",
+            "className": "particlemodulesize",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesize_6",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  60.0,
+                  60.0,
+                  60.0,
+                  0.0,
+                  60.0,
+                  60.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemoduleparameterdynamic_4",
+            "className": "particlemoduleparameterdynamic",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemoduleparameterdynamic_4",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].paramname",
+                "kind": "string",
+                "value": "uv_distort_str[0-x]_or_y.pan"
+              },
+              {
+                "propertyPath": "dynamicparams[0].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramname",
+                "kind": "string",
+                "value": "dissolve[0-1]"
+              },
+              {
+                "propertyPath": "dynamicparams[1].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramname",
+                "kind": "string",
+                "value": "uv_sphery[1-x]"
+              },
+              {
+                "propertyPath": "dynamicparams[2].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramname",
+                "kind": "string",
+                "value": "centerhole_pow[1-x]_or_distortion"
+              },
+              {
+                "propertyPath": "dynamicparams[3].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "updateflags",
+                "kind": "number",
+                "value": 15.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "dynamicparams[0].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1.2500001192092896,
+                "lookupTableStartTime": 0.10000000149011612,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1.1111111640930176,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.6000000238418579,
+                  1.0,
+                  0.6000000238418579,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  2.0,
+                  1.0,
+                  2.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesizemultiplylife_4",
+            "className": "particlemodulesizemultiplylife",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesizemultiplylife_4",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "multiplyx",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "multiplyy",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "multiplyz",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifemultiplier",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.5039176940917969,
+                  0.5,
+                  0.5,
+                  0.5,
+                  0.65625,
+                  0.65625,
+                  0.65625,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.34375,
+                  1.34375,
+                  1.34375,
+                  1.5,
+                  1.5,
+                  1.5,
+                  1.4984772205352783,
+                  1.4984772205352783,
+                  1.4984772205352783,
+                  1.4622427225112915,
+                  1.4622427225112915,
+                  1.4622427225112915,
+                  1.3960998058319092,
+                  1.3960998058319092,
+                  1.3960998058319092,
+                  1.3048515319824219,
+                  1.3048515319824219,
+                  1.3048515319824219,
+                  1.1933010816574097,
+                  1.1933010816574097,
+                  1.1933010816574097,
+                  1.0662516355514526,
+                  1.0662516355514526,
+                  1.0662516355514526,
+                  0.9285061359405518,
+                  0.9285061359405518,
+                  0.9285061359405518,
+                  0.7848678827285767,
+                  0.7848678827285767,
+                  0.7848678827285767,
+                  0.6401401162147522,
+                  0.6401401162147522,
+                  0.6401401162147522,
+                  0.49912598729133606,
+                  0.49912598729133606,
+                  0.49912598729133606,
+                  0.36662834882736206,
+                  0.36662834882736206,
+                  0.36662834882736206,
+                  0.24745051562786102,
+                  0.24745051562786102,
+                  0.24745051562786102,
+                  0.14639542996883392,
+                  0.14639542996883392,
+                  0.14639542996883392,
+                  0.06826663762331009,
+                  0.06826663762331009,
+                  0.06826663762331009,
+                  0.017867228016257286,
+                  0.017867228016257286,
+                  0.017867228016257286,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_7",
+            "className": "particlemodulecolorscaleoverlife",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_7",
+            "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_7.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "alphascaleoverlife",
+                "sourceClass": "distributionfloatparticleparameter",
+                "sourceObjectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_7.distributionfloatparticleparameter_0",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  1.0,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1.0,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "colorscaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolor_9",
+            "className": "particlemodulecolor",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolor_9",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bclampalpha",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  2.0,
+                  2.0,
+                  2.0,
+                  2.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.30000001192092896,
+                  1.0,
+                  1.0,
+                  0.800000011920929,
+                  0.30000001192092896,
+                  1.0,
+                  0.800000011920929,
+                  0.30000001192092896
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerotation_0",
+            "className": "particlemodulerotation",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerotation_0",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 1.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startrotation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.11999999731779099,
+                  0.11999999731779099,
+                  0.11999999731779099,
+                  0.11999999731779099
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulevelocity_14",
+            "className": "particlemodulevelocity",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulevelocity_14",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startvelocity",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  20.0,
+                  20.0,
+                  0.0,
+                  0.0,
+                  20.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startvelocityradial",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulespawn_15",
+            "className": "particlemodulespawn",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulespawn_15",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessburstlist",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessspawnrate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "burstlist[0].count",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "burstlist[0].countlow",
+                "kind": "number",
+                "value": -1.0
+              },
+              {
+                "propertyPath": "burstlist[0].time",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlespriteemitter_6",
+        "sourceActionCueId": "source-system/fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01/library-root",
+        "sourceEventId": "source-system/fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01/library-root",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "kouku.248282715.4ead7490233ccac1f0f8",
+      "displayName": "library-root | particlespriteemitter_13",
+      "groupId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01",
+      "sourceNode": "source-system/fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01/library-root|fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlespriteemitter_13",
+      "visible": true,
+      "kind": "particle",
+      "resources": [],
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_1_ad",
+        "renderProfile": "additive_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.j.rgbsplit.01.ad.b59195d23f11",
+          "runtimeShaderProfileId": "effect.ue3.kouku-2428-native.v1",
+          "parentMaterialPath": "fx_m_mi_02.fx_m.fx_j_rgbsplit_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "main_tex",
+              "sourceObjectPath": "fx_tex_04.fx_f_star_002",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_04/fx_f_star_002.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "maintex_coordx",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_coordy",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "bright",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "desaturation",
+              "group": "None",
+              "value": -2.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "split_type",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "use_5waysplit",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "use_alphach",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_maintex_paningtile",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.0,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": true
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            0.3,
+            0.01
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 3,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 2,
+          "lifeTimeSeconds": [
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.2,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMax": [
+            0.2,
+            0.0,
+            -0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.3,
+            0.01
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": true,
+          "authoringApproximate": false,
+          "sourceScale": {
+            "count": 1,
+            "size": 1,
+            "lifeTime": 1,
+            "speed": 1,
+            "rotation": 1,
+            "alpha": 1,
+            "spawnDelay": 1
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "sprite",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 1.0,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0.0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerequired_13",
+            "className": "particlemodulerequired",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerequired_13",
+            "literals": [
+              {
+                "propertyPath": "ballowimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "buselegacyemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "busemaxdrawcount",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "farculldistance",
+                "kind": "number",
+                "value": 2100.0
+              },
+              {
+                "propertyPath": "farfadedistance",
+                "kind": "number",
+                "value": 2000.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "material",
+                "kind": "number",
+                "value": -109.0
+              },
+              {
+                "propertyPath": "material.objectpath",
+                "kind": "string",
+                "value": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_1_ad"
+              },
+              {
+                "propertyPath": "maxdrawcount",
+                "kind": "number",
+                "value": 500.0
+              },
+              {
+                "propertyPath": "nearculldistance",
+                "kind": "number",
+                "value": 10.0
+              },
+              {
+                "propertyPath": "nearfadedistance",
+                "kind": "number",
+                "value": 150.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.z",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.z",
+                "kind": "number",
+                "value": 100.0
+              },
+              {
+                "propertyPath": "offsetcenterx",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "offsetcentery",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "randomimagetime",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_horizontal",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_vertical",
+                "kind": "number",
+                "value": 1.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulelifetime_5",
+            "className": "particlemodulelifetime",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulelifetime_5",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.30000001192092896,
+                  0.30000001192092896,
+                  0.30000001192092896,
+                  0.30000001192092896
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesize_13",
+            "className": "particlemodulesize",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesize_13",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  30.0,
+                  30.0,
+                  0.0,
+                  0.0,
+                  30.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolor_12",
+            "className": "particlemodulecolor",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolor_12",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bclampalpha",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  2.0,
+                  1.0,
+                  2.0,
+                  1.0,
+                  2.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  3.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  3.0,
+                  3.0,
+                  3.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  3.0,
+                  3.0,
+                  3.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_13",
+            "className": "particlemodulecolorscaleoverlife",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulecolorscaleoverlife_13",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "alphascaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  0.20000000298023224,
+                  0.4000000059604645,
+                  0.6000000238418579,
+                  0.800000011920929,
+                  1.0,
+                  0.9333333373069763,
+                  0.8666666746139526,
+                  0.800000011920929,
+                  0.7333333492279053,
+                  0.6666666269302368,
+                  0.6000000238418579,
+                  0.5333333015441895,
+                  0.46666663885116577,
+                  0.40000003576278687,
+                  0.3333333134651184,
+                  0.2666666507720947,
+                  0.19999998807907104,
+                  0.1333332657814026,
+                  0.06666666269302368,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "colorscaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemoduleparameterdynamic_9",
+            "className": "particlemoduleparameterdynamic",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemoduleparameterdynamic_9",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].paramname",
+                "kind": "string",
+                "value": "split_str"
+              },
+              {
+                "propertyPath": "dynamicparams[0].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramname",
+                "kind": "string",
+                "value": "radial_str(0~10)"
+              },
+              {
+                "propertyPath": "dynamicparams[1].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramname",
+                "kind": "string",
+                "value": "param3"
+              },
+              {
+                "propertyPath": "dynamicparams[2].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramname",
+                "kind": "string",
+                "value": "param4"
+              },
+              {
+                "propertyPath": "dynamicparams[3].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "updateflags",
+                "kind": "number",
+                "value": 15.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "dynamicparams[0].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.20000000298023224,
+                  0.5,
+                  0.20000000298023224,
+                  0.5,
+                  0.20000000298023224,
+                  0.5
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesizemultiplylife_4",
+            "className": "particlemodulesizemultiplylife",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulesizemultiplylife_4",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "multiplyx",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "multiplyy",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "multiplyz",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifemultiplier",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.5039176940917969,
+                  0.5,
+                  0.5,
+                  0.5,
+                  0.65625,
+                  0.65625,
+                  0.65625,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.34375,
+                  1.34375,
+                  1.34375,
+                  1.5,
+                  1.5,
+                  1.5,
+                  1.4984772205352783,
+                  1.4984772205352783,
+                  1.4984772205352783,
+                  1.4622427225112915,
+                  1.4622427225112915,
+                  1.4622427225112915,
+                  1.3960998058319092,
+                  1.3960998058319092,
+                  1.3960998058319092,
+                  1.3048515319824219,
+                  1.3048515319824219,
+                  1.3048515319824219,
+                  1.1933010816574097,
+                  1.1933010816574097,
+                  1.1933010816574097,
+                  1.0662516355514526,
+                  1.0662516355514526,
+                  1.0662516355514526,
+                  0.9285061359405518,
+                  0.9285061359405518,
+                  0.9285061359405518,
+                  0.7848678827285767,
+                  0.7848678827285767,
+                  0.7848678827285767,
+                  0.6401401162147522,
+                  0.6401401162147522,
+                  0.6401401162147522,
+                  0.49912598729133606,
+                  0.49912598729133606,
+                  0.49912598729133606,
+                  0.36662834882736206,
+                  0.36662834882736206,
+                  0.36662834882736206,
+                  0.24745051562786102,
+                  0.24745051562786102,
+                  0.24745051562786102,
+                  0.14639542996883392,
+                  0.14639542996883392,
+                  0.14639542996883392,
+                  0.06826663762331009,
+                  0.06826663762331009,
+                  0.06826663762331009,
+                  0.017867228016257286,
+                  0.017867228016257286,
+                  0.017867228016257286,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerotation_3",
+            "className": "particlemodulerotation",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulerotation_3",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startrotation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.11999999731779099,
+                  0.11999999731779099,
+                  0.11999999731779099,
+                  0.11999999731779099
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulevelocity_14",
+            "className": "particlemodulevelocity",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulevelocity_14",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startvelocity",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  20.0,
+                  20.0,
+                  0.0,
+                  0.0,
+                  20.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startvelocityradial",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulespawn_15",
+            "className": "particlemodulespawn",
+            "objectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlemodulespawn_15",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessburstlist",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessspawnrate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "burstlist[0].count",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "burstlist[0].countlow",
+                "kind": "number",
+                "value": -1.0
+              },
+              {
+                "propertyPath": "burstlist[0].time",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.particlespriteemitter_13",
+        "sourceActionCueId": "source-system/fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01/library-root",
+        "sourceEventId": "source-system/fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01/library-root",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    }
+  ]
+}

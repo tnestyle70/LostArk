@@ -85,6 +85,9 @@ public:
     static bool Resolve_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
         const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root,
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
+    static bool Sample_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
+        const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root, float seconds,
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
     using V1_SOURCE_ANCHOR_SAMPLER = std::function<bool(float, const float4x4_t&,
         std::unordered_map<std::string, float4x4_t>&, std::string&)>;
     bool Preview_IsModelReference() const { return m_bModelReferencePreview; }
@@ -255,6 +258,7 @@ private:
     std::weak_ptr<Engine::CModel> m_PreviewModel;
     std::string m_strCompletedPreviewPatternId;
     bool m_bOwnPreviewClock = false, m_bPreviewPlaying = false, m_bPreviewPaused = false;
+    bool m_bPreviewClockAwaitingFirstUpdate = false;
     bool m_bPreviewPivotReady = false;
     bool m_bColliderResourcePreview = false;
     bool m_bModelReferencePreview = false;

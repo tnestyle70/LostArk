@@ -349,12 +349,16 @@ void CEffectAuthoringSequencer::Render_CompositionResources()
     ImGui::End();
 }
 
-void CEffectAuthoringSequencer::Render_BoxDetail()
+void CEffectAuthoringSequencer::Render_BoxDetail(const bool embedded)
 {
-    if (!m_BoxDetailOpen) return;
+    if (!embedded && !m_BoxDetailOpen) return;
+    const auto finish = [embedded]() { if (!embedded) ImGui::End(); };
     const std::string title = "Box Detail###EffectCompositionDetail." + std::to_string(reinterpret_cast<std::uintptr_t>(this));
-    ImGui::SetNextWindowSize({440.f, 470.f}, ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin(title.c_str(), &m_BoxDetailOpen)) { ImGui::End(); return; }
+    if (!embedded)
+    {
+        ImGui::SetNextWindowSize({440.f, 470.f}, ImGuiCond_FirstUseEver);
+        if (!ImGui::Begin(title.c_str(), &m_BoxDetailOpen)) { ImGui::End(); return; }
+    }
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
     if (m_SelectedTrack == TRACK_KIND::CAMERA)
     {
@@ -362,9 +366,9 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
         const auto previous = m_SelectedCamera;
         Render_CameraEditor();
         if (previous != m_SelectedCamera) Select_TimelineRow(TRACK_KIND::CAMERA, m_SelectedCamera);
-        ImGui::End(); return;
+        finish(); return;
     }
-    if (m_SelectedRowId.empty()) { ImGui::TextDisabled("Select a timeline box."); ImGui::End(); return; }
+    if (m_SelectedRowId.empty()) { ImGui::TextDisabled("Select a timeline box."); finish(); return; }
     if (m_Transient && !m_Transient->previewElementIds.empty() && m_SelectedRowId == m_Transient->id &&
         m_SelectedTrack == TRACK_KIND::EFFECT)
     {
@@ -376,7 +380,7 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
         ImGui::Text("Original document time: %u / %u ms", ClockMs(), row.durationMs);
         ImGui::TextWrapped("This temporary preview keeps the original element timing. Pause or scrub to inspect it; Stop returns to the saved sequence.");
         ImGui::TextDisabled("Edit the element in Effect Detail. This row is not saved or appended.");
-        ImGui::End(); return;
+        finish(); return;
     }
     if (!m_BoxDetailDraft || m_BoxDetailDraft->id != m_SelectedRowId || m_BoxDetailDraft->kind != m_SelectedTrack || !m_BoxDetailDraft->dirty)
     {
@@ -398,7 +402,7 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
         case TRACK_KIND::COLLIDER: copy(m_Colliders, draft->collider); break;
         case TRACK_KIND::CAMERA: break;
         }
-        if (!found) { ImGui::TextDisabled("The selected box is no longer available."); ImGui::End(); return; }
+        if (!found) { ImGui::TextDisabled("The selected box is no longer available."); finish(); return; }
         draft->effect.v1.reset(); draft->effect.v2 = 0; draft->effect.snapshot.reset();
         draft->effect.history.reset(); draft->effect.anchorHistory.reset();
         draft->sound.handle = 0; draft->sound.sampledAge = -1;
@@ -428,8 +432,12 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
         changed |= DetailMs("Start", row.startMs, commit); changed |= DetailMs("Duration", row.durationMs, commit, 1);
         if (draft.kind == TRACK_KIND::EFFECT)
         {
-            changed |= DetailVector("Offset (m)", row.offset, commit);
-            if (Render_AnchorChoice("Bone / socket", row.anchorSlotId)) changed = commit = true;
+            if (ImGui::Checkbox("World anchor", &row.worldAnchor))
+            { row.anchorSlotId = "root"; changed = commit = true; }
+            changed |= DetailVector(row.worldAnchor ? "World position (m)" : "Anchor offset (m)", row.offset, commit);
+            changed |= DetailVector("Rotation (degrees)", row.rotation, commit);
+            changed |= DetailVector("Scale", row.scale, commit, .001f, 1000.f);
+            if (!row.worldAnchor && Render_AnchorChoice("Bone / socket", row.anchorSlotId)) changed = commit = true;
         }
         if (ImGui::Checkbox("Mute", &row.muted)) changed = commit = true;
         break;
@@ -461,7 +469,7 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
     draft.dirty |= changed;
     if (ImGui::Button("Apply")) commit = true;
     ImGui::SameLine();
-    if (ImGui::Button("Revert")) { m_BoxDetailDraft.reset(); ImGui::End(); return; }
+    if (ImGui::Button("Revert")) { m_BoxDetailDraft.reset(); finish(); return; }
     if (commit && draft.dirty)
     {
         bool applied = false;
@@ -482,6 +490,6 @@ void CEffectAuthoringSequencer::Render_BoxDetail()
     if (ImGui::Button("Remove")) { if (Remove_SelectedRow()) m_BoxDetailDraft.reset(); }
     ImGui::EndDisabled();
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
-    ImGui::End();
+    finish();
 }
 }

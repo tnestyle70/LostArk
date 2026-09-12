@@ -569,10 +569,10 @@ const vector<LIGHT_DESC>& CGameInstance::Get_SceneLights() const
 HRESULT CGameInstance::Render_Lights(
 	shared_ptr<class CShader> pShader,
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-	bool_t bEnableSceneDirectionalShadow, LIGHT_RECEIVER ePassReceiver)
+	bool_t bEnableSceneDirectionalShadow, LIGHT_RECEIVER ePassReceiver, bool_t bSourceLightMask)
 {
 	return m_pLight_Manager->Render_Lights(
-		pShader, pVIBuffer, bEnableSceneDirectionalShadow, ePassReceiver);
+		pShader, pVIBuffer, bEnableSceneDirectionalShadow, ePassReceiver, bSourceLightMask);
 }
 
 HRESULT CGameInstance::Add_Font(const wstring& strFontTag, const tchar_t* pFontFilePath)

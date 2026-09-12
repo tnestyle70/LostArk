@@ -253,7 +253,7 @@ private:
 		/* One lane per EFFECT_RESOURCE_SLOT texture slot, indexed by
 		   slot - BASE_TEXTURE. Grew from 5 to 8 with base2/mask2/noise2. */
 		std::array<ComPtr<ID3D11ShaderResourceView>, 8> Textures;
-		std::array<ComPtr<ID3D11ShaderResourceView>, 9> SourceTextures;
+		std::array<ComPtr<ID3D11ShaderResourceView>, 10> SourceTextures;
 		uint32_t iSourceTextureMask = 0u;
 		uint32_t iSourceMaterialProfile = 0u;
 		uint32_t iShaderProgramIndex = UINT32_MAX;
@@ -963,6 +963,7 @@ private:
 	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;
 	bool_t m_bOccurrenceElementSelected = false;
 	EFFECT_GPU_RENDER_SUBMISSION_STATS m_LastRenderSubmissionStats;
+	float4_t m_vSourceActorPosition{};
 	bool_t m_bWorldMarkSubmissionPending = false;
 	uint64_t m_iWorldMarkSubmissionSerial = 0u;
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)

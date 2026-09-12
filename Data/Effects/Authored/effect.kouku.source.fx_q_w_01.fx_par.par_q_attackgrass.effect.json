@@ -1,0 +1,2684 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par.par_q_attackgrass",
+  "displayName": "par_q_attackgrass",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": [
+    {
+      "id": "kouku.201878704.53819462629f6308e693",
+      "displayName": "library-root | particlespriteemitter_10",
+      "groupId": "effect.kouku.source.fx_q_w_01.fx_par.par_q_attackgrass",
+      "sourceNode": "source-system/fx_q_w_01.fx_par.par_q_attackgrass/library-root|fx_q_w_01.fx_par.par_q_attackgrass.particlespriteemitter_10",
+      "visible": true,
+      "kind": "particle",
+      "resources": [],
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_q_w_01.fx_mi.fx_q_grass_02",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ma.954a945818de",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3329-native.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_light_01_ma",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "emissive_tex",
+              "sourceObjectPath": "fx_tex_04.fx_g_grass_01",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_04/fx_g_grass_01.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "use_nonalpha_chanel",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_subuv_tex",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_meshtype",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 0.30000001192092896,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": true
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            0.2,
+            0.2
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 95,
+          "spawnRatePerSecond": 60.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            5.0,
+            5.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "initialPositionMax": [
+            5.0,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMin": [
+            1.0,
+            1.0,
+            -3.0
+          ],
+          "initialVelocityMax": [
+            4.0,
+            6.0,
+            3.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": true,
+          "authoringApproximate": false,
+          "sourceScale": {
+            "count": 1,
+            "size": 1,
+            "lifeTime": 1,
+            "speed": 1,
+            "rotation": 1,
+            "alpha": 1,
+            "spawnDelay": 1
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "sprite",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.30000001192092896,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0.0,
+            "countMinimum": 20,
+            "countMaximum": 20
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerequired_11",
+            "className": "particlemodulerequired",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerequired_11",
+            "literals": [
+              {
+                "propertyPath": "ballowimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bkilloncompleted",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsquareimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "buselegacyemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "busemaxdrawcount",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 0.30000001192092896
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "farculldistance",
+                "kind": "number",
+                "value": 2100.0
+              },
+              {
+                "propertyPath": "farfadedistance",
+                "kind": "number",
+                "value": 2000.0
+              },
+              {
+                "propertyPath": "interpolationmethod",
+                "kind": "string",
+                "value": "psuvim_random"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "material",
+                "kind": "number",
+                "value": 4066.0
+              },
+              {
+                "propertyPath": "material.objectpath",
+                "kind": "string",
+                "value": "fx_q_w_01.fx_mi.fx_q_grass_02"
+              },
+              {
+                "propertyPath": "maxdrawcount",
+                "kind": "number",
+                "value": 500.0
+              },
+              {
+                "propertyPath": "nearculldistance",
+                "kind": "number",
+                "value": 10.0
+              },
+              {
+                "propertyPath": "nearfadedistance",
+                "kind": "number",
+                "value": 150.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.z",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.z",
+                "kind": "number",
+                "value": 100.0
+              },
+              {
+                "propertyPath": "offsetcenterx",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "offsetcentery",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "randomimagetime",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_horizontal",
+                "kind": "number",
+                "value": 2.0
+              },
+              {
+                "propertyPath": "subimages_vertical",
+                "kind": "number",
+                "value": 2.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulelifetime_11",
+            "className": "particlemodulelifetime",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulelifetime_11",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  5.0,
+                  5.0,
+                  5.0,
+                  5.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulesize_seeded_1",
+            "className": "particlemodulesize_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulesize_seeded_1",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": 7299.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulesize_seeded_1.distributionvectoruniformrange_0"
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "distributionvectoruniformrange",
+                "sourceObjectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulesize_seeded_1.distributionvectoruniformrange_0",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  20.0,
+                  -50.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  50.0,
+                  50.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolor_seeded_2",
+            "className": "particlemodulecolor_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolor_seeded_2",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bclampalpha",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": 3253.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.4000000059604645,
+                  0.699999988079071,
+                  0.4000000059604645,
+                  0.699999988079071,
+                  0.4000000059604645,
+                  0.699999988079071
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  2.5,
+                  1.5,
+                  1.0,
+                  1.0,
+                  2.5,
+                  1.0,
+                  1.0,
+                  1.5,
+                  1.0,
+                  1.0,
+                  2.5,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemoduleparameterdynamic_6",
+            "className": "particlemoduleparameterdynamic",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemoduleparameterdynamic_6",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].paramname",
+                "kind": "string",
+                "value": "emitte_str"
+              },
+              {
+                "propertyPath": "dynamicparams[0].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramname",
+                "kind": "string",
+                "value": "flicker timescale"
+              },
+              {
+                "propertyPath": "dynamicparams[1].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramname",
+                "kind": "string",
+                "value": "_"
+              },
+              {
+                "propertyPath": "dynamicparams[2].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramname",
+                "kind": "string",
+                "value": "_"
+              },
+              {
+                "propertyPath": "dynamicparams[3].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "updateflags",
+                "kind": "number",
+                "value": 15.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "dynamicparams[0].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.04753987863659859,
+                  1.0002490282058716,
+                  0.5,
+                  0.6429328322410583,
+                  0.14196933805942535,
+                  0.9733994603157043,
+                  0.9134739637374878,
+                  0.6829317212104797,
+                  0.402776837348938,
+                  0.16777749359607697,
+                  0.07248573005199432,
+                  0.14958308637142181,
+                  0.3330977261066437,
+                  0.555980384349823,
+                  0.7511809468269348,
+                  0.8516501188278198,
+                  0.3024654984474182,
+                  0.6005309820175171,
+                  0.784146249294281,
+                  0.056494664400815964,
+                  0.09841066598892212,
+                  0.2827703654766083,
+                  0.5000007152557373
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  10.0,
+                  0.0,
+                  10.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  25.0,
+                  0.0,
+                  25.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulesubuv_6",
+            "className": "particlemodulesubuv",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulesubuv_6",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "subimageindex",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  3.0,
+                  0.0,
+                  3.0,
+                  0.0,
+                  3.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulevelocity_seeded_1",
+            "className": "particlemodulevelocity_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulevelocity_seeded_1",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": -2147483648.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startvelocity",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  -300.0,
+                  600.0,
+                  100.0,
+                  -300.0,
+                  100.0,
+                  400.0,
+                  300.0,
+                  600.0,
+                  100.0,
+                  -300.0,
+                  100.0,
+                  400.0,
+                  300.0,
+                  600.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startvelocityradial",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulelocation_seeded_1",
+            "className": "particlemodulelocation_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulelocation_seeded_1",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupported3ddrawmode",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": 3658.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startlocation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 3.3333332538604736,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  500.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  500.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulevelocityoverlifetime_2",
+            "className": "particlemodulevelocityoverlifetime",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulevelocityoverlifetime_2",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "veloverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  -0.3862864375114441,
+                  1.596534013748169,
+                  1.0,
+                  1.0,
+                  1.596534013748169,
+                  0.9335528612136841,
+                  0.9335528612136841,
+                  1.1603353023529053,
+                  0.7651827335357666,
+                  0.7651827335357666,
+                  0.7443538904190063,
+                  0.5413464307785034,
+                  0.5413464307785034,
+                  0.37154752016067505,
+                  0.30850088596343994,
+                  0.30850088596343994,
+                  0.06487393379211426,
+                  0.1131032258272171,
+                  0.1131032258272171,
+                  -0.15270832180976868,
+                  0.001609878265298903,
+                  0.001609878265298903,
+                  -0.2582421898841858,
+                  -0.04196367412805557,
+                  -0.04196367412805557,
+                  -0.293147474527359,
+                  -0.072653628885746,
+                  -0.072653628885746,
+                  -0.32210657000541687,
+                  -0.09205346554517746,
+                  -0.09205346554517746,
+                  -0.34539932012557983,
+                  -0.1017005667090416,
+                  -0.1017005667090416,
+                  -0.3632435202598572,
+                  -0.10313235223293304,
+                  -0.10313235223293304,
+                  -0.37585675716400146,
+                  -0.09788622707128525,
+                  -0.09788622707128525,
+                  -0.3834567964076996,
+                  -0.08749955147504807,
+                  -0.08749955147504807,
+                  -0.3862612843513489,
+                  -0.0735098123550415,
+                  -0.0735098123550415,
+                  -0.38448798656463623,
+                  -0.05745429918169975,
+                  -0.05745429918169975,
+                  -0.378354549407959,
+                  -0.040870487689971924,
+                  -0.040870487689971924,
+                  -0.36807864904403687,
+                  -0.02529573254287243,
+                  -0.02529573254287243,
+                  -0.353877991437912,
+                  -0.012267503887414932,
+                  -0.012267503887414932,
+                  -0.33597034215927124,
+                  -0.003323073498904705,
+                  -0.003323073498904705,
+                  -0.3145732879638672,
+                  0.0,
+                  0.0,
+                  -0.2899045944213867
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerotation_seeded_1",
+            "className": "particlemodulerotation_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerotation_seeded_1",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": -2147483648.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startrotation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerotationrate_seeded_0",
+            "className": "particlemodulerotationrate_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerotationrate_seeded_0",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": -2147483648.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startrotationrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  -1.0,
+                  1.0,
+                  -1.0,
+                  1.0,
+                  -1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemoduleorbit_2",
+            "className": "particlemoduleorbit",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemoduleorbit_2",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "chainmode",
+                "kind": "string",
+                "value": "eochainmode_link"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "offsetoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "offsetoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "offsetoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "rotationoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "rotationrateoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "offsetamount",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "rotationamount",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "rotationrateamount",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 3.3333332538604736,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.5,
+                  0.5,
+                  0.5,
+                  0.5,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulelocationprimitivecylinder_seeded_1",
+            "className": "particlemodulelocationprimitivecylinder_seeded",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulelocationprimitivecylinder_seeded_1",
+            "literals": [
+              {
+                "propertyPath": "badjustforworldspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "brequiresloopingnotification",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupported3ddrawmode",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupportsrandomseed",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "heightaxis",
+                "kind": "string",
+                "value": "pmlpc_heightaxis_z"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "negative_x",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "negative_y",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "negative_z",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "positive_x",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "positive_y",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "positive_z",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "radialvelocity",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.binstanceseedisindex",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.brandomlyselectseedarray",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.bresetseedonemitterlooping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.parametername",
+                "kind": "string",
+                "value": "none"
+              },
+              {
+                "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+                "kind": "number",
+                "value": -2147483648.0
+              },
+              {
+                "propertyPath": "randomseedinfo.size",
+                "kind": "number",
+                "value": 40.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startheight",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startlocation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "startradius",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  80.0,
+                  80.0,
+                  80.0,
+                  80.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "velocityscale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolorscaleoverlife_9",
+            "className": "particlemodulecolorscaleoverlife",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolorscaleoverlife_9",
+            "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolorscaleoverlife_9.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolorscaleoverlife_9.distributionvectorparticleparameter_0"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "alphascaleoverlife",
+                "sourceClass": "distributionfloatparticleparameter",
+                "sourceObjectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolorscaleoverlife_9.distributionfloatparticleparameter_0",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  1.0,
+                  0,
+                  0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1.0,
+                  0,
+                  0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "colorscaleoverlife",
+                "sourceClass": "distributionvectorparticleparameter",
+                "sourceObjectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulecolorscaleoverlife_9.distributionvectorparticleparameter_0",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 1.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  0
+                ],
+                "defaultMaximum": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerotationratemultiplylife_0",
+            "className": "particlemodulerotationratemultiplylife",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulerotationratemultiplylife_0",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifemultiplier",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 2.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  1.0,
+                  0.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulespawn_16",
+            "className": "particlemodulespawn",
+            "objectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlemodulespawn_16",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessburstlist",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessspawnrate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "burstlist[0].count",
+                "kind": "number",
+                "value": 20.0
+              },
+              {
+                "propertyPath": "burstlist[0].countlow",
+                "kind": "number",
+                "value": -1.0
+              },
+              {
+                "propertyPath": "burstlist[0].time",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 1.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  60.0,
+                  60.0,
+                  60.0,
+                  60.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  4.0,
+                  4.0,
+                  4.0,
+                  4.0
+                ],
+                "keys": []
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "fx_q_w_01.fx_par.par_q_attackgrass.particlespriteemitter_10",
+        "sourceActionCueId": "source-system/fx_q_w_01.fx_par.par_q_attackgrass/library-root",
+        "sourceEventId": "source-system/fx_q_w_01.fx_par.par_q_attackgrass/library-root",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    }
+  ]
+}

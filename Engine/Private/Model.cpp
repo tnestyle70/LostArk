@@ -693,11 +693,22 @@ uint32_t CModel::Pose_BonesFrom(const CModel& source)
         m_Bones[index]->Update_CombinedTransformationMatrix(
             m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
     }
+    Invalidate_SkinPalettes();
     return supplied;
+}
+
+void CModel::Invalidate_SkinPalettes()
+{
+    if (++m_iBonePoseRevision == 0u)
+    {
+        m_SkinPalettes.clear();
+        m_iBonePoseRevision = 1u;
+    }
 }
 
 void CModel::Refresh_BoneCombinedMatrices()
 {
+    Invalidate_SkinPalettes();
     Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Bones.Combine");
     for (auto& pBone : m_Bones)
     {
@@ -1125,20 +1136,33 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     }
 
     /* 뼈들 자체 행렬은 갱신이 됐지만, 최종행렬은 아직 미완성(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
-    {
-        Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.Bones.Combine");
-    for (auto& pBone : m_Bones)
-    {
-        pBone->Update_CombinedTransformationMatrix(m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
-    }
-    }
+    Refresh_BoneCombinedMatrices();
 
     return isFinished;
 }
 
 HRESULT CModel::Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex)
 {
-   return m_Meshes[iMeshIndex]->Bind_Resource(pShader, pConstantName, m_Bones);    
+    if (nullptr == pShader || iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
+        return E_INVALIDARG;
+
+    const CMesh& mesh = *m_Meshes[iMeshIndex];
+    // WModel meshes share the full skeleton palette; Assimp meshes retain
+    // their own bone subsets and inverse-bind offsets in slots 1..N.
+    const size_t paletteIndex = mesh.m_bUsesSkeletonPalette ? 0u : iMeshIndex + 1u;
+    if (m_SkinPalettes.size() <= paletteIndex)
+        m_SkinPalettes.resize(paletteIndex + 1u);
+    SKIN_PALETTE& palette = m_SkinPalettes[paletteIndex];
+    if (palette.iPoseRevision != m_iBonePoseRevision)
+    {
+        Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Animation.SkinPalette.Build");
+        palette.Matrices.resize(mesh.m_iNumBones);
+        mesh.Build_SkinPalette(m_Bones, palette.Matrices.data());
+        palette.iPoseRevision = m_iBonePoseRevision;
+    }
+
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Animation.SkinPalette.Bind");
+    return pShader->Bind_Matrices(pConstantName, palette.Matrices.data(), mesh.m_iNumBones);
 }
 
 HRESULT CModel::Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex)
@@ -2141,9 +2165,7 @@ HRESULT CModel::Ready_BinaryModel(
 		return E_FAIL;
 	}
 
-	for (auto& pBone : m_Bones)
-		pBone->Update_CombinedTransformationMatrix(
-			m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+	Refresh_BoneCombinedMatrices();
 
 	if (!asset.animations.empty())
 	{

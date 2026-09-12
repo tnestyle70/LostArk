@@ -12,10 +12,6 @@ namespace
 	constexpr const char* CLICK_EFFECT_ID = "effect.world.mouse_click";
 	constexpr const char* DESTINATION_EFFECT_ID = "effect.world.move_destination";
 	constexpr f32_t CLICK_DURATION_SECONDS = 1.2f;
-	constexpr f32_t DESTINATION_LOOP_SECONDS = 7.f;
-	constexpr f32_t DESTINATION_TIMEOUT_SECONDS = 15.f;
-	constexpr f32_t MOVEMENT_OBSERVATION_GRACE_SECONDS = 0.75f;
-	constexpr f32_t ARRIVAL_RADIUS = 0.35f;
 }
 
 bool_t Client::CClickMoveEffect::Uses_LevelMarkers(const LEVEL level)
@@ -76,24 +72,6 @@ void Client::CClickMoveEffect::Report_Failure(const std::string& status)
 	OutputDebugStringA(("[ClickMoveEffect] Cosmetic feedback isolated: " + status + "\n").c_str());
 }
 
-bool_t Client::CClickMoveEffect::Sample_Destination(const bool_t rebuildHistory)
-{
-	// Capture the immutable fixed world root, never the lifetime of this object.
-	// Supplying history allows incremental fixed steps; a 7-second rewind replays
-	// the same prepared occurrence, without the Tool Seek(paused=true) path.
-	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
-		[root = m_RootWorld](f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample,
-			std::string& status)
-		{
-			sample.RootWorld = root;
-			sample.SourceAnchorWorlds.clear();
-			status.clear();
-			return true;
-		};
-	return CEffectPresentationService::Seek_WorldRoot(m_DestinationHandle,
-		std::fmod(m_fDestinationSeconds, DESTINATION_LOOP_SECONDS), provider, rebuildHistory);
-}
-
 void Client::CClickMoveEffect::Play(const float3_t& worldPosition,
 	const shared_ptr<CCharacter>& character)
 {
@@ -104,8 +82,8 @@ void Client::CClickMoveEffect::Play(const float3_t& worldPosition,
 	// The Controller calls this only after Request_MoveGoal succeeds. That is a
 	// queued command receipt, not a Server path/goal-acceptance acknowledgement.
 	m_pCharacter = character;
-	m_WorldPosition = worldPosition;
-	XMStoreFloat4x4(&m_RootWorld, XMMatrixTranslation(worldPosition.x,
+	float4x4_t rootWorld{};
+	XMStoreFloat4x4(&rootWorld, XMMatrixTranslation(worldPosition.x,
 		worldPosition.y + 0.035f, worldPosition.z));
 	m_fClickSeconds = 0.f;
 	CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
@@ -114,55 +92,22 @@ void Client::CClickMoveEffect::Play(const float3_t& worldPosition,
 	desc.iLevelIndex = m_iLevelIndex;
 	desc.strPlacementId = "player.move.click";
 	desc.strEffectAssetId = CLICK_EFFECT_ID;
-	desc.RootWorld = m_RootWorld;
+	desc.RootWorld = rootWorld;
 	std::string status;
 	if (!CEffectPresentationService::Spawn_LevelPlacement(desc, m_ClickHandle, status))
 		Report_Failure(status);
-
-	if (m_iLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA))
-	{
-		Clear_Destination();
-		return;
-	}
-	m_fDestinationSeconds = 0.f;
-	m_hasObservedMovement = false;
-	if (m_DestinationHandle.Is_Valid())
-	{
-		if (CEffectPresentationService::Update_WorldRoot(m_DestinationHandle, m_RootWorld) &&
-			Sample_Destination(true)) return;
-		Clear_Destination();
-	}
-	desc.strPlacementId = "player.move.destination";
-	desc.strEffectAssetId = DESTINATION_EFFECT_ID;
-	desc.bExternallySampled = true;
-	if (!CEffectPresentationService::Spawn_LevelPlacement(desc, m_DestinationHandle, status))
-		Report_Failure(status);
-	else if (!Sample_Destination(true))
-	{
-		Report_Failure("destination initial sample was rejected");
-		Clear_Destination();
-	}
-}
-
-void Client::CClickMoveEffect::Clear_Destination()
-{
-	CEffectPresentationService::Stop_WorldRoot(m_DestinationHandle);
-	m_DestinationHandle = {};
-	m_fDestinationSeconds = 0.f;
-	m_hasObservedMovement = false;
 }
 
 void Client::CClickMoveEffect::Clear()
 {
 	CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
 	m_ClickHandle = {};
-	Clear_Destination();
 	m_pCharacter.reset();
 }
 
 void Client::CClickMoveEffect::Late_Update(const f32_t fTimeDelta)
 {
-	if (!m_ClickHandle.Is_Valid() && !m_DestinationHandle.Is_Valid()) return;
+	if (!m_ClickHandle.Is_Valid()) return;
 	const shared_ptr<CCharacter> character = m_pCharacter.lock();
 	const auto& player = CCombatHUDViewModel::Get().Get_Player();
 	if (!character || CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex ||
@@ -177,35 +122,6 @@ void Client::CClickMoveEffect::Late_Update(const f32_t fTimeDelta)
 	{
 		CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
 		m_ClickHandle = {};
-	}
-	if (!m_DestinationHandle.Is_Valid()) return;
-	m_fDestinationSeconds += fTimeDelta;
-	const shared_ptr<CTransform> transform = character->Get_Transform();
-	if (!transform)
-	{
-		Clear_Destination();
-		return;
-	}
-	const vector_t position = transform->Get_State(STATE::POSITION);
-	const f32_t dx = XMVectorGetX(position) - m_WorldPosition.x;
-	const f32_t dz = XMVectorGetZ(position) - m_WorldPosition.z;
-	m_hasObservedMovement = m_hasObservedMovement || character->Is_Moving();
-	// Replicated locomotion only bounds this cosmetic lifetime. A rejected,
-	// projected, or interrupted move has no durable local destination marker.
-	if (!std::isfinite(dx) || !std::isfinite(dz) ||
-		dx * dx + dz * dz <= ARRIVAL_RADIUS * ARRIVAL_RADIUS ||
-		m_fDestinationSeconds >= DESTINATION_TIMEOUT_SECONDS ||
-		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
-		(!character->Is_Moving() && (m_hasObservedMovement ||
-			m_fDestinationSeconds >= MOVEMENT_OBSERVATION_GRACE_SECONDS)))
-	{
-		Clear_Destination();
-		return;
-	}
-	if (!Sample_Destination(false))
-	{
-		Report_Failure("destination handle expired or was removed");
-		Clear_Destination();
 	}
 }
 

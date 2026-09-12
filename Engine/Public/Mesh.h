@@ -30,7 +30,6 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 
 public:
-	HRESULT Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pConstantName, const vector<shared_ptr<class CBone>>& Bones);
 	HRESULT Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 		uint32_t iInstanceStride, uint32_t iNumInstances,
 		uint32_t iInstanceByteOffset = 0u);
@@ -74,7 +73,8 @@ private:
 	uint32_t				m_iNumBones = {};
 	vector<uint32_t>		m_BoneIndices;
 	vector<float4x4_t>		m_OffsetMatrices;
-	float4x4_t				m_BoneMatrices[512];
+	// Binary meshes use the same ordered inverse-bind palette within one model.
+	bool_t m_bUsesSkeletonPalette = false;
 
 	/* The unmorphed rest position/normal per vertex, in this mesh's own local index space,
 	read back off the GPU by Make_VertexBuffer_Unique(). Null until then. Held by
@@ -90,6 +90,8 @@ private:
 	vector<uint32_t>		m_TouchedVertexIndices;
 
 private:
+	void Build_SkinPalette(const vector<shared_ptr<class CBone>>& Bones,
+		float4x4_t* pOutMatrices) const;
 	HRESULT Ready_VertexBuffer_NonAnim(const aiMesh* pAIMesh, fmatrix_t PreTransformMatrix);
 	HRESULT Ready_VertexBuffer_Anim(const aiMesh* pAIMesh, const vector<shared_ptr<class CBone>>& Bones);
 

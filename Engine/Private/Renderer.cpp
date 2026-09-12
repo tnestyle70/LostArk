@@ -68,7 +68,11 @@ namespace
 	static_assert(15u == DEFERRED_PASS_CHROMATIC_ABERRATION);
 	static_assert(16u == ETOUI(DEFERRED::SPOT));
 	static_assert(17u == ETOUI(DEFERRED::PRESENTATION_DISPLAY_OVERLAY));
-	static_assert(18u == ETOUI(DEFERRED::END));
+	static_assert(18u == ETOUI(DEFERRED::SOURCE_LIGHT_MASK));
+	static_assert(19u == ETOUI(DEFERRED::SOURCE_DIRECTIONAL));
+	static_assert(20u == ETOUI(DEFERRED::SOURCE_POINT));
+	static_assert(21u == ETOUI(DEFERRED::SOURCE_SPOT));
+	static_assert(22u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)
@@ -540,14 +544,14 @@ HRESULT CRenderer::Draw()
 		return FailFrame("Ready_ScenePostTargets", hResult);
 	{
 		CProfilerScope scope(pProfiler, "Render.Shadow");
-		CProfilerGpuScope gpuScope(pProfiler, "Render.Shadow");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Shadow", true);
 		hResult = Render_Shadow();
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
 	{
 		CProfilerScope scope(pProfiler, "Render.NonBlend");
-		CProfilerGpuScope gpuScope(pProfiler, "Render.NonBlend");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.NonBlend", true);
 		hResult = Render_NonBlend();
 	}
 	if (FAILED(hResult))
@@ -555,14 +559,14 @@ HRESULT CRenderer::Draw()
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
 		CProfilerScope scope(pProfiler, "Render.SSAO");
-		CProfilerGpuScope gpuScope(pProfiler, "Render.SSAO");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.SSAO", true);
 		hResult = Render_SSAO();
 		if (FAILED(hResult))
 			return FailFrame("Render_SSAO", hResult);
 	}
 	{
 		CProfilerScope scope(pProfiler, "Render.Lights");
-		CProfilerGpuScope gpuScope(pProfiler, "Render.Lights");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Lights", true);
 		hResult = Render_Lights();
 	}
 	if (FAILED(hResult))
@@ -640,7 +644,7 @@ HRESULT CRenderer::Draw()
 	/* UI is authored in display space, so it stays out of the HDR target. */
 	{
 		CProfilerScope scope(pProfiler, "Render.UI");
-		CProfilerGpuScope gpuScope(pProfiler, "Render.UI");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.UI", true);
 		hResult = Render_UI();
 	}
 	if (FAILED(hResult))
@@ -923,11 +927,48 @@ HRESULT CRenderer::Render_Lights()
     // The ordinary pass skips marker-5 pixels. Only materials submitted by
     // visible mesh draws get a source light pass; prototypes never enter here.
     const uint32_t sourceCount = CMaterial::Get_SourceCharacterFrameCount();
-    for (uint32_t index = 0u; SUCCEEDED(hResult) && index < sourceCount; ++index)
+    if (SUCCEEDED(hResult) && sourceCount != 0u)
     {
-        if (FAILED(CMaterial::Bind_SourceCharacterLight(m_pShader, index)) ||
-            FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer, bShadowEnabled, LIGHT_RECEIVER::SOURCE_CHARACTER)))
-            hResult = E_FAIL;
+        // Effect outlines own the scene stencil. Only this separate DSV receives
+        // the marker-5 mask, and the original light targets are restored on failure.
+        ID3D11RenderTargetView* rawTargets[2]{};
+        ComPtr<ID3D11DepthStencilView> originalDepth;
+        m_pContext->OMGetRenderTargets(2u, rawTargets, originalDepth.GetAddressOf());
+        ComPtr<ID3D11RenderTargetView> targets[2];
+        for (uint32_t index = 0u; index < 2u; ++index) targets[index].Attach(rawTargets[index]);
+        D3D11_TEXTURE2D_DESC targetDesc{};
+        if (targets[0])
+        {
+            ComPtr<ID3D11Resource> resource;
+            ComPtr<ID3D11Texture2D> texture;
+            targets[0]->GetResource(resource.GetAddressOf());
+            if (resource && SUCCEEDED(resource.As(&texture))) texture->GetDesc(&targetDesc);
+        }
+        bool_t useSourceMask = false;
+        if (targetDesc.SampleDesc.Count == 1u &&
+            S_OK == Ready_SourceLightMask(targetDesc.Width, targetDesc.Height))
+        {
+            m_pContext->ClearDepthStencilView(m_pSourceLightMaskDSV.Get(), D3D11_CLEAR_STENCIL, 1.f, 0u);
+            m_pContext->OMSetRenderTargets(0u, nullptr, m_pSourceLightMaskDSV.Get());
+            HRESULT maskResult = m_pShader->Begin(ETOUI(DEFERRED::SOURCE_LIGHT_MASK));
+            if (SUCCEEDED(maskResult)) maskResult = m_pVIBuffer->Render();
+            useSourceMask = SUCCEEDED(maskResult);
+            if (!useSourceMask)
+            {
+                m_iSourceLightMaskFailedWidth = targetDesc.Width;
+                m_iSourceLightMaskFailedHeight = targetDesc.Height;
+                WriteRendererFailure("SourceLightMask_DrawFallback", maskResult);
+            }
+            m_pContext->OMSetRenderTargets(2u, rawTargets,
+                useSourceMask ? m_pSourceLightMaskDSV.Get() : originalDepth.Get());
+        }
+        for (uint32_t index = 0u; SUCCEEDED(hResult) && index < sourceCount; ++index)
+        {
+            if (FAILED(CMaterial::Bind_SourceCharacterLight(m_pShader, index)) ||
+                FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer, bShadowEnabled,
+                    LIGHT_RECEIVER::SOURCE_CHARACTER, useSourceMask))) hResult = E_FAIL;
+        }
+        m_pContext->OMSetRenderTargets(2u, rawTargets, originalDepth.Get());
     }
     if (FAILED(m_pShader->Bind_RawValue("g_SourceCharacterProgram", &noSourceCharacter, sizeof(noSourceCharacter))) ||
         FAILED(m_pShader->Bind_RawValue("g_SourceCharacterRow", &noSourceCharacter, sizeof(noSourceCharacter))))
@@ -1098,7 +1139,7 @@ HRESULT CRenderer::Render_Blend()
 {
     CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     CProfilerScope cpuScope(profiler, "Render.Blend");
-    CProfilerGpuScope gpuScope(profiler, "Render.Blend");
+    CProfilerGpuScope gpuScope(profiler, "Render.Blend", true);
 	HRESULT hFirstFailure = S_OK;
 
 	/* Translucent surfaces have to be drawn far to near or they overwrite each
@@ -1659,6 +1700,37 @@ HRESULT CRenderer::Render_UI()
 	m_RenderObjects[ETOUI(RENDERGROUP::UI)].clear();
 
 	return S_OK;
+}
+
+HRESULT CRenderer::Ready_SourceLightMask(uint32_t width, uint32_t height)
+{
+    if (width == 0u || height == 0u) return S_FALSE;
+    if (width == m_iSourceLightMaskFailedWidth && height == m_iSourceLightMaskFailedHeight)
+        return S_FALSE;
+    if (m_pSourceLightMaskDSV && width == m_iSourceLightMaskWidth && height == m_iSourceLightMaskHeight)
+        return S_OK;
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = desc.ArraySize = 1u;
+    desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    desc.SampleDesc.Count = 1u;
+    desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    ComPtr<ID3D11Texture2D> texture;
+    ComPtr<ID3D11DepthStencilView> depth;
+    HRESULT result = m_pDevice->CreateTexture2D(&desc, nullptr, texture.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pDevice->CreateDepthStencilView(texture.Get(), nullptr, depth.GetAddressOf());
+    if (FAILED(result))
+    {
+        m_iSourceLightMaskFailedWidth = width;
+        m_iSourceLightMaskFailedHeight = height;
+        WriteRendererFailure("SourceLightMask_ResourceFallback", result);
+        return S_FALSE;
+    }
+    m_pSourceLightMaskDSV = std::move(depth);
+    m_iSourceLightMaskWidth = width;
+    m_iSourceLightMaskHeight = height;
+    return S_OK;
 }
 
 HRESULT CRenderer::Ready_Shadow_Resources()

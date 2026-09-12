@@ -333,6 +333,15 @@ private:
 	vector<shared_ptr<class CMaterial>>	m_Materials;
 
 	vector<shared_ptr<class CBone>>		m_Bones;
+	// Pose data belongs to the model clone, while mesh geometry remains shared.
+	struct SKIN_PALETTE final
+	{
+		vector<float4x4_t> Matrices;
+		uint64_t iPoseRevision = 0u;
+	};
+	vector<SKIN_PALETTE> m_SkinPalettes;
+	uint64_t m_iBonePoseRevision = 1u;
+	void Invalidate_SkinPalettes();
 	/* Pose_BonesFrom's name join, kept because it is the same two skeletons every frame.
 	-1 marks a bone the source does not have. */
 	vector<int32_t>						m_SourcePoseBoneIndices;

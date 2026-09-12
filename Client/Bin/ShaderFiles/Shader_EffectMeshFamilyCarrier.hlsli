@@ -135,7 +135,7 @@ VS_OUT Build_EffectMeshVertex(VS_IN input, float4x4 world, float4x4 normalMatrix
     output.sourceLightBasisY=float3(dot(input.tangent,localLightY),dot(input.binormal,localLightY),dot(input.normal,localLightY));
     output.sourceLightBasisZ=float3(dot(input.tangent,localLightZ),dot(input.binormal,localLightZ),dot(input.normal,localLightZ));
 #endif
-    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2495u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 42u == g_SourceMaterialProfile || 50u == g_SourceMaterialProfile ||
+    if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 42u == g_SourceMaterialProfile || 50u == g_SourceMaterialProfile ||
         60u == g_SourceMaterialProfile || 66u == g_SourceMaterialProfile || 70u == g_SourceMaterialProfile ||
         84u == g_SourceMaterialProfile ||
         87u == g_SourceMaterialProfile ||
@@ -396,7 +396,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 7
-    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2495u)))
+    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u)))
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.carrierUV;
@@ -416,6 +416,17 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
         nativeInput.color = input.particleColor + g_ColorOffset;
         nativeInput.dynamicParameter = input.dynamicParameter;
         nativeInput.frontFace = frontFace;
+        if (g_SourceMaterialProfile >= 2304u)
+        {
+            nativeInput.sourceCameraPosition = float3(g_CameraPosition.x, -g_CameraPosition.z, g_CameraPosition.y) * 100.f;
+            nativeInput.sourceActorPosition = g_KoukuSourceActorPosition.xyz;
+            [unroll] for (uint i = 0u; i < 4u; ++i) nativeInput.sourceProjection[i] = g_KoukuSourceProjection[i];
+            // Current scenes expose ambient light; no UE skylight hemisphere owner.
+            nativeInput.skyUpperColor = 0.f;
+            nativeInput.skyLowerColor = 0.f;
+            nativeInput.ambientColor = g_KoukuSourceAmbient.xyz;
+            nativeInput.skyIntensity = g_KoukuSourceAmbient.w;
+        }
         return Shade_EffectArtistNative(g_SourceMaterialProfile, nativeInput);
     }
 #endif

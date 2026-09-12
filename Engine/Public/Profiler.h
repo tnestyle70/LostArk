@@ -95,6 +95,8 @@ struct FProfilerGpuScopeSample final
     double BeginMs = 0.0;
     double EndMs = 0.0;
     double DurationMs = 0.0;
+    bool PipelineValid = false;
+    uint64_t PSInvocations = 0, VSInvocations = 0;
 };
 
 /* Main-thread animation evaluation joined to successful model submissions in
@@ -202,6 +204,7 @@ struct FProfilerGpuScopeAggregate final
     double InclusiveMs = 0.0;
     double MaxFrameMs = 0.0;
     double P95FrameMs = 0.0;
+    uint64_t PipelineSamples = 0, PSInvocations = 0, VSInvocations = 0;
 };
 
 class ENGINE_DLL CProfiler final
@@ -210,6 +213,7 @@ public:
     static constexpr uint32_t GPU_QUERY_RING_SIZE = 8;
     static constexpr uint32_t GPU_READ_LATENCY = 4;
     static constexpr uint32_t MAX_GPU_SCOPES_PER_FRAME = 128;
+    static constexpr uint32_t MAX_GPU_PIPELINE_SCOPES_PER_FRAME = 8;
     static constexpr size_t MAX_ANIMATION_MODELS_PER_FRAME = 16384;
     static constexpr size_t MAX_HISTORY_FRAMES = 1200;
     static constexpr size_t MAX_LONG_OPERATIONS = 256;
@@ -236,7 +240,7 @@ public:
 
     /* Immediate-context main thread only; disabled/unsupported/overflow scopes
        return UINT32_MAX. No query creation or GPU wait occurs on this path. */
-    uint32_t Begin_GpuScope(std::string_view name);
+    uint32_t Begin_GpuScope(std::string_view name, bool collectPipeline = false);
     void End_GpuScope(uint32_t token) noexcept;
 
     FProfilerModelAnimationToken Begin_ModelAnimation() const noexcept;
@@ -282,6 +286,7 @@ private:
         ComPtr<ID3D11Query> Begin;
         ComPtr<ID3D11Query> End;
         uint32_t Token = UINT32_MAX;
+        uint32_t PipelineIndex = UINT32_MAX;
         uint32_t NameId = 0;
         uint32_t Depth = 0;
         bool Ended = false;
@@ -298,6 +303,8 @@ private:
         bool Pending = false;
         bool FrameEnded = false;
         uint32_t ScopeCount = 0;
+        uint32_t PipelineScopeCount = 0;
+        std::array<ComPtr<ID3D11Query>, MAX_GPU_PIPELINE_SCOPES_PER_FRAME> PassPipelines{};
         uint32_t OpenScopeCount = 0;
         std::array<uint32_t, MAX_GPU_SCOPES_PER_FRAME> OpenScopes{};
         std::array<FGpuScopeQuery, MAX_GPU_SCOPES_PER_FRAME> Scopes{};
@@ -328,6 +335,7 @@ private:
     std::array<FGpuQuerySlot, GPU_QUERY_RING_SIZE> m_GpuSlots{};
     bool m_GpuQueriesAvailable = false;
     bool m_GpuScopeQueriesAvailable = false;
+    bool m_GpuPipelineQueriesAvailable = false;
     uint32_t m_ActiveGpuSlot = UINT32_MAX;
     uint32_t m_NextGpuScopeToken = 0;
     std::atomic_bool m_FrameActive = false;
@@ -379,9 +387,9 @@ private:
 class ENGINE_DLL CProfilerGpuScope final
 {
 public:
-    CProfilerGpuScope(CProfiler* profiler, std::string_view name)
+    CProfilerGpuScope(CProfiler* profiler, std::string_view name, bool collectPipeline = false)
         : m_pProfiler(profiler)
-        , m_Token(profiler != nullptr ? profiler->Begin_GpuScope(name) : UINT32_MAX)
+        , m_Token(profiler != nullptr ? profiler->Begin_GpuScope(name, collectPipeline) : UINT32_MAX)
     {}
     ~CProfilerGpuScope()
     {

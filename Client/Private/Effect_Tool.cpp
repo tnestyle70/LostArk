@@ -3919,7 +3919,7 @@ void Client::CEffect_Tool::Render()
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.DataFilesWindow");
         Render_DataFilesWindow();
-    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Render_Sequencer();
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Render_Sequencer("Effect Action Benchmark###EffectAuthoring", true);
     }
     {
         Engine::CProfilerScope TrimProfile(
@@ -11961,7 +11961,7 @@ bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
         const auto requests = Collect_ToolSourceAnchorRequests(draft);
         const bool requiresSourceModel = std::any_of(requests.begin(), requests.end(), [](const auto& request)
             { return request.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; });
-        const bool selected = m_pAuthoringSequencer->Select_KoukuEffect(assetId, requiresSourceModel);
+        const bool selected = m_pAuthoringSequencer->Select_KoukuEffect(assetId, requiresSourceModel, false, &draft);
         m_strPreviewStatus = m_pAuthoringSequencer->Status();
         return selected;
     }
@@ -12085,7 +12085,7 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         const auto requests = Collect_ToolSourceAnchorRequests(preview);
         const bool requiresSourceModel = std::any_of(requests.begin(), requests.end(), [](const auto& request)
             { return request.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; });
-        if (!m_pAuthoringSequencer->Select_KoukuEffect(key.strStableId, requiresSourceModel, true))
+        if (!m_pAuthoringSequencer->Select_KoukuEffect(key.strStableId, requiresSourceModel, true, &preview))
         { m_strPreviewStatus = m_pAuthoringSequencer->Status(); return false; }
     }
     else if (key.strStableId.ends_with(".restore") &&
@@ -18676,12 +18676,33 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 	const char_t* pOwnerLabel = bWorld ? "World" : "KoukuSaydon";
 	const auto MatchesOwner = [bWorld](const std::string_view id)
 	{ return bWorld ? Is_WorldEffectAssetId(id) : Is_KoukuEffectAssetId(id); };
+    if (!m_bSavedEffectOrganizationLoaded)
+    {
+        std::vector<CEffectAuthoringResourceTree::RESOURCE> rows;
+        std::string status;
+        if (CEffectAuthoringResourceTree::Read_V1Organization(rows, status))
+        {
+            decltype(m_SavedEffectOrganization) staged;
+            for (auto& row : rows) staged.emplace(row.strAssetId, std::make_pair(std::move(row.strDisplayName), std::move(row.CategoryPath)));
+            m_SavedEffectOrganization = std::move(staged);
+        }
+        else m_strElementStatus = "Effect categories kept their previous state: " + status;
+        m_bSavedEffectOrganizationLoaded = true;
+    }
+    const auto MatchesSearch = [&](const std::string& id)
+    {
+        if (strSearch.empty() || Contains_NoCase(id, strSearch)) return true;
+        const auto found = m_SavedEffectOrganization.find(id);
+        return found != m_SavedEffectOrganization.end() && (Contains_NoCase(found->second.first, strSearch) ||
+            std::any_of(found->second.second.begin(), found->second.second.end(),
+                [&](const auto& name) { return Contains_NoCase(name, strSearch); }));
+    };
 	std::vector<std::string> EffectIds;
 	for (const std::string& strEffectAssetId : CEffectCatalog::Get_EffectAssetIds())
 	{
 		if (MatchesOwner(strEffectAssetId) &&
 			CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId) &&
-			(strSearch.empty() || Contains_NoCase(strEffectAssetId, strSearch)))
+			MatchesSearch(strEffectAssetId))
 		{
 			EffectIds.push_back(strEffectAssetId);
 		}
@@ -18709,10 +18730,15 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 	}
 	if (EffectIds.empty())
 		ImGui::TextDisabled("No saved %s Effect matches the search.", pOwnerLabel);
-	for (const std::string& strEffectAssetId : EffectIds)
+	const auto RenderEffect = [&](const std::string& strEffectAssetId)
 	{
 		ImGui::PushID(strEffectAssetId.c_str());
-		ImGui::SeparatorText(strEffectAssetId.c_str());
+		const auto organization = m_SavedEffectOrganization.find(strEffectAssetId);
+        const std::string name = organization != m_SavedEffectOrganization.end() && !organization->second.first.empty() ?
+            organization->second.first : strEffectAssetId;
+        const bool_t open = ImGui::TreeNodeEx((name + "###SavedEffect").c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", strEffectAssetId.c_str());
+		if (!open) { ImGui::PopID(); return; }
 		const bool_t bActive = m_ActiveDocument.has_value() &&
 			m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 			m_ActiveDocument->strEffectAssetId == strEffectAssetId;
@@ -18780,9 +18806,75 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 			ImGui::SetTooltip("%s", !bActive && nullptr == pEditablePath ?
 				strEditableStatus.c_str() :
 				"Replay every Element from zero at the current player position and facing.");
-		ImGui::PopID();
-	}
-	ImGui::TreePop();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!m_pAuthoringSequencer || (!bActive && nullptr == pEditablePath));
+        if (ImGui::SmallButton("Append Group"))
+        {
+            (void)m_pAuthoringSequencer->Append({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, strEffectAssetId}, 0u);
+            m_strElementStatus = m_pAuthoringSequencer->Status();
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Append an independent group at the benchmark cursor; tune its anchor, position and timing in Selected Group.");
+        ImGui::TreePop();
+        ImGui::PopID();
+    };
+    if (bWorld)
+    {
+        for (const auto& id : EffectIds) RenderEffect(id);
+    }
+    else
+    {
+        // The stable asset namespace supplies organization only. Opening a tree
+        // never parses all particle documents or admits an unrelated boss graph.
+        struct CATEGORY_NODE final
+        {
+            std::map<std::string, CATEGORY_NODE> children;
+            std::vector<std::string> effects;
+        };
+        CATEGORY_NODE tree;
+        for (const auto& id : EffectIds)
+        {
+            const auto organization = m_SavedEffectOrganization.find(id);
+            std::vector<std::string> path;
+            if (organization != m_SavedEffectOrganization.end()) path = organization->second.second;
+            if (!path.empty() && path.front() == "KoukuSaydon") path.erase(path.begin());
+            const auto start = id.find(".gate");
+            std::string gate = "Common", category = "Other Effects";
+            if (start != std::string::npos && start + 6u < id.size())
+            {
+                const auto end = id.find('.', start + 1u);
+                gate = "Gate " + id.substr(start + 5u, end - start - 5u);
+                if (end != std::string::npos)
+                {
+                    const auto next = id.find('.', end + 1u);
+                    category = id.substr(end + 1u, next - end - 1u);
+                }
+            }
+            if (category == "showtime") category = "Showtime";
+            else if (category == "rainbow") category = "Rainbow";
+            else if (category == "mario") category = "Mario";
+            else if (category == "intro") category = "Intro";
+            else if (category == "downstrike" || category == "slam" || category == "staff") category = "Staff Slam / Fire";
+            else if (category == "spider") category = "Spider Counter";
+            if (path.empty()) path = {gate, "Patterns", category};
+            auto* node = &tree;
+            for (const auto& segment : path) node = &node->children[segment];
+            node->effects.push_back(id);
+        }
+        std::function<void(const CATEGORY_NODE&)> RenderCategory = [&](const CATEGORY_NODE& node)
+        {
+            for (const auto& [name, child] : node.children)
+            {
+                if (!strSearch.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+                if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+                { RenderCategory(child); ImGui::TreePop(); }
+            }
+            for (const auto& id : node.effects) RenderEffect(id);
+        };
+        RenderCategory(tree);
+    }
+    ImGui::TreePop();
 }
 
 void Client::CEffect_Tool::Render_AllEffectsWindow()
@@ -18875,12 +18967,15 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Refresh"))
 	{
+        m_bSavedEffectOrganizationLoaded = false;
 		Refresh_AllEffects(true);
 		Refresh_DataFiles();
-		Refresh_ValtanEffectResourceSnapshot();
-		Refresh_ValtanPatternTree();
-		if (m_bAllEffectsValtanBossSelected)
-			Refresh_ValtanAreaStaticEffects();
+        if (m_bAllEffectsValtanBossSelected)
+        {
+            Refresh_ValtanEffectResourceSnapshot();
+            Refresh_ValtanPatternTree();
+            Refresh_ValtanAreaStaticEffects();
+        }
 	}
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		ImGui::SetTooltip("Reload saved Effects and discover independent recovery copies under their Product source.");
@@ -34408,7 +34503,7 @@ Client::CEffect_Tool::Find_SelectedModelCue() const
 
 
 bool Client::CEffect_Tool::Resolve_AuthoringSourceAnchors(
-    const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, const bool useKouku,
+    const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, const bool useKouku, const float seconds,
     std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
 {
     anchors.clear();
@@ -34423,7 +34518,7 @@ bool Client::CEffect_Tool::Resolve_AuthoringSourceAnchors(
     {
         if (!m_pAuthoringSequencer)
         { error = "The Kouku model-reference owner is unavailable."; return false; }
-        return m_pAuthoringSequencer->Resolve_KoukuSourceAnchors(*found->second, root, anchors, error);
+        return m_pAuthoringSequencer->Resolve_KoukuSourceAnchors(*found->second, root, seconds, anchors, error);
     }
     if (!Resolve_ToolSourceAnchorWorlds(*found->second, nullptr, anchors, error)) return false;
     if (!needsBones) return true;

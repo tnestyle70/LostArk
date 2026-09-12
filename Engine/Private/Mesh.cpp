@@ -106,6 +106,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 		if (skeleton.bones.empty() || skeleton.bones.size() > 512)
 			return E_FAIL;
 
+		m_bUsesSkeletonPalette = true;
 		m_iNumBones = static_cast<uint32_t>(skeleton.bones.size());
 		m_BoneIndices.reserve(m_iNumBones);
 		m_OffsetMatrices.reserve(m_iNumBones);
@@ -159,22 +160,15 @@ HRESULT CMesh::Initialize(void* pArg)
 	return S_OK;
 }
 
-HRESULT CMesh::Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pConstantName, const vector<shared_ptr<class CBone>>& Bones)
+void CMesh::Build_SkinPalette(const vector<shared_ptr<class CBone>>& Bones,
+    float4x4_t* pOutMatrices) const
 {
-	{
-		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.SkinPalette.Build");
-	ZeroMemory(m_BoneMatrices, sizeof(float4x4_t) * 512);
-
-	for (uint32_t i = 0; i < m_iNumBones; i++)
-	{
-		XMStoreFloat4x4(&m_BoneMatrices[i], 
-			XMLoadFloat4x4(&m_OffsetMatrices[i]) * 
-			Bones[m_BoneIndices[i]]->Get_CombinedTransformationMatrix());
-	}
-
-	}
-	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Animation.SkinPalette.Bind");
-	return pShader->Bind_Matrices(pConstantName, m_BoneMatrices, m_iNumBones);	
+    for (uint32_t i = 0; i < m_iNumBones; ++i)
+    {
+        XMStoreFloat4x4(&pOutMatrices[i],
+            XMLoadFloat4x4(&m_OffsetMatrices[i]) *
+            Bones[m_BoneIndices[i]]->Get_CombinedTransformationMatrix());
+    }
 }
 
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,

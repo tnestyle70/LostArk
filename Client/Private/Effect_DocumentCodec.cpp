@@ -111,7 +111,7 @@ namespace
 	constexpr const char_t* AUTHORED_RUNTIME_CARRIER_KIND_TOKENS[] =
 	{
 		"cascadeRibbonV1", "animationTrailBakedEdgeV1",
-		"lightBakedEdgeAttachmentV1"
+		"lightBakedEdgeAttachmentV1", "cascadeBeamV1"
 	};
 	constexpr const char_t* AUTHORED_RUNTIME_CARRIER_ADMISSION_TOKENS[] =
 	{
@@ -648,6 +648,7 @@ namespace
 		switch (Staged.eKind)
 		{
 		case Client::EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+		case Client::EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1:
 		{
 			const Client::DATA_JSON_VALUE* pTypeDataModuleStableId =
 				Value.Find("typeDataModuleStableId");
@@ -3051,6 +3052,156 @@ namespace
 			Read_String(Value, "status", Out.strStatus, strOutError) &&
 			Read_StringArray(Value, "blockers", Out.Blockers, strOutError);
 	}
+
+    constexpr const char_t* SOURCE_TRANSFORM_FRAME_TOKENS[] =
+        { "WORLD", "RELATIVE_TO_INITIAL", "PARENT" };
+
+    bool_t Validate_SourceTransformTrack(
+        const Client::EFFECT_SOURCE_TRANSFORM_TRACK& Track, std::string& Error)
+    {
+        using namespace Client;
+        if (Track.strSourceOccurrenceId.empty() || Track.strSourceOccurrenceId.size() > 256u ||
+            !std::isfinite(Track.fSourceTimeOriginSeconds) || !Is_Finite(Track.vPreviewOriginUE3Cm) ||
+            Track.Nodes.empty() || Track.Nodes.size() > 16u)
+        { Error = "Effect source transform track identity, clock or nodes are invalid."; return false; }
+        if (Track.AlphaScale && (Track.AlphaScale->iComponentCount != 3u ||
+            Track.AlphaScale->iOperation != 1u || !CEffectDistribution::Validate(*Track.AlphaScale, Error)))
+            return false;
+        for (size_t i = 0u; i < Track.Nodes.size(); ++i)
+        {
+            const auto& Node = Track.Nodes[i];
+            if (Node.strSourceObjectPath.empty() || Node.strSourceObjectPath.size() > 512u ||
+                Node.eFrame >= EFFECT_SOURCE_TRANSFORM_FRAME::END ||
+                (i == 0u && Node.eFrame == EFFECT_SOURCE_TRANSFORM_FRAME::PARENT) ||
+                !Is_Finite(Node.vInitialPositionUE3Cm) || !Is_Finite(Node.vInitialEulerDegrees) ||
+                !Is_Finite(Node.vScaleUE3) || Node.vScaleUE3.x == 0.f || Node.vScaleUE3.y == 0.f || Node.vScaleUE3.z == 0.f ||
+                Node.Position.iOperation != 1u || Node.Euler.iOperation != 1u ||
+                Node.Position.iComponentCount != 3u || Node.Euler.iComponentCount != 3u ||
+                !CEffectDistribution::Validate(Node.Position, Error) || !CEffectDistribution::Validate(Node.Euler, Error))
+            { if (Error.empty()) Error = "Effect source transform node or curve is invalid."; return false; }
+        }
+        return true;
+    }
+
+    bool_t Read_SourceTransformCurve(const Client::DATA_JSON_VALUE& Value,
+        Client::EFFECT_DISTRIBUTION_DESC& Out, const char_t* Property, std::string& Error)
+    {
+        using namespace Client;
+        if (!Value.Is_Array() || Value.Get_Array().size() > 4096u)
+        { Error = "Effect source transform curve must be a bounded array."; return false; }
+        Out.strPropertyPath = Property;
+        Out.strSourceClass = "interptrackmove";
+        Out.iComponentCount = 3u;
+        Out.iOperation = 1u;
+        for (const DATA_JSON_VALUE& ValueKey : Value.Get_Array())
+        {
+            EFFECT_DISTRIBUTION_KEY_DESC Key;
+            std::string Interpolation;
+            if (!ValueKey.Is_Object() || !Validate_ExactFields(ValueKey,
+                { "timeSeconds", "value", "arriveTangent", "leaveTangent", "interpolation" },
+                "Effect source transform curve key", Error) ||
+                !Read_Float(ValueKey, "timeSeconds", Key.fTime, Error) ||
+                !Read_Array(ValueKey, "value", &Key.vMinimum.x, 3u, Error) ||
+                !Read_Array(ValueKey, "arriveTangent", &Key.vArriveTangentMinimum.x, 3u, Error) ||
+                !Read_Array(ValueKey, "leaveTangent", &Key.vLeaveTangentMinimum.x, 3u, Error) ||
+                !Read_String(ValueKey, "interpolation", Interpolation, Error) ||
+                !Parse_Token(Interpolation, DISTRIBUTION_INTERPOLATION_TOKENS,
+                    std::size(DISTRIBUTION_INTERPOLATION_TOKENS), Key.eInterpolation))
+            { if (Error.empty()) Error = "Effect source transform key is invalid."; return false; }
+            Key.vMaximum = Key.vMinimum;
+            Key.vArriveTangentMaximum = Key.vArriveTangentMinimum;
+            Key.vLeaveTangentMaximum = Key.vLeaveTangentMinimum;
+            Out.Keys.push_back(Key);
+        }
+        return true;
+    }
+
+    bool_t Read_SourceTransformTrack(const Client::DATA_JSON_VALUE& Value,
+        Client::EFFECT_SOURCE_TRANSFORM_TRACK& Out, std::string& Error)
+    {
+        using namespace Client;
+        if (!Value.Is_Object() || !Validate_ExactFields(Value,
+            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys" },
+            "Effect source transform track", Error)) return false;
+        const auto* Nodes = Find_Field(Value, "nodes", DATA_JSON_TYPE::ARRAY, Error);
+        if (!Nodes || !Read_String(Value, "sourceOccurrenceId", Out.strSourceOccurrenceId, Error) ||
+            !Read_Float(Value, "sourceTimeOriginSeconds", Out.fSourceTimeOriginSeconds, Error) ||
+            !Read_Array(Value, "previewOriginUE3Cm", &Out.vPreviewOriginUE3Cm.x, 3u, Error)) return false;
+        for (const auto& V : Nodes->Get_Array())
+        {
+            EFFECT_SOURCE_TRANSFORM_NODE N;
+            std::string Frame;
+            if (!V.Is_Object() || !Validate_ExactFields(V,
+                { "sourceObjectPath", "frame", "initialPositionUE3Cm", "initialEulerDegrees", "scaleUE3", "positionKeys", "eulerKeys" },
+                "Effect source transform node", Error)) return false;
+            const auto* Position = Find_Field(V, "positionKeys", DATA_JSON_TYPE::ARRAY, Error);
+            const auto* Euler = Find_Field(V, "eulerKeys", DATA_JSON_TYPE::ARRAY, Error);
+            if (!Position || !Euler || !Read_String(V, "sourceObjectPath", N.strSourceObjectPath, Error) ||
+                !Read_String(V, "frame", Frame, Error) ||
+                !Parse_Token(Frame, SOURCE_TRANSFORM_FRAME_TOKENS, std::size(SOURCE_TRANSFORM_FRAME_TOKENS), N.eFrame) ||
+                !Read_Array(V, "initialPositionUE3Cm", &N.vInitialPositionUE3Cm.x, 3u, Error) ||
+                !Read_Array(V, "initialEulerDegrees", &N.vInitialEulerDegrees.x, 3u, Error) ||
+                !Read_Array(V, "scaleUE3", &N.vScaleUE3.x, 3u, Error) ||
+                !Read_SourceTransformCurve(*Position, N.Position, "position", Error) ||
+                !Read_SourceTransformCurve(*Euler, N.Euler, "euler", Error)) return false;
+            Out.Nodes.push_back(std::move(N));
+        }
+        if (const auto* Alpha = Value.Find("alphaScaleKeys"))
+        {
+            EFFECT_DISTRIBUTION_DESC Curve;
+            if (!Read_SourceTransformCurve(*Alpha, Curve, "alphaScale", Error)) return false;
+            Out.AlphaScale = std::move(Curve);
+        }
+        return Validate_SourceTransformTrack(Out, Error);
+    }
+
+    void Write_SourceTransformCurve(std::ostringstream& Output,
+        const Client::EFFECT_DISTRIBUTION_DESC& Curve)
+    {
+        Output << '[';
+        for (size_t i = 0; i < Curve.Keys.size(); ++i)
+        {
+            const auto& K = Curve.Keys[i];
+            Output << (i ? ", " : "") << "{ \"timeSeconds\": " << K.fTime << ", \"value\": ";
+            Write_Float3(Output, {K.vMinimum.x,K.vMinimum.y,K.vMinimum.z});
+            Output << ", \"arriveTangent\": ";
+            Write_Float3(Output, {K.vArriveTangentMinimum.x,K.vArriveTangentMinimum.y,K.vArriveTangentMinimum.z});
+            Output << ", \"leaveTangent\": ";
+            Write_Float3(Output, {K.vLeaveTangentMinimum.x,K.vLeaveTangentMinimum.y,K.vLeaveTangentMinimum.z});
+            Output << ", \"interpolation\": \"" << DISTRIBUTION_INTERPOLATION_TOKENS[static_cast<size_t>(K.eInterpolation)] << "\" }";
+        }
+        Output << ']';
+    }
+
+    void Write_SourceTransformTrack(std::ostringstream& Output,
+        const Client::EFFECT_SOURCE_TRANSFORM_TRACK& Track)
+    {
+        Output << "      \"sourceTransformTrack\": { \"sourceOccurrenceId\": \""
+            << Client::CDataJson::Escape(Track.strSourceOccurrenceId)
+            << "\", \"sourceTimeOriginSeconds\": " << Track.fSourceTimeOriginSeconds << ", \"previewOriginUE3Cm\": ";
+        Write_Float3(Output, Track.vPreviewOriginUE3Cm);
+        Output << ", \"nodes\": [";
+        for (size_t i=0; i < Track.Nodes.size(); ++i)
+        {
+            const auto& N = Track.Nodes[i];
+            Output << (i ? ", " : "") << "{ \"sourceObjectPath\": \"" << Client::CDataJson::Escape(N.strSourceObjectPath)
+                << "\", \"frame\": \"" << SOURCE_TRANSFORM_FRAME_TOKENS[static_cast<size_t>(N.eFrame)]
+                << "\", \"initialPositionUE3Cm\": ";
+            Write_Float3(Output, N.vInitialPositionUE3Cm);
+            Output << ", \"initialEulerDegrees\": "; Write_Float3(Output,N.vInitialEulerDegrees);
+            Output << ", \"scaleUE3\": "; Write_Float3(Output,N.vScaleUE3);
+            Output << ", \"positionKeys\": "; Write_SourceTransformCurve(Output,N.Position);
+            Output << ", \"eulerKeys\": "; Write_SourceTransformCurve(Output,N.Euler);
+            Output << " }";
+        }
+        Output << ']';
+        if (Track.AlphaScale)
+        {
+            Output << ", \"alphaScaleKeys\": ";
+            Write_SourceTransformCurve(Output,*Track.AlphaScale);
+        }
+        Output << " },\n";
+    }
 
 	bool_t Read_SourceRecipe(
 		const Client::DATA_JSON_VALUE& Value,
@@ -7033,10 +7184,10 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		strOutError = "Effect Asset ID is invalid.";
 		return false;
 	}
-	if (Document.strDisplayName.size() > 64u ||
+	if (Document.strDisplayName.size() > 256u ||
 		!Has_VisibleCharacter(Document.strDisplayName))
 	{
-		strOutError = "Display Name must be 1-64 bytes and not blank.";
+		strOutError = "Display Name must be 1-256 bytes and not blank.";
 		return false;
 	}
 	const EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem =
@@ -7060,6 +7211,26 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		strOutError = "Effect Element count exceeds 2048.";
 		return false;
 	}
+    if (Document.SourceModelPreview)
+    {
+        const auto& preview = *Document.SourceModelPreview;
+        if ((preview.strGateId != "GATE1" && preview.strGateId != "GATE2" && preview.strGateId != "GATE3" && preview.strGateId != "ENCORE") ||
+            preview.strActorProfileId.empty() || preview.strActorProfileId.size() > 128u ||
+            preview.strTargetBossPlacementId.empty() || preview.strTargetBossPlacementId.size() > 128u ||
+            preview.Animations.empty() || preview.Animations.size() > 256u)
+        { strOutError = "Effect source model preview has missing actor identity or animation windows."; return false; }
+        uint32_t previousEnd = 0u;
+        for (const auto& animation : preview.Animations)
+        {
+            if (animation.strRuntimeClip.empty() || animation.strRuntimeClip.size() > 256u ||
+                !animation.iPlayMs || animation.iPlayMs > 600000u || animation.iStartOffsetMs > 600000u - animation.iPlayMs ||
+                animation.iStartOffsetMs < previousEnd || animation.iSourceStartMs > 600000u ||
+                !std::isfinite(animation.fPlayRate) || animation.fPlayRate < .01f || animation.fPlayRate > 100.f ||
+                (animation.strEndPolicy != "EXACT" && animation.strEndPolicy != "HOLD_LAST_POSE" && animation.strEndPolicy != "LOOP_TO_WINDOW"))
+            { strOutError = "Effect source model animation has an unsupported clip window."; return false; }
+            previousEnd = animation.iStartOffsetMs + animation.iPlayMs;
+        }
+    }
 	if (Document.ModelCues.size() > MAX_MODEL_CUES)
 	{
 		strOutError = "Effect Model Cue count exceeds 16.";
@@ -7137,6 +7308,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	uint64_t iTotalAfterImages = 0u;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+        if (Element.SourceTransformTrack && !Validate_SourceTransformTrack(*Element.SourceTransformTrack, strOutError))
+            return false;
 		if (Element.strDisplayName.size() > 64u ||
 			!Has_VisibleCharacter(Element.strDisplayName))
 		{
@@ -7221,6 +7394,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				Recipe.strRendererShape == "mesh" ||
 				Recipe.strRendererShape == "decal" ||
 				Recipe.strRendererShape == "ribbon" ||
+				Recipe.strRendererShape == "beam" ||
 				Recipe.strRendererShape == "light" ||
 				Recipe.strRendererShape == "screenPost";
 			if (!bRendererShapeValid ||
@@ -7300,7 +7474,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		if (!Document.bSourceContract && Recipe.bEnabled &&
 			bAuthoringExecutionTarget &&
 			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
-			 Element.eKind == EFFECT_ELEMENT_KIND::DECAL) &&
+			 Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+             (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL && Element.RuntimeCarrier.eKind ==
+                EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1)) &&
 			!ValidatePortableAuthoredParticleRuntimeCarrier(
 				Element, strOutError))
 		{
@@ -10784,8 +10960,11 @@ namespace
 {
 	using namespace Client;
 
-	constexpr std::array<std::string_view, 46u>
+	constexpr std::array<std::string_view, 51u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
+			"particlemodulecollision",
+			"particlemoduleattractorpoint",
+			"particlemodulekillheight",
 			"particlemoduleacceleration",
 			"particlemoduleaccelerationoverlifetime",
 			"particlemodulecameraoffset",
@@ -10799,6 +10978,8 @@ namespace
 			"particlemodulelocationcirclesurface",
 			"particlemodulelocationdirect",
 			"particlemodulelocationemitter",
+			"particlemodulelocationemitterdirect",
+			"efparticlemodulelocationemitterdirect",
 			"particlemodulelocalvectorfield",
 			"particlemodulelocationonground",
 			"particlemodulelocationprimitivecylinder",
@@ -10834,8 +11015,17 @@ namespace
 			"particlemodulevortex"
 		};
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 71u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 80u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
+			std::pair{ "particlemoduleattractorpoint", "position" },
+			std::pair{ "particlemoduleattractorpoint", "range" },
+			std::pair{ "particlemoduleattractorpoint", "strength" },
+			std::pair{ "particlemodulekillheight", "height" },
+            std::pair{ "particlemodulecollision", "dampingfactor" },
+            std::pair{ "particlemodulecollision", "dampingfactorrotation" },
+            std::pair{ "particlemodulecollision", "maxcollisions" },
+            std::pair{ "particlemodulecollision", "delayamount" },
+            std::pair{ "particlemodulecollision", "particlemass" },
 			std::pair{ "efparticlemoduleacceleration", "acceldata" },
 			std::pair{ "particlemoduleacceleration", "acceleration" },
 			std::pair{ "particlemoduleaccelerationoverlifetime", "acceloverlife" },
@@ -11256,7 +11446,45 @@ namespace
 			return false;
 		}
 
-		if (strNormalizedClass == "particlemodulelocationcirclesurface")
+        if (strNormalizedClass == "particlemodulecollision")
+        {
+            bool World = false, ApplyPhysics = false, VerticalOnly = false;
+            std::string_view Completion;
+            f64_t Scalar = 1.0, Distance = 1000.0;
+            if (Module.strClassName != strNormalizedClass ||
+                !ReadPortableBoolLiteral(Module, "bcollidewithworld", false, World) || !World ||
+                !ReadPortableBoolLiteral(Module, "bapplyphysics", false, ApplyPhysics) || ApplyPhysics ||
+                !ReadPortableBoolLiteral(Module, "bonlyverticalnormalsdecrementcount", false, VerticalOnly) || VerticalOnly ||
+                !ReadPortableStringLiteral(Module, "collisioncompletionoption", "epcc_kill", Completion) || Completion != "epcc_kill" ||
+                !ReadPortableNumberLiteral(Module, "dirscalar", 1.0, Scalar) || Scalar < 0.0 ||
+                !ReadPortableNumberLiteral(Module, "maxcollisiondistance", 1000.0, Distance) || Distance < 0.0)
+            {
+                strOutError = "Source Collision requires static-world bounce followed by Kill.";
+                return false;
+            }
+        }
+        else if (strNormalizedClass == "particlemodulekillheight" ||
+            strNormalizedClass == "particlemoduleattractorpoint")
+        {
+            if (Module.strClassName != strNormalizedClass)
+            {
+                strOutError = "Source force module requires its exact class identity.";
+                return false;
+            }
+            for (const auto& Literal : Module.Literals)
+            {
+                const auto& P = Literal.strPropertyPath;
+                if ((P == "babsolute" || P == "bfloor" || P == "bapplypsysscale" ||
+                     P == "baffectbasevelocity" || P == "strengthbydistance" ||
+                     P == "buseworldspaceposition" || P == "boverridevelocity") &&
+                    Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN)
+                {
+                    strOutError = "Source force module option must be a boolean.";
+                    return false;
+                }
+            }
+        }
+        else if (strNormalizedClass == "particlemodulelocationcirclesurface")
 		{
 			std::string_view strAxis;
 			f64_t fSplit = 0.0;
@@ -11515,10 +11743,13 @@ namespace
 		const bool_t bMesh = Element.SourceRecipe.strRendererShape == "mesh";
 		const bool_t bSprite = Element.SourceRecipe.strRendererShape == "sprite";
 		const bool_t bDecal = Element.SourceRecipe.strRendererShape == "decal";
-		const bool_t bFamilyValid =
+		const bool_t bRibbon = Element.eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+            Element.SourceRecipe.strRendererShape == "ribbon" && Element.RuntimeCarrier.eKind ==
+                EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1;
+        const bool_t bFamilyValid =
 			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
 				(bMesh || bSprite)) ||
-			(Element.eKind == EFFECT_ELEMENT_KIND::DECAL && bDecal);
+			(Element.eKind == EFFECT_ELEMENT_KIND::DECAL && bDecal) || bRibbon;
 		if (!bFamilyValid ||
 			Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
 			Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
@@ -11551,7 +11782,8 @@ namespace
 			const bool_t bAdmittedMeshMaterial = bMesh &&
 				!Element.Detail.Mesh.SourceMaterialSlots.empty() &&
 				Module.strClassName == "particlemodulemeshmaterial";
-			if ((!bAdmittedDecalTypeData && !bAdmittedMeshMaterial && std::ranges::find(
+			const bool_t bAdmittedRibbonTypeData = bRibbon && NormalizedClass == "particlemoduletypedataribbon";
+            if ((!bAdmittedDecalTypeData && !bAdmittedMeshMaterial && !bAdmittedRibbonTypeData && std::ranges::find(
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES,
 					NormalizedClass) ==
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end()) ||
@@ -11582,7 +11814,12 @@ namespace
 				NormalizedClass == "particlemoduletypedatamesh" ? 1u : 0u;
 			iDecalTypeDataCount +=
 				NormalizedClass == "particlemoduletypedatadecal" ? 1u : 0u;
-			++ModuleClassCounts[std::string(NormalizedClass)];
+			bool_t MissingSourceProvider = false;
+			const bool_t IsLocationEmitter = NormalizedClass == "particlemodulelocationemitter" ||
+				NormalizedClass == "particlemodulelocationemitterdirect";
+			if (IsLocationEmitter && !ReadPortableBoolLiteral(Module, "runtime.sourceprovidermissing", false, MissingSourceProvider))
+			{ strOutError = "Missing source-provider marker must be boolean."; return false; }
+			if (!MissingSourceProvider) ++ModuleClassCounts[std::string(NormalizedClass)];
 			std::unordered_set<std::string> PropertyPaths;
 			for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
 			{
@@ -11668,21 +11905,20 @@ namespace
 			const auto Iterator = ModuleClassCounts.find(std::string(ClassName));
 			return Iterator == ModuleClassCounts.end() ? 0u : Iterator->second;
 		};
-		if (CountClass("particlemoduleorbit") > 1u &&
-			std::ranges::any_of(Element.SourceRecipe.Modules,
-				[](const EFFECT_SOURCE_MODULE_DESC& Module)
-				{
-					if (Module.strClassName != "particlemoduleorbit")
-						return false;
-					const auto* pChain = FindPortableSourceLiteral(Module, "chainmode");
-					return nullptr != pChain && pChain->strString == "eochainmode_link";
-				}))
-		{
-			// A sole LINK starts from an empty chain and uses the current additive
-			// state. Linked chains require per-module orbit state before admission.
-			strOutError = "Portable authored particle multi-module Orbit LINK is unsupported.";
-			return false;
-		}
+        if (CountClass("particlemoduleorbit") > 1u)
+        {
+            for (const auto& Module : Element.SourceRecipe.Modules)
+            {
+                if (Module.strClassName != "particlemoduleorbit") continue;
+                for (const auto& Literal : Module.Literals)
+                    if (Literal.strPropertyPath.ends_with(".bprocessduringupdate") &&
+                        Literal.bBoolean)
+                    {
+                        strOutError = "Multiple source Orbit chains require spawn-owned phases.";
+                        return false;
+                    }
+            }
+        }
 		for (const auto& [ClassName, Count] : ModuleClassCounts)
 		{
 			/* UE3 can retain renderer-irrelevant modules in an emitter.  The
@@ -11719,12 +11955,12 @@ namespace
 			}
 		}
 		const bool_t bParticleCardinalityValid =
-			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE || bRibbon) &&
 			iRequiredCount == 1u &&
 			CountClass("particlemodulelifetime") != 0u &&
 			CountClass("particlemodulespawn") == 1u &&
 			(bMesh ? iMeshTypeDataCount == 1u : iMeshTypeDataCount == 0u) &&
-			iDecalTypeDataCount == 0u;
+			iDecalTypeDataCount == 0u && (!bRibbon || CountClass("particlemoduletypedataribbon") == 1u);
 		const bool_t bDecalCardinalityValid =
 			bDecal && iRequiredCount == 1u &&
 			CountClass("particlemodulelifetime") <= 1u &&
@@ -12163,6 +12399,7 @@ namespace
 			switch (Carrier.eKind)
 			{
 			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1:
 			{
 				if (Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
 					!Carrier.strHistoryId.empty() ||
@@ -12173,7 +12410,8 @@ namespace
 					!Has_VisibleCharacter(
 						Carrier.strTypeDataModuleStableId) ||
 					!Element.SourceRecipe.bEnabled ||
-					Element.SourceRecipe.strRendererShape != "ribbon")
+					Element.SourceRecipe.strRendererShape !=
+                        (Carrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1 ? "beam" : "ribbon"))
 				{
 					strOutError =
 						"Authored Cascade runtimeCarrier target/shape is invalid.";
@@ -12190,13 +12428,53 @@ namespace
 					}
 					++iTypeDataMatchCount;
 					if (Normalize_SourceModuleClass(Module.strClassName) !=
-						"particlemoduletypedataribbon")
+						(Carrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1 ?
+                            "particlemoduletypedatabeam2" : "particlemoduletypedataribbon"))
 					{
 						strOutError =
 							"Authored Cascade runtimeCarrier joins a non-Ribbon TypeData module.";
 						return false;
 					}
 				}
+                if (Carrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1)
+                {
+                    size_t targets = 0u;
+                    for (const auto& module : Element.SourceRecipe.Modules)
+                    {
+                        const auto cls = Normalize_SourceModuleClass(module.strClassName);
+                        if (cls == "particlemodulebeamtarget")
+                        {
+                            ++targets;
+                            const auto target = std::ranges::find_if(module.Distributions,
+                                [](const auto& d) { return d.strPropertyPath == "target" && d.iComponentCount == 3u; });
+                            if (target == module.Distributions.end())
+                            { strOutError = "Target Beam2 requires the original target distribution."; return false; }
+                            bool_t absolute = false;
+                            std::string_view method;
+                            if (!ReadPortableBoolLiteral(module,"btargetabsolute",false,absolute) || absolute ||
+                                !ReadPortableStringLiteral(module,"targetmethod","peb2stm_default",method) ||
+                                method != "peb2stm_default")
+                            { strOutError = "Target Beam2 requires emitter-local distribution targets."; return false; }
+                        }
+                        else if (cls == "particlemoduletypedatabeam2")
+                        {
+                            double count, sheets, points, speed, textureTile;
+                            std::string_view method;
+                            if (!ReadPortableStringLiteral(module,"beammethod","",method) || method != "peb2m_target" ||
+                                !ReadPortableNumberLiteral(module,"maxbeamcount",1,count) || count != 1 ||
+                                !ReadPortableNumberLiteral(module,"sheets",1,sheets) || sheets != 1 ||
+                                !ReadPortableNumberLiteral(module,"interpolationpoints",0,points) || points != 0 ||
+                                !ReadPortableNumberLiteral(module,"speed",0,speed) || speed < 0 ||
+                                !ReadPortableNumberLiteral(module,"texturetile",1,textureTile) || textureTile != 1)
+                            { strOutError = "Target Beam2 source count/sheets/interpolation/speed is unsupported."; return false; }
+                        }
+                        else if (cls == "particlemodulebeamnoise" || cls == "particlemodulebeamsource" ||
+                                 cls == "particlemodulebeammodifier")
+                        { strOutError = "Target Beam2 source/noise/modifier needs its own source consumer."; return false; }
+                    }
+                    if (targets != 1u)
+                    { strOutError = "Target Beam2 requires one unambiguous target module."; return false; }
+                }
 				if (1u != iTypeDataMatchCount)
 				{
 					strOutError =
@@ -13707,7 +13985,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			!pRuntimeExtensions->Is_Object() ||
 			!Validate_ExactFields(Root,
 				{ "schema", "version", "effectAssetId", "displayName",
-					"particleSystem", "modelCues", "runtimeExtensions",
+					"particleSystem", "modelCues", "sourceModelPreview", "runtimeExtensions",
 					"elements" },
 				"Effect authored-v15 document", strOutError))
 		{
@@ -13762,6 +14040,34 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			return false;
 		}
 	}
+    if (const auto* value = Root.Find("sourceModelPreview"))
+    {
+        EFFECT_SOURCE_MODEL_PREVIEW preview;
+        if (!value->Is_Object() ||
+            !Validate_ExactFields(*value, {"gateId", "actorProfileId", "targetBossPlacementId", "animations"},
+                "Effect source model preview", strOutError) ||
+            !Read_String(*value, "gateId", preview.strGateId, strOutError) ||
+            !Read_String(*value, "actorProfileId", preview.strActorProfileId, strOutError) ||
+            !Read_String(*value, "targetBossPlacementId", preview.strTargetBossPlacementId, strOutError)) return false;
+        const auto* animations = value->Find("animations");
+        if (!animations || !animations->Is_Array() || animations->Get_Array().empty() || animations->Get_Array().size() > 256u)
+        { strOutError = "Effect source model preview needs 1-256 animation windows."; return false; }
+        for (const auto& entry : animations->Get_Array())
+        {
+            EFFECT_SOURCE_MODEL_ANIMATION animation;
+            if (!entry.Is_Object() || !Validate_ExactFields(entry,
+                {"runtimeClip", "startOffsetMs", "sourceStartMs", "playMs", "playRate", "endPolicy"},
+                "Effect source model animation", strOutError) ||
+                !Read_String(entry, "runtimeClip", animation.strRuntimeClip, strOutError) ||
+                !Read_UInt(entry, "startOffsetMs", animation.iStartOffsetMs, strOutError) ||
+                !Read_UInt(entry, "sourceStartMs", animation.iSourceStartMs, strOutError) ||
+                !Read_UInt(entry, "playMs", animation.iPlayMs, strOutError) ||
+                !Read_Float(entry, "playRate", animation.fPlayRate, strOutError) ||
+                !Read_String(entry, "endPolicy", animation.strEndPolicy, strOutError)) return false;
+            preview.Animations.push_back(std::move(animation));
+        }
+        Staged.SourceModelPreview = std::move(preview);
+    }
 	const DATA_JSON_VALUE* pModelCues = Root.Find("modelCues");
 	if (nullptr != pModelCues)
 	{
@@ -13856,14 +14162,14 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				{ "id", "displayName", "groupId", "sourceNode", "visible",
 					"kind", "renderer", "resources", "unboundResources",
 					"material",
-					"actionCueAttachment", "transformInheritance", "detail",
+					"actionCueAttachment", "transformInheritance", "sourceTransformTrack", "detail",
 					"sourceRecipe", "sourcePresentation" },
 				"Effect source-contract Element", strOutError)) ||
 			(bRuntimeExtensionDocument && !Validate_ExactFields(ElementValue,
 				{ "id", "displayName", "groupId", "sourceNode", "visible",
 					"kind", "runtimeCarrier", "compositionLayer", "resources",
 					"unboundResources", "material", "actionCueAttachment",
-					"transformInheritance", "detail", "sourceRecipe",
+					"transformInheritance", "sourceTransformTrack", "detail", "sourceRecipe",
 					"sourcePresentation", "authoringOverrides" },
 				"Effect authored-v15 Element", strOutError)))
 		{
@@ -13945,6 +14251,12 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		{
 			Element.strDisplayName = Element.strElementId;
 		}
+        if (const auto* TrackValue = ElementValue.Find("sourceTransformTrack"))
+        {
+            EFFECT_SOURCE_TRANSFORM_TRACK Track;
+            if (!Read_SourceTransformTrack(*TrackValue, Track, strOutError)) return false;
+            Element.SourceTransformTrack = std::move(Track);
+        }
 		if (const DATA_JSON_VALUE* pActionCueAttachment =
 			ElementValue.Find("actionCueAttachment"))
 		{
@@ -14114,6 +14426,22 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		<< "  \"version\": " << iSerializedVersion << ",\n";
 	if (bSourceContract)
 		Output << "  \"purpose\": \"source_contract\",\n";
+    if (Document.SourceModelPreview)
+    {
+        const auto& preview = *Document.SourceModelPreview;
+        Output << "  \"sourceModelPreview\": {\"gateId\": \"" << CDataJson::Escape(preview.strGateId)
+            << "\", \"actorProfileId\": \"" << CDataJson::Escape(preview.strActorProfileId)
+            << "\", \"targetBossPlacementId\": \"" << CDataJson::Escape(preview.strTargetBossPlacementId) << "\", \"animations\": [";
+        for (size_t i = 0u; i < preview.Animations.size(); ++i)
+        {
+            const auto& animation = preview.Animations[i];
+            Output << (i ? ", " : "") << "{\"runtimeClip\": \"" << CDataJson::Escape(animation.strRuntimeClip)
+                << "\", \"startOffsetMs\": " << animation.iStartOffsetMs << ", \"sourceStartMs\": " << animation.iSourceStartMs
+                << ", \"playMs\": " << animation.iPlayMs << ", \"playRate\": " << animation.fPlayRate
+                << ", \"endPolicy\": \"" << CDataJson::Escape(animation.strEndPolicy) << "\"}";
+        }
+        Output << "]},\n";
+    }
 	Output << "  \"effectAssetId\": \"" << CDataJson::Escape(Document.strEffectAssetId) << "\",\n"
 		<< "  \"displayName\": \"" << CDataJson::Escape(Document.strDisplayName) << "\",\n"
 		<< "  \"particleSystem\": { \"uniformScaleMultiplier\": "
@@ -14250,6 +14578,7 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			switch (Carrier.eKind)
 			{
 			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
+			case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1:
 				Output << ", \"typeDataModuleStableId\": \""
 					<< CDataJson::Escape(Carrier.strTypeDataModuleStableId)
 					<< "\"";
@@ -14305,6 +14634,8 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			}
 			Output << "\n      ],\n";
 		}
+        if (Element.SourceTransformTrack)
+            Write_SourceTransformTrack(Output, *Element.SourceTransformTrack);
 		Output << "      \"material\": ";
 		Write_Material(Output, Element.Material);
 		Output << ",\n"

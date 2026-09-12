@@ -17,6 +17,7 @@ Texture2D g_SourceTexture5;
 Texture2D g_SourceTexture6;
 Texture2D g_SourceTexture7;
 Texture2D g_SourceTexture8;
+Texture2D g_SourceTexture9;
 
 sampler LinearClampUSampler = sampler_state
 {
@@ -123,6 +124,7 @@ DEFINE_SOURCE_TEXTURE_SAMPLE(5)
 DEFINE_SOURCE_TEXTURE_SAMPLE(6)
 DEFINE_SOURCE_TEXTURE_SAMPLE(7)
 DEFINE_SOURCE_TEXTURE_SAMPLE(8)
+DEFINE_SOURCE_TEXTURE_SAMPLE(9)
 
 float3 Desaturate_SourceColor(float3 color, float amount)
 {

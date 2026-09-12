@@ -103,6 +103,10 @@ public:
 	// CPU snapshot admitted by the Loader; lookup performs no IO or GPU work.
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Find_PreparedLeafSnapshot(const std::string& leafId) const;
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
+	// A single request may stage several independent clocks against one document.
+	// Validate/read targets once; prepare every copy before replacing any player.
+	static bool_t Set_DocumentBatch(const CWorldSequenceDocument& document, const TARGET_SET& targets,
+		const std::vector<CWorldSequencePlayer*>& players, std::string& status);
 	bool_t Prepare_InstanceResources(const std::string& instanceId, const TARGET_SET& targets);
 	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,
 		const float4x4_t& root, const std::string& bone, PLAYER_ANCHOR& out, std::string& status);

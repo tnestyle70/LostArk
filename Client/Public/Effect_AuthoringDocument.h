@@ -1264,6 +1264,37 @@ struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
 	EFFECT_TRANSFORM_DESC SocketLocalTransform;
 };
 
+// Original Matinee curves remain in UE3 centimetres and Euler XYZ=roll/pitch/yaw.
+// Nodes are ordered from the independent actor root to its attached descendants.
+enum class EFFECT_SOURCE_TRANSFORM_FRAME : uint8_t
+{
+    WORLD,
+    RELATIVE_TO_INITIAL,
+    PARENT,
+    END
+};
+
+struct EFFECT_SOURCE_TRANSFORM_NODE final
+{
+    std::string strSourceObjectPath;
+    EFFECT_SOURCE_TRANSFORM_FRAME eFrame = EFFECT_SOURCE_TRANSFORM_FRAME::WORLD;
+    float3_t vInitialPositionUE3Cm = { 0.f, 0.f, 0.f };
+    float3_t vInitialEulerDegrees = { 0.f, 0.f, 0.f };
+    float3_t vScaleUE3 = { 1.f, 1.f, 1.f };
+    EFFECT_DISTRIBUTION_DESC Position;
+    EFFECT_DISTRIBUTION_DESC Euler;
+};
+
+struct EFFECT_SOURCE_TRANSFORM_TRACK final
+{
+    std::string strSourceOccurrenceId;
+    f32_t fSourceTimeOriginSeconds = 0.f;
+    float3_t vPreviewOriginUE3Cm = { 0.f, 0.f, 0.f };
+    std::vector<EFFECT_SOURCE_TRANSFORM_NODE> Nodes;
+    // A direct ParticleParameter driving ColorScaleOverLife alpha at scene time.
+    std::optional<EFFECT_DISTRIBUTION_DESC> AlphaScale;
+};
+
 struct EFFECT_TRANSFORM_INHERITANCE_DESC final
 {
 	bool_t bEnabled = false;
@@ -1337,6 +1368,7 @@ enum class EFFECT_AUTHORED_RUNTIME_CARRIER_KIND : uint8_t
 	CASCADE_RIBBON_V1,
 	ANIMATION_TRAIL_BAKED_EDGE_V1,
 	LIGHT_BAKED_EDGE_ATTACHMENT_V1,
+	CASCADE_BEAM_V1,
 	END
 };
 
@@ -1431,6 +1463,7 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_MATERIAL_DESC Material;
 	EFFECT_ACTION_CUE_ATTACHMENT_DESC ActionCueAttachment;
 	EFFECT_TRANSFORM_INHERITANCE_DESC TransformInheritance;
+	std::optional<EFFECT_SOURCE_TRANSFORM_TRACK> SourceTransformTrack;
 	EFFECT_DETAIL_DESC Detail;
 	EFFECT_CASCADE_RECIPE_DESC SourceRecipe;
 	EFFECT_SOURCE_PRESENTATION_DESC SourcePresentation;
@@ -1876,6 +1909,22 @@ struct EFFECT_PARTICLE_SYSTEM_DESC final
 	f32_t fInitialSpeedMultiplier = 1.f;
 };
 
+struct EFFECT_SOURCE_MODEL_ANIMATION final
+{
+    std::string strRuntimeClip;
+    uint32_t iStartOffsetMs = 0u, iSourceStartMs = 0u, iPlayMs = 0u;
+    f32_t fPlayRate = 1.f;
+    std::string strEndPolicy = "EXACT";
+    bool operator==(const EFFECT_SOURCE_MODEL_ANIMATION&) const = default;
+};
+
+struct EFFECT_SOURCE_MODEL_PREVIEW final
+{
+    std::string strGateId, strActorProfileId, strTargetBossPlacementId;
+    std::vector<EFFECT_SOURCE_MODEL_ANIMATION> Animations;
+    bool operator==(const EFFECT_SOURCE_MODEL_PREVIEW&) const = default;
+};
+
 struct EFFECT_DOCUMENT_DESC final
 {
 	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
@@ -1885,6 +1934,7 @@ struct EFFECT_DOCUMENT_DESC final
 	std::string strDisplayName;
 	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
+	std::optional<EFFECT_SOURCE_MODEL_PREVIEW> SourceModelPreview;
 	EFFECT_AUTHORED_RUNTIME_EXTENSIONS_DESC RuntimeExtensions;
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };

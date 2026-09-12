@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 331,
+  "sourceRevision": 336,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -13157,7 +13157,7 @@
           "placement": {
             "position": [
               2.1440000534057617,
-              10.559999465942383,
+              10.5600004196167,
               317.74700927734375
             ],
             "rotationDegrees": [
@@ -23417,6 +23417,21 @@
         "folderId": "kakulsaydon.folder.11",
         "gateId": "GATE2",
         "displayName": "대형세이튼_불뿜기"
+      },
+      {
+        "folderId": "kakulsaydon.folder.12",
+        "gateId": "GATE3",
+        "displayName": "세이튼_쇼타임"
+      },
+      {
+        "folderId": "kakulsaydon.folder.13",
+        "gateId": "GATE3",
+        "displayName": "세이튼_마리오_1페이즈"
+      },
+      {
+        "folderId": "kakulsaydon.folder.14",
+        "gateId": "GATE3",
+        "displayName": "세이튼_마리오_2페이즈"
       }
     ],
     "patterns": [
@@ -23700,6 +23715,36 @@
         "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
         "actorProfileId": "MN_RPCT_05",
         "unavailableReason": ""
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_32",
+        "displayName": "세이튼_쇼타임",
+        "category": "MECHANIC",
+        "gateId": "GATE3",
+        "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "PRODUCT pattern has no stages: KAKULSAYDON_G1_PATTERN_32",
+        "folderId": "kakulsaydon.folder.12"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_33",
+        "displayName": "세이튼_마리오_2페이즈",
+        "category": "MECHANIC",
+        "gateId": "GATE3",
+        "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "PRODUCT pattern has no stages: KAKULSAYDON_G1_PATTERN_33",
+        "folderId": "kakulsaydon.folder.14"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_34",
+        "displayName": "세이튼_마리오_1페이즈",
+        "category": "MECHANIC",
+        "gateId": "GATE3",
+        "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "PRODUCT pattern has no stages: KAKULSAYDON_G1_PATTERN_34",
+        "folderId": "kakulsaydon.folder.13"
       }
     ],
     "bundles": [

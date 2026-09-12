@@ -1,5 +1,6 @@
 ﻿#include "Effect_DocumentRenderer.h"
 
+#include "ActorCatalog.h"
 #include "DeferredMaterialRenderUtils.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
@@ -8662,15 +8663,15 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	}
 	if (nullptr == Model)
 	{
-		const std::filesystem::path ModelPath = CRuntimeAssetRoot::Resolve(
-			std::filesystem::path(Cue.strModelAssetId));
 		{
 			const std::scoped_lock Lock(g_EffectRenderCacheMutex);
 			++g_EffectRenderPrewarmProbe.iModelDiskLoadCount;
 		}
+		Engine::MODEL_ASSET_LOAD_DESC ModelLoad;
+		if (!CActorCatalog::Build_ModelLoadDescription(Cue.strModelAssetId, ModelLoad, strOutError))
+			return E_FAIL;
 		unique_ptr<Engine::CModel> Loaded = Engine::CModel::Create(
-			m_pDevice, m_pContext, MODEL::ANIM,
-			ModelPath.string().c_str(), PreTransform);
+			m_pDevice, m_pContext, MODEL::ANIM, ModelLoad, PreTransform);
 		if (nullptr != Loaded)
 		{
 			// Set the suppression baseline on the unposed prototype. Clones retain
@@ -12161,7 +12162,7 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 							"72cefbb667c7d9b7f311189b2b6b8f3df01de039a5c231ada261c2d6a48dab04" }},
 						{{ "de2904ce3fecbff953e452bac35ef13f1fcf6bcf98896ab8dcb5757f117798ef",
 							"3dfc0c6da6a9adb6dc6f1313e13fee77441491ff68c534a688435fd40f2d3bf3",
-							"a22d61eb156e26238861874fa97dfb93d20387834e5f5cb041a623837eb65923",
+							"a22d61eb156e37118861874fa97dfb93d20387834e5f5cb041a623837eb65923",
 							"a2546b3cba57db7b9a30a4cb0919c74f080dcb262d4efc992561f74446cd2fd8" }} }
 				}};
 			const EXPECTED_DYNAMIC_CONTRACT& ExpectedDynamic =
@@ -14204,7 +14205,7 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 				std::string_view>, 6u> EXPECTED_STATIC_ROWS = {{
 				{ "material-input-82f275a36b41d455",
 					"365b737d4e7bcc8e4fdd46c73ab16dffb36cb0f3fd57f5dd84840dcf6bcc8300" },
-				{ "material-input-6a2eb3626231ee86",
+				{ "material-input-6a2eb3637111ee86",
 					"eee1406e524947fe6dc882b1568c01d01e724db6c7f2f2a5cd7261ece9b730be" },
 				{ "material-input-a344fc1ecf985023",
 					"d93561941329ef8db1fe48f9ace01d1d8ab78acc75aa8b5d1d72a5b2a3180646" },
@@ -18766,7 +18767,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	};
     // Fixed decal/trail carriers share the admitted native parameter packet.
     const bool bKoukuFixedNative = nullptr == pShaderProgram &&
-        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2495u &&
+        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3711u &&
         (pShader == m_pDecalShader || pShader == m_pTrailShader);
     if (bKoukuFixedNative)
     {
@@ -18780,6 +18781,19 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
         if (Resource.bSourceRequiresSceneColor &&
             BindFailed(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_EffectSceneColor"), pShader, "g_EffectSceneColorTexture")))
             return Fail_RenderOperation("Kouku fixed-carrier source scene color is unavailable.", hFirstBindFailure);
+        if (pShader == m_pTrailShader)
+        {
+            // Native ribbon distortion projects source world centimeters once.
+            const matrix_t SourceToClient = XMMatrixSet(.01f,0.f,0.f,0.f,
+                0.f,0.f,-.01f,0.f, 0.f,.01f,0.f,0.f, 0.f,0.f,0.f,1.f);
+            float4x4_t SourceProjection;
+            XMStoreFloat4x4(&SourceProjection, SourceToClient *
+                XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW)) *
+                XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ)));
+            for (auto& Row : SourceProjection.m) for (auto& Value : Row) Value *= 100.f;
+            if (BindFailed(pShader->Bind_Matrix("g_KoukuSourceProjection", &SourceProjection)))
+                return Fail_RenderOperation("Kouku ribbon source projection binding failed.", hFirstBindFailure);
+        }
         if (pShader == m_pDecalShader)
         {
             // Match the existing native model/mesh adapter: committed scene ambient;
@@ -18815,7 +18829,29 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
         case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_ALTV:
             NativeBindFailed = BindNativePacket("g_ALTVSourceMaterialParameters", "g_ALTVSourceMaterialTime", Resource.ALTVSourceMaterialParameters); break;
         case EFFECT_SHADER_FAMILY::ARTIST:
-            NativeBindFailed = BindNativePacket("g_ArtistSourceMaterialParameters", "g_ArtistSourceMaterialTime", Resource.ArtistSourceMaterialParameters); break;
+        {
+            NativeBindFailed = BindNativePacket("g_ArtistSourceMaterialParameters", "g_ArtistSourceMaterialTime", Resource.ArtistSourceMaterialParameters);
+            if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3711u)
+            {
+                float4_t SceneAmbient{0.f, 0.f, 0.f, 1.f};
+                for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+                    if (Light.eType == LIGHT::DIRECTIONAL)
+                    { SceneAmbient.x += Light.vAmbient.x; SceneAmbient.y += Light.vAmbient.y; SceneAmbient.z += Light.vAmbient.z; }
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuSourceAmbient", &SceneAmbient, sizeof(SceneAmbient))) || NativeBindFailed;
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuSourceActorPosition", &m_vSourceActorPosition, sizeof(m_vSourceActorPosition))) || NativeBindFailed;
+                // UE source world is centimeters in X,Z,-Y. Source clip W is
+                // likewise centimeters, matching the native depth adapters.
+                const matrix_t SourceToClient = XMMatrixSet(.01f,0.f,0.f,0.f,
+                    0.f,0.f,-.01f,0.f, 0.f,.01f,0.f,0.f, 0.f,0.f,0.f,1.f);
+                float4x4_t SourceProjection;
+                XMStoreFloat4x4(&SourceProjection, SourceToClient *
+                    XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW)) *
+                    XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ)));
+                for (auto& Row : SourceProjection.m) for (auto& Value : Row) Value *= 100.f;
+                NativeBindFailed = BindFailed(pShader->Bind_Matrix("g_KoukuSourceProjection", &SourceProjection)) || NativeBindFailed;
+            }
+            break;
+        }
         case EFFECT_SHADER_FAMILY::LANCE_MASTER:
             NativeBindFailed = BindNativePacket("g_LanceVASourceMaterialParameters", "g_LanceVASourceMaterialTime", Resource.LanceVASourceMaterialParameters); break;
         case EFFECT_SHADER_FAMILY::WARLORD:
@@ -19446,7 +19482,9 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		BindFailed(pShader->Bind_Texture("g_SourceTexture7",
 			Resource.SourceTextures[7] ? Resource.SourceTextures[7] : m_pBlackTexture)) ||
 		BindFailed(pShader->Bind_Texture("g_SourceTexture8",
-			Resource.SourceTextures[8] ? Resource.SourceTextures[8] : m_pBlackTexture));
+			Resource.SourceTextures[8] ? Resource.SourceTextures[8] : m_pBlackTexture)) ||
+		BindFailed(pShader->Bind_Texture("g_SourceTexture9",
+			Resource.SourceTextures[9] ? Resource.SourceTextures[9] : m_pBlackTexture));
 	if (bBindFailed)
 	{
 		return Fail_RenderOperation(
@@ -20099,7 +20137,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal material shader bind failed.", hResult);
-    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 2495u &&
+    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3711u &&
         FAILED(m_pDecalShader->Bind_RawValue("g_KoukuDecalProjection",
             &Projection.vSourceProjection, sizeof(Projection.vSourceProjection))))
         return Fail_RenderOperation("Kouku source decal plane binding failed.", E_FAIL);
@@ -20906,10 +20944,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			bRuntimeMaterialV2Ribbon && !bBakedEdgeHistory;
 		const bool_t bFlowRibbon01 =
 			35u == pResource->iSourceMaterialProfile && !bBakedEdgeHistory;
-		const bool_t bKoukuNativeRibbon =
-			2346u == pResource->iSourceMaterialProfile && !bBakedEdgeHistory &&
-			Trail.pElement->RuntimeCarrier.eKind ==
-				EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1;
+        const auto* SourceTrailProgram = Find_ArtistProgram(
+            Trail.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
+        const bool_t bSourceBeam = SourceTrailProgram && SourceTrailProgram->strRendererShape == "beam" &&
+            Trail.pElement->RuntimeCarrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1;
+        const bool_t bKoukuNativeRibbon = !bBakedEdgeHistory && (bSourceBeam ||
+            (SourceTrailProgram && SourceTrailProgram->strRendererShape == "ribbon" &&
+             Trail.pElement->RuntimeCarrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1));
 		const bool_t bTypedSourceRibbon =
 			bTypedArtistRibbon || bFlowRibbon01 || bKoukuNativeRibbon;
 		if (35u == pResource->iSourceMaterialProfile && bBakedEdgeHistory)
@@ -20945,9 +20986,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				"Trail typed tiling/tessellation contract is invalid.",
 				E_INVALIDARG, true);
 		}
-		if ((bFlowRibbon01 || bKoukuNativeRibbon) &&
-			(!std::isfinite(fTilingDistance) || fTilingDistance <= 0.f ||
-			 !std::isfinite(fTessellationStep) || fTessellationStep <= 0.f))
+		if (!bSourceBeam && (bFlowRibbon01 || bKoukuNativeRibbon) &&
+			(!std::isfinite(fTilingDistance) || fTilingDistance < 0.f ||
+			 !std::isfinite(fTessellationStep) || fTessellationStep < 0.f))
 		{
 			return Fail_RenderOperation(
 				"FlowRibbon01 tiling/tessellation contract is invalid.",
@@ -21012,7 +21053,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					"Trail typed point payload is invalid.", E_INVALIDARG, true);
 		}
 
-		const bool_t bDistanceTessellated = bTypedSourceRibbon ||
+		const bool_t bDistanceTessellated = (!bSourceBeam && bTypedSourceRibbon && fTessellationStep > 0.f) ||
 			(std::isfinite(fTilingDistance) && fTilingDistance > 0.f &&
 			 std::isfinite(fTessellationStep) && fTessellationStep > 0.f);
 		if (bDistanceTessellated)
@@ -21138,7 +21179,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Point.fCumulativeDistance / fTilingDistance :
 					static_cast<f32_t>(iPair);
                 const bool bKoukuNativeTrail = pResource->iSourceMaterialProfile >= 2304u &&
-                    pResource->iSourceMaterialProfile <= 2495u;
+                    pResource->iSourceMaterialProfile <= 3711u;
                 if (bKoukuNativeTrail && Point.iSourceColorComponentMask != 0x0fu)
                     return Fail_RenderOperation("Kouku source trail color payload is incomplete.", E_INVALIDARG, true);
                 const float4_t Color = bKoukuNativeTrail ? Point.vSourceColor : bRuntimeMaterialV2Ribbon ?
@@ -22285,6 +22326,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_CompositionPhase(
 	const bool_t bFinalizeSubmission,
 	const uint64_t iSubmissionSerial)
 {
+	m_vSourceActorPosition = { Frame.RootWorld._41 * 100.f, -Frame.RootWorld._43 * 100.f, Frame.RootWorld._42 * 100.f, 1.f };
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	if (ePhase >= EFFECT_COMPOSITION_LAYER::END ||
 		bFinalizeSubmission !=

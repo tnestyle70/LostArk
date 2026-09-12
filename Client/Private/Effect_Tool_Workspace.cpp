@@ -41,9 +41,9 @@ void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* 
                 m_AuthoringOccurrenceLevels.erase(found);
             });
         m_pAuthoringSequencer->Set_V1AnchorProvider(
-            [this](const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, bool useKouku,
+            [this](const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, bool useKouku, float seconds,
                 std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
-            { return Resolve_AuthoringSourceAnchors(object, root, useKouku, anchors, error); });
+            { return Resolve_AuthoringSourceAnchors(object, root, useKouku, seconds, anchors, error); });
         m_pAuthoringSequencer->Set_V2SnapshotProvider(
             [this](const EFFECT_RESOURCE_KEY& key, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot, std::string& error)
             {

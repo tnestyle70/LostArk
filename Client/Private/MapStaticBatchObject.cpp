@@ -160,24 +160,19 @@ HRESULT CMapStaticBatchObject::Render()
 		meshIndex < m_pModelCom->Get_NumMeshes();
 		++meshIndex)
 	{
-		if (FAILED(
-			CMapAssetRenderUtils::Bind_Material(
-				m_pModelCom,
-				m_pShaderCom,
-				meshIndex,
-				m_RenderProfile,
-				m_fElapsedTime, nullptr, m_AssetId)) ||
-
-			FAILED(m_pShaderCom->Begin(
-				passIndex)) ||
-
-			FAILED(m_pModelCom->Render_Instanced(
-				meshIndex,
-				m_pInstanceBuffer.Get(),
-				sizeof(VTXMESHINSTANCE),
-				instanceCount)))
 		{
-			return E_FAIL;
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Material.Bind");
+			if (FAILED(CMapAssetRenderUtils::Bind_Material(m_pModelCom, m_pShaderCom,
+				meshIndex, m_RenderProfile, m_fElapsedTime, nullptr, m_AssetId))) return E_FAIL;
+		}
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Pass.Apply");
+			if (FAILED(m_pShaderCom->Begin(passIndex))) return E_FAIL;
+		}
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Mesh.Submit");
+			if (FAILED(m_pModelCom->Render_Instanced(meshIndex, m_pInstanceBuffer.Get(),
+				sizeof(VTXMESHINSTANCE), instanceCount))) return E_FAIL;
 		}
 	}
 	}
@@ -216,16 +211,19 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 		const auto* surface = m_pModelCom->Get_MaterialSurface(iMesh);
 		if (surface && !surface->castsShadow)
 			continue;
-		if (FAILED(CMapAssetRenderUtils::Bind_Material(
-				m_pModelCom, m_pShaderCom, iMesh,
-				m_RenderProfile, m_fElapsedTime)) ||
-			FAILED(m_pShaderCom->Begin(
-				STATIC_SHADOW_PASS_BASE + iCullPass)) ||
-			FAILED(m_pModelCom->Render_Instanced(
-				iMesh, m_pShadowInstanceBuffer.Get(),
-				sizeof(VTXMESHINSTANCE), iInstanceCount)))
 		{
-			return E_FAIL;
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Material.Bind");
+			if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(m_pModelCom, m_pShaderCom,
+				iMesh, m_RenderProfile, m_fElapsedTime))) return E_FAIL;
+		}
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Pass.Apply");
+			if (FAILED(m_pShaderCom->Begin(STATIC_SHADOW_PASS_BASE + iCullPass))) return E_FAIL;
+		}
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Mesh.Submit");
+			if (FAILED(m_pModelCom->Render_Instanced(iMesh, m_pShadowInstanceBuffer.Get(),
+				sizeof(VTXMESHINSTANCE), iInstanceCount))) return E_FAIL;
 		}
 	}
 
