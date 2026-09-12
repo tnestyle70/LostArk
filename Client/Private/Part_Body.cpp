@@ -129,8 +129,9 @@ HRESULT CPart_Body::Render_Shadow()
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
 
-		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i)) ||
+		// Animated shadow consumes diffuse alpha only; keep the exact material override path.
+		if (FAILED(m_pModelCom->Bind_Material(
+				m_pShaderCom, "g_DiffuseTexture", i, aiTextureType_DIFFUSE, 0)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(ANIMATED_SHADOW_PASS)) ||

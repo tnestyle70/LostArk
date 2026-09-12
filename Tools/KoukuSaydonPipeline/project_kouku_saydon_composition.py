@@ -122,6 +122,7 @@ ROOT_OPTIONAL_KEYS = {
     "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles", "patternFlows",
 }
 PATTERN_OPTIONAL_KEYS = {
+    "durationMs", "patternOccurrences", "nextPatternOccurrenceOrdinal",
     "nextLogicOccurrenceOrdinal",
     "logicOccurrences",
     "nextSummonOccurrenceOrdinal",
@@ -175,6 +176,7 @@ LOGIC_OCCURRENCE_KEYS = {"occurrenceId", "logicId", "startMs", "durationMs"}
 # Outcome slots are optional on read; the singular keys are the pre-list form
 # and read as a one-entry list.
 LOGIC_OCCURRENCE_OPTIONAL_KEYS = {
+    "cancelAtEnd",
     "enabled",
     "onSuccessLogicId", "onTimeoutLogicId",
     "onSuccessLogicIds", "onFailLogicIds", "onTimeoutLogicIds",
@@ -386,7 +388,8 @@ def _validate_logic_definition(
     _keys(logic, LOGIC_KEYS, LOGIC_OPTIONAL_KEYS, context)
     logic_id = _stable_id(logic["logicId"], f"{context} logicId")
     generated_logic = GENERATED_LOGIC_RE.fullmatch(logic_id)
-    if generated_logic is None or int(generated_logic.group(1)) >= next_logic:
+    derived_logic = re.fullmatch(r"[A-Za-z0-9_.-]+\.pattern\.[1-9][0-9]*\.r[0-9]+\.definition\.[1-9][0-9]*", logic_id)
+    if (generated_logic is None and derived_logic is None) or (generated_logic and int(generated_logic.group(1)) >= next_logic):
         raise CompositionError(
             f"logicId must use kakulsaydon.g1.logic.<N> below nextLogicOrdinal: {logic_id}"
         )
@@ -698,11 +701,11 @@ def _validate_boxes(
         _keys(box, box_keys, optional_keys or set(), box_context)
         box_id = _stable_id(box["occurrenceId"], f"{box_context} occurrenceId")
         match = box_re.fullmatch(box_id)
-        if match is None:
+        if match is None and not _derived_occurrence(box_id, pattern_id, suffix):
             raise CompositionError(
                 f"{suffix} occurrenceId must use {pattern_id}.{suffix}.<N>: {box_id}"
             )
-        if int(match.group(1)) >= next_ordinal:
+        if match is not None and int(match.group(1)) >= next_ordinal:
             raise CompositionError(
                 f"{suffix} occurrenceId is ahead of {ordinal_key}: {box_id}"
             )
@@ -754,7 +757,252 @@ def _validate_gate_target(pattern: dict[str, Any]) -> None:
 
 
 def _pattern_duration(pattern: dict[str, Any]) -> int:
-    return sum(stage["durationMs"] for stage in pattern["stages"])
+    return pattern.get("durationMs", 0) or sum(stage["durationMs"] for stage in pattern["stages"])
+
+
+def _derived_occurrence(identity: str, pattern_id: str, kind: str) -> bool:
+    if kind == "animation" and re.fullmatch(re.escape(pattern_id) + r"\.idle\.[1-9][0-9]*", identity): return True
+    return bool(re.fullmatch(re.escape(pattern_id) + r"\.pattern\.[1-9][0-9]*\.r[0-9]+\." +
+                             re.escape(kind) + r"\.[1-9][0-9]*", identity))
+
+
+def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any]) -> None:
+    patterns = {row["patternId"]: row for row in document["patterns"]}
+    logics = {row["logicId"]: row for row in document.get("logics", [])}
+    ordinal = _integer(parent.get("nextPatternOccurrenceOrdinal", 1), "nextPatternOccurrenceOrdinal", 1, MAX_ORDINAL)
+    duration = _integer(parent.get("durationMs", 0), "Parent durationMs", 0, MAX_TIMELINE_MS)
+    stage_duration = sum(row["durationMs"] for row in parent["stages"])
+    if duration and duration < stage_duration:
+        raise CompositionError("Parent durationMs cannot trim its own Animation stages")
+    span = duration or stage_duration
+    children = _array(parent.get("patternOccurrences", []), "Pattern row", 128)
+    seen, intervals = set(), []
+    if children and parent.get("bossMotion"):
+        raise CompositionError("Parent Boss Motion cannot share a child Pattern actor; move it to a separate Pattern")
+    for box in children:
+        _exact_keys(box, {"occurrenceId", "patternId", "startMs", "durationMs", "repeat"}, "Pattern occurrence")
+        identity = _stable_id(box["occurrenceId"], "Pattern occurrenceId")
+        match = re.fullmatch(re.escape(parent["patternId"]) + r"\.pattern\.([1-9][0-9]*)", identity)
+        if not match or int(match[1]) >= ordinal or identity in seen:
+            raise CompositionError("Pattern occurrence must belong to its Parent and next ordinal: " + identity)
+        seen.add(identity)
+        start = _integer(box["startMs"], "Pattern startMs", 0, MAX_TIMELINE_MS)
+        length = _integer(box["durationMs"], "Pattern durationMs", 1, MAX_TIMELINE_MS)
+        _boolean(box["repeat"], "Pattern repeat")
+        if start + length > span:
+            raise CompositionError("Child Pattern exceeds Parent Duration: " + identity)
+        if any(start < end and previous < start + length for previous, end in intervals):
+            raise CompositionError("Child Pattern windows cannot overlap on the same boss: " + identity)
+        intervals.append((start, start + length))
+        child_id = _stable_id(box["patternId"], "child patternId")
+        child = patterns.get(child_id)
+        if child is None:
+            raise CompositionError("Child Pattern is missing: " + child_id)
+        if child_id == parent["patternId"] or child.get("patternOccurrences"):
+            raise CompositionError("Nested or recursive Parent references are not supported; append a leaf Pattern: " + child_id)
+        if _pattern_target_metadata(child) != _pattern_target_metadata(parent):
+            raise CompositionError("Child Pattern must retain Parent Gate, actor, and target boss: " + child_id)
+        if not _pattern_duration(child):
+            raise CompositionError("Child Pattern has no playable duration: " + child_id)
+        for key in ("bossMotion", "resetBossToSpawn", "resetBossYawDegrees", "enterCombatOnFinish"):
+            if child.get(key) or (key == "resetBossYawDegrees" and key in child):
+                raise CompositionError(f"Child Pattern {child_id} uses {key}; keep this action on the Parent or a separate Pattern")
+        if child.get("animationRootVerticalScale", 1.0) != parent.get("animationRootVerticalScale", 1.0):
+            raise CompositionError("Child animationRootVerticalScale must match the Parent: " + child_id)
+        for row in child.get("logicOccurrences", []):
+            if not row.get("enabled", True): continue
+            definition = logics.get(row["logicId"], {})
+            if definition.get("endsPatternOnSuccess"):
+                raise CompositionError("Child endsPatternOnSuccess requires dynamic scheduling; remove it from the reusable child: " + child_id)
+            if definition.get("triggerKind") in {"HUD_ENTER", "CARD_MAZE_HIDE_NEXT", "CARD_MAZE_ENTER"}:
+                raise CompositionError("Child global player-mode trigger must be authored on the Parent: " + row["logicId"])
+            for slot in OUTCOME_SLOTS:
+                for result in outcome_logic_ids(row, slot):
+                    if logics.get(result, {}).get("outcomeKind") == "FOLLOWUP_PATTERN":
+                        raise CompositionError("Child FOLLOWUP_PATTERN is dynamic; append the follow-up explicitly on the Parent Pattern row: " + child_id)
+        stage_start = 0
+        for stage in parent["stages"]:
+            for animation in stage["animationOccurrences"]:
+                animation_start = stage_start + animation["startOffsetMs"]
+                if animation_start < start + length and start < animation_start + animation["playMs"]:
+                    raise CompositionError("Parent Animation overlaps a child Pattern window: " + identity)
+            stage_start += stage["durationMs"]
+
+
+def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str, Any]:
+    """Materialize one fixed Parent for the existing runtime, preserving the saved references."""
+    document = copy.deepcopy(source)
+    parent = next((row for row in document["patterns"] if row["patternId"] == pattern_id), None)
+    if parent is None: raise CompositionError("Parent Pattern is missing: " + pattern_id)
+    _validate_pattern_children(document, parent)
+    if not parent.get("patternOccurrences") and not parent.get("durationMs"):
+        return document
+    patterns = {row["patternId"]: row for row in source["patterns"]}
+    source_definitions = source.get("logics", [])
+    definitions = {row["logicId"]: row for row in source_definitions}
+    total = _pattern_duration(parent)
+    children = sorted(parent.get("patternOccurrences", []), key=lambda row: (row["startMs"], row["occurrenceId"]))
+    lane_names = (("logicOccurrences", "logic"), ("worldOccurrences", "world"),
+                  ("summonOccurrences", "summon"), ("sceneProfileOccurrences", "sceneprofile"),
+                  ("presentationOccurrences", "presentation"))
+    parts = []
+
+    def stage_fragment(stage, stage_begin, begin, end, scope=None, animation_ids=None):
+        row = copy.deepcopy(stage)
+        row["durationMs"] = end - begin
+        row["retargetOnEnter"] = bool(stage.get("retargetOnEnter", False) and begin == stage_begin)
+        row["animationOccurrences"] = []
+        for animation in stage["animationOccurrences"]:
+            local_start = stage_begin + animation["startOffsetMs"]
+            if local_start >= end or local_start + animation["playMs"] <= begin: continue
+            if local_start < begin:
+                raise CompositionError("Parent slicing would trim the front of an Animation")
+            clip = copy.deepcopy(animation)
+            clip["startOffsetMs"] = local_start - begin
+            clip["playMs"] = min(clip["playMs"], end - local_start)
+            if animation_ids: clip["occurrenceId"] = animation_ids[animation["occurrenceId"]]
+            row["animationOccurrences"].append(clip)
+        parts.append((begin, end, row))
+
+    stage_begin = 0
+    for stage in parent["stages"]:
+        pieces = [(stage_begin, stage_begin + stage["durationMs"])]
+        for box in children:
+            left, right = box["startMs"], box["startMs"] + box["durationMs"]
+            pieces = [(a, b) for begin, end in pieces for a, b in
+                      ((begin, min(end, left)), (max(begin, right), end)) if a < b]
+        for begin, end in pieces: stage_fragment(stage, stage_begin, begin, end)
+        stage_begin += stage["durationMs"]
+
+    for box in children:
+        child = patterns[box["patternId"]]
+        natural = _pattern_duration(child)
+        end = box["startMs"] + box["durationMs"]
+        repeat_index, offset = 0, box["startMs"]
+        while offset < end:
+            child_end = min(end, offset + natural)
+            scope = f"{box['occurrenceId']}.r{repeat_index}"
+            identities = {}
+            animation_number = 0
+            for stage in child["stages"]:
+                for animation in stage["animationOccurrences"]:
+                    animation_number += 1
+                    identities[animation["occurrenceId"]] = f"{scope}.animation.{animation_number}"
+            for lane, kind in lane_names:
+                for index, row in enumerate(child.get(lane, []), 1):
+                    identities[row["occurrenceId"]] = f"{scope}.{kind}.{index}"
+                    if row.get("regionId"): identities[row["regionId"]] = f"{scope}.region.{index}"
+            used_definitions = {row["logicId"] for row in child.get("logicOccurrences", [])}
+            for row in child.get("logicOccurrences", []):
+                for slot in OUTCOME_SLOTS: used_definitions.update(outcome_logic_ids(row, slot))
+            definition_ids = {row["logicId"]: f"{scope}.definition.{index}"
+                              for index, row in enumerate(source_definitions, 1) if row["logicId"] in used_definitions}
+            identities.update(definition_ids)
+            for index, definition in enumerate(source_definitions, 1):
+                if definition["logicId"] in used_definitions and definition.get("contactGroupId"):
+                    identities.setdefault(definition["contactGroupId"], f"{scope}.contact.{index}")
+
+            def remap(value):
+                if isinstance(value, str): return identities.get(value, value)
+                if isinstance(value, list): return [remap(part) for part in value]
+                if isinstance(value, dict): return {key: remap(part) for key, part in value.items()}
+                return value
+
+            for identity in used_definitions:
+                if identity not in definitions: raise CompositionError("Child Logic definition is missing: " + identity)
+            # Preserve source catalog order, so IDs and serialized outputs are deterministic.
+            document.setdefault("logics", []).extend(remap(row) for row in source_definitions if row["logicId"] in used_definitions)
+            child_stage_begin = offset
+            for stage in child["stages"]:
+                fragment_end = min(child_end, child_stage_begin + stage["durationMs"])
+                if child_stage_begin < fragment_end:
+                    stage_fragment(stage, child_stage_begin, child_stage_begin, fragment_end, scope, identities)
+                child_stage_begin += stage["durationMs"]
+            for lane, kind in lane_names:
+                for original in child.get(lane, []):
+                    start = offset + original["startMs"]
+                    if start >= child_end: continue
+                    row = remap(original)
+                    row["startMs"] = start
+                    row["durationMs"] = min(original["durationMs"], child_end - start)
+                    truncated = row["durationMs"] < original["durationMs"]
+                    if kind == "logic" and truncated:
+                        if definitions[original["logicId"]].get("bossChargeDistanceM", 0) > 0:
+                            raise CompositionError("Child charge cannot be truncated without changing its speed; extend the Pattern slot")
+                        row["cancelAtEnd"] = True
+                    if kind == "presentation":
+                        for key in ("fadeInMs", "fadeOutMs"):
+                            if key in row: row[key] = min(row[key], row["durationMs"])
+                        if "fadeOutMs" in row: row["fadeOutMs"] = min(row["fadeOutMs"], row["durationMs"] - row.get("fadeInMs", 0))
+                    if kind == "sceneprofile" and "blendMs" in row:
+                        row["blendMs"] = min(row["blendMs"], row["durationMs"])
+                    parent.setdefault(lane, []).append(row)
+            repeat_index += 1
+            if not box["repeat"]: break
+            offset += natural
+            if repeat_index > MAX_PRODUCT_STAGES:
+                raise CompositionError("Parent repeat expansion exceeds the 64-stage runtime budget")
+
+    idle_clip = {"MN_RPCT_05": "rpct00_idle_battle_1", "MN_RPCT_06": "mn_rpct_06_sk.ao_idle_battle_1",
+                 "MN_RPCZ_00": "rpcz00_idle_battle_1"}.get(_pattern_actor_profile_id(parent))
+    if not idle_clip: raise CompositionError("Parent has no known idle clip for its actor")
+    output = []
+    cursor = 0
+    for begin, end, stage in sorted(parts, key=lambda item: item[0]):
+        if begin < cursor: raise CompositionError("Parent expansion has overlapping Animation stage owners")
+        if begin > cursor: output.append({"stageKind": "RECOVERY", "durationMs": begin - cursor, "animationOccurrences": []})
+        output.append(stage)
+        cursor = end
+    if cursor < total: output.append({"stageKind": "RECOVERY", "durationMs": total - cursor, "animationOccurrences": []})
+    if len(output) > MAX_PRODUCT_STAGES: raise CompositionError("Parent expansion exceeds 64 runtime stages")
+    cumulative_ms = 0
+    for index, stage in enumerate(output, 1):
+        if math.ceil((cumulative_ms + stage["durationMs"]) * FIXED_TICK_HZ / 1000) <= math.ceil(cumulative_ms * FIXED_TICK_HZ / 1000):
+            raise CompositionError("Parent stage boundaries must occupy distinct 30 Hz Server ticks; extend the short gap")
+        cumulative_ms += stage["durationMs"]
+        stage.update(stageId=f"STAGE_{index}", actionId=f"{pattern_id}_ACTION_{index}")
+        if not stage["animationOccurrences"]:
+            stage["animationOccurrences"] = [{"occurrenceId": f"{pattern_id}.idle.{index}",
+                "profileId": parent["actorProfileId"], "sourceActionId": 0, "sourceStageId": "RAW", "sourceSlotId": idle_clip,
+                "referenceRevision": "", "runtimeClip": idle_clip, "startOffsetMs": 0, "sourceStartMs": 0,
+                "playMs": stage["durationMs"], "playRate": 1.0, "endPolicy": "LOOP_TO_WINDOW"}]
+        elif len(stage["animationOccurrences"]) != 1:
+            raise CompositionError("Parent runtime stages require one Animation clip; separate the child stages")
+    parent["stages"] = output
+    parent["nextStageOrdinal"] = len(output) + 1
+    parent["nextAnimationOrdinal"] = parent.get("nextAnimationOrdinal", 1) + len(output) + 1
+    parent.pop("patternOccurrences", None)
+    parent["durationMs"] = total
+    expanded_definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
+    shared_windows = []
+    for row in parent.get("logicOccurrences", []):
+        kind = expanded_definitions[row["logicId"]].get("judgementKind")
+        if row.get("enabled", True) and kind in {"STAGGER_WINDOW", "COUNTER_WINDOW", "POSE_INPUT"}:
+            shared_windows.append((kind, row, "logic"))
+    for row in parent.get("sceneProfileOccurrences", []):
+        shared_windows.append(("SCENE_PROFILE", row, "sceneprofile"))
+    for row in parent.get("presentationOccurrences", []):
+        kind = resources.get(row["resourceId"], {}).get("kind")
+        if kind in {"CAMERA", "SCENE_PROFILE"}: shared_windows.append((kind, row, "presentation"))
+    for index, (kind, first, lane) in enumerate(shared_windows):
+        owner = first["occurrenceId"].rsplit("." + lane + ".", 1)[0]
+        for other_kind, second, other_lane in shared_windows[index + 1:]:
+            other_owner = second["occurrenceId"].rsplit("." + other_lane + ".", 1)[0]
+            if (kind == other_kind and owner != other_owner and
+                    first["startMs"] < second["startMs"] + second["durationMs"] and
+                    second["startMs"] < first["startMs"] + first["durationMs"]):
+                raise CompositionError(f"Parent and child share overlapping {kind} state; move its ownership to the Parent")
+    return document
+
+
+def _expand_parent_patterns(document: dict[str, Any]) -> dict[str, Any]:
+    for row in document["patterns"]:
+        if row.get("patternOccurrences") or (row.get("durationMs") and
+                (row["durationMs"] > sum(stage["durationMs"] for stage in row["stages"]) or
+                 any(not stage["animationOccurrences"] for stage in row["stages"]))):
+            document = expand_pattern_document(document, row["patternId"])
+    return document
 
 
 def _bundle_duration(document: dict[str, Any], bundle: dict[str, Any]) -> int:
@@ -772,7 +1020,8 @@ def load_camera_shots(root: Path) -> dict[str, Any]:
     if document.get("schema") != "lostark.camera-shots" or document.get("formatVersion") != 1 or document.get("areaId") != "LV_LUT_MIDNIGHTC_ED":
         raise CompositionError("Invalid KoukuSaydon Area Camera document")
     result = {}
-    for shot in _array(document.get("shots"), "Camera shots", 64):
+    # Same authoring/runtime bound as Publish-MapAuthoring and CLevel_KakulSaydonArena.
+    for shot in _array(document.get("shots"), "Camera shots", 128):
         identity = _stable_id(shot.get("shotId"), "Camera shotId")
         if identity in result: raise CompositionError("Duplicate Camera shotId")
         _integer(shot.get("blendInMs"), "Camera blendInMs", 0, 10000)
@@ -794,7 +1043,8 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
     bundle_next = _integer(document.get("nextBundleOrdinal", 1), "nextBundleOrdinal", 1, MAX_ORDINAL)
     folders = {}
     for row in _array(document.get("folders", []), "folders", 4096):
-        _exact_keys(row, FOLDER_KEYS, "folder")
+        _keys(row, FOLDER_KEYS, {"timelinePatternId"}, "folder")
+        if "timelinePatternId" in row: _stable_id(row["timelinePatternId"], "Parent timelinePatternId")
         identity = _stable_id(row["folderId"], "folderId")
         _stable_id(row["gateId"], "folder gateId")
         match = re.fullmatch(r"kakulsaydon\.folder\.([1-9][0-9]*)", identity)
@@ -803,6 +1053,12 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
         _display_name(row["displayName"], "folder displayName")
         folders[identity] = row
     patterns = {p["patternId"]: p for p in document["patterns"]}
+    for folder in folders.values():
+        identity = folder.get("timelinePatternId")
+        if identity:
+            parent = patterns.get(identity)
+            if parent is None or parent.get("folderId") != folder["folderId"] or _pattern_target_metadata(parent)["gateId"] != folder["gateId"]:
+                raise CompositionError("Parent timelinePatternId must name its own same-Gate Pattern: " + identity)
     for pattern in patterns.values():
         if "folderId" not in pattern:
             continue
@@ -1179,13 +1435,14 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             box_context = f"{context}.logicOccurrences[{box_index}]"
             _keys(box, LOGIC_OCCURRENCE_KEYS, LOGIC_OCCURRENCE_OPTIONAL_KEYS, box_context)
             enabled = _boolean(box.get("enabled", True), f"{box_context} enabled")
+            if "cancelAtEnd" in box: _boolean(box["cancelAtEnd"], f"{box_context} cancelAtEnd")
             box_id = _stable_id(box["occurrenceId"], f"{box_context} occurrenceId")
             logic_box_match = logic_box_re.fullmatch(box_id)
-            if logic_box_match is None:
+            if logic_box_match is None and not _derived_occurrence(box_id, pattern_id, "logic"):
                 raise CompositionError(
                     f"logic occurrenceId must use {pattern_id}.logic.<N>: {box_id}"
                 )
-            if int(logic_box_match.group(1)) >= next_logic_occurrence:
+            if logic_box_match is not None and int(logic_box_match.group(1)) >= next_logic_occurrence:
                 raise CompositionError(
                     f"logic occurrenceId is ahead of nextLogicOccurrenceOrdinal: {box_id}"
                 )
@@ -1368,7 +1625,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 raise CompositionError(
                     f"composition exceeds {MAX_PRODUCT_PATTERNS} PRODUCT patterns"
                 )
-            if not stages:
+            if not stages and not pattern.get("durationMs"):
                 raise CompositionError(f"PRODUCT pattern has no stages: {pattern_id}")
         stage_ids: set[str] = set()
         occurrence_ordinal_re = re.compile(
@@ -1409,7 +1666,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 f"{stage_context} animationOccurrences",
                 MAX_OCCURRENCES,
             )
-            if status == "PRODUCT" and len(occurrences) != 1:
+            if status == "PRODUCT" and len(occurrences) != 1 and not (pattern.get("durationMs") and not occurrences):
                 raise CompositionError(
                     f"PRODUCT stage must contain exactly one animation occurrence: "
                     f"{pattern_id}/{stage_id}"
@@ -1418,17 +1675,17 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 occurrence_context = (
                     f"{stage_context}.animationOccurrences[{occurrence_index}]"
                 )
-                _exact_keys(occurrence, OCCURRENCE_KEYS | ({"blendInMs"} if "blendInMs" in occurrence else set()), occurrence_context)
+                _keys(occurrence, OCCURRENCE_KEYS, {"blendInMs", "sourceEndMs"}, occurrence_context)
                 _integer(occurrence.get("blendInMs", 0), f"{occurrence_context} blendInMs", 0, 1000)
                 occurrence_id = _stable_id(
                     occurrence["occurrenceId"], f"{occurrence_context} occurrenceId"
                 )
                 occurrence_match = occurrence_ordinal_re.fullmatch(occurrence_id)
-                if occurrence_match is None:
+                if occurrence_match is None and not _derived_occurrence(occurrence_id, pattern_id, "animation"):
                     raise CompositionError(
                         f"occurrenceId must use {pattern_id}.animation.<N>: {occurrence_id}"
                     )
-                if int(occurrence_match.group(1)) >= next_animation:
+                if occurrence_match is not None and int(occurrence_match.group(1)) >= next_animation:
                     raise CompositionError(
                         f"occurrenceId is ahead of nextAnimationOrdinal: {occurrence_id}"
                     )
@@ -1468,6 +1725,9 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     0,
                     MAX_TIMELINE_MS,
                 )
+                source_end = _integer(occurrence.get("sourceEndMs", 0), f"{occurrence_context} sourceEndMs", 0, MAX_TIMELINE_MS)
+                if source_end and source_end <= source_start:
+                    raise CompositionError(f"Source End must follow Source Start: {occurrence_id}")
                 play_ms = _integer(
                     occurrence["playMs"],
                     f"{occurrence_context} playMs",
@@ -1491,16 +1751,16 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     )
                 _animation_blend_source(pattern, occurrence)
                 if status == "PRODUCT" and (
-                    start_offset != 0
-                    or source_start != 0
-                    or play_rate < 0.1
+                    play_rate < 0.1
                     or play_rate > 4.0
                 ):
                     raise CompositionError(
                         "PRODUCT animation must match the current runtime policy "
-                        f"(stage entry, sourceStartMs 0, playRate 0.1..4): {occurrence_id}"
+                        f"(playRate 0.1..4): {occurrence_id}"
                     )
 
+        _validate_pattern_children(document, pattern)
+        pattern_duration_ms = _pattern_duration(pattern)
         charges = sorted((box["startMs"], box["startMs"] + box["durationMs"])
                          for box in pattern.get("logicOccurrences", [])
                          if box.get("enabled", True) and logic_defs[box["logicId"]].get("bossChargeDistanceM", 0) > 0)
@@ -1598,6 +1858,8 @@ def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
     # inventory and submits existing pattern/bundle requests after Server completion.
     candidate.pop("patternFlows", None)
     candidate["patterns"] = [p for p in candidate["patterns"] if p["patternId"] in pattern_ids]
+    for folder in candidate.get("folders", []):
+        if folder.get("timelinePatternId") not in pattern_ids: folder.pop("timelinePatternId", None)
     candidate["bundles"] = [b for b in candidate.get("bundles", []) if b["bundleId"] in (bundle_ids or set())]
     for row in [*candidate["patterns"], *candidate["bundles"]]:
         row["authoringStatus"] = "PRODUCT"
@@ -1615,6 +1877,7 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
     validate_pattern_flows(source)
     skeleton.pop("patternFlows", None)
     skeleton.update(patterns=[], bundles=[], playAllPatternIds=[])
+    for folder in skeleton.get("folders", []): folder.pop("timelinePatternId", None)
     validate_document(skeleton, root)
     inventory: dict[str, Any] = {"folders": copy.deepcopy(source.get("folders", [])), "patterns": [], "bundles": []}
     folders = {f["folderId"]: f for f in inventory["folders"]}
@@ -1647,6 +1910,10 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
         inventory["patterns"].append(row)
         pattern_by_id[identity] = row
     saved_order = _array(source["playAllPatternIds"], "saved playAllPatternIds", MAX_PATTERNS)
+    for folder in folders.values():
+        identity = folder.get("timelinePatternId")
+        if identity and (identity not in pattern_by_id or pattern_by_id[identity].get("folderId") != folder["folderId"] or pattern_by_id[identity]["gateId"] != folder["gateId"]):
+            raise CompositionError("Saved Parent timelinePatternId must name its own same-Gate Pattern: " + str(identity))
     if any(not isinstance(identity, str) or identity not in pattern_by_id for identity in saved_order) or len(set(saved_order)) != len(saved_order):
         raise CompositionError("saved playAllPatternIds must refer to distinct saved Patterns")
     bundle_ids: set[str] = set()
@@ -1690,6 +1957,9 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
 def _pattern_dependencies(source: dict[str, Any], pattern: dict[str, Any]) -> set[str]:
     definitions = {row["logicId"]: row for row in source.get("logics", [])}
     result: set[str] = set()
+    for box in _array(pattern.get("patternOccurrences", []), "Pattern occurrences", 128):
+        if not isinstance(box, dict): raise CompositionError("Pattern occurrence must be an object")
+        result.add(_stable_id(box.get("patternId"), "child patternId"))
     for box in _array(pattern.get("logicOccurrences", []), "Pattern logicOccurrences", MAX_LOGIC_OCCURRENCES_PER_PATTERN):
         if not isinstance(box, dict):
             raise CompositionError("Pattern Logic occurrence must be an object")
@@ -1765,6 +2035,8 @@ def load_and_validate(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
 
 
 def validate_publishable(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
+    document = _expand_parent_patterns(document)
+    validate_document(document, root)
     _join_light_resources(document, root)
     resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
     camera_shots = None
@@ -2424,6 +2696,32 @@ def _load_bone_bake_actor(pattern, root, cache):
     return value
 
 
+def _sample_animation_source_ms(animation, elapsed_ms, native_ms):
+    start, end = animation["sourceStartMs"], animation.get("sourceEndMs", 0)
+    rate = animation["playRate"]
+    if not all(math.isfinite(value) for value in (elapsed_ms, native_ms, rate)) or native_ms <= 0 or rate <= 0:
+        raise CompositionError("Animation source sampling requires finite positive native timing")
+    if end and (end <= start or end > native_ms + 1.0):
+        raise CompositionError("Animation source range is outside the native clip")
+    start, end = min(start, native_ms), min(end, native_ms) if end else native_ms
+    age = max(0.0, elapsed_ms) * rate
+    if animation["endPolicy"] == "LOOP_TO_WINDOW":
+        if end <= start:
+            raise CompositionError("Animation loop source range is empty")
+        return start + age % (end - start)
+    return min(end, start + age)
+
+
+def _clip_native_ms(actor, animation):
+    clips = [row for row in actor["body"].animations if row.name == animation["runtimeClip"]]
+    if len(clips) != 1 or not math.isfinite(clips[0].ticks_per_second) or clips[0].ticks_per_second <= 0:
+        raise CompositionError("Animation source range requires an unambiguous native clip")
+    duration = clips[0].duration_ticks * 1000.0 / clips[0].ticks_per_second
+    if not math.isfinite(duration) or duration <= 0:
+        raise CompositionError("Animation source range has invalid native duration")
+    return duration
+
+
 def _animation_blend_source(pattern, occurrence):
     previous = None
     elapsed = 0
@@ -2436,8 +2734,8 @@ def _animation_blend_source(pattern, occurrence):
                 if not previous or row["blendInMs"] > row["playMs"]:
                     raise CompositionError("Animation blend requires a previous occurrence and must fit the current window")
                 prior, prior_start = previous
-                if prior_start + prior["playMs"] != start or prior["endPolicy"] != "EXACT":
-                    raise CompositionError("Animation blend requires an adjacent EXACT previous occurrence")
+                if prior_start + prior["playMs"] != start:
+                    raise CompositionError("Animation blend requires an adjacent previous occurrence")
                 return prior, (prior["sourceStartMs"] + prior["playMs"] * prior["playRate"]) / 1000
             previous = row, start
         elapsed += stage["durationMs"]
@@ -2540,11 +2838,13 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical
 
 def _bone_bake_stage_origins(pattern):
     elapsed_ticks = 0
+    elapsed_ms = 0
     for index, stage in enumerate(pattern["stages"]):
         # Brain counts the initial entry tick, then advances subsequent stages
         # from the replicated action-start tick. Keep its existing schedule.
-        yield stage, max(0, elapsed_ticks - (1 if index else 0)) * 1000 / FIXED_TICK_HZ
+        yield stage, (elapsed_ms if pattern.get("durationMs") else max(0, elapsed_ticks - (1 if index else 0)) * 1000 / FIXED_TICK_HZ)
         elapsed_ticks += math.ceil(stage["durationMs"] * FIXED_TICK_HZ / 1000)
+        elapsed_ms += stage["durationMs"]
 
 
 def _animation_holds_window_end(stage, animation):
@@ -2558,6 +2858,14 @@ def _bone_bake_clip_sample(pattern, pattern_ms):
     if not selected:
         raise CompositionError("Bone Collider samples before its first stage")
     stage, stage_start = selected[-1]
+    # Each action's animation delay leaves effects and Logic on the original
+    # clock. Bone anchors use that stage's first source pose until it starts.
+    if stage["animationOccurrences"]:
+        first = min(stage["animationOccurrences"], key=lambda row: row["startOffsetMs"])
+        if pattern_ms < stage_start + first["startOffsetMs"] - 1e-8:
+            if sum(row["startOffsetMs"] == first["startOffsetMs"] for row in stage["animationOccurrences"]) != 1:
+                raise CompositionError("Bone Collider first animation pose is ambiguous")
+            return first, first["sourceStartMs"] / 1000
     matches = []
     for animation in stage["animationOccurrences"]:
         start = stage_start + animation["startOffsetMs"]
@@ -2622,16 +2930,14 @@ def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
         if not math.isfinite(body_matches[0].duration_ticks) or body_matches[0].duration_ticks <= 0 or not math.isfinite(body_matches[0].ticks_per_second) or body_matches[0].ticks_per_second <= 0:
             raise CompositionError("Bone Collider body clip has invalid native timing")
         native_seconds = body_matches[0].duration_ticks / body_matches[0].ticks_per_second
-        if animation["endPolicy"] == "LOOP_TO_WINDOW":
-            seconds %= native_seconds
-        else:
-            # Product plays the action without looping. A held final stage
-            # keeps advancing its source clock until CAnimation's native end.
-            seconds = min(seconds, native_seconds)
+        elapsed_ms = (seconds * 1000.0 - animation["sourceStartMs"]) / animation["playRate"]
+        seconds = _sample_animation_source_ms(animation, elapsed_ms, native_seconds * 1000.0) / 1000.0
         blend = None
         previous = _animation_blend_source(pattern, animation)
         if previous:
             previous_animation, previous_seconds = previous
+            previous_seconds = _sample_animation_source_ms(previous_animation, previous_animation["playMs"],
+                _clip_native_ms(actor, previous_animation)) / 1000.0
             current_start = next(origin + row["startOffsetMs"] for stage, origin in _bone_bake_stage_origins(pattern)
                                  for row in stage["animationOccurrences"] if row["occurrenceId"] == animation["occurrenceId"])
             alpha = min(1.0, max(0.0, (pattern_ms - current_start) / animation["blendInMs"]))
@@ -2785,6 +3091,7 @@ def _project_logic_window(
     kind = logic.get("judgementKind", logic.get("triggerKind"))
     return {
         "windowId": box["occurrenceId"],
+        **({"cancelAtEnd": True} if box.get("cancelAtEnd", False) else {}),
         **({"holdLogicOccurrenceId": box["holdLogicOccurrenceId"]} if box.get("holdLogicOccurrenceId") else {}),
         **({"bossChargeDistanceM": logic["bossChargeDistanceM"]} if logic.get("bossChargeDistanceM", 0) else {}),
         **({"chargeYawOffsetDegrees": logic["chargeYawOffsetDegrees"]} if logic.get("chargeYawOffsetDegrees", 0) else {}),
@@ -2815,6 +3122,7 @@ def _project_logic_window(
 
 
 def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    document = _expand_parent_patterns(document)
     arena_archetypes_by_profile = arena_boss_archetypes_by_profile(root)
     logics = {logic["logicId"]: logic for logic in document.get("logics", [])}
     worlds = {world["worldId"]: world for world in document.get("worlds", [])}
@@ -2933,6 +3241,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 # Pattern-clock lanes beside the stages: judgement windows and
                 # the presentation cues the Server broadcasts.
                 "resetBossToSpawn": source.get("resetBossToSpawn", False),
+                **({"fixedTimeline": True} if source.get("durationMs") else {}),
                 **({"resetBossYawDegrees": float(source["resetBossYawDegrees"])}
                    if "resetBossYawDegrees" in source else {}),
                 **({"bossMotion": copy.deepcopy(source["bossMotion"])} if "bossMotion" in source else {}),
@@ -3074,7 +3383,8 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
     for box in boxes:
         _keys(box, PRESENTATION_OCCURRENCE_REQUIRED, set(PRESENTATION_OCCURRENCE_DEFAULTS), "presentation occurrence")
         generated = re.fullmatch(prefix, box["occurrenceId"])
-        if not generated or int(generated.group(1)) >= next_id or box["occurrenceId"] in ids:
+        if ((not generated and not _derived_occurrence(box["occurrenceId"], pattern["patternId"], "presentation")) or
+                (generated is not None and int(generated.group(1)) >= next_id) or box["occurrenceId"] in ids):
             raise CompositionError("presentation occurrenceId must belong to this pattern and its next ordinal")
         ids.add(box["occurrenceId"])
         if box["resourceId"] not in resources:
@@ -3195,7 +3505,9 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
                     **{key: animation[key] for key in (
                         "runtimeClip", "sourceStartMs", "playMs", "playRate", "endPolicy")},
                     "startOffsetMs": stage_start + animation["startOffsetMs"],
+                    **({"stageStartMs": stage_start} if animation is min(stage["animationOccurrences"], key=lambda row: (row["startOffsetMs"], row.get("occurrenceId", ""))) and animation["startOffsetMs"] else {}),
                     "blendInMs": animation.get("blendInMs", 0),
+                    **({"sourceEndMs": animation["sourceEndMs"]} if animation.get("sourceEndMs", 0) else {}),
                 })
             stage_start += stage["durationMs"]
         source_animations.sort(key=lambda row: row["startOffsetMs"])
@@ -3308,8 +3620,10 @@ def _project_attachment_grips(document: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    document = _expand_parent_patterns(document)
     light_revision = _join_light_resources(document, root)
     bindings: list[dict[str, Any]] = []
+    native_actor_cache = {}
     for pattern in document["patterns"]:
         if pattern["authoringStatus"] != "PRODUCT":
             continue
@@ -3322,6 +3636,15 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
         for stage in pattern["stages"]:
             for occurrence in stage["animationOccurrences"]:
                 previous = _animation_blend_source(pattern, occurrence)
+                # Native resources are only needed for newly authored source ranges
+                # or a transition from a loop; legacy projection stays byte-compatible.
+                if occurrence["sourceStartMs"] or occurrence.get("sourceEndMs", 0) or (previous and
+                        (previous[0]["sourceStartMs"] or previous[0].get("sourceEndMs", 0) or previous[0]["endPolicy"] != "EXACT")):
+                    actor = _load_bone_bake_actor(pattern, root, native_actor_cache)
+                    _sample_animation_source_ms(occurrence, 0.0, _clip_native_ms(actor, occurrence))
+                    if previous:
+                        previous = (previous[0], _sample_animation_source_ms(previous[0], previous[0]["playMs"],
+                            _clip_native_ms(actor, previous[0])) / 1000.0)
                 transition = {"blendInMs": occurrence["blendInMs"], "blendFromClip": previous[0]["runtimeClip"],
                               "blendFromSourceMs": previous[1] * 1000} if previous else {}
                 bindings.append(
@@ -3332,6 +3655,7 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
                         **transition,
                         "startOffsetMs": occurrence["startOffsetMs"],
                         "sourceStartMs": occurrence["sourceStartMs"],
+                        **({"sourceEndMs": occurrence["sourceEndMs"]} if occurrence.get("sourceEndMs", 0) else {}),
                         "playMs": occurrence["playMs"],
                         "playRate": occurrence["playRate"],
                         "endPolicy": occurrence["endPolicy"],

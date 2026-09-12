@@ -32,6 +32,8 @@ public:
         const WORLD_SEQUENCE_ANIMATION_TRACK* animation, f32_t localMs, f32_t windowEndMs);
     bool_t Is_Visible() const { return m_Visible; }
     void Hide() { m_Visible = false; }
+    // Return to the same rest-pose state as a new clone, without recreating it.
+    bool_t Reset_ForReuse();
     const float4x4_t& Get_SampledWorld() const { return m_World; }
     const std::string& Get_RenderStatus() const { return m_RenderStatus; }
 private:

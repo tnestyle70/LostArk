@@ -384,7 +384,17 @@ for ordinal, selection in enumerate(selections):
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_decal[2]
-        if decal and not kouku_decal and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298','cd75326f74ef024d827113811196cae2'):
+        kouku_ground = decal and sid in (
+            'ef9cad5cf42011438c3b2ff2ecf7baee',
+            'b123a95ca0a96e488268a58a2998fa43',
+            '76df7d394e7b4242b700d26cf69db77b')
+        if kouku_ground:
+            # GroundEffect's LocalDecal VS exports absolute world position at
+            # TEXCOORD5. Its PS adds a pre-view translation before the existing
+            # projection/color/opacity prefix, unlike Cascade LocalDecal.
+            assert selection['sourceVS'] == '51afa7d015c2db45bc7c7faf7300c9c3'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 1, 2, 3]
+        if decal and not kouku_decal and not kouku_ground and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298','cd75326f74ef024d827113811196cae2'):
             raise ValueError(('Unreviewed source decal prefix',sid))
         source_cb_count = bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]
         lines=[f'// {name}: {sid}; selected map {r["mapKey"]}.',
@@ -440,7 +450,10 @@ for ordinal, selection in enumerate(selections):
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
             lines += ['    source[0]=input.color; // Native opaque quest mesh particle color prefix.']
         if decal:
-            lines += ['    source[0]=float4(input.decalProjection.xy,0.f,0.f);', '    source[1]=input.color; // Source decal material color, including particle color modules.', '    source[2].x=input.decalProjection.z;']
+            if kouku_ground:
+                lines += ['    source[0]=0.f; // Absolute source world position: neutral pre-view translation.', '    source[1]=float4(input.decalProjection.xy,0.f,0.f);', '    source[2]=input.color; // Original GroundEffect ActiveColorValue.', '    source[3].x=input.decalProjection.z;']
+            else:
+                lines += ['    source[0]=float4(input.decalProjection.xy,0.f,0.f);', '    source[1]=input.color; // Source decal material color, including particle color modules.', '    source[2].x=input.decalProjection.z;']
             sky=kouku_decal[1] if kouku_decal else {'be9bb8ea52a06b40bc25b550e349b5b9':7,'316b66ee3867964da197becf270077f0':15}.get(sid)
             if sky is not None:
                 lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
@@ -475,6 +488,8 @@ for ordinal, selection in enumerate(selections):
                     values.update({0:'float4(input.uv,0.f,0.f)',4:'float4(0.f,0.f,0.f,1.f)',5:'float4(input.sourceWorldPosition,1.f)',6:'float4(input.tangentView,1.f)',7:'float4(input.tangentUp,0.f)'})
                 if decal:
                     values.update({0:'float4(input.uv,input.uv1)',7:'float4(input.tangentUp,0.f)'})
+                if kouku_ground:
+                    values[5]='float4(input.sourceWorldPosition,1.f)'
                 if kouku_ice_distortion or kouku_world_distortion:
                     values[5]='float4(input.sourceWorldPosition,1.f)'
                 if kouku_lit:

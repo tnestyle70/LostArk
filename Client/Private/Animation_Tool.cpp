@@ -12001,7 +12001,7 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 	std::uint32_t durationMs = 0u;
 	std::string diagnostics;
 	const auto append = [&](KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE row,
-		const std::uint32_t stageStart, const std::uint32_t stageDuration)
+		const std::uint32_t stageStart, const std::uint32_t stageDuration, const std::uint32_t poseStart = 0u)
 	{
 		std::uint32_t index = 0u;
 		for (; index < pModel->Get_NumAnimations(); ++index)
@@ -12014,13 +12014,16 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 		const auto* rowProfile = Find_KoukuSaydonActionProfile(row.strProfileId);
 		const std::string_view rowTarget = nullptr != rowProfile ?
 			std::string_view{ rowProfile->pPreviewAssetName } : std::string_view{ row.strProfileId };
+		double sourceStartSampleMs = 0.0;
 		const bool valid = rowTarget == targetAssetName &&
 			row.iPlayMs > 0u && std::isfinite(row.fPlayRate) && row.fPlayRate >= 0.01f && row.fPlayRate <= 16.f &&
 			static_cast<std::uint64_t>(row.iStartOffsetMs) + row.iPlayMs <= stageDuration &&
 			(row.strEndPolicy == "EXACT" || row.strEndPolicy == "HOLD_LAST_POSE" || row.strEndPolicy == "LOOP_TO_WINDOW") &&
 			std::isfinite(tps) && tps > 0.f && pModel->Get_AnimationProgress(index, position, ticks) &&
 			std::isfinite(ticks) && ticks > 0.f &&
-			(row.strEndPolicy == "HOLD_LAST_POSE" || row.iSourceStartMs * tps * 0.001 < ticks);
+			(row.strEndPolicy == "HOLD_LAST_POSE" || row.iSourceStartMs * tps * 0.001 < ticks) &&
+            CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(row.iSourceStartMs, row.iSourceEndMs,
+                0.0, row.fPlayRate, ticks * 1000.0 / tps, row.strEndPolicy == "LOOP_TO_WINDOW", sourceStartSampleMs);
 		if (!valid)
 		{
 			diagnostics += "Skipped " + row.strRuntimeClip + ": wrong body, missing clip, or invalid timing. ";
@@ -12032,6 +12035,7 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 		const double sourceEndMs = row.iSourceStartMs + static_cast<double>(row.iPlayMs) * row.fPlayRate;
 		if (row.strEndPolicy == "EXACT" && sourceEndMs > ticks / tps * 1000.0 + 1.0)
 			diagnostics += row.strRuntimeClip + " holds its last pose past the native clip end. ";
+		row.iPoseStartMs = poseStart;
 		row.iStartOffsetMs += stageStart;
 		rows.push_back(std::move(row));
 	};
@@ -12052,7 +12056,11 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 				rows.clear();
 				break;
 			}
-			for (const auto& row : stage.AnimationOccurrences) append(row, durationMs, stage.iDurationMs);
+			const auto first = std::min_element(stage.AnimationOccurrences.begin(), stage.AnimationOccurrences.end(),
+                [](const auto& a, const auto& b) { return a.iStartOffsetMs != b.iStartOffsetMs ?
+                    a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
+            for (const auto& row : stage.AnimationOccurrences)
+                append(row, durationMs, stage.iDurationMs, durationMs + (&row == &*first ? 0u : row.iStartOffsetMs));
 			durationMs += stage.iDurationMs;
 		}
 	}
@@ -12184,7 +12192,7 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 	for (const auto& row : m_KoukuCompositionPreviewRows)
 	{
 		const double endMs = static_cast<double>(row.iStartOffsetMs) + row.iPlayMs;
-		if (m_fKoukuCompositionPreviewClockMs >= row.iStartOffsetMs &&
+		if (m_fKoukuCompositionPreviewClockMs >= row.iPoseStartMs &&
 			m_fKoukuCompositionPreviewClockMs < endMs)
 			selected = &row;
 		if (endMs <= m_fKoukuCompositionPreviewClockMs && endMs >= previousEndMs)
@@ -12203,9 +12211,15 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 		selected = previous;
 		sampleClockMs = previousEndMs;
 	}
+	if (nullptr == selected && !m_KoukuCompositionPreviewRows.empty())
+	{
+		// Hold the scheduled clip's first pose while pattern-relative Effects can begin.
+		selected = &m_KoukuCompositionPreviewRows.front();
+		sampleClockMs = selected->iStartOffsetMs;
+	}
 	if (nullptr == selected)
 	{
-		// The leading gap has the immutable pose captured when this preview began.
+		// An empty timeline preserves the pose captured when this preview began.
 		Apply_KoukuSaydonPreviewScale(pModel, 1.f);
 		if (m_iKoukuCompositionInitialAnimation < pModel->Get_NumAnimations())
 		{
@@ -12240,13 +12254,45 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 		if (!Start_PreviewClip(pModel, selected->strRuntimeClip.c_str(), false, 0.f)) return;
 		m_iKoukuSaydonPatternPreviewClip = rowIndex;
 	}
-	double sourceTicks = (selected->iSourceStartMs +
-		(sampleClockMs - selected->iStartOffsetMs) * selected->fPlayRate) * tps * 0.001;
-	if (selected->strEndPolicy == "LOOP_TO_WINDOW") sourceTicks = std::fmod(sourceTicks, duration);
-	sourceTicks = std::clamp(sourceTicks, 0.0, static_cast<double>(duration));
-	pModel->Set_AnimPaused(true);
-	(void)pModel->Set_AnimTrackPosition(index, static_cast<f32_t>(sourceTicks));
-	(void)pModel->Play_Animation(0.f);
+    double sourceMs = 0.0;
+    const double ageMs = (std::max)(0.0, sampleClockMs - selected->iStartOffsetMs);
+    if (!CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(selected->iSourceStartMs,
+        selected->iSourceEndMs, (std::min)(ageMs, double(selected->iPlayMs)), selected->fPlayRate,
+        duration * 1000.0 / tps, selected->strEndPolicy == "LOOP_TO_WINDOW", sourceMs))
+    {
+        m_strKoukuSaydonPatternStatus = "Animation source range is outside the native clip.";
+        Stop_KoukuSaydonPatternPreview(pModel, m_strKoukuSaydonPatternStatus);
+        return;
+    }
+    const double sourceTicks = sourceMs * tps * .001;
+    pModel->Clear_AnimationTransitionPose();
+    pModel->Set_AnimPaused(true);
+    (void)pModel->Set_AnimTrackPosition(index, static_cast<f32_t>(sourceTicks));
+    (void)pModel->Play_Animation(0.f);
+    if (rowIndex > 0u && selected->iBlendInMs && ageMs < selected->iBlendInMs)
+    {
+        const auto& blendFrom = m_KoukuCompositionPreviewRows[rowIndex - 1u];
+        CModel::ANIMATION_TRANSITION_POSE pose;
+        for (std::uint32_t i = 0u; i < pModel->Get_NumAnimations(); ++i)
+            if (const auto* name = pModel->Get_AnimationName(i); name && blendFrom.strRuntimeClip == name)
+            { pose.sourceIndex = i; break; }
+        float previousCursor = 0.f, previousDuration = 0.f;
+        if (pose.sourceIndex != UINT32_MAX && pModel->Get_AnimationProgress(pose.sourceIndex, previousCursor, previousDuration))
+        {
+            const float previousTps = pModel->Get_AnimationTickPerSecond(pose.sourceIndex);
+            double previousMs = 0.0;
+            if (CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(blendFrom.iSourceStartMs,
+                blendFrom.iSourceEndMs, blendFrom.iPlayMs, blendFrom.fPlayRate,
+                previousDuration * 1000.0 / previousTps, blendFrom.strEndPolicy == "LOOP_TO_WINDOW", previousMs))
+            {
+                pose.sourceTicks = float(previousMs * previousTps * .001);
+                pose.targetIndex = index; pose.targetTicks = float(sourceTicks);
+                pose.durationSeconds = selected->iBlendInMs * .001f;
+                pose.elapsedSeconds = float(ageMs * .001); pose.playRate = selected->fPlayRate;
+                (void)pModel->Set_AnimationTransitionPose(pose);
+            }
+        }
+    }
 	if (nullptr != m_pPreviewPanel) m_pPreviewPanel->Synchronize_PreviewWeapon();
 	if (hasActiveOccurrence)
 		Sample_KoukuCompositionEffects(*selected, static_cast<f32_t>(sourceTicks / tps));

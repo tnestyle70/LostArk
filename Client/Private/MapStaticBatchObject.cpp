@@ -103,9 +103,9 @@ void CMapStaticBatchObject::Late_Update(
 				shared_from_this()));
 	}
 
-	if (CGameInstance::Get().Is_ShadowLightEnabled() &&
-		SUCCEEDED(Upload_ShadowInstances()) &&
-		!m_ShadowInstances.empty())
+	// Frame providers can replace the shadow light after Late_Update. Queue
+	// authored casters now, then cull against the final light in Render_Shadow.
+	if (m_RenderProfile.castsShadow && 0u != m_iAuthoredVisibleInstanceCount)
 	{
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::SHADOW,
@@ -154,12 +154,18 @@ HRESULT CMapStaticBatchObject::Render()
 		static_cast<uint32_t>(
 			m_VisibleInstances.size());
 
+	const bool_t useSourceMaterials =
+		CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.BindAndDraw");
 	for (uint32_t meshIndex = 0;
 		meshIndex < m_pModelCom->Get_NumMeshes();
 		++meshIndex)
 	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(meshIndex);
+		const uint32_t meshPass = useSourceMaterials && surface &&
+			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ?
+			24u + passIndex : passIndex;
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Material.Bind");
 			if (FAILED(CMapAssetRenderUtils::Bind_Material(m_pModelCom, m_pShaderCom,
@@ -167,7 +173,7 @@ HRESULT CMapStaticBatchObject::Render()
 		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Pass.Apply");
-			if (FAILED(m_pShaderCom->Begin(passIndex))) return E_FAIL;
+			if (FAILED(m_pShaderCom->Begin(meshPass))) return E_FAIL;
 		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Mesh.Submit");
@@ -185,9 +191,15 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 	if (CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
-	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
-	if (m_ShadowInstances.empty() || !m_RenderProfile.castsShadow)
+	if (!m_RenderProfile.castsShadow)
 		return S_OK;
+	// Frame providers can change the light after Late_Update queued this batch.
+	if (FAILED(Upload_ShadowInstances()))
+		return E_FAIL;
+	if (m_ShadowInstances.empty())
+		return S_OK;
+	const bool_t useSourceMaterials =
+		CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
 
 	if (FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
 			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
@@ -211,6 +223,28 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 		const auto* surface = m_pModelCom->Get_MaterialSurface(iMesh);
 		if (surface && !surface->castsShadow)
 			continue;
+		// Existing complex families retain their complete source shadow shader.
+		uint32_t shadowPassBase = 12u;
+		if (!surface)
+			shadowPassBase = 18u;
+		else
+		{
+			switch (surface->family)
+			{
+			case Engine::MODEL_SURFACE_FAMILY::LEGACY:
+			case Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
+			case Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
+				shadowPassBase = 18u;
+				break;
+			case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
+			case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
+			case Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
+				shadowPassBase = useSourceMaterials ? 21u : 18u;
+				break;
+			default:
+				break;
+			}
+		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Material.Bind");
 			if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(m_pModelCom, m_pShaderCom,
@@ -218,7 +252,7 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Pass.Apply");
-			if (FAILED(m_pShaderCom->Begin(STATIC_SHADOW_PASS_BASE + iCullPass))) return E_FAIL;
+			if (FAILED(m_pShaderCom->Begin(shadowPassBase + iCullPass))) return E_FAIL;
 		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Mesh.Submit");
@@ -417,6 +451,7 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 	m_pShadowInstanceBuffer = std::move(stagedBuffer);
 	m_iShadowInstanceCapacity = newCapacity;
 	m_ShadowInstances.reserve(newCapacity);
+	m_CandidateShadowInstances.reserve(newCapacity);
 	return S_OK;
 }
 
@@ -559,53 +594,61 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 {
 	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.ShadowPrepare");
-	if (!m_bShadowInstancesDirty)
+	MAP_SHADOW_CULL_SNAPSHOT lightSnapshot{};
+	const bool_t hasLightSnapshot =
+		CMapAssetRenderUtils::Capture_ShadowCullSnapshot(lightSnapshot);
+	const uint64_t lightRevision = hasLightSnapshot ? lightSnapshot.revision : 0u;
+	if (!m_bShadowInstancesDirty &&
+		m_bShadowInstancesUsedLight == hasLightSnapshot &&
+		m_iShadowLightRevision == lightRevision)
 		return S_OK;
 
-	m_ShadowInstances.clear();
+	m_CandidateShadowInstances.clear();
 	for (const FMapStaticInstance& instance : m_Instances)
 	{
-		if (!instance.Visible)
+		if (!instance.Visible ||
+			(hasLightSnapshot && !CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(
+				lightSnapshot, instance.WorldBoundsCenter, instance.WorldBoundsRadius)))
 			continue;
 
 		VTXMESHINSTANCE gpuInstance{};
 		gpuInstance.World = instance.World;
 		gpuInstance.WorldInvTranspose = instance.WorldInvTranspose;
-        gpuInstance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
-        gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
-        gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
-        gpuInstance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
-		m_ShadowInstances.push_back(gpuInstance);
+		gpuInstance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
+		gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
+		gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
+		gpuInstance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
+		m_CandidateShadowInstances.push_back(gpuInstance);
 	}
 
-	if (m_ShadowInstances.empty())
+	const bool_t payloadUnchanged =
+		m_CandidateShadowInstances.size() == m_ShadowInstances.size() &&
+		(m_CandidateShadowInstances.empty() || 0 == std::memcmp(
+			m_CandidateShadowInstances.data(), m_ShadowInstances.data(),
+			m_CandidateShadowInstances.size() * sizeof(VTXMESHINSTANCE)));
+	if (!payloadUnchanged && !m_CandidateShadowInstances.empty())
 	{
-		m_bShadowInstancesDirty = false;
-		return S_OK;
-	}
-	{
-		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.ShadowUpload");
-	if (FAILED(Ensure_ShadowInstanceCapacity(
-		static_cast<uint32_t>(m_ShadowInstances.size()))))
-	{
-		return E_FAIL;
-	}
+		Engine::CProfilerScope uploadScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.ShadowUpload");
+		if (FAILED(Ensure_ShadowInstanceCapacity(
+			static_cast<uint32_t>(m_CandidateShadowInstances.size()))))
+			return E_FAIL;
 
-	D3D11_MAPPED_SUBRESOURCE mapped{};
-	if (FAILED(m_pContext->Map(
-		m_pShadowInstanceBuffer.Get(), 0,
-		D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
-	{
-		return E_FAIL;
-	}
+		D3D11_MAPPED_SUBRESOURCE mapped{};
+		if (FAILED(m_pContext->Map(m_pShadowInstanceBuffer.Get(), 0,
+			D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+			return E_FAIL;
 
-	std::memcpy(
-		mapped.pData,
-		m_ShadowInstances.data(),
-		m_ShadowInstances.size() * sizeof(VTXMESHINSTANCE));
-	m_pContext->Unmap(m_pShadowInstanceBuffer.Get(), 0);
+		std::memcpy(mapped.pData, m_CandidateShadowInstances.data(),
+			m_CandidateShadowInstances.size() * sizeof(VTXMESHINSTANCE));
+		m_pContext->Unmap(m_pShadowInstanceBuffer.Get(), 0);
 	}
+	// A failed Map leaves both the successful payload and light revision intact.
+	// The next call retries even when only the light, rather than instances, moved.
+	if (!payloadUnchanged)
+		m_ShadowInstances.swap(m_CandidateShadowInstances);
 	m_bShadowInstancesDirty = false;
+	m_bShadowInstancesUsedLight = hasLightSnapshot;
+	m_iShadowLightRevision = lightRevision;
 	return S_OK;
 }
 

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="00.MainApp">
@@ -819,6 +819,12 @@
     <ClCompile Include="..\Private\StatusEffectTextView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MvpAwardCatalog.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MvpResultView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DungeonTimerView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1427,6 +1433,12 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\StatusEffectTextView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MvpAwardCatalog.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MvpResultView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\DungeonTimerView.h">
@@ -2317,6 +2329,21 @@
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku.keyframes.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\MVP\MvpResult_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\MVP\MvpResult_Intro.keyframes.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\MVP\MvpResult_BadgeEffect.keyframes.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -3080,6 +3107,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.tracking.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.end.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.fire.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.warning.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.donut.warning.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.sector.warning.shot.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bullet.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.staff.flame.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -3087,5 +3117,99 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.1.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.2.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.3.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.4.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.5.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.1.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.2.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.full.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.clear.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.maze.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate3.intro.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2368.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2432.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2560.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2688.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2752.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2816.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2880.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2944.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3008.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3072.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3136.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3200.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3264.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3328.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3584.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2368.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2432.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2560.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2688.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2752.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2816.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2880.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2944.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3008.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3072.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3136.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3200.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3264.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3328.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3584.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2368.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2432.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2560.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2688.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2752.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2816.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2880.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2944.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3008.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3072.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3136.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3200.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3264.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3328.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3584.hlsli"><Filter>97.ShaderFiles</Filter></None>
   </ItemGroup>
 </Project>

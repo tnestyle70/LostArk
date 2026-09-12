@@ -18,6 +18,8 @@ kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 계약은 없�
 
 ## visual publish
 
+새 모델이나 파생 World Object를 추가할 때 [오브젝트 재질·환경 입력 공통 절차](../../.md/GB/렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)를 함께 수행한다. WModel/DDS 배치만으로 원본 재질 연결이 완료되는 것은 아니다. `materialSourceModelAssetId`, `mapMaterialBindings`와 Area 조명·RNM의 저장 및 지원 범위는 [Area 데이터 가이드](../../.md/TEAM/AREA_DATA_LAYER_GUIDE.md)를 따른다. 움직이는 모델에 원래 정적 배치의 lightmap/static shadow를 복사하지 않는다.
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 `
   -AreaId <AreaId> -Mode Validate

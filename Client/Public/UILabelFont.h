@@ -19,9 +19,22 @@ nearest the on-screen size a label wants and, when it is within a pixel, draws i
 baked variants delivered, fall back to the family font scaled as before. */
 namespace UILabelFont
 {
-	constexpr int32_t BAKED_SIZES[] = { 10, 11, 12, 13, 14, 15, 16, 18, 20 };
-	constexpr f32_t LARGEST_BAKED = 20.f;
+	constexpr int32_t BAKED_SIZES[] = { 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 25, 28 };
+	constexpr f32_t LARGEST_BAKED = 28.f;
 	constexpr f32_t SNAP_TOLERANCE_PX = 1.f;
+
+	/* Display sizes, re-rasterised from the retail TTF by
+	Tools/FontPipeline/bake_spritefont.py rather than downsampled, because there is
+	nothing above 42 px to downsample from -- a 110 pt title off the family atlas is
+	a 3.4x magnify of a 27 px glyph. These carry Latin only: a full Korean set at
+	these sizes runs to hundreds of megabytes and the labels that need them (a
+	title word, a percentage) never contain Korean. Use Resolve_LatinDisplay only
+	for text you know is Latin; anything else stays on Resolve. */
+	constexpr int32_t LATIN_DISPLAY_SIZES[] =
+		{ 40, 56, 72, 96, 128, 160, 200, 256 };
+	/* Below this the family atlas (baked at 32-42 px) is the closer match than
+	the smallest display step, so Resolve_LatinDisplay hands back to Resolve. */
+	constexpr f32_t SMALLEST_LATIN_DISPLAY = 36.f;
 
 	inline bool_t Is_Registered(const wstring_t& strTag)
 	{
@@ -59,6 +72,32 @@ namespace UILabelFont
 		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFamilyTag, L"0");
 		outScale = (vMeasured.y > 0.f) ? fTargetPx / vMeasured.y : 1.f;
 		return strFamilyTag;
+	}
+
+	/* Display-size counterpart of Resolve, for Latin-only text (a title word, a
+	percentage). Below the smallest display step it defers to Resolve, so a caller
+	can use it for one label across every viewport size. */
+	inline wstring_t Resolve_LatinDisplay(
+		const wstring_t& strFamilyTag, const f32_t fTargetPx, f32_t& outScale)
+	{
+		if (fTargetPx < SMALLEST_LATIN_DISPLAY)
+			return Resolve(strFamilyTag, fTargetPx, outScale);
+
+		int32_t iBest = 0;
+		f32_t fBestDiff = 1e9f;
+		for (const int32_t iSize : LATIN_DISPLAY_SIZES)
+		{
+			const f32_t fDiff = std::fabs(fTargetPx - static_cast<f32_t>(iSize));
+			if (fDiff < fBestDiff) { fBestDiff = fDiff; iBest = iSize; }
+		}
+		const wstring_t strTag = strFamilyTag + L"_Latin" + std::to_wstring(iBest);
+		if (Is_Registered(strTag))
+		{
+			outScale = (fBestDiff <= SNAP_TOLERANCE_PX)
+				? 1.f : fTargetPx / static_cast<f32_t>(iBest);
+			return strTag;
+		}
+		return Resolve(strFamilyTag, fTargetPx, outScale);
 	}
 }
 

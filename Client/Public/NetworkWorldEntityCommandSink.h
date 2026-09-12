@@ -9,7 +9,7 @@ namespace Client
 	{
 	public:
 		bool Request_SpawnWorldEntity(
-			std::string_view placementId) override;
+			std::string_view placementId, std::uint64_t* outRequestToken = nullptr) override;
 		bool Request_DespawnAllWorldEntities(
 			std::uint32_t requestSequence) override;
 		bool Request_EnterKakulSaydonArena(

@@ -1,4 +1,4 @@
-#include "Level_KakulSaydonArena.h"
+﻿#include "Level_KakulSaydonArena.h"
 #include "WorldSequenceObject.h"
 #include "ActorCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
@@ -18,6 +18,8 @@
 #include "KakulArenaHiddenPlacements.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuMadnessGaugeView.h"
+#include "MvpAwardCatalog.h"
+#include "MvpResultView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
@@ -103,7 +105,7 @@ namespace
 		"SOURCE_LEVEL_ID_ONLY";
 
 	constexpr std::string_view CAMERA_SHOT_SCHEMA = "lostark.camera-shots";
-	constexpr size_t CAMERA_SHOT_MAX_COUNT = 64u;
+	constexpr size_t CAMERA_SHOT_MAX_COUNT = 128u;
 	constexpr uint32_t CAMERA_SHOT_MAX_BLEND_MS = 10000u;
 	constexpr uint32_t CAMERA_SHOT_MAX_PRIORITY = 1000u;
 	constexpr f32_t CAMERA_SHOT_MAX_HALF_EXTENT = 1000.f;
@@ -588,11 +590,19 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	for (const auto& cue : cues)
 	{
 		const auto* instance = document.Find_Instance(cue.instanceId);
-		if (nullptr == instance || !instance->enabled || 0u == cue.durationMs ||
-			!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f ||
-			!Is_StableId(cue.occurrenceId) || staged.contains(cue.occurrenceId))
+		const char* rejection = nullptr;
+		if (nullptr == instance) rejection = "instance is missing from the loaded Area document";
+		else if (!instance->enabled) rejection = "instance is disabled";
+		else if (0u == cue.durationMs) rejection = "duration is zero";
+		else if (!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f)
+			rejection = "playback speed must be finite and positive";
+		else if (!Is_StableId(cue.occurrenceId)) rejection = "occurrence ID is invalid";
+		else if (staged.contains(cue.occurrenceId)) rejection = "occurrence ID is duplicated";
+		if (rejection)
 		{
-			status = "WORLD preview occurrence is invalid, duplicate, or unavailable: " + cue.occurrenceId;
+			status = "WORLD preview " + cue.occurrenceId + ": " + rejection +
+				" [instance=" + cue.instanceId + ", revision=" + std::to_string(document.Get_Revision()) +
+				", document=" + (sourceDocument ? "supplied snapshot" : "runtime") + "]";
 			return false;
 		}
 		if (!Can_StartCompositionWorld(cue.instanceId, status, &document)) return false;
@@ -981,6 +991,16 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 				"[Level_KakulSaydonArena][WorldSequence] " +
 				m_SequencePlayer.Get_Status() + "\n").c_str());
 		}
+		else
+		{
+			CProfilerScope prepareScope(pProfiler, "Level.Kouku.JokerCards.Prewarm");
+			// The encounter's six normal cards and one joker reuse these hidden clones.
+			// Prepare during arena entry, before the first Pattern 13 spawn frame.
+			if (!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.card", 6u, sequenceTargets) ||
+				!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.joker_card", 1u, sequenceTargets))
+				OutputDebugStringA(("[Level_KakulSaydonArena][JokerPrewarm] " +
+					m_SequencePlayer.Get_Status() + "\n").c_str());
+		}
 	}
 
 	std::string stageStatus;
@@ -1032,6 +1052,23 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			L"UI/DeadScene/DeadSceneUI.json");
 		m_pDeadSceneView->Set_AllSlotsVisible(false);
 	}
+
+	/* Built hidden; only the F1 Developer Tools show it so far. */
+	m_pMvpResultView = std::make_unique<CMvpResultView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
+
+	/* KoukuSaydon's own document rather than the one Valtan drives. Every layer of
+	   epicGateCommanderClearSuccess_Set02 animates its position, size and alpha frame by
+	   frame, and the light layers are authored white with each Set's colorTransform
+	   supplying the raid colour (Kouku pulls blue to 0, which is what makes it gold), so
+	   the whole Set is carried as a keyframe document instead of fixed rects.
+	   epicgatecommonclear.gfx's MainTimeline places the frame at translateX -6400 twips on
+	   a 1920x1080 stage, so local x maps to x - 320 and then the usual 2/3 onto 1280x720;
+	   that mapping is already baked into the generated keys. */
+	m_pRaidClearView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
+		L"UI/RaidClear/RaidClear_Kouku_Layout.json");
+	m_pRaidClearView->Set_AllSlotsVisible(false);
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -1136,13 +1173,22 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 #endif
 	Update_DeadScene(fTimeDelta);
+	Update_RaidClear(fTimeDelta);
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Update(fTimeDelta);
 
 #ifdef _DEBUG
 	/* Gate spawn replies arrive one per requested placement. They are Debug
 	   status only; the presentation itself follows the reliable spawn stream. */
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
-	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(spawnResult))
+	std::uint64_t spawnRequestToken = 0u;
+	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(spawnResult, &spawnRequestToken))
 	{
+		const auto pending = m_DebugGatePendingPlacements.find(spawnResult.strPlacementId);
+		if (pending == m_DebugGatePendingPlacements.end() ||
+			spawnRequestToken == 0u || pending->second != spawnRequestToken)
+			continue;
+		m_DebugGatePendingPlacements.erase(pending);
 		const char_t* pResult = "unsupported result";
 		switch (spawnResult.eResult)
 		{
@@ -1156,12 +1202,20 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			pResult = "rejected by Server"; break;
 		default: break;
 		}
-		if (0u != m_DebugGatePendingPlacements.erase(spawnResult.strPlacementId) &&
-			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::SPAWNED != spawnResult.eResult &&
+		if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::SPAWNED != spawnResult.eResult &&
 			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS != spawnResult.eResult &&
 			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ACTIVATED != spawnResult.eResult)
 			m_bDebugGateFailed = true;
 		m_strDebugGateStatus += "\n" + spawnResult.strPlacementId + ": " + pResult;
+	}
+	if (Is_DebugGatePending())
+	{
+		m_fDebugGatePendingSeconds += fTimeDelta;
+		if (m_fDebugGatePendingSeconds >= 15.f)
+		{
+			Debug_RetireGateActivation(
+				"Server Gate activation timed out before all spawn and movement approvals arrived.");
+		}
 	}
 	if (Is_DebugGatePending() && m_DebugGatePendingPlacements.empty() &&
 		!m_PlayerController.Is_DebugPlayerPlacementPending())
@@ -1171,7 +1225,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
 			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
-			CCombatHUDViewModel::Get().Set_BossHidden(nullptr == gate.pHudFocusArchetypeId);
+			CCombatHUDViewModel::Get().Set_BossHidden(m_bSequenceCombatPending || nullptr == gate.pHudFocusArchetypeId);
 			CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(
 				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
@@ -1325,9 +1379,13 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			return shot.hasCameraTrack && !shot.strSequenceInstanceId.empty() &&
 				m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
 		});
+	bool_t sequenceInputReady = true;
+#ifdef _DEBUG
+	sequenceInputReady = !m_bSequenceCombatPending && !Is_DebugGatePending();
+#endif
 	m_PlayerController.Update(
-		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
-		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
+		sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
+		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
 	Update_EntranceTriggerMarkers(fTimeDelta);
@@ -1790,7 +1848,198 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Floating status words last, over the scene and over the two prompts above,
 	   the way the retail damage-text canvas sits on its own top layer. */
 	m_StatusEffectTextView.Render();
+	/* Award page labels sit over everything else this Level draws, the status
+	   words included. Its own image layers are CUI_Sprite objects on Layer_UI,
+	   so they need no call. */
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Render();
 	return drawn;
+}
+
+namespace
+{
+	/* EFTable_Mvp.StatType, for the contributions KoukuSaydon's group tracks. */
+	constexpr int32_t MVP_STAT_DAMAGE = 1;
+	constexpr int32_t MVP_STAT_STAGGER = 3;
+	constexpr int32_t MVP_STAT_HEAL = 4;
+	constexpr int32_t MVP_STAT_BATTLE_ITEM = 9;
+	constexpr int32_t MVP_STAT_COUNTER = 11;
+	constexpr int32_t MVP_STAT_SUPPORT_DAMAGE = 13;
+
+	/* KoukuSaydon is a four-player raid -- the award page seats one MVP and three
+	   party columns -- so the four-player cutoffs apply. */
+	constexpr int32_t MVP_PARTY_SIZE = 4;
+
+	/* EFTable_ZoneEpicGate.GroupId for KoukuSaydon; Valtan is 101, and the
+	   headline follows whichever raid is handed in. SecondaryKey 0 on that row is
+	   the normal difficulty, 2 the hard one. */
+	constexpr int32_t KOUKU_RAID_GROUP_ID = 103;
+	constexpr const char* KOUKU_DIFFICULTY_ID = "normal";
+
+	/* The reference capture shows no guild line under any of the four names:
+	   MvpResultFrame fills guildNameTF only when the character has a guild, so
+	   the sample leaves it empty instead of printing a stand-in word. */
+	const wstring_t PREVIEW_GUILD;
+
+	Client::MVP_AWARD_PARTICIPANT Make_PreviewParticipant(
+		const wchar_t* const pName,
+		vector<Client::MVP_AWARD_CONTRIBUTION> Contributions,
+		vector<int32_t> Medals)
+	{
+		Client::MVP_AWARD_PARTICIPANT Participant;
+		Participant.strCharacterName = pName;
+		Participant.strGuildName = PREVIEW_GUILD;
+		Participant.Contributions = std::move(Contributions);
+		Participant.Medals = std::move(Medals);
+		for (const Client::MVP_AWARD_CONTRIBUTION& Contribution
+			: Participant.Contributions)
+			Participant.fTotalScore += Contribution.fScore;
+		return Participant;
+	}
+
+	/* Sample page for the F1 preview.
+
+	   The shares, scores and medal requests below are made-up sample play. Who
+	   ends up as the MVP, which rows each card gets, which title each row shows
+	   and which medals survive are all decided by CMvpAwardCatalog from
+	   Data/UI/MVP/MvpAwards.json -- nothing here states a title.
+
+	   The sample deliberately gives two of the three columns \uC900 \uD53C\uD574 as their
+	   best contribution so the one-damage-title-per-page rule is visible:
+	   Berserker takes it and Sorceress falls through to \uBC30\uD2C0\uC544\uC774\uD15C. Medal 16 is
+	   requested and dropped, because group 220000 cannot award it. */
+	Client::MVP_RESULT_DATA Build_MvpResultPreviewData(const int32_t iGate)
+	{
+		const vector<Client::MVP_AWARD_PARTICIPANT> Participants = {
+			Make_PreviewParticipant(L"Test",
+				{ { MVP_STAT_DAMAGE, 4250.f, 42.5f, L"42.5%" },
+				  { MVP_STAT_STAGGER, 1655.f, 33.1f, L"33.1%" },
+				  { MVP_STAT_COUNTER, 248.f, 24.8f, L"11" } },
+				{ 1, 9, 13 }),
+			Make_PreviewParticipant(L"Berserker",
+				{ { MVP_STAT_DAMAGE, 2830.f, 28.3f, {} },
+				  { MVP_STAT_STAGGER, 1530.f, 30.6f, {} } },
+				{ 2, 9 }),
+			Make_PreviewParticipant(L"Bard",
+				{ { MVP_STAT_SUPPORT_DAMAGE, 2260.f, 22.6f, {} },
+				  { MVP_STAT_HEAL, 1230.f, 41.0f, {} } },
+				{ 14, 16, 17 }),
+			Make_PreviewParticipant(L"Sorceress",
+				{ { MVP_STAT_DAMAGE, 1520.f, 15.2f, {} },
+				  { MVP_STAT_BATTLE_ITEM, 210.f, 21.0f, {} } },
+				{ 5 }),
+		};
+
+		/* The headline is not a written-out string any more: the difficulty, the
+		   raid name and the gate come out of MvpContentNames.json with their own
+		   colours, so a different gate or a different raid reads correctly
+		   without touching this. */
+		const Client::CMvpAwardCatalog& Awards = Client::CMvpAwardCatalog::Get();
+		return Awards.Compose_Page(
+			Awards.Build_ContentName(
+				KOUKU_RAID_GROUP_ID, iGate, KOUKU_DIFFICULTY_ID),
+			Participants, MVP_PARTY_SIZE);
+	}
+}
+
+namespace
+{
+	/* epicgatecommonclear.gfx runs at 40fps and every Set variant is 309 frames, so elapsed
+	   seconds * 40 is the Set's own current frame and the keyframe document plays on the
+	   same clock. EpicGateCommonClearFrame picks its variant by an integer the client hands
+	   it -- result_<ClearNoticeImage> -- and EFTable_ZoneEpicGate gives KoukuSaydon 103,
+	   which is epicGateCommanderClearSuccess_Set02, the Set this document was built from. */
+	constexpr f32_t CLEAR_FPS = 40.f;
+	/* The Set sprite is authored 309 frames and fades itself out over 300..308, but retail
+	   never gets there: in the reference capture the clear screen is still at full strength
+	   when it is cut outright, and the award page starts in the same instant. Anchoring the
+	   capture to the document (its light enters at f108, crest f118, caption f126) puts
+	   document frame 1 at capture frame 1038.5 and the cut at capture 1401, i.e. f243.
+	   Document-to-document sequencing lives in the client's C++ and is not in the .gfx, so
+	   this one number is measured rather than extracted. */
+	constexpr f32_t CLEAR_END_FRAME = 243.f;
+
+	/* Layer entry, position, size, alpha and tint all live in the keyframe document now,
+	   so nothing is listed here. The one thing the document cannot carry is the caption:
+	   the clear title is a DefineEditText (char 364, 66pt, scale 1.3 settling to 1.0 over
+	   frames 126..136) and text is drawn by CMainApp::RenderRaidClearText from a rect.
+	   HUD_RAIDCLEAR_TEXT_RECTS has no alpha field, so the caption is gated on at the frame
+	   its own alphaMultTerm leaves 0; its 126..136 scale-in is not reproduced yet. */
+	constexpr f32_t CLEAR_CAPTION_IN_FRAME = 126.f;
+}
+
+int32_t Client::CLevel_KakulSaydonArena::Current_GateNumber() const
+{
+	return (NO_ACTIVE_DEBUG_GATE == m_iActiveDebugGate)
+		? 1 : static_cast<int32_t>(m_iActiveDebugGate) + 1;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pRaidClearView || m_fRaidClearElapsedSeconds < 0.f)
+		return;
+
+	const f32_t fPrevious = m_fRaidClearElapsedSeconds;
+	m_fRaidClearElapsedSeconds += fTimeDelta;
+	const f32_t fFrame = m_fRaidClearElapsedSeconds * CLEAR_FPS;
+	const bool_t isShowing = fFrame < CLEAR_END_FRAME;
+
+	if (0.f == fPrevious)
+	{
+		m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_Frame", true);
+		m_pRaidClearView->Play_KeyframeAnimation("RaidClear_Kouku_Frame", "intro");
+	}
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_Frame", isShowing);
+	/* Authoring-only marker; the caption itself is drawn from the text pass. */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_TitleTextBox", false);
+	m_pRaidClearView->Update(fTimeDelta);
+
+	/* The light enters first, the crest lands on it, the caption follows. */
+	HUD_RAIDCLEAR_TEXT_RECTS TextRects;
+	TextRects.isValid = isShowing &&
+		fFrame >= CLEAR_CAPTION_IN_FRAME &&
+		m_pRaidClearView->Get_SlotRect("RaidClear_Kouku_TitleTextBox",
+			TextRects.fTitleX, TextRects.fTitleY,
+			TextRects.fTitleWidth, TextRects.fTitleHeight);
+	CCombatHUDViewModel::Get().Set_RaidClearTextRects(TextRects);
+
+	/* callbackFrameActionEnd: the document hides itself at its last frame and hands the
+	   screen to whatever comes next. */
+	if (fPrevious * CLEAR_FPS < CLEAR_END_FRAME && fFrame >= CLEAR_END_FRAME)
+	{
+		m_pRaidClearView->Set_AllSlotsVisible(false);
+		if (nullptr != m_pMvpResultView)
+			m_pMvpResultView->Show(
+				Build_MvpResultPreviewData(Current_GateNumber()));
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Hide();
+	m_fRaidClearElapsedSeconds = 0.f;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_Show_MvpResult()
+{
+	if (nullptr == m_pMvpResultView)
+		return;
+	m_pMvpResultView->Show(Build_MvpResultPreviewData(Current_GateNumber()));
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_Hide_MvpResult()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Hide();
+	m_fRaidClearElapsedSeconds = -1.f;
+	if (nullptr != m_pRaidClearView)
+		m_pRaidClearView->Set_AllSlotsVisible(false);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Debug_Is_MvpResultVisible() const
+{
+	return nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
@@ -2132,6 +2381,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(true);
 	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_iPendingDebugGate = gateIndex;
+	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = false;
 	m_DebugGatePendingPlacements.clear();
 	std::size_t spawnRequests = 0u;
@@ -2139,14 +2389,15 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	{
 		if (nullptr == pPlacementId)
 			continue;
-		if (!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(pPlacementId))
+		std::uint64_t requestToken = 0u;
+		if (!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(pPlacementId, &requestToken))
 		{
 			m_bDebugGateFailed = true;
 			outStatus = m_strDebugGateStatus =
 				label + ": spawn command was rejected for " + pPlacementId;
 			return false;
 		}
-		m_DebugGatePendingPlacements.emplace(pPlacementId);
+		m_DebugGatePendingPlacements.emplace(pPlacementId, requestToken);
 		++spawnRequests;
 	}
 	const bool_t teleportSubmitted = m_PlayerController.Request_DebugTeleportToPosition(
@@ -2166,6 +2417,43 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	}
 	outStatus = m_strDebugGateStatus;
 	return teleportSubmitted;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::string& reason)
+{
+	if (!Is_DebugGatePending()) return;
+	const std::string finalReason = reason;
+	m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	m_DebugGatePendingPlacements.clear();
+	m_fDebugGatePendingSeconds = 0.f;
+	m_bDebugGateFailed = true;
+	m_strDebugGateStatus = finalReason;
+	m_PlayerController.Retire_DebugPlayerPlacementRequest(finalReason);
+	CCombatHUDViewModel::Get().Set_BossFocusArchetype("");
+	CCombatHUDViewModel::Get().Set_BossHidden(true);
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss("", "");
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_SetSequenceCombatPending(const bool_t pending)
+{
+	m_bSequenceCombatPending = pending;
+	if (!pending) m_bSequenceCombatFadeHeld = false;
+	CCombatHUDViewModel::Get().Set_BossHidden(pending || m_iActiveDebugGate == NO_ACTIVE_DEBUG_GATE);
+	if (!Is_DebugGatePending())
+		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(pending);
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_HoldSequenceCombatFade()
+{
+	m_bSequenceCombatFadeHeld = true;
+	m_fTriggerMoveFadeAlpha = 1.f;
+	if (m_pTriggerMoveFadeView)
+	{
+		m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", true);
+		m_pTriggerMoveFadeView->Set_SlotTint("KakulFade_Screen", float4_t(0.f, 0.f, 0.f, 1.f));
+	}
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_DespawnArenaBosses(std::string& outStatus)
@@ -2500,24 +2788,49 @@ bool_t Client::CLevel_KakulSaydonArena::Save_CameraShotSource(const std::string_
 bool_t Client::CLevel_KakulSaydonArena::Ensure_CameraShotAuthoring(std::string& outStatus)
 {
 	if (m_bCameraAuthoringLoaded) return true;
+	if (m_bCameraAuthoringLoadAttempted)
+	{
+		outStatus = m_strCameraAuthoringLoadFailure;
+		return false;
+	}
+	return Reload_CameraShotAuthoring(outStatus);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Reload_CameraShotAuthoring(std::string& outStatus)
+{
+	if (!m_DirtyCameraShotIds.empty())
+	{ outStatus = "Save the Camera draft before Reload Cameras; unsaved shots were preserved."; return false; }
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.CameraAuthoring.Load");
+	m_bCameraAuthoringLoadAttempted = true;
+	const auto fail = [&](std::string reason) {
+		m_strCameraAuthoringLoadFailure = std::move(reason);
+		outStatus = m_strCameraAuthoringLoadFailure;
+		return false;
+	};
 	const auto path = Camera_AuthoringPath();
 	std::error_code error;
 	std::string text;
 	if (std::filesystem::exists(path, error))
 	{
-		if (error || std::filesystem::file_size(path, error) > 256u * 1024u || error)
-		{ outStatus = "Camera authoring source exceeds 256 KiB or cannot be read."; return false; }
+		const auto bytes = std::filesystem::file_size(path, error);
+		if (error || bytes > 2u * 1024u * 1024u)
+			return fail("Camera authoring source exceeds 2 MiB or cannot be read.");
+		if (bytes == 0u) return fail("Camera authoring source is empty or unreadable.");
 		std::ifstream input(path, std::ios::binary);
-		if (!input) { outStatus = "Cannot open Camera authoring source."; return false; }
-		text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-		if (input.bad() || text.empty()) { outStatus = "Camera authoring source is empty or unreadable."; return false; }
+		if (!input) return fail("Cannot open Camera authoring source.");
+		text.resize(static_cast<std::size_t>(bytes));
+		input.read(text.data(), static_cast<std::streamsize>(text.size()));
+		if (!input || input.peek() != std::char_traits<char>::eof())
+			return fail("Camera authoring source changed while reading or is unreadable.");
 	}
-	else if (error) { outStatus = "Cannot inspect Camera authoring source."; return false; }
+	else if (error) return fail("Cannot inspect Camera authoring source.");
 	std::vector<KAKUL_CAMERA_SHOT> staged;
-	if (!Parse_CameraShots(text.empty() ? Camera_EmptyDocument() : text, staged, outStatus)) return false;
+	if (!Parse_CameraShots(text.empty() ? Camera_EmptyDocument() : text, staged, outStatus))
+		return fail(outStatus);
 	m_AuthoringCameraShots = std::move(staged);
 	m_strCameraAuthoringBaseline = std::move(text);
 	m_bCameraAuthoringLoaded = true;
+	m_strCameraAuthoringLoadFailure.clear();
 	return true;
 }
 
@@ -2526,7 +2839,7 @@ bool_t Client::CLevel_KakulSaydonArena::Create_CameraShot(const std::string_view
 {
 	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
 	if (m_AuthoringCameraShots.size() >= CAMERA_SHOT_MAX_COUNT)
-	{ outStatus = "Camera shot limit is 64."; return false; }
+	{ outStatus = "Camera shot limit is 128."; return false; }
 	KAKUL_CAMERA_SHOT shot;
 	for (uint32_t ordinal = 1u; ordinal <= CAMERA_SHOT_MAX_COUNT + 1u; ++ordinal)
 	{
@@ -2644,9 +2957,9 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		return true;
 	}
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
-	if (fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
+	if (fileError || 0u == fileBytes || fileBytes > 2u * 1024u * 1024u)
 	{
-		outStatus = "KoukuSaydon camera shot document is empty or exceeds 256 KiB.";
+		outStatus = "KoukuSaydon camera shot document is empty or exceeds 2 MiB.";
 		return false;
 	}
 	std::ifstream input(path, std::ios::binary);
@@ -2677,9 +2990,11 @@ bool_t Client::CLevel_KakulSaydonArena::Parse_CameraShots(
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	DATA_JSON_PARSE_LIMITS limits{};
-	limits.iMaximumBytes = 256u * 1024u;
+	limits.iMaximumBytes = 2u * 1024u * 1024u;
 	limits.iMaximumDepth = 12u;
-	limits.iMaximumValues = 4096u;
+	// The document supports 128 shots with 64 keys each, including eye/lookAt/up.
+	// Keep the byte/depth and per-shot/key bounds; 4096 values rejected valid tracks.
+	limits.iMaximumValues = 128u * 1024u;
 	if (!CDataJson::Parse(text, root, parseError, limits) ||
 		!Has_ExactProperties(root,
 			{ "schema", "formatVersion", "areaId", "revision", "shots" }))
@@ -3055,6 +3370,13 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 	if (nullptr == m_pTriggerMoveFadeView)
 		return;
 
+#ifdef _DEBUG
+	if (m_bSequenceCombatFadeHeld)
+	{
+		Debug_HoldSequenceCombatFade();
+		return;
+	}
+#endif
 	using LostArk::Shared::PLAYER_ACTION_STATE;
 	const auto& maze = CCombatHUDViewModel::Get().Get_KoukuGimmick().CardMaze;
 	if (maze.transferStartTick)

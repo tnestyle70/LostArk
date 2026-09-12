@@ -1417,6 +1417,7 @@ function Read-WorldSequenceDocument {
         }
     }
     $objectResources = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    $sequenceMaterialCatalogs = $null
     if ($document.formatVersion -eq 3) {
         if ($document.objectResources -isnot [System.Array] -or @($document.objectResources).Count -gt 2048) {
             throw 'World object resource list is invalid'
@@ -1503,8 +1504,29 @@ function Read-WorldSequenceDocument {
                 Assert-SequenceAssetPath $resource.materialSourceModelAssetId $true
                 $sourceNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.materialSourceModelAssetId)).Names
                 $targetNames = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $resource.modelAssetId)).Names
-                foreach ($name in $sourceNames.Keys) {
-                    if (-not $targetNames.ContainsKey($name)) { throw "Cinematic model lost source material slot: $name" }
+                if ($null -eq $sequenceMaterialCatalogs) {
+                    $sequenceMaterialCatalogs = @{}
+                    foreach ($catalogName in @('CharacterCatalog','BossCatalog')) {
+                        $catalogPath = Join-Path $ProjectRoot "Data\Actors\$catalogName.json"
+                        $sequenceMaterialCatalogs[$catalogName] = [IO.File]::ReadAllText($catalogPath, [Text.UTF8Encoding]::new($false, $true)) | ConvertFrom-Json
+                    }
+                }
+                $sourceModel = $resource.materialSourceModelAssetId
+                $owners = @($sequenceMaterialCatalogs.CharacterCatalog.characters | Where-Object {
+                    $_.bodyModel -ceq $sourceModel -or @($_.equipmentModels) -ccontains $sourceModel -or @($_.weaponModels) -ccontains $sourceModel
+                })
+                if ($owners.Count -gt 1 -or ($owners.Count -eq 1 -and $owners[0].runtimeStatus -cne 'supported')) { throw "World Object material source ownership is invalid: $sourceModel" }
+                $sourceRows = if ($owners.Count -eq 1) { @($owners[0].modelMaterialOverrides | Where-Object { $_.modelAssetId -ceq $sourceModel }) }
+                    else { @($sequenceMaterialCatalogs.BossCatalog.modelMaterialOverrides | Where-Object { $_.modelAssetId -ceq $sourceModel }) }
+                if (@($sourceRows).Count -eq 0) { throw "World Object original model has no catalog material overrides: $sourceModel" }
+                $boundSourceNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                foreach ($material in $sourceRows) {
+                    $name = $material.materialName
+                    if (-not $boundSourceNames.Add($name) -or -not $sourceNames.ContainsKey($name) -or -not $targetNames.ContainsKey($name)) { throw "Derived World Object lost original material slot: $name" }
+                    foreach ($texture in @($material.textures)) {
+                        Assert-SequenceAssetPath $texture.assetId $false
+                        if (-not [IO.File]::Exists((Join-Path $runtimeResourceRoot $texture.assetId))) { throw "World Object original material texture is absent: $($texture.assetId)" }
+                    }
                 }
             }
             if ($null -ne $resource.PSObject.Properties['mapMaterialBindings']) {
@@ -2121,7 +2143,7 @@ function Add-WorldSequencePublishFile {
 
 function Read-CameraShotDocument {
     param([string]$Path)
-    if ((Get-Item -LiteralPath $Path).Length -gt 262144) { throw "Camera document exceeds 256 KiB" }
+    if ((Get-Item -LiteralPath $Path).Length -gt 2097152) { throw "Camera document exceeds 2 MiB" }
     $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
     try { $document = $text | ConvertFrom-Json }
     catch { throw "Camera shot JSON parse failed: $Path" }
@@ -2138,7 +2160,7 @@ function Read-CameraShotDocument {
     }
     # Level_KakulSaydonArena.cpp 의 상한과 동일하게 검사한다.
     $shots = @($document.shots)
-    if ($shots.Count -gt 64) {
+    if ($shots.Count -gt 128) {
         throw "Camera shot document exceeds its limits: $Path"
     }
     $stableId = '^[A-Za-z0-9._-]{1,128}$'

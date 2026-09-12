@@ -222,8 +222,12 @@ HRESULT CPart_Equipment::Render_Shadow()
 			Resolve_DeferredMaterialProfile(
 				m_strMaterialProfileId,
 				m_pModelCom->Get_MaterialName(i));
-		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i, Profile)) ||
+		// The static socket shader keeps its surface branches; skinned shadow reads only alpha.
+		const HRESULT materialResult = m_strSocketBoneName.empty() ?
+			m_pModelCom->Bind_Material(m_pShaderCom, "g_DiffuseTexture",
+				i, aiTextureType_DIFFUSE, 0) :
+			Bind_DeferredMaterialInputs(*m_pModelCom, m_pShaderCom, i, Profile);
+		if (FAILED(materialResult) ||
 			FAILED(m_pShaderCom->Begin(iShadowPass)) ||
 			FAILED(m_pModelCom->Render(i)))
 		{

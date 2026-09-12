@@ -287,8 +287,10 @@ public:
 	/* Restarts the selected clip even when the previous action used the same
 	clip. The network action edge owns restart timing; the model only owns how
 	the authored clip is blended and played. */
+	// Stage age owns the delay; the hold deadline starts at animation time zero.
 	// A zero hold deadline preserves the existing whole-stage action lifetime.
-	bool_t Set_NetworkAnimationWindow(f32_t ageSeconds, f32_t holdSeconds);
+	bool_t Set_NetworkAnimationWindow(f32_t ageSeconds, f32_t holdSeconds,
+		f32_t startOffsetSeconds = 0.f, uint32_t sourceStartMs = 0u, uint32_t sourceEndMs = 0u);
 	bool_t Apply_NetworkAnimationTransition(const char_t* sourceClip, f32_t sourceMs,
 		f32_t durationMs, f32_t ageSeconds, f32_t playRate);
 	bool_t Play_NetworkAction(
@@ -363,9 +365,14 @@ private:
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	std::string m_strDefaultIdleClip;
 	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> m_PlayerHandGripLocalOffset;
+	bool_t Try_SampleNetworkAnimationTicks(f32_t animationAgeSeconds, uint32_t clip,
+		f32_t playRate, f32_t& outTicks) const;
+	bool_t m_bNetworkAnimationWindow = false;
 	bool_t m_bNetworkAnimationTransition = false;
 	bool_t m_isNetworkAnimationLoop = false;
 	f32_t m_fNetworkAnimationAgeSeconds = 0.f, m_fNetworkAnimationHoldSeconds = 0.f;
+	f32_t m_fNetworkAnimationStartOffsetSeconds = 0.f;
+	uint32_t m_iNetworkAnimationSourceStartMs = 0u, m_iNetworkAnimationSourceEndMs = 0u;
 	f32_t m_fNetworkAnimationPlayRate = 1.f;
 	uint32_t m_iTransitionSourceIndex = UINT32_MAX;
 	f32_t m_fTransitionSourceTicks = 0.f, m_fTransitionDurationSeconds = 0.f;

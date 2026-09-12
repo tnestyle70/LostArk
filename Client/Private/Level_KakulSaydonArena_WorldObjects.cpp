@@ -391,6 +391,7 @@ CWorldSequencePlayer::TARGET_SET CLevel_KakulSaydonArena::Make_WorldSequenceTarg
     targets.pDeployRuntime = &m_DeployRuntime;
     targets.device = m_pDevice;
     targets.context = m_pContext;
+    targets.objectPreparationOwner = &m_SequencePlayer;
     targets.playerAnchors = [this]()
     {
         std::vector<CWorldSequencePlayer::PLAYER_ANCHOR> anchors;
@@ -489,9 +490,25 @@ bool_t CLevel_KakulSaydonArena::Reload_WorldObjectRuntime(std::string& status)
     m_bWorldObjectReloadPending = false;
     // Every owned cue and authoring preview has its own admitted document copy.
     // Replacing the idle base does not stop or rewrite any of those active poses.
-    const bool_t result = m_SequencePlayer.Load_Area("LV_LUT_MIDNIGHTC_ED", Make_WorldSequenceTargets());
-    status = m_SequencePlayer.Get_Status();
-    return result;
+    const auto targets = Make_WorldSequenceTargets();
+    if (!m_SequencePlayer.Load_Area("LV_LUT_MIDNIGHTC_ED", targets))
+    { status = m_SequencePlayer.Get_Status(); return false; }
+    const auto loadedStatus = m_SequencePlayer.Get_Status();
+    std::string preparationErrors;
+    for (const auto& [instanceId, copies] : {
+        std::pair{"world.object.instance.kouku.card", 6u},
+        std::pair{"world.object.instance.kouku.joker_card", 1u}})
+        if (!m_SequencePlayer.Prewarm_ObjectInstances(instanceId, copies, targets))
+        {
+            if (!preparationErrors.empty()) preparationErrors += " / ";
+            preparationErrors += m_SequencePlayer.Get_Status();
+        }
+    status = loadedStatus + (preparationErrors.empty() ? "; card clones prepared (6+1)." :
+        "; card prewarm incomplete: " + preparationErrors);
+    if (!preparationErrors.empty()) OutputDebugStringA(("[WorldObjectReload][JokerPrewarm] " + status + "\n").c_str());
+    // The document committed successfully. A preparation warning does not turn
+    // that completed load into a false failure or stop an older child revision.
+    return true;
 }
 
 #ifdef _DEBUG

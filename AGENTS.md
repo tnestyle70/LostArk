@@ -17,6 +17,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 | merge, pull, rebase, 충돌 해결 | `.md/GB/gotchas.md`, 있으면 `.md/GB/gotchas.local.md`, 영향받는 `*_PLAN.md`와 `*_RESULT.md` |
 | 팀 담당 인터페이스, Area 데이터 레이어, 신규 팀원 인계 | `.md/TEAM/README.md`에서 현재 정본 순서대로 읽기 |
 | LostArk 맵 에셋 검색, UModel 추출, ModelAssetConverter, MapTool 적용 | `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md` |
+| 모든 오브젝트의 추출·변환·파생 모델·재질 적용 | `.md/GB/렌더링이펙트복원V2.md`의 오브젝트 재질·환경 입력 공통 절차, `Tools/ModelAssetConverter/README.md`, `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`의 material source/binding 계약 |
 | 맵 에셋이 생성됐지만 안 보임, diffuse 누락, 스케일 오류, 레거시 런타임 혼선 | `.md/GB/07-29/gotchas.md` |
 
 ### 2026-09-30까지 세션 시작 시 팀 LAN 자동 설정

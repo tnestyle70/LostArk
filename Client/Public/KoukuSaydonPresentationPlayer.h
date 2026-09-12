@@ -108,6 +108,8 @@ public:
     bool Preview_PresentationGeometry(const std::string& patternId,
         const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
     bool Consume_CompletedPreview(std::string& patternId);
+    // Terminal WORLD failure is separate from natural completion and consumed once.
+    bool Consume_FailedPreview(std::string& patternId, std::string& status);
     bool Preview_OwnsClock() const { return m_bOwnPreviewClock; }
     bool Preview_IsColliderResource() const { return m_bColliderResourcePreview; }
     bool Preview_Playing() const { return m_bPreviewPlaying; }
@@ -190,6 +192,7 @@ private:
         std::map<std::string, float> stageFacingYawDegrees;
     };
     void Sample_BundlePreview();
+    void Fail_Preview(std::string status);
     void Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
@@ -257,6 +260,7 @@ private:
     float4x4_t m_PreviewPivot{};
     std::weak_ptr<Engine::CModel> m_PreviewModel;
     std::string m_strCompletedPreviewPatternId;
+    std::string m_strFailedPreviewPatternId, m_strFailedPreviewStatus;
     bool m_bOwnPreviewClock = false, m_bPreviewPlaying = false, m_bPreviewPaused = false;
     bool m_bPreviewClockAwaitingFirstUpdate = false;
     bool m_bPreviewPivotReady = false;

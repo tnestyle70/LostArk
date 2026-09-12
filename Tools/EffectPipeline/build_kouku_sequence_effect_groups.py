@@ -111,9 +111,9 @@ def curve_keys(curve):
     result = []
     for p in curve.get('points', []):
         mode = p.get('interpmode','cim_linear')
-        interpolation = {'cim_linear':'LINEAR','cim_constant':'CONSTANT',
-            'cim_curveauto':'CUBIC','cim_curveautoclamped':'CUBIC',
-            'cim_curveuser':'CUBIC','cim_curvebreak':'CUBIC'}[mode]
+        interpolation = {'cim_linear':'linear','cim_constant':'constant',
+            'cim_curveauto':'cubic','cim_curveautoclamped':'cubic',
+            'cim_curveuser':'cubic','cim_curvebreak':'cubic'}[mode]
         result.append(dict(timeSeconds=p['inval'],value=vector(p['outval']),
             arriveTangent=vector(p.get('arrivetangent',{})),
             leaveTangent=vector(p.get('leavetangent',{})),interpolation=interpolation))
@@ -245,7 +245,8 @@ def moving_transform(occurrence, cache):
         rotationDegrees=[0,0,0],scale=[1,1,1],sourceTransformNodes=nodes)
 
 
-def project(organization, library_root, source_root, evidence, install, source_motion=False):
+def project(organization, library_root, source_root, evidence, install, source_motion=False,
+            sampled_transforms=None):
     organization = source.read(organization)
     library = source.read(library_root / 'installation.json')
     index = action.restored_index(source_root)
@@ -264,7 +265,12 @@ def project(organization, library_root, source_root, evidence, install, source_m
             try:
                 if not occurrence['liveReference'] or occurrence['disabled']:
                     raise ValueError('SOURCE_DISABLED_OR_UNREACHABLE_SEQUENCE_OCCURRENCE')
-                transform = moving_transform(occurrence,scenes[occurrence['sourceCache']]) if source_motion else static_transform(occurrence, tracks)
+                sampled = (sampled_transforms or {}).get(occurrence['sourceOccurrenceId'])
+                if sampled is not None:
+                    assert source_motion and occurrence['actorProperties'].get('basebonename'), 'SAMPLED_TRANSFORM_REQUIRES_SOURCE_BONE_PARENT'
+                    transform = copy.deepcopy(sampled)
+                else:
+                    transform = moving_transform(occurrence,scenes[occurrence['sourceCache']]) if source_motion else static_transform(occurrence, tracks)
                 assert occurrence['sourceSystem'] in templates, 'SOURCE_PARTICLE_SYSTEM_LIBRARY_NOT_PROJECTED'
                 if source_motion:
                     bindings,alpha=alpha_parameter_track(occurrence,tracks,templates[occurrence['sourceSystem']],index)
@@ -308,6 +314,14 @@ def project(organization, library_root, source_root, evidence, install, source_m
                     durationSeconds=0 if interval['stopSeconds'] is None else interval['stopSeconds']-interval['startSeconds'])
                 stream,_ = action.instantiate(templates[occurrence['sourceSystem']],cue,notify,asset,scene,index)
                 for element in stream:
+                    if element['detail']['particle']['lifeTimeSeconds'] == [0, 0]:
+                        # Cascade's zero lifetime remains in SourceRecipe. The
+                        # current particle runtime consumes a positive Detail
+                        # fallback for that case; bound it by this source ON/OFF
+                        # interval, rather than an invented global lifetime.
+                        active = element['detail']['timing']['lifeTimeSeconds']
+                        assert 0 < active <= 30, 'SOURCE_ZERO_LIFETIME_REQUIRES_BOUNDED_OWNER'
+                        element['detail']['particle']['lifeTimeSeconds'] = [active, active]
                     element['actionCueAttachment']['enabled'] = False
                     element['actionCueAttachment'].pop('snapshotRootSourceBasisYawDegrees',None)
                     if source_motion:
@@ -319,10 +333,17 @@ def project(organization, library_root, source_root, evidence, install, source_m
                             if original_id in transform['sourceAlphaScale']['affectedElements']:
                                 element['sourceTransformTrack']['alphaScaleKeys']=transform['sourceAlphaScale']['keys']
                 elements += stream
+        # Cascade ribbon runtimeCarrier entries require authored-v15 even when
+        # this Matinee has no baked animation-edge histories of its own.
+        histories={}
+        for occurrence,_,_ in retained:
+            for history in templates[occurrence['sourceSystem']].get('runtimeExtensions',{}).get('bakedEdgeHistories',[]):
+                assert history['historyId'] not in histories or histories[history['historyId']]==history
+                histories[history['historyId']]=copy.deepcopy(history)
         document = dict(schema='lostark.effect-authoring',version=15,effectAssetId=asset,
             displayName=occurrences[0]['classification']['displayName'],
             particleSystem=dict(uniformScaleMultiplier=1,yawOffsetDegrees=0,directionYawDegrees=0,initialSpeedMultiplier=1),
-            modelCues=[],elements=elements)
+            modelCues=[],runtimeExtensions=dict(formatVersion=1,bakedEdgeHistories=list(histories.values())),elements=elements)
         path = ROOT / 'Data/Effects/Authored' / (asset + '.effect.json')
         source.write(evidence / 'candidate' / path.name, document)
         complete = not rejected

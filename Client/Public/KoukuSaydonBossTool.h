@@ -36,7 +36,7 @@ namespace Client
 			std::vector<PRODUCT_STAGE> Stages;
 		};
 
-		struct PRODUCT_FOLDER final { std::string strFolderId, strGateId, strDisplayName; };
+		struct PRODUCT_FOLDER final { std::string strFolderId, strGateId, strDisplayName, strTimelinePatternId; };
 		struct PRODUCT_BUNDLE_MEMBER final {
 			std::string strMemberId, strPatternId, strTargetBossPlacementId, strActorProfileId;
 			std::uint32_t iStartOffsetMs = 0;
@@ -68,7 +68,9 @@ namespace Client
 		bool Play_All(std::string& outStatus);
 		bool Play_CompositionAll(std::string_view gateId, std::string& status);
 		bool Validate_PatternFlow(std::string_view gateId, std::string& status);
-		bool Play_PatternFlow(std::string_view gateId, std::string& status);
+        // Complete Play pins the admission revision; ordinary F1 playback uses the current saved revision.
+        bool Play_PatternFlow(std::string_view gateId, std::string& status,
+            std::uint32_t expectedSourceRevision = 0u);
 		const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Get_SavedFlow(std::string_view gateId) const;
 		bool Render_SavedPatternFlow(std::string_view gateId, int& selectionKind, std::string& selectedId) const;
 		bool Request_PublishSavedPatterns(std::string& status);

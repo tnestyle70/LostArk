@@ -6,6 +6,8 @@
 
 최종 화면 판정자: 사용자
 
+모델·소품을 Effect나 World Object로 추출·변환할 때도 [오브젝트 재질·환경 입력 공통 절차](../GB/렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)를 따른다. geometry와 일반 texture 슬롯, native material descriptor, IBL/BRDF 및 장면 입력은 각각 실제 소비자까지 연결해야 한다. 이 문서의 carrier/ABI 검사를 WModel 변환 성공으로 대신하지 않는다.
+
 이 문서는 Effect를 구성하는 element가 Winters Engine에서 실제 pixel이 되기까지의 소유권을
 정의한다. 날짜별 PLAN/RESULT는 당시의 증거와 실행 로그를 보존하고, 이 문서는 그 증거에서 현재
 유효한 구조와 다음 복원 순서만 유지한다.

@@ -20,6 +20,17 @@
 Resources 경계는 [렌더링이펙트복원V2.md](렌더링이펙트복원V2.md)를 함께 읽는다.
 해당 분야의 재사용 원리와 실제 연결 범위는 그 문서에서 갱신하고 여기에는 복제하지 않는다.
 
+### 맵 그림자 최적화의 보존 조건
+
+- camera frustum을 shadow caster에 적용하지 않는다. 실제 light view/projection을 사용하고
+  frame provider 뒤에 instance를 준비한다. light 변경 없이 실패한 upload도 다음 호출에서 재시도한다.
+- 단순 shadow pass와 opaque null-PS 선택은 surface family뿐 아니라 source-material 활성 설정도
+  함께 확인한다. 설정이 꺼진 경우 기존 legacy diffuse alpha를 보존한다.
+- 장비 pose cache는 source pointer만으로 판정하지 않는다. owner 수명과 source/destination
+  revision을 함께 검사해 동일주소 재할당·같은 프레임 포즈 변경을 반영한다.
+- `Render.Shadow` GPU elapsed를 순수 GPU 실행시간으로 단정하거나 fixture 개선율을 사용자 FPS로
+  환산하지 않는다. 현재 연결과 검증 경계는 [렌더링 복원 가이드](렌더링이펙트복원V2.md)를 따른다.
+
 ## 1. 동기화 전 상태 고정
 
 다음 증거를 먼저 남긴다.
@@ -873,6 +884,15 @@ Server 회귀에서는 Pattern ID branch가 `Reset_ValtanBossOnlyAuditionState`�
 - Authoring Preview가 저장한 shot을 바로 읽는 것과 Complete Play가 published shot을 읽는 것을 구분한다. Map publish 후 새 run은 runtime shot snapshot을 갱신해야 한다. Camera overlap 검사는 visible box뿐 아니라 복귀 tail을 포함한다.
 - 진짜 세이튼과 같은 Spot Light를 가짜에 적용할 때 Server owner boss ID와 같은 archetype으로 대상을 제한한다. 이미 같은 asset을 직접 재생 중인 가짜에 중복 light를 만들지 않으며 despawn/row 종료 때 follower handle을 정리한다.
 
+### Sequencer 카메라 조회에서 실패한 문서를 매 프레임 다시 파싱하지 않는다
+
+- 카메라 shot/keyframe 수가 늘 때 byte 한도뿐 아니라 JSON value 한도도 실제 전체 문서로 검사한다.
+  publisher가 받은 문서를 Client만 낮은 value 한도로 거부하면 컷신이 follow 시점에 머물 수 있다.
+- Timeline의 길이·row·복귀 tail 조회는 같은 카메라를 여러 번 찾는다. 실패한 최초 저작 로드는 Level이
+  기억하고, `Composition Camera → Reload Cameras`로만 재시도한다. 재로드 실패는 이전 shot과 baseline을 보존한다.
+- 입력 파일의 실제 parser 성공, 반복 Ensure에서 read/parse 추가 호출이 없는지, 사용자 FPS 측정은 구분한다.
+  재현·검증은 [Sequencer 카메라 로드 결과](09-12/2026-09-12_SEQUENCER_CAMERA_LOAD_PERFORMANCE_RESULT.md)를 따른다.
+
 ### ImGui root 위젯 ID에 빈 draft의 표시 이름을 그대로 쓰지 않는다
 
 - Effect Composition Workbench를 처음 열면 group name과 stable ID가 모두 비어 있다. 이 값으로 `Selectable("")`를 그리면 Timeline child window의 root ID와 충돌해 `Cannot have an empty ID at the root of a window` assertion이 발생한다.
@@ -908,12 +928,18 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 
 ### 쿠크 컷신의 모델·재질·조명·곡선 연결
 
+- 보스 무기에서 정적 World Object를 만들면 같은 mesh/slot/D/N/S여도 새 modelAssetId에는 원래 catalog의 native 재질이 자동 적용되지 않을 수 있다. 실제 원본 MIC가 같은지 확인해 `materialSourceModelAssetId`를 전달하고 IBL/BRDF까지 검사한다. 재생성 때 이 참조를 버리지 않는다. geometry의 반전 bake는 환경 반사 복구가 아니다. 상세 절차는 복원 V2의 오브젝트 공통 절차를 따른다.
 - 같은 mesh와 diffuse가 있어도 움직이는 BG8 모델은 static shader와 다른 skinned shader를 쓴다. 공유 MapMaterialSurface 평가와 모든 바인딩을 실제 skinned draw까지 연결하고, 정적 RNM/static shadow를 움직이는 모델에 복사하지 않는다. UNBAKED receiver는 기존 baked bit로 정적 맵 중복 조명을 제외한다.
 - Matinee InterpGroup만 세면 부모에 부착된 맵 소품을 빠뜨린다. source actor의 base/basebonename/relative pose와 component material override까지 조사한다. source transparent override를 범용 diffuse 슬롯으로 표시하지 않는다.
 - native Move/Camera를 일정 간격으로만 줄이면 급격한 이동을 놓칠 수 있다. 원본 곡선 대비 위치·회전·FOV 오차를 측정하고 저장 key 상한을 넘으면 연속 resource로 분할한다. Director 컷 수와 저장 resource 수는 다를 수 있다.
 - 인접 Effect 구간은 start/end를 runtime float32로 변환한 뒤 duration=end-start로 만든다. start와 double 차이 duration을 따로 변환하면 경계에서 두 광원이 겹칠 수 있다. RGB Hermite는 기존 cubic distribution으로 보존한다.
 - 생성형 popup book을 쓰는 Preview는 이전 Deploy7도 보이는지 확인한다. borrowed state와 applied state를 함께 기록하고 Stop에서 현재 상태가 여전히 적용값일 때만 복구한다.
 
+
+### 카드 variant의 cooked slot 이름과 native texture identity를 구분한다
+
+- `MN_RHOC_00-1.wmodel`의 slot 이름은 일반 카드와 같은 `mn_rhoc_00_mi`지만 원본 조커 MIC와 D/N/S는 `mn_rhoc_00-1`이다. BossCatalog의 모델별 override를 만들 때 slot 이름만으로 일반 카드의 sourceMaterial·texture를 복사하지 않는다. 실제 modelAssetId, 원본 MIC와 설치 WModel texture를 함께 대조한다.
+- program 26은 native expression 1의 diffuse·alpha를 직접 샘플한다. 일반 diffuse override로 바꿔도 잘못된 native slot은 남는다. 조커는 cooked materialName·family·36개 parameter를 유지하고 기존 variant texture 0=N(linear), 1=D(srgb), 2=S(srgb)를 연결한다. JSON·실제 입력 검증과 사용자 화면 확인을 구분하며 [조커 결과](09-12/2026-09-12_KOUKU_JOKER_NATIVE_TEXTURE_RESULT.md)를 따른다.
 
 ### v15 trail/ribbon만 있는 projection에 LocalDecal을 강제하지 않는다
 
@@ -922,6 +948,7 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 
 ### 쿠크 독립 Effect와 원본 폭죽 event의 소유자를 구분한다
 
+- 독립 Effect Resource는 원본 `sourceModelPreview`의 actor·clip·Source In 시계를 사용한다. 빈 synthetic Pattern의 Animation만 조회하면 첫 fixed-step에서 source anchor가 실패한다. 실제 모델과 bone/clip을 함께 준비하고 마지막 pose를 입자 tail까지 유지한다. 독립 Preview의 정지 pose 정책을 Product history 누락에 적용하지 않는다. [검증 결과](09-12/2026-09-12_KOUKU_RESOURCE_SOURCE_PREVIEW_RESULT.md)를 따른다.
 - root/camera-only Effect의 Play All에 저장된 boss pattern을 요구하지 않는다. 실제 source bone이 필요한 draft만 CNpc/CModel을 준비하고, 독립 재생은 실제 플레이어 root를 임시 캡처한다. 이 과정에서 저장된 sequence의 모델·anchor·dirty 상태나 occurrence를 바꾸지 않는다.
 - Action Workbench와 Sequencer Benchmark의 MAP Effect는 고정 월드 위치다. WORLD object 참조나 follow/bone과 혼합하지 않는다. V1 전체 문서도 기존 Append 경로로 같은 anchor를 소비한다.
 - `EPET_Death` 폭죽은 로켓 수명 종료 위치·속도로 기존 bounded event queue에 넣는다. 생성0-age와 마지막 부분 step을 수명 끝까지 적분하고 이미 소비한 spawn을 다시 보내지 않는다. 숨은 `ERM_None`는 같은 문서의 location/event 소비자와 원본 출처가 있을 때만 허용한다.
@@ -1013,3 +1040,31 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 
 - 왜곡 PS의 CB1 참조를 `projection`으로 치환했다면 실제 선언과 carrier 입력도 연결한다. 쿠크 `2d8c822c...`는 TEXCOORD5의 source world cm를 한 번 투영한다. screen clip 값을 다시 투영하거나 Trail에 0 행렬을 전달하지 않는다.
 - native texture index 9를 쓰는 프로그램은 열 번째 SRV가 필요하다. generated sample helper만 늘리지 말고 renderer staging 배열, bind, screen-post snapshot·mask와 독립 모델 shader 선언까지 같은 상한을 적용한다.
+- native 재질 추가 때 기존 descriptor의 상한만 늘려 하나의 mega-switch에 누적하지 않는다. 생성기에서 64 ID 구간별 물리 HLSLI·carrier FX·dispatch·실행 표·project/filter를 함께 갱신하고 원본 함수/guard/ID를 보존한다. 같은 내용은 다시 쓰지 않아 증분 tracking을 유지한다. VS/PS를 패스 간 공유해도 한 PS의 수백 재질 최적화 비용은 남는다.
+- IDE와 runner의 Visual Studio/toolset/SDK/host architecture가 다르면 소스 변경 없이도 전체 재컴파일될 수 있다. 현재 `lastbuildstate`만으로 지난 재빌드 원인을 확정하지 말고, runner의 toolchain·전후 state와 선택 실행의 diagnostic 로그를 비교한다. 출력 timestamp 조작이나 강제 skip으로 감추지 않는다.
+- 같은 FX의 여러 pass가 같은 entry/profile을 사용하면 `CompileShader` 결과를 공유한다. pass 이름·순서·render state와 서로 다른 entry는 유지한다. 정적/애니메이션 CModel shader도 이 검사를 포함하며, 컴파일 표현식 수 감소와 실제 FX 생성·pass/input layout 검증을 구분한다.
+- 증분 측정은 같은 MSBuild와 완전히 같은 인자를 반복한다. 같은 디렉터리라도 `OutDir`의 slash 표기가 달라 `/Fo` 문자열이 바뀌면 FXC command tracking이 전체를 다시 컴파일할 수 있다. 그런 실행은 no-change 결과로 보고하지 않고 별도 재빌드로 기록하며, CSO 내용과 수정 시각 및 실제 FXC 실행 수를 함께 확인한다.
+
+### 시퀀스 목록 표시·소스 검증을 실제 Play 준비와 혼동하지 않는다
+
+- Composition은 Data 원본의 새 WORLD ID를 참조할 수 있지만 Level은 게시된 Area 문서, World Object Tool은 저장 문서의 cache를 사용한다. 저작 revision만 올리고 실행용 `.worldsequences.json`과 `.camerashots.json`을 게시하지 않으면 row는 보여도 Play 준비에서 거부된다. 같은 Area publisher의 Publish와 Check를 수행하고 새 Client에서 동일 WORLD/Camera ID와 revision을 확인한다. 일반 C++ 빌드는 이 배포를 대신하지 않는다. 미저장 Tool 문서를 자동 reload하거나 누락 ID를 건너뛰지 않는다.
+- `World Object model admission failed`는 파일 부재만 뜻하지 않는다. 실제 CModel decoder와 material/texture 준비 이유를 구분한다. WMSH submesh를 줄일 때는 같은 submesh의 bounds도 함께 줄이고 bone tail과 나머지 section은 보존한다. 2관문 Table은 4개 중 2개 mesh만 남기면서 bounds 4개를 유지해 80-byte trailing payload로 거부됐다. decoder 검사를 완화하거나 파일 이름만 바꾸어 해결하지 않는다.
+- 새 연출은 기존 row까지 포함해 occurrence의 ID·enabled·중복·시간, 실제 model/material/animation 준비, Camera/Effect/SceneProfile 참조를 검사한다. 이 결과와 사용자가 Client에서 Play해 확인한 카메라·연출·전투 결과는 별도 완료 상태로 기록한다. 원본 Fade/카메라/배우/Effect가 여러 문서에 나뉘어 있다는 사실을 SceneProfile 하나에 원본 전체가 들어 있다는 설명으로 바꾸지 않는다.
+- Complete Play는 관문별 입장 Sequence뿐 아니라 저장 Pattern Flow와 같은 source revision의 Server Product가 필요하다. Python Product projection만 게시하면 Server bootstrap은 이전 revision일 수 있다. 최종 revision을 명시한 `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision <revision>`로 관련 Product/Map/World/Balance를 함께 게시하고 세 관문의 Flow target을 확인한다. F1 관문 spawn 성공을 저장 Flow 존재의 증거로 쓰지 않는다.
+- 이전 EXE용 Data 사본을 본 작업으로 합칠 때 양쪽의 새 Pattern이 같은 ordinal ID를 할당할 수 있다. 기준본과 양쪽 저장본을 세 방향으로 비교하고 현재 항목을 덮어쓰지 않는다. 충돌한 신규 항목은 미사용 stable ID와 내부 action/occurrence 참조를 함께 재배정하며 사용자 clip·시간·loop 값은 보존한다.
+
+
+### Object 그룹 편집은 생성 행과 판정 참조를 함께 저장한다
+
+- WORLD emission의 개수·순서·Delay를 바꿀 때 indexed Collider와 전용 Logic의 참조를 함께 갱신한다. shared hold/result 의존성, 모호한 WORLD, dirty Composition은 저장 전에 거부하고 기존 draft를 보존한다. 슬롯 번호를 stable 저장 ID로 새로 승격하지 않는다.
+- 카드 준비 풀은 동일 Area/revision, model/preScale/material 및 device 범위에서만 공유한다. Stop/완료 반환과 문서 교체 시 token 무효화가 함께 있어야 하며, 첫 입장뿐 아니라 Object Save 뒤 reload에서도 다시 준비한다. 실제 GPU/FPS 검증과 CPU 준비 성공을 구분한다.
+- WModel이 이미 30Hz이고 FLOAT weights가 정상이어도 child quaternion conjugate 누락은 별개다. 원본 PSA 전체 clip 회전을 대조하고 기존 geometry/skeleton/material과 위치·scale·시간 키를 보존해 교정한다. 괴기스러운 인형은 말·호랑이와 같은 원인으로 확인됐다. [인형·외곽불 결과](09-12/2026-09-12_KOUKU_DOLL_FIRE_REPAIR_RESULT.md).
+- WINT minor 증가로 정적 mesh 속성이 추가돼도 내장 WMA2 레이아웃이 유지될 수 있다. repair 도구는 실제 구조와 material identity를 검사해 지원 버전을 명시하고 임의 byte offset 교체로 우회하지 않는다. 외곽불 D/E/F의 잘못된 emissive 입력 제거는 원본 native 불 재질 전체 복원과 구분한다.
+
+
+### 렌더링 hot path는 실제 소비 입력과 큐 수명을 함께 보존한다
+
+- source family별 재질 준비를 줄일 때 PS의 family 분기 앞 공통 처리도 검사한다. `Shader_VtxMeshBinary`의 opaque/shadow presentation dither는 source BG에도 `g_Opacity`를 읽는다. native 재질이 raw UV를 쓴다는 이유로 opacity까지 생략하면 소품이 잘못 사라진다. source on/off, diffuse override와 직전 shader 상태를 실제 MRT/depth로 비교한다.
+- per-draw 진단 목록은 닫힌 도구에서도 문자열 검색·삭제·할당 비용을 만들 수 있다. 실제 UI 조회가 있는 동안만 수집하고 level 변경·만료와 재열기 동작을 유지한다.
+- list 렌더 큐를 capacity 재사용 vector로 바꾸면 callback append가 iterator/reference를 무효화할 수 있다. index로 순회하고 객체 수명은 queue의 shared_ptr로 보존한다. sorted BLEND의 snapshot 순서와 실패/pass 종료 clear를 별도로 유지한다.
+- shader instruction/SRV 감소와 CPU Draw 제출 단축을 GPU pixel 실행 단축으로 간주하지 않는다. 같은 입력의 작은·넓은 면적을 각각 비교하고 실제 게임 프레임 결론은 사용자 캡처로 판단한다. [맵·캐릭터 성능 결과](09-12/2026-09-12_MAP_CHARACTER_RENDER_PERFORMANCE_RESULT.md).

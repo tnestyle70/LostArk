@@ -2780,7 +2780,7 @@
     {
       "modelAssetId": "Character/KoukuSaton/MN_RHOC_00-1/MN_RHOC_00-1.wmodel",
       "materialName": "mn_rhoc_00_mi",
-      "sourceMaterial": "mn_rhoc_00.mat.mn_rhoc_00_mi",
+      "sourceMaterial": "mn_rhoc_00-1.mat.mn_rhoc_00-1_mi",
       "family": "source.character.monster-6ff78ae19259.v1",
       "parameters": {
         "1.use_dyeing_sp": 0.0,
@@ -2883,17 +2883,17 @@
       "textures": [
         {
           "expressionIndex": 0,
-          "assetId": "Character/SourceMaterials/Kouku/mn_rhoc_00/mn_rhoc_00_n.dds",
+          "assetId": "Character/KoukuSaton/MN_RHOC_00-1/textures/mn_rhoc_00-1_n.dds",
           "colorSpace": "linear"
         },
         {
           "expressionIndex": 1,
-          "assetId": "Character/SourceMaterials/Kouku/mn_rhoc_00/mn_rhoc_00_d.dds",
+          "assetId": "Character/KoukuSaton/MN_RHOC_00-1/textures/mn_rhoc_00-1_d.dds",
           "colorSpace": "srgb"
         },
         {
           "expressionIndex": 2,
-          "assetId": "Character/SourceMaterials/Kouku/mn_rhoc_00/mn_rhoc_00_s.dds",
+          "assetId": "Character/KoukuSaton/MN_RHOC_00-1/textures/mn_rhoc_00-1_s.dds",
           "colorSpace": "srgb"
         },
         {

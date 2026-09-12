@@ -364,7 +364,25 @@ def prepare_geometry(evidence):
     write(evidence/'plane_geometry_cook.json',receipt);write(evidence/'geometry_installation.json',rows)
     print('Geometry installed',len(rows))
 
-def project(evidence,index,notifies,occurrences,records,destination,material_patch=None):
+def source_model_preview(action_path, action_id, stage_indices, gate_id, actor_profile_id, target_placement_id):
+    """Keep source stage/clip timing available to independent Resource Preview."""
+    action = next(a for a in read(action_path)['actions'] if a['actionId'] == action_id)
+    prefix = {'MN_RPCT_05': 'rpct00_', 'MN_RPCZ_00': 'rpcz00_'}[actor_profile_id]
+    animations, start_ms = [], 0
+    for stage_index in stage_indices:
+        stage = next(s for s in action['stages'] if s['stageIndex'] == stage_index)
+        assert len(stage['animationClips']) == 1, ('Source preview needs one exact stage clip', action_id, stage_index)
+        clip = stage['animationClips'][0]
+        play_ms = round(clip['lengthSeconds'] * 1000)
+        assert play_ms > 0
+        animations.append(dict(runtimeClip=prefix + clip['clipName'].lower(), startOffsetMs=start_ms,
+            sourceStartMs=0, playMs=play_ms, playRate=1, endPolicy='HOLD_LAST_POSE'))
+        start_ms += play_ms
+    return dict(gateId=gate_id, actorProfileId=actor_profile_id,
+        targetBossPlacementId=target_placement_id, animations=animations)
+
+
+def project(evidence,index,notifies,occurrences,records,destination,material_patch=None,source_model_previews=None):
     by_notify={n['notifyId']:n for n in notifies}
     socket_path=evidence/'source_socket_contract.json'
     sockets=read(socket_path) if socket_path.is_file() else None
@@ -373,6 +391,8 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
     docs={sid:dict(schema='lostark.effect-authoring',version=15 if sid==4219877 else 13,effectAssetId=f'effect.kouku.gate1.{sid}.full.restore',
         displayName='쿠크 1관문 '+label+' 전체 복원',particleSystem=dict(uniformScaleMultiplier=1,yawOffsetDegrees=0,directionYawDegrees=0,initialSpeedMultiplier=1),modelCues=[],elements=[])
         for sid,(_,label) in SELECTED.items()}
+    for sid, preview in (source_model_previews or {}).items():
+        docs[sid]['sourceModelPreview'] = copy.deepcopy(preview)
     if 4219877 in docs:
         history=trail_history(evidence)
         docs[4219877]['runtimeExtensions']=dict(formatVersion=1,bakedEdgeHistories=[history])
@@ -544,6 +564,9 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--evidence-root',type=Path,default=ROOT/'out/KoukuGate1FullRestore20260911');parser.add_argument('--output',type=Path);parser.add_argument('--required-textures',type=Path);parser.add_argument('--prepare-geometry',action='store_true');parser.add_argument('--native-material-patch',type=Path);options=parser.parse_args()
     index,notifies,occurrences,records=acquire(options.evidence_root)
     print('Source occurrences',dict(collections.Counter(o['actionId'] for o in occurrences)))
-    if options.output:project(options.evidence_root,index,notifies,occurrences,records,options.output,options.native_material_patch)
+    if options.output:
+        previews = {sid: source_model_preview(ACTION, sid, stages, 'GATE1', 'MN_RPCT_05',
+            'boss.kakulsaydon.g1.saydon') for sid, (stages, _) in SELECTED.items()}
+        project(options.evidence_root,index,notifies,occurrences,records,options.output,options.native_material_patch,previews)
     if options.required_textures:prepare_textures(options.evidence_root,options.required_textures)
     if options.prepare_geometry:prepare_geometry(options.evidence_root)

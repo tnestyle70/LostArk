@@ -152,6 +152,11 @@ def build():
         tex=next((WORK/'Source').rglob(fields['Diffuse']+'.dds'))
         args+=['--material-remap',material+'='+str(tex)]
     subprocess.run(args,check=True)
+    # Assimp's glTF clock is 1000 Hz; cooked CAnimation advances at 30 Hz.
+    # Convert every key time as well as the header before this model is used.
+    subprocess.run([sys.executable,str(ROOT/'Tools/ActorXAssetCooker/retime_wmodel_ticks.py'),
+                    '--wmodel',str(OUTPUT/'CardEruption.wmodel'),
+                    '--ticks-per-second','30'],check=True)
     report=dict(sourceSystem='fx_q_w_01.fx_par_02.par_q_cardfly_01',sourceEmitters=3,
         spawnRatePerSecond=rate,lifetimeSeconds=lifetime,emissionSeconds=emission_seconds,
         particles=len(tracks),durationMs=round(duration*1000),animation='card_eruption',

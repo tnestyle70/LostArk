@@ -7292,7 +7292,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Metadata.Material = *Cue.Material;
 			if (Cue.eAlphaMode != EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE ||
 				!Validate_ElementMaterial(Metadata, true, strOutError) ||
-				!(Has_ArtistModelCueMaterialContract(Cue) || Has_LanceMasterVAModelCueMaterialContract(Cue)))
+				!(Has_ArtistModelCueMaterialContract(Cue) || Has_LanceMasterVAModelCueMaterialContract(Cue) ||
+                  Has_DimensionMasterALTVModelCueMaterialContract(Cue)))
 			{
 				if (strOutError.empty())
 					strOutError = "Model Cue recovered skeletal material contract is invalid: " + Cue.strCueId;

@@ -59,6 +59,9 @@ public:
 		CDeployPropRuntime* pDeployRuntime = nullptr;
 		ComPtr<ID3D11Device> device;
 		ComPtr<ID3D11DeviceContext> context;
+		// Level-owned preparation, borrowed only during the call. Live clones retain
+		// a separate return token so level teardown never dereferences this owner.
+		CWorldSequencePlayer* objectPreparationOwner = nullptr;
 		std::function<std::vector<PLAYER_ANCHOR>()> playerAnchors;
 		// Live BODY bone pose; separate from a frozen projectile emission origin.
 		std::function<bool_t(const std::string&, const std::string&, PLAYER_ANCHOR&, std::string&)> bossAnchor;
@@ -108,6 +111,9 @@ public:
 	static bool_t Set_DocumentBatch(const CWorldSequenceDocument& document, const TARGET_SET& targets,
 		const std::vector<CWorldSequencePlayer*>& players, std::string& status);
 	bool_t Prepare_InstanceResources(const std::string& instanceId, const TARGET_SET& targets);
+	// Prepare hidden clones through the existing Prototype/Clone/Layer path.
+	// Stop/completion returns them for later occurrences; failure preserves the pool.
+	bool_t Prewarm_ObjectInstances(const std::string& instanceId, uint32_t copies, const TARGET_SET& targets);
 	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,
 		const float4x4_t& root, const std::string& bone, PLAYER_ANCHOR& out, std::string& status);
 	static void Collect_ValidationTargets(const TARGET_SET& targets,
@@ -224,6 +230,13 @@ public:
 		const MAP_PLACEMENT_RECORD& record);
 
 private:
+	struct PREPARED_OBJECT_POOL
+	{
+		bool acceptsReturns = true;
+		uint32_t levelIndex = ETOUI(LEVEL::END);
+		uint32_t capacity = 0u;
+		std::vector<shared_ptr<CWorldSequenceObject>> idle;
+	};
 	struct OBJECT_INSTANCE
 	{
 		std::string slotId;
@@ -231,11 +244,15 @@ private:
 		uint32_t emissionIndex = 0;
 		uint32_t levelIndex = ETOUI(LEVEL::END);
 		shared_ptr<CWorldSequenceObject> object;
+		std::shared_ptr<PREPARED_OBJECT_POOL> preparationPool;
 	};
 	struct OBJECT_MODEL
 	{
 		shared_ptr<CModel> model;
 		ComPtr<ID3D11ShaderResourceView> diffuse;
+		ID3D11Device* deviceIdentity = nullptr;
+		ID3D11DeviceContext* contextIdentity = nullptr;
+		const CMapAssetCatalog* catalogIdentity = nullptr;
 	};
 	struct ACTIVE_INSTANCE final
 	{
@@ -284,6 +301,11 @@ private:
 	bool_t Apply_ObjectEffects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const TARGET_SET& targets);
 	void Release_Objects(ACTIVE_INSTANCE& active);
+	void Clear_PreparedObjects();
+	static bool_t Same_ObjectModelInputs(const WORLD_SEQUENCE_OBJECT_RESOURCE& left, const WORLD_SEQUENCE_OBJECT_RESOURCE& right);
+	const OBJECT_MODEL* Find_PreparedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const TARGET_SET& targets) const;
+	const OBJECT_MODEL* Find_SharedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const TARGET_SET& targets) const;
+	void Remember_SharedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const OBJECT_MODEL& model, const TARGET_SET& targets) const;
 	void Release_DeployPreviews(
 		const ACTIVE_INSTANCE& active,
 		const TARGET_SET& targets);
@@ -296,6 +318,7 @@ private:
 	std::vector<ACTIVE_INSTANCE> m_Held;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;
 	std::unordered_map<std::string, OBJECT_MODEL> m_ObjectModels;
+	std::unordered_map<std::string, std::shared_ptr<PREPARED_OBJECT_POOL>> m_PreparedObjectPools;
 	std::unordered_map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> m_EffectSnapshots;
 	std::unordered_set<uint64_t> m_SuppressedPlacements;
 	std::string m_Status;

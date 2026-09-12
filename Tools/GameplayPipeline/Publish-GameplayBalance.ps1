@@ -3144,6 +3144,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	if ($null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees']) { $koukuOptionalProperties += 'resetBossYawDegrees' }
 	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) { $koukuOptionalProperties += 'bossMotion' }
 	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
+	if ($null -ne $koukuPattern.PSObject.Properties['fixedTimeline']) { $koukuOptionalProperties += 'fixedTimeline' }
 	Assert-ExactProperties $koukuPattern (@(
 		'patternId','category','minimumPhase','maximumPhase','targetPolicy',
 		'aimPolicy','displayName','actionId','sourceActionIds','selectionMode',
@@ -3199,6 +3200,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		throw "KoukuSaydon animation-audition pattern is invalid: $($koukuPattern.patternId)"
 	}
 	if ($koukuPattern.resetBossToSpawn -isnot [bool]) { throw 'KoukuSaydon resetBossToSpawn must be boolean' }
+	if ($null -ne $koukuPattern.PSObject.Properties['fixedTimeline']) {
+		if ($koukuPattern.fixedTimeline -isnot [bool]) { throw 'KoukuSaydon fixedTimeline must be boolean' }
+		if ($koukuPattern.fixedTimeline) {
+			$patternRows.Add((@('PATTERNFIXEDTIMELINE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId) -join "`t"))
+		}
+	}
 	$spawnResetRow = @('PATTERNSPAWNRESET', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, 1)
 	if ($null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees']) {
 		Assert-JsonNumber $koukuPattern.resetBossYawDegrees 'KoukuSaydon resetBossYawDegrees'
@@ -3437,6 +3444,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		if ($null -ne $window.PSObject.Properties['rearmOnExit']) { $windowProperties += 'rearmOnExit' }
 		if ($null -ne $window.PSObject.Properties['repeatAfterKnockback']) { $windowProperties += 'repeatAfterKnockback' }
 		if ($null -ne $window.PSObject.Properties['holdLogicOccurrenceId']) { $windowProperties += 'holdLogicOccurrenceId' }
+		if ($null -ne $window.PSObject.Properties['cancelAtEnd']) {
+			$windowProperties += 'cancelAtEnd'
+			if ($window.cancelAtEnd -isnot [bool]) { throw 'Logic cancelAtEnd must be boolean' }
+		}
 		if ($window.kind -ceq 'OBJECT_OVERLAP') { $windowProperties += @('targetWorldInstanceId','targetWorldX','targetWorldZ','targetRadiusM') }
 		if ($window.kind -ceq 'OBJECT_CONTACT') { $windowProperties += @('contactTargets','contactGroupId','contactPriority') }
 		Assert-ExactProperties $window $windowProperties 'KoukuSaydon logic window'
@@ -3568,6 +3579,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			[uint32]$window.poseIndex, [uint32]$window.threshold,
 			(Format-InvariantFloat $window.shieldArcDegrees 'KoukuSaydon logic window shieldArcDegrees'),
 			$endsPatternFlag, $symbolText, (Format-InvariantSignedFloat $window.normalYawOffsetDegrees 'KoukuSaydon shield normal offset'), $insideFail) + $objectTargetFields -join "`t"))
+		if ($null -ne $window.PSObject.Properties['cancelAtEnd'] -and $window.cancelAtEnd) {
+			$patternRows.Add((@('PATTERNLOGICCANCEL', $koukuEncounterDocument.encounterId,
+				$koukuPattern.patternId, $window.windowId) -join "`t"))
+		}
 		if ($rearmOnExit -or $repeatAfterKnockback) {
 			$repeatMode = if ($repeatAfterKnockback) { 'AFTER_KNOCKBACK' } else { 'ON_REENTER' }
 			$patternRows.Add((@('PATTERNLOGICREARM', $koukuEncounterDocument.encounterId,
@@ -4047,7 +4062,15 @@ if ($koukuEncounterDocument.folders -isnot [Array] -or @($koukuEncounterDocument
 }
 $koukuFolderById = @{}
 foreach ($folder in @($koukuEncounterDocument.folders)) {
-    Assert-ExactProperties $folder @('folderId','gateId','displayName') 'KoukuSaydon folder'
+    $folderProperties = @('folderId','gateId','displayName')
+    if ($null -ne $folder.PSObject.Properties['timelinePatternId']) {
+        $folderProperties += 'timelinePatternId'
+        Assert-StableId $folder.timelinePatternId 'Parent timelinePatternId'
+        $parentTimeline = @($koukuEncounterDocument.patterns | Where-Object { $_.patternId -ceq $folder.timelinePatternId })
+        if ($parentTimeline.Count -ne 1 -or $parentTimeline[0].gateId -cne $folder.gateId -or
+            $parentTimeline[0].folderId -cne $folder.folderId) { throw 'Parent timeline must name its own same-Gate Pattern' }
+    }
+    Assert-ExactProperties $folder $folderProperties 'KoukuSaydon folder'
     foreach ($field in @('folderId','gateId','displayName')) { Assert-JsonString $folder.$field "Folder $field" }
     Assert-StableId $folder.folderId 'folderId'
     if ($folder.gateId -cnotin @('GATE1','GATE2','GATE3','BINGO') -or $koukuFolderById.ContainsKey([string]$folder.folderId)) {

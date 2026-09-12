@@ -161,6 +161,12 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(40, result["sourceAnchorAnimations"][1]["sourceStartMs"])
         self.assertEqual("LOOP_TO_WINDOW", result["sourceAnchorAnimations"][1]["endPolicy"])
         self.assertEqual(original, pattern)
+        pattern["stages"][0]["durationMs"] += 500
+        pattern["stages"][0]["animationOccurrences"][0]["startOffsetMs"] = 500
+        delayed = subject._project_pattern_presentation(document, pattern)
+        self.assertEqual([500, 2197], [row["startOffsetMs"] for row in delayed["sourceAnchorAnimations"]])
+        self.assertEqual(result["presentationOccurrences"], delayed["presentationOccurrences"])
+        self.assertEqual(result["durationMs"] + 500, delayed["durationMs"])
         document["presentationResources"][0]["resourceKind"] = "LEAF"
         self.assertNotIn("sourceAnchorAnimations", subject._project_pattern_presentation(document, pattern))
 
@@ -200,8 +206,21 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             subject._animation_blend_source(pattern, clips[0])
         clips[0].pop("blendInMs")
         previous["playMs"] -= 1
-        with self.assertRaisesRegex(subject.CompositionError, "adjacent EXACT"):
+        with self.assertRaisesRegex(subject.CompositionError, "adjacent previous"):
             subject._animation_blend_source(pattern, selected)
+
+    def test_selected_source_range_repeats_and_blends_at_sampled_endpoint(self):
+        row = {"sourceStartMs": 700, "sourceEndMs": 1200, "playMs": 1750,
+               "playRate": 1.0, "endPolicy": "LOOP_TO_WINDOW"}
+        for age, expected in ((0, 700), (499, 1199), (500, 700), (1000, 700), (1750, 950)):
+            self.assertEqual(expected, subject._sample_animation_source_ms(row, age, 2666.6667))
+        row["endPolicy"] = "EXACT"
+        self.assertEqual(1200, subject._sample_animation_source_ms(row, 1750, 2666.6667))
+        for end in (699, 700, 3000):
+            with self.assertRaises(subject.CompositionError):
+                subject._sample_animation_source_ms({**row, "sourceEndMs": end}, 0, 2666.6667)
+        legacy = {**row, "sourceStartMs": 0, "sourceEndMs": 0, "endPolicy": "LOOP_TO_WINDOW"}
+        self.assertEqual(125, subject._sample_animation_source_ms(legacy, 2125, 1000))
 
     def test_bone_transition_interpolates_local_rotation_before_hierarchy(self):
         left = subject.wmodel_pose.affine_matrix((1, 1, 1), (0, 0, 0, 1), (0, 0, 0))
@@ -216,6 +235,125 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def validate(self, document):
         subject.validate_document(document, ROOT)
+
+    def parent_fixture(self):
+        document = copy.deepcopy(self.document)
+        child = copy.deepcopy(self.find(document, FIRST_PRODUCT_ID))
+        for key in ("logicOccurrences", "worldOccurrences", "summonOccurrences", "sceneProfileOccurrences", "presentationOccurrences"):
+            child[key] = []
+        for key in ("bossMotion", "resetBossYawDegrees", "durationMs", "patternOccurrences"):
+            child.pop(key, None)
+        child["resetBossToSpawn"] = False
+        child["stages"] = [copy.deepcopy(child["stages"][0])]
+        child["stages"][0]["durationMs"] = 1000
+        child["stages"][0]["animationOccurrences"][0].update(startOffsetMs=100, playMs=900, blendInMs=0)
+        child["authoringStatus"] = "PRODUCT"
+        parent = copy.deepcopy(child)
+        parent.update(patternId=DRAFT_ID, displayName="Mario Parent", stages=[], durationMs=3500,
+                      nextPatternOccurrenceOrdinal=2, patternOccurrences=[dict(
+                          occurrenceId=DRAFT_ID + ".pattern.1", patternId=FIRST_PRODUCT_ID,
+                          startMs=500, durationMs=2300, repeat=True)])
+        document["patterns"] = [child, parent]
+        document["playAllPatternIds"] = [FIRST_PRODUCT_ID, DRAFT_ID]
+        document["presentationResources"] = [row for row in document["presentationResources"] if row["kind"] != "CAMERA"]
+        return document, parent, child
+
+    def test_parent_repeats_full_child_and_cancels_only_truncated_logic(self):
+        document, parent, child = self.parent_fixture()
+        logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        document["nextLogicOrdinal"] += 1
+        document["logics"].append(dict(logicId=logic_id, displayName="Pose", logicType="DURATION",
+                                      judgementKind="POSE_INPUT", poseIndex=0))
+        child["nextLogicOccurrenceOrdinal"] = 2
+        child["logicOccurrences"] = [dict(occurrenceId=FIRST_PRODUCT_ID + ".logic.1", logicId=logic_id,
+                                           startMs=0, durationMs=1000)]
+        before = copy.deepcopy(document)
+        subject.validate_document(document)
+        expanded = subject.expand_pattern_document(document, DRAFT_ID)
+        result = self.find(expanded, DRAFT_ID)
+        self.assertEqual(before, document)
+        self.assertEqual([500, 1000, 1000, 300, 700], [s["durationMs"] for s in result["stages"]])
+        self.assertEqual([500, 1500, 2500], [r["startMs"] for r in result["logicOccurrences"]])
+        self.assertEqual([False, False, True], [r.get("cancelAtEnd", False) for r in result["logicOccurrences"]])
+        self.assertEqual([1000, 1000, 300], [r["durationMs"] for r in result["logicOccurrences"]])
+        self.assertEqual(200, result["stages"][3]["animationOccurrences"][0]["playMs"])
+        subject.validate_document(expanded)
+        projected = subject.project_encounter(document)
+        windows = next(p for p in projected["patterns"] if p["patternId"] == DRAFT_ID)["logicWindows"]
+        self.assertTrue(windows[-1]["cancelAtEnd"])
+        self.assertEqual(3, len({row["logicId"] for row in result["logicOccurrences"]}))
+
+    def test_parent_rejects_overlaps_recursion_and_dynamic_control(self):
+        for change, message in (("self", "recursive"), ("overlap", "overlap"), ("motion", "bossMotion"),
+                                ("followup", "FOLLOWUP"), ("early", "endsPattern")):
+            document, parent, child = self.parent_fixture()
+            if change == "self": parent["patternOccurrences"][0]["patternId"] = DRAFT_ID
+            if change == "overlap":
+                parent["stages"] = copy.deepcopy(child["stages"])
+            if change == "motion": child["bossMotion"] = {"startMs": 0}
+            if change in {"followup", "early"}:
+                definition = dict(logicId="parent.test.control", displayName="Control", logicType="DURATION",
+                                  judgementKind="EXTERNAL_SIGNAL", endsPatternOnSuccess=change == "early")
+                document["logics"].append(definition)
+                child["logicOccurrences"] = [dict(occurrenceId=FIRST_PRODUCT_ID + ".logic.1", logicId=definition["logicId"],
+                                                  startMs=0, durationMs=1000)]
+                if change == "followup":
+                    document["logics"].append(dict(logicId="parent.test.followup", displayName="Follow", logicType="RESULT",
+                                                  outcomeKind="FOLLOWUP_PATTERN", followupPatternId=FIRST_PRODUCT_ID))
+                    child["logicOccurrences"][0]["onTimeoutLogicIds"] = ["parent.test.followup"]
+            before = copy.deepcopy(document)
+            with self.subTest(change=change), self.assertRaisesRegex(subject.CompositionError, message):
+                subject.expand_pattern_document(document, DRAFT_ID)
+            self.assertEqual(before, document)
+
+    def test_parent_remaps_child_contact_links_per_repeat_and_keeps_parent_lane(self):
+        document, parent, child = self.parent_fixture()
+        hold_id, contact_id = FIRST_PRODUCT_ID + ".logic.1", FIRST_PRODUCT_ID + ".logic.2"
+        world_id, region_id = FIRST_PRODUCT_ID + ".world.1", "child.region"
+        definitions = [
+            dict(logicId="test.hold", displayName="Hold", logicType="DURATION", judgementKind="EXTERNAL_SIGNAL"),
+            dict(logicId="test.contact", displayName="Contact", logicType="TRIGGER", triggerKind="OBJECT_CONTACT",
+                 targetWorldOccurrenceIds=[world_id], contactGroupId="child.contacts"),
+            dict(logicId="test.complete", displayName="Complete", logicType="RESULT", outcomeKind="COMPLETE_LOGIC_WINDOW",
+                 targetLogicOccurrenceId=hold_id, contactTargetWorldOccurrenceId=world_id),
+        ]
+        document["logics"].extend(definitions)
+        child["logicOccurrences"] = [dict(occurrenceId=hold_id, logicId="test.hold", startMs=0, durationMs=1000),
+            dict(occurrenceId=contact_id, logicId="test.contact", startMs=0, durationMs=1000, onSuccessLogicIds=["test.complete"])]
+        child["worldOccurrences"] = [dict(occurrenceId=world_id, worldId="world.definition", startMs=0, durationMs=1000, playbackSpeed=1)]
+        child["presentationOccurrences"] = [dict(occurrenceId=FIRST_PRODUCT_ID + ".presentation.1", resourceId="collider.definition",
+            startMs=0, durationMs=1000, logicOccurrenceId=contact_id, worldOccurrenceId=world_id, regionId=region_id)]
+        parent["logicOccurrences"] = [dict(occurrenceId=DRAFT_ID + ".logic.1", logicId="test.hold", startMs=0, durationMs=3500)]
+        expanded = subject.expand_pattern_document(document, DRAFT_ID)
+        result = self.find(expanded, DRAFT_ID)
+        self.assertEqual(parent["logicOccurrences"][0], result["logicOccurrences"][0])
+        generated = {row["logicId"]: row for row in expanded["logics"]}
+        for repeat in range(3):
+            scope = f"{DRAFT_ID}.pattern.1.r{repeat}"
+            contact = result["logicOccurrences"][2 + repeat * 2]
+            self.assertEqual([scope + ".world.1"], generated[contact["logicId"]]["targetWorldOccurrenceIds"])
+            outcome = generated[contact["onSuccessLogicIds"][0]]
+            self.assertEqual(scope + ".logic.1", outcome["targetLogicOccurrenceId"])
+            self.assertEqual(scope + ".world.1", outcome["contactTargetWorldOccurrenceId"])
+            collider = result["presentationOccurrences"][repeat]
+            self.assertEqual(scope + ".logic.2", collider["logicOccurrenceId"])
+            self.assertEqual(scope + ".world.1", collider["worldOccurrenceId"])
+            self.assertEqual(scope + ".region.1", collider["regionId"])
+        self.assertEqual(3, len({generated[row["logicId"]]["contactGroupId"] for row in result["logicOccurrences"] if row["logicId"].endswith(".definition." + str(len(document["logics"]) - 1))}))
+
+    def test_parent_rejects_cross_owner_counter_windows_and_sub_tick_stage_gap(self):
+        document, parent, child = self.parent_fixture()
+        definition = dict(logicId="test.counter", displayName="Counter", logicType="DURATION", judgementKind="COUNTER_WINDOW")
+        document["logics"].append(definition)
+        parent["logicOccurrences"] = [dict(occurrenceId=DRAFT_ID + ".logic.1", logicId="test.counter", startMs=0, durationMs=3500)]
+        child["logicOccurrences"] = [dict(occurrenceId=FIRST_PRODUCT_ID + ".logic.1", logicId="test.counter", startMs=0, durationMs=1000)]
+        with self.assertRaisesRegex(subject.CompositionError, "overlapping COUNTER_WINDOW"):
+            subject.expand_pattern_document(document, DRAFT_ID)
+        document, parent, child = self.parent_fixture()
+        parent["patternOccurrences"][0]["durationMs"] = 2301
+        parent["durationMs"] = 2802
+        with self.assertRaisesRegex(subject.CompositionError, "distinct 30 Hz"):
+            subject.expand_pattern_document(document, DRAFT_ID)
 
     @staticmethod
     def find(document, pattern_id):
@@ -797,7 +935,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             animation = pattern["stages"][0]["animationOccurrences"][0]
             if invalid == "bone": collider["bone"] = "missing.hammer.tip"
             elif invalid == "clip": animation["runtimeClip"] = "missing.clip"
-            elif invalid == "gap": animation["startOffsetMs"] = 10
+            elif invalid == "gap": pattern["stages"][1]["animationOccurrences"] = []
             elif invalid == "actor": animation["profileId"] = "MN_RPCZ_00"
             elif invalid == "limit":
                 for box in pattern["logicOccurrences"] + pattern["worldOccurrences"] + pattern["presentationOccurrences"]:
@@ -1312,21 +1450,84 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         with self.assertRaisesRegex(subject.CompositionError, "control characters"):
             self.validate(control)
 
-    def test_product_requires_one_animation_at_stage_entry(self):
-        missing = copy.deepcopy(self.document)
+    def first_animation_delay_document(self):
+        # Keep this timing contract independent of installed Effects and maps.
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        document["patterns"] = [pattern]
+        document["playAllPatternIds"] = [pattern["patternId"]]
+        for key in ("logics", "summons", "worlds", "sceneProfiles", "presentationResources"):
+            document[key] = []
+        for key in ("logicOccurrences", "summonOccurrences", "worldOccurrences",
+                    "sceneProfileOccurrences", "presentationOccurrences"):
+            pattern[key] = []
+        pattern["stages"] = pattern["stages"][:2]
+        for stage in pattern["stages"]:
+            stage["durationMs"] = 1000
+            stage["animationOccurrences"] = stage["animationOccurrences"][:1]
+            stage["animationOccurrences"][0].update(startOffsetMs=0, sourceStartMs=0,
+                playMs=1000, playRate=1, endPolicy="EXACT")
+            stage["animationOccurrences"][0].pop("blendInMs", None)
+        return document
+
+    def test_product_accepts_first_animation_delay_and_preserves_binding_offset(self):
+        document = self.first_animation_delay_document()
+        stage = self.first_product(document)["stages"][0]
+        stage["durationMs"] += 500
+        occurrence = stage["animationOccurrences"][0]
+        occurrence["startOffsetMs"] = 500
+        original = copy.deepcopy(document)
+        self.validate(document)
+        bindings = subject.project_presentation(document)["bindings"]
+        self.assertEqual([500, 0], [row["startOffsetMs"] for row in bindings])
+        self.assertEqual([1000, 1000], [row["playMs"] for row in bindings])
+        self.assertEqual(original, document)
+
+        missing = copy.deepcopy(document)
         self.first_product(missing)["stages"][0]["animationOccurrences"] = []
         with self.assertRaisesRegex(subject.CompositionError, "exactly one"):
             self.validate(missing)
 
-        offset = copy.deepcopy(self.document)
-        occurrence = self.first_product(offset)["stages"][0]["animationOccurrences"][0]
-        occurrence["startOffsetMs"] = 1
-        occurrence["playMs"] -= 1
-        with self.assertRaisesRegex(subject.CompositionError, "stage entry"):
-            self.validate(offset)
+        source_and_later_delay = copy.deepcopy(document)
+        stages = self.first_product(source_and_later_delay)["stages"]
+        stages[0]["animationOccurrences"][0]["sourceStartMs"] = 1
+        stages[1]["animationOccurrences"][0]["startOffsetMs"] = 1
+        stages[1]["durationMs"] += 1
+        self.validate(source_and_later_delay)
+        invalid = copy.deepcopy(document)
+        self.first_product(invalid)["stages"][0]["animationOccurrences"][0]["startOffsetMs"] = 501
+        with self.assertRaises(subject.CompositionError):
+            self.validate(invalid)
+
+    def test_first_animation_delay_holds_initial_bone_pose_then_advances(self):
+        document = self.first_animation_delay_document()
+        pattern = self.first_product(document)
+        stage = pattern["stages"][0]
+        stage["durationMs"] = 1500
+        animation = stage["animationOccurrences"][0]
+        animation.update(startOffsetMs=500, playMs=600, playRate=1.5)
+        for time_ms, expected in ((0, 0), (499, 0), (500, 0), (600, .15),
+                                  (1100, .9), (1400, .9)):
+            with self.subTest(time_ms=time_ms):
+                sampled, seconds = subject._bone_bake_clip_sample(pattern, time_ms)
+                self.assertIs(animation, sampled)
+                self.assertAlmostEqual(expected, seconds)
+        next_stage_start = list(subject._bone_bake_stage_origins(pattern))[1][1]
+        sampled, seconds = subject._bone_bake_clip_sample(pattern, next_stage_start)
+        self.assertIs(pattern["stages"][1]["animationOccurrences"][0], sampled)
+        self.assertEqual(0, seconds)
+        pattern["stages"][1]["animationOccurrences"][0]["startOffsetMs"] = 10
+        sampled, seconds = subject._bone_bake_clip_sample(pattern, next_stage_start)
+        self.assertIs(pattern["stages"][1]["animationOccurrences"][0], sampled)
+        self.assertEqual(0, seconds)
+
+        # A DRAFT source trim still freezes at its authored source start.
+        animation["sourceStartMs"] = 200
+        _, seconds = subject._bone_bake_clip_sample(pattern, 100)
+        self.assertEqual(.2, seconds)
 
     def test_product_short_clip_holds_its_endpoint_and_keeps_loop_policy(self):
-        document = copy.deepcopy(self.document)
+        document = self.first_animation_delay_document()
         pattern = self.first_product(document)
         stage = pattern["stages"][0]
         animation = stage["animationOccurrences"][0]
@@ -1353,13 +1554,6 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_product_rejects_presentation_policies_the_client_cannot_run(self):
         variants = []
-        source_offset = copy.deepcopy(self.document)
-        stage = self.first_product(source_offset)["stages"][0]
-        stage["durationMs"] = 100
-        stage["animationOccurrences"][0]["playMs"] = 100
-        stage["animationOccurrences"][0]["sourceStartMs"] = 1
-        variants.append(source_offset)
-
         slow_rate = copy.deepcopy(self.document)
         stage = self.first_product(slow_rate)["stages"][0]
         stage["durationMs"] = 100

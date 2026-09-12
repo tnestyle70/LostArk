@@ -209,6 +209,22 @@ namespace
 		TitleTextMarker/RenderDeadSceneText. BgFlash/Emblem are real crops from
 		epicgatecommonclear_i6a.dds. */
 		{ "Raid Clear",     "UI/RaidClear/RaidClear_Layout.json", "UI/RaidClear/", false },
+		/* MVP award page shown after the clear mark -- traced from EFUI_MVP's mvp.gfx,
+		DefineSprite 275 "MvpResultFrame". The document is placed by MainTimeline with
+		widgetX 980 / widgetY 641 / pivotType "center", so its frame-1 bounding box
+		(the 2600x1080 "modaldal" dim, local x -20..2580) centres on 980: local x maps to
+		screen x - 300, then the usual uniform 2/3 onto this 1280x720 canvas.
+
+		Only the image layers live here. Every label in the source is built at runtime --
+		the award title ("잔혹한 혈투사"), contribution name and value are set by
+		MvpResultFrame.mvpData -- so CMvpResultView draws those, same split as Raid Clear's
+		TitleTextBox. The medal strip is data-driven too (0..17 icons, 9 before the list
+		collapses), so it is not authored as fixed slots either.
+
+		Background is MvpBackground PrimaryKey 1 "기본", whose MoviePath is empty: the
+		other 16 backgrounds are equippable cosmetics backed by a 960x1080 30fps Bink loop,
+		and none of them is raid-specific. */
+		{ "MVP Result",     "UI/MVP/MvpResult_Layout.json", "UI/MVP/", false },
 		/* Commander raid entry window. Everything the source could give is already placed from
 		epicgatecommanderentrance.gfx: instances sitting directly in EpicGateCommanderEntranceContent
 		carry real PlaceObject matrices, traced on that movie's own 1920x1080 canvas and then scaled

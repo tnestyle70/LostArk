@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -71,6 +71,8 @@
     <ClInclude Include="..\Public\KoukuMadnessGaugeView.h" />
     <ClInclude Include="..\Public\StatusEffectTextView.h" />
     <ClInclude Include="..\Public\DungeonTimerView.h" />
+    <ClInclude Include="..\Public\MvpAwardCatalog.h" />
+    <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
@@ -313,6 +315,8 @@
     <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp" />
     <ClCompile Include="..\Private\StatusEffectTextView.cpp" />
     <ClCompile Include="..\Private\DungeonTimerView.cpp" />
+    <ClCompile Include="..\Private\MvpAwardCatalog.cpp" />
+    <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
@@ -775,6 +779,11 @@
     <None Include="..\..\Data\UI\Minimap\MinimapAreas.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku_Layout.json" />
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku.keyframes.json" />
+    <None Include="..\..\Data\UI\MVP\MvpResult_Layout.json" />
+    <None Include="..\..\Data\UI\MVP\MvpResult_Intro.keyframes.json" />
+    <None Include="..\..\Data\UI\MVP\MvpResult_BadgeEffect.keyframes.json" />
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json" />
     <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json" />
     <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json" />
@@ -1619,6 +1628,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.tracking.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.end.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.fire.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.warning.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.donut.warning.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.sector.warning.shot.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bullet.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.staff.flame.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.full.restore.effect.json"></None>
@@ -1626,5 +1638,159 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.3.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.4.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.5.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1.effect.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.full.fade.black.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.clear.fade.black.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.maze.fade.black.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate3.intro.fade.black.effectv2.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2368.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2432.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2560.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2688.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2752.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2816.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2880.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2944.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3008.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3072.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3136.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3200.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3264.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3328.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3584.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2368.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2432.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2560.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2688.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2752.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2816.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2880.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2944.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3008.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3072.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3136.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3200.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3264.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3328.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3584.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2368.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2432.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2560.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2688.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2752.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2816.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2880.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2944.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3008.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3072.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3136.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3200.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3264.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3328.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3584.hlsli" />
   </ItemGroup>
 </Project>

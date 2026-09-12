@@ -109,12 +109,15 @@ namespace
 			const auto* id = Required(row, "folderId", DATA_JSON_TYPE::STRING);
 			const auto* gate = Required(row, "gateId", DATA_JSON_TYPE::STRING);
 			const auto* name = Required(row, "displayName", DATA_JSON_TYPE::STRING);
-			if (!Has_ExactProperties(row, { "folderId", "gateId", "displayName" }) ||
+			const auto* timeline = row.Find("timelinePatternId");
+			if (!(timeline ? Has_ExactProperties(row, { "folderId", "gateId", "displayName", "timelinePatternId" }) :
+				Has_ExactProperties(row, { "folderId", "gateId", "displayName" })) ||
+				(timeline && (!timeline->Is_String() || !Is_StableId(timeline->Get_String()))) ||
 				!id || !gate || !name || !Is_StableId(id->Get_String()) || name->Get_String().empty() ||
 				!hierarchyIds.insert(id->Get_String()).second ||
 				!CKoukuSaydonCompositionDocument::Is_KnownGate(gate->Get_String()))
 				return fail("invalid parent identity");
-			fullFolders.push_back({ id->Get_String(), gate->Get_String(), name->Get_String() });
+			fullFolders.push_back({ id->Get_String(), gate->Get_String(), name->Get_String(), timeline ? timeline->Get_String() : "" });
 		}
 		const auto hasParent = [&](const std::string& id, const std::string& gate) {
 			return std::any_of(fullFolders.begin(), fullFolders.end(), [&](const auto& folder) {
@@ -360,7 +363,10 @@ namespace
 			const auto* id=Required(row,"folderId",DATA_JSON_TYPE::STRING); const auto* gate=Required(row,"gateId",DATA_JSON_TYPE::STRING); const auto* name=Required(row,"displayName",DATA_JSON_TYPE::STRING);
 			if (!id || !gate || !name || !Is_StableId(id->Get_String()) || !hierarchyIds.insert(id->Get_String()).second || !CKoukuSaydonCompositionDocument::Is_KnownGate(gate->Get_String()))
 			{ outStatus="Invalid Product parent identity; previous inventory retained."; return false; }
-			folders.push_back({id->Get_String(),gate->Get_String(),name->Get_String()});
+			const auto* timeline = row.Find("timelinePatternId");
+			if (timeline && (!timeline->Is_String() || !Is_StableId(timeline->Get_String())))
+			{ outStatus = "Invalid Parent timeline; previous inventory retained."; return false; }
+			folders.push_back({id->Get_String(),gate->Get_String(),name->Get_String(),timeline ? timeline->Get_String() : ""});
 		}
 		for (auto& pattern : staged)
 		{
@@ -649,10 +655,18 @@ bool Client::CKoukuSaydonBossTool::Validate_PatternFlow(const std::string_view g
 	return Prepare_PatternFlow(gateId, flow, status);
 }
 
-bool Client::CKoukuSaydonBossTool::Play_PatternFlow(const std::string_view gateId, std::string& status)
+bool Client::CKoukuSaydonBossTool::Play_PatternFlow(const std::string_view gateId, std::string& status,
+    const std::uint32_t expectedSourceRevision)
 {
 	KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
 	if (!Prepare_PatternFlow(gateId, flow, status)) return false;
+    // Prepare reloads both saved flow and published inventory. Check the exact data
+    // this submission will consume, including a publish completed after preflight.
+    if (expectedSourceRevision != 0u && m_iSourceRevision != expectedSourceRevision)
+    {
+        status = m_strStatus = "Saved Pattern Flow changed after entry admission. Start the updated Pattern Flow explicitly.";
+        return false;
+    }
 	std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> entries;
 	for (const auto& source : flow.Entries)
 	{
@@ -836,8 +850,14 @@ bool Client::CKoukuSaydonBossTool::Render_PatternTree(
 			if (folder.strGateId!=gate) continue;
 			gateHasProduct=true;
 			const bool open=ImGui::TreeNodeEx((folder.strDisplayName+" [Parent]##"+folder.strFolderId).c_str(),ImGuiTreeNodeFlags_DefaultOpen|ImGuiTreeNodeFlags_OpenOnArrow|
-				(selectionKind==1 && selectedId==folder.strFolderId?ImGuiTreeNodeFlags_Selected:0));
-			if (ImGui::IsItemClicked()&&!ImGui::IsItemToggledOpen()) { selectionKind=1; selectedId=folder.strFolderId; }
+				((selectionKind==1 && selectedId==folder.strFolderId) || (!folder.strTimelinePatternId.empty() && selectionKind==3 && selectedId==folder.strTimelinePatternId) ? ImGuiTreeNodeFlags_Selected:0));
+			if (ImGui::IsItemClicked()&&!ImGui::IsItemToggledOpen())
+			{
+				selectionKind = folder.strTimelinePatternId.empty() ? 1 : 3;
+				selectedId = folder.strTimelinePatternId.empty() ? folder.strFolderId : folder.strTimelinePatternId;
+			}
+			if (ImGui::IsItemHovered() && !folder.strTimelinePatternId.empty())
+				if (const auto* timeline = findPattern(folder.strTimelinePatternId)) ImGui::SetTooltip("Parent timeline: %s\n%s", timeline->strPatternId.c_str(), timeline->strLoadError.c_str());
 			if (open)
 			{
 				for (const auto& bundle : bundles)
@@ -856,7 +876,7 @@ bool Client::CKoukuSaydonBossTool::Render_PatternTree(
 					}
 				}
 				for (const auto& pattern : patterns)
-					if (pattern.strGateId==gate && pattern.strFolderId==folder.strFolderId) selectPattern(pattern,pattern.strPatternId);
+					if (pattern.strGateId==gate && pattern.strFolderId==folder.strFolderId && pattern.strPatternId!=folder.strTimelinePatternId) selectPattern(pattern,pattern.strPatternId);
 				ImGui::TreePop();
 			}
 		}

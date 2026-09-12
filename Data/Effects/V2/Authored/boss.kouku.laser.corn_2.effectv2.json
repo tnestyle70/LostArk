@@ -12,7 +12,7 @@
     "dissolve": ""
   },
   "params": {
-    "position": { "start": [0.0, 2.0, 2.0], "end": [0.0, 0.0, 0.0], "lerp": false },
+    "position": { "start": [0.0, 2.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
     "rotation": { "start": [90.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
     "scale": { "start": [0.7, 0.7, 0.7], "end": [0.7, 6.0, 0.3], "lerp": true },
     "velocity": { "start": [0.0, 0.0, 50.0], "end": [0.0, 0.0, 0.0], "lerp": false },

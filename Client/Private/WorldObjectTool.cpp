@@ -4,11 +4,13 @@
 #ifdef _DEBUG
 #include "CompositionTimeline.h"
 #include "Animation.h"
+#include "ActorCatalog.h"
 #include "BinaryAsset/WModelDecoder.h"
 #include "RuntimeAssetRoot.h"
 #include "Level_KakulSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "WorldSequencePlayer.h"
+#include "KoukuSaydonCompositionDocument.h"
 
 #include <algorithm>
 #include <cctype>
@@ -86,6 +88,261 @@ float3_t QuaternionEuler(const float4_t& q)
     const float roll = std::abs(cosine) > .00001f ? std::atan2(matrix._12, matrix._22) : 0.f;
     return {XMConvertToDegrees(pitch), XMConvertToDegrees(yaw), XMConvertToDegrees(roll)};
 }
+
+struct LinkedAuthoringWrite
+{
+    std::filesystem::path path;
+    std::filesystem::path stagedPath;
+    std::filesystem::path rollbackPath;
+    std::string before;
+    std::string after;
+    bool committed = false;
+};
+
+bool WriteAuthoringStage(const std::filesystem::path& path, const std::string& bytes, std::string& status)
+{
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output || !output.write(bytes.data(), static_cast<std::streamsize>(bytes.size())) || !output.flush())
+    { status = "Cannot stage linked authoring file: " + path.string(); return false; }
+    output.close();
+    std::string reopened;
+    return ReadSource(path, reopened, status) && reopened == bytes;
+}
+
+bool CommitAuthoringWrites(std::vector<LinkedAuthoringWrite>& writes, bool& preserveRecovery, std::string& status)
+{
+    preserveRecovery = false;
+    for (const auto& write : writes)
+    {
+        std::string current;
+        if (!ReadSource(write.path, current, status) || current != write.before)
+        { status = "Linked authoring source changed during Save; existing edits preserved: " + write.path.string(); return false; }
+    }
+    for (auto& write : writes)
+    {
+        std::string current;
+        const bool fresh = ReadSource(write.path, current, status) && current == write.before;
+        if (!fresh || !MoveFileExW(write.stagedPath.c_str(), write.path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            const std::string reason = fresh ? "Linked authoring replacement failed." : "Linked source changed before replacement.";
+            bool restored = true;
+            for (auto undo = writes.rbegin(); undo != writes.rend(); ++undo)
+            {
+                if (!undo->committed) continue;
+                std::string actual;
+                if (!ReadSource(undo->path, actual, status) || actual != undo->after ||
+                    !MoveFileExW(undo->rollbackPath.c_str(), undo->path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) restored = false;
+            }
+            preserveRecovery = !restored;
+            status = reason + (restored ? " Previous sources restored; draft preserved." :
+                " Concurrent source edits were preserved; rollback files remain for recovery. Reload before saving again.");
+            return false;
+        }
+        write.committed = true;
+    }
+    return true;
+}
+
+bool SynchronizeEmissionReferences(Client::KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const Client::CWorldSequenceDocument& previous, const Client::CWorldSequenceDocument& edited,
+    const std::map<std::string, std::vector<uint32_t>>& provenance,
+    const std::set<std::string>& editedMotions, bool& hasReferences, std::string& status)
+{
+    using namespace Client;
+    const auto fail = [&](const std::string& reason) { status = "Object Save preserved all sources: " + reason; return false; };
+    // Result/Contact motions and NEXT chains are consumers even when no WORLD
+    // box names that Motion directly. Their existing runtime owns one object.
+    const auto registerMotion = [&](const std::string& firstId, bool singleObject) {
+        std::vector<std::string> pending{firstId};
+        std::set<std::string> seen;
+        while (!pending.empty())
+        {
+            const auto id = pending.back(); pending.pop_back();
+            if (id.empty() || !seen.insert(id).second) continue;
+            const auto* before = previous.Find_Instance(id);
+            const auto* after = edited.Find_Instance(id);
+            if (before && editedMotions.contains(before->templateId))
+            {
+                hasReferences = true;
+                const auto* motion = after ? edited.Find_Template(after->templateId) : nullptr;
+                if (!after || !after->enabled || !motion) return fail("a Logic/World Motion was removed or disabled: " + id);
+                if (singleObject && motion->objectMotion.EmissionCount() != 1u)
+                    return fail("Logic motion changes require Count 1: " + id + ". Keep each target as its own WORLD box.");
+            }
+            for (const auto* instance : {before, after})
+                if (instance && instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT) pending.push_back(instance->nextMotionId);
+        }
+        return true;
+    };
+    const auto registerContactTarget = [&](const std::string& occurrenceId) {
+        for (const auto& pattern : document.Patterns)
+            for (const auto& box : pattern.WorldOccurrences)
+                if (box.strOccurrenceId == occurrenceId)
+                    for (const auto& world : document.Worlds)
+                        if (world.strWorldId == box.strWorldId && !registerMotion(world.strSequenceInstanceId, true)) return false;
+        return true;
+    };
+    for (const auto& logic : document.Logics)
+    {
+        for (const auto& target : logic.TargetWorldOccurrenceIds) if (!registerContactTarget(target)) return false;
+        if (!registerMotion(logic.strWorldSequenceInstanceId, false) ||
+            !registerMotion(logic.strTargetWorldInstanceId, true) || !registerMotion(logic.strMotionInstanceId, true)) return false;
+        for (const auto& contact : logic.ContactMotions)
+            if (!registerMotion(contact.strMotionInstanceId, true) || !registerContactTarget(contact.strTargetWorldOccurrenceId)) return false;
+    }
+    for (const auto& world : document.Worlds)
+        if (!registerMotion(world.strSequenceInstanceId, false)) return false;
+    for (auto& pattern : document.Patterns)
+    {
+        if (!pattern.strLoadError.empty())
+            for (const auto& world : document.Worlds)
+                if (const auto* instance = previous.Find_Instance(world.strSequenceInstanceId);
+                    instance && editedMotions.contains(instance->templateId) && pattern.strPreservedJson.find(world.strWorldId) != std::string::npos)
+                    return fail("repair referenced Pattern " + pattern.strPatternId + " before editing its Motion.");
+        for (const auto& worldBox : pattern.WorldOccurrences)
+        {
+            const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
+                [&](const auto& row) { return row.strWorldId == worldBox.strWorldId; });
+            if (world == document.Worlds.end()) continue;
+            const auto* beforeInstance = previous.Find_Instance(world->strSequenceInstanceId);
+            const auto* afterInstance = edited.Find_Instance(world->strSequenceInstanceId);
+            if (!beforeInstance || !editedMotions.contains(beforeInstance->templateId)) continue;
+            hasReferences = true;
+            if (!pattern.strLoadError.empty()) return fail("repair referenced Pattern " + pattern.strPatternId + " before editing its Motion.");
+            const auto* before = previous.Find_Template(beforeInstance->templateId);
+            const auto* after = afterInstance ? edited.Find_Template(afterInstance->templateId) : nullptr;
+            if (!before || !after) return fail("a referenced Motion was removed: " + world->strSequenceInstanceId);
+            const auto& oldMotion = before->objectMotion;
+            const auto& newMotion = after->objectMotion;
+            std::vector<uint32_t> origins;
+            if (const auto found = provenance.find(after->sequenceId); found != provenance.end()) origins = found->second;
+            else for (uint32_t row = 0; row < newMotion.EmissionCount(); ++row) origins.push_back(row);
+            if (origins.size() != newMotion.EmissionCount() || std::any_of(origins.begin(), origins.end(),
+                [&](uint32_t row) { return row >= oldMotion.EmissionCount(); }))
+                return fail("emission provenance is invalid for " + after->displayName + ". Reload the Object source.");
+            const auto belongs = [&](const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& box) {
+                if (box.strAnchorKind != "WORLD" || box.strWorldId != worldBox.strWorldId) return false;
+                if (!box.strWorldOccurrenceId.empty()) return box.strWorldOccurrenceId == worldBox.strOccurrenceId;
+                return std::count_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
+                    [&](const auto& other) { return other.strWorldId == worldBox.strWorldId; }) == 1;
+            };
+            const auto isCollider = [&](const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& box) {
+                const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+                    [&](const auto& row) { return row.strResourceId == box.strResourceId; });
+                return resource != document.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+            };
+            if (std::count_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
+                [&](const auto& other) { return other.strWorldId == worldBox.strWorldId; }) != 1 &&
+                std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(), [&](const auto& box) {
+                    return box.strAnchorKind == "WORLD" && box.strWorldId == worldBox.strWorldId && box.strWorldOccurrenceId.empty() && isCollider(box); }))
+                return fail("Collider has an ambiguous WORLD occurrence. Select its exact Object box in Composition first.");
+            std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> nextColliders;
+            std::map<std::pair<std::string, uint32_t>, std::string> linkedLogics;
+            std::set<std::string> removedLogicCandidates;
+            const auto originalLogics = pattern.LogicOccurrences;
+            const auto shiftStart = [&](uint32_t start, int64_t shift, uint32_t& out) {
+                const int64_t result = int64_t(start) + shift;
+                if (result < 0 || result > CWorldSequenceDocument::MAX_DURATION_MS) return false;
+                out = static_cast<uint32_t>(result); return true;
+            };
+            for (const auto& source : pattern.PresentationOccurrences)
+            {
+                if (!belongs(source) || !isCollider(source)) { nextColliders.push_back(source); continue; }
+                if (source.iWorldEmissionIndex >= oldMotion.EmissionCount())
+                    return fail("Collider names an absent original emission: " + source.strOccurrenceId);
+                if (newMotion.emissions.empty() && newMotion.EmissionCount() != 1u)
+                    return fail("WORLD Collider groups need authored emission rows. Use Group Layout / Resize Group before saving.");
+                std::vector<uint32_t> targets;
+                for (uint32_t row = 0; row < origins.size(); ++row)
+                    if (origins[row] == source.iWorldEmissionIndex) targets.push_back(row);
+                if (targets.empty())
+                {
+                    if (!source.strLogicOccurrenceId.empty()) removedLogicCandidates.insert(source.strLogicOccurrenceId);
+                    continue;
+                }
+                for (size_t copyIndex = 0; copyIndex < targets.size(); ++copyIndex)
+                {
+                    const auto target = targets[copyIndex];
+                    const double rate = worldBox.fPlaybackSpeed;
+                    if (!std::isfinite(rate) || rate <= 0. || beforeInstance->playbackSpeed <= 0.f || afterInstance->playbackSpeed <= 0.f)
+                        return fail("WORLD playback speed is invalid.");
+                    const double delta = (double(newMotion.EmissionDelayMs(target)) / afterInstance->playbackSpeed -
+                        double(oldMotion.EmissionDelayMs(source.iWorldEmissionIndex)) / beforeInstance->playbackSpeed) / rate;
+                    if (!std::isfinite(delta) || std::abs(delta) > CWorldSequenceDocument::MAX_DURATION_MS)
+                        return fail("emission time change is outside the timeline limit.");
+                    const int64_t shift = std::llround(delta);
+                    auto collider = source;
+                    collider.iWorldEmissionIndex = target;
+                    if (!shiftStart(source.iStartMs, shift, collider.iStartMs))
+                        return fail("emission delay moves Collider before zero or beyond the timeline: " + source.strOccurrenceId);
+                    if (collider.iStartMs < worldBox.iStartMs ||
+                        uint64_t(collider.iStartMs) + collider.iDurationMs > uint64_t(worldBox.iStartMs) + worldBox.iDurationMs)
+                        return fail("emission delay moves Collider outside its WORLD box lifetime: " + source.strOccurrenceId +
+                            ". Extend that WORLD box in Composition first.");
+                    if (copyIndex)
+                    {
+                        do {
+                            if (pattern.iNextPresentationOccurrenceOrdinal == UINT32_MAX) return fail("Collider identity range is exhausted.");
+                            collider.strOccurrenceId = pattern.strPatternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+                        } while (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                            [&](const auto& row) { return row.strOccurrenceId == collider.strOccurrenceId; }) ||
+                            std::any_of(nextColliders.begin(), nextColliders.end(), [&](const auto& row) { return row.strOccurrenceId == collider.strOccurrenceId; }));
+                    }
+                    if (!source.strLogicOccurrenceId.empty())
+                    {
+                        const auto key = std::make_pair(source.strLogicOccurrenceId, target);
+                        if (const auto linked = linkedLogics.find(key); linked != linkedLogics.end()) collider.strLogicOccurrenceId = linked->second;
+                        else
+                        {
+                            const auto logic = std::find_if(originalLogics.begin(), originalLogics.end(),
+                                [&](const auto& row) { return row.strOccurrenceId == source.strLogicOccurrenceId; });
+                            if (logic == originalLogics.end()) return fail("Collider Logic is missing: " + source.strLogicOccurrenceId);
+                            if (copyIndex || shift)
+                            {
+                                const bool mixed = std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                                    [&](const auto& row) { return row.strLogicOccurrenceId == source.strLogicOccurrenceId &&
+                                        (!belongs(row) || !isCollider(row) || row.iWorldEmissionIndex != source.iWorldEmissionIndex); });
+                                const bool held = !logic->strHoldLogicOccurrenceId.empty() ||
+                                    std::any_of(originalLogics.begin(), originalLogics.end(), [&](const auto& row) { return row.strHoldLogicOccurrenceId == logic->strOccurrenceId; }) ||
+                                    std::any_of(document.Logics.begin(), document.Logics.end(), [&](const auto& row) { return row.strTargetLogicOccurrenceId == logic->strOccurrenceId; });
+                                if (mixed || held) return fail("Motion row shares a Logic dependency with another row or hold/result target: " + logic->strOccurrenceId +
+                                    ". Separate that Logic in Composition before changing this row's count or delay.");
+                            }
+                            auto nextLogic = *logic;
+                            if (!shiftStart(logic->iStartMs, shift, nextLogic.iStartMs)) return fail("emission delay moves Logic outside the timeline.");
+                            if (copyIndex)
+                            {
+                                do {
+                                    if (pattern.iNextLogicOccurrenceOrdinal == UINT32_MAX) return fail("Logic identity range is exhausted.");
+                                    nextLogic.strOccurrenceId = pattern.strPatternId + ".logic." + std::to_string(pattern.iNextLogicOccurrenceOrdinal++);
+                                } while (std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
+                                    [&](const auto& row) { return row.strOccurrenceId == nextLogic.strOccurrenceId; }));
+                                pattern.LogicOccurrences.push_back(nextLogic);
+                            }
+                            else
+                                for (auto& row : pattern.LogicOccurrences) if (row.strOccurrenceId == nextLogic.strOccurrenceId) { row = nextLogic; break; }
+                            collider.strLogicOccurrenceId = nextLogic.strOccurrenceId;
+                            linkedLogics.emplace(key, nextLogic.strOccurrenceId);
+                        }
+                    }
+                    nextColliders.push_back(std::move(collider));
+                }
+            }
+            pattern.PresentationOccurrences = std::move(nextColliders);
+            for (const auto& id : removedLogicCandidates)
+            {
+                if (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                    [&](const auto& row) { return row.strLogicOccurrenceId == id; })) continue;
+                if (std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& row) { return row.strHoldLogicOccurrenceId == id; }) ||
+                    std::any_of(document.Logics.begin(), document.Logics.end(), [&](const auto& row) { return row.strTargetLogicOccurrenceId == id; }))
+                    return fail("deleted emission owns a Logic used by a hold/result target: " + id + ". Reconnect it in Composition first.");
+                std::erase_if(pattern.LogicOccurrences, [&](const auto& row) { return row.strOccurrenceId == id; });
+            }
+        }
+    }
+    return true;
+}
+
 }
 
 using namespace Client;
@@ -101,6 +358,27 @@ void CWorldObjectTool::Open()
     m_Open = true;
     m_ResourcesOpen = m_SequencerOpen = m_DetailOpen = true;
     if (!m_Ready) Load_Source();
+}
+
+bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
+    const std::string& instanceId, std::string& status)
+{
+    if (!m_Ready && !Load_Source()) { status = m_Status; return false; }
+    const auto* resource = m_Document.Find_ObjectResource(objectId);
+    if (!resource)
+    { status = m_Status = "The selected Object is absent from the current Object Tool draft. Existing edits are preserved."; return false; }
+    if (!instanceId.empty())
+    {
+        const auto states = StateIds(*resource);
+        if (std::find(states.begin(), states.end(), instanceId) == states.end())
+        { status = m_Status = "The selected Motion does not belong to this Object in the current draft. Existing edits are preserved."; return false; }
+    }
+    Open();
+    Select_Object(objectId);
+    if (!instanceId.empty()) Select_State(instanceId);
+    status = m_Status = instanceId.empty() ? "Opened Object settings. Save keeps edits." :
+        "Opened the selected Motion. Emissions, movement and rotation are shared by every box using this Motion.";
+    return true;
 }
 
 bool CWorldObjectTool::Consume_InteractionRequest()
@@ -147,6 +425,7 @@ bool CWorldObjectTool::Load_Source()
     m_SourcePath = sourcePath; m_PlacementPath = placementPath; m_DeployPath = deployPath;
     m_SourceBytes = std::move(sourceAfter); m_PlacementBytes = std::move(mapAfter); m_DeployBytes = std::move(deployAfter);
     m_Ready = true; m_Dirty = false; ++m_SavedGeneration;
+    m_EmissionOrigins.clear(); m_EditedMotionIds.clear();
     m_PristinePatternId.clear();
     m_AnimationObjectId.clear();
     m_AnimationCandidateObjectId.clear();
@@ -174,25 +453,77 @@ bool CWorldObjectTool::Save_Source()
 {
     if (!m_Ready || m_PublishProcess || !Matches_SourceBaseline()) return false;
     auto stagedPath = m_SourcePath;
-    stagedPath += L".world-object-" + std::to_wstring(GetCurrentProcessId()) + L".stage";
-    // The document owns codec/validation. A separate staging destination permits
-    // a readback and the final linked-source CAS immediately before promotion.
+    const auto suffix = L".world-object-" + std::to_wstring(GetCurrentProcessId());
+    stagedPath += suffix + L".stage";
     if (!m_Document.Save(stagedPath, m_MapTargets, m_DeployTargets, m_Status)) return false;
     CWorldSequenceDocument verified;
     std::string stagedBytes;
-    const bool ready = verified.Load(stagedPath, AREA_ID, m_MapTargets, m_DeployTargets, m_Status) &&
-        m_Document.Is_Equivalent(verified) && ReadSource(stagedPath, stagedBytes, m_Status) && Matches_SourceBaseline();
-    if (!ready || !MoveFileExW(stagedPath.c_str(), m_SourcePath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+    std::vector<LinkedAuthoringWrite> writes;
+    const auto cleanup = [&]() {
+        std::error_code ignored;
+        std::filesystem::remove(stagedPath, ignored);
+        for (const auto& write : writes)
+        {
+            std::filesystem::remove(write.stagedPath, ignored);
+            std::filesystem::remove(write.rollbackPath, ignored);
+        }
+    };
+    if (!verified.Load(stagedPath, AREA_ID, m_MapTargets, m_DeployTargets, m_Status) ||
+        !m_Document.Is_Equivalent(verified) || !ReadSource(stagedPath, stagedBytes, m_Status) || !Matches_SourceBaseline())
+    { cleanup(); return false; }
+    bool linked = false, publishPatterns = false;
+    const std::array paths{CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()};
+    for (size_t index = 0; index < paths.size(); ++index)
     {
-        std::error_code ignored; std::filesystem::remove(stagedPath, ignored);
-        if (ready) m_Status = "Atomic source replacement failed; draft preserved.";
-        else if (m_Status.empty()) m_Status = "Staged source readback differs; draft preserved.";
-        return false;
+        std::error_code error;
+        if (!std::filesystem::exists(paths[index], error) && !error) continue;
+        LinkedAuthoringWrite write;
+        write.path = paths[index];
+        if (!ReadSource(write.path, write.before, m_Status)) { cleanup(); return false; }
+        CKoukuSaydonCompositionDocument owner(write.path);
+        if (!owner.Reload(m_Status)) { cleanup(); return false; }
+        auto candidate = owner.Get_LastGood();
+        bool references = false;
+        if (!SynchronizeEmissionReferences(candidate, m_SavedDocument, verified,
+            m_EmissionOrigins, m_EditedMotionIds, references, m_Status)) { cleanup(); return false; }
+        linked = linked || references;
+        publishPatterns = publishPatterns || (index == 0 && references);
+        if (candidate == owner.Get_LastGood()) continue;
+        if (candidate.iRevision == UINT32_MAX)
+        { m_Status = "Linked Composition revision is exhausted; all sources preserved."; cleanup(); return false; }
+        ++candidate.iRevision;
+        if (!CKoukuSaydonCompositionDocument::Validate(candidate, owner.Get_References(), m_Status))
+        { cleanup(); return false; }
+        write.after = CKoukuSaydonCompositionDocument::Serialize(candidate);
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT reopened;
+        if (!CKoukuSaydonCompositionDocument::Parse_Text(write.after, reopened, m_Status) ||
+            !CKoukuSaydonCompositionDocument::Validate(reopened, owner.Get_References(), m_Status) ||
+            CKoukuSaydonCompositionDocument::Serialize(reopened) != write.after)
+        { cleanup(); return false; }
+        write.stagedPath = write.path; write.stagedPath += suffix + L".stage";
+        write.rollbackPath = write.path; write.rollbackPath += suffix + L".rollback";
+        writes.push_back(std::move(write));
     }
+    if (linked && (!m_CanSaveLinked || !m_CanSaveLinked(m_Status)))
+    { if (m_Status.empty()) m_Status = "Linked Composition editor is unavailable. Sources preserved."; cleanup(); return false; }
+    LinkedAuthoringWrite worldWrite;
+    worldWrite.path = m_SourcePath; worldWrite.before = m_SourceBytes; worldWrite.after = stagedBytes;
+    worldWrite.stagedPath = stagedPath; worldWrite.rollbackPath = m_SourcePath; worldWrite.rollbackPath += suffix + L".rollback";
+    writes.push_back(std::move(worldWrite));
+    for (const auto& write : writes)
+        if (!WriteAuthoringStage(write.stagedPath, write.after, m_Status) ||
+            !WriteAuthoringStage(write.rollbackPath, write.before, m_Status)) { cleanup(); return false; }
+    bool preserveRecovery = false;
+    if (!Matches_SourceBaseline() || !CommitAuthoringWrites(writes, preserveRecovery, m_Status))
+    { if (!preserveRecovery) cleanup(); return false; }
+    cleanup();
     m_SourceBytes = std::move(stagedBytes); m_Document = std::move(verified);
     m_SavedDocument = m_Document; m_Dirty = false; ++m_SavedGeneration;
+    m_EmissionOrigins.clear(); m_EditedMotionIds.clear();
     m_PristinePatternId.clear();
-    m_Status = "Saved; applying World Object runtime data.";
+    m_LinkedSavePending = m_LinkedSavePending || linked;
+    m_PublishLinkedPatterns = m_PublishLinkedPatterns || publishPatterns;
+    m_Status = "Saved Object and linked Collider/Logic rows; applying World Object runtime data.";
     Start_Publish();
     return true;
 }
@@ -237,18 +568,42 @@ void CWorldObjectTool::Poll_Publish()
     if (code != 0)
     { m_Status = "Saved; apply failed (" + std::to_string(code) + "). Previous runtime preserved. Save to retry. Log: " + m_PublishLog.string(); return; }
     ++m_SavedGeneration;
+    std::string runtimeStatus;
     if (auto* level = CLevel_KakulSaydonArena::Get_Active())
     {
-        std::string status;
-        if (!level->Reload_WorldObjectRuntime(status))
-        { m_Status = "Saved and runtime files applied; next-play reload pending: " + status; return; }
+        if (!level->Reload_WorldObjectRuntime(runtimeStatus))
+        { m_Status = "Saved and runtime files applied; next-play reload pending: " + runtimeStatus; return; }
     }
-    m_Status = "Saved and applied for the next play. Log: " + m_PublishLog.string();
+    if (m_LinkedSavePending)
+    {
+        std::string status;
+        if (!m_ApplyLinkedSave || !m_ApplyLinkedSave(m_PublishLinkedPatterns, status))
+        { m_Status = "Object sources and Map applied; linked Composition apply is pending: " + status + " " + runtimeStatus; return; }
+        m_LinkedSavePending = false; m_PublishLinkedPatterns = false;
+        m_Status = "Object and linked sources saved. " + status + " " + runtimeStatus;
+        return;
+    }
+    m_Status = "Saved and applied for the next play. " + runtimeStatus + " Log: " + m_PublishLog.string();
+}
+
+std::vector<uint32_t>& CWorldObjectTool::Emission_Origins(const WORLD_SEQUENCE_TEMPLATE& sequence)
+{
+    const auto [entry, inserted] = m_EmissionOrigins.try_emplace(sequence.sequenceId);
+    if (inserted)
+    {
+        entry->second.reserve(sequence.objectMotion.EmissionCount());
+        for (uint32_t index = 0; index < sequence.objectMotion.EmissionCount(); ++index)
+            entry->second.push_back(index);
+    }
+    return entry->second;
 }
 
 void CWorldObjectTool::Mark_Dirty()
 {
     m_PristinePatternId.clear();
+    if (const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject))
+        for (const auto& id : StateIds(*resource))
+            if (const auto* instance = m_Document.Find_Instance(id)) m_EditedMotionIds.insert(instance->templateId);
     m_Document.Touch(); m_Dirty = true; m_PreviewDirty = m_PreviewActive;
 }
 
@@ -399,6 +754,9 @@ void CWorldObjectTool::Select_State(const std::string& id)
     if (std::find(motions.begin(), motions.end(), id) == motions.end())
     { m_Status = "The selected motion does not belong to this object."; return; }
     Stop_Preview(); m_SelectedInstance = id; m_SelectedTrack = 0; m_SelectedKey = 0; m_ClockMs = 0.f;
+    if (const auto* instance = m_Document.Find_Instance(id))
+        if (const auto* sequence = m_Document.Find_Template(instance->templateId))
+            m_GroupCount = static_cast<int>(sequence->objectMotion.EmissionCount());
 }
 
 bool CWorldObjectTool::Create_Object()
@@ -945,6 +1303,13 @@ bool CWorldObjectTool::Stage_SelectedModel(CWorldSequenceDocument& candidate)
     }
     resource->modelAssetId = m_AnimationModelAssetId;
     resource->animated = !m_AnimationResources.empty();
+    if (!resource->materialSourceModelAssetId.empty())
+    {
+        Engine::MODEL_ASSET_LOAD_DESC load;
+        if (!CActorCatalog::Build_DerivedModelLoadDescription(resource->modelAssetId,
+            resource->materialSourceModelAssetId, load, m_Status))
+        { m_Status = "Model change refused: " + m_Status + ". Existing model and patterns preserved."; return false; }
+    }
     return true;
 }
 
@@ -1124,6 +1489,33 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
     else
     {
         ImGui::TextWrapped("Model: %s", resource.modelAssetId.empty() ? "Choose a WModel in Physical Resources" : resource.modelAssetId.c_str());
+        if (m_MaterialSourceObjectId != resource.objectId)
+        {
+            m_MaterialSourceObjectId = resource.objectId;
+            m_MaterialSourceCandidate = resource.materialSourceModelAssetId;
+            m_MaterialSourceStatus.clear();
+        }
+        EditText("Material Source Model", m_MaterialSourceCandidate, 512);
+        ImGui::TextWrapped("For an extracted or baked variant, enter the original catalog model path. This preserves its own textures, surface values and reflection inputs. Empty uses this model's own materials.");
+        ImGui::BeginDisabled(resource.modelAssetId.empty());
+        if (ImGui::SmallButton("Apply Material Source"))
+        {
+            Engine::MODEL_ASSET_LOAD_DESC load;
+            if (CActorCatalog::Build_DerivedModelLoadDescription(resource.modelAssetId,
+                m_MaterialSourceCandidate, load, m_MaterialSourceStatus))
+            {
+                resource.materialSourceModelAssetId = m_MaterialSourceCandidate;
+                m_MaterialSourceStatus = load.materialOverrides.empty() ?
+                    "Using embedded model materials. No source catalog override is registered." :
+                    "Original catalog materials applied: " + std::to_string(load.materialOverrides.size()) + " slots. Save to keep this binding.";
+                changed = true;
+            }
+            else m_MaterialSourceStatus += ". Existing material binding preserved.";
+        }
+        ImGui::EndDisabled();
+        if (!m_MaterialSourceStatus.empty()) ImGui::TextWrapped("%s", m_MaterialSourceStatus.c_str());
+        else ImGui::TextWrapped("Current material source: %s", resource.materialSourceModelAssetId.empty() ?
+            "Own model / embedded materials" : resource.materialSourceModelAssetId.c_str());
         ImGui::TextWrapped("Diffuse: %s", resource.diffuseTextureAssetId.empty() ? "Embedded model material" : resource.diffuseTextureAssetId.c_str());
         if (!resource.diffuseTextureAssetId.empty() && ImGui::SmallButton("Clear Diffuse Override")) { resource.diffuseTextureAssetId.clear(); changed = true; }
         changed |= ImGui::DragFloat("Model Import Scale", &resource.modelPreScale, .001f, .000001f, 1000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
@@ -1386,6 +1778,7 @@ void CWorldObjectTool::Render_Detail()
     if (!alias && ImGui::CollapsingHeader("Physics / Motion / Emission", ImGuiTreeNodeFlags_DefaultOpen))
     {
         auto& motion = sequence->objectMotion;
+        auto& origins = Emission_Origins(*sequence);
         ImGui::TextWrapped("Motion uses the Lifetime timeline and works without animation clips. Play or drag the ruler to preview, then Save.");
         ImGui::DragFloat("Arc Height (m)", &m_VerticalArcHeight, .05f, .01f, 100.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
         if (ImGui::Button("Apply Vertical Arc"))
@@ -1415,7 +1808,12 @@ void CWorldObjectTool::Render_Detail()
         changed |= ImGui::DragFloat3("Revolution Offset (m)", &motion.revolutionOffset.x, .05f);
         auto& emissions = motion.emissions;
         ImGui::BeginDisabled(!emissions.empty());
-        changed |= EditUInt("Count", motion.count, 128, 1);
+        if (EditUInt("Count", motion.count, 128, 1))
+        {
+            origins.resize(motion.count, origins.empty() ? 0u : origins.back());
+            m_GroupCount = static_cast<int>(motion.count);
+            changed = true;
+        }
         const uint32_t maxInterval = motion.count > 1 ? (sequence->effectTracks.empty() ? sequence->durationMs - 1 :
             CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs) / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
         if (motion.intervalMs > maxInterval) { motion.intervalMs = maxInterval; changed = true; }
@@ -1464,21 +1862,99 @@ void CWorldObjectTool::Render_Detail()
             ImGui::EndTable();
         }
         if (duplicateRow < emissions.size() && emissions.size() < 128u)
-        { emissions.insert(emissions.begin() + duplicateRow + 1, emissions[duplicateRow]); changed = true; }
-        if (removeRow < emissions.size()) { emissions.erase(emissions.begin() + removeRow); changed = true; }
+        {
+            emissions.insert(emissions.begin() + duplicateRow + 1, emissions[duplicateRow]);
+            origins.insert(origins.begin() + duplicateRow + 1, origins[duplicateRow]);
+            m_GroupCount = static_cast<int>(emissions.size());
+            changed = true;
+        }
+        if (removeRow < emissions.size())
+        {
+            if (emissions.size() == 1u) m_Status = "Keep at least one row; use Clear Emissions to return to one emitter.";
+            else
+            { emissions.erase(emissions.begin() + removeRow); origins.erase(origins.begin() + removeRow); m_GroupCount = static_cast<int>(emissions.size()); changed = true; }
+        }
         ImGui::BeginDisabled(emissions.size() >= 128u);
         if (ImGui::Button("Add Emission"))
         {
             WORLD_SEQUENCE_OBJECT_EMISSION emission;
             if (!emissions.empty()) emission = emissions.back();
+            if (emissions.empty())
+            {
+                // Keep the existing single emitter as row zero before adding its copy.
+                emissions.push_back(emission);
+                origins.resize(1u, 0u);
+            }
             emissions.push_back(emission);
+            origins.push_back(origins.back());
+            m_GroupCount = static_cast<int>(emissions.size());
             changed = true;
         }
         ImGui::EndDisabled();
         ImGui::SameLine();
         ImGui::BeginDisabled(emissions.empty());
-        if (ImGui::Button("Clear Emissions")) { emissions.clear(); changed = true; }
+        if (ImGui::Button("Clear Emissions"))
+        { emissions.clear(); origins.resize(1u); motion.count = 1u; m_GroupCount = 1; motion.intervalMs = 0u; motion.spreadDegrees = 0.f; changed = true; }
         ImGui::EndDisabled();
+        ImGui::SeparatorText("Group Layout");
+        ImGui::DragInt("Group count", &m_GroupCount, 1.f, 1, 128, "%d", ImGuiSliderFlags_AlwaysClamp);
+        if (ImGui::Button("Resize Group"))
+        {
+            if (emissions.empty())
+            {
+                emissions.resize(motion.count);
+                for (uint32_t index = 0; index < motion.count; ++index) emissions[index].startDelayMs = index * motion.intervalMs;
+            }
+            const auto last = emissions.back();
+            emissions.resize(static_cast<size_t>(m_GroupCount), last);
+            origins.resize(emissions.size(), origins.back());
+            changed = true;
+        }
+        ImGui::DragFloat3("Step offset (m)", &m_EmissionStep.x, .05f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        EditUInt("Step delay (ms)", m_EmissionDelayStepMs, static_cast<int>(maxDelay));
+        ImGui::BeginDisabled(emissions.empty());
+        if (ImGui::Button("Arrange Line"))
+        {
+            auto staged = emissions;
+            const auto first = staged.front();
+            bool valid = true;
+            for (size_t index = 0; index < staged.size(); ++index)
+            {
+                auto& row = staged[index];
+                row.positionOffset = {first.positionOffset.x + m_EmissionStep.x * index,
+                    first.positionOffset.y + m_EmissionStep.y * index, first.positionOffset.z + m_EmissionStep.z * index};
+                const uint64_t delay = uint64_t(first.startDelayMs) + uint64_t(m_EmissionDelayStepMs) * index;
+                valid = valid && delay <= maxDelay && std::isfinite(row.positionOffset.x) && std::isfinite(row.positionOffset.y) &&
+                    std::isfinite(row.positionOffset.z) && std::abs(row.positionOffset.x) <= 100000.f &&
+                    std::abs(row.positionOffset.y) <= 100000.f && std::abs(row.positionOffset.z) <= 100000.f;
+                row.startDelayMs = static_cast<uint32_t>(delay);
+            }
+            if (valid) { emissions = std::move(staged); changed = true; }
+            else m_Status = "Line layout exceeds the Motion lifetime or position limits. Rows preserved.";
+        }
+        ImGui::DragFloat3("Spacing multiplier", &m_SpacingMultiplier.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        if (ImGui::Button("Scale Group Spacing"))
+        {
+            auto staged = emissions;
+            bool valid = true;
+            for (auto& row : staged)
+            {
+                row.positionOffset.x *= m_SpacingMultiplier.x;
+                row.positionOffset.y *= m_SpacingMultiplier.y;
+                row.positionOffset.z *= m_SpacingMultiplier.z;
+                valid = valid && std::isfinite(row.positionOffset.x) && std::isfinite(row.positionOffset.y) &&
+                    std::isfinite(row.positionOffset.z) && std::abs(row.positionOffset.x) <= 100000.f &&
+                    std::abs(row.positionOffset.y) <= 100000.f && std::abs(row.positionOffset.z) <= 100000.f;
+            }
+            const float3_t orbit{motion.revolutionOffset.x * m_SpacingMultiplier.x,
+                motion.revolutionOffset.y * m_SpacingMultiplier.y, motion.revolutionOffset.z * m_SpacingMultiplier.z};
+            valid = valid && std::isfinite(orbit.x) && std::isfinite(orbit.y) && std::isfinite(orbit.z) &&
+                std::abs(orbit.x) <= 100000.f && std::abs(orbit.y) <= 100000.f && std::abs(orbit.z) <= 100000.f;
+            if (valid) { emissions = std::move(staged); motion.revolutionOffset = orbit; changed = true; }
+            else m_Status = "Spacing exceeds the Motion limits. Rows preserved.";
+        }
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Count and delay edits keep linked Collider/Logic rows together when you Save. All boxes using this Motion are updated; unsaved Composition edits are preserved.");
         ImGui::SetNextItemWidth(110.f);
         ImGui::DragInt("Ring Count", &m_RingCount, 1.f, 1, 128, "%d", ImGuiSliderFlags_AlwaysClamp);
         ImGui::SameLine();
@@ -1491,6 +1967,8 @@ void CWorldObjectTool::Render_Detail()
                R(p)*o and an offset of R(p)*o puts every row on one circle centred
                on the saved position itself. */
             const vector_t orbitOffset = XMLoadFloat3(&motion.revolutionOffset);
+            origins.resize(static_cast<size_t>(m_RingCount), origins.empty() ? 0u : origins.back());
+            m_GroupCount = m_RingCount;
             emissions.clear();
             for (int index = 0; index < m_RingCount; ++index)
             {

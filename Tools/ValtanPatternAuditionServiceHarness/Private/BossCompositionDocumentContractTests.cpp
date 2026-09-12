@@ -25,6 +25,11 @@
 // Keep link-only dependencies strict so a new live call fails the contract.
 Client::CLevel_KakulSaydonArena* Client::CLevel_KakulSaydonArena::s_pActiveInstance = nullptr;
 
+bool_t Client::CLevel_KakulSaydonArena::Reload_CameraShotAuthoring(std::string&)
+{
+	return false;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Ensure_CameraShotAuthoring(std::string&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera authoring.");
@@ -496,112 +501,104 @@ namespace
 		RequireEditorStep(sequence.Reload(status), status, "load independent Sequence seed");
 		const auto actionGood = action.Get_LastGood();
 		const auto sequenceGood = sequence.Get_LastGood();
-		std::vector<const KOUKU_SAYDON_COMPOSITION_PATTERN*> gateOneSequences;
+		std::vector<const KOUKU_SAYDON_COMPOSITION_PATTERN*> entries;
+		std::vector<const KOUKU_SAYDON_COMPOSITION_PATTERN*> legacyGateOne;
 		for (const auto& row : sequenceGood.Patterns)
 		{
 			RequireEditorStep(row.strLoadError.empty(), row.strLoadError,
 				("admit Sequence seed " + row.strPatternId).c_str());
-			if (row.strGateId == "GATE1") gateOneSequences.push_back(&row);
+			if (row.bEnterCombatOnFinish) entries.push_back(&row);
+			else if (row.strGateId == "GATE1") legacyGateOne.push_back(&row);
 		}
 		Require(sequenceGood.strCompositionId == "boss.composition.kakulsaydon.sequencer" &&
-			sequenceGood.iRevision >= 2u && gateOneSequences.size() == 2u &&
-			std::all_of(sequenceGood.Patterns.begin(), sequenceGood.Patterns.end(), [](const auto& row) {
-				return row.strLoadError.empty() && row.strAuthoringStatus == "DRAFT" &&
-					!row.WorldOccurrences.empty() && !row.PresentationOccurrences.empty(); }),
-			"Sequence seed did not retain both valid World/Camera DRAFT timelines");
-		const auto& opening = *gateOneSequences.front();
-		Require(opening.WorldOccurrences.size() == 7u && opening.Stages.size() == 1u &&
-			opening.Stages.front().iDurationMs == 37800u &&
-			std::all_of(opening.WorldOccurrences.begin(), opening.WorldOccurrences.begin() + 5,
-				[](const auto& box) { return box.iStartMs == 0u && box.iDurationMs == 4507u && box.fPlaybackSpeed == 1.f; }) &&
-			opening.WorldOccurrences[5].iDurationMs == 37800u && opening.WorldOccurrences[6].iDurationMs == 37800u,
-			"opening map must finish unfolding at native 4507ms while book and Saydon keep the 37800ms scene");
+			entries.size() == 3u && legacyGateOne.size() >= 2u,
+			"Sequence seed lost the three combat entries or legacy Gate 1 timelines");
+		const auto entryFor = [&](const std::string_view gate) -> const KOUKU_SAYDON_COMPOSITION_PATTERN& {
+			const auto found = std::find_if(entries.begin(), entries.end(), [&](const auto* row) { return row->strGateId == gate; });
+			Require(found != entries.end() && std::count_if(entries.begin(), entries.end(),
+				[&](const auto* row) { return row->strGateId == gate; }) == 1, "Gate must have exactly one combat entry");
+			return **found;
+		};
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT roundTrip;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(
+			CKoukuSaydonCompositionDocument::Serialize(sequenceGood), roundTrip, status), status, "entry metadata round trip");
+		Require(roundTrip == sequenceGood, "Sequence serialization lost combat entry metadata or authored lanes");
+		auto malformedText = CKoukuSaydonCompositionDocument::Serialize(sequenceGood);
+		Require(ReplaceOnce(malformedText, "\"enterCombatOnFinish\": true", "\"enterCombatOnFinish\": \"invalid\""),
+			"could not stage malformed entry metadata");
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(malformedText, roundTrip, status), status,
+			"isolate malformed combat entry metadata");
+		Require(std::count_if(roundTrip.Patterns.begin(), roundTrip.Patterns.end(), [](const auto& row) {
+			return !row.strLoadError.empty() && row.strPreservedJson.find("invalid") != std::string::npos; }) == 1,
+			"malformed entry metadata did not preserve exactly the failed Pattern");
+
 		CKoukuSaydonActionWorkbench sequenceWorkbench(true);
 		RequireEditorStep(sequenceWorkbench.Reload(status), status, "load Sequence playback workspace");
-		const auto firstSequenceId = gateOneSequences[0]->strPatternId;
-		const auto secondSequenceId = gateOneSequences[1]->strPatternId;
 		const auto consumeSequence = [&](const std::string& expectedId, const bool expectedPaused = false) {
 			KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
-			std::uint32_t clockMs = 999u;
-			bool_t paused = false;
-			std::string target;
+			std::uint32_t clockMs = 999u; bool_t paused = false; std::string target;
 			Require(sequenceWorkbench.Consume_PatternPreviewRequest(pattern, clockMs, paused, target) &&
-				pattern.strPatternId == expectedId && clockMs == 0u && paused == expectedPaused && target.empty(),
-				"Complete Play lost the source order, zero start, pause state or existing preview route");
+				pattern.strPatternId == expectedId && pattern.bEnterCombatOnFinish &&
+				clockMs == 0u && paused == expectedPaused && target.empty(),
+				"Complete Play lost its entry selection, zero start or pause state");
 			Require(!sequenceWorkbench.Consume_PatternPreviewRequest(pattern, clockMs, paused, target),
-				"Complete Play submitted the same sequence twice");
+				"Complete Play submitted the entry twice");
 		};
-		RequireEditorStep(sequenceWorkbench.Select_PatternById(secondSequenceId, status), status,
-			"select finale before Complete Play");
-		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status,
-			"Complete Play always begins at the first Gate sequence");
-		Require(sequenceWorkbench.Get_SelectedPatternId() == firstSequenceId &&
-			!sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId),
-			"unadmitted sequence advanced or Complete Play kept the finale selection");
-		Require(sequenceWorkbench.Request_PreviewPause(), "queued Complete Play could not pause");
-		consumeSequence(firstSequenceId, true);
-		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "paused at zero");
-		Require(!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId),
-			"unrelated completion advanced the active sequence");
-		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId) &&
-			sequenceWorkbench.Get_SelectedPatternId() == secondSequenceId &&
-			!sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId),
-			"natural completion failed to queue the finale exactly once");
-		consumeSequence(secondSequenceId);
+		const auto& gateOne = entryFor("GATE1");
+		RequireEditorStep(sequenceWorkbench.Select_PatternById(legacyGateOne.back()->strPatternId, status), status,
+			"select legacy finale before Complete Play");
+		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "queue integrated entry");
+		Require(sequenceWorkbench.Get_SelectedPatternId() == gateOne.strPatternId &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(gateOne.strPatternId), "unadmitted entry advanced");
+		Require(sequenceWorkbench.Request_PreviewPause(), "queued entry could not pause");
+		consumeSequence(gateOne.strPatternId, true);
 		sequenceWorkbench.Notify_SequencePreviewAdmission(false, "WORLD source unavailable");
 		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
-			!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId) &&
+			!sequenceWorkbench.Advance_CompleteSequencePlay(gateOne.strPatternId) &&
 			sequenceWorkbench.Get_Status().find("WORLD source unavailable") != std::string::npos,
-			"failed admission advanced Complete Play or discarded the failure reason");
-		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "restart complete run");
-		consumeSequence(firstSequenceId);
-		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "first ready");
-		Require(sequenceWorkbench.Advance_CompleteSequencePlay(firstSequenceId), "first sequence did not finish");
-		consumeSequence(secondSequenceId);
-		sequenceWorkbench.Notify_SequencePreviewAdmission(true, "second ready");
-		std::string completedGate = "previous";
-		Require(sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId, &completedGate) &&
-			!sequenceWorkbench.Is_CompleteSequencePlaying() && completedGate == "GATE1",
-			"Complete Play looped after the finale or did not hand off its exact Gate");
-		Require(!sequenceWorkbench.Advance_CompleteSequencePlay(secondSequenceId, &completedGate) && completedGate.empty(),
-			"duplicate completion handed the Gate to battle twice");
-		std::vector<std::string> gateTwoSequences;
-		for (const auto& row : sequenceGood.Patterns)
-			if (row.strGateId == "GATE2") gateTwoSequences.push_back(row.strPatternId);
-		Require(!gateTwoSequences.empty(), "Sequence seed has no Gate 2 intro");
-		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status, "GATE2"), status,
-			"explicit Gate 2 Complete Play from Gate 1 selection");
-		for (std::size_t i = 0u; i < gateTwoSequences.size(); ++i)
+			"failed entry admission started combat or discarded its reason");
+		for (const std::string gate : { "GATE1", "GATE2", "GATE3" })
 		{
-			consumeSequence(gateTwoSequences[i]);
-			sequenceWorkbench.Notify_SequencePreviewAdmission(true, "Gate 2 ready");
-			Require(sequenceWorkbench.Advance_CompleteSequencePlay(gateTwoSequences[i], &completedGate),
-				"Gate 2 sequence did not finish");
-			Require(completedGate == (i + 1u == gateTwoSequences.size() ? "GATE2" : ""),
-				"Gate 2 completion handed off another Gate or started battle before its finale");
+			const auto& entry = entryFor(gate);
+			RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status, gate), status, "queue exact Gate entry");
+			consumeSequence(entry.strPatternId);
+			sequenceWorkbench.Notify_SequencePreviewAdmission(true, "entry ready");
+			Require(!sequenceWorkbench.Advance_CompleteSequencePlay(legacyGateOne.front()->strPatternId),
+				"legacy/clear/maze completion advanced combat entry");
+			std::string completedGate;
+			Require(sequenceWorkbench.Advance_CompleteSequencePlay(entry.strPatternId, &completedGate) &&
+				!sequenceWorkbench.Is_CompleteSequencePlaying() && completedGate == gate,
+				"entry completion queued another cutscene or handed off the wrong Gate");
+			Require(!sequenceWorkbench.Advance_CompleteSequencePlay(entry.strPatternId, &completedGate) && completedGate.empty(),
+				"duplicate completion started combat twice");
 		}
-		RequireEditorStep(sequenceWorkbench.Select_PatternById(firstSequenceId, status), status,
-			"return to Gate 1 after Gate 2 Complete Play");
+		RequireEditorStep(sequenceWorkbench.Select_PatternById(gateOne.strPatternId, status), status, "return to Gate 1");
 		sequenceWorkbench.Set_CompleteSequenceAdmission([](std::string_view gate, std::string& reason) {
 			reason = "saved flow unavailable for " + std::string(gate); return false;
 		});
 		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status, "GATE1") &&
 			!sequenceWorkbench.Is_CompleteSequencePlaying() && status == "saved flow unavailable for GATE1",
-			"failed battle preflight started the intro or discarded its failure");
+			"failed battle preflight started the entry or discarded its failure");
 		sequenceWorkbench.Set_CompleteSequenceAdmission({});
 		RequireEditorStep(sequenceWorkbench.Request_CompleteSequencePlay(status), status, "queue before owner loss");
 		sequenceWorkbench.Cancel_CompleteSequencePlay();
 		KOUKU_SAYDON_COMPOSITION_PATTERN cancelled;
-		std::uint32_t cancelledClock = 0u; bool_t cancelledPaused = false; std::string cancelledTarget;
+		std::uint32_t clock = 0u; bool_t paused = false; std::string target;
 		Require(!sequenceWorkbench.Is_CompleteSequencePlaying() &&
-			!sequenceWorkbench.Consume_PatternPreviewRequest(cancelled, cancelledClock, cancelledPaused, cancelledTarget),
-			"owner loss retained an automatic next-sequence request");
-		sequenceWorkbench.Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE3);
-		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status), "empty Gate replayed another Gate's sequences");
+			!sequenceWorkbench.Consume_PatternPreviewRequest(cancelled, clock, paused, target),
+			"owner loss retained an automatic entry request");
+		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status, "BINGO"), "Gate without an entry replayed another Gate");
 		CKoukuSaydonActionWorkbench actionWorkbench;
 		Require(!actionWorkbench.Request_CompleteSequencePlay(status), "Action workspace admitted Sequence Complete Play");
-		Require(!sequenceWorkbench.Is_Dirty() && ReadText(sequencePath) == sequenceBytes && ReadText(actionPath) == actionBytes,
-			"Complete Play or its failure path changed the authored documents");
+		auto duplicate = sequenceGood;
+		for (auto& row : duplicate.Patterns)
+			if (row.strPatternId == legacyGateOne.front()->strPatternId) row.bEnterCombatOnFinish = true;
+		Require(WriteText(sequencePath, CKoukuSaydonCompositionDocument::Serialize(duplicate)), "could not stage duplicate entry");
+		RequireEditorStep(sequenceWorkbench.Reload(status), status, "load duplicate entry fixture");
+		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status, "GATE1"), "ambiguous combat entries were silently selected");
+		Require(WriteText(sequencePath, sequenceBytes), "could not restore entry source fixture");
+		Require(!sequenceWorkbench.Is_Dirty() && ReadText(actionPath) == actionBytes,
+			"Complete Play or its failure path changed the action source");
 		auto wrongAction = actionGood;
 		wrongAction.strCompositionId = sequenceGood.strCompositionId;
 		Require(!action.Save_Atomic(wrongAction, status) && action.Get_LastGood() == actionGood &&
@@ -3337,7 +3334,7 @@ int Run_KoukuSequenceDocumentContractTests()
 		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
 		Require(environment.Set(dataRoot), "could not select the isolated Sequence test Data root");
 		VerifyKoukuSequenceDocumentIsolation(dataRoot / relativeAction, dataRoot / relativeSequence);
-		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation/complete-sequence-order-zero-start-pause-failure-cancel passed\n";
+		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation/combat-entry-selection-metadata-zero-start-pause-failure-cancel passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

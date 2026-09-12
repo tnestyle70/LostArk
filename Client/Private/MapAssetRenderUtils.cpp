@@ -5,6 +5,7 @@
 #include "Shader.h"
 #include "Presentation_Manager.h"
 #include <array>
+#include <atomic>
 
 #include <algorithm>
 #include <cmath>
@@ -66,6 +67,9 @@ namespace
         return S_OK;
     }
 
+	// Only the Rendering Workbench consumes this diagnostic list. A short lease
+	// lets its next draw populate the view without collecting while tools are shut.
+	std::atomic<uint64_t> g_SurfaceBindingRequestedUntilMs{ 0u };
 	std::mutex g_SurfaceBindingMutex;
 	std::vector<Client::MAP_SURFACE_BINDING_ROW> g_SurfaceBindings;
 	uint32_t g_SurfaceBindingLevelId = (std::numeric_limits<uint32_t>::max)();
@@ -88,6 +92,8 @@ namespace
 		Engine::MODEL_SURFACE_FAMILY family, uint32_t program)
 	{
 		const uint64_t now = GetTickCount64();
+		if (now >= g_SurfaceBindingRequestedUntilMs.load(std::memory_order_relaxed))
+			return;
 		const uint32_t levelId = Engine::CGameInstance::Get().Get_CurrentLevelID();
 		std::lock_guard<std::mutex> lock(g_SurfaceBindingMutex);
 		RefreshSurfaceBindings(levelId, now);
@@ -122,6 +128,10 @@ namespace
 	float4x4_t g_LastView = {};
 	float4x4_t g_LastProjection = {};
 	Client::MAP_CAMERA_CULL_SNAPSHOT g_LastCameraSnapshot{};
+	bool_t g_HasShadowMatrices = false;
+	float4x4_t g_LastShadowView{};
+	float4x4_t g_LastShadowProjection{};
+	Client::MAP_SHADOW_CULL_SNAPSHOT g_LastShadowSnapshot{};
 	uint64_t g_ValidatedPlaneRevision = {};
 	bool_t g_HasValidatedPlanes = false;
 	float4_t g_ValidatedPlanes[6]{};
@@ -403,6 +413,84 @@ bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
 	return true;
 }
 
+bool_t CMapAssetRenderUtils::Build_ShadowCullSnapshot(
+	const float4x4_t& view, const float4x4_t& projection,
+	const uint64_t revision, MAP_SHADOW_CULL_SNAPSHOT& outSnapshot)
+{
+	MAP_CAMERA_CULL_SNAPSHOT planes{};
+	if (!Build_CameraCullSnapshot(view, projection, revision, planes))
+		return false;
+	MAP_SHADOW_CULL_SNAPSHOT candidate{};
+	candidate.revision = revision;
+	std::memcpy(candidate.worldPlanes, planes.worldPlanes, sizeof(candidate.worldPlanes));
+	outSnapshot = candidate;
+	return true;
+}
+
+bool_t CMapAssetRenderUtils::Capture_ShadowCullSnapshot(
+	MAP_SHADOW_CULL_SNAPSHOT& outSnapshot)
+{
+	const auto* view = CGameInstance::Get().Get_ShadowLightTransform(D3DTS::VIEW);
+	const auto* projection = CGameInstance::Get().Get_ShadowLightTransform(D3DTS::PROJ);
+	if (!view || !projection)
+		return false;
+	const float4x4_t stagedView = *view;
+	const float4x4_t stagedProjection = *projection;
+	if (g_HasShadowMatrices &&
+		0 == std::memcmp(&g_LastShadowView, &stagedView, sizeof(stagedView)) &&
+		0 == std::memcmp(&g_LastShadowProjection, &stagedProjection, sizeof(stagedProjection)))
+	{
+		outSnapshot = g_LastShadowSnapshot;
+		return true;
+	}
+	const uint64_t revision = g_LastShadowSnapshot.revision ==
+		(std::numeric_limits<uint64_t>::max)() ? 1u : g_LastShadowSnapshot.revision + 1u;
+	MAP_SHADOW_CULL_SNAPSHOT candidate{};
+	if (!Build_ShadowCullSnapshot(stagedView, stagedProjection, revision, candidate))
+		return false;
+	g_LastShadowView = stagedView;
+	g_LastShadowProjection = stagedProjection;
+	g_LastShadowSnapshot = candidate;
+	g_HasShadowMatrices = true;
+	outSnapshot = candidate;
+	return true;
+}
+
+bool_t CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(
+	const MAP_SHADOW_CULL_SNAPSHOT& snapshot,
+	const float3_t& worldCenter, const f32_t worldRadius)
+{
+	if (snapshot.revision == 0u || !std::isfinite(worldCenter.x) ||
+		!std::isfinite(worldCenter.y) || !std::isfinite(worldCenter.z) ||
+		!std::isfinite(worldRadius) || worldRadius <= 0.f)
+		return true;
+	// Validate every plane before rejecting; a corrupt later plane cannot hide a caster.
+	for (const auto& plane : snapshot.worldPlanes)
+	{
+		const double normSquared = static_cast<double>(plane.x) * plane.x +
+			static_cast<double>(plane.y) * plane.y + static_cast<double>(plane.z) * plane.z;
+		if (!std::isfinite(plane.w) || !std::isfinite(normSquared) ||
+			std::abs(normSquared - 1.0) > 8.0 * std::numeric_limits<f32_t>::epsilon())
+			return true;
+	}
+	// Placement bounds already include transform inflation; retain another 5 cm
+	// and a magnitude-scaled float tolerance at all six shadow clip boundaries.
+	const double radius = static_cast<double>(worldRadius) + 0.05;
+	for (const auto& plane : snapshot.worldPlanes)
+	{
+		const double x = static_cast<double>(plane.x) * worldCenter.x;
+		const double y = static_cast<double>(plane.y) * worldCenter.y;
+		const double z = static_cast<double>(plane.z) * worldCenter.z;
+		const double magnitude = std::abs(x) + std::abs(y) + std::abs(z) +
+			std::abs(static_cast<double>(plane.w)) + radius;
+		const double tolerance = 8.0 * std::numeric_limits<f32_t>::epsilon() *
+			(std::max)(1.0, magnitude);
+		if (x + y + z + plane.w > radius + tolerance)
+			return false;
+	}
+	return true;
+}
+
 HRESULT CMapAssetRenderUtils::Bind_CameraCullSnapshot(
 	const shared_ptr<Engine::CShader>& shader,
 	const MAP_CAMERA_CULL_SNAPSHOT& snapshot)
@@ -593,6 +681,7 @@ uint32_t CMapAssetRenderUtils::Select_Pass(const MAP_ASSET_RENDER_PROFILE& profi
 std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_RecentSurfaceBindings()
 {
 	const uint64_t now = GetTickCount64();
+	g_SurfaceBindingRequestedUntilMs.store(now + 1000u, std::memory_order_relaxed);
 	const uint32_t levelId = CGameInstance::Get().Get_CurrentLevelID();
 	std::lock_guard<std::mutex> lock(g_SurfaceBindingMutex);
 	RefreshSurfaceBindings(levelId, now);
@@ -691,6 +780,23 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		shader->Bind_RawValue(name, &noSurfaceEmissive, sizeof(noSurfaceEmissive));
 	shader->Bind_RawValue("g_EmissiveColor", &identityEmissive, sizeof(identityEmissive));
 
+	const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
+	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
+	const bool sourceBg = nativeSurface &&
+		nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+		profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED &&
+		!diffuseOverride && settings.bUseSourceMaterials;
+	// Source BG uses its raw UV and native textures/constants. Keep the diffuse
+	// binder's mirror/reset contract, but do not prepare unused legacy inputs.
+	if (sourceBg)
+	{
+		// Non-instanced opaque props still consume opacity for presentation dither.
+		if (FAILED(model->Bind_Material(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
+			FAILED(shader->Bind_RawValue("g_Opacity", &profile.opacity, sizeof(profile.opacity))))
+			return E_FAIL;
+	}
+	else
+	{
 	const uint32_t hasNormalTexture =
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_NORMALS) ? 1u : 0u;
@@ -707,7 +813,6 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_OPACITY) ? 1u : 0u;
 
-    const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
     const bool constantSource = nativeSurface &&
         nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
         (nativeSurface->sourceCharacter.program == 64u || nativeSurface->sourceCharacter.program == 65u);
@@ -817,6 +922,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	}
 
+	}
+
     // A static World Object may own the same native material contract as an actor.
     // Submit its real CMaterial into the shared direct-light pass after legacy resets.
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyShadowLighting{};
@@ -875,11 +982,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
         return model->Bind_SourceCharacter(shader, meshIndex);
     }
 
-	const auto* surface = model->Get_MaterialSurface(meshIndex);
+	const auto* surface = nativeSurface;
 	const bool_t hasDefinition = surface &&
 		surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY &&
 		profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED && !diffuseOverride;
-	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
 	const uint32_t hasSurface = hasDefinition ? 1u : 0u;
 	const uint32_t program = hasDefinition && settings.bUseSourceMaterials ?
 		static_cast<uint32_t>(surface->family) : 0u;

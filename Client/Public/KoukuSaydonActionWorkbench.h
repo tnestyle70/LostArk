@@ -69,6 +69,12 @@ namespace Client
 		std::uint32_t iEmissionCount = 1u;
 	};
 
+	struct KOUKU_WORLD_OBJECT_EDIT_REQUEST final
+	{
+		std::string strObjectId;
+		std::string strMotionInstanceId;
+	};
+
 	struct KOUKU_PRESENTATION_PREVIEW_REQUEST final
 	{
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE Resource;
@@ -108,6 +114,8 @@ namespace Client
 			return !m_bSequenceWorkspace && requested;
 		}
 		bool_t Consume_PresentationPreviewRequest(KOUKU_PRESENTATION_PREVIEW_REQUEST& outRequest);
+		bool_t Consume_WorldObjectEditRequest(KOUKU_WORLD_OBJECT_EDIT_REQUEST& outRequest);
+		void Notify_WorldObjectEditResult(std::string status) { m_strStatus = std::move(status); }
 		/* MainApp supplies admitted camera/audio rows from the existing readers;
 		   a failed refresh preserves the prior complete list and its status. */
 		void Set_PresentationResources(
@@ -177,6 +185,8 @@ namespace Client
 		[[nodiscard]] std::uint64_t Get_DraftGeneration() const noexcept { return m_iDraftGeneration; }
 		[[nodiscard]] const KOUKU_SAYDON_COMPOSITION_DOCUMENT&
 			Get_Composition() const noexcept { return m_Draft; }
+		[[nodiscard]] const KOUKU_SAYDON_COMPOSITION_DOCUMENT& Get_PatternPreviewDocument() const noexcept
+		{ return m_ExpandedPatternPreview ? *m_ExpandedPatternPreview : m_Draft; }
 		[[nodiscard]] const std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN>&
 			Get_AuthoringPatterns() const noexcept { return m_Draft.Patterns; }
 
@@ -232,6 +242,11 @@ namespace Client
 			std::string_view category,
 			std::string& outPatternId,
 			std::string& outStatus);
+		bool_t Create_ParentTimeline(std::string_view folderId, std::string& outStatus);
+		bool_t Append_PatternBox(std::string_view ownerId, std::string_view childId,
+			std::uint32_t startMs, std::uint32_t durationMs, std::string& outStatus);
+		bool_t Set_PatternBoxWindow(std::string_view ownerId, std::string_view occurrenceId,
+			std::uint32_t startMs, std::uint32_t durationMs, bool_t repeat, std::string& outStatus);
 		bool_t Delete_Pattern(
 			std::string_view patternId,
 			std::string& outStatus);
@@ -309,6 +324,9 @@ namespace Client
 			std::string_view patternId,
 			int32_t direction,
 			std::string& outStatus);
+		// Delays the first animation and following Stages; other lanes keep their times.
+		bool_t Set_PatternStartOffset(std::string_view patternId,
+			std::uint32_t startOffsetMs, std::string& outStatus);
 		bool_t Set_StageDuration(
 			std::string_view patternId,
 			std::string_view stageId,
@@ -343,7 +361,8 @@ namespace Client
 			std::string_view occurrenceId,
 			std::uint32_t sourceStartMs,
 			std::uint32_t playMs,
-			std::string& outStatus);
+			std::string& outStatus, std::uint32_t sourceEndMs = 0u);
+        bool_t Loop_AnimationToStageEnd(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
 		/* Rate and end policy are the box's own playback values. EXACT is
 		   rejected when it would outrun the native clip; drag/trim convert such
 		   a window to HOLD_LAST_POSE instead of silently truncating it. */
@@ -598,6 +617,7 @@ namespace Client
 		void Render_PatternsAndResources();
 		void Select_Hierarchy(KOUKU_PATTERN_SELECTION kind, std::string_view id);
 		void Render_HierarchyDetails();
+		bool_t Render_PatternReferenceControls(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_BundleTimeline();
 		void Render_BundleTransport();
 		bool_t Request_BundlePreview(std::uint32_t clockMs, bool_t paused = false);
@@ -723,6 +743,7 @@ namespace Client
 		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_StagedPresentationGeometry;
 		std::string m_strPresentationGeometryPreviewPatternId;
 		std::string m_strPresentationGeometryPreviewOccurrenceId;
+		KOUKU_WORLD_OBJECT_EDIT_REQUEST m_PendingWorldObjectEditRequest;
 		KOUKU_PRESENTATION_PREVIEW_REQUEST m_PendingPresentationPreviewRequest;
 		bool_t m_bPresentationPreviewRequestPending = false;
 		bool_t m_bPresentationResourceRefreshRequested = true;
@@ -761,6 +782,12 @@ namespace Client
 		// Which gate the shell selected; only the pattern list header and model filter follow it.
 		std::string m_strBossVariantLabel;
 
+		std::optional<KOUKU_SAYDON_COMPOSITION_DOCUMENT> m_ExpandedPatternPreview;
+		std::string m_strSelectedPatternOccurrenceId;
+		std::string m_strParentReturnPatternId;
+		std::string m_strAppendPatternId;
+		int32_t m_iPatternBoxStartMs = 0, m_iPatternBoxDurationMs = 1000;
+		bool_t m_bPatternBoxRepeat = false;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		KOUKU_PATTERN_SELECTION m_ePatternSelection = KOUKU_PATTERN_SELECTION::GATE;
 		std::string m_strSelectedGateId = "GATE1";
@@ -823,6 +850,7 @@ namespace Client
 		int32_t m_iNewStageDurationMs = 1000;
 		int32_t m_iOccurrenceStartOffsetMs = 0;
 		int32_t m_iOccurrenceSourceStartMs = 0;
+        int32_t m_iOccurrenceSourceEndMs = 0;
 		int32_t m_iOccurrencePlayMs = 1;
 		f32_t m_fOccurrencePlayRate = 1.f;
 		int32_t m_iOccurrenceEndPolicy = 0;

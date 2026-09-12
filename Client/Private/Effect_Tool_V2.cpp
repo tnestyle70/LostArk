@@ -2242,7 +2242,10 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 		{
 			m_iGroupPreviewHandle = 0u;
 			if (m_bGroupPreviewLoop)
+			{
+				m_fGroupClockMs = 0.0;
 				Play_GroupPreview();
+			}
 		}
 		else
 		{
@@ -2252,6 +2255,33 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 			CEffectV2Runtime::Set_GroupPivot(
 				m_iGroupPreviewHandle, Composed_GroupPreviewPivot(BasePivot));
 			CEffectV2Runtime::Update_Group(m_iGroupPreviewHandle, m_Group);
+			/* The lane is externally clocked, so nothing moves until this
+			   sample. A held frame still resamples once after an edit. */
+			const f64_t fEndMs = static_cast<f64_t>((std::max)(1u, Group_TimelineEndMs()));
+			const bool_t bHeld = m_bGroupPreviewPaused;
+			if (!bHeld)
+				m_fGroupClockMs = (std::min)(fEndMs,
+					m_fGroupClockMs + static_cast<f64_t>(fTimeDelta) * 1000.0);
+			if (!bHeld || m_bGroupPreviewResample)
+			{
+				CEffectV2Runtime::Sample_Group(m_iGroupPreviewHandle,
+					static_cast<f32_t>(m_fGroupClockMs * 0.001),
+					bHeld || m_bGroupPreviewResample, m_pDevice, m_pContext);
+				m_bGroupPreviewResample = false;
+			}
+			if (!bHeld && m_fGroupClockMs >= fEndMs)
+			{
+				if (m_bGroupPreviewLoop)
+				{
+					m_fGroupClockMs = 0.0;
+					Play_GroupPreview();
+				}
+				else
+				{
+					m_bGroupPreviewPaused = true;
+					CEffectV2Runtime::Set_GroupPaused(m_iGroupPreviewHandle, true);
+				}
+			}
 		}
 	}
 	EFFECT_V2_TARGET_VIEW View;
@@ -4071,16 +4101,70 @@ bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 	}
 	m_GroupPreviewBasePivot = Pivot;
 	m_Group.strGroupId = strGroupId;
+	/* The tool drives the clock so Pause and the timeline scrub can hold a
+	   frame; the runtime must not advance this lane from its own render tick. */
+	EFFECT_V2_GROUP_PLAYBACK_DESC Playback;
+	Playback.PivotWorld = Composed_GroupPreviewPivot(Pivot);
+	Playback.fInitialAgeSeconds = static_cast<f32_t>(m_fGroupClockMs * 0.001);
+	Playback.bExternalClock = true;
 	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(
-		m_Group, pSnapshot, Composed_GroupPreviewPivot(Pivot),
-		m_pDevice, m_pContext);
+		m_Group, pSnapshot, Playback, m_pDevice, m_pContext);
 	if (0u == m_iGroupPreviewHandle)
 	{
 		m_strGroupStatus = "Group preview failed: " + CEffectV2Runtime::Last_Error();
 		return false;
 	}
+	if (!CEffectV2Runtime::Sample_Group(m_iGroupPreviewHandle,
+		static_cast<f32_t>(m_fGroupClockMs * 0.001), true, m_pDevice, m_pContext))
+	{
+		Stop_GroupPreview();
+		m_strGroupStatus = "Group preview failed: " + CEffectV2Runtime::Last_Error();
+		return false;
+	}
 	m_strGroupStatus = "Playing " + strGroupId + " (live: edits apply while it runs)";
 	return true;
+}
+
+uint32_t Client::CEffect_Tool_V2::Group_TimelineEndMs() const
+{
+	uint32_t iEndMs = m_Group.iDurationMs;
+	for (const EFFECT_V2_GROUP_CHILD& Child : m_Group.Children)
+		iEndMs = (std::max)(iEndMs, Group_ChildEndMs(Child));
+	return iEndMs;
+}
+
+uint32_t Client::CEffect_Tool_V2::Group_ChildEndMs(
+	const EFFECT_V2_GROUP_CHILD& Child) const
+{
+	/* Child duration 0 means "run the resource's own lifetime", so the strip
+	   has to resolve that lifetime instead of ending the row at its start.
+	   A looping or infinite child has no natural end and only contributes its
+	   start; the group duration or the other children bound the strip. */
+	if (Child.iDurationMs > 0u)
+		return Child.iStartMs + Child.iDurationMs;
+	const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot =
+		CEffectV2Catalog::Get().Get_Snapshot();
+	if (nullptr == pSnapshot)
+		return Child.iStartMs;
+	if (EFFECT_V2_RESOURCE_KIND::GROUP == Child.eResourceKind)
+	{
+		const EFFECT_V2_GROUP* pNested = pSnapshot->Find_Group(Child.strResourceId);
+		return nullptr != pNested && pNested->iDurationMs > 0u ?
+			Child.iStartMs + pNested->iDurationMs : Child.iStartMs;
+	}
+	const EFFECT_V2_DOCUMENT* pDocument = pSnapshot->Find_Document(Child.strEffectId);
+	if (nullptr == pDocument || pDocument->Desc.Params.bLoop ||
+		pDocument->Desc.Params.fLifetime <= 0.f)
+		return Child.iStartMs;
+	return Child.iStartMs + static_cast<uint32_t>(
+		pDocument->Desc.Params.fLifetime * 1000.f + 0.5f);
+}
+
+void Client::CEffect_Tool_V2::Seek_GroupPreview(const f64_t fClockMs)
+{
+	m_fGroupClockMs = std::clamp(fClockMs, 0.0,
+		static_cast<f64_t>((std::max)(1u, Group_TimelineEndMs())));
+	m_bGroupPreviewResample = true;
 }
 
 void Client::CEffect_Tool_V2::Stop_GroupPreview()
@@ -4089,6 +4173,9 @@ void Client::CEffect_Tool_V2::Stop_GroupPreview()
 		return;
 	CEffectV2Runtime::Stop_Group(m_iGroupPreviewHandle);
 	m_iGroupPreviewHandle = 0u;
+	m_bGroupPreviewResample = false;
+	m_iGroupDragChild = static_cast<size_t>(-1);
+	m_iGroupDragEdge = 0;
 }
 
 void Client::CEffect_Tool_V2::Render_GroupWindow()
@@ -4182,16 +4269,25 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 		int32_t iStart = static_cast<int32_t>(Child.iStartMs);
 		int32_t iDuration = static_cast<int32_t>(Child.iDurationMs);
 		if (ImGui::InputInt("Start (ms)", &iStart))
+		{
 			Child.iStartMs = static_cast<uint32_t>(std::clamp(iStart, 0, 600000));
+			m_bGroupPreviewResample = true;
+		}
 		if (ImGui::InputInt("Duration (ms, 0 = own lifetime)", &iDuration))
+		{
 			Child.iDurationMs = static_cast<uint32_t>(std::clamp(iDuration, 0, 600000));
+			m_bGroupPreviewResample = true;
+		}
 		int32_t iStop = static_cast<int32_t>(Child.eStop);
 		if (ImGui::Combo("Stop", &iStop, "Kill\0Deactivate\0"))
 			Child.eStop = static_cast<EFFECT_V2_CHILD_STOP>(iStop);
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Kill: remove at once. Deactivate: particles/trails stop spawning and drain; other shapes end.");
 		if (ImGui::DragFloat3("Offset (m)", &Child.vOffset.x, 0.05f))
+		{
 			Child.LocalTransform.vTranslation = Child.vOffset;
+			m_bGroupPreviewResample = true;
+		}
 		f32_t fRotation[3] = { Child.fPitchDegrees, Child.fYawDegrees, Child.fRollDegrees };
 		if (ImGui::DragFloat3("Rotation X/Y/Z (deg)", fRotation, 1.f, -360.f, 360.f))
 		{
@@ -4199,9 +4295,13 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 			Child.fYawDegrees = fRotation[1];
 			Child.fRollDegrees = fRotation[2];
 			Child.LocalTransform.vRotation = { fRotation[0], fRotation[1], fRotation[2] };
+			m_bGroupPreviewResample = true;
 		}
 		if (ImGui::DragFloat3("Scale", &Child.vScale.x, 0.01f, 0.001f, 100.f))
+		{
 			Child.LocalTransform.vScale = Child.vScale;
+			m_bGroupPreviewResample = true;
+		}
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Multiplies the document's scale track; particle sprite sizes use X uniformly.");
 		if (ImGui::SmallButton("Remove"))
@@ -4216,52 +4316,181 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 			Child.iDurationMs > 0u ? Child.iStartMs + Child.iDurationMs : Child.iStartMs);
 	}
 
+	Render_GroupTimeline(iEndMs);
+	ImGui::TextDisabled("Preview plays the unsaved group. Offset/Yaw/Scale move live; Start/Duration/Stop apply to children not spawned yet (or on the next loop).");
+	if (!m_strGroupStatus.empty())
+		ImGui::TextWrapped("%s", m_strGroupStatus.c_str());
+	ImGui::End();
+}
+
+void Client::CEffect_Tool_V2::Render_GroupTimeline(const uint32_t iEndMs)
+{
 	ImGui::SeparatorText("Timeline");
 	const f32_t fTotalMs = static_cast<f32_t>((std::max)(1000u, iEndMs));
-	ImDrawList* pDraw = ImGui::GetWindowDrawList();
-	const ImVec2 Origin = ImGui::GetCursorScreenPos();
+	constexpr f32_t ROW_HEIGHT = 18.f;
+	constexpr f32_t EDGE_GRAB_PIXELS = 5.f;
+	const size_t iRowCount = m_Group.Children.size();
 	const f32_t fWidth = (std::max)(64.f, ImGui::GetContentRegionAvail().x);
-	constexpr f32_t ROW_HEIGHT = 16.f;
-	for (size_t iIndex = 0u; iIndex < m_Group.Children.size(); ++iIndex)
+	const f32_t fHeight = ROW_HEIGHT * static_cast<f32_t>(iRowCount) + ROW_HEIGHT;
+	const ImVec2 Origin = ImGui::GetCursorScreenPos();
+	ImDrawList* pDraw = ImGui::GetWindowDrawList();
+
+	/* One button owns the whole strip so a drag keeps its grab after the
+	   cursor leaves the bar it started on. */
+	ImGui::InvisibleButton("##GroupTimeline", ImVec2(fWidth, fHeight));
+	const bool_t bStripHovered = ImGui::IsItemHovered();
+	const bool_t bStripActive = ImGui::IsItemActive();
+	const f32_t fMouseX = ImGui::GetIO().MousePos.x;
+	const f32_t fMouseY = ImGui::GetIO().MousePos.y;
+	const auto PixelToMs = [&](const f32_t fX)
+	{
+		return static_cast<int32_t>((fX - Origin.x) / fWidth * fTotalMs + 0.5f);
+	};
+	const auto MsToPixel = [&](const uint32_t iMs)
+	{
+		return Origin.x + static_cast<f32_t>(iMs) / fTotalMs * fWidth;
+	};
+
+	if (ImGui::IsItemActivated())
+	{
+		m_iGroupDragChild = static_cast<size_t>(-1);
+		m_iGroupDragEdge = 0;
+		const int32_t iRow = static_cast<int32_t>((fMouseY - Origin.y) / ROW_HEIGHT);
+		if (iRow >= 0 && static_cast<size_t>(iRow) < iRowCount)
+		{
+			const EFFECT_V2_GROUP_CHILD& Child = m_Group.Children[static_cast<size_t>(iRow)];
+			const uint32_t iChildEndMs = Group_ChildEndMs(Child);
+			const bool_t bOpenEnded = iChildEndMs <= Child.iStartMs;
+			const f32_t fX0 = MsToPixel(Child.iStartMs);
+			const f32_t fX1 = bOpenEnded ? Origin.x + fWidth : MsToPixel(iChildEndMs);
+			if (fMouseX >= fX0 - EDGE_GRAB_PIXELS && fMouseX <= fX1 + EDGE_GRAB_PIXELS)
+			{
+				m_iGroupDragChild = static_cast<size_t>(iRow);
+				if (std::abs(fMouseX - fX0) <= EDGE_GRAB_PIXELS)
+					m_iGroupDragEdge = -1;
+				else if (!bOpenEnded && std::abs(fMouseX - fX1) <= EDGE_GRAB_PIXELS)
+					m_iGroupDragEdge = 1;
+				else
+					m_iGroupDragEdge = 0;
+				m_iGroupDragGrabMs = PixelToMs(fMouseX) - static_cast<int32_t>(Child.iStartMs);
+			}
+		}
+		/* A grab outside every bar scrubs the clock instead. */
+		if (m_iGroupDragChild == static_cast<size_t>(-1))
+			Seek_GroupPreview(static_cast<f64_t>(PixelToMs(fMouseX)));
+	}
+	else if (bStripActive)
+	{
+		if (m_iGroupDragChild < m_Group.Children.size())
+		{
+			EFFECT_V2_GROUP_CHILD& Child = m_Group.Children[m_iGroupDragChild];
+			const int32_t iCursorMs = PixelToMs(fMouseX);
+			if (-1 == m_iGroupDragEdge)
+			{
+				/* Dragging the left edge keeps the authored end in place. */
+				const int32_t iEnd = static_cast<int32_t>(Child.iStartMs + Child.iDurationMs);
+				const int32_t iStart = std::clamp(iCursorMs, 0, 600000);
+				Child.iStartMs = static_cast<uint32_t>(iStart);
+				if (Child.iDurationMs > 0u)
+					Child.iDurationMs = static_cast<uint32_t>((std::max)(1, iEnd - iStart));
+			}
+			else if (1 == m_iGroupDragEdge)
+			{
+				Child.iDurationMs = static_cast<uint32_t>(std::clamp(
+					iCursorMs - static_cast<int32_t>(Child.iStartMs), 1, 600000));
+			}
+			else
+			{
+				Child.iStartMs = static_cast<uint32_t>(
+					std::clamp(iCursorMs - m_iGroupDragGrabMs, 0, 600000));
+			}
+			m_bGroupPreviewResample = true;
+		}
+		else
+			Seek_GroupPreview(static_cast<f64_t>(PixelToMs(fMouseX)));
+	}
+	else if (ImGui::IsItemDeactivated())
+	{
+		m_iGroupDragChild = static_cast<size_t>(-1);
+		m_iGroupDragEdge = 0;
+	}
+
+	pDraw->AddRectFilled(Origin, ImVec2(Origin.x + fWidth, Origin.y + fHeight),
+		IM_COL32(28, 28, 34, 255));
+	for (size_t iIndex = 0u; iIndex < iRowCount; ++iIndex)
 	{
 		const EFFECT_V2_GROUP_CHILD& Child = m_Group.Children[iIndex];
+		const uint32_t iChildEndMs = Group_ChildEndMs(Child);
 		const f32_t fY = Origin.y + static_cast<f32_t>(iIndex) * ROW_HEIGHT;
-		const f32_t fX0 = Origin.x + static_cast<f32_t>(Child.iStartMs) / fTotalMs * fWidth;
-		const f32_t fX1 = Child.iDurationMs > 0u ?
-			Origin.x + static_cast<f32_t>(Child.iStartMs + Child.iDurationMs) / fTotalMs * fWidth :
-			Origin.x + fWidth;
-		pDraw->AddRectFilled(ImVec2(fX0, fY + 2.f), ImVec2((std::max)(fX1, fX0 + 3.f), fY + ROW_HEIGHT - 2.f),
-			Child.iDurationMs > 0u ? IM_COL32(90, 170, 255, 200) : IM_COL32(120, 120, 140, 160));
-		pDraw->AddText(ImVec2(fX0 + 3.f, fY), IM_COL32(255, 255, 255, 255), Child.strEffectId.c_str());
+		const f32_t fX0 = MsToPixel(Child.iStartMs);
+		/* A resource with no natural end runs to the strip edge. */
+		const bool_t bOpenEnded = iChildEndMs <= Child.iStartMs;
+		const f32_t fX1 = bOpenEnded ? Origin.x + fWidth : MsToPixel(iChildEndMs);
+		/* A child alive at the held clock is the one the user is placing. */
+		const f64_t fEndForLife = bOpenEnded ?
+			static_cast<f64_t>(fTotalMs) : static_cast<f64_t>(iChildEndMs);
+		const bool_t bAlive = m_fGroupClockMs >= static_cast<f64_t>(Child.iStartMs) &&
+			m_fGroupClockMs < fEndForLife;
+		pDraw->AddRectFilled(ImVec2(fX0, fY + 2.f),
+			ImVec2((std::max)(fX1, fX0 + 3.f), fY + ROW_HEIGHT - 2.f),
+			bAlive ? IM_COL32(120, 210, 255, 235) :
+				(bOpenEnded ? IM_COL32(110, 110, 128, 120) : IM_COL32(70, 110, 160, 140)));
+		if (bAlive)
+			pDraw->AddRect(ImVec2(fX0, fY + 2.f),
+				ImVec2((std::max)(fX1, fX0 + 3.f), fY + ROW_HEIGHT - 2.f),
+				IM_COL32(255, 235, 150, 255));
+		pDraw->AddText(ImVec2(fX0 + 4.f, fY + 1.f),
+			bAlive ? IM_COL32(20, 24, 30, 255) : IM_COL32(220, 220, 230, 220),
+			Child.strEffectId.c_str());
 	}
-	const f32_t fPreviewSeconds = 0u != m_iGroupPreviewHandle ?
-		CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) : -1.f;
-	if (fPreviewSeconds >= 0.f)
-	{
-		const f32_t fX = Origin.x + (std::min)(1.f, fPreviewSeconds * 1000.f / fTotalMs) * fWidth;
-		pDraw->AddLine(ImVec2(fX, Origin.y), ImVec2(fX, Origin.y + ROW_HEIGHT * static_cast<f32_t>(m_Group.Children.size())),
-			IM_COL32(255, 200, 60, 255), 2.f);
-	}
-	ImGui::Dummy(ImVec2(fWidth, ROW_HEIGHT * static_cast<f32_t>(m_Group.Children.size()) + 4.f));
+	const f32_t fPlayheadX = MsToPixel(static_cast<uint32_t>(
+		std::clamp(m_fGroupClockMs, 0.0, static_cast<f64_t>(fTotalMs))));
+	pDraw->AddLine(ImVec2(fPlayheadX, Origin.y), ImVec2(fPlayheadX, Origin.y + fHeight),
+		IM_COL32(255, 200, 60, 255), 2.f);
+	if (bStripHovered || bStripActive)
+		ImGui::SetTooltip("Drag a bar to move it, its edges to retime it, empty space to scrub.");
+
 	ImGui::TextDisabled("0 ms .. %.0f ms", fTotalMs);
+	int32_t iClockMs = static_cast<int32_t>(m_fGroupClockMs + 0.5);
+	ImGui::SetNextItemWidth(-160.f);
+	if (ImGui::SliderInt("Clock (ms)", &iClockMs, 0, static_cast<int32_t>(fTotalMs)))
+		Seek_GroupPreview(static_cast<f64_t>(iClockMs));
 	if (ImGui::Button(0u != m_iGroupPreviewHandle ? "Restart Preview" : "Play Preview"))
+	{
+		m_fGroupClockMs = 0.0;
+		m_bGroupPreviewPaused = false;
 		Play_GroupPreview();
+	}
 	ImGui::SameLine();
 	ImGui::BeginDisabled(0u == m_iGroupPreviewHandle);
+	if (ImGui::Button(m_bGroupPreviewPaused ? "Resume" : "Pause"))
+	{
+		m_bGroupPreviewPaused = !m_bGroupPreviewPaused;
+		CEffectV2Runtime::Set_GroupPaused(m_iGroupPreviewHandle, m_bGroupPreviewPaused);
+		m_bGroupPreviewResample = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("<< 1f"))
+	{
+		m_bGroupPreviewPaused = true;
+		CEffectV2Runtime::Set_GroupPaused(m_iGroupPreviewHandle, true);
+		Seek_GroupPreview(m_fGroupClockMs - 1000.0 / 30.0);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("1f >>"))
+	{
+		m_bGroupPreviewPaused = true;
+		CEffectV2Runtime::Set_GroupPaused(m_iGroupPreviewHandle, true);
+		Seek_GroupPreview(m_fGroupClockMs + 1000.0 / 30.0);
+	}
+	ImGui::SameLine();
 	if (ImGui::Button("Stop Preview"))
 		Stop_GroupPreview();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Loop##GroupPreview", &m_bGroupPreviewLoop);
-	if (fPreviewSeconds >= 0.f)
-	{
-		ImGui::SameLine();
-		ImGui::Text("%.2f s", fPreviewSeconds);
-	}
-	ImGui::TextDisabled("Preview plays the unsaved group. Offset/Yaw/Scale move live; Start/Duration/Stop apply to children not spawned yet (or on the next loop).");
-	if (!m_strGroupStatus.empty())
-		ImGui::TextWrapped("%s", m_strGroupStatus.c_str());
-	ImGui::End();
+	ImGui::SameLine();
+	ImGui::Text("%.3f s", m_fGroupClockMs * 0.001);
 }
 
 namespace
