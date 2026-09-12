@@ -434,7 +434,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -447,6 +447,16 @@ bool_t Client::CWorldSequenceDocument::Load(
 			object.displayName = row.Find("displayName")->Get_String();
 			object.modelAssetId = row.Find("modelAssetId")->Get_String();
 			object.animated = row.Find("animated")->Get_Boolean();
+			if (const auto* members = row.Find("motionInstanceIds"))
+			{
+				if (!members->Is_Array() || members->Get_Array().empty() || members->Get_Array().size() > 32u)
+				{ outStatus = "Object group requires 1..32 motion instance IDs"; return false; }
+				for (const auto& member : members->Get_Array())
+				{
+					if (!member.Is_String()) { outStatus = "Object group member ID must be text"; return false; }
+					object.motionInstanceIds.push_back(member.Get_String());
+				}
+			}
 			if (const auto* motion = row.Find("defaultMotionInstanceId"))
 			{
 				if (!motion->Is_String()) { outStatus = "Default Motion instance ID must be text"; return false; }
@@ -910,6 +920,13 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< "\",\n      \"anchorBone\": \"" << CDataJson::Escape(object.anchorBone) << "\"";
 		if (!object.defaultMotionInstanceId.empty())
 			output << ",\n      \"defaultMotionInstanceId\": \"" << CDataJson::Escape(object.defaultMotionInstanceId) << "\"";
+		if (!object.motionInstanceIds.empty())
+		{
+			output << ",\n      \"motionInstanceIds\": [";
+			for (size_t i = 0; i < object.motionInstanceIds.size(); ++i)
+				output << (i ? ", " : "") << "\"" << CDataJson::Escape(object.motionInstanceIds[i]) << "\"";
+			output << "]";
+		}
         if (!object.materialSourceModelAssetId.empty())
             output << ",\n      \"materialSourceModelAssetId\": \"" << CDataJson::Escape(object.materialSourceModelAssetId) << "\"";
         if (!object.mapMaterialBindings.empty())
@@ -1132,6 +1149,32 @@ bool_t Client::CWorldSequenceDocument::Validate(
 	std::unordered_set<std::string> objectIds;
 	for (const WORLD_SEQUENCE_OBJECT_RESOURCE& object : m_ObjectResources)
 	{
+		if (!object.motionInstanceIds.empty())
+		{
+			if (!Is_ValidStableId(object.objectId) || !objectIds.insert(object.objectId).second ||
+				object.displayName.empty() || object.displayName.size() > 128u || !Is_ValidUtf8DisplayText(object.displayName) ||
+				object.motionInstanceIds.size() > 32u || object.anchorKind != "WORLD" ||
+				!object.modelAssetId.empty() || !object.sequenceInstanceId.empty() || !object.defaultMotionInstanceId.empty() ||
+				object.animated || !object.diffuseTextureAssetId.empty() || object.materialProfile ||
+				!object.materialSourceModelAssetId.empty() || !object.mapMaterialBindings.empty() ||
+				!object.anchorBossArchetypeId.empty() || !object.anchorBone.empty() ||
+				!std::isfinite(object.modelPreScale) || object.modelPreScale < MIN_SCALE || object.modelPreScale > MAX_COMPONENT ||
+				!Is_BoundedFloat3(object.scale) || object.scale.x != 1.f || object.scale.y != 1.f || object.scale.z != 1.f)
+			{ outStatus = "Invalid model-less Object group: " + object.objectId; return false; }
+			std::unordered_set<std::string> members;
+			for (const auto& id : object.motionInstanceIds)
+			{
+				const auto* instance = Find_Instance(id);
+				if (!Is_ValidStableId(id) || !members.insert(id).second || !instance || instance->anchorKind != "WORLD" ||
+					instance->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP || instance->bindings.size() != 1u ||
+					instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+				{ outStatus = "Object group needs unique existing Map Object motions ending with Stop: " + id; return false; }
+				const auto* model = Find_ObjectResource(instance->bindings.front().targetId);
+				if (!model || model->modelAssetId.empty() || !model->motionInstanceIds.empty())
+				{ outStatus = "Object group member must bind a model, not another group: " + id; return false; }
+			}
+			continue;
+		}
 		const bool_t alias = !object.sequenceInstanceId.empty();
 		if (!Is_ValidStableId(object.objectId) || !objectIds.insert(object.objectId).second ||
 			object.displayName.empty() || object.displayName.size() > 128u ||
@@ -1622,6 +1665,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
             left.materialSourceModelAssetId != right.materialSourceModelAssetId || left.mapMaterialBindings != right.mapMaterialBindings ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
+			left.motionInstanceIds != right.motionInstanceIds ||
 			left.defaultMotionInstanceId != right.defaultMotionInstanceId) return false;
 	}
 	for (size_t templateIndex = 0u; templateIndex < m_Templates.size();

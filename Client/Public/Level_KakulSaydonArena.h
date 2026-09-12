@@ -398,7 +398,7 @@ private:
 		const CWorldSequencePlayer::TARGET_SET& targets);
 #ifdef _DEBUG
 	unique_ptr<CWorldSequencePlayer> m_pWorldObjectPreview;
-	std::string m_WorldObjectPreviewInstance;
+	std::vector<std::string> m_WorldObjectPreviewInstances;
 #endif
 #ifdef _DEBUG
 	struct COMPOSITION_WORLD_PREVIEW_PLAYBACK final
