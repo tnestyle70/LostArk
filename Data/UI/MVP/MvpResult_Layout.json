@@ -1,0 +1,621 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "MvpResult_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_Intro.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_MainBackground",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 13.3333,
+        "y": 0.0,
+        "width": 640.0,
+        "height": 720.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/MVP/MvpResult_MainBackground.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MvpResult_Party_Bg_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 654.0,
+        "y": 0.0,
+        "width": 213.3333,
+        "height": 720.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/MVP/MvpResult_PartyBackground.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MvpResult_Party_Bg_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 866.6667,
+        "y": 0.0,
+        "width": 213.3333,
+        "height": 720.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/MVP/MvpResult_PartyBackground.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MvpResult_Party_Bg_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1080.6667,
+        "y": 0.0,
+        "width": 213.3333,
+        "height": 720.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/MVP/MvpResult_PartyBackground.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "MvpResult_SuccessBurst",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 104.9333,
+        "y": 380.7,
+        "width": 405.3333,
+        "height": 208.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0000.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            0.62890625,
+            1
+          ],
+          "additive": true,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0000.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0001.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0002.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0003.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0004.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0005.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0006.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0007.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0008.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0009.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0010.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0011.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0012.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0013.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0014.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0015.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0016.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0017.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0018.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0019.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0020.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0021.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0022.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0023.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0024.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0025.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0026.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0027.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0028.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0029.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0030.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0031.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0032.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0033.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0034.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0035.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0036.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0037.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0038.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0039.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0040.png",
+          "UI/MVP/SuccessBurst/MvpResult_SuccessBurst_0041.png"
+        ],
+        "loop": false,
+        "additive": true
+      }
+    },
+    {
+      "id": "MvpResult_BadgeEffect_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    }
+  ]
+}

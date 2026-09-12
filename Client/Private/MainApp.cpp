@@ -103,6 +103,15 @@
 
 namespace
 {
+	/* The MVP award page is a full-screen modal (retail places it on
+	   sortingLayer "3_topmostHUD" with orderInLayer 2000), so the combat HUD,
+	   the boss bar and their text passes all stop while it is up. */
+	bool_t Is_MvpResultPageOpen()
+	{
+		const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+		return nullptr != pArena && pArena->Debug_Is_MvpResultVisible();
+	}
+
 	/* Product-path wall clock (seconds since first call) -- replaces ImGui::GetTime() in every
 	non-Debug timer here, so no product state machine depends on the ImGui frame loop. */
 	f64_t Product_Now_Seconds()
@@ -2514,7 +2523,7 @@ HRESULT CMainApp::Render()
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
 			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
-	if (!isCharSelectOverlayOpen)
+	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen())
 	{
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
@@ -2538,7 +2547,8 @@ HRESULT CMainApp::Render()
 		m_pInventoryView->Render_Text();
 	RenderLobbyButtonText();
 	RenderCharacterSelectWindowText();
-	RenderMinimapText();
+	if (!Is_MvpResultPageOpen())
+		RenderMinimapText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
@@ -2646,6 +2656,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	const HUD_PLAYER_STATE& player =
 		CCombatHUDViewModel::Get().Get_Player();
 	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
+		Is_MvpResultPageOpen() ||
 		!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 	{
 		Hide_CombatHUD();
@@ -3538,6 +3549,10 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 			bHasSnapshot = true;
 		}
 	}
+	/* Part of the in-game HUD, so it clears for the award page like the rest.
+	   A null snapshot is this view's own documented "hide every slot". */
+	if (Is_MvpResultPageOpen())
+		bHasSnapshot = false;
 	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
 }
 
@@ -4979,6 +4994,7 @@ void CMainApp::Update_BossHealthBar()
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
+		Is_MvpResultPageOpen() ||
 		!boss.isValid || 0u == boss.iMaximumHp)
 	{
 		Hide_BossHealthBar();
@@ -5380,7 +5396,11 @@ void CMainApp::RenderDeadSceneText()
 
 void CMainApp::RenderRaidClearText()
 {
-	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	/* Both arenas drive the same RaidClear_Layout.json document now; KoukuSaydon
+	   publishes the same text rects from its own Update_RaidClear. */
+	const uint32_t iRaidClearLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (ETOUI(LEVEL::VALTAN_ARENA) != iRaidClearLevel &&
+		ETOUI(LEVEL::KAKULSAYDON_ARENA) != iRaidClearLevel)
 		return;
 
 	const HUD_RAIDCLEAR_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_RaidClearTextRects();
@@ -6248,6 +6268,18 @@ HRESULT CMainApp::Ready_Fonts()
 		}
 	}
 
+	/* Display-size variants, re-rasterised from the retail TTF (nothing above 42 px
+	exists to downsample from). Latin only -- see UILabelFont::LATIN_DISPLAY_SIZES --
+	so they are reached through Resolve_LatinDisplay and never by ordinary labels. */
+	for (const int32_t iSize : UILabelFont::LATIN_DISPLAY_SIZES)
+	{
+		const wstring strTag = wstring(L"Font_YoonGasiIIM_Latin") + std::to_wstring(iSize);
+		const wstring strFile = wstring(L"UI/Fonts/YoonGasiIIM_Latin") + std::to_wstring(iSize) + L".spritefont";
+		const filesystem::path displayFontPath = CRuntimeAssetRoot::Resolve(strFile);
+		if (displayFontPath.empty() || FAILED(CGameInstance::Get().Add_Font(strTag, displayFontPath.c_str())))
+			OutputDebugStringW((L"[Fonts] optional display font missing: " + strFile + L"\n").c_str());
+	}
+
 	return S_OK;
 }
 
@@ -6379,6 +6411,7 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 	register them explicitly or the CUI_Sprite clone fails to find a texture prototype. */
 	for (const wchar_t* pLoadingBackground : {
 		L"UI/Loading/Loading_Background_Valtan.png",
+		L"UI/Loading/Loading_Background_Kouku.png",
 		L"UI/Loading/Loading_Background_Prologue.png" })
 	{
 		const filesystem::path resolvedPath =
@@ -7999,6 +8032,26 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		return;
 	}
 #ifdef _DEBUG
+	/* Raid-clear MVP award page. Presentation only: this shows a sample page so
+	the layout and the intro timing can be looked at. Nothing decides an MVP yet --
+	no Server contribution tracking exists, so the numbers below are made up. */
+	ImGui::SeparatorText("MVP Result Page (Debug)");
+	ImGui::TextDisabled(
+		"Sample page: three contribution rows, three party columns, the default background.");
+	ImGui::TextDisabled(
+		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 2.7s.");
+	{
+		const bool_t bMvpVisible = pArena->Debug_Is_MvpResultVisible();
+		if (ImGui::Button("Play Dungeon Clear -> MVP"))
+			pArena->Debug_Play_ClearThenMvp();
+		ImGui::SameLine();
+		if (ImGui::Button(bMvpVisible ? "Replay MVP Page" : "Show MVP Page"))
+			pArena->Debug_Show_MvpResult();
+		ImGui::SameLine();
+		if (ImGui::Button("Hide"))
+			pArena->Debug_Hide_MvpResult();
+	}
+
 	/* Bingo board check. Play1 paints cells 0, 1 and 2 white; Play2 paints 3
 	and 4, which completes the first row and turns those five red. The Server
 	owns both masks, so these only ask. */
