@@ -188,6 +188,7 @@ bool_t CWorldSequencePlayer::Load_Area(
 		return false;
 	}
 	Stop_All(targets, true);
+	Clear_PreparedObjects();
 	m_ObjectModels.clear();
 	m_EffectSnapshots.clear();
 	m_Document = std::move(staged);
@@ -358,6 +359,7 @@ bool_t CWorldSequencePlayer::Load_PreparedArea(const std::string& areaId, const 
 	if (!match)
 	{ m_Status = "World sequence Loader targets changed before activation; existing presentation preserved"; return false; }
 	Stop_All(targets, true);
+	Clear_PreparedObjects();
 	m_ObjectModels.clear();
 	m_EffectSnapshots = std::move(staged->effectSnapshots);
 	m_Document = std::move(staged->document);
@@ -378,6 +380,7 @@ void CWorldSequencePlayer::Clear()
 	m_Active.clear();
 	for (auto& held : m_Held) Release_Objects(held);
 	m_Held.clear();
+	Clear_PreparedObjects();
 	m_ObjectModels.clear();
 	m_EffectSnapshots.clear();
 	m_ModelCache.clear();

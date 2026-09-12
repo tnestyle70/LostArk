@@ -8,6 +8,7 @@
 #include "EffectV2_Catalog.h"
 #include "Effect_PresentationService.h"
 #include "Effect_Catalog.h"
+#include "EffectCompositionModelPreview.h"
 #include "Effect_Playback.h"
 #include "NetworkManager.h"
 #include "EffectV2_Object.h"
@@ -445,7 +446,10 @@ bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
     const ANCHOR_ANIMATION* animation = nullptr;
     const ANCHOR_ANIMATION* previous = nullptr;
     for (const auto& value : animations)
-        if (sampleMs >= value.iStartOffsetMs) { previous = animation; animation = &value; }
+        if (sampleMs >= (value.iPoseStartMs == UINT32_MAX ? value.iStartOffsetMs : value.iPoseStartMs))
+        { previous = animation; animation = &value; }
+    // A leading Effect samples the scheduled clip's first pose before playback starts.
+    if (!animation && !animations.empty()) animation = &animations.front();
     if (!animation) { error = "Kouku source attachment has no animation at its requested time."; return false; }
     const auto clipIndex = [&](const std::string& name) {
         uint32_t found = UINT32_MAX;
@@ -458,11 +462,15 @@ bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
     float cursor = 0.f, duration = 0.f;
     if (index == UINT32_MAX || !model->Get_AnimationProgress(index, cursor, duration))
     { error = "Kouku source animation clip is unavailable: " + animation->strRuntimeClip; return false; }
-    const float age = sampleMs - animation->iStartOffsetMs;
+    const float age = (std::max)(0.f, sampleMs - animation->iStartOffsetMs);
     const bool loop = animation->strEndPolicy == "LOOP_TO_WINDOW";
-    const float elapsed = loop ? age : (std::min)(age, float(animation->iPlayMs));
-    float ticks = (animation->iSourceStartMs + elapsed * animation->fPlayRate) * model->Get_AnimationTickPerSecond(index) / 1000.f;
-    ticks = loop && duration > 0.f ? std::fmod(ticks, duration) : (std::min)(ticks, duration);
+    const float elapsed = (std::min)(age, float(animation->iPlayMs));
+    const float tps = model->Get_AnimationTickPerSecond(index);
+    double sourceMs = 0.0;
+    if (!CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(animation->iSourceStartMs,
+        animation->iSourceEndMs, elapsed, animation->fPlayRate, duration * 1000.0 / tps, loop, sourceMs))
+    { error = "Kouku source animation range is outside the native clip."; return false; }
+    const float ticks = float(sourceMs * tps / 1000.0);
     std::vector<uint32_t> indices;
     for (const auto& name : names)
     {
@@ -482,9 +490,13 @@ bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
         float previousDuration = 0.f;
         if (pose.sourceIndex == UINT32_MAX || !model->Get_AnimationProgress(pose.sourceIndex, cursor, previousDuration))
         { error = "Kouku source animation blend clip is unavailable."; return false; }
-        pose.sourceTicks = (std::min)(previousDuration,
-            (previous->iSourceStartMs + previous->iPlayMs * previous->fPlayRate) *
-            model->Get_AnimationTickPerSecond(pose.sourceIndex) / 1000.f);
+        const float previousTps = model->Get_AnimationTickPerSecond(pose.sourceIndex);
+        double previousMs = 0.0;
+        if (!CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(previous->iSourceStartMs,
+            previous->iSourceEndMs, previous->iPlayMs, previous->fPlayRate,
+            previousDuration * 1000.0 / previousTps, previous->strEndPolicy == "LOOP_TO_WINDOW", previousMs))
+        { error = "Kouku source animation blend range is outside the native clip."; return false; }
+        pose.sourceTicks = float(previousMs * previousTps / 1000.0);
         sampledPose = model->Sample_AnimationTransitionBoneCombinedMatrices(pose, indices, sampled);
     }
     else sampledPose = model->Sample_AnimationBoneCombinedMatrices(animation->strRuntimeClip.c_str(), ticks, indices, sampled);
@@ -507,17 +519,38 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
     for (const auto& stage : pattern.Stages)
     {
         for (auto animation : stage.AnimationOccurrences)
-        { animation.iStartOffsetMs += stageStart; animations.push_back(std::move(animation)); }
+        {
+            if (animation.iPoseStartMs == UINT32_MAX)
+                animation.iPoseStartMs = stageStart + (animation.strOccurrenceId == std::min_element(stage.AnimationOccurrences.begin(), stage.AnimationOccurrences.end(),
+                [](const auto& a, const auto& b) { return a.iStartOffsetMs != b.iStartOffsetMs ?
+                    a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; })->strOccurrenceId ? 0u : animation.iStartOffsetMs);
+            animation.iStartOffsetMs += stageStart; animations.push_back(std::move(animation));
+        }
         stageStart += stage.iDurationMs;
     }
     std::stable_sort(animations.begin(), animations.end(), [](const auto& a, const auto& b)
-        { return a.iStartOffsetMs < b.iStartOffsetMs; });
+        { return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
     std::vector<std::string> names;
     for (const auto& attachment : attachments)
         if (attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
             std::find(names.begin(), names.end(), attachment.strRuntimeBoneName) == names.end())
             names.push_back(attachment.strRuntimeBoneName);
+    // A resource with no saved model animation previews the selected pose.
+    // Product/Pattern timelines still require their authored animation history.
+    SOURCE_BONES frozenBones;
+    std::string frozenError;
+    const bool freezeResourcePose = animations.empty() && pattern.strPatternId == "preview.kouku.resource";
+    if (freezeResourcePose)
+        for (const auto& name : names)
+        {
+            if (!model || !model->Has_Bone(name.c_str()))
+            { frozenError = "Selected Resource Preview model has no source bone: " + name; break; }
+            float4x4_t value;
+            XMStoreFloat4x4(&value, model->Get_BoneMatrix(name.c_str()));
+            frozenBones.emplace(name, value);
+        }
     return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
+        frozenBones = std::move(frozenBones), frozenError = std::move(frozenError), freezeResourcePose,
         weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs]
         (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
     {
@@ -527,6 +560,11 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         { error = "Kouku Product camera-view source attachment requires recorded camera history."; return false; }
         EFFECT_V2_TARGET_VIEW view;
         view.pModel = weakModel.lock(); view.BoneRoot = ownerRoot; view.YawBasis = ownerRoot;
+        if (freezeResourcePose)
+        {
+            if (!frozenError.empty()) { error = frozenError; return false; }
+            return Build_SourceAnchorWorlds(attachments, view, root, frozenBones, anchors, error);
+        }
         SOURCE_BONES bones;
         return Sample_SourceBones(view.pModel, animations, startMs + seconds * 1000.f, names, bones, error) &&
             Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
@@ -787,6 +825,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
         ANCHOR_ANIMATION animation;
         animation.strRuntimeClip = source.strRuntimeClip;
         animation.iStartOffsetMs = source.iStartOffsetMs; animation.iSourceStartMs = source.iSourceStartMs;
+        animation.iPoseStartMs = source.iStartOffsetMs;
         animation.iPlayMs = source.iPlayMs; animation.fPlayRate = source.fPlayRate; animation.strEndPolicy = source.strEndPolicy;
         animations.push_back(std::move(animation));
     }
@@ -901,7 +940,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                     ANCHOR_ANIMATION animation;
                     animation.strRuntimeClip = Text(source, "runtimeClip");
                     animation.iStartOffsetMs = UInt(source, "startOffsetMs", 0u, item.durationMs - 1u);
+                    animation.iPoseStartMs = source.Find("stageStartMs") ? UInt(source, "stageStartMs", 0u, animation.iStartOffsetMs) : animation.iStartOffsetMs;
                     animation.iSourceStartMs = UInt(source, "sourceStartMs", 0u, MAX_TIMELINE_MS);
+                    if (source.Find("sourceEndMs")) animation.iSourceEndMs = UInt(source, "sourceEndMs", 0u, MAX_TIMELINE_MS);
                     animation.iPlayMs = UInt(source, "playMs", 1u, MAX_TIMELINE_MS);
                     animation.iBlendInMs = UInt(source, "blendInMs", 0u, 1000u);
                     animation.fPlayRate = float(Number(source, "playRate", 0.01, 100.0));
@@ -1961,6 +2002,51 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
             status = "Preview names an unknown presentation resource: " + box.strResourceId;
             return false;
         }
+    if (pattern.strPatternId == "preview.kouku.resource" && pattern.WorldOccurrences.empty() &&
+        pattern.PresentationOccurrences.size() == 1u)
+    {
+        const auto& box = pattern.PresentationOccurrences.front();
+        const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+            [&](const auto& value) { return value.strResourceId == box.strResourceId; });
+        if (resource->eKind == KIND::EFFECT &&
+            (resource->strResourceKind == "V1_EFFECT" || resource->strResourceKind == "V1_ELEMENT"))
+        {
+            // A Resource has its own animation origin. Prepare its saved actor
+            // through the existing single-member model/presentation owner.
+            const auto effect = CEffectCatalog::Find(resource->strAssetId);
+            if (!effect) { status = CEffectCatalog::Get_Status(); return false; }
+            if (effect->SourceModelPreview)
+            {
+                CEffectCompositionModelPreview source;
+                if (!source.Select_SourceEffect(*effect)) { status = source.Status(); return false; }
+                auto stagedDocument = document;
+                auto sourcePattern = source.Get_Document().Patterns.front();
+                sourcePattern.strPatternId = pattern.strPatternId + ".actor";
+                sourcePattern.PresentationOccurrences = pattern.PresentationOccurrences;
+                // The Effect window owns lifetime; the native final pose is held
+                // across particle tails by the same CModel source sampler.
+                sourcePattern.iDurationMs = duration;
+                sourcePattern.Stages.front().iDurationMs = duration;
+                auto& animations = sourcePattern.Stages.front().AnimationOccurrences;
+                std::erase_if(animations, [&](const auto& animation) { return animation.iStartOffsetMs >= duration; });
+                for (auto& animation : animations)
+                {
+                    animation.iPoseStartMs = animation.iStartOffsetMs;
+                    animation.iPlayMs = (std::min)(animation.iPlayMs, duration - animation.iStartOffsetMs);
+                }
+                const auto sourceId = sourcePattern.strPatternId;
+                const auto gateId = sourcePattern.strGateId;
+                stagedDocument.Patterns.push_back(std::move(sourcePattern));
+                KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
+                bundle.strBundleId = pattern.strPatternId; bundle.strGateId = gateId;
+                bundle.Members.push_back({pattern.strPatternId + ".member", sourceId, 0u});
+                stagedDocument.Bundles.push_back(std::move(bundle));
+                if (!Begin_BundlePreview(stagedDocument, pattern.strPatternId, clockMs, paused, status)) return false;
+                status = m_strStatus = "Effect Resource source model and animation ready: " + resource->strAssetId;
+                return true;
+            }
+        }
+    }
     // Stage first. A rejected preview request preserves the active session.
     auto stagedDocument = document;
     auto stagedPattern = pattern;
@@ -2077,6 +2163,15 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         duration = (std::max)(duration, (std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u + member.durationMs);
         if (duration > MAX_TIMELINE_MS) return fail("Bundle preview exceeds the timeline duration limit.");
         if (!level->Create_CompositionPreviewActor(*source, member.actor, status)) return fail(status);
+        if (bundleId == "preview.kouku.resource")
+        {
+            const auto player = level->Get_LocalCharacter();
+            if (!player || !player->Get_Transform()) return fail("Effect Resource Preview needs an arena player anchor.");
+            const auto& root = *player->Get_Transform()->Get_WorldMatrixPtr();
+            const float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
+            if (!member.actor->Apply_NetworkState({root._41, root._42, root._43}, yaw))
+                return fail("Effect Resource Preview player anchor is invalid.");
+        }
         const auto model = member.actor->Get_Model();
         member.initialAnimation = model->Get_CurrentAnimIndex();
         const auto& initialRoot = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
@@ -2094,13 +2189,16 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                     { found = true; break; }
                 if (!found || !box.iPlayMs || !std::isfinite(box.fPlayRate) || box.fPlayRate <= 0.f)
                     return fail("Bundle child animation is unavailable: " + box.strRuntimeClip);
+                box.iPoseStartMs = stageStart + (box.strOccurrenceId == std::min_element(stage.AnimationOccurrences.begin(), stage.AnimationOccurrences.end(),
+                [](const auto& a, const auto& b) { return a.iStartOffsetMs != b.iStartOffsetMs ?
+                    a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; })->strOccurrenceId ? 0u : box.iStartOffsetMs);
                 box.iStartOffsetMs += stageStart;
                 member.animations.push_back(std::move(box));
             }
             stageStart += stage.iDurationMs;
         }
         std::sort(member.animations.begin(), member.animations.end(), [](const auto& a, const auto& b)
-            { return a.iStartOffsetMs < b.iStartOffsetMs; });
+            { return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
         for (const auto& box : source->WorldOccurrences)
         {
             const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
@@ -2163,6 +2261,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     m_bPreviewPaused = paused;
     XMStoreFloat4x4(&m_PreviewPivot, XMMatrixIdentity());
     Sample_BundlePreview();
+    if (!m_bPreviewPlaying) { status = m_strStatus; return false; }
     Refresh_SharedPresentation();
     status = m_strStatus = "Bundle preview ready: " + bundleId;
     return true;
@@ -2313,8 +2412,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* animation = nullptr;
         const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* previousAnimation = nullptr;
         for (const auto& box : member.animations)
-            if (sampleMs >= box.iStartOffsetMs && localMs >= 0.0)
+            if (sampleMs >= box.iPoseStartMs && localMs >= 0.0)
             { previousAnimation = animation; animation = &box; }
+        if (!animation && !member.animations.empty()) animation = &member.animations.front();
         std::uint32_t animationIndex = member.initialAnimation;
         float ticks = member.initialTicks;
         if (animation)
@@ -2325,11 +2425,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             float oldTicks = 0.f, clipTicks = 0.f;
             model->Get_AnimationProgress(animationIndex, oldTicks, clipTicks);
             const float tps = model->Get_AnimationTickPerSecond(animationIndex);
-            const float age = animation->strEndPolicy == "LOOP_TO_WINDOW" ? sampleMs - animation->iStartOffsetMs :
-                (std::min)(sampleMs - animation->iStartOffsetMs, float(animation->iPlayMs));
-            ticks = (animation->iSourceStartMs + age * animation->fPlayRate) * tps / 1000.f;
-            if (animation->strEndPolicy == "LOOP_TO_WINDOW" && clipTicks > 0.f) ticks = std::fmod(ticks, clipTicks);
-            else ticks = (std::min)(ticks, clipTicks);
+            const float elapsed = (std::max)(0.f, sampleMs - animation->iStartOffsetMs);
+            const float age = (std::min)(elapsed, float(animation->iPlayMs));
+            double sourceMs = 0.0;
+            if (!CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(animation->iSourceStartMs,
+                animation->iSourceEndMs, age, animation->fPlayRate, clipTicks * 1000.0 / tps,
+                animation->strEndPolicy == "LOOP_TO_WINDOW", sourceMs))
+            { Fail_Preview("Animation source range is outside the native clip."); return; }
+            ticks = float(sourceMs * tps / 1000.0);
         }
         model->Set_Animation(animationIndex, false, 0.f);
         model->Set_AnimPaused(true);
@@ -2349,9 +2452,13 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
                 m_strStatus = "Animation blend source clip is unavailable.";
             else
             {
-                pose.sourceTicks = (std::min)(sourceEnd,
-                    (previousAnimation->iSourceStartMs + previousAnimation->iPlayMs * previousAnimation->fPlayRate) *
-                    model->Get_AnimationTickPerSecond(pose.sourceIndex) / 1000.f);
+                const float previousTps = model->Get_AnimationTickPerSecond(pose.sourceIndex);
+                double previousMs = 0.0;
+                if (!CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(previousAnimation->iSourceStartMs,
+                    previousAnimation->iSourceEndMs, previousAnimation->iPlayMs, previousAnimation->fPlayRate,
+                    sourceEnd * 1000.0 / previousTps, previousAnimation->strEndPolicy == "LOOP_TO_WINDOW", previousMs))
+                { Fail_Preview("Animation blend source range is outside the native clip."); return; }
+                pose.sourceTicks = float(previousMs * previousTps / 1000.0);
                 if (!model->Set_AnimationTransitionPose(pose)) m_strStatus = "Animation blend pose admission failed.";
             }
         }
@@ -2378,9 +2485,15 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             if (!player->Is_Playing(world->strSequenceInstanceId) &&
                 !player->Play(world->strSequenceInstanceId, worldTargets, box.fPlaybackSpeed,
                     member.worldOffsets.at(box.strOccurrenceId), box.iDurationMs, WorldPlacementFromOccurrence(box)))
-            { m_strStatus = player->Get_Status(); continue; }
+            {
+                Fail_Preview("Bundle WORLD failed: " + box.strOccurrenceId + ": " + player->Get_Status());
+                return;
+            }
             if (!player->Seek_InstanceToMs(world->strSequenceInstanceId, float(localMs - box.iStartMs), worldTargets))
-                m_strStatus = player->Get_Status();
+            {
+                Fail_Preview("Bundle WORLD failed: " + box.strOccurrenceId + ": " + player->Get_Status());
+                return;
+            }
         }
         member.actor->Synchronize_WeaponPose();
         ANIMATION_MODEL_TARGET_VIEW weaponView;
@@ -2462,6 +2575,25 @@ void Client::CKoukuSaydonPresentationPlayer::Seek_Preview(std::uint32_t clockMs)
     Refresh_SharedPresentation();
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Fail_Preview(std::string status)
+{
+    const std::string patternId = Preview_IsBundle() ? m_PreviewBundleId : m_PreviewPattern.strPatternId;
+    Stop_Preview();
+    m_strFailedPreviewPatternId = patternId;
+    m_strFailedPreviewStatus = std::move(status);
+    m_strStatus = m_strFailedPreviewStatus;
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Consume_FailedPreview(std::string& patternId, std::string& status)
+{
+    if (m_strFailedPreviewPatternId.empty()) return false;
+    patternId = std::move(m_strFailedPreviewPatternId);
+    status = std::move(m_strFailedPreviewStatus);
+    m_strFailedPreviewPatternId.clear();
+    m_strFailedPreviewStatus.clear();
+    return true;
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Consume_CompletedPreview(std::string& patternId)
 {
     if (m_strCompletedPreviewPatternId.empty()) return false;
@@ -2473,6 +2605,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Consume_CompletedPreview(std::strin
 void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
 {
     m_strCompletedPreviewPatternId.clear();
+    m_strFailedPreviewPatternId.clear();
+    m_strFailedPreviewStatus.clear();
     ++m_iPreviewGeneration;
     m_bModelReferencePreview = false;
     Release_BundlePreviewMembers(m_BundlePreviewMembers);

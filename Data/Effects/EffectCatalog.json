@@ -1630,6 +1630,76 @@
       "effectAssetId": "effect.kouku.gate3.mario.center.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.center.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.3",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.4",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.5",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10.5.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.circle.warning.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.circle.warning.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.donut.warning.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.donut.warning.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.sector.warning.shot",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.sector.warning.shot.effect.json"
     }
   ]
 }

@@ -1,3 +1,4 @@
+#ifndef ALTV_NATIVE_CAPTURE_ONLY
 // Single source owner for ALTVNative profiles 128..191.
 // fx_m_me_boxshockwaveline_01_tr: 498f181c974da1419002ef9160f610d9; selected map 7b1b05b99d3ce26b110c9d56f80c9577f723b1684600e8a69dad89fd1c640c6c.
 float4 ALTVNative128(ALTV_NATIVE_INPUT input)
@@ -10406,6 +10407,7 @@ float4 ALTVNative191(ALTV_NATIVE_INPUT input)
     return output;
 }
 
+#endif // ALTV_NATIVE_CAPTURE_ONLY
 // fx_m_me_swp_box_01: 7a34bdb1e8c49f48b1f747c41f5c1880; selected map 71e3af30a40e72420b44e66fc636115067f70cbdbc126b91596f6526ad129a02.
 float4 ALTVNative178(ALTV_NATIVE_INPUT input)
 {

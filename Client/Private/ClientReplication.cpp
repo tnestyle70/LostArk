@@ -3561,30 +3561,24 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 						if (model && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
 							snapshot.iServerTick, entity.iActionStartTick, 30.f, ageSeconds))
 						{
-							const auto clip = model->Get_CurrentAnimIndex();
-							float oldTicks = 0.f, durationTicks = 0.f;
-                            (void)boss->Set_NetworkAnimationWindow(ageSeconds,
-                                action.bHoldAtWindowEnd ? action.iPlayMs * .001f : 0.f);
-                            if (action.iBlendInMs)
+                            const float startOffsetSeconds = action.iStartOffsetMs * .001f;
+                            const float animationAge = (std::max)(0.f, ageSeconds - startOffsetSeconds);
+                            if (!boss->Set_NetworkAnimationWindow(ageSeconds,
+                                action.bHoldAtWindowEnd ? action.iPlayMs * .001f : 0.f, startOffsetSeconds,
+                                action.iSourceStartMs, action.iSourceEndMs))
+                            {
+                                allSucceeded = false;
+                                m_strPendingPresentationFailure = "KoukuSaydon animation window could not be sampled: " + action.strActionId;
+                            }
+                            else if (action.iBlendInMs)
                             {
                                 if (!boss->Apply_NetworkAnimationTransition(action.strBlendFromClip.c_str(),
-                                    action.fBlendFromSourceMs, float(action.iBlendInMs), ageSeconds, action.fPlayRate))
+                                    action.fBlendFromSourceMs, float(action.iBlendInMs), animationAge, action.fPlayRate))
                                 {
                                     allSucceeded = false;
                                     m_strPendingPresentationFailure = "KoukuSaydon animation transition could not be sampled: " + action.strActionId;
                                 }
                             }
-                            else if (model->Get_AnimationProgress(clip, oldTicks, durationTicks))
-							{
-                                const float sampleAge = action.bHoldAtWindowEnd ?
-                                    (std::min)(ageSeconds, action.iPlayMs * .001f) : ageSeconds;
-                                const float sourceTicks = sampleAge * action.fPlayRate * model->Get_AnimationTickPerSecond(clip);
-                                const float ticks = action.bLoopToWindow && durationTicks > 0.f ?
-                                    std::fmod(sourceTicks, durationTicks) : (std::min)(durationTicks, sourceTicks);
-								model->Set_AnimTrackPosition(clip, ticks);
-								model->Skip_Blend();
-								model->Update_Animation(0.f);
-							}
 						}
 					}
 					if (played)

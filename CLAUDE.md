@@ -4,6 +4,7 @@
 공통 에이전트 행동 규칙의 정본은 `AGENTS.md`이며, 작업 시작 시 먼저 읽는다.
 계획서·설계서 요청은 `AGENTS.md`의 규칙 파일 탐색 순서를 따르고 `.md/GB/<MM-DD>/`에 PLAN/RESULT 문서를 작성한다.
 LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md`를 먼저 읽는다.
+모든 오브젝트의 추출·변환·파생 모델 적용은 `.md/GB/렌더링이펙트복원V2.md`의 재질·환경 입력 공통 절차와 `Tools/ModelAssetConverter/README.md`를 함께 따른다. geometry/D/N/S 변환과 native 재질·IBL/BRDF·장면 조명 연결을 구분하며, 데이터 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 사용한다.
 
 @AGENTS.md
 
@@ -97,12 +98,16 @@ fallback하지 않는다. 누락·빈 파일·손상 bytecode·technique/pass/in
 producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일치를 검사한다. CSO는 빌드
 산출물이므로 Git에 커밋하지 않는다.
 
-Effect Mesh/Particle은 `Client/Public/Effect_ShaderFamily.h`의58개 실행 항목으로 분리된다.
+Effect Mesh/Particle은 `Client/Public/Effect_ShaderFamily.h`의 실행 표로 분리된다.
 기존 native 계약을 통과한 profile만 해당 재질군·구간의 CSO를 선택한다. 큰 native 재질군의
 함수 본문은 구간별 HLSLI가 소유하므로 한 구간 편집은 그 include를 사용하는 FX만 재컴파일한다.
 Native FX는 원본 재질 계산만 포함하고, 범용 typed/reconstructed backend의 우선순위는 Generic FX가
 소유한다. Native 준비 상태에 범용 backend flag가 함께 켜지면 실패하며 자동 fallback하지 않는다.
 공통 carrier/helper를 편집하면 그 공통 입력에 의존하는 FX가 함께 갱신된다.
+쿠크 native 프로그램도 64 ID 구간별 물리 HLSLI와 필요한 Mesh/Particle FX로 나눈다.
+`Tools/EffectPipeline/install_kouku_gate1_native_shaders.py`가 include·dispatch·실행 표와
+project/filter 등록을 함께 갱신하며 내용이 같은 파일은 다시 쓰지 않는다. 원본 native ID,
+수식·carrier guard·패스 상태를 유지하며 큰 단일 구간으로 다시 합치지 않는다.
 Client 프로젝트는 `MultiProcFXC=true`, `MultiProcMaxCount=4`를 Microsoft.Cpp props보다 먼저
 기본값으로 설정하며 사용자가 명시한 MSBuild 값은 보존한다. FX만 병렬화하고 C++/MIDL의
 UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는 기존 FX tracking을 재사용한다.
@@ -116,6 +121,14 @@ UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
 정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이며 기본은 `Product`다. 일반 컴파일은 publisher, oracle, 전체 source/resource 해시, CSO WARP probe, Server harness를 실행하지 않는다. `-Profile Core`와 `-Profile FullDiagnostic`은 사용자가 광역 진단을 요청할 때 선택할 수 있는 옵션이며 기능 완료나 커밋의 필수 조건이 아니다. Product 결과와 단계별 시간은 `out/BuildPipeline/runs/*-product.json`에 기록한다. `-SkipBuild`는 컴파일을 생략하고 배포 경로만 확인하는 옵션이며 현재 소스의 빌드 완료 증거로 쓰지 않는다.
+
+runner의 `-MSBuildPath`는 명시한 설치를 선택한다. 지정하지 않으면 개발 환경의
+`MSBUILD_EXE_PATH`, `VSINSTALLDIR`, PATH를 우선하고, 일반 터미널에서는 vswhere로
+Preview를 포함한 최신 설치 완료 C++ 도구의 amd64 MSBuild를 찾는다. C++와 SDK 도구의
+host는 x64로 맞춘다. IDE와 반복 빌드에 같은 설치를 사용하고 Product 결과의 toolchain과
+프로젝트 전후 lastbuildstate를 확인한다. toolchain·SDK·host 변경은 소스 변경 없이도 전체
+재컴파일을 유발할 수 있다. `-BuildLogDirectory <경로>`를 지정한 실행에만 프로젝트별
+MSBuild binary/diagnostic 로그를 추가하여 재컴파일 원인과 작업 시간을 확인한다.
 
 runtime 데이터를 바꾼 경우 해당 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. Map의 `.mapassets`·`.mapplacements`는 시퀀스와 함께 PR에 포함하는 Git LFS 추적 출력이다. 같은 commit을 pull하고 LFS 파일을 받은 PC는 그 맵 snapshot을 사용한다. 맵 원본을 수정한 작업자는 Area Publish/Check 후 변경된 출력을 함께 커밋한다. 일반 컴파일은 실행 데이터를 재생성하지 않으며, Client/Server의 pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작한다. 최초 실행 데이터나 Git 제외 domain의 입력이 없는 경우 준비 명령은 다음과 같다.
 
@@ -372,6 +385,8 @@ Sequencer·Patterns·Composition Resources·Box Detail·Preview 창과 ruler/box
 바로 아래 `Open Sequencer Benchmark`는 같은 ImGui 구성·기본 배치를 쓰는 독립 연출 편집기다.
 목록 창은 `Composition Sequencer`이며 저장은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`이다.
 Action 원본과 저장 ID·창·draft를 분리하고 동일 Preview backend를 한 번에 한 편집기만 소유한다.
+`Composition Camera`의 `Reload Cameras`는 카메라 저작 문서를 명시적으로 다시 읽는다. 실패한 최초 로드는
+프레임마다 재시도하지 않으며, 원본을 고친 뒤 이 버튼으로 재시도한다. 미저장 camera draft는 먼저 Save한다.
 연출 편집기의 Save/Preview는 제품 패턴 게시·Server Play와 연결하지 않는다. 파티 생성은 후속 Summon/Logic 범위다.
 Resources는 여섯 보스 몸체의 실제 Animation clip을 WModel 헤더에서 읽으며 현재 preview 모델과 무관하게
 목록을 표시한다. clip 선택은 Animation Tool 창을 열지 않고 기존 preview backend를 사용한다.
@@ -582,6 +597,9 @@ formatVersion 3이다. `Save` 하나로 source를 원자 저장하고 기존 Map
 기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
 `objectResources`는 CModel 모델·diffuse·기본 scale·기본 `anchorKind`(WORLD/PLAYER) 또는 기존 sequence alias를,
 template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
+파생 모델의 원본 재질은 Object Detail의 `Material Source Model` → `Apply Material Source`로 연결한다.
+실제 source catalog와 target slot 검증을 통과한 ID만 저장하며, 모델 변경 때도 같은 호환성을 확인한다.
+native mask·roughness·IBL/BRDF 입력과 실패 보존 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 `objectMotion`의 optional `emissions`는 seed 분산 대신 저작한 사본 목록이다. 행마다
 `positionOffset`·`yawDegrees`·`startDelayMs`를 가지며 행 yaw가 로컬 이동과 공전을 함께 돌린다.
 행이 있으면 `count`는 행 수와 같고 `intervalMs`·`spreadDegrees`는 0이며, 최대 지연은 Lifetime보다 작아야 한다.

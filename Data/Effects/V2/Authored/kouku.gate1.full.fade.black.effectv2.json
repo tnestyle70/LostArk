@@ -1,0 +1,243 @@
+{
+  "schema": "lostark.effect-v2",
+  "formatVersion": 1,
+  "effectId": "kouku.gate1.full.fade.black",
+  "displayName": "1관문_통합_시퀀스 / 원본 암전",
+  "effectType": "ScreenPost",
+  "slots": {
+    "mesh": "",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+    "noise": "",
+    "mask": "",
+    "emissive": "",
+    "dissolve": ""
+  },
+  "params": {
+    "lifetime": 41.488,
+    "loop": false,
+    "playRate": 1.0,
+    "alphaInEnd": 0.0,
+    "alphaOutStart": 1.0,
+    "screenPost": {
+      "profile": "TexturedOverlay",
+      "intensityStart": 1.0,
+      "intensityEnd": 1.0,
+      "intensityLerp": false,
+      "intensitySmoothstep": false,
+      "intensityKeys": [
+        {
+          "timeSeconds": 0.0,
+          "intensity": 1.0
+        },
+        {
+          "timeSeconds": 0.72,
+          "intensity": 0.999261749596685
+        },
+        {
+          "timeSeconds": 0.78,
+          "intensity": 0.9889416272852488
+        },
+        {
+          "timeSeconds": 0.86,
+          "intensity": 0.9579065605263591
+        },
+        {
+          "timeSeconds": 0.92,
+          "intensity": 0.9232118729599119
+        },
+        {
+          "timeSeconds": 0.98,
+          "intensity": 0.8800481020476114
+        },
+        {
+          "timeSeconds": 1.04,
+          "intensity": 0.8296015431332343
+        },
+        {
+          "timeSeconds": 1.1,
+          "intensity": 0.7730584915605573
+        },
+        {
+          "timeSeconds": 1.22,
+          "intensity": 0.6464280918154099
+        },
+        {
+          "timeSeconds": 1.52,
+          "intensity": 0.30620414499665505
+        },
+        {
+          "timeSeconds": 1.6,
+          "intensity": 0.22368556310098253
+        },
+        {
+          "timeSeconds": 1.68,
+          "intensity": 0.15001248736877437
+        },
+        {
+          "timeSeconds": 1.76,
+          "intensity": 0.08799687713342585
+        },
+        {
+          "timeSeconds": 1.84,
+          "intensity": 0.04045069172833515
+        },
+        {
+          "timeSeconds": 1.92,
+          "intensity": 0.01018589048689722
+        },
+        {
+          "timeSeconds": 1.9971559,
+          "intensity": 0.0
+        },
+        {
+          "timeSeconds": 7.46,
+          "intensity": 6.110482836442804e-06
+        },
+        {
+          "timeSeconds": 7.48,
+          "intensity": 0.005066302109469116
+        },
+        {
+          "timeSeconds": 7.5,
+          "intensity": 0.019036556313885202
+        },
+        {
+          "timeSeconds": 7.52,
+          "intensity": 0.041134391681512554
+        },
+        {
+          "timeSeconds": 7.54,
+          "intensity": 0.07057732679778043
+        },
+        {
+          "timeSeconds": 7.58,
+          "intensity": 0.14836857061794426
+        },
+        {
+          "timeSeconds": 7.6,
+          "intensity": 0.19515191649269523
+        },
+        {
+          "timeSeconds": 7.64,
+          "intensity": 0.30058164909867824
+        },
+        {
+          "timeSeconds": 7.78,
+          "intensity": 0.7119870936825673
+        },
+        {
+          "timeSeconds": 7.82,
+          "intensity": 0.8158242998722076
+        },
+        {
+          "timeSeconds": 7.86,
+          "intensity": 0.9020930201820714
+        },
+        {
+          "timeSeconds": 7.88,
+          "intensity": 0.9366829945956561
+        },
+        {
+          "timeSeconds": 7.9,
+          "intensity": 0.964533403295581
+        },
+        {
+          "timeSeconds": 7.92,
+          "intensity": 0.9848617648672715
+        },
+        {
+          "timeSeconds": 7.94,
+          "intensity": 0.9968855978961582
+        },
+        {
+          "timeSeconds": 7.9561868,
+          "intensity": 1.0
+        },
+        {
+          "timeSeconds": 8.8,
+          "intensity": 0.9988554250789283
+        },
+        {
+          "timeSeconds": 8.96,
+          "intensity": 0.9797737415703557
+        },
+        {
+          "timeSeconds": 9.12,
+          "intensity": 0.9397153700021538
+        },
+        {
+          "timeSeconds": 9.22,
+          "intensity": 0.9054818238615716
+        },
+        {
+          "timeSeconds": 9.32,
+          "intensity": 0.8651330596545908
+        },
+        {
+          "timeSeconds": 9.54,
+          "intensity": 0.7587803376838049
+        },
+        {
+          "timeSeconds": 9.76,
+          "intensity": 0.6352132161748646
+        },
+        {
+          "timeSeconds": 10.3,
+          "intensity": 0.31252341679130224
+        },
+        {
+          "timeSeconds": 10.46,
+          "intensity": 0.22535111105773908
+        },
+        {
+          "timeSeconds": 10.6,
+          "intensity": 0.15694143879702804
+        },
+        {
+          "timeSeconds": 10.76,
+          "intensity": 0.09069108190223818
+        },
+        {
+          "timeSeconds": 10.9,
+          "intensity": 0.045625208896002745
+        },
+        {
+          "timeSeconds": 11.04,
+          "intensity": 0.014900719893700565
+        },
+        {
+          "timeSeconds": 11.18,
+          "intensity": 0.0007115491798366236
+        },
+        {
+          "timeSeconds": 41.488,
+          "intensity": 0.0
+        }
+      ],
+      "tint": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "overlayPositionStart": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionHold": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionEnd": [
+        0.5,
+        0.5
+      ],
+      "overlayScale": [
+        1,
+        1
+      ],
+      "displaySpace": true
+    }
+  },
+  "parts": []
+}

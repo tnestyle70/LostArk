@@ -114,6 +114,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         nativeInput.uv1 = float2(1.f, -local.y * g_KoukuDecalProjection.z + g_KoukuDecalProjection.w);
         nativeInput.decalProjection = float4(g_KoukuDecalProjection.xy, 1.f, 0.f);
         nativeInput.color = g_ColorMultiply + g_ColorOffset;
+        nativeInput.sourceWorldPosition = float3(worldPosition.x, -worldPosition.z, worldPosition.y) * 100.f;
         nativeInput.screenUV = input.uv;
         nativeInput.projectionW = viewZ * 100.f;
         nativeInput.projectionZ = depth.x * nativeInput.projectionW;

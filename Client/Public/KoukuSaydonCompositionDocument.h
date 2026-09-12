@@ -24,6 +24,10 @@ namespace Client
 		std::string strRuntimeClip;
 		std::uint32_t iStartOffsetMs = 0u;
 		std::uint32_t iSourceStartMs = 0u;
+		// Zero preserves the native clip end used by older documents.
+		std::uint32_t iSourceEndMs = 0u;
+        // Derived preview clock only; never serialized in an authored occurrence.
+        std::uint32_t iPoseStartMs = UINT32_MAX;
 		std::uint32_t iPlayMs = 0u;
 		std::uint32_t iBlendInMs = 0u;
 		f32_t fPlayRate = 1.f;
@@ -183,6 +187,8 @@ namespace Client
 		std::string strOccurrenceId;
 		std::string strLogicId;
 		bool_t bEnabled = true;
+		// Derived deadline cancellation; never authored or serialized.
+		bool_t bCancelAtEnd = false;
 		std::uint32_t iStartMs = 0u;
 		std::uint32_t iDurationMs = 0u;
 		/* Outcome wiring of a DURATION box: each slot lists up to four RESULT
@@ -384,6 +390,16 @@ namespace Client
 		bool operator==(const KOUKU_SAYDON_BOSS_MOTION&) const = default;
 	};
 
+	struct KOUKU_SAYDON_COMPOSITION_PATTERN_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::string strPatternId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 1000u;
+		bool_t bRepeat = false;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN_OCCURRENCE&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_PATTERN final
 	{
 		std::string strPatternId;
@@ -402,6 +418,12 @@ namespace Client
 		std::uint32_t iNextWorldOccurrenceOrdinal = 1u;
 		std::uint32_t iNextSceneProfileOccurrenceOrdinal = 1u;
 		std::uint32_t iNextPresentationOccurrenceOrdinal = 1u;
+		std::uint32_t iNextPatternOccurrenceOrdinal = 1u;
+		// Zero preserves the legacy sum of Stage durations.
+		std::uint32_t iDurationMs = 0u;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN_OCCURRENCE> PatternOccurrences;
+		// Entry sequence only: after playback, admit the same Server gate as F1.
+		bool_t bEnterCombatOnFinish = false;
 		bool_t bResetBossToSpawn = false;
 		std::optional<double> ResetBossYawDegrees;
 		std::optional<KOUKU_SAYDON_BOSS_MOTION> BossMotion;
@@ -430,6 +452,8 @@ namespace Client
 		std::string strFolderId;
 		std::string strGateId;
 		std::string strDisplayName;
+		// Optional executable timeline; same-folder regular Pattern identity.
+		std::string strTimelinePatternId;
 		std::string strLoadError;
 		std::string strPreservedJson;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_FOLDER&) const = default;
@@ -530,6 +554,13 @@ namespace Client
 		CKoukuSaydonCompositionDocument() = default;
 		explicit CKoukuSaydonCompositionDocument(std::filesystem::path path);
 
+		static bool_t Try_SampleAnimationSourceMs(std::uint32_t sourceStartMs,
+            std::uint32_t sourceEndMs, double elapsedMs, double playRate,
+            double nativeDurationMs, bool_t loop, double& outSourceMs);
+        static bool_t Trim_AnimationWindow(
+            KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence,
+            std::int64_t deltaMs, bool_t front, std::uint32_t stageDurationMs,
+            std::uint32_t nativeDurationMs);
 		static std::filesystem::path Resolve_Path();
 		// Separate authoring owner; never a Product publisher input.
 		static std::filesystem::path Resolve_SequencePath();
@@ -550,6 +581,13 @@ namespace Client
 		static bool_t Validate(
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 			const KOUKU_SAYDON_ACTION_REFERENCE_SET& references,
+			std::string& outStatus);
+		// Immutable execution snapshot, including occurrence-scoped Logic definitions.
+		// The derived IDs and idle Stages are not authored and must not be saved.
+		static bool_t Try_ExpandPatternDocument(
+			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& source,
+			std::string_view patternId,
+			KOUKU_SAYDON_COMPOSITION_DOCUMENT& outDocument,
 			std::string& outStatus);
 		static std::string Serialize(
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);

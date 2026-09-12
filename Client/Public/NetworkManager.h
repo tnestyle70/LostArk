@@ -192,7 +192,7 @@ public:
 	bool Send_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
-	bool Send_SpawnWorldEntity(std::string_view placementId);
+	bool Send_SpawnWorldEntity(std::string_view placementId, std::uint64_t* outRequestToken = nullptr);
 	/* Debug Character Select Arena "되돌리기". The Server owns which entities exist;
 	this only carries the request, and the answer arrives as one
 	S2C_WORLD_ENTITY_DESPAWNED per removed entity through the normal
@@ -336,7 +336,8 @@ public:
 	bool Try_Consume_EnterRejected(
 		LostArk::Shared::S2C_ENTER_REJECTED& message);
 	bool Try_Consume_WorldEntitySpawnResult(
-		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message);
+		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message,
+		std::uint64_t* outRequestToken = nullptr);
 	bool Try_Consume_CharacterClassChangeResult(
 		LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT& message);
 	bool Try_Consume_ValtanAuditionResult(
@@ -520,8 +521,20 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
-	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
-		m_WorldEntitySpawnResults;
+	struct WORLD_ENTITY_SPAWN_REQUEST
+	{
+		std::string placementId;
+		std::uint64_t token = 0u;
+	};
+	struct WORLD_ENTITY_SPAWN_REPLY
+	{
+		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT message;
+		std::uint64_t token = 0u;
+	};
+	// Keep cancelled requests until their ordered Server replies arrive.
+	std::deque<WORLD_ENTITY_SPAWN_REQUEST> m_WorldEntitySpawnRequests;
+	std::deque<WORLD_ENTITY_SPAWN_REPLY> m_WorldEntitySpawnResults;
+	std::uint64_t m_nextWorldEntitySpawnToken = 1u;
 	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>
 		m_CharacterClassChangeResults;
 	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_RESULT>

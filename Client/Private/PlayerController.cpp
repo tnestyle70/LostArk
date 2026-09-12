@@ -901,6 +901,15 @@ void Client::CPlayerController::Cancel_DebugPlayerPlacement()
 	m_debugPlacementArmed = false;
 }
 
+void Client::CPlayerController::Retire_DebugPlayerPlacementRequest(const std::string& reason)
+{
+	m_pendingDebugPlacementSequence = 0u;
+	m_debugPlacementArmed = false;
+	m_debugPlacementSucceeded = false;
+	m_debugPlacementReplyDelayed = false;
+	m_debugPlacementStatus = reason;
+}
+
 bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	const LostArk::Shared::WORLD_ID worldId,
 	const f32_t x, const f32_t y, const f32_t z)

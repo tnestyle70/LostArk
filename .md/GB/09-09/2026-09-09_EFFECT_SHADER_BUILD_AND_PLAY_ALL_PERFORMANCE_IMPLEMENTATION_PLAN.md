@@ -255,3 +255,58 @@ native high-profile shader의 기존 외부 범위 누락과 source-character pa
 실제 production FX의 일반/instance VS·PS 수치 비교, Engine/Client/FX 최소 빌드로 수행한다.
 소스 입자 cap·emitter clock·광원의 누락 source 초기값·Artist sibling provider는 이번 성능
 변경에서 임의 수정하지 않는다. 사용자 실제 화면과 FPS는 사용자의 F1 Play 관찰로 확인한다.
+
+## G09. 쿠크 대형 프로그램 분할과 전체 빌드 증분 유지 — 2026-09-12
+
+사용자가 전체 빌드 시간 최적화를 요청했다. 현재 브랜치는
+`codex/sequencer-camera-load-performance`이며 다른 기능의 미커밋 변경을 보존한다.
+앞선 G01의 구간별 native-only 원칙을 쿠크 확장에도 적용한다. 복원한 수식, 원본 native ID,
+carrier 입력, distortion companion, pass 순서·blend/depth/cull과 데이터 저장 계약은 유지한다.
+
+### 현재 기준과 실제 호출 경계
+
+09-12 Product는 35분23.966초이며 Client 단계는 30분43.670초였다.
+후속 사용자 IDE 빌드는 ParticleKouku2304 하나가 13:49:50.693부터 14:16:57.975까지
+27분7.282초 걸렸고 Client 링크·배포는 14:19에 끝났다. 같은 주요 입력의 이전 `/O1`
+독립 검사는 디버그 정보 없이도 1543.812초였다. 따라서 `/Zi` 제거만으로 해결하지 않는다.
+Group2304는 853개 기본 재질 프로그램과 companion을 한 파일에 누적하고 Particle switch에
+617개 분기를 포함한다. 원본 shader 함수 본문이 바뀌지 않는 분할이 첫 변경 단위다.
+
+`install_kouku_gate1_native_shaders.py`가 HLSLI·dispatch·wrapper를 만들고,
+`Effect_ShaderFamily.h`의 기존 constexpr 표를 renderer가 소비한다. 현재 단일 2304~3711
+구간을 기존 64 ID 구간 방식으로 나눈다. 실제 필요한 carrier만 등록하고 프로그램 누락·중복을
+검사한다. 물리 include도 분리하여 한 leaf 수정이 다른 구간의 재컴파일 원인이 되지 않게 한다.
+생성 결과와 생성기를 함께 바꾸며 반복 생성 시 내용이 같은 파일의 수정 시각을 보존한다.
+새 wrapper/HLSLI는 `Client.vcxproj`와 `.filters`에 실제 기존 filter 아래 등록한다.
+새 C++ runtime이나 별도 shader compiler는 만들지 않는다.
+
+추가로 `Shader_VtxMeshBinary.hlsl`의20개 패스와 `Shader_VtxAnimMeshBinary.hlsl`의
+기존 패스에서 같은 entry/profile/인자의 compile 호출을 공유된 VertexShader/PixelShader
+변수로 옮긴다. 이미 공유된 EffectModelCue 방식과 같으며 함수 본문·패스 이름/번호·상태를
+유지한다. 원래 compile 식으로 되돌려 정규화한 패스 전체가 같음을 확인한다.
+진행 중인 FXC 입력은 수정하지 않고 out 후보를 준비한 뒤 해당 빌드 종료 후 적용한다.
+전후 실제 FXC 시간·CSO 및 패스 선택을 비교하며 최적화 해제나 shader 계산 생략은 하지 않는다.
+
+### 도구 선택과 실패 처리
+
+현재 Product runner는 MSBuild 17.14를, 사용자 IDE는 VS18 Insiders를 사용했다.
+후속 빌드에서 shader 80개와 OBJ 226개가 다시 생성됐지만 이전 build state가 덮였으므로
+특정 toolchain 전환이 원인이었다고 확정하지 않는다. 기존 runner에 명시 MSBuild 경로 선택을
+추가하고 활성 개발 환경·설치된 VS를 실제 조회해 선택한 설치의 amd64 MSBuild를 사용한다.
+C++/SDK 도구의 x64 host를 일치시키고 선택 경로·이유·버전과 프로젝트 전후 build state를
+기존 Product 결과에 기록한다. 명시 사용자 선택은 보존하며 도구 누락·실패는 이유를 반환한다.
+출력의 존재만으로 성공 처리하거나 timestamp 조작·강제 skip으로 재컴파일을 숨기지 않는다.
+기존 4개 FX 병렬화, C++ /MP, 변경 없는 SDK 복사는 유지한다.
+
+### 검증과 종료
+
+수정 전후 기본/왜곡 함수 본문, carrier guard, native ID 및 pass 공유 정의를 비교한다.
+853개 source 목록 밖의 World2351~2359도 carrier별 선택 보존 검사에 포함한다.
+현재 native Mesh14/Particle5 pass 계약과 table.size() 기반 renderer 준비 경로를 유지한다.
+분할 후 CSO 합계와 Effect 최초 준비 비용은 컴파일 시간 개선과 별도로 기록한다.
+프로젝트 XML과 생성기 Python/빌드 PowerShell 구문을 검사하고 기존 셰이더 closure 검사를
+새 실제 표로 수행한다. root만 Product 빌드를 소유하며 같은 도구의 첫 변경 빌드와 무변경
+Build를 순차 측정한다. 필요한 모든 CSO 생성, Client 링크·배포와 증분에서 재생성이 없음을
+확인한다. 한 leaf 변경의 영향 범위는 기존 tracking으로 확인하되 수식 변경은 하지 않는다.
+로그·측정은 `out/BuildTimeOptimization20260912/`, 결과는 대응 RESULT의 G09에 기록한다.
+Client 실행·UI 조작·화면 캡처는 하지 않으며 컴파일 시간 개선을 FPS나 visual PASS로 쓰지 않는다.

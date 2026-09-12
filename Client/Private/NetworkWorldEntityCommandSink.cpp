@@ -3,9 +3,9 @@
 #include "NetworkManager.h"
 
 bool Client::CNetworkWorldEntityCommandSink::Request_SpawnWorldEntity(
-	const std::string_view placementId)
+	const std::string_view placementId, std::uint64_t* outRequestToken)
 {
-	return CNetworkManager::Get().Send_SpawnWorldEntity(placementId);
+	return CNetworkManager::Get().Send_SpawnWorldEntity(placementId, outRequestToken);
 }
 
 bool Client::CNetworkWorldEntityCommandSink::Request_DespawnAllWorldEntities(

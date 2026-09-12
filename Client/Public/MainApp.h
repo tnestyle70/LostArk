@@ -388,6 +388,8 @@ private:
 	bool_t PrepareKoukuGateCompletePlay(std::string_view gateId, std::string& status);
 	bool_t StartKoukuGateCompletePlay(std::string_view gateId, std::string& status);
 	void FinishKoukuGateCompletePlay(std::string_view gateId, std::string& status);
+	void UpdateKoukuGateCompletePlay();
+	void CancelKoukuGateCompletePlay(const std::string& status);
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
@@ -755,6 +757,7 @@ private:
 	string m_strKoukuCompletePlayFlowGate;
 	uint32_t m_iKoukuCompletePlayFlowRevision = 0u;
 	uint64_t m_iKoukuCompletePlayWorldGeneration = 0u;
+	bool_t m_bKoukuCompletePlayAwaitingGate = false;
 	bool_t m_bKoukuFlowPublishPending = false;
 	int32_t m_iKoukuCompletePlaySelection = 0;
 	string m_strKoukuCompletePlayPatternId;

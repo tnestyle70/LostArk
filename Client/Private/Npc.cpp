@@ -1,4 +1,5 @@
 #include "Npc.h"
+#include "KoukuSaydonCompositionDocument.h"
 #include "EffectV2_Runtime.h"
 #include "AnimationTargetService.h"
 #include "NpcPresentationAssetService.h"
@@ -163,10 +164,13 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
+	m_bNetworkAnimationWindow = false;
 	m_bNetworkAnimationTransition = false;
+	m_iNetworkAnimationSourceStartMs = m_iNetworkAnimationSourceEndMs = 0u;
 	m_fNetworkAnimationHoldSeconds = 0.f;
 	m_fNetworkAnimationAgeSeconds = 0.f;
 	m_isNetworkAnimationLoop = isLoop;
+	m_fNetworkAnimationStartOffsetSeconds = 0.f;
 	m_pModelCom->Set_AnimationSpeed(1.f);
 	if (!m_pModelCom->Set_Animation(pClipName, isLoop))
 		return false;
@@ -176,42 +180,91 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	return true;
 }
 
-bool_t CNpc::Set_NetworkAnimationWindow(const f32_t ageSeconds, const f32_t holdSeconds)
+bool_t CNpc::Try_SampleNetworkAnimationTicks(const f32_t animationAgeSeconds,
+    const uint32_t clip, const f32_t playRate, f32_t& outTicks) const
+{
+    if (!m_pModelCom || !std::isfinite(animationAgeSeconds) || animationAgeSeconds < 0.f) return false;
+    float cursor = 0.f, duration = 0.f;
+    const float ticksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(clip);
+    if (!m_pModelCom->Get_AnimationProgress(clip, cursor, duration) ||
+        !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f) return false;
+    const float sampleAge = m_fNetworkAnimationHoldSeconds > 0.f ?
+        (std::min)(animationAgeSeconds, m_fNetworkAnimationHoldSeconds) : animationAgeSeconds;
+    double sourceMs = 0.0;
+    if (!Client::CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
+        m_iNetworkAnimationSourceStartMs, m_iNetworkAnimationSourceEndMs,
+        double(sampleAge) * 1000.0, playRate, double(duration) * 1000.0 / ticksPerSecond,
+        m_isNetworkAnimationLoop, sourceMs)) return false;
+    outTicks = (std::min)(duration, float(sourceMs * .001 * ticksPerSecond));
+    return true;
+}
+
+bool_t CNpc::Set_NetworkAnimationWindow(const f32_t ageSeconds, const f32_t holdSeconds,
+    const f32_t startOffsetSeconds, const uint32_t sourceStartMs, const uint32_t sourceEndMs)
 {
     if (!m_pModelCom || !std::isfinite(ageSeconds) || ageSeconds < 0.f ||
-        !std::isfinite(holdSeconds) || holdSeconds < 0.f || holdSeconds > 600.f) return false;
+        !std::isfinite(holdSeconds) || holdSeconds < 0.f || holdSeconds > 600.f ||
+        !std::isfinite(startOffsetSeconds) || startOffsetSeconds < 0.f || startOffsetSeconds > 600.f) return false;
+    const auto clip = m_pModelCom->Get_CurrentAnimIndex();
+    float cursor = 0.f, duration = 0.f;
+    const float ticksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(clip);
+    if (!m_pModelCom->Get_AnimationProgress(clip, cursor, duration) ||
+        !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f) return false;
+    const float animationAge = (std::max)(0.f, ageSeconds - startOffsetSeconds);
+    const float sampleAge = holdSeconds > 0.f ? (std::min)(animationAge, holdSeconds) : animationAge;
+    double sourceMs = 0.0;
+    if (!Client::CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
+        sourceStartMs, sourceEndMs, double(sampleAge) * 1000.0, m_fNetworkAnimationPlayRate,
+        double(duration) * 1000.0 / ticksPerSecond, m_isNetworkAnimationLoop, sourceMs)) return false;
+    const float ticks = (std::min)(duration, float(sourceMs * .001 * ticksPerSecond));
+    // The source window owns wrapping. Disable the model's full-clip loop so
+    // its endpoint cannot wrap behind the cropped-range sampler.
+    if (!m_pModelCom->Start_Animation(clip, false) ||
+        !m_pModelCom->Set_AnimTrackPosition(clip, ticks)) return false;
     m_fNetworkAnimationAgeSeconds = ageSeconds;
     m_fNetworkAnimationHoldSeconds = holdSeconds;
+    m_fNetworkAnimationStartOffsetSeconds = startOffsetSeconds;
+    m_iNetworkAnimationSourceStartMs = sourceStartMs;
+    m_iNetworkAnimationSourceEndMs = sourceEndMs;
+    m_bNetworkAnimationWindow = true;
+    m_pModelCom->Skip_Blend();
+    m_pModelCom->Set_AnimPaused(true);
+    m_pModelCom->Update_Animation(0.f);
+    Synchronize_WeaponPose();
     return true;
 }
 
 bool_t CNpc::Apply_NetworkAnimationTransition(const char_t* sourceClip, const f32_t sourceMs,
     const f32_t durationMs, const f32_t ageSeconds, const f32_t playRate)
 {
-    if (!m_pModelCom || !sourceClip || !std::isfinite(sourceMs) || sourceMs < 0.f ||
+    if (!m_pModelCom || !m_bNetworkAnimationWindow || !sourceClip ||
+        !std::isfinite(sourceMs) || sourceMs < 0.f ||
         !std::isfinite(durationMs) || durationMs <= 0.f || durationMs > 1000.f ||
         !std::isfinite(ageSeconds) || ageSeconds < 0.f || !std::isfinite(playRate) || playRate <= 0.f) return false;
     uint32_t sourceIndex = UINT32_MAX;
     for (uint32_t i = 0; i < m_pModelCom->Get_NumAnimations(); ++i)
-        if (std::string_view(sourceClip) == m_pModelCom->Get_AnimationName(i)) { sourceIndex = i; break; }
+    {
+        const char_t* name = m_pModelCom->Get_AnimationName(i);
+        if (name && std::string_view(sourceClip) == name) { sourceIndex = i; break; }
+    }
+    if (sourceIndex == UINT32_MAX) return false;
     const uint32_t targetIndex = m_pModelCom->Get_CurrentAnimIndex();
-    float cursor = 0.f, sourceEnd = 0.f, targetEnd = 0.f;
+    float cursor = 0.f, sourceEnd = 0.f;
+    const float sourceTicksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(sourceIndex);
     if (!m_pModelCom->Get_AnimationProgress(sourceIndex, cursor, sourceEnd) ||
-        !m_pModelCom->Get_AnimationProgress(targetIndex, cursor, targetEnd)) return false;
+        !std::isfinite(sourceTicksPerSecond) || sourceTicksPerSecond <= 0.f ||
+        !std::isfinite(sourceEnd) || sourceEnd <= 0.f) return false;
     CModel::ANIMATION_TRANSITION_POSE pose;
     pose.sourceIndex = sourceIndex; pose.targetIndex = targetIndex;
-    pose.sourceTicks = (std::min)(sourceEnd, sourceMs * .001f * m_pModelCom->Get_AnimationTickPerSecond(sourceIndex));
-    const float sampleAge = m_fNetworkAnimationHoldSeconds > 0.f ?
-        (std::min)(ageSeconds, m_fNetworkAnimationHoldSeconds) : ageSeconds;
-    const float targetTicks = sampleAge * playRate * m_pModelCom->Get_AnimationTickPerSecond(targetIndex);
-    pose.targetTicks = m_isNetworkAnimationLoop && targetEnd > 0.f ?
-        std::fmod(targetTicks, targetEnd) : (std::min)(targetEnd, targetTicks);
+    pose.sourceTicks = (std::min)(sourceEnd, sourceMs * .001f * sourceTicksPerSecond);
+    if (!Try_SampleNetworkAnimationTicks(ageSeconds, targetIndex, playRate, pose.targetTicks)) return false;
     pose.durationSeconds = durationMs * .001f; pose.elapsedSeconds = ageSeconds; pose.playRate = playRate;
-    if (!m_pModelCom->Set_AnimationTransitionPose(pose)) return false;
+    const bool waitingForAnimation = m_fNetworkAnimationAgeSeconds < m_fNetworkAnimationStartOffsetSeconds;
+    if (!waitingForAnimation && !m_pModelCom->Set_AnimationTransitionPose(pose)) return false;
     m_iTransitionSourceIndex = sourceIndex; m_fTransitionSourceTicks = pose.sourceTicks;
     m_fTransitionDurationSeconds = pose.durationSeconds; m_fTransitionAgeSeconds = ageSeconds;
     m_fTransitionPlayRate = playRate; m_bNetworkAnimationTransition = true;
-    m_pModelCom->Set_AnimPaused(false);
+    m_pModelCom->Set_AnimPaused(true);
     Synchronize_WeaponPose();
     return true;
 }
@@ -223,10 +276,13 @@ bool_t CNpc::Play_NetworkAction(
 	const f32_t fBlendSeconds,
 	const f32_t fRootVerticalScale)
 {
+	m_bNetworkAnimationWindow = false;
 	m_bNetworkAnimationTransition = false;
+	m_iNetworkAnimationSourceStartMs = m_iNetworkAnimationSourceEndMs = 0u;
 	m_fNetworkAnimationHoldSeconds = 0.f;
 	m_fNetworkAnimationAgeSeconds = 0.f;
 	m_isNetworkAnimationLoop = isLoop;
+	m_fNetworkAnimationStartOffsetSeconds = 0.f;
 	m_fTransientActionRemainingSeconds = 0.f;
 	m_strTransientReturnClip.clear();
 	if (nullptr == pClipName || '\0' == pClipName[0] ||
@@ -359,52 +415,49 @@ void CNpc::Update(f32_t fTimeDelta)
 			}
 		}
 	}
-    m_fNetworkAnimationAgeSeconds += (std::max)(0.f, fTimeDelta);
-    if (m_bNetworkAnimationTransition)
+    const float frameDelta = (std::max)(0.f, fTimeDelta);
+    m_fNetworkAnimationAgeSeconds += frameDelta;
+    const float animationAge = (std::max)(0.f,
+        m_fNetworkAnimationAgeSeconds - m_fNetworkAnimationStartOffsetSeconds);
+    if (m_bNetworkAnimationWindow)
     {
-        m_fTransitionAgeSeconds += (std::max)(0.f, fTimeDelta);
-        const auto targetIndex = m_pModelCom->Get_CurrentAnimIndex();
-        float cursor = 0.f, duration = 0.f;
-        if (m_pModelCom->Get_AnimationProgress(targetIndex, cursor, duration))
+        const auto clip = m_pModelCom->Get_CurrentAnimIndex();
+        float ticks = 0.f;
+        bool sampled = Try_SampleNetworkAnimationTicks(animationAge, clip,
+            m_fNetworkAnimationPlayRate, ticks);
+        if (sampled && m_bNetworkAnimationTransition &&
+            m_fNetworkAnimationAgeSeconds >= m_fNetworkAnimationStartOffsetSeconds)
         {
             CModel::ANIMATION_TRANSITION_POSE pose;
             pose.sourceIndex = m_iTransitionSourceIndex; pose.sourceTicks = m_fTransitionSourceTicks;
-            pose.targetIndex = targetIndex;
-            const float sampleAge = m_fNetworkAnimationHoldSeconds > 0.f ?
-                (std::min)(m_fTransitionAgeSeconds, m_fNetworkAnimationHoldSeconds) : m_fTransitionAgeSeconds;
-            const float targetTicks = sampleAge * m_fTransitionPlayRate * m_pModelCom->Get_AnimationTickPerSecond(targetIndex);
-            pose.targetTicks = m_isNetworkAnimationLoop && duration > 0.f ?
-                std::fmod(targetTicks, duration) : (std::min)(duration, targetTicks);
-            pose.durationSeconds = m_fTransitionDurationSeconds; pose.elapsedSeconds = m_fTransitionAgeSeconds;
+            pose.targetIndex = clip; pose.targetTicks = ticks;
+            pose.durationSeconds = m_fTransitionDurationSeconds; pose.elapsedSeconds = animationAge;
             pose.playRate = m_fTransitionPlayRate;
-            (void)m_pModelCom->Set_AnimationTransitionPose(pose);
+            sampled = m_pModelCom->Set_AnimationTransitionPose(pose);
+            m_fTransitionAgeSeconds = animationAge;
         }
-    }
-    else if (m_fNetworkAnimationHoldSeconds > 0.f &&
-        m_fNetworkAnimationAgeSeconds >= m_fNetworkAnimationHoldSeconds)
-    {
-        const auto clip = m_pModelCom->Get_CurrentAnimIndex();
-        float cursor = 0.f, duration = 0.f;
-        if (m_pModelCom->Get_AnimationProgress(clip, cursor, duration))
+        else if (sampled)
         {
-            const float sourceTicks = m_fNetworkAnimationHoldSeconds * m_fNetworkAnimationPlayRate *
-                m_pModelCom->Get_AnimationTickPerSecond(clip);
-            const float ticks = m_isNetworkAnimationLoop && duration > 0.f ?
-                std::fmod(sourceTicks, duration) : (std::min)(duration, sourceTicks);
-            m_pModelCom->Set_AnimTrackPosition(clip, ticks);
+            sampled = m_pModelCom->Set_AnimTrackPosition(clip, ticks);
+            if (sampled) { m_pModelCom->Skip_Blend(); m_pModelCom->Update_Animation(0.f); }
+        }
+        if (!sampled)
+        {
+            // A failed source sample must hold the last valid palette rather
+            // than silently resume the uncropped full clip.
             m_pModelCom->Set_AnimPaused(true);
-            m_pModelCom->Skip_Blend();
-            m_pModelCom->Update_Animation(0.f);
+            m_bNetworkAnimationWindow = false; m_bNetworkAnimationTransition = false;
+            OutputDebugStringA("[Npc] Network animation source window could not be sampled.\n");
         }
     }
     else if (m_bSuppressRootMotion)
-	{
-		m_pModelCom->Update_Animation(fTimeDelta);
-	}
-	else
-	{
-		m_pModelCom->Play_Animation(fTimeDelta);
-	}
+    {
+        m_pModelCom->Update_Animation(frameDelta);
+    }
+    else
+    {
+        m_pModelCom->Play_Animation(frameDelta);
+    }
 	Synchronize_WeaponPose();
 	Update_CombatCollider();
 	CEffectV2Runtime::Tick(

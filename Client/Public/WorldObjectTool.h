@@ -7,6 +7,8 @@
 
 #include <array>
 #include <filesystem>
+#include <functional>
+#include <set>
 
 #ifdef _DEBUG
 namespace Client
@@ -18,11 +20,16 @@ class CWorldObjectTool final
 public:
     ~CWorldObjectTool();
     void Open();
+    // Select stable authoring IDs without reloading or saving an existing draft.
+    bool Open_ObjectMotion(const std::string& objectId, const std::string& instanceId, std::string& status);
     void Deactivate();
     void Update(f32_t seconds, bool_t active);
     void Render();
     bool_t Is_Open() const { return m_Open; }
     bool Consume_InteractionRequest();
+    void Set_LinkedSaveCallbacks(std::function<bool(std::string&)> canSave,
+        std::function<bool(bool, std::string&)> apply)
+    { m_CanSaveLinked = std::move(canSave); m_ApplyLinkedSave = std::move(apply); }
     // Only a saved document may become a Workbench resource inventory.
     const CWorldSequenceDocument* Get_SavedDocument() const { return m_Ready ? &m_SavedDocument : nullptr; }
     uint64_t Get_SavedGeneration() const { return m_SavedGeneration; }
@@ -34,6 +41,7 @@ private:
     void Start_Publish();
     void Poll_Publish();
     void Mark_Dirty();
+    std::vector<uint32_t>& Emission_Origins(const WORLD_SEQUENCE_TEMPLATE& sequence);
     void Stop_Preview();
     bool Begin_Preview();
     const WORLD_SEQUENCE_INSTANCE* Preview_Instance() const;
@@ -82,11 +90,21 @@ private:
     f32_t m_ClockMs = 0.f;
     f32_t m_VerticalArcHeight = 2.f;
     // Distribute on Ring preset inputs; rows are the saved truth, not these.
+    int m_GroupCount = 1;
+    float3_t m_EmissionStep{1.f, 0.f, 0.f};
+    uint32_t m_EmissionDelayStepMs = 0u;
+    float3_t m_SpacingMultiplier{1.f, 1.f, 1.f};
     int m_RingCount = 10;
     f32_t m_RingStartDegrees = 0.f;
     f32_t m_Zoom = 100.f;
     CWorldSequenceDocument m_Document;
     CWorldSequenceDocument m_SavedDocument;
+    std::map<std::string, std::vector<uint32_t>> m_EmissionOrigins;
+    std::set<std::string> m_EditedMotionIds;
+    std::function<bool(std::string&)> m_CanSaveLinked;
+    std::function<bool(bool, std::string&)> m_ApplyLinkedSave;
+    bool m_LinkedSavePending = false;
+    bool m_PublishLinkedPatterns = false;
     WORLD_SEQUENCE_PLACEMENT_MAP m_MapTargets;
     WORLD_SEQUENCE_DEPLOY_MAP m_DeployTargets;
     std::filesystem::path m_SourcePath;
@@ -117,6 +135,9 @@ private:
     std::string m_AnimationModelAssetId;
     std::string m_AnimationCandidateModelAssetId;
     std::string m_AnimationCandidateObjectId;
+    std::string m_MaterialSourceObjectId;
+    std::string m_MaterialSourceCandidate;
+    std::string m_MaterialSourceStatus;
     bool m_AnimationCatalogReady = false;
     std::string m_AnimationResourceStatus;
     std::string m_SelectedAnimationClip;

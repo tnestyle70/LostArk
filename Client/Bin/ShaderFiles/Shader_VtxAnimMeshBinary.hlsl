@@ -94,6 +94,9 @@ SamplerState EffectSliceDepthSampler
 #define LANCE_VA_NATIVE_MODEL_ONLY
 #include "Shader_EffectLanceMasterVANative.hlsli"
 #undef LANCE_VA_NATIVE_MODEL_ONLY
+#define ALTV_NATIVE_CAPTURE_ONLY
+#include "Shader_EffectDimensionMasterALTVNative.hlsli"
+#undef ALTV_NATIVE_CAPTURE_ONLY
 
 struct VS_IN
 {
@@ -377,7 +380,26 @@ float4 PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFace : SV_IsFront
     nativeInput.ambientColor = g_ArtistModelAmbient.rgb;
     // Zero sky inputs reflect the current scene contract; native material math is unchanged.
     float4 color;
-    if ((g_ArtistModelCueProfile >= 560u && g_ArtistModelCueProfile <= 659u) ||
+    if (g_ArtistModelCueProfile == 178u)
+    {
+        ALTV_NATIVE_INPUT captureInput = (ALTV_NATIVE_INPUT)0;
+        captureInput.uv = nativeInput.uv;
+        captureInput.uv1 = input.vSourceExtraUV.xy;
+        captureInput.uvNext = nativeInput.uvNext;
+        captureInput.sourceWorldPosition = nativeInput.sourceWorldPosition;
+        captureInput.sourceBasisX = nativeInput.sourceBasisX;
+        captureInput.sourceBasisZ = nativeInput.sourceBasisZ;
+        captureInput.handedness = nativeInput.handedness;
+        captureInput.vertexColor = nativeInput.vertexColor;
+        captureInput.screenUV = input.vProjPos.xy / input.vProjPos.w * float2(.5f,-.5f) + .5f;
+        captureInput.projectionW = nativeInput.projectionW;
+        captureInput.tangentView = nativeInput.tangentView;
+        captureInput.color = nativeInput.color;
+        captureInput.dynamicParameter = g_ALTVSourceMaterialParameters[8u];
+        captureInput.frontFace = frontFace;
+        color = ALTVNative178(captureInput);
+    }
+    else if ((g_ArtistModelCueProfile >= 560u && g_ArtistModelCueProfile <= 659u) ||
         (g_ArtistModelCueProfile >= 720u && g_ArtistModelCueProfile <= 819u) ||
         g_ArtistModelCueProfile == 1360u)
     {
@@ -495,6 +517,11 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
 VertexShader EffectSourceModelVS = compile vs_5_0 VS_MAIN();
 PixelShader EffectSourceModelPS = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_NATIVE();
 
+// BEGIN SHARED MODEL PASS PROGRAMS
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+PixelShader BinaryAnimatedSurfacePS = compile ps_5_0 PS_MAIN();
+// END SHARED MODEL PASS PROGRAMS
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -502,9 +529,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = BinaryAnimatedSurfacePS;
     }
 
     pass Shadow
@@ -512,7 +539,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
     }
@@ -524,7 +551,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_OPAQUE();
     }
@@ -537,7 +564,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_MASKED();
     }
@@ -550,7 +577,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT();
     }
@@ -560,7 +587,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
     }
@@ -570,9 +597,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = BinaryAnimatedSurfacePS;
     }
     // Appended index 7: recovered translucent skeletal material, existing skinning input.
     pass EffectModelCueNative

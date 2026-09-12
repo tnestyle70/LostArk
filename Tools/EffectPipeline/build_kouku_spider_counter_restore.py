@@ -52,6 +52,8 @@ def project(evidence, material_patch):
         source.project(stage_evidence, index, selected_notifies, selected, records, destination, material_patch)
         doc = source.read(destination / f'effect.kouku.gate1.{ACTION_ID}.full.restore.effect.json')
         doc['effectAssetId'] = asset_id(stage)
+        doc['sourceModelPreview'] = source.source_model_preview(source.ACTION, ACTION_ID, [stage],
+            'GATE2', 'MN_RPCZ_00', 'boss.kakulsaydon.g2.kouku')
         doc['displayName'] = '쿠크 거미카운터 원본 ' + {1: '눈빛·먼지', 2: '돌진·바닥'}[stage]
         assert len(doc['displayName'].encode('utf8')) <= 64
         for element in doc['elements']:

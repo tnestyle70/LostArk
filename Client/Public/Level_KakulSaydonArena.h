@@ -185,6 +185,9 @@ public:
 	   spawned or moved. */
 	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus);
 	bool_t Debug_DespawnArenaBosses(std::string& outStatus);
+	void Debug_SetSequenceCombatPending(bool_t pending);
+	void Debug_HoldSequenceCombatFade();
+	void Debug_RetireGateActivation(const std::string& reason);
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
 	bool_t Is_DebugGatePending() const { return NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
@@ -248,6 +251,7 @@ public:
 	const std::vector<KAKUL_CAMERA_SHOT>& Get_PublishedCameraShots() const { return m_CameraShots; }
 	bool_t Reload_PublishedCameraShots(std::string& outStatus) { return Load_CameraShots(outStatus); }
 	bool_t Ensure_CameraShotAuthoring(std::string& outStatus);
+	bool_t Reload_CameraShotAuthoring(std::string& outStatus);
 	bool_t Create_CameraShot(std::string_view name, std::string& outShotId, std::string& outStatus);
 	bool_t Update_CameraShot(const KAKUL_CAMERA_SHOT& shot, std::string& outStatus);
 	bool_t Capture_CameraShot(std::string_view shotId, std::string& outStatus);
@@ -434,6 +438,9 @@ private:
 	std::string m_strCameraAuthoringBaseline;
 	std::set<std::string> m_DirtyCameraShotIds;
 	bool_t m_bCameraAuthoringLoaded = false;
+	// A failed first load is retried only by the authoring Reload command.
+	bool_t m_bCameraAuthoringLoadAttempted = false;
+	std::string m_strCameraAuthoringLoadFailure;
 	struct COMPOSITION_CAMERA_TRANSITION final
 	{
 		std::string ownerKey;
@@ -475,8 +482,11 @@ private:
 	   that button stays disabled until another gate or Despawn is chosen. */
 	size_t m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
-	std::unordered_set<std::string> m_DebugGatePendingPlacements;
+	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
 	bool_t m_bDebugGateFailed = false;
+	f32_t m_fDebugGatePendingSeconds = 0.f;
+	bool_t m_bSequenceCombatPending = false;
+	bool_t m_bSequenceCombatFadeHeld = false;
 	std::string m_strDebugGateStatus =
 		"Choose a gate. The Server raises its bosses and moves only your player.";
 	/* Last F1 status-word preview serial already turned into a word. */

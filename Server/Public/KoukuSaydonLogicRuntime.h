@@ -67,6 +67,7 @@ namespace LostArk::Server
 		std::uint32_t iPatternSequence = 0u;
 		std::uint32_t iPatternStartTick = 0u;
 		bool bDanceActive = false;
+		std::vector<std::pair<std::uint32_t, std::uint32_t>> ScheduledDanceIntervals;
 		LostArk::Shared::KOUKU_HUD_MODE eHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::vector<KOUKUSAYDON_LOGIC_WINDOW_STATE> Windows;
 		std::vector<std::uint32_t> ContactWindowOrder;

@@ -70,8 +70,8 @@ def unwrap(value):
     return value
 
 
-def extract_scene():
-    package = load_package(PACKAGES / "B9AVB2VAZIQRPQCJVKAVYRAVOKYPY806.upk",
+def extract_scene(package_path=None):
+    package = load_package(package_path or PACKAGES / "B9AVB2VAZIQRPQCJVKAVYRAVOKYPY806.upk",
                            ue3.LOSTARK_KR_AES_KEY)
     original_decoder = ue3.decode_property_value
     def decoder(pt, st, payload, names, bool_value, pn=None, owner=None):
@@ -95,8 +95,9 @@ def extract_scene():
     ue3.decode_property_value = original_decoder
     imports = {str(-x.index - 1): ue3.package_ref_path(-x.index - 1, package.imports, package.exports)
                for x in package.imports}
-    assert rows[394]["p"]["interplength"] == 27
-    assert len(rows[394]["p"]["interpgroups"]) == 98
+    if package_path is None:
+        assert rows[394]["p"]["interplength"] == 27
+        assert len(rows[394]["p"]["interpgroups"]) == 98
     return rows, imports
 
 
@@ -148,18 +149,20 @@ def active_tracks(rows, group):
             if not rows[t]["p"].get("bdisabletrack", False)]
 
 
-def group_actor(rows, group):
+def group_actor(rows, group, matinee=329):
     name = rows[group]["p"].get("groupname")
-    link = next((x for x in rows[329]["p"]["variablelinks"]
+    link = next((x for x in rows[matinee]["p"]["variablelinks"]
                  if x["linkdesc"].casefold() == str(name).casefold()), {})
     return [rows[v]["p"]["objvalue"] for v in link.get("linkedvariables", [])
             if rows[v]["p"].get("objvalue")]
 
 
-def world_pose(rows, group, actor, seconds):
+def world_pose(rows, group, actor, seconds, matinee=329, interp_data=394):
     p = rows[actor]["p"]
     location = vec(p.get("location"))
     base_rot = actor_rotation(p)
+    track_base_position = None
+    track_base_rotation = None
     attached = p.get('base') in BONE_MODELS and p.get('basebonename')
     if attached:
         parent, parent_group, cache = BONE_MODELS[p['base']]
@@ -174,8 +177,10 @@ def world_pose(rows, group, actor, seconds):
         bone=cache[cache_key][idx].copy();bone[3,:3]*=.01
         bone_rot=bone[:3,:3].T
         bone_rot/=np.linalg.norm(bone_rot,axis=0)
-        pp,pr=world_pose(rows,parent_group,p['base'],seconds)
+        pp,pr=world_pose(rows,parent_group,p['base'],seconds,matinee,interp_data)
         scale=rows[p['base']]['p'].get('drawscale',1.)
+        track_base_position=BASIS.T@(pp+pr@(bone[3,:3]*scale))*100
+        track_base_rotation=BASIS.T@(pr@bone_rot)@BASIS
         relative=BASIS@vec(p.get('relativelocation'))*.01
         location_client=pp+pr@(bone[3,:3]*scale+bone_rot@relative)
         relprops={'rotation':p.get('relativerotation',{})}
@@ -185,8 +190,10 @@ def world_pose(rows, group, actor, seconds):
         base_rot=BASIS.T@attached_rot@BASIS
     elif p.get('base') in rows:
         parent=p['base']
-        parent_group=next((g for g in rows[394]['p']['interpgroups']if parent in group_actor(rows,g)),None)
-        pp,pr=world_pose(rows,parent_group,parent,seconds)
+        parent_group=next((g for g in rows[interp_data]['p']['interpgroups']if parent in group_actor(rows,g,matinee)),None)
+        pp,pr=world_pose(rows,parent_group,parent,seconds,matinee,interp_data)
+        track_base_position=BASIS.T@pp*100
+        track_base_rotation=BASIS.T@pr@BASIS
         if 'relativelocation' in p:
             relative=BASIS@vec(p['relativelocation'])*.01
         else:
@@ -205,12 +212,12 @@ def world_pose(rows, group, actor, seconds):
         m = move[0]
         pos_points=copy.deepcopy(m.get("postrack", {}).get("points", []))
         rot_points=copy.deepcopy(m.get("eulertrack", {}).get("points", []))
-        group_names={rows[g]['p'].get('groupname'):g for g in rows[394]['p']['interpgroups']}
+        group_names={rows[g]['p'].get('groupname'):g for g in rows[interp_data]['p']['interpgroups']}
         for n,lookup in enumerate(m.get('lookuptrack',{}).get('points',[])):
             name=lookup.get('groupname','none')
             if name=='none':continue
-            target=group_names[name]; target_actor=group_actor(rows,target)[0]
-            lp,lr=world_pose(rows,target,target_actor,seconds)
+            target=group_names[name]; target_actor=group_actor(rows,target,matinee)[0]
+            lp,lr=world_pose(rows,target,target_actor,seconds,matinee,interp_data)
             ue_rot=BASIS.T@lr@BASIS
             yaw,pitch,roll=Rotation.from_matrix(ue_rot).as_euler('ZYX',degrees=True)
             pos_points[n]['outval']=dict(zip('xyz',BASIS.T@lp*100))
@@ -221,6 +228,12 @@ def world_pose(rows, group, actor, seconds):
         if m.get("moveframe") == "imf_relativetoinitial":
             pos = base_rot @ pos + location
             rot = base_rot @ rot
+        elif track_base_position is not None:
+            # UE3 attached Move keys are stored in the parent/bone frame.
+            # Treating these local keys as absolute world positions strands
+            # camera-attached backgrounds and the popup book's moving props.
+            pos = track_base_rotation @ pos + track_base_position
+            rot = track_base_rotation @ rot
     else:
         pos, rot = location, base_rot
     return BASIS @ pos * .01, BASIS @ rot @ BASIS.T
@@ -273,14 +286,20 @@ def visible_table_mesh(payload):
     """SCENE04A Table overrides material slots 0 and 3 with transparent_inst."""
     nested = list(wm.FILE_HEADER.unpack_from(payload))
     header = list(wm.MESH_HEADER.unpack_from(payload, wm.FILE_HEADER.size))
+    assert nested[:4] == [b"WINT", 1, 0, 0]
+    assert nested[-1] == len(payload) - wm.FILE_HEADER.size
     assert header[1] == 4 and header[4] == 76
     table_start = wm.FILE_HEADER.size + wm.MESH_HEADER.size
     rows = [list(wm.SUBMESH_DESC.unpack_from(payload, table_start+i*wm.SUBMESH_DESC.size)) for i in range(4)]
     vertex_start = table_start + 4*wm.SUBMESH_DESC.size
     index_start = vertex_start + header[5]*header[4]
     tail_start = index_start + header[6]*header[7]
-    vertices, indices, kept = bytearray(), bytearray(), []
-    for row in rows:
+    bone_end = tail_start + header[2] * wm.MESH_BONE.size
+    bounds_stride = 40  # Engine MESH_BOUNDS_V1, one entry per submesh.
+    bounds_end = bone_end + (header[1] * bounds_stride if header[8] else 0)
+    assert bounds_end == len(payload), "Table legacy WMSH has an unsupported tail"
+    vertices, indices, kept, kept_bounds = bytearray(), bytearray(), [], bytearray()
+    for original_slot, row in enumerate(rows):
         if row[4] in (0, 3):
             continue
         original_vertex, count, original_index, index_count = row[:4]
@@ -288,8 +307,11 @@ def visible_table_mesh(payload):
         vertices += payload[vertex_start+original_vertex:vertex_start+original_vertex+count*header[4]]
         indices += payload[index_start+original_index:index_start+original_index+index_count*header[7]]
         kept.append(row)
+        if header[8]:
+            start = bone_end + original_slot * bounds_stride
+            kept_bounds += payload[start:start + bounds_stride]
     header[1], header[5], header[6] = len(kept), len(vertices)//header[4], len(indices)//header[7]
-    body = wm.MESH_HEADER.pack(*header) + b''.join(wm.SUBMESH_DESC.pack(*r)for r in kept) + vertices + indices + payload[tail_start:]
+    body = wm.MESH_HEADER.pack(*header) + b''.join(wm.SUBMESH_DESC.pack(*r)for r in kept) + vertices + indices + payload[tail_start:bone_end] + kept_bounds
     nested[-1] = len(body)
     return wm.FILE_HEADER.pack(*nested)+body
 
@@ -343,7 +365,7 @@ def write_clip(source, destination, model, samples, name, label):
         shutil.copytree(texture_source, destination.parent/"textures", dirs_exist_ok=True)
     check = wm.read_wmodel(destination)
     assert len(check.animations) == 1 and check.animations[0].name == name
-    assert check.animations[0].duration_ticks / check.animations[0].ticks_per_second == 27
+    assert abs(check.animations[0].duration_ticks / check.animations[0].ticks_per_second - (n-1)/30.) < .0001
     return check
 
 
@@ -446,20 +468,29 @@ def make_world(rows, group, actor, resource, label):
     return template,instance,world
 
 
-def make_cameras(rows):
-    director=next(x["p"]["cuttrack"] for x in active_tracks(rows,526) if x["cls"]=="interptrackdirector")
-    groups={rows[g]["p"].get("groupname"):g for g in rows[394]["p"]["interpgroups"]}
+def make_cameras(rows, matinee=329, interp_data=394, duration=DURATION,
+                 prefix=PREFIX, display_name="2관문 진입", range_start=0):
+    directors=[x["p"]["cuttrack"] for g in rows[interp_data]["p"]["interpgroups"]
+               for x in active_tracks(rows,g) if x["cls"]=="interptrackdirector"]
+    assert len(directors)==1, (matinee,"Expected one enabled Director")
+    director=directors[0]
+    groups={rows[g]["p"].get("groupname"):g for g in rows[interp_data]["p"]["interpgroups"]}
     shots=[]
     for n,cut in enumerate(director):
-        start=max(0,round(cut["time"]*1000)); end=round(director[n+1]["time"]*1000) if n+1<len(director) else DURATION
-        group=groups[cut["targetcamgroup"]];actor=group_actor(rows,group)[0]
+        start=max(range_start,round(cut["time"]*1000)); end=min(duration,round(director[n+1]["time"]*1000)) if n+1<len(director) else duration
+        if end<=start:continue
+        group=groups[cut["targetcamgroup"]];actor=group_actor(rows,group,matinee)[0]
         fov_tracks=[x["p"] for x in active_tracks(rows,group) if x["cls"]=="interptrackfloatprop"
                     and x["p"].get("propertyname","").lower()=="fovangle"]
         def sample(ms):
-            p,r=world_pose(rows,group,actor,ms/1000.)
+            p,r=world_pose(rows,group,actor,ms/1000.,matinee,interp_data)
             fov=float(curve(fov_tracks[-1].get("floattrack",{}).get("points",[]),ms/1000.,90.)) if fov_tracks else 90.
             # UE3 FOV is horizontal; current composition viewport is 16:9.
-            fovy=math.degrees(2*math.atan(math.tan(math.radians(fov)/2)/(16/9)))
+            assert 0 < fov <= 180., (matinee,group,ms,fov)
+            # Original zoom keys can hit zero or 180 degrees. Perspective
+            # projection is singular there; retain source keys in evidence and
+            # project into the runtime's strict (1,179) vertical-FOV range.
+            fovy=max(1.1,min(178.9,math.degrees(2*math.atan(math.tan(math.radians(fov)/2)/(16/9)))))
             return p,Rotation.from_matrix(r).as_quat(),fovy
 
         # A fixed 150ms sample missed 63cm of the fast pullback. Reduce against
@@ -489,14 +520,14 @@ def make_cameras(rows):
             for ms in segment_times:
                 p,q,fovy=poses[ms];r=Rotation.from_quat(q).as_matrix()
                 forward=r@np.array([1.,0.,0.])
-                keys.append(dict(sceneId=f"{PREFIX}.camera{len(shots)+1}.k{len(keys)}",timeMs=ms-segment_start,
+                keys.append(dict(sceneId=f"{prefix}.camera{len(shots)+1}.k{len(keys)}",timeMs=ms-segment_start,
                     eye=p.tolist(),lookAt=(p+forward*10).tolist(),up=(r@np.array([0.,1.,0.])).tolist(),fovYDegrees=fovy))
-            shot=dict(shotId=f"{PREFIX}.camera.{len(shots)+1}",displayName=f"2관문 진입 카메라 / {cut['targetcamgroup']}",
+            shot=dict(shotId=f"{prefix}.camera.{len(shots)+1}",displayName=f"{display_name} 카메라 / {cut['targetcamgroup']}",
                 defaultHoldMs=segment_end-segment_start,transitionEasing="LINEAR",activation="PATTERN_ONLY",sequenceInstanceId="",
                 box=dict(center=keys[0]["eye"],halfExtents=[1,1,1],yawDegrees=0),eye=keys[0]["eye"],lookAt=keys[0]["lookAt"],
                 fovYDegrees=keys[0]["fovYDegrees"],blendInMs=0,blendOutMs=0,priority=100,
                 cameraTrack=dict(durationMs=segment_end-segment_start,interpolation="LINEAR",easing="LINEAR",keyframes=keys))
-            shots.append((segment_start,segment_end,shot))
+            shots.append((segment_start-range_start,segment_end-range_start,shot))
     return shots
 
 

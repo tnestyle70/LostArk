@@ -462,6 +462,7 @@ namespace Client
 #ifdef _DEBUG
 		bool_t Begin_DebugPlayerPlacement(LostArk::Shared::WORLD_ID worldId);
 		void Cancel_DebugPlayerPlacement();
+		void Retire_DebugPlayerPlacementRequest(const std::string& reason);
 		/* F1 gate buttons: submits one fixed arena position without a ground
 		pick. Same Server validation, sequence and result path as Move Player. */
 		bool_t Request_DebugTeleportToPosition(

@@ -15,6 +15,9 @@
     {"id": "kouku.category.f204b0c871d711d0dee9", "parentId": "kouku.category.dd3ad69607b344ac7646", "kind": "CATEGORY", "displayName": "마리오"}
   ],
   "references": [
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.donut.warning.impact", "displayName": "도넛 예고·폭발", "parentId": "kouku.category.d767402008919487db6b"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.circle.warning.impact", "displayName": "원형 예고·폭발", "parentId": "kouku.category.d767402008919487db6b"},
     {"kind": "V1", "assetId": "effect.world.mouse_click", "displayName": "Mouse Click", "parentId": "world"},
     {"kind": "V1", "assetId": "effect.world.move_destination", "displayName": "World Move Destination", "parentId": "world"},
     {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.tuning.restore", "displayName": "이펙트_차원술사W_튜닝", "parentId": "root.v1"},
@@ -150,7 +153,7 @@
     {"kind": "V1", "assetId": "effect.kouku.gate3.doll.flame.full.restore", "displayName": "3관문_세이튼_마리오_기괴한 인형 양쪽 화염", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.pentagram.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.portal.full.restore", "displayName": "3관문_세이튼_마리오_중앙 진입 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"},
-    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore", "displayName": "3관문_세이튼_마리오_작은 오망성 원본 후보", "parentId": "kouku.category.f204b0c871d711d0dee9"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore", "displayName": "작은 오망성", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"}
   ]
 }

@@ -1590,10 +1590,12 @@ bool CNetworkManager::Send_ChangeCharacterClass(
 }
 
 bool CNetworkManager::Send_SpawnWorldEntity(
-	const std::string_view placementId)
+	const std::string_view placementId, std::uint64_t* outRequestToken)
 {
 	using namespace LostArk::Shared;
-	if (!Is_Connected())
+	if (outRequestToken) *outRequestToken = 0u;
+	if (!Is_Connected() || m_nextWorldEntitySpawnToken == 0u ||
+		m_WorldEntitySpawnRequests.size() >= MAX_REVISION_CONTROL_QUEUE)
 		return false;
 
 	C2S_SPAWN_WORLD_ENTITY message{};
@@ -1603,10 +1605,20 @@ bool CNetworkManager::Send_SpawnWorldEntity(
 		return false;
 
 	std::vector<std::uint8_t> frameBytes;
-	return Build_Packet_Frame(
-		PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY,
-		payloadWriter.Get_Buffer(),
-		frameBytes) && Send_All(frameBytes);
+	if (!Build_Packet_Frame(PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY,
+		payloadWriter.Get_Buffer(), frameBytes)) return false;
+	const std::uint64_t token = m_nextWorldEntitySpawnToken++;
+	m_WorldEntitySpawnRequests.push_back({ std::string{placementId}, token });
+	if (!Send_All(frameBytes))
+	{
+		// Send_All can close the connection and clear all inbound state.
+		if (!m_WorldEntitySpawnRequests.empty() &&
+			m_WorldEntitySpawnRequests.back().token == token)
+			m_WorldEntitySpawnRequests.pop_back();
+		return false;
+	}
+	if (outRequestToken) *outRequestToken = token;
+	return true;
 }
 
 bool CNetworkManager::Send_DespawnAllWorldEntities(
@@ -2115,11 +2127,14 @@ bool CNetworkManager::Try_Consume_EnterRejected(
 }
 
 bool CNetworkManager::Try_Consume_WorldEntitySpawnResult(
-	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message)
+	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message,
+	std::uint64_t* outRequestToken)
 {
+	if (outRequestToken) *outRequestToken = 0u;
 	if (m_WorldEntitySpawnResults.empty())
 		return false;
-	message = std::move(m_WorldEntitySpawnResults.front());
+	if (outRequestToken) *outRequestToken = m_WorldEntitySpawnResults.front().token;
+	message = std::move(m_WorldEntitySpawnResults.front().message);
 	m_WorldEntitySpawnResults.pop_front();
 	return true;
 }
@@ -2324,6 +2339,9 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugMadnessFormResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
+	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
+	// If that ordering changes, spawn replies need an echoed wire request token.
+	m_WorldEntitySpawnRequests.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
 	m_ValtanPatternAuditionByIdResults.clear();
@@ -3578,7 +3596,18 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			m_iLastErrorCode.store(WSAEINVAL);
 			return;
 		}
-		m_WorldEntitySpawnResults.push_back(std::move(result));
+		std::uint64_t token = 0u;
+		const auto request = std::find_if(m_WorldEntitySpawnRequests.begin(),
+			m_WorldEntitySpawnRequests.end(), [&result](const auto& item)
+			{ return item.placementId == result.strPlacementId; });
+		if (request != m_WorldEntitySpawnRequests.end())
+		{
+			token = request->token;
+			m_WorldEntitySpawnRequests.erase(request);
+		}
+		if (m_WorldEntitySpawnResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+			m_WorldEntitySpawnResults.pop_front();
+		m_WorldEntitySpawnResults.push_back({ std::move(result), token });
 		break;
 	}
 	case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:

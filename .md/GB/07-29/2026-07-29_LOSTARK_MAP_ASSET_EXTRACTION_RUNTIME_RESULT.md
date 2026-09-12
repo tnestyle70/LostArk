@@ -6,6 +6,8 @@
 
 이 문서는 다른 세션이 발탄 직명 17개만 보고 조사를 끝내거나, 이미 끝난 전체 BG 추출과 `.wmodel` 변환을 처음부터 반복하지 않도록 현재 조사 결과와 재현 절차를 한곳에 고정한다. 특히 **발탄 레벨 식별 → UE3 ImportTable 완전 복구 → 원본 glTF 역매핑 → 갤러리 검수 → 명시적 allowlist → MapTool 설치**의 전체 흐름과 각 단계의 증거 수준을 분리한다.
 
+모델 검색·geometry 변환 다음에는 [오브젝트 재질·환경 입력 공통 절차](../렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)를 수행한다. 이 문서의 당시 추출 개수·archive 성공은 native 재질이나 환경 반사의 적용 개수가 아니다. D/N/S 외에 원본 MIC/permutation, mask·roughness·IBL/BRDF와 실제 loader descriptor, 장면 조명을 확인하고 [Converter 사용법](../../../Tools/ModelAssetConverter/README.md) 및 [Area 재질 계약](../../TEAM/AREA_DATA_LAYER_GUIDE.md)에 따라 게시한다. 기존 비교 갤러리는 당시 증거이며 새 Client/UI 캡처 절차로 재사용하지 않는다.
+
 ## 1. 먼저 내릴 결론
 
 1. `BG_RAD_VALTAN_A`라는 이름으로 직접 export된 StaticMesh는 17개가 맞다. 그러나 이것은 **발탄 레벨 전체 사용 에셋 목록이 아니라, 이름이 발탄인 한 BG 패키지의 export 목록**이다.

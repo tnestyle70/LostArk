@@ -7,6 +7,7 @@ Run without --apply to inspect. Originals are retained under out before writes.
 """
 import argparse
 import hashlib
+import os
 from pathlib import Path
 import struct
 
@@ -31,8 +32,11 @@ def require(condition, message):
 
 def corrected(data, material_name, diffuse):
     require(len(data) > 176, 'Truncated WModel')
-    require(struct.unpack_from('<4sHHII', data) ==
-            (b'WINT', 1, 0, 0, len(data) - 16), 'Unexpected WModel header')
+    magic, major, minor, flags, size = struct.unpack_from('<4sHHII', data)
+    # 1.1/1.2 add static mesh attributes; the WMA2 payload below is unchanged.
+    # Recovered UV/color models must receive the same exact material repair.
+    require(magic == b'WINT' and major == 1 and minor in (0, 1, 2)
+            and flags == 0 and size == len(data) - 16, 'Unexpected WModel header')
     require(struct.unpack_from('<4sIII4I', data, 16) ==
             (b'WMOD', 2, 0, 0, 0, 0, 0, 0), 'Unexpected model section count')
     sections = [struct.unpack_from('<IIQQ40s', data, 48 + i * 64) for i in range(2)]
@@ -95,12 +99,27 @@ def main():
             require(path.read_bytes() == original, f'Concurrent resource edit: {path}')
             if original == replacement:
                 continue
-            written.append((path, original))
-            path.write_bytes(replacement)
-            require(path.read_bytes() == replacement, f'Readback failed: {path}')
+            temporary = path.with_name(path.name + f'.repair.{os.getpid()}.tmp')
+            require(not temporary.exists(), f'Existing repair temporary: {temporary}')
+            try:
+                temporary.write_bytes(replacement)
+                require(path.read_bytes() == original, f'Concurrent resource edit: {path}')
+                os.replace(temporary, path)
+                written.append((path, original, replacement))
+                require(path.read_bytes() == replacement, f'Readback failed: {path}')
+            finally:
+                temporary.unlink(missing_ok=True)
     except BaseException:
-        for path, original in reversed(written):
-            path.write_bytes(original)
+        for path, original, replacement in reversed(written):
+            # Never roll back over a third party's newer bytes.
+            require(path.read_bytes() == replacement, f'Concurrent edit prevents rollback: {path}')
+            temporary = path.with_name(path.name + f'.rollback.{os.getpid()}.tmp')
+            require(not temporary.exists(), f'Existing rollback temporary: {temporary}')
+            try:
+                temporary.write_bytes(original)
+                os.replace(temporary, path)
+            finally:
+                temporary.unlink(missing_ok=True)
         raise
     print(f'Applied {len(written)} material repairs; backups: {backup_root}')
 

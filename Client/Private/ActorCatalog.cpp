@@ -4,6 +4,7 @@
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "SourceCharacterMaterialParameters.h"
+#include "BinaryAsset/ModelDecoderRegistry.h"
 
 #include <algorithm>
 #include <fstream>
@@ -919,6 +920,43 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
         const auto found = g_BossModelMaterials.find(asset);
         if (found != g_BossModelMaterials.end()) staged.materialOverrides = found->second;
     }
+	outDesc = std::move(staged);
+	outStatus.clear();
+	return true;
+}
+
+bool_t Client::CActorCatalog::Build_DerivedModelLoadDescription(
+	const std::string_view modelAssetId, const std::string_view materialSourceModelAssetId,
+	Engine::MODEL_ASSET_LOAD_DESC& outDesc, std::string& outStatus)
+{
+	if (materialSourceModelAssetId.empty())
+		return Build_ModelLoadDescription(modelAssetId, outDesc, outStatus);
+	const auto target = CRuntimeAssetRoot::Resolve(modelAssetId);
+	if (!IsModelResourceId(std::string(modelAssetId)) || target.empty())
+	{ outStatus = "Derived model is not a Resources-relative identity: " + std::string(modelAssetId); return false; }
+	Engine::MODEL_ASSET_LOAD_DESC staged;
+	if (!Build_ModelLoadDescription(materialSourceModelAssetId, staged, outStatus)) return false;
+	if (staged.materialOverrides.empty())
+	{ outStatus = "Original model has no catalog material overrides: " + std::string(materialSourceModelAssetId); return false; }
+	std::error_code error;
+	if (!std::filesystem::is_regular_file(staged.meshPath, error) || error)
+	{ outStatus = "Original model resource is absent: " + std::string(materialSourceModelAssetId); return false; }
+	for (const auto& material : staged.materialOverrides)
+		for (const auto& texture : material.sourceCharacterTextures)
+			if (!texture.path.empty() && (!std::filesystem::is_regular_file(texture.path, error) || error))
+			{ outStatus = "Original material texture is absent: " + texture.path.string(); return false; }
+	staged.meshPath = target;
+	Engine::MODEL_ASSET_DATA asset;
+	if (!Engine::CModelDecoderRegistry::Get().Decode(staged, asset))
+	{ outStatus = "Derived model material slots cannot be read: " + std::string(modelAssetId) + ": " +
+		Engine::CModelDecoderRegistry::Get().Get_LastReport().error; return false; }
+	for (const auto& material : staged.materialOverrides)
+	{
+		const auto count = std::count_if(asset.materials.begin(), asset.materials.end(),
+			[&](const auto& row) { return row.name == material.materialName; });
+		if (count != 1)
+		{ outStatus = "Derived model must retain one original material slot: " + material.materialName + " / " + std::string(modelAssetId); return false; }
+	}
 	outDesc = std::move(staged);
 	outStatus.clear();
 	return true;

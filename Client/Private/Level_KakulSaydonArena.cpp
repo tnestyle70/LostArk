@@ -103,7 +103,7 @@ namespace
 		"SOURCE_LEVEL_ID_ONLY";
 
 	constexpr std::string_view CAMERA_SHOT_SCHEMA = "lostark.camera-shots";
-	constexpr size_t CAMERA_SHOT_MAX_COUNT = 64u;
+	constexpr size_t CAMERA_SHOT_MAX_COUNT = 128u;
 	constexpr uint32_t CAMERA_SHOT_MAX_BLEND_MS = 10000u;
 	constexpr uint32_t CAMERA_SHOT_MAX_PRIORITY = 1000u;
 	constexpr f32_t CAMERA_SHOT_MAX_HALF_EXTENT = 1000.f;
@@ -588,11 +588,19 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	for (const auto& cue : cues)
 	{
 		const auto* instance = document.Find_Instance(cue.instanceId);
-		if (nullptr == instance || !instance->enabled || 0u == cue.durationMs ||
-			!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f ||
-			!Is_StableId(cue.occurrenceId) || staged.contains(cue.occurrenceId))
+		const char* rejection = nullptr;
+		if (nullptr == instance) rejection = "instance is missing from the loaded Area document";
+		else if (!instance->enabled) rejection = "instance is disabled";
+		else if (0u == cue.durationMs) rejection = "duration is zero";
+		else if (!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f)
+			rejection = "playback speed must be finite and positive";
+		else if (!Is_StableId(cue.occurrenceId)) rejection = "occurrence ID is invalid";
+		else if (staged.contains(cue.occurrenceId)) rejection = "occurrence ID is duplicated";
+		if (rejection)
 		{
-			status = "WORLD preview occurrence is invalid, duplicate, or unavailable: " + cue.occurrenceId;
+			status = "WORLD preview " + cue.occurrenceId + ": " + rejection +
+				" [instance=" + cue.instanceId + ", revision=" + std::to_string(document.Get_Revision()) +
+				", document=" + (sourceDocument ? "supplied snapshot" : "runtime") + "]";
 			return false;
 		}
 		if (!Can_StartCompositionWorld(cue.instanceId, status, &document)) return false;
@@ -981,6 +989,16 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 				"[Level_KakulSaydonArena][WorldSequence] " +
 				m_SequencePlayer.Get_Status() + "\n").c_str());
 		}
+		else
+		{
+			CProfilerScope prepareScope(pProfiler, "Level.Kouku.JokerCards.Prewarm");
+			// The encounter's six normal cards and one joker reuse these hidden clones.
+			// Prepare during arena entry, before the first Pattern 13 spawn frame.
+			if (!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.card", 6u, sequenceTargets) ||
+				!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.joker_card", 1u, sequenceTargets))
+				OutputDebugStringA(("[Level_KakulSaydonArena][JokerPrewarm] " +
+					m_SequencePlayer.Get_Status() + "\n").c_str());
+		}
 	}
 
 	std::string stageStatus;
@@ -1141,8 +1159,14 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	/* Gate spawn replies arrive one per requested placement. They are Debug
 	   status only; the presentation itself follows the reliable spawn stream. */
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
-	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(spawnResult))
+	std::uint64_t spawnRequestToken = 0u;
+	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(spawnResult, &spawnRequestToken))
 	{
+		const auto pending = m_DebugGatePendingPlacements.find(spawnResult.strPlacementId);
+		if (pending == m_DebugGatePendingPlacements.end() ||
+			spawnRequestToken == 0u || pending->second != spawnRequestToken)
+			continue;
+		m_DebugGatePendingPlacements.erase(pending);
 		const char_t* pResult = "unsupported result";
 		switch (spawnResult.eResult)
 		{
@@ -1156,12 +1180,20 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			pResult = "rejected by Server"; break;
 		default: break;
 		}
-		if (0u != m_DebugGatePendingPlacements.erase(spawnResult.strPlacementId) &&
-			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::SPAWNED != spawnResult.eResult &&
+		if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::SPAWNED != spawnResult.eResult &&
 			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS != spawnResult.eResult &&
 			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ACTIVATED != spawnResult.eResult)
 			m_bDebugGateFailed = true;
 		m_strDebugGateStatus += "\n" + spawnResult.strPlacementId + ": " + pResult;
+	}
+	if (Is_DebugGatePending())
+	{
+		m_fDebugGatePendingSeconds += fTimeDelta;
+		if (m_fDebugGatePendingSeconds >= 15.f)
+		{
+			Debug_RetireGateActivation(
+				"Server Gate activation timed out before all spawn and movement approvals arrived.");
+		}
 	}
 	if (Is_DebugGatePending() && m_DebugGatePendingPlacements.empty() &&
 		!m_PlayerController.Is_DebugPlayerPlacementPending())
@@ -1171,7 +1203,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
 			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
-			CCombatHUDViewModel::Get().Set_BossHidden(nullptr == gate.pHudFocusArchetypeId);
+			CCombatHUDViewModel::Get().Set_BossHidden(m_bSequenceCombatPending || nullptr == gate.pHudFocusArchetypeId);
 			CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(
 				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
@@ -1325,9 +1357,13 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			return shot.hasCameraTrack && !shot.strSequenceInstanceId.empty() &&
 				m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
 		});
+	bool_t sequenceInputReady = true;
+#ifdef _DEBUG
+	sequenceInputReady = !m_bSequenceCombatPending && !Is_DebugGatePending();
+#endif
 	m_PlayerController.Update(
-		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
-		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
+		sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
+		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
 	Update_EntranceTriggerMarkers(fTimeDelta);
@@ -2132,6 +2168,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(true);
 	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_iPendingDebugGate = gateIndex;
+	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = false;
 	m_DebugGatePendingPlacements.clear();
 	std::size_t spawnRequests = 0u;
@@ -2139,14 +2176,15 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	{
 		if (nullptr == pPlacementId)
 			continue;
-		if (!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(pPlacementId))
+		std::uint64_t requestToken = 0u;
+		if (!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(pPlacementId, &requestToken))
 		{
 			m_bDebugGateFailed = true;
 			outStatus = m_strDebugGateStatus =
 				label + ": spawn command was rejected for " + pPlacementId;
 			return false;
 		}
-		m_DebugGatePendingPlacements.emplace(pPlacementId);
+		m_DebugGatePendingPlacements.emplace(pPlacementId, requestToken);
 		++spawnRequests;
 	}
 	const bool_t teleportSubmitted = m_PlayerController.Request_DebugTeleportToPosition(
@@ -2166,6 +2204,43 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	}
 	outStatus = m_strDebugGateStatus;
 	return teleportSubmitted;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::string& reason)
+{
+	if (!Is_DebugGatePending()) return;
+	const std::string finalReason = reason;
+	m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	m_DebugGatePendingPlacements.clear();
+	m_fDebugGatePendingSeconds = 0.f;
+	m_bDebugGateFailed = true;
+	m_strDebugGateStatus = finalReason;
+	m_PlayerController.Retire_DebugPlayerPlacementRequest(finalReason);
+	CCombatHUDViewModel::Get().Set_BossFocusArchetype("");
+	CCombatHUDViewModel::Get().Set_BossHidden(true);
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss("", "");
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_SetSequenceCombatPending(const bool_t pending)
+{
+	m_bSequenceCombatPending = pending;
+	if (!pending) m_bSequenceCombatFadeHeld = false;
+	CCombatHUDViewModel::Get().Set_BossHidden(pending || m_iActiveDebugGate == NO_ACTIVE_DEBUG_GATE);
+	if (!Is_DebugGatePending())
+		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(pending);
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_HoldSequenceCombatFade()
+{
+	m_bSequenceCombatFadeHeld = true;
+	m_fTriggerMoveFadeAlpha = 1.f;
+	if (m_pTriggerMoveFadeView)
+	{
+		m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", true);
+		m_pTriggerMoveFadeView->Set_SlotTint("KakulFade_Screen", float4_t(0.f, 0.f, 0.f, 1.f));
+	}
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_DespawnArenaBosses(std::string& outStatus)
@@ -2500,24 +2575,49 @@ bool_t Client::CLevel_KakulSaydonArena::Save_CameraShotSource(const std::string_
 bool_t Client::CLevel_KakulSaydonArena::Ensure_CameraShotAuthoring(std::string& outStatus)
 {
 	if (m_bCameraAuthoringLoaded) return true;
+	if (m_bCameraAuthoringLoadAttempted)
+	{
+		outStatus = m_strCameraAuthoringLoadFailure;
+		return false;
+	}
+	return Reload_CameraShotAuthoring(outStatus);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Reload_CameraShotAuthoring(std::string& outStatus)
+{
+	if (!m_DirtyCameraShotIds.empty())
+	{ outStatus = "Save the Camera draft before Reload Cameras; unsaved shots were preserved."; return false; }
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.CameraAuthoring.Load");
+	m_bCameraAuthoringLoadAttempted = true;
+	const auto fail = [&](std::string reason) {
+		m_strCameraAuthoringLoadFailure = std::move(reason);
+		outStatus = m_strCameraAuthoringLoadFailure;
+		return false;
+	};
 	const auto path = Camera_AuthoringPath();
 	std::error_code error;
 	std::string text;
 	if (std::filesystem::exists(path, error))
 	{
-		if (error || std::filesystem::file_size(path, error) > 256u * 1024u || error)
-		{ outStatus = "Camera authoring source exceeds 256 KiB or cannot be read."; return false; }
+		const auto bytes = std::filesystem::file_size(path, error);
+		if (error || bytes > 2u * 1024u * 1024u)
+			return fail("Camera authoring source exceeds 2 MiB or cannot be read.");
+		if (bytes == 0u) return fail("Camera authoring source is empty or unreadable.");
 		std::ifstream input(path, std::ios::binary);
-		if (!input) { outStatus = "Cannot open Camera authoring source."; return false; }
-		text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-		if (input.bad() || text.empty()) { outStatus = "Camera authoring source is empty or unreadable."; return false; }
+		if (!input) return fail("Cannot open Camera authoring source.");
+		text.resize(static_cast<std::size_t>(bytes));
+		input.read(text.data(), static_cast<std::streamsize>(text.size()));
+		if (!input || input.peek() != std::char_traits<char>::eof())
+			return fail("Camera authoring source changed while reading or is unreadable.");
 	}
-	else if (error) { outStatus = "Cannot inspect Camera authoring source."; return false; }
+	else if (error) return fail("Cannot inspect Camera authoring source.");
 	std::vector<KAKUL_CAMERA_SHOT> staged;
-	if (!Parse_CameraShots(text.empty() ? Camera_EmptyDocument() : text, staged, outStatus)) return false;
+	if (!Parse_CameraShots(text.empty() ? Camera_EmptyDocument() : text, staged, outStatus))
+		return fail(outStatus);
 	m_AuthoringCameraShots = std::move(staged);
 	m_strCameraAuthoringBaseline = std::move(text);
 	m_bCameraAuthoringLoaded = true;
+	m_strCameraAuthoringLoadFailure.clear();
 	return true;
 }
 
@@ -2526,7 +2626,7 @@ bool_t Client::CLevel_KakulSaydonArena::Create_CameraShot(const std::string_view
 {
 	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
 	if (m_AuthoringCameraShots.size() >= CAMERA_SHOT_MAX_COUNT)
-	{ outStatus = "Camera shot limit is 64."; return false; }
+	{ outStatus = "Camera shot limit is 128."; return false; }
 	KAKUL_CAMERA_SHOT shot;
 	for (uint32_t ordinal = 1u; ordinal <= CAMERA_SHOT_MAX_COUNT + 1u; ++ordinal)
 	{
@@ -2644,9 +2744,9 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		return true;
 	}
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
-	if (fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
+	if (fileError || 0u == fileBytes || fileBytes > 2u * 1024u * 1024u)
 	{
-		outStatus = "KoukuSaydon camera shot document is empty or exceeds 256 KiB.";
+		outStatus = "KoukuSaydon camera shot document is empty or exceeds 2 MiB.";
 		return false;
 	}
 	std::ifstream input(path, std::ios::binary);
@@ -2677,9 +2777,11 @@ bool_t Client::CLevel_KakulSaydonArena::Parse_CameraShots(
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	DATA_JSON_PARSE_LIMITS limits{};
-	limits.iMaximumBytes = 256u * 1024u;
+	limits.iMaximumBytes = 2u * 1024u * 1024u;
 	limits.iMaximumDepth = 12u;
-	limits.iMaximumValues = 4096u;
+	// The document supports 128 shots with 64 keys each, including eye/lookAt/up.
+	// Keep the byte/depth and per-shot/key bounds; 4096 values rejected valid tracks.
+	limits.iMaximumValues = 128u * 1024u;
 	if (!CDataJson::Parse(text, root, parseError, limits) ||
 		!Has_ExactProperties(root,
 			{ "schema", "formatVersion", "areaId", "revision", "shots" }))
@@ -3055,6 +3157,13 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 	if (nullptr == m_pTriggerMoveFadeView)
 		return;
 
+#ifdef _DEBUG
+	if (m_bSequenceCombatFadeHeld)
+	{
+		Debug_HoldSequenceCombatFade();
+		return;
+	}
+#endif
 	using LostArk::Shared::PLAYER_ACTION_STATE;
 	const auto& maze = CCombatHUDViewModel::Get().Get_KoukuGimmick().CardMaze;
 	if (maze.transferStartTick)

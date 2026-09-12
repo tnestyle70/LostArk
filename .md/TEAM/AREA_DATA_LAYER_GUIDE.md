@@ -274,10 +274,20 @@ Area scope는 같은 transaction에서 stage한 catalog·placement를 검증 기
 `CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
 오브젝트 재생 runtime을 만들지 않는다.
 
-World Object의 optional `materialSourceModelAssetId`는 새 cinematic WModel이 사용할 원래 actor
-재질의 Resources-relative 모델 ID다. 실제 모델과 원래 모델의 material slot 이름이 같아야 하며,
-`CActorCatalog`가 승인한 material override를 새 `CModel` 로드에 적용한다. 원래 재질이 없으면
-재생 준비가 실패하고 기존 객체를 유지한다.
+World Object의 optional `materialSourceModelAssetId`는 정적·애니메이션 등 파생 WModel이 사용할
+원래 actor/weapon 재질의 Resources-relative 모델 ID다. `CActorCatalog::Build_DerivedModelLoadDescription`은
+원본 catalog override와 target WModel의 실제 slot을 검사한 뒤 기존 `CModel → CMaterial` 로드에
+native family/program, texture/sampler, named parameter와 IBL/BRDF 입력을 함께 전달한다.
+명시 source가 없으면 실제 model ID의 기존 catalog 동작을 유지한다. 명시 source의 원래 재질이나
+대응 slot이 없으면 준비가 실패하고 기존 객체와 출력 descriptor를 보존한다.
+
+World Object Tool의 `Material Source Model` → `Apply Material Source`는 같은 검사를 통과한 뒤
+source ID만 draft에 반영한다. 모델 교체 때도 기존 source와 새 target의 호환성을 검사한다.
+Save와 Map publisher는 같은 field를 보존·검사하며 추출 generator도 승인된 source 모델에서 파생한
+출력에 그 연결을 전달한다. inline `materialProfile`과 명시 map binding의 기존 우선순위는 유지한다.
+이 field는 서로 다른 원본 MIC에 재질을 일괄 복사하는 기능이 아니다. 일반 WMA2 texture만 있는
+객체의 원본 shader 복원이 완료됐음을 뜻하지도 않는다. 공통 추출 절차는
+[렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)를 따른다.
 
 optional `mapMaterialBindings`는 최대 64개 `{ materialName, sourceAssetId, sourceMaterialName,
 diffuseTextureAssetId? }`다. target `materialName`은 새 WModel의 실제 slot이고 source는 해당

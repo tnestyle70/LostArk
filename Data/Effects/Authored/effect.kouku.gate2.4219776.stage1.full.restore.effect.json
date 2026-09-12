@@ -6868,5 +6868,20 @@
         "parameters": []
       }
     }
-  ]
+  ],
+  "sourceModelPreview": {
+    "gateId": "GATE2",
+    "actorProfileId": "MN_RPCZ_00",
+    "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+    "animations": [
+      {
+        "runtimeClip": "rpcz00_att_battle_6_02",
+        "startOffsetMs": 0,
+        "sourceStartMs": 0,
+        "playMs": 1000,
+        "playRate": 1,
+        "endPolicy": "HOLD_LAST_POSE"
+      }
+    ]
+  }
 }

@@ -1269,6 +1269,41 @@ namespace
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 402u, events, output);
         tests.Require(output.FollowupPatternIds.empty(), "A closed counter window cannot queue groggy twice");
 
+        // A Parent deadline cancels the child verdict and keeps a longer Parent window alive.
+        BOSS_PATTERN_LOGIC_WINDOW parentWindow{};
+        parentWindow.strWindowId = "fear.pattern.logic.1";
+        parentWindow.eKind = BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL;
+        parentWindow.iDurationMs = 2000u;
+        BOSS_PATTERN_LOGIC_WINDOW childWindow = counter;
+        childWindow.strWindowId = "fear.pattern.pattern.1.r0.logic.1";
+        childWindow.bEndsPatternOnSuccess = false;
+        childWindow.bCancelAtEnd = true;
+        childWindow.OnTimeout = {followup};
+        pattern.LogicWindows = {parentWindow, childWindow};
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 450u, ledger);
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 450u, events, output);
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 480u, events, output);
+        tests.Require(!ledger.Windows[0].bClosed && ledger.Windows[1].bClosed &&
+            output.FollowupPatternIds.empty() && !output.bEndPatternEarly,
+            "Scheduled child deadline cancels timeout outcomes while Parent judgement remains active");
+
+        BOSS_PATTERN_LOGIC_WINDOW scheduledPose{};
+        scheduledPose.strWindowId = "fear.pattern.pattern.2.r0.logic.1";
+        scheduledPose.eKind = BOSS_PATTERN_LOGIC_KIND::POSE_INPUT;
+        scheduledPose.iStartMs = 1000u; scheduledPose.iDurationMs = 1000u;
+        pattern.LogicWindows = {scheduledPose};
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 500u, ledger);
+        players.clear(); players.emplace(1u, player);
+        CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, nullptr, 529u);
+        const auto beforeDance = players.at(1u).eKoukuHudMode;
+        CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, nullptr, 530u);
+        const auto duringDance = players.at(1u).eKoukuHudMode;
+        CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, nullptr, 560u);
+        tests.Require(beforeDance != KOUKU_HUD_MODE::DANCE && duringDance == KOUKU_HUD_MODE::DANCE &&
+            players.at(1u).eKoukuHudMode != KOUKU_HUD_MODE::DANCE,
+            "Scheduled child dance HUD opens on its own interval and releases at the deadline");
+
         BOSS_PATTERN_LOGIC_WINDOW charge{};
         charge.strWindowId = "charge.1"; charge.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
         tests.Require(charge.fChargeYawOffsetDegrees == 0.f, "Legacy charge facing offset defaults to zero");

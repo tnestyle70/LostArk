@@ -200,7 +200,13 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	}
 	std::uint64_t patternDurationMs = 0u;
 	for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+	{
+		if (pattern.bFixedTimelineClock &&
+			((patternDurationMs + stage.iDurationMs) * SERVER_TICK_HZ + 999u) / 1000u <=
+			(patternDurationMs * SERVER_TICK_HZ + 999u) / 1000u)
+		{ status = "Parent stage boundaries must occupy distinct Server ticks"; return false; }
 		patternDurationMs += stage.iDurationMs;
+	}
 	if (pattern.BossMotion)
 	{
 		const auto& motion = *pattern.BossMotion;
@@ -626,6 +632,34 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 		return KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION;
 	}
 	Apply_BossMotion(boss, *pattern, serverTick);
+	if (pattern->bFixedTimelineClock)
+	{
+		// Parent stage boundaries share the Logic/effect clock. Rounding each
+		// separate stage would accumulate delay before the next authored phase.
+		const std::uint64_t ticks = serverTick >= boss.iPatternStartTick ? serverTick - boss.iPatternStartTick :
+			static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
+		std::uint64_t startMs = 0u;
+		std::uint32_t selected = 0u;
+		while (selected < pattern->Stages.size() &&
+			ticks * MILLISECONDS_PER_SECOND >= (startMs + pattern->Stages[selected].iDurationMs) * SERVER_TICK_HZ)
+			startMs += pattern->Stages[selected++].iDurationMs;
+		if (selected == pattern->Stages.size())
+		{
+			Finish_Pattern(boss, serverTick, SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED);
+			status.clear();
+			return KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED;
+		}
+		const bool changed = selected != boss.iPatternStageIndex;
+		if (changed) Enter_Stage(boss, pattern->Stages[selected], selected, serverTick, false);
+		const auto offset = static_cast<std::uint32_t>((startMs * SERVER_TICK_HZ + MILLISECONDS_PER_SECOND - 1u) / MILLISECONDS_PER_SECOND);
+		boss.iActionStartTick = boss.iPatternStartTick + offset;
+		if (boss.iActionStartTick < boss.iPatternStartTick) ++boss.iActionStartTick;
+		if (boss.iActionStartTick == 0u) boss.iActionStartTick = 1u;
+		boss.fActionElapsedSeconds = static_cast<float>((std::max)(0.0,
+			static_cast<double>(ticks) / SERVER_TICK_HZ - static_cast<double>(startMs) / MILLISECONDS_PER_SECOND));
+		status.clear();
+		return changed ? KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED : KOUKUSAYDON_BRAIN_UPDATE_RESULT::RUNNING;
+	}
 	const std::uint64_t elapsedTicks = Stage_ElapsedTicks(boss, serverTick);
 	boss.fActionElapsedSeconds = static_cast<float>(elapsedTicks) /
 		static_cast<float>(SERVER_TICK_HZ);

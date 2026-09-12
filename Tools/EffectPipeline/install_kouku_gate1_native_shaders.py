@@ -1,4 +1,4 @@
-"""Install only the reviewed Kouku 2304 group into the existing native carrier.
+"""Install reviewed Kouku programs in bounded 64-profile native shader groups.
 
 Run build_kouku_gate1_native_shader_programs.py first.
 Existing character program groups and project registrations remain untouched.
@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def update(path, transform):
-    original = path.read_bytes()
+    original = path.read_bytes() if path.is_file() else b""
     newline = "\r\n" if b"\r\n" in original else "\n"
     text = original.decode("utf8").replace("\r\n", "\n")
     result = transform(text).replace("\n", newline).encode("utf8")
@@ -27,6 +27,157 @@ def section(text, name, body, marker):
     text = re.sub(re.escape(begin) + r".*?" + re.escape(end), "", text, flags=re.S)
     assert text.count(marker) == 1, marker
     return text.replace(marker, begin + body + end + marker, 1)
+
+
+def conditional_blocks(text):
+    """Keep every complete generated carrier guard and its body together."""
+    blocks, current, depth = [], [], 0
+    for line in text.splitlines(keepends=True):
+        stripped = line.strip()
+        if not depth:
+            if not stripped or stripped.startswith('//'):
+                continue
+            assert stripped.startswith(('#if ', '#ifdef ', '#ifndef ')), stripped
+        current.append(line)
+        if stripped.startswith(('#if ', '#ifdef ', '#ifndef ')):
+            depth += 1
+        elif stripped == '#endif':
+            depth -= 1
+            assert depth >= 0
+            if not depth:
+                blocks.append(''.join(current))
+                current = []
+    assert not depth and not current, 'Unclosed generated carrier guard'
+    return blocks
+
+
+def installed_kouku_programs(shaders):
+    paths = sorted(shaders.glob('Shader_EffectKoukuNativeGroup*.hlsli'))
+    programs = set()
+    for path in paths:
+        current = {int(value) for value in re.findall(r'float4 ArtistNative(\d+)\(', path.read_text(encoding='utf8'))}
+        assert not programs.intersection(current), ('Duplicate installed Kouku program', path)
+        programs.update(current)
+    return programs
+
+
+def install_partitioned_groups(shader_text, case_text):
+    """Generate declarations, dispatch, runtime selection and project inputs together."""
+    shaders = ROOT / 'Client/Bin/ShaderFiles'
+    groups, functions = {}, set()
+    for block in conditional_blocks(shader_text):
+        names = re.findall(r'float4 (ArtistNative(\d+)(?:Distortion)?)\(', block)
+        assert len(names) == 1, 'A carrier block must contain one native function'
+        name, number = names[0]
+        number = int(number)
+        assert 2304 <= number <= 3711 and name not in functions, name
+        assert not re.search(r'\bprojection\[', block) or re.search(r'float4\s+projection\[4\]', block), (
+            'Stale generated projection adapter; regenerate this source cohort with '
+            'generate_artist_native_runtime_shader.py before installing', name)
+        functions.add(name)
+        groups.setdefault(number // 64 * 64, []).append(block)
+    # Generic Decal/Trail carriers retain the legacy profile-group 2304 macro.
+    # Open only their own Kouku blocks across the new buckets; other families
+    # and Mesh/Particle wrappers keep their original group filtering.
+    def group_condition(group, shared_carriers=()):
+        condition = f'!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {group}'
+        return condition + ''.join(f' || defined(EFFECT_NATIVE_{carrier.upper()}_CARRIER)' for carrier in shared_carriers)
+    cases, programs, carrier_groups = [], set(), {carrier: set() for carrier in ('Mesh', 'Particle', 'Decal', 'Trail')}
+    for block in conditional_blocks(case_text):
+        ids = re.findall(r'case (\d+)u:', block)
+        assert len(ids) == 1
+        number = int(ids[0])
+        assert number not in programs and f'ArtistNative{number}' in functions
+        programs.add(number)
+        group = number // 64 * 64
+        shared_carriers = [carrier for carrier in ('Decal', 'Trail')
+                           if f'!defined(EFFECT_NATIVE_{carrier.upper()}_CARRIER)' not in block]
+        block, count = re.subn(
+            r'!defined\(EFFECT_NATIVE_PROFILE_GROUP\) \|\| EFFECT_NATIVE_PROFILE_GROUP == \d+'
+            r'(?: \|\| defined\(EFFECT_NATIVE_(?:DECAL|TRAIL)_CARRIER\))*',
+            group_condition(group, shared_carriers), block)
+        assert count == 1
+        cases.append(block)
+        for carrier, buckets in carrier_groups.items():
+            if f'!defined(EFFECT_NATIVE_{carrier.upper()}_CARRIER)' not in block:
+                buckets.add(group)
+    assert {int(name.removeprefix('ArtistNative')) for name in functions if not name.endswith('Distortion')} == programs
+    assert installed_kouku_programs(shaders) <= programs, 'Supply every installed Kouku native program'
+    # The separately restored World markers retain their definitions and dispatch.
+    # Their native2351..2359 profiles live in the first 64-profile carrier bucket.
+    artist = (shaders / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
+    world = re.search(r'// BEGIN WORLD NATIVE CASES\n(.*?)// END WORLD NATIVE CASES', artist, re.S)
+    if world:
+        for block in conditional_blocks(world[1]):
+            ids = re.findall(r'case (\d+)u:', block)
+            assert len(ids) == 1 and int(ids[0]) // 64 * 64 == 2304
+            for carrier, buckets in carrier_groups.items():
+                if f'!defined(EFFECT_NATIVE_{carrier.upper()}_CARRIER)' not in block:
+                    buckets.add(2304)
+    for group, blocks in sorted(groups.items()):
+        content = f'// Original Kouku material programs {group}..{group + 63}; native IDs and expressions are unchanged.\n'
+        content += '\n'.join(blocks)
+        update(shaders / f'Shader_EffectKoukuNativeGroup{group}.hlsli', lambda _, content=content: content)
+    includes = ''.join(
+        '#if !defined(ARTIST_NATIVE_MODEL_ONLY) && '
+        f"({group_condition(group, [carrier for carrier in ('Decal', 'Trail') if group in carrier_groups[carrier]])})\n"
+        f'#include "Shader_EffectKoukuNativeGroup{group}.hlsli"\n#endif\n'
+        for group in sorted(groups))
+    update(shaders / 'Shader_EffectArtistNative.hlsli', lambda text: section(
+        section(text, 'KOUKU NATIVE GROUP', includes, '#ifndef ARTIST_NATIVE_MODEL_ONLY\nEFFECT_PS_OUT Shade_EffectArtistNative'),
+        'KOUKU NATIVE CASES', ''.join(cases), '    default: clip(-1.f); return output;'))
+    entries = [(carrier, group) for carrier, buckets in carrier_groups.items()
+               if carrier in ('Mesh', 'Particle') for group in sorted(buckets)]
+    for carrier, group in entries:
+        content = f'#define EFFECT_SHADER_FAMILY 7\n#define EFFECT_NATIVE_PROFILE_GROUP {group}\n'
+        content += f'#include "Shader_Effect{carrier}FamilyCarrier.hlsli"\n'
+        update(shaders / f'Shader_VtxEffect{carrier}Kouku{group}.hlsl', lambda _, content=content: content)
+    def table(text):
+        text = re.sub(r'^        EFFECT_SHADER_PROGRAM_ROW\((?:MESH|PARTICLE), ARTIST, \d+u, \d+u, "Shader_VtxEffect(?:Mesh|Particle)Kouku\d+\.hlsl"\),\n', '', text, flags=re.M)
+        rows = ''.join(f'        EFFECT_SHADER_PROGRAM_ROW({carrier.upper()}, ARTIST, {group}u, {group + 63}u, "Shader_VtxEffect{carrier}Kouku{group}.hlsl"),\n' for carrier, group in entries)
+        marker = '    }};\n#undef EFFECT_SHADER_PROGRAM_ROW'
+        assert text.count(marker) == 1
+        text = text.replace(marker, rows + marker)
+        count = len(re.findall(r'^        EFFECT_SHADER_PROGRAM_ROW\(', text, re.M))
+        return re.sub(r'std::array<EFFECT_SHADER_PROGRAM_DESC, \d+u>', f'std::array<EFFECT_SHADER_PROGRAM_DESC, {count}u>', text, count=1)
+    update(ROOT / 'Client/Public/Effect_ShaderFamily.h', table)
+    for suffix in ('', '.filters'):
+        def register(text):
+            additions = []
+            for carrier, group in entries:
+                name = f'..\\Bin\\ShaderFiles\\Shader_VtxEffect{carrier}Kouku{group}.hlsl'
+                if f'Include="{name}"' not in text:
+                    additions.append(f'    <FxCompile Include="{name}"><Filter>97.ShaderFiles</Filter></FxCompile>' if suffix else
+                        f'    <FxCompile Include="{name}">\n      <DisableOptimizations Condition="\'$(Platform)\'==\'x64\'">false</DisableOptimizations>\n      <AdditionalOptions Condition="\'$(Platform)\'==\'x64\'">/O1 %(AdditionalOptions)</AdditionalOptions>\n    </FxCompile>')
+            for group in sorted(groups):
+                name = f'..\\Bin\\ShaderFiles\\Shader_EffectKoukuNativeGroup{group}.hlsli'
+                if f'Include="{name}"' not in text:
+                    additions.append(f'    <None Include="{name}"><Filter>97.ShaderFiles</Filter></None>' if suffix else f'    <None Include="{name}" />')
+            if additions:
+                prefix, marker, tail = text.rpartition('</Project>')
+                assert marker
+                text = prefix + '  <ItemGroup>\n' + '\n'.join(additions) + '\n  </ItemGroup>\n' + marker + tail
+            xml = ET.fromstring(text)
+            ns = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+            for metadata in xml.findall('./m:ItemGroup/m:ProjectReference/m:Project', ns):
+                assert len(metadata) == 0
+                uuid.UUID(metadata.text.strip())
+            compile_items = [item.attrib['Include'] for item in xml.findall('./m:ItemGroup/m:FxCompile', ns)]
+            assert len(compile_items) == len(set(compile_items))
+            assert all(f'..\\Bin\\ShaderFiles\\Shader_VtxEffect{carrier}Kouku{group}.hlsl' in compile_items for carrier, group in entries)
+            return text
+        update(ROOT / ('Client/Default/Client.vcxproj' + suffix), register)
+    return len(programs), len(groups), len(entries)
+
+
+def regroup_installed():
+    """Migrate reviewed installed bodies without reconstructing or changing a formula."""
+    shaders = ROOT / 'Client/Bin/ShaderFiles'
+    source = '\n'.join(path.read_text(encoding='utf8') for path in sorted(shaders.glob('Shader_EffectKoukuNativeGroup*.hlsli')))
+    text = (shaders / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
+    cases = re.search(r'// BEGIN KOUKU NATIVE CASES\n(.*?)// END KOUKU NATIVE CASES', text, re.S)
+    assert cases
+    return install_partitioned_groups(source, cases[1])
 
 
 def install(source_dir, append_source_dir=None):
@@ -72,10 +223,8 @@ def install(source_dir, append_source_dir=None):
     blocks = [(block, identifier) for block, identifier in blocks if int(identifier) in identifiers]
     assert len(blocks) == len(rows) and {int(i) for _, i in blocks} == identifiers
     shaders = ROOT / "Client/Bin/ShaderFiles"
-    installed_group = shaders / "Shader_EffectKoukuNativeGroup2304.hlsli"
-    if installed_group.is_file():
-        installed = {int(value) for value in re.findall(r"float4 ArtistNative(\d+)\(", installed_group.read_text(encoding="utf8"))}
-        assert installed <= identifiers, ("Supply all installed Kouku groups; refusing to remove programs", sorted(installed - identifiers))
+    installed = installed_kouku_programs(shaders)
+    assert installed <= identifiers, ("Supply all installed Kouku groups; refusing to remove programs", sorted(installed - identifiers))
     def carrier_for(row):
         return {"mesh": "MESH", "decal": "DECAL", "animationTrail": "TRAIL", "animTrail": "TRAIL", "ribbon": "TRAIL", "beam": "TRAIL", "screenPost": "SCREEN_POST"}.get(row["rendererShape"], "PARTICLE")
     def carrier_guard(row):
@@ -123,14 +272,11 @@ def install(source_dir, append_source_dir=None):
             assert program == 2310, ('Unresolved original distortion companion', program)
             code = (source_dir / 'KoukuDistortionProgram.hlsli').read_text(encoding='utf8')
         extra += '\n#if !defined(ARTIST_NATIVE_MODEL_ONLY) && ' + carrier_guard(row) + '\n' + code + '#endif\n'
-    (shaders / "Shader_EffectKoukuNativeGroup2304.hlsli").write_text(
-        "// Original Kouku material programs; native carrier group 2304.\n" +
-        "\n\n".join("#if " + carrier_guard(by_program[int(identifier)]) + "\n" + block + "\n#endif"
-            for block, identifier in blocks) + extra + "\n", encoding="utf8")
-    includes = '#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304\n#include "Shader_EffectKoukuNativeGroup2304.hlsli"\n#endif\n'
+    shader_text = "\n\n".join("#if " + carrier_guard(by_program[int(identifier)]) + "\n" + block + "\n#endif"
+        for block, identifier in blocks) + extra + "\n"
     cases = ""
     for row in rows:
-        cases += "#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && " + carrier_guard(row) + "\n"
+        cases += f"#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {row['program'] // 64 * 64}) && " + carrier_guard(row) + "\n"
         opaque = "true" if row["nativeBlend"] in ("blend_additive", "blend_masked", "blend_opaque") else "false"
         if row.get("distortionPass"):
             cases += f'''    case {row["program"]}u:
@@ -145,13 +291,7 @@ def install(source_dir, append_source_dir=None):
 '''
         else:
             cases += f'    case {row["program"]}u: nativeColor=ArtistNative{row["program"]}(input); opaqueCoverage={opaque}; break;\n#endif\n'
-    update(shaders / "Shader_EffectArtistNative.hlsli", lambda text: section(
-        section(text, "KOUKU NATIVE GROUP", includes, "#ifndef ARTIST_NATIVE_MODEL_ONLY\nEFFECT_PS_OUT Shade_EffectArtistNative"),
-        "KOUKU NATIVE CASES", cases, "    default: clip(-1.f); return output;"))
-    for carrier in ("Mesh", "Particle"):
-        (shaders / f"Shader_VtxEffect{carrier}Kouku2304.hlsl").write_text(
-            '#define EFFECT_SHADER_FAMILY 7\n#define EFFECT_NATIVE_PROFILE_GROUP 2304\n' +
-            f'#include "Shader_Effect{carrier}FamilyCarrier.hlsli"\n', encoding="utf8")
+    summary = install_partitioned_groups(shader_text, cases)
 
     # Descriptor admission alone is insufficient: the vertex and pixel carrier
     # dispatch gates must reach every newly installed program as well.
@@ -165,52 +305,18 @@ def install(source_dir, append_source_dir=None):
             return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u', text)
         update(shaders / name, extend_dispatch)
 
-    def table(text):
-        for carrier in ("MESH", "PARTICLE"):
-            label = carrier.title()
-            text = re.sub(rf'EFFECT_SHADER_PROGRAM_ROW\({carrier}, ARTIST, 2304u, \d+u, "Shader_VtxEffect{label}Kouku2304.hlsl"\)',
-                          f'EFFECT_SHADER_PROGRAM_ROW({carrier}, ARTIST, 2304u, 3711u, "Shader_VtxEffect{label}Kouku2304.hlsl")', text)
-            row = f'        EFFECT_SHADER_PROGRAM_ROW({carrier}, ARTIST, 2304u, 3711u, "Shader_VtxEffect{label}Kouku2304.hlsl"),\n'
-            if row not in text:
-                text = text.replace("    }};\n#undef EFFECT_SHADER_PROGRAM_ROW", row + "    }};\n#undef EFFECT_SHADER_PROGRAM_ROW", 1)
-        count = len(re.findall(r"^        EFFECT_SHADER_PROGRAM_ROW\(", text, re.M))
-        return re.sub(r"std::array<EFFECT_SHADER_PROGRAM_DESC, \d+u>", f"std::array<EFFECT_SHADER_PROGRAM_DESC, {count}u>", text, count=1)
-    update(ROOT / "Client/Public/Effect_ShaderFamily.h", table)
-
-    for suffix in ("", ".filters"):
-        project = ROOT / ("Client/Default/Client.vcxproj" + suffix)
-        def register(text):
-            additions = []
-            for carrier in ("Mesh", "Particle"):
-                name = f"..\\Bin\\ShaderFiles\\Shader_VtxEffect{carrier}Kouku2304.hlsl"
-                if f'Include="{name}"' in text:
-                    continue
-                if suffix:
-                    additions.append(f'    <FxCompile Include="{name}"><Filter>97.ShaderFiles</Filter></FxCompile>')
-                else:
-                    additions.append(f'    <FxCompile Include="{name}">\n      <DisableOptimizations Condition="\'$(Platform)\'==\'x64\'">false</DisableOptimizations>\n      <AdditionalOptions Condition="\'$(Platform)\'==\'x64\'">/O1 %(AdditionalOptions)</AdditionalOptions>\n    </FxCompile>')
-            name = "..\\Bin\\ShaderFiles\\Shader_EffectKoukuNativeGroup2304.hlsli"
-            if f'Include="{name}"' not in text:
-                additions.append(f'    <None Include="{name}"><Filter>97.ShaderFiles</Filter></None>' if suffix else f'    <None Include="{name}" />')
-            if additions:
-                prefix, marker, suffix_text = text.rpartition("</Project>")
-                assert marker
-                text = prefix + "  <ItemGroup>\n" + "\n".join(additions) + "\n  </ItemGroup>\n" + marker + suffix_text
-            xml = ET.fromstring(text)
-            ns = {"m": "http://schemas.microsoft.com/developer/msbuild/2003"}
-            for metadata in xml.findall("./m:ItemGroup/m:ProjectReference/m:Project", ns):
-                assert len(metadata) == 0
-                uuid.UUID(metadata.text.strip())
-            compile_items = {item.attrib["Include"] for item in xml.findall("./m:ItemGroup/m:FxCompile", ns)}
-            assert all(f"..\\Bin\\ShaderFiles\\Shader_VtxEffect{carrier}Kouku2304.hlsl" in compile_items for carrier in ("Mesh", "Particle"))
-            return text
-        update(project, register)
-    print(f"Installed {len(rows)} Kouku native programs and two existing-family shader carriers.")
+    print(f"Installed {summary[0]} Kouku native programs in {summary[1]} groups and {summary[2]} existing-family shader carriers.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument("--source-dir", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--source-dir", type=Path)
+    source.add_argument("--regroup-installed", action="store_true")
     parser.add_argument("--append-source-dir", type=Path, action="append", default=[])
     args = parser.parse_args()
-    install(args.source_dir.resolve(), [directory.resolve() for directory in args.append_source_dir])
+    if args.regroup_installed:
+        assert not args.append_source_dir, "Regroup consumes installed shader bodies only"
+        print("Regrouped programs/groups/carriers:", regroup_installed())
+    else:
+        install(args.source_dir.resolve(), [directory.resolve() for directory in args.append_source_dir])
