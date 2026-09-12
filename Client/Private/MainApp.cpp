@@ -6268,6 +6268,18 @@ HRESULT CMainApp::Ready_Fonts()
 		}
 	}
 
+	/* Display-size variants, re-rasterised from the retail TTF (nothing above 42 px
+	exists to downsample from). Latin only -- see UILabelFont::LATIN_DISPLAY_SIZES --
+	so they are reached through Resolve_LatinDisplay and never by ordinary labels. */
+	for (const int32_t iSize : UILabelFont::LATIN_DISPLAY_SIZES)
+	{
+		const wstring strTag = wstring(L"Font_YoonGasiIIM_Latin") + std::to_wstring(iSize);
+		const wstring strFile = wstring(L"UI/Fonts/YoonGasiIIM_Latin") + std::to_wstring(iSize) + L".spritefont";
+		const filesystem::path displayFontPath = CRuntimeAssetRoot::Resolve(strFile);
+		if (displayFontPath.empty() || FAILED(CGameInstance::Get().Add_Font(strTag, displayFontPath.c_str())))
+			OutputDebugStringW((L"[Fonts] optional display font missing: " + strFile + L"\n").c_str());
+	}
+
 	return S_OK;
 }
 
