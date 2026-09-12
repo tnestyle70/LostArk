@@ -56,33 +56,48 @@ namespace
 	constexpr f32_t MAIN_BG_TO_LOCAL_X = 320.f;
 	constexpr f32_t MAIN_BG_SLIDE_START = 66.f;
 	constexpr f32_t MAIN_BG_SLIDE_END = 92.f;
+	/* It is also invisible until well after the explosion. Depth 13's own
+	   alphaMultTerm keys are 0 through frame 45, then a straight line to 0.949 by
+	   frame 64, held from there. Retail fires the burst at frame 32 onto a page that
+	   is still empty apart from the dim, which is why the award content has to wait
+	   here instead of standing at full opacity from frame 1. */
+	constexpr f32_t MAIN_BG_FADE_START = 45.f;
+	constexpr f32_t MAIN_BG_FADE_END = 64.f;
+	constexpr f32_t MAIN_BG_HOLD_ALPHA = 0.949f;
 
-	/* MVP side, frame-local. */
-	constexpr f32_t MVP_TITLE_CENTER_LOCAL_X = 800.f;
-	constexpr f32_t MVP_TITLE_CENTER_LOCAL_Y = 697.f;
-	/* Point sizes come from MvpResultFrame's __setProp_* blocks, not guessed. */
-	constexpr f32_t MVP_CONTENT_LOCAL_X = 382.f;
-	constexpr f32_t MVP_CONTENT_LOCAL_Y = 578.f;
+	/* MVP side, frame-local.
+
+	   The label positions below are measured off the reference capture, not read out
+	   of mvp.gfx. The document places contentNameTF / characterNameTF / the stat items
+	   as ARK components whose final position the host and MvpResultFrame.as decide at
+	   runtime (LayoutSetter, and the AS that re-centres against measured text width),
+	   so the authored translate is a starting point the client moves. Point sizes and
+	   colours still come from the __setProp_* blocks. Capture pixels convert as
+	   local_x = canvas * 1.5 + 300, local_y = canvas * 1.5. */
+	constexpr f32_t MVP_TITLE_CENTER_LOCAL_X = 777.f;      // canvas 318.0
+	constexpr f32_t MVP_TITLE_CENTER_LOCAL_Y = 679.5f;     // canvas 453.0
+	constexpr f32_t MVP_CONTENT_LOCAL_X = 762.75f;         // canvas 308.5
+	constexpr f32_t MVP_CONTENT_LOCAL_Y = 621.75f;         // canvas 414.5
 	constexpr f32_t MVP_CONTENT_POINTS = 24.f;
-	constexpr f32_t MVP_NAME_LOCAL_X = 610.f;
-	constexpr f32_t MVP_NAME_LOCAL_Y = 732.f;
+	/* Drawn top-centred, so this y is the top of the glyph band (canvas 490). */
+	constexpr f32_t MVP_NAME_LOCAL_X = 771.75f;            // canvas 314.5
+	constexpr f32_t MVP_NAME_LOCAL_Y = 735.f;
 	constexpr f32_t MVP_NAME_POINTS = 32.f;
-	constexpr f32_t MVP_GUILD_CENTER_LOCAL_X = 800.f;
+	constexpr f32_t MVP_GUILD_CENTER_LOCAL_X = 771.75f;
 	constexpr f32_t MVP_GUILD_CENTER_LOCAL_Y = 782.f;
-	/* mvpStatItem0/1/2 origins; every field inside centres on originX + 156. */
-	constexpr f32_t MVP_STAT_LOCAL_X[] = { 399.f, 643.f, 887.f };
-	constexpr f32_t MVP_STAT_LOCAL_Y = 805.f;
+	/* mvpStatItem0/1/2 origins; every field inside centres on originX + 156. The
+	   three value columns land on canvas 154 / 316 / 478. */
+	constexpr f32_t MVP_STAT_LOCAL_X[] = { 375.f, 618.f, 861.f };
+	constexpr f32_t MVP_STAT_LOCAL_Y = 799.75f;
 	constexpr f32_t MVP_STAT_CENTER_DX = 156.f;
 	constexpr f32_t MVP_STAT_TITLE_DY = 66.8f;
-	constexpr f32_t MVP_STAT_DESC_DY = 101.4f;
-	constexpr f32_t MVP_STAT_VALUE_DY = 151.4f;
-	/* mvpBadgeList sits at local (326, 896) and its track is 910x198, so the strip
-	   centres on 781, and nine icons -- where retail collapses the list -- give the
-	   910/9 pitch. RollingRepositionList centres its content, so a shorter row stays
-	   centred instead of starting at the left edge. */
-	constexpr f32_t MVP_MEDAL_CENTER_LOCAL_X = 781.f;
-	constexpr f32_t MVP_MEDAL_CENTER_LOCAL_Y = 995.f;
-	constexpr f32_t MVP_MEDAL_PITCH_LOCAL = 101.f;
+	constexpr f32_t MVP_STAT_DESC_DY = 96.5f;
+	constexpr f32_t MVP_STAT_VALUE_DY = 139.4f;
+	/* The badge strip sits below the value row rather than across it; three icons
+	   span canvas 165 in the capture, which is a 83.75 pitch at this icon size. */
+	constexpr f32_t MVP_MEDAL_CENTER_LOCAL_X = 770.25f;    // canvas 313.5
+	constexpr f32_t MVP_MEDAL_CENTER_LOCAL_Y = 1029.75f;   // canvas 686.5
+	constexpr f32_t MVP_MEDAL_PITCH_LOCAL = 83.75f;
 	/* MvpResult_BadgeListItem_L draws MvpBadgeIcon full size; the party columns use
 	   MvpResult_BadgeListItem_small, which scales the same icon by 0.8099823. */
 	constexpr f32_t MEDAL_ICON_LOCAL_MVP = 80.f;
@@ -91,18 +106,22 @@ namespace
 	constexpr int32_t MEDAL_INDEX_MAX = 17;
 	constexpr size_t MVP_MEDAL_MAX = 9u;
 
-	/* Party columns, frame-local origins of otherStatItem0/1/2. */
-	constexpr f32_t PARTY_LOCAL_X[] = { 1281.f, 1600.f, 1921.f };
+	/* Party columns, frame-local origins of otherStatItem0/1/2. The authored 319/321
+	   pitch is right -- the three columns in the capture sit 213 canvas apart -- but
+	   the whole block starts 45 local further left than the authored translate, which
+	   puts the name centres on canvas 731 / 944 / 1158 against the capture's
+	   734 / 942 / 1159. */
+	constexpr f32_t PARTY_LOCAL_X[] = { 1236.f, 1555.f, 1876.f };
 	constexpr f32_t PARTY_NAME_CENTER_DX = 161.f;
-	constexpr f32_t PARTY_NAME_LOCAL_Y = 738.f;
-	constexpr f32_t PARTY_GUILD_LOCAL_Y = 758.f;
+	constexpr f32_t PARTY_NAME_LOCAL_Y = 731.25f;          // canvas 487.5
+	constexpr f32_t PARTY_GUILD_LOCAL_Y = 751.25f;
 	constexpr f32_t PARTY_STAT_CENTER_DX = 160.f;
-	constexpr f32_t PARTY_STAT_LOCAL_Y[] = { 772.f, 840.f, 908.f };
+	constexpr f32_t PARTY_STAT_LOCAL_Y[] = { 767.5f, 835.5f, 903.5f };
 	constexpr f32_t PARTY_STAT_TITLE_DY = 37.f;
 	constexpr f32_t PARTY_STAT_DESC_DY = 56.4f;
 	/* OtherBadgeList sits at local (col + 54, 1003) and is 216 wide. */
 	constexpr f32_t PARTY_MEDAL_CENTER_DX = 162.f;
-	constexpr f32_t PARTY_MEDAL_CENTER_LOCAL_Y = 1043.f;
+	constexpr f32_t PARTY_MEDAL_CENTER_LOCAL_Y = 1026.5f;  // canvas 684.3
 	constexpr f32_t PARTY_MEDAL_PITCH_LOCAL = 72.f;
 	constexpr size_t PARTY_MEDAL_MAX = 3u;
 
@@ -131,6 +150,27 @@ namespace
 		if (fEnd <= fStart || fFrame >= fEnd)
 			return 1.f;
 		return (fFrame - fStart) / (fEnd - fStart);
+	}
+
+	/* The badge stamp-in, straight off mvpBadgeList.motionPreset[5]
+	   "...,6,150,0,0.3,0.1,1" as RollingRepositionList's case 5 reads it: scaleValue,
+	   marginY, init_alpha, tween_time and the per-index delay. */
+	constexpr f32_t BADGE_START_SCALE = 6.f;
+	constexpr f32_t BADGE_START_RISE_LOCAL = 150.f;
+	constexpr f32_t BADGE_TWEEN_SECONDS = 0.3f;
+	constexpr f32_t BADGE_STAGGER_SECONDS = 0.1f;
+	/* MvpResultFrame does not put the badge list on the timeline -- RollingRepositionList
+	   tweens each item in when the list is populated. The first badge becomes visible at
+	   capture frame 1608, 3.49s after the award page starts. */
+	constexpr f32_t BADGE_DELAY_SECONDS = 3.45f;
+
+	/* TweenMax Back.easeOut with its default overshoot, which is what gives the badge
+	   the slight past-and-back settle. */
+	f32_t Back_EaseOut(const f32_t fT)
+	{
+		constexpr f32_t fOvershoot = 1.70158f;
+		const f32_t fU = fT - 1.f;
+		return 1.f + fU * fU * ((fOvershoot + 1.f) * fU + fOvershoot);
 	}
 
 }
@@ -172,6 +212,7 @@ void Client::CMvpResultView::Show(const MVP_RESULT_DATA& Data)
 	m_fElapsedSeconds = 0.f;
 	m_bParticleBoomStarted = false;
 	m_bSuccessBurstStarted = false;
+	m_bBadgeEffectStarted = false;
 	m_pView->Set_AllSlotsVisible(true);
 	/* Every authored image layer of MvpResultFrame plays from the extracted
 		keyframe document, so its own per-frame transform drives them instead of a
@@ -179,6 +220,13 @@ void Client::CMvpResultView::Show(const MVP_RESULT_DATA& Data)
 	m_pView->Play_KeyframeAnimation("MvpResult_Frame", "intro");
 	for (const string& strMedalSlot : m_MedalSlotIds)
 		m_pView->Set_SlotVisible(strMedalSlot, false);
+	/* A replay would otherwise resume these mid-sparkle from the previous run. */
+	for (size_t i = 0; i < MVP_MEDAL_MAX; ++i)
+	{
+		char szSlotId[64] = {};
+		(void)sprintf_s(szSlotId, "MvpResult_BadgeEffect_%zu", i);
+		m_pView->Set_SlotVisible(szSlotId, false);
+	}
 	Apply_Timeline();
 }
 
@@ -215,6 +263,34 @@ void Client::CMvpResultView::Apply_Timeline()
 		m_bSuccessBurstStarted = true;
 	}
 
+	/* The badge sparkles. RollingRepositionList arms one setTimeout of
+	   tween_and_delay_totalTime = min(column, count) * delay and then calls
+	   playAllEffect(), which does iconEffect.gotoAndPlay(2) on every item at once --
+	   so these are not staggered the way the stamp-in is. Only MvpResult_BadgeListItem_L
+	   owns an iconEffect; the party columns' small item has none. */
+	const size_t iMvpBadges = (std::min)(m_Data.Mvp.Medals.size(), MVP_MEDAL_MAX);
+	const f32_t fBadgeEffectStart =
+		BADGE_DELAY_SECONDS + BADGE_STAGGER_SECONDS * static_cast<f32_t>(iMvpBadges);
+	if (!m_bBadgeEffectStarted && 0u < iMvpBadges && m_fElapsedSeconds >= fBadgeEffectStart)
+	{
+		const f32_t fRowLeft = MVP_MEDAL_CENTER_LOCAL_X
+			- MVP_MEDAL_PITCH_LOCAL * (static_cast<f32_t>(iMvpBadges) - 1.f) * 0.5f;
+		for (size_t i = 0; i < iMvpBadges; ++i)
+		{
+			char szSlotId[64] = {};
+			(void)sprintf_s(szSlotId, "MvpResult_BadgeEffect_%zu", i);
+			/* The effect's own coordinates are relative to the badge item's origin,
+			   which is the icon's top-left. */
+			const f32_t fCenterLocalX = fRowLeft + MVP_MEDAL_PITCH_LOCAL * static_cast<f32_t>(i);
+			m_pView->Set_SlotPosition(szSlotId,
+				CanvasX(fCenterLocalX - MEDAL_ICON_LOCAL_MVP * 0.5f),
+				CanvasY(MVP_MEDAL_CENTER_LOCAL_Y - MEDAL_ICON_LOCAL_MVP * 0.5f));
+			m_pView->Set_SlotVisible(szSlotId, true);
+			m_pView->Play_KeyframeAnimation(szSlotId, "play");
+		}
+		m_bBadgeEffectStarted = true;
+	}
+
 	/* The MVP render area slides left while it is already opaque. */
 	const f32_t fSlide = Ramp(fFrame, MAIN_BG_SLIDE_START, MAIN_BG_SLIDE_END);
 	const f32_t fMainLocalX =
@@ -222,6 +298,13 @@ void Client::CMvpResultView::Apply_Timeline()
 	f32_t fSlotX = 0.f, fSlotY = 0.f, fSlotW = 0.f, fSlotH = 0.f;
 	if (m_pView->Get_SlotRect("MvpResult_MainBackground", fSlotX, fSlotY, fSlotW, fSlotH))
 		m_pView->Set_SlotPosition("MvpResult_MainBackground", CanvasX(fMainLocalX), fSlotY);
+	/* Multiplier, not Set_SlotAlpha: that one rewrites the tint to white and drops the
+	   authored colour. */
+	m_pView->Set_SlotTintMultiplier("MvpResult_MainBackground", float4_t(1.f, 1.f, 1.f,
+		Ramp(fFrame, MAIN_BG_FADE_START, MAIN_BG_FADE_END) * MAIN_BG_HOLD_ALPHA));
+	/* The content-name flash is a one-shot that only belongs on screen from its own
+	   frame; leaving the slot visible parks it on its last frame until then. */
+	m_pView->Set_SlotVisible("MvpResult_SuccessBurst", fFrame >= SUCCESS_BURST_FRAME);
 
 	for (size_t i = 0; i < PARTY_COLUMN_COUNT; ++i)
 	{
@@ -340,7 +423,7 @@ void Client::CMvpResultView::Render_MvpSide() const
 
 	Render_Medals(m_Data.Mvp.Medals, "Mvp", MVP_MEDAL_CENTER_LOCAL_X,
 		MVP_MEDAL_CENTER_LOCAL_Y, MVP_MEDAL_PITCH_LOCAL, MEDAL_ICON_LOCAL_MVP,
-		MVP_MEDAL_MAX);
+		MVP_MEDAL_MAX, true);
 }
 
 void Client::CMvpResultView::Render_PartyColumn(const size_t iColumn) const
@@ -378,7 +461,7 @@ void Client::CMvpResultView::Render_PartyColumn(const size_t iColumn) const
 	(void)sprintf_s(szOwner, "Party%zu", iColumn);
 	Render_Medals(Entry.Medals, szOwner, fColumnLocalX + PARTY_MEDAL_CENTER_DX,
 		PARTY_MEDAL_CENTER_LOCAL_Y + fRiseLocal, PARTY_MEDAL_PITCH_LOCAL,
-		MEDAL_ICON_LOCAL_PARTY, PARTY_MEDAL_MAX);
+		MEDAL_ICON_LOCAL_PARTY, PARTY_MEDAL_MAX, false);
 }
 
 void Client::CMvpResultView::Render_Medals(
@@ -388,11 +471,9 @@ void Client::CMvpResultView::Render_Medals(
 	const f32_t fCenterLocalY,
 	const f32_t fPitchLocal,
 	const f32_t fIconLocal,
-	const size_t iMaxShown) const
+	const size_t iMaxShown,
+	const bool_t bStampIn) const
 {
-	/* MvpResultFrame does not put the badge list on the timeline: mvpData arms a
-	setTimeout of Shared_Setting element(0,1) seconds, default 2.7. */
-	constexpr f32_t BADGE_DELAY_SECONDS = 2.7f;
 	if (m_fElapsedSeconds < BADGE_DELAY_SECONDS)
 		return;
 
@@ -402,18 +483,44 @@ void Client::CMvpResultView::Render_Medals(
 		const int32_t iMedal = Medals[i];
 		if (iMedal < MEDAL_INDEX_MIN || iMedal > MEDAL_INDEX_MAX)
 			continue;
+
+		/* The stamp-in. RollingRepositionList's preset 5 reads its numbers out of
+		   mvpBadgeList.motionPreset[5] = "...,6,150,0,0.3,0.1,1": start at 6x scale,
+		   150 above the resting spot and alpha 0, then TweenMax.to over 0.3s with
+		   Back.easeOut, each item delayed by its own index * 0.1s. Only the MVP's
+		   items carry it -- MvpResult_BadgeListItem_small has no iconEffect and the
+		   party columns just appear. */
+		const f32_t fItemStart = BADGE_DELAY_SECONDS +
+			(bStampIn ? BADGE_STAGGER_SECONDS * static_cast<f32_t>(i) : 0.f);
+		const f32_t fT = bStampIn
+			? Ramp(m_fElapsedSeconds, fItemStart, fItemStart + BADGE_TWEEN_SECONDS)
+			: 1.f;
+		if (fT <= 0.f)
+			continue;
+		const f32_t fEased = bStampIn ? Back_EaseOut(fT) : 1.f;
+		const f32_t fScale = BADGE_START_SCALE + (1.f - BADGE_START_SCALE) * fEased;
+		const f32_t fRiseLocal = -BADGE_START_RISE_LOCAL * (1.f - fEased);
+
 		char szSlotId[96] = {};
 		(void)sprintf_s(szSlotId, "MvpResult_MedalIcon_%s_%zu", szOwner, i);
 		char szTexture[64] = {};
 		(void)sprintf_s(szTexture, "UI/MVP/MvpResult_Medal_%02d.png", iMedal);
 		const f32_t fRowLeft = fCenterLocalX
 			- fPitchLocal * (static_cast<f32_t>(iCount) - 1.f) * 0.5f;
-		const f32_t fLocalX = fRowLeft + fPitchLocal * static_cast<f32_t>(i)
-			- fIconLocal * 0.5f;
+		const f32_t fSlotCenterLocalX = fRowLeft + fPitchLocal * static_cast<f32_t>(i);
+		const f32_t fDrawnLocal = fIconLocal * fScale;
 		const f32_t fIconCanvas = fIconLocal * STAGE_TO_CANVAS;
 		m_pView->Ensure_RuntimeSlot(szSlotId,
-			CanvasX(fLocalX), CanvasY(fCenterLocalY - fIconLocal * 0.5f),
+			CanvasX(fSlotCenterLocalX - fIconLocal * 0.5f),
+			CanvasY(fCenterLocalY - fIconLocal * 0.5f),
 			fIconCanvas, fIconCanvas, szTexture);
+		/* Grows about its own centre, so the rect is rewritten every frame rather
+		   than only positioned. */
+		m_pView->Set_SlotRect(szSlotId,
+			CanvasX(fSlotCenterLocalX - fDrawnLocal * 0.5f),
+			CanvasY(fCenterLocalY + fRiseLocal - fDrawnLocal * 0.5f),
+			fDrawnLocal * STAGE_TO_CANVAS, fDrawnLocal * STAGE_TO_CANVAS);
+		m_pView->Set_SlotTintMultiplier(szSlotId, float4_t(1.f, 1.f, 1.f, fEased));
 		m_pView->Set_SlotVisible(szSlotId, true);
 		if (m_MedalSlotIds.end() ==
 				std::find(m_MedalSlotIds.begin(), m_MedalSlotIds.end(), szSlotId))

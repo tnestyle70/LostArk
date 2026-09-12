@@ -310,6 +310,312 @@
         "loop": false,
         "additive": true
       }
+    },
+    {
+      "id": "MvpResult_BadgeEffect_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
+    },
+    {
+      "id": "MvpResult_BadgeEffect_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 40,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": false,
+        "additive": true
+      },
+      "keyframeAnimationPath": "UI/MVP/MvpResult_BadgeEffect.keyframes.json",
+      "keyframeAnimationScale": 1
     }
   ]
 }

@@ -8382,7 +8382,7 @@
      "scaleY": 1.0,
      "alpha": 0.0,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0000.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0000.png",
      "flipX": true
     },
     {
@@ -8393,7 +8393,7 @@
      "scaleY": 0.99998,
      "alpha": 0.0898,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0000.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0000.png",
      "flipX": true
     },
     {
@@ -8404,7 +8404,7 @@
      "scaleY": 0.99998,
      "alpha": 0.1836,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0001.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0001.png",
      "flipX": true
     },
     {
@@ -8415,7 +8415,7 @@
      "scaleY": 0.99998,
      "alpha": 0.2734,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0001.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0001.png",
      "flipX": true
     },
     {
@@ -8426,7 +8426,7 @@
      "scaleY": 0.99998,
      "alpha": 0.3633,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0002.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0002.png",
      "flipX": true
     },
     {
@@ -8437,7 +8437,7 @@
      "scaleY": 0.99998,
      "alpha": 0.4531,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0002.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0002.png",
      "flipX": true
     },
     {
@@ -8448,7 +8448,7 @@
      "scaleY": 0.99998,
      "alpha": 0.5469,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0003.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0003.png",
      "flipX": true
     },
     {
@@ -8459,7 +8459,7 @@
      "scaleY": 0.99998,
      "alpha": 0.6367,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0003.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0003.png",
      "flipX": true
     },
     {
@@ -8470,7 +8470,7 @@
      "scaleY": 0.99998,
      "alpha": 0.7266,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0004.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0004.png",
      "flipX": true
     },
     {
@@ -8481,7 +8481,7 @@
      "scaleY": 0.99998,
      "alpha": 0.8164,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0004.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0004.png",
      "flipX": true
     },
     {
@@ -8492,7 +8492,7 @@
      "scaleY": 0.99998,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0005.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0005.png",
      "flipX": true
     },
     {
@@ -8503,7 +8503,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0005.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0005.png",
      "flipX": true
     },
     {
@@ -8514,7 +8514,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0006.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0006.png",
      "flipX": true
     },
     {
@@ -8525,7 +8525,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0007.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0007.png",
      "flipX": true
     },
     {
@@ -8536,7 +8536,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0008.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0008.png",
      "flipX": true
     },
     {
@@ -8547,7 +8547,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0009.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0009.png",
      "flipX": true
     },
     {
@@ -8558,7 +8558,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0010.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0010.png",
      "flipX": true
     },
     {
@@ -8569,7 +8569,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0011.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0011.png",
      "flipX": true
     },
     {
@@ -8580,7 +8580,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0012.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0012.png",
      "flipX": true
     },
     {
@@ -8591,7 +8591,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0013.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0013.png",
      "flipX": true
     },
     {
@@ -8602,7 +8602,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0014.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0014.png",
      "flipX": true
     },
     {
@@ -8613,7 +8613,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0015.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0015.png",
      "flipX": true
     },
     {
@@ -8624,7 +8624,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0016.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0016.png",
      "flipX": true
     },
     {
@@ -8635,7 +8635,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0017.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0017.png",
      "flipX": true
     },
     {
@@ -8646,7 +8646,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0018.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0018.png",
      "flipX": true
     },
     {
@@ -8657,7 +8657,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0019.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0019.png",
      "flipX": true
     },
     {
@@ -8668,7 +8668,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0020.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0020.png",
      "flipX": true
     },
     {
@@ -8679,7 +8679,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0021.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0021.png",
      "flipX": true
     },
     {
@@ -8690,7 +8690,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0022.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0022.png",
      "flipX": true
     },
     {
@@ -8701,7 +8701,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0023.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0023.png",
      "flipX": true
     },
     {
@@ -8712,7 +8712,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0024.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0024.png",
      "flipX": true
     },
     {
@@ -8723,7 +8723,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0025.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0025.png",
      "flipX": true
     },
     {
@@ -8734,7 +8734,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0026.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0026.png",
      "flipX": true
     },
     {
@@ -8745,7 +8745,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0027.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0027.png",
      "flipX": true
     },
     {
@@ -8756,7 +8756,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0028.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0028.png",
      "flipX": true
     },
     {
@@ -8767,7 +8767,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0029.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0029.png",
      "flipX": true
     },
     {
@@ -8778,7 +8778,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0030.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0030.png",
      "flipX": true
     },
     {
@@ -8789,7 +8789,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0031.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0031.png",
      "flipX": true
     },
     {
@@ -8800,7 +8800,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0032.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0032.png",
      "flipX": true
     },
     {
@@ -8811,7 +8811,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0033.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0033.png",
      "flipX": true
     },
     {
@@ -8822,7 +8822,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0034.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0034.png",
      "flipX": true
     },
     {
@@ -8833,7 +8833,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0035.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0035.png",
      "flipX": true
     },
     {
@@ -8844,7 +8844,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0036.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0036.png",
      "flipX": true
     },
     {
@@ -8855,7 +8855,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0037.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0037.png",
      "flipX": true
     },
     {
@@ -8866,7 +8866,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0038.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0038.png",
      "flipX": true
     },
     {
@@ -8877,7 +8877,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0039.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0039.png",
      "flipX": true
     },
     {
@@ -8888,7 +8888,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0040.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0040.png",
      "flipX": true
     },
     {
@@ -8899,7 +8899,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0041.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0041.png",
      "flipX": true
     },
     {
@@ -8910,7 +8910,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0042.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0042.png",
      "flipX": true
     },
     {
@@ -8921,7 +8921,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0043.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0043.png",
      "flipX": true
     },
     {
@@ -8932,7 +8932,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0044.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0044.png",
      "flipX": true
     },
     {
@@ -8943,7 +8943,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0045.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0045.png",
      "flipX": true
     },
     {
@@ -8954,7 +8954,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0046.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0046.png",
      "flipX": true
     },
     {
@@ -8965,7 +8965,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0047.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0047.png",
      "flipX": true
     },
     {
@@ -8976,7 +8976,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0048.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0048.png",
      "flipX": true
     },
     {
@@ -8987,7 +8987,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0049.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0049.png",
      "flipX": true
     },
     {
@@ -8998,7 +8998,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0050.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0050.png",
      "flipX": true
     },
     {
@@ -9009,7 +9009,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0051.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0051.png",
      "flipX": true
     },
     {
@@ -9020,7 +9020,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0052.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0052.png",
      "flipX": true
     },
     {
@@ -9031,7 +9031,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0053.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0053.png",
      "flipX": true
     },
     {
@@ -9042,7 +9042,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0054.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0054.png",
      "flipX": true
     },
     {
@@ -9053,7 +9053,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0055.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0055.png",
      "flipX": true
     },
     {
@@ -9064,7 +9064,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0056.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0056.png",
      "flipX": true
     },
     {
@@ -9075,7 +9075,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0057.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0057.png",
      "flipX": true
     },
     {
@@ -9086,7 +9086,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0058.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0058.png",
      "flipX": true
     },
     {
@@ -9097,7 +9097,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0059.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0059.png",
      "flipX": true
     },
     {
@@ -9108,7 +9108,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0060.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0060.png",
      "flipX": true
     },
     {
@@ -9119,7 +9119,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0061.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0061.png",
      "flipX": true
     },
     {
@@ -9130,7 +9130,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0062.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0062.png",
      "flipX": true
     },
     {
@@ -9141,7 +9141,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0063.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0063.png",
      "flipX": true
     },
     {
@@ -9152,7 +9152,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0064.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0064.png",
      "flipX": true
     },
     {
@@ -9163,7 +9163,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0065.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0065.png",
      "flipX": true
     },
     {
@@ -9174,7 +9174,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0066.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0066.png",
      "flipX": true
     },
     {
@@ -9185,7 +9185,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0067.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0067.png",
      "flipX": true
     },
     {
@@ -9196,7 +9196,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0068.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0068.png",
      "flipX": true
     },
     {
@@ -9207,7 +9207,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0000.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0000.png",
      "flipX": true
     },
     {
@@ -9218,7 +9218,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0001.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0001.png",
      "flipX": true
     },
     {
@@ -9229,7 +9229,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0002.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0002.png",
      "flipX": true
     },
     {
@@ -9240,7 +9240,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0003.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0003.png",
      "flipX": true
     },
     {
@@ -9251,7 +9251,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0004.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0004.png",
      "flipX": true
     },
     {
@@ -9262,7 +9262,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0005.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0005.png",
      "flipX": true
     },
     {
@@ -9273,7 +9273,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0006.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0006.png",
      "flipX": true
     },
     {
@@ -9284,7 +9284,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0007.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0007.png",
      "flipX": true
     },
     {
@@ -9295,7 +9295,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0008.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0008.png",
      "flipX": true
     },
     {
@@ -9306,7 +9306,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0009.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0009.png",
      "flipX": true
     },
     {
@@ -9317,7 +9317,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0010.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0010.png",
      "flipX": true
     },
     {
@@ -9328,7 +9328,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0011.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0011.png",
      "flipX": true
     },
     {
@@ -9339,7 +9339,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0012.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0012.png",
      "flipX": true
     },
     {
@@ -9350,7 +9350,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0013.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0013.png",
      "flipX": true
     },
     {
@@ -9361,7 +9361,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0014.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0014.png",
      "flipX": true
     },
     {
@@ -9372,7 +9372,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0015.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0015.png",
      "flipX": true
     },
     {
@@ -9383,7 +9383,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0016.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0016.png",
      "flipX": true
     },
     {
@@ -9394,7 +9394,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0017.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0017.png",
      "flipX": true
     },
     {
@@ -9405,7 +9405,7 @@
      "scaleY": 1.0,
      "alpha": 0.9102,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0018.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0018.png",
      "flipX": true
     },
     {
@@ -9416,7 +9416,7 @@
      "scaleY": 0.99998,
      "alpha": 0.8906,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0018.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0018.png",
      "flipX": true
     },
     {
@@ -9427,7 +9427,7 @@
      "scaleY": 0.99998,
      "alpha": 0.7773,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0019.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0019.png",
      "flipX": true
     },
     {
@@ -9438,7 +9438,7 @@
      "scaleY": 0.99998,
      "alpha": 0.668,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0019.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0019.png",
      "flipX": true
     },
     {
@@ -9449,7 +9449,7 @@
      "scaleY": 0.99998,
      "alpha": 0.5547,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0020.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0020.png",
      "flipX": true
     },
     {
@@ -9460,7 +9460,7 @@
      "scaleY": 0.99998,
      "alpha": 0.4453,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0020.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0020.png",
      "flipX": true
     },
     {
@@ -9471,7 +9471,7 @@
      "scaleY": 0.99998,
      "alpha": 0.332,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0021.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0021.png",
      "flipX": true
     },
     {
@@ -9482,7 +9482,7 @@
      "scaleY": 0.99998,
      "alpha": 0.2227,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0021.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0021.png",
      "flipX": true
     },
     {
@@ -9493,7 +9493,7 @@
      "scaleY": 0.99998,
      "alpha": 0.1094,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0022.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0022.png",
      "flipX": true
     },
     {
@@ -9504,7 +9504,7 @@
      "scaleY": 1.0,
      "alpha": 0.0,
      "additive": true,
-     "asset": "UI/RaidClear/lineRight/RaidClear_lineRight_0022.png",
+     "asset": "UI/RaidClear/lineLeft/RaidClear_lineLeft_0022.png",
      "flipX": true
     },
     {

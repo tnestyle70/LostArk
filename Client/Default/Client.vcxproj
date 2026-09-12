@@ -781,6 +781,7 @@
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku.keyframes.json" />
     <None Include="..\..\Data\UI\MVP\MvpResult_Layout.json" />
     <None Include="..\..\Data\UI\MVP\MvpResult_Intro.keyframes.json" />
+    <None Include="..\..\Data\UI\MVP\MvpResult_BadgeEffect.keyframes.json" />
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json" />
     <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json" />
     <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json" />

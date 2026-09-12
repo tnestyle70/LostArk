@@ -90,9 +90,12 @@ private:
 	void Render_MvpSide() const;
 	void Render_PartyColumn(size_t iColumn) const;
 	/* szOwner keeps each list's runtime slot ids distinct ("Mvp", "Party0"...). */
+	/* bStampIn plays RollingRepositionList's item tween. Only the MVP's own list has
+	   it: mvpBadgeList sets enableTween true with presetIndex 5, while each party
+	   column's badgeList sets enableTween false, so those badges simply appear. */
 	void Render_Medals(const vector<int32_t>& Medals, const char* szOwner,
 		f32_t fCenterLocalX, f32_t fCenterLocalY, f32_t fPitchLocal,
-		f32_t fIconLocal, size_t iMaxShown) const;
+		f32_t fIconLocal, size_t iMaxShown, bool_t bStampIn) const;
 
 private:
 	/* A slot position captured once, so per-frame motion can be absolute. */
@@ -116,6 +119,7 @@ private:
 	/* One-shot burst: rewound once, when the intro reaches its entry frame. */
 	bool_t						m_bParticleBoomStarted = false;
 	bool_t						m_bSuccessBurstStarted = false;
+	bool_t						m_bBadgeEffectStarted = false;
 	/* Cached glyph height of a fixed metric string per font, so a label's scale
 	does not change with the characters it happens to contain. */
 	f32_t							m_fYoonMetricHeight = 0.f;

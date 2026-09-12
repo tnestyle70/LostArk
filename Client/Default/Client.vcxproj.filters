@@ -2335,6 +2335,9 @@
     <None Include="..\..\Data\UI\MVP\MvpResult_Intro.keyframes.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\MVP\MvpResult_BadgeEffect.keyframes.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
