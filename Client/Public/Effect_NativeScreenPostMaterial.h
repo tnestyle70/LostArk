@@ -15,7 +15,7 @@ NS_BEGIN(Client)
 struct EFFECT_NATIVE_SCREEN_POST_SNAPSHOT final
 {
     std::shared_ptr<Engine::CShader> pShader;
-    std::array<ComPtr<ID3D11ShaderResourceView>, 9u> SourceTextures;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 10u> SourceTextures;
     std::array<float4_t, 32u> Parameters{};
     uint32_t iProfile = 0u;
     uint32_t iTextureMask = 0u;

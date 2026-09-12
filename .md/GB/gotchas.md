@@ -941,6 +941,8 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 ### Profiler 숫자의 계측 분모를 유지한다
 
 - GPU timestamp가 Update 전~Present 뒤를 감싸면 GPU 실행 사이 CPU 공급 공백을 포함할 수 있다. CPU와 GPU frame ms가 같다는 사실만으로 GPU 연산 포화를 단정하지 않는다. pass timestamp·Present CPU·copy 횟수를 별도로 측정한다.
+- `PSInvocations`는 셰이더 호출 수이며 셰이더 내부 ALU 연산 수가 아니다. 전체값을 특정 패스 비용으로 해석하지 않는다. GPU scope의 `pipelineValid`가 true인 PS/VS 통계만 사용하고 미선택·미지원 값을 0회 실행으로 해석하지 않는다. 인스턴싱으로 draw 제출이 줄어도 겹친 픽셀 수가 자동으로 줄지는 않는다.
+- Long Operations는 임계값 이상인 완료 호출만 표시한다. main만 보인다는 사실로 전체 프로세스에 worker가 없다고 단정하지 않으며 부모·자식 시간을 합산하지 않는다. worker 계산 합계와 main join 대기는 서로 다른 지표다.
 - `Particle.Simulate`의 spawn/update 동명 scope, 부모·자식 inclusive 시간, 여러 playback의 fixed-step 호출 합계를 구분한다. 고정 스텝 따라잡기와 동기 Save JSON의 프레임 간섭도 기록한다.
 - JSON의 counter 키 존재는 실제 writer 존재를 뜻하지 않는다. 확장 전 renderSubmissions/texture 계열의 writer 없는 0값을 작업량 0의 증거로 쓰지 않는다. 새 renderSubmissions는 실제 enqueue에 연결되며 미연결 texture counter는 N/A로 표시한다. occurrence별 SceneColor refresh도 실제 copy 함수 안에서 계측해야 초기 snapshot만 보이는 누락을 막는다.
 
@@ -957,6 +959,13 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - GPU timestamp interval에 CPU 명령 공급 공백이 포함될 수 있다. 전체 화면 PickPos readback처럼 Copy 뒤 즉시 Map하는 동기 경로는 CPU wait와 bytes를 따로 확인한다. 마우스 한 점을 얻으려고 viewport 전체를 복사하지 않는다. 현재 요청의 좌표/target/RowPitch/no-hit 계약을 유지한다.
 - Profiler panel 자체의 raw sample 정렬·집계가 캡처를 교란할 수 있다. self-time 계산을 바꿀 때 실제 캡처의 thread별 nesting, zero duration, orphan와 frame window를 비교한다. 집계 함수 가속 배율을 게임 FPS 배율로 보고하지 않는다.
 - Save JSON은 최근 최대 1200프레임의 독립 파일을 추가한다. 완료되지 않은 긴 scope는 종료 전까지 집계에 없고, 이미 기록된 frame history도 무제한은 아니다. 저장 이름이 같아도 기존 파일을 덮어쓰지 않는다.
+- pause한 Profiler 패널도 아직 pending인 GPU 결과가 회수될 때까지는 갱신해야 한다. 이후 변경 없는 history의 반복 집계를 중단하며 Capture/Reset/frame-window 변경은 즉시 반영한다.
+
+### 공유 mesh의 포즈와 파티클 병렬 작업 경계
+
+- `CModel` clone은 mesh geometry를 공유하고 bone pose는 각자 소유한다. skin palette cache도 모델에 두고 combined pose가 갱신될 때 무효화한다. WModel의 전체 skeleton palette와 Assimp의 mesh별 bone subset/offset을 같은 것으로 취급하지 않는다. frame number만으로 cache를 고정하면 한 프레임 안의 secondary motion·명시적 pose 변경을 놓친다.
+- 파티클 병렬화는 각 emitter의 particle/RNG 상태를 한 작업이 소유하고, 불변 준비 데이터만 공유한다. emitter 간 spawn provider와 portable event/death-event queue는 기존 순서를 유지한다. worker 결과를 모두 회수하기 전에 다음 fixed step, event, trail, frame rebuild를 진행하지 않는다.
+- worker 수 자체를 성능 개선으로 기록하지 않는다. Debug checked iterator의 경합, 작은 작업의 제출·join 비용을 실제 serial/parallel 동일 결과 비교로 확인하고, compiler 최적화 효과와 알고리즘·병렬화 효과를 분리한다.
 - 모델 worker의 협력 취소는 진행 중인 한 binary decode를 즉시 중단하지 못할 수 있다. 정상 레벨 전환은 요청을 보존하고 프레임을 진행하며 준비·큰 자원 해제가 끝난 뒤 전환한다. main에서 service를 먼저 파괴해 bounded join timeout을 정상 전환에도 발생시키지 않는다. worker registry와 owner는 thread를 시작하기 전에 준비하고 immutable authoring/catalog 입력은 main에서 캡처한다.
 
 ### 소환 모델의 뒤틀림·정지와 여러 material section을 구분한다
@@ -986,4 +995,21 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 ### 손 부착 창이 돌아가면 source TypeData 회전 누락을 먼저 구분한다
 
 - MeshRotation distribution의 quarter-turn과 TypeData의 degree 회전은 별개다. Lance V/ALT V source pitch=-90이 typed detail에서 빠져 있으면 실제 +Y 메시가 손본 -Z로 향한다. `[roll,pitch,yaw]`를 기존 `sourceTypeDataRotationDegrees`에 한 번 투영하고 local/socket 회전이나 offset을 임의로 덧붙이지 않는다.
+- 같은 `fm_x_flm_gdr_01`/dragon을 쓰는 T34650도 두 full 문서의 typed pitch가 누락/0이었다. V/ALT V 교정이 다른 스킬의 같은 mesh 행까지 자동 적용되는 것은 아니므로 실제 요청 슬롯의 모든 clip을 대조한다. 사용자가 확정한 Transform 위치는 source 회전 복구와 별도 필드로 보존한다.
 - source import scale 보정은 방향을 회전시키지 않지만 기존 방향·offset 오류를 크게 드러낼 수 있다. 실제 손본 pose와 설치 mesh vertex의 world 결과로 크기·원점·방향을 따로 비교한다. synthetic axis만 finite라는 검사로 실제 손 부착이 맞다고 기록하지 않는다.
+
+### Composition 재생 거부와 첫 프레임 준비 지연은 별도로 확인한다
+
+- 저장 Composition revision과 게시된 Pattern revision이 다르면 빈 DRAFT만 추가됐어도 Complete Play는 거부된다. 초안을 버리거나 revision 검사를 완화하지 말고 공식 publisher를 사용한다. 깨끗한 편집기의 cached revision이 아닌 실제 저장본을 비교하며 미저장 편집과 게시 중 상태는 보호한다.
+- WORLD cue마다 같은 문서를 다시 읽고 전체 검증하면 첫 Play에 동일 비용이 누적된다. 같은 요청의 독립 player는 검증을 한 번 공유하되 모든 문서 복사를 준비한 뒤 교체한다. per-instance 리소스 검증과 시계는 유지한다.
+- WORLD Effect는 worldId와 실제 sampled pivot이 필요하다. 맵 절대좌표 조명이나 화면 fade에 빈 WORLD를 저장하면 anchor 대기에서 생성에 도달하지 못한다. 이런 Effect는 MAP을 명시한다.
+- mouse_click LocalDecal의 시작 공백은 birth와 화면 마스크를 구분한다. Life 조절은 burst 시간과 shader의 첫 파동 위상을 바꾸지 않는다. source alpha를 opacity로 단정하지 말고 실제 DDS와 native mask를 대조한다. [수정·검증 결과](09-12/2026-09-12_KOUKU_PLAYBACK_AND_WORLD_MARKER_IMPLEMENTATION_RESULT.md).
+
+### Native effect 생성물은 모델 전용 include와 원본 pass 상수 범위를 함께 검사한다
+
+- `ARTIST_NATIVE_MODEL_ONLY`에서 기본 함수만 제외하고 distortion companion을 포함하면, 모델 파일의 선언보다 먼저 scene-depth texture를 참조해 실제 FXC X3004가 발생한다. companion도 동일 MODEL_ONLY guard를 갖게 하고 생성기와 설치 결과를 함께 수정한다. texture 선언을 앞으로 옮겨 경계를 우회하지 않는다.
+- native cohort 확장 시 CB0 material 행뿐 아니라 원본 CB2 pass 상수의 선언·실제 읽기 범위도 확인한다. 고정 4행 scratch는 CB2[4]/CB2[6]를 사용하는 원본에서 X3504를 만든다. viewport 값은 실제 render target 크기, override 값은 검증된 기존 scene 계약으로 공급한다.
+- 파티클·메시 컴파일만으로는 MODEL_ONLY include 회귀가 드러나지 않는다. 같은 include를 소비하는 `Shader_VtxAnimMeshBinary`도 FXC로 확인한다. [교정 결과](09-12/2026-09-12_KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT.md)를 따른다.
+
+- 왜곡 PS의 CB1 참조를 `projection`으로 치환했다면 실제 선언과 carrier 입력도 연결한다. 쿠크 `2d8c822c...`는 TEXCOORD5의 source world cm를 한 번 투영한다. screen clip 값을 다시 투영하거나 Trail에 0 행렬을 전달하지 않는다.
+- native texture index 9를 쓰는 프로그램은 열 번째 SRV가 필요하다. generated sample helper만 늘리지 말고 renderer staging 배열, bind, screen-post snapshot·mask와 독립 모델 shader 선언까지 같은 상한을 적용한다.

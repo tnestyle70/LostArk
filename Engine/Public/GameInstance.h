@@ -130,7 +130,8 @@ public: /* For.Light */
 	HRESULT Render_Lights(shared_ptr<class CShader> pShader,
 		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
 		bool_t bEnableSceneDirectionalShadow,
-        LIGHT_RECEIVER ePassReceiver = LIGHT_RECEIVER::ALL);
+        LIGHT_RECEIVER ePassReceiver = LIGHT_RECEIVER::ALL,
+		bool_t bSourceLightMask = false);
 
 
 public: /* For.Font_Manager */

@@ -36,7 +36,19 @@ def qualify(package, path, reference=1):
 
 def record_from_export(package, logical, entry):
     raw = package.logical[entry.serial_offset:entry.serial_offset + entry.serial_size]
-    if len(raw) >= 12 and 0 <= struct.unpack_from('<i',raw,4)[0] < len(package.names) and package.names[struct.unpack_from('<i',raw,4)[0]].lower() == 'none' and struct.unpack_from('<i',raw,8)[0] == 0:
+    # Default subobjects carry their exact template FName and owner before an
+    # empty tagged stream. Do not scan arbitrary bytes for a None-looking value.
+    empty_template = (len(raw) == 24 and
+        0 <= struct.unpack_from('<i', raw, 4)[0] < len(package.names) and
+        package.names[struct.unpack_from('<i', raw, 4)[0]].lower() == entry.object_name.lower() and
+        struct.unpack_from('<i', raw, 8)[0] == 0 and
+        0 < struct.unpack_from('<i', raw, 12)[0] <= len(package.exports) and
+        0 <= struct.unpack_from('<i', raw, 16)[0] < len(package.names) and
+        package.names[struct.unpack_from('<i', raw, 16)[0]].lower() == 'none' and
+        struct.unpack_from('<i', raw, 20)[0] == 0)
+    if empty_template:
+        properties, end = {}, 24
+    elif len(raw) >= 12 and 0 <= struct.unpack_from('<i',raw,4)[0] < len(package.names) and package.names[struct.unpack_from('<i',raw,4)[0]].lower() == 'none' and struct.unpack_from('<i',raw,8)[0] == 0:
         properties, end = {}, 12
     else:
         original_decoder=ue3.decode_property_value
@@ -60,7 +72,7 @@ def record_from_export(package, logical, entry):
         properties=properties, references=refs, serialSha256=hashlib.sha256(raw).hexdigest(),
         sourcePackage=str(package.path), exportIndex=entry.index, propertyStreamEnd=end)
 
-def acquire(evidence):
+def acquire(evidence, external_package_resolver=None):
     action = read(ACTION)
     socket_path=evidence/'source_socket_contract.json'
     socket_contract=read(socket_path) if socket_path.is_file() else None
@@ -79,7 +91,17 @@ def acquire(evidence):
     systems = {ref['objectPath'].lower() for n in notifies for ref in n['assetReferences'] if ref['className'].lower() == 'particlesystem'}
     records = {}
     for logical in sorted({s.split('.')[0] for s in systems}):
-        graph = read(GRAPH / (logical.upper() + '.particle-graph.json'))
+        graph_path = GRAPH / (logical.upper() + '.particle-graph.json')
+        if not graph_path.is_file():
+            assert external_package_resolver is not None, ('Source graph and exact package resolver are absent', logical)
+            package = load_package(external_package_resolver(logical), ue3.LOSTARK_KR_AES_KEY)
+            for entry in package.exports:
+                cls = ue3.package_ref_name(entry.class_index, package.imports, package.exports)
+                if is_particle_graph_class(cls):
+                    row = record_from_export(package, logical, entry)
+                    records[row['fullPath']] = row
+            continue
+        graph = read(graph_path)
         for original in graph['objects']:
             row = copy.deepcopy(original); key = qualify(logical, row['objectPath'])
             row['fullPath'] = key
@@ -109,8 +131,11 @@ def acquire(evidence):
             if receipt.is_file():path=source_package('Effect',logical)
             else:
                 candidates=list((SOURCE/'CanonicalSource/Effect/Closure/SourcePackages'/logical).glob('*.upk'))
-                assert len(candidates)==1,('missing exact external particle package',key,candidates)
-                path=candidates[0]
+                if not candidates and external_package_resolver is not None:
+                    path=external_package_resolver(logical)
+                else:
+                    assert len(candidates)==1,('missing exact external particle package',key,candidates)
+                    path=candidates[0]
             external_packages[logical]=load_package(path,ue3.LOSTARK_KR_AES_KEY)
         row=record_from_export(external_packages[logical],logical,find_export(external_packages[logical],relative))
         assert row['fullPath']==key,(row['fullPath'],key)
@@ -176,6 +201,7 @@ def acquire(evidence):
                 kind, _, shape = imported.classify({'sourceSystemId':system}, modules)
                 if any('typedataanimtrail' in m.class_name for m in modules): kind, shape = 'trail', 'animationTrail'
                 elif any('typedataribbon' in m.class_name for m in modules): kind, shape = 'trail', 'ribbon'
+                elif any('typedatabeam' in m.class_name for m in modules): kind, shape = 'trail', 'beam'
                 required = next(m for m in modules if m.class_name == 'particlemodulerequired')
                 material = next((p for prop,p in required.reference_paths if prop == 'material'), '')
                 mesh = next((p for m in modules for prop,p in m.reference_paths if prop == 'mesh'), '')
@@ -237,6 +263,22 @@ def distribution_bounds(dist):
     values=dist['lookupTable'] or [v for key in dist['keys'] for v in key.get('minimum',[]) + key.get('maximum',[])]
     if not values: values=dist['defaultMinimum'][:dist['componentCount']]+dist['defaultMaximum'][:dist['componentCount']]
     return min(values),max(values)
+
+
+def constant_distribution_value(dist):
+    """Read a proven constant raw LUT without discarding its source recipe."""
+    count = dist['componentCount']
+    assert not dist['keys'] and dist['operation'] == 1
+    table = dist['lookupTable']
+    if not table:
+        assert dist['defaultMinimum'] == dist['defaultMaximum']
+        return dist['defaultMinimum'][:count]
+    assert dist['lookupTableChunkSize'] == count and dist['lookupTableNumElements'] == 1
+    assert dist['lookupTableTimeScale'] == 0 and len(table) == 2 + count * 2
+    value = table[2:2 + count]
+    assert table[2 + count:] == value
+    assert all(math.isfinite(v) for v in value)
+    return value
 
 def trail_history(evidence):
     package=load_package(source_package('Character','MN_RPCT_05_ANIMNOTIFY_TRAILS'),ue3.LOSTARK_KR_AES_KEY)
@@ -412,6 +454,33 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
         if o['sourceMesh']:
             source_name=o['sourceMesh'].rsplit('.',1)[-1]
             e['resources']=[dict(slotId='meshModel',assetId=f'Effect/KoukuSaydon/FullRestore/Meshes/{source_name}.wmodel')]
+        if o['rendererShape'] in ('ribbon', 'beam'):
+            beam = o['rendererShape'] == 'beam'
+            class_name = 'particlemoduletypedatabeam2' if beam else 'particlemoduletypedataribbon'
+            typed_recipe = next(m for m in recipe['modules'] if m['className'] == class_name)
+            typed = next(m for m in modules if m.class_name == class_name)
+            props = typed.properties
+            e['kind'] = 'trail'
+            docs[o['actionId']]['version'] = 15
+            docs[o['actionId']].setdefault('runtimeExtensions', dict(formatVersion=1,bakedEdgeHistories=[]))
+            e['runtimeCarrier'] = dict(formatVersion=1, kind='cascadeBeamV1' if beam else 'cascadeRibbonV1',
+                admission='bounded', typeDataModuleStableId=typed_recipe['stableId'])
+            if beam:
+                assert imported.prop(props, 'beammethod') == 'peb2m_target'
+                assert imported.prop(props, 'maxbeamcount') == 1 and imported.prop(props, 'sheets') == 1
+                assert not any('beamnoise' in m.class_name or 'beamsource' in m.class_name for m in modules)
+                assert imported.prop(props, 'interpolationpoints', 0) == 0
+                detail['trail'].update(maxPoints=2, pointLifeTimeSeconds=max(detail['particle']['lifeTimeSeconds']),
+                    sampleIntervalSeconds=1/60, minimumDistance=0, faceCamera=True,
+                    tilingDistanceWorldUnits=float(imported.prop(props,'texturetiledistance',0))*.01,
+                    distanceTessellationStepWorldUnits=0)
+            else:
+                assert imported.prop(props, 'sheetspertrail') == 1
+                detail['trail'].update(maxPoints=int(imported.prop(props,'maxparticleintrailcount')),
+                    pointLifeTimeSeconds=max(detail['particle']['lifeTimeSeconds']), sampleIntervalSeconds=1/60,
+                    minimumDistance=0, faceCamera=True,
+                    tilingDistanceWorldUnits=float(imported.prop(props,'tilingdistance',0))*.01,
+                    distanceTessellationStepWorldUnits=float(imported.prop(props,'distancetessellationstepsize',0))*.01)
         if o['rendererShape']=='animationTrail':
             catalog=read(ROOT/'Data/Actors/BossCatalog.json')
             actor=next(a for a in catalog['bosses'] if a['archetypeId']=='BOSS_KAKULSAYDON_G1_SAYDON')
@@ -446,11 +515,9 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
             # initial particle Color is carried by the ordinary Detail tint.
             initial={d['propertyPath']:d for m in recipe['modules'] if m['className']=='particlemodulecolor' for d in m['distributions']}
             if 'startcolor' in initial:
-                d=initial['startcolor'];assert not d['lookupTable'] and not d['keys'] and d['defaultMinimum']==d['defaultMaximum']
-                detail['color']['multiply'][:3]=d['defaultMinimum'][:3]
+                detail['color']['multiply'][:3]=constant_distribution_value(initial['startcolor'])
             if 'startalpha' in initial:
-                d=initial['startalpha'];assert not d['lookupTable'] and not d['keys'] and d['defaultMinimum']==d['defaultMaximum']
-                detail['color']['multiply'][3]=d['defaultMinimum'][0]
+                detail['color']['multiply'][3]=constant_distribution_value(initial['startalpha'])[0]
         docs[o['actionId']]['elements'].append(e)
         # One source notify can request the same PS independently at several
         # exact source sockets. Each socket gets the complete emitter stream.

@@ -77,6 +77,13 @@ public:
 		const MAP_ASSET_RENDER_PROFILE& profile,
 		bool_t mirrored);
 
+	static HRESULT Bind_ShadowMaterial(
+		const shared_ptr<Engine::CModel>& model,
+		const shared_ptr<Engine::CShader>& shader,
+		uint32_t meshIndex,
+		const MAP_ASSET_RENDER_PROFILE& profile,
+		f32_t elapsedTime);
+
 	static HRESULT Bind_Material(
 		const shared_ptr<Engine::CModel>& model,
 		const shared_ptr<Engine::CShader>& shader,

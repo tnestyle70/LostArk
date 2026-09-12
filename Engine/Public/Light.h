@@ -18,7 +18,8 @@ public:
 		const LIGHT_DESC& LightDesc,
 		shared_ptr<class CShader> pShader,
 		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-		bool_t bApplyDirectionalShadow = false, bool_t bApplyStaticShadow = false);
+		bool_t bApplyDirectionalShadow = false, bool_t bApplyStaticShadow = false,
+		bool_t bSourceLightMask = false);
 
 private:
 	LIGHT_DESC				m_LightDesc;

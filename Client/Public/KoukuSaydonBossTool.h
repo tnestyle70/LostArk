@@ -71,6 +71,7 @@ namespace Client
 		bool Play_PatternFlow(std::string_view gateId, std::string& status);
 		const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Get_SavedFlow(std::string_view gateId) const;
 		bool Render_SavedPatternFlow(std::string_view gateId, int& selectionKind, std::string& selectedId) const;
+		bool Request_PublishSavedPatterns(std::string& status);
 		bool Consume_PublishRequest() { const bool requested = m_bPublishRequested; m_bPublishRequested = false; return requested; }
 		void Set_Status(std::string status) { m_strStatus = std::move(status); }
 		/* Read-only inventory for the F1 hub's KoukuSaydon Complete Play list.

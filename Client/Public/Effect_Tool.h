@@ -1375,7 +1375,7 @@ private:
     string m_strTextureKindCategory = "All";
 
     array<char_t, 129> m_NewAssetId{};
-    array<char_t, 65> m_NewDisplayName{};
+    array<char_t, 257> m_NewDisplayName{};
     array<char_t, 129> m_NewElementId{};
     array<char_t, 129> m_ResourceFilter{};
     array<char_t, 129> m_ResourceCategory{};
@@ -1429,6 +1429,8 @@ private:
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
     bool_t m_bAllEffectsRefreshAttempted = false;
+    bool_t m_bSavedEffectOrganizationLoaded = false;
+    std::map<std::string, std::pair<std::string, std::vector<std::string>>> m_SavedEffectOrganization;
     bool_t m_bDataFilesRefreshAttempted = false;
 	bool_t m_bCatalogMetadataViewInitialized = false;
     bool_t m_bPendingWorldPivotPick = false;
@@ -1498,7 +1500,7 @@ private:
         std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error);
     void Attach_AuthoringSaved();
     bool Resolve_AuthoringSourceAnchors(const std::shared_ptr<CEffectObject>& object,
-        const float4x4_t& root, bool useKouku,
+        const float4x4_t& root, bool useKouku, float seconds,
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
     std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
     std::unique_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;

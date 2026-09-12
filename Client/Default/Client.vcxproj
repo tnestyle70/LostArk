@@ -87,6 +87,7 @@
     <ClInclude Include="..\Public\EffectAuthoringTransfer.h" />
     <ClInclude Include="..\Public\Effect_DocumentCodec.h" />
     <ClInclude Include="..\Public\Effect_Playback.h" />
+    <ClInclude Include="..\Public\Effect_ParticleUpdatePool.h" />
     <ClInclude Include="..\Public\Effect_LightPresentation.h" />
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
     <ClInclude Include="..\Public\Effect_MaterialProgramRegistry.h" />
@@ -318,8 +319,19 @@
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
 	<ClCompile Include="..\Private\Effect_ReconstructedExecution.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
-    <ClCompile Include="..\Private\Effect_Distribution.cpp" />
-    <ClCompile Include="..\Private\Effect_Playback.cpp" />
+    <ClCompile Include="..\Private\Effect_Distribution.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_ParticleUpdatePool.cpp" />
+    <ClCompile Include="..\Private\Effect_Playback.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp">
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
@@ -404,7 +416,12 @@
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
 	<ClCompile Include="..\Private\DeferredMaterialRenderUtils.cpp" />
-    <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
+    <ClCompile Include="..\Private\MapAssetRenderUtils.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    </ClCompile>
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\Private\ValtanPatternTree.cpp" />
@@ -1581,5 +1598,33 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.wave.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.warning.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.light.full.restore.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.create.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.loop.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.end.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.shell.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.muzzle.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.signature.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.ground.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.airstrike.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.airstrike.missile.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.ball.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.ball.red.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.impact01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.impact03.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.ball.drop.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.napalm.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.fixed.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.tracking.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.end.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.fire.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bullet.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.staff.flame.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.pentagram.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.full.restore.effect.json"></None>
   </ItemGroup>
 </Project>

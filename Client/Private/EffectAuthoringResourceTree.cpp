@@ -277,6 +277,32 @@ std::string Client::CEffectAuthoringResourceTree::Serialize(const DOCUMENT& Docu
     return Bytes + "\n  ]\n}\n";
 }
 
+bool Client::CEffectAuthoringResourceTree::Read_V1Organization(std::vector<RESOURCE>& OutRows, std::string& Error)
+{
+    std::string bytes; bool exists = false;
+    if (!Read_Source(CProjectDataRoot::Resolve("Effects/EffectResourceTree.json"), bytes, exists, Error)) return false;
+    DOCUMENT document;
+    if (exists && !Parse(bytes, document, Error)) return false;
+    std::vector<RESOURCE> staged;
+    for (const auto& reference : document.References)
+    {
+        if (reference.eKind != OWNER::V1_DOCUMENT) continue;
+        RESOURCE row; row.eKind = reference.eKind; row.strAssetId = reference.strAssetId;
+        row.strDisplayName = reference.strDisplayName;
+        auto parent = reference.strParentId;
+        for (size_t depth = 0u; parent != "root.v1" && depth < MAX_NODES; ++depth)
+        {
+            const auto node = std::find_if(document.Nodes.begin(), document.Nodes.end(),
+                [&](const auto& entry) { return entry.strId == parent; });
+            if (node == document.Nodes.end()) return Fail(Error, "Saved Effect category parent is unavailable: " + parent);
+            row.CategoryPath.push_back(node->strDisplayName); parent = node->strParentId;
+        }
+        std::reverse(row.CategoryPath.begin(), row.CategoryPath.end());
+        staged.push_back(std::move(row));
+    }
+    OutRows = std::move(staged); Error.clear(); return true;
+}
+
 bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE>& OutRows, std::string& Error)
 {
     const auto Directory = CProjectDataRoot::Resolve("Effects/Authored");

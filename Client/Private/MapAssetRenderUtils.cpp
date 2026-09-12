@@ -599,6 +599,64 @@ std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_R
 	return g_SurfaceBindings;
 }
 
+HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
+	const shared_ptr<Engine::CModel>& model,
+	const shared_ptr<Engine::CShader>& shader,
+	uint32_t meshIndex,
+	const MAP_ASSET_RENDER_PROFILE& profile,
+	f32_t elapsedTime)
+{
+	if (nullptr == model || nullptr == shader ||
+		meshIndex >= model->Get_NumMeshes())
+		return E_INVALIDARG;
+
+	const auto* surface = model->Get_MaterialSurface(meshIndex);
+	if (surface)
+	{
+		switch (surface->family)
+		{
+		case Engine::MODEL_SURFACE_FAMILY::LEGACY:
+		case Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
+		case Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
+		case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
+		case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
+		case Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
+			break;
+		default:
+			// Native, layered and foliage families own additional shadow inputs.
+			return Bind_Material(model, shader, meshIndex, profile, elapsedTime);
+		}
+	}
+
+	const uint32_t noProgram = 0u;
+	if (FAILED(shader->Bind_RawValue("g_DiffuseMirrorU", &noProgram, sizeof(noProgram))))
+		return E_FAIL;
+	// A preceding character draw may share the Effect. Map instances omit these
+	// optional variables, while the binary shadow pass reads the character program.
+	shader->Bind_RawValue("g_SourceCharacterProgram", &noProgram, sizeof(noProgram));
+	shader->Bind_RawValue("g_SourceCharacterRow", &noProgram, sizeof(noProgram));
+
+	const float2_t uvOffset(profile.uvSpeed.x * elapsedTime, profile.uvSpeed.y * elapsedTime);
+	if (FAILED(model->Bind_Material(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
+		FAILED(shader->Bind_RawValue("g_UVScale", &profile.uvScale, sizeof(profile.uvScale))) ||
+		FAILED(shader->Bind_RawValue("g_UVOffset", &uvOffset, sizeof(uvOffset))) ||
+		FAILED(shader->Bind_RawValue("g_ColorTint", &profile.colorTint, sizeof(profile.colorTint))) ||
+		FAILED(shader->Bind_RawValue("g_Opacity", &profile.opacity, sizeof(profile.opacity))))
+		return E_FAIL;
+
+	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
+	const uint32_t program = surface &&
+		surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY &&
+		profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED && settings.bUseSourceMaterials ?
+		static_cast<uint32_t>(surface->family) : 0u;
+	// Source diffuse can differ from the legacy texture. Preserve its alpha even
+	// though the remaining source lighting textures are unused by these shadows.
+	if (program != 0u &&
+		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)))
+		return E_FAIL;
+	return shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program));
+}
+
 HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const shared_ptr<Engine::CModel>& model,
 	const shared_ptr<Engine::CShader>& shader,

@@ -74,7 +74,7 @@ HRESULT CLight::Render_Desc(
 	const LIGHT_DESC& LightDesc,
 	shared_ptr<class CShader> pShader,
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-	bool_t bApplyDirectionalShadow, bool_t bApplyStaticShadow)
+	bool_t bApplyDirectionalShadow, bool_t bApplyStaticShadow, bool_t bSourceLightMask)
 {
 	if (!IsValidLightAttenuation(LightDesc))
 		return E_INVALIDARG;
@@ -139,6 +139,12 @@ HRESULT CLight::Render_Desc(
     if (FAILED(pShader->Bind_RawValue("g_vLightSpecular", &LightDesc.vSpecular, sizeof LightDesc.vSpecular)))
         return E_FAIL;
 
+
+    if (bSourceLightMask)
+    {
+        iPassIndex = LIGHT::DIRECTIONAL == LightDesc.eType ? ETOUI(DEFERRED::SOURCE_DIRECTIONAL) :
+            LIGHT::POINT == LightDesc.eType ? ETOUI(DEFERRED::SOURCE_POINT) : ETOUI(DEFERRED::SOURCE_SPOT);
+    }
 
     if (FAILED(pShader->Begin(iPassIndex)))
         return E_FAIL;

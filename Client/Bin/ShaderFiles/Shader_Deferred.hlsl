@@ -1364,6 +1364,54 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
 }
 
 
+// Source light rows already reject every other marker. Stencil performs that
+// same rejection before PS invocation without touching the scene outline stencil.
+DepthStencilState DSS_SourceLightMaskWrite
+{
+    DepthEnable = false;
+    DepthWriteMask = zero;
+    StencilEnable = true;
+    StencilReadMask = 0xff;
+    StencilWriteMask = 0xff;
+    FrontFaceStencilFunc = always;
+    FrontFaceStencilPass = replace;
+    FrontFaceStencilFail = keep;
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilFunc = always;
+    BackFaceStencilPass = replace;
+    BackFaceStencilFail = keep;
+    BackFaceStencilDepthFail = keep;
+};
+
+DepthStencilState DSS_SourceLightMaskRead
+{
+    DepthEnable = false;
+    DepthWriteMask = zero;
+    StencilEnable = true;
+    StencilReadMask = 0xff;
+    StencilWriteMask = 0x00;
+    FrontFaceStencilFunc = equal;
+    FrontFaceStencilPass = keep;
+    FrontFaceStencilFail = keep;
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilFunc = equal;
+    BackFaceStencilPass = keep;
+    BackFaceStencilFail = keep;
+    BackFaceStencilDepthFail = keep;
+};
+
+void PS_MAIN_SOURCE_LIGHT_MASK(PS_IN input)
+{
+    if (g_DepthTexture.Load(int3(int2(input.vPosition.xy), 0)).w != 5.f) discard;
+}
+
+[earlydepthstencil]
+PS_OUT_LIGHT PS_MAIN_SOURCE_DIRECTIONAL(PS_IN input) { return PS_MAIN_DIRECTIONAL(input); }
+[earlydepthstencil]
+PS_OUT_LIGHT PS_MAIN_SOURCE_POINT(PS_IN input) { return PS_MAIN_POINT(input); }
+[earlydepthstencil]
+PS_OUT_LIGHT PS_MAIN_SOURCE_SPOT(PS_IN input) { return PS_MAIN_SPOT(input); }
+
 technique11 DefaultTechnique
 {
     pass Debug
@@ -1546,6 +1594,47 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_DISPLAY_OVERLAY();
+    }
+
+    // Existing pass indices 0-17 remain unchanged.
+    pass SourceLightMask
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskWrite, 1);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_LIGHT_MASK();
+    }
+
+    pass SourceDirectional
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskRead, 1);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_DIRECTIONAL();
+    }
+
+    pass SourcePoint
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskRead, 1);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_POINT();
+    }
+
+    pass SourceSpot
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskRead, 1);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_SPOT();
     }
 
 }

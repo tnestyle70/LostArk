@@ -219,11 +219,15 @@ struct EFFECT_PARTICLE_RUNTIME_PROBE final
 class CEffectPlayback final
 {
 public:
+	// Shared source clock/frame evaluation for effect and owned-model transforms.
+	static float4x4_t Sample_SourceTransformTrack(
+		const EFFECT_SOURCE_TRANSFORM_TRACK& Track, f32_t fSampleTimeSeconds);
 	struct PREPARED_RESOURCES;
 
 private:
 	struct SOURCE_VECTOR_FIELD_UPDATE;
 	struct SOURCE_UPDATE_MODULE;
+	struct SOURCE_SPAWN_RECIPE;
 	struct AUTHORED_PARTICLE_SPAWN_SAMPLE final
 	{
 		float3_t vPosition{};
@@ -231,6 +235,13 @@ private:
 		bool_t bHasRingAzimuth = false;
 	};
 
+    struct SOURCE_ORBIT_PHASE final
+    {
+        float3_t vOffset{};
+        float3_t vRotationDegrees{};
+        float3_t vRotationRateDegreesPerSecond{};
+        bool_t bLink = false;
+    };
 	struct PARTICLE_STATE final
 	{
 		float3_t vPosition{};
@@ -259,6 +270,7 @@ private:
 		float4_t vDynamicParameter{};
 		float3_t vOrbitOffset{};
 		float3_t vBaseOrbitOffset{};
+		std::vector<SOURCE_ORBIT_PHASE> SourceOrbitPhases;
 		float3_t vSourceOrbitRotationDegrees{};
 		float3_t vSourceOrbitRotationRateDegreesPerSecond{};
 		f32_t fVectorFieldScale = 1.f;
@@ -271,6 +283,11 @@ private:
 		f32_t fAgeSeconds = 0.f;
 		f32_t fLifeTimeSeconds = 1.f;
 		uint64_t iSpawnSimulationStep = 0u;
+        float3_t vSourceCollisionPreviousPosition{};
+        float3_t vSourceCollisionDamping{};
+        float3_t vSourceCollisionRotationDamping{};
+        uint32_t iSourceCollisionsRemaining = 0u;
+        f32_t fSourceCollisionDelay = 0.f;
 		bool_t bSourceEmitterLocationResolved = true;
 		std::string strSourceAnchorName;
 		float3_t vSourceAnchorOffset{};
@@ -503,6 +520,8 @@ private:
 		ELEMENT_STATE& State,
 		f32_t fFixedDelta,
 		const float4x4_t& RootWorld);
+	void Apply_SourceEmitterDirectLocations(const float4x4_t& RootWorld);
+	void Apply_SourceWorldCollisions(const float4x4_t& RootWorld);
 	void Apply_SourceSubUV(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -519,7 +538,8 @@ private:
 		PARTICLE_STATE& Particle,
 		f32_t fEmitterTimeSeconds,
 		const float4x4_t& ElementWorld,
-		const float4x4_t& RootWorld);
+		const float4x4_t& RootWorld,
+		const SOURCE_SPAWN_RECIPE& PreparedRecipe);
 	std::vector<SOURCE_VECTOR_FIELD_UPDATE> Prepare_SourceVectorFieldUpdates(
 		const EFFECT_ELEMENT_DESC& Element, f32_t fEmitterTimeSeconds,
 		std::span<const size_t> ModuleIndices) const;
@@ -650,6 +670,14 @@ private:
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		m_pSourceVisualProgramProjection;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
+	struct PARTICLE_UPDATE_TASK final
+	{
+		const EFFECT_ELEMENT_DESC* pElement;
+		ELEMENT_STATE* pState;
+		size_t iWork;
+	};
+	// Main thread rebuilds this list before a synchronous independent-emitter update.
+	std::vector<PARTICLE_UPDATE_TASK> m_ParticleUpdateTasks;
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
 	EFFECT_MODEL_CUE_ANCHOR_PROVIDER m_ModelCueAnchorProvider;

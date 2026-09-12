@@ -77,6 +77,15 @@ float4 PS_MAIN(VS_OUT input) : SV_TARGET0
             g_SourceMaterialProfile == 1619u ? ArtistNative1619(n) :
             g_SourceMaterialProfile == 1623u ? ArtistNative1623(n) : ArtistNative1648(n);
     }
+    else if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u)
+    {
+        ARTIST_NATIVE_INPUT n = (ARTIST_NATIVE_INPUT)0;
+        n.uv = input.uv; n.screenUV = screenUV;
+        n.projectionW = g_PostSourceProjectionW * 100.f;
+        n.color = g_PostSourceColor; n.dynamicParameter = g_PostSourceDynamicParameter;
+        n.frontFace = true;
+        nativeColor = Shade_EffectArtistNative(g_SourceMaterialProfile, n).SceneColor;
+    }
     else if (g_SourceMaterialProfile == 659u || g_SourceMaterialProfile == 1228u || g_SourceMaterialProfile == 1255u)
     {
         LANCE_VA_NATIVE_INPUT n = (LANCE_VA_NATIVE_INPUT)0;

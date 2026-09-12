@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 4,
+  "revision": 5,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -513,8 +513,8 @@
     {"resourceId": "presentation.kouku.gate2.intro.camera.3", "displayName": "2관문 진입 카메라 / cam3", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.intro.camera.3", "resourceKind": "", "elementId": "", "durationMs": 5540, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "presentation.kouku.gate2.intro.camera.4", "displayName": "2관문 진입 카메라 / cam4", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.intro.camera.4", "resourceKind": "", "elementId": "", "durationMs": 4460, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "presentation.kouku.gate2.intro.camera.5", "displayName": "2관문 진입 카메라 / cam6", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.intro.camera.5", "resourceKind": "", "elementId": "", "durationMs": 3050, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "presentation.kouku.gate2.intro.fade", "displayName": "2관문 진입 / 원본 Fade", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "kouku.gate2.intro.fade", "resourceKind": "GROUP", "elementId": "", "durationMs": 27000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "presentation.kouku.gate2.intro.lights", "displayName": "2관문 진입 / 원본 이동 조명", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "effect.kouku.gate2.intro.lights", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 27000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.intro.fade", "displayName": "2관문 진입 / 원본 Fade", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "kouku.gate2.intro.fade", "resourceKind": "GROUP", "elementId": "", "durationMs": 27000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.intro.lights", "displayName": "2관문 진입 / 원본 이동 조명", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate2.intro.lights", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 27000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.1", "displayName": "V2_무력화_앞방패", "defaultAnchorKind": "BOSS", "kind": "EFFECT", "assetId": "boss.kouku.disarm.shield_1", "resourceKind": "LEAF", "elementId": "", "durationMs": 10684, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.2", "displayName": "V2_진짜세이튼_하트", "defaultAnchorKind": "BOSS", "kind": "EFFECT", "assetId": "boss.kouku.find.heart", "resourceKind": "GROUP", "elementId": "", "durationMs": 2400, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.3", "displayName": "V2_가짜세이튼_총발사", "defaultAnchorKind": "BOSS", "kind": "EFFECT", "assetId": "boss.kouku.find.star", "resourceKind": "GROUP", "elementId": "", "durationMs": 1534, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
@@ -1067,7 +1067,7 @@
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "WORLD",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
@@ -1105,7 +1105,7 @@
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "WORLD",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""

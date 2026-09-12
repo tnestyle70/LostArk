@@ -1,6 +1,8 @@
 #include "EffectCompositionModelPreview.h"
 
 #include "DataJson.h"
+#include "Effect_DocumentCodec.h"
+#include "Npc.h"
 #include "KoukuSaydonPresentationPlayer.h"
 
 #include <algorithm>
@@ -205,6 +207,50 @@ bool Client::CEffectCompositionModelPreview::Reload()
     return true;
 }
 
+bool Client::CEffectCompositionModelPreview::Select_SourceEffect(const EFFECT_DOCUMENT_DESC& effect)
+{
+    if (!effect.SourceModelPreview)
+    { m_Status = "This Effect has no saved source model preview."; return false; }
+    const auto& source = *effect.SourceModelPreview;
+    if (!CEffectDocumentCodec::Validate(effect, m_Status)) return false;
+    if (!CKoukuSaydonCompositionDocument::Is_KnownGate(source.strGateId) ||
+        CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(source.strTargetBossPlacementId) != source.strActorProfileId ||
+        CKoukuSaydonCompositionDocument::Resolve_DefaultPlacementId(source.strGateId, source.strActorProfileId) != source.strTargetBossPlacementId)
+    { m_Status = "Source model preview actor and Gate do not match their saved placement."; return false; }
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT staged;
+    staged.iRevision = 1u;
+    KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+    pattern.strPatternId = "effect.model." + effect.strEffectAssetId;
+    pattern.strDisplayName = effect.strDisplayName;
+    pattern.strGateId = source.strGateId;
+    pattern.strActorProfileId = source.strActorProfileId;
+    pattern.strTargetBossPlacementId = source.strTargetBossPlacementId;
+    KOUKU_SAYDON_COMPOSITION_STAGE stage;
+    stage.strStageId = "source.animation";
+    for (const auto& animation : source.Animations)
+    {
+        KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE clip;
+        clip.strOccurrenceId = "source.animation." + std::to_string(stage.AnimationOccurrences.size());
+        clip.strRuntimeClip = animation.strRuntimeClip;
+        clip.strProfileId = source.strActorProfileId;
+        clip.iStartOffsetMs = animation.iStartOffsetMs;
+        clip.iSourceStartMs = animation.iSourceStartMs;
+        clip.iPlayMs = animation.iPlayMs;
+        clip.fPlayRate = animation.fPlayRate;
+        clip.strEndPolicy = animation.strEndPolicy;
+        stage.iDurationMs = (std::max)(stage.iDurationMs, clip.iStartOffsetMs + clip.iPlayMs);
+        stage.AnimationOccurrences.push_back(std::move(clip));
+    }
+    pattern.Stages.push_back(std::move(stage));
+    const auto selected = pattern.strPatternId;
+    staged.Patterns.push_back(std::move(pattern));
+    Stop();
+    m_Document = std::move(staged); m_SelectedId = selected; m_IsBundle = false; m_Loaded = true;
+    Build_Rows();
+    m_Status = "Loaded this Effect's source model and animation windows.";
+    return true;
+}
+
 bool Client::CEffectCompositionModelPreview::Select_Pattern(const std::string& patternId)
 {
     if (std::none_of(m_Document.Patterns.begin(), m_Document.Patterns.end(),
@@ -303,6 +349,17 @@ bool Client::CEffectCompositionModelPreview::Sample(const std::uint32_t clockMs,
     if (!Is_Active()) return false;
     m_Player->Sample_ModelReferencePreview(clockMs, paused);
     return true;
+}
+
+bool Client::CEffectCompositionModelPreview::Place_Root(const float4x4_t& root)
+{
+    if (!Is_Active() || m_Actors.size() != 1u) return false;
+    for (const auto& row : root.m) for (float value : row) if (!std::isfinite(value)) return false;
+    EFFECT_V2_TARGET target; EFFECT_V2_TARGET_VIEW view;
+    if (!Resolve_Target(m_Actors.front().memberId, target, view)) return false;
+    const auto actor = std::dynamic_pointer_cast<CNpc>(target.pOwner.lock());
+    return actor && actor->Apply_NetworkState({root._41, root._42, root._43},
+        XMConvertToDegrees(std::atan2(root._31, root._33)));
 }
 
 void Client::CEffectCompositionModelPreview::Stop()

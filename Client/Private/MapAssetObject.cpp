@@ -268,7 +268,7 @@ HRESULT CMapAssetObject::Render_Shadow()
         const uint32_t iCullPass = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
         if (iCullPass > 2u) return E_UNEXPECTED;
         presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
-		if (FAILED(CMapAssetRenderUtils::Bind_Material(
+		if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(
 				m_pModelCom, m_pShaderCom, iMesh,
 				presentationProfile, m_fElapsedTime)) ||
 			FAILED(m_pShaderCom->Begin(

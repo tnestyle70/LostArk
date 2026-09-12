@@ -75,18 +75,38 @@ void CWorldSequencePlayer::Collect_ValidationTargets(const TARGET_SET& targets,
 bool_t CWorldSequencePlayer::Set_Document(const CWorldSequenceDocument& document,
     const TARGET_SET& targets, std::string& status)
 {
+    const bool_t admitted = Set_DocumentBatch(document, targets, {this}, status);
+    m_Status = status;
+    return admitted;
+}
+
+bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& document,
+    const TARGET_SET& targets, const std::vector<CWorldSequencePlayer*>& players, std::string& status)
+{
+    if (!targets.Is_Complete())
+    { status = "World Object runtime targets are unavailable."; return false; }
+    std::unordered_set<CWorldSequencePlayer*> unique;
+    if (players.empty() || std::any_of(players.begin(), players.end(), [&](auto* player) {
+        return !player || !unique.insert(player).second; }))
+    { status = "World Object document batch has an empty or duplicate player."; return false; }
     WORLD_SEQUENCE_PLACEMENT_MAP placements;
     WORLD_SEQUENCE_DEPLOY_MAP deploy;
     Collect_ValidationTargets(targets, placements, deploy);
-    if (!targets.Is_Complete())
-    { m_Status = status = "World Object runtime targets are unavailable."; return false; }
     if (!document.Validate(placements, deploy, status))
-    { m_Status = status; return false; }
-    Stop_All(targets, true);
-    m_ObjectModels.clear();
-    m_EffectSnapshots.clear();
-    m_Document = document;
-    m_Status = status = "World Object document admitted.";
+        return false;
+    std::vector<CWorldSequenceDocument> staged;
+    staged.reserve(players.size());
+    for (size_t i = 0; i < players.size(); ++i) staged.push_back(document);
+    for (size_t i = 0; i < players.size(); ++i)
+    {
+        auto& player = *players[i];
+        player.Stop_All(targets, true);
+        player.m_ObjectModels.clear();
+        player.m_EffectSnapshots.clear();
+        player.m_Document = std::move(staged[i]);
+        player.m_Status = "World Object document admitted.";
+    }
+    status = "World Object document admitted.";
     return true;
 }
 

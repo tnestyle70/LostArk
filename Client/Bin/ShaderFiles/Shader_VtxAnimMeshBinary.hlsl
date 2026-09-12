@@ -75,6 +75,7 @@ Texture2D g_SourceTexture5;
 Texture2D g_SourceTexture6;
 Texture2D g_SourceTexture7;
 Texture2D g_SourceTexture8;
+Texture2D g_SourceTexture9;
 
 SamplerState LinearClampUSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Clamp; AddressV=Wrap; };
 SamplerState LinearClampVSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Wrap; AddressV=Clamp; };

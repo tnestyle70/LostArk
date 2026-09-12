@@ -54,6 +54,9 @@ private:
 	ComPtr<ID3D11ShaderResourceView>		m_pShadowSRV = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pBloomDSV = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pSSAODSV = { nullptr };
+	ComPtr<ID3D11DepthStencilView> m_pSourceLightMaskDSV;
+	uint32_t m_iSourceLightMaskWidth = 0u, m_iSourceLightMaskHeight = 0u;
+	uint32_t m_iSourceLightMaskFailedWidth = 0u, m_iSourceLightMaskFailedHeight = 0u;
 	list<shared_ptr<CGameObject>>			m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
@@ -113,6 +116,7 @@ private:
 
 private:
 	HRESULT Ready_Shadow_Resources();
+	HRESULT Ready_SourceLightMask(uint32_t width, uint32_t height);
 	HRESULT Ready_Bloom_DSV();
 	HRESULT Ready_SSAO_DSV();
 	HRESULT Ready_ScenePostTargets(uint32_t iWidth, uint32_t iHeight);

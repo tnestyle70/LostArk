@@ -91,6 +91,12 @@ struct PHYSICS_RIGID_BODY_DESC final
 	uint32_t iCollisionMask = 0xffffffffu;
 };
 
+struct PHYSICS_STATIC_SWEEP_HIT final
+{
+    float3_t vNormal{};
+    f32_t fTravelFraction = 0.f;
+};
+
 struct PHYSICS_STEP_STATS final
 {
 	uint32_t iSceneActorCount = 0u;
@@ -176,6 +182,11 @@ public:
 		PHYSICS_ACTOR_HANDLE Handle,
 		const float3_t& vAcceleration);
 	HRESULT Set_Active(PHYSICS_ACTOR_HANDLE Handle, bool_t isActive);
+
+    // Read-only presentation query against the committed static PhysX scene.
+    // Call on the main thread after simulate/fetchResults has completed.
+    bool_t Sweep_StaticBox(const float3_t& vStart, const float3_t& vEnd,
+        const float3_t& vHalfExtents, PHYSICS_STATIC_SWEEP_HIT& outHit) const;
 
 	void Set_DebugPaused(bool_t isPaused);
 	bool_t Is_DebugPaused() const;

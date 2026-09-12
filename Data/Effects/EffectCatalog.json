@@ -1500,6 +1500,136 @@
       "effectAssetId": "effect.world.move_destination",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.world.move_destination.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.create",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.create.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.loop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.loop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.end",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.end.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.shell",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.shell.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.muzzle",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.muzzle.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.signature",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.signature.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.ground",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.ground.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.airstrike.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.airstrike.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.airstrike.missile",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.airstrike.missile.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.ball.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.ball.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.ball.red",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.ball.red.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.circle.impact01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.circle.impact01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.circle.impact03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.circle.impact03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.ball.drop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.ball.drop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.napalm",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.napalm.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.target.fixed",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.target.fixed.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.target.tracking",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.target.tracking.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.target.end",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.target.end.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.fire.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.fire.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.bullet",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.bullet.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.staff.flame.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.staff.flame.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.doll.flame.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.doll.flame.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.mario.center.pentagram.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.center.pentagram.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.mario.center.portal.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.center.portal.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.mario.center.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.center.full.restore.effect.json"
     }
   ]
 }

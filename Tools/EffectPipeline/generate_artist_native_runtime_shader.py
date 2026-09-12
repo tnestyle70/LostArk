@@ -10,6 +10,10 @@ import argparse, json, re, math, hashlib, copy
 ROOT = Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description='Generate bounded Artist native HLSL from extracted source shader maps and Resources mappings.')
 parser.add_argument('--source-dir',type=Path,default=ROOT/'out/ArtistCoreRestore20260909')
+parser.add_argument('--selection-file', type=Path,
+    help='Read an explicitly selected companion pass list from this file.')
+parser.add_argument('--output-dir', type=Path,
+    help='Write a companion pass result without copying the shared source archive.')
 parser.add_argument('--profile-domain', choices=('artist','kouku'), default='artist')
 parser.add_argument('--program-start',type=int,default=None,
     help='Allocate an additional non-overlapping Artist program range without renumbering the original programs.')
@@ -127,6 +131,10 @@ def translated(ins, textureMap, stage):
         value = 'asfloat((uint4)(' + src[0] + '))'
     elif op == 'utof':
         value = '(float4)(' + uint_operand(a[1]) + ')'
+    elif op == 'itof':
+        value = '(float4)(asint(' + src[0] + '))'
+    elif op == 'iadd':
+        value = 'asfloat(' + uint_operand(a[1]) + ' + ' + uint_operand(a[2]) + ')'
     elif op == 'bfi':
         value = 'SourceCharacterBitInsert(' + ','.join((uint_operand(x) for x in a[1:])) + ')'
     elif op in ['ishl', 'ushr']:
@@ -220,7 +228,7 @@ struct ARTIST_NATIVE_INPUT
     float4 decalProjection; // Source near/far (cm), opacity.
 };
 '''
-for i in range(9):
+for i in range(10):
     prefix += f'\nfloat4 ArtistNativeSample{i}(float2 uv, float lod, bool explicitLod)\n{{\n'
     prefix += f'    const uint mode = (((g_SourceTextureClampVMask >> {i}u) & 1u) << 1u) | ((g_SourceTextureClampUMask >> {i}u) & 1u);\n'
     for mode, sampler in [(1,'LinearClampUSampler'), (2,'LinearClampVSampler'), (3,'LinearClampUVSampler'), (0,'LinearSampler')]:
@@ -230,16 +238,19 @@ for i in range(9):
 
 rows = []
 program_code = []
-selections=json.loads((OUT/'selected_runtime_material_programs.json').read_text())['programs']
+selections=json.loads((arguments.selection_file or OUT/'selected_runtime_material_programs.json').read_text())['programs']
 byid={r['sourceMaterial']:r for r in source['materials']};errors=[]
 for ordinal, selection in enumerate(selections):
-    program=arguments.program_start+ordinal if arguments.program_start is not None else (460+ordinal if ordinal<100 else 820+ordinal-100)
+    program=selection.get('program', arguments.program_start+ordinal if arguments.program_start is not None else (460+ordinal if ordinal<100 else 820+ordinal-100))
     try:
         r=byid[selection['resolvedMaterial']]
         if r['sourceMaterial'] in ('fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad','fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr'):
             errors.append({'program':program,'material':r['sourceMaterial'],'occurrences':selection['occurrences'],'reason':'Explicit new engine/VF input requires closure: OneLayer clipZ and cb0[10].x; Hologram source-world varying, cb0[0].xyz origin and .w opacity, distinct source VS.'});continue
 
-        if selection['sourceVS'] in ('5298fd1cc3a2f64dab8401a32a6bef3c','792dc3606e73a443b8013c7adc2b97d8','cae853451adaf845b2558adb48edc97d'):
+        kouku_ice = (arguments.profile_domain == 'kouku' and
+            selection['sourceVS'] == '5298fd1cc3a2f64dab8401a32a6bef3c' and
+            selection['sourcePS'] == '97220ed990d76147b9d9778b693101c0')
+        if not kouku_ice and selection['sourceVS'] in ('5298fd1cc3a2f64dab8401a32a6bef3c','792dc3606e73a443b8013c7adc2b97d8','cae853451adaf845b2558adb48edc97d'):
             errors.append({'program':program,'material':r['sourceMaterial'],'reason':'Distinct non-unlit engine CB prefix, world-position varying; separately restore exact inputs.'});continue
         name=r['sourceMaterial'].rsplit('.',1)[-1]
         sid=selection['sourcePS']
@@ -324,11 +335,61 @@ for ordinal, selection in enumerate(selections):
         mesh=selection['rendererShape'] in ['mesh','staticMesh']
         model=selection['rendererShape']=='skeletalMesh'
         decal=selection['rendererShape']=='decal' and arguments.profile_domain=='kouku'
-        if decal and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298','cd75326f74ef024d827113811196cae2'):
+        # These original lit particle programs use the same tangent-up/scene
+        # contract as the already restored skeletal and decal carriers. Keep
+        # exact VS/PS qualification: TEXCOORD5 is world position in the three
+        # prop programs, but clip position in the heat mesh and debris sprite.
+        kouku_lit = {
+            '0536b29c3525994fa5ccf365c7edc279': ('3973e380b469714a933b0f1c2c776d5c', 27, 'world', [0, 1, 27, 28, 29]),
+            '10215f76a54bc242a767938c5056e6fd': ('3973e380b469714a933b0f1c2c776d5c', 24, 'world', [0, 1, 24, 25, 26]),
+            '1e5c374e163c74468caf9b27d3d32081': ('0c1413bd3ee54d449ce7fdac8c7f1542', 6, 'actor_only', [0, 6, 7, 8]),
+            '1eb6e82b0befd243ba7ffc9e49b6d067': ('0c1413bd3ee54d449ce7fdac8c7f1542', 10, 'opacity', [0, 9, 10, 11, 12]),
+            '2b41020e9d64484f9b0c844745af2143': ('239396ffe9f57b47a19ee2955207d2e8', 29, 'actor', [0, 1, 2, 29, 30, 31]),
+            '42385aa99c04e44daca13d0f3c9bba1a': ('98c6e0ba26dfb24c861e43351b178e02', 20, 'opacity', [0, 1, 20, 21, 22]),
+            '42ebb4e66c0c0b4b92db497fcd69ccc2': ('0c1413bd3ee54d449ce7fdac8c7f1542', 10, 'opacity', [0, 9, 10, 11, 12]),
+            '7f3d666a6ef0984881ca1d6f72aa3a5a': ('239396ffe9f57b47a19ee2955207d2e8', 18, 'world', [0, 1, 18, 19, 20]),
+            '87df68790a46d341b4221de10307d126': ('239396ffe9f57b47a19ee2955207d2e8', 14, 'world', [0, 1, 14, 15, 16]),
+            '9b28c9df74055140a218839b324676e8': ('0c1413bd3ee54d449ce7fdac8c7f1542', 14, 'none', [14, 15, 16]),
+            'ab0d30ff2ccc914b84c29564ae10ccd8': ('239396ffe9f57b47a19ee2955207d2e8', 27, 'world', [0, 1, 27, 28, 29]),
+            'ef38165f71918a49b4c84fb870c74334': ('3973e380b469714a933b0f1c2c776d5c', 30, 'actor', [0, 1, 2, 30, 31, 32]),
+            'fd7807729e65a14eae4074a3937bd61f': ('3973e380b469714a933b0f1c2c776d5c', 19, 'world', [0, 1, 19, 20, 21]),
+            'e5ff54c5c354204e951b91b524341cb3': ('239396ffe9f57b47a19ee2955207d2e8', 23, 'world', [0, 1, 23, 24, 25]),
+            '231a7f149fd8054589dc4baf0825beb0': ('3973e380b469714a933b0f1c2c776d5c', 27, 'actor', [0, 1, 2, 27, 28, 29]),
+            '21310dd53f047b4c9c6d215723e659ae': ('70a7b0749eb5904898747857eecc9da2', 7, 'opacity', [0, 7, 8, 9]),
+            '3a96e00bdfda46489bb6aa32ae1ac89c': ('0c1413bd3ee54d449ce7fdac8c7f1542', 6, 'color', [0, 5, 6, 7, 8]),
+            '8c7feae3b54e7a46835555bfa86e7e6e': ('239396ffe9f57b47a19ee2955207d2e8', 26, 'actor', [0, 1, 2, 26, 27, 28]),
+        }.get(sid) if arguments.profile_domain=='kouku' else None
+        if kouku_lit:
+            assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_lit[3], ('Kouku lit engine rows mismatch', bindings['constantBufferClosure']['unownedConstantBuffer0Slots'], kouku_lit[3])
+        # Additional original LocalDecal prefixes share the same depth/opacity
+        # and tangent-up inputs. Assert both the bytecode pair and all unowned
+        # engine rows before assigning the existing scene adapter.
+        kouku_decal = {
+            'b29278299ea44042a002876ca0882388': ('210e6cca2279674b899df1b88698fd1c', None, []),
+            '2b965d3b41e96649a3bdbb1f627220f5': ('5d79421dc8571c45aa49790f50274f51', 15, [0, 1, 2, 13, 14, 15, 16, 17]),
+            '2f90e06395943342a0358e5a108cc044': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            '31e28c4451b3b942b46cdca51e41ed25': ('5d79421dc8571c45aa49790f50274f51', 13, [0, 1, 2, 11, 12, 13, 14, 15]),
+            '6861d20b5b3dcb4da749ef0527cd7c61': ('5d79421dc8571c45aa49790f50274f51', 14, [0, 1, 2, 12, 13, 14, 15, 16]),
+            '75f85c320aac2348b627cf36a23eaa8f': ('5d79421dc8571c45aa49790f50274f51', 7, [0, 1, 2, 5, 6, 7, 8, 9]),
+            '7c9480f7ccb19943a483bd123ba9e785': ('5d79421dc8571c45aa49790f50274f51', 19, [0, 1, 2, 17, 18, 19, 20, 21]),
+            '87e3ec1a518e5b478b308c5308ce7773': ('5d79421dc8571c45aa49790f50274f51', 15, [0, 1, 2, 13, 14, 15, 16, 17]),
+            '89b63739ee6a9748ac3cd766197e05b0': ('5d79421dc8571c45aa49790f50274f51', 14, [0, 1, 2, 12, 13, 14, 15, 16]),
+            '98db4d025dd8144697a4bdf58b96a698': ('5d79421dc8571c45aa49790f50274f51', 14, [0, 1, 2, 12, 13, 14, 15, 16]),
+            'a274569aeaf4494e9d17bbd0f6ba86f1': ('5d79421dc8571c45aa49790f50274f51', 9, [0, 1, 2, 7, 8, 9, 10, 11]),
+            'bafb98b5f548184bab9a40cf2ed5d9c1': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
+            'e0c1218459011e4ba1a50550c3bf358e': ('5d79421dc8571c45aa49790f50274f51', 17, [0, 1, 2, 15, 16, 17, 18, 19]),
+            'f5b16f4555698c43993f2cde2666d2d2': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+        }.get(sid) if decal else None
+        if kouku_decal:
+            assert selection['sourceVS'] == kouku_decal[0]
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_decal[2]
+        if decal and not kouku_decal and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298','cd75326f74ef024d827113811196cae2'):
             raise ValueError(('Unreviewed source decal prefix',sid))
+        source_cb_count = bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]
         lines=[f'// {name}: {sid}; selected map {r["mapKey"]}.',
                f'float4 ArtistNative{program}(ARTIST_NATIVE_INPUT input)', '{',
-               f'    float4 source[{bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]}]; [unroll] for (uint i=0u; i<{bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]}u; ++i) source[i]=0.f;',
+               f'    float4 source[{max(3, source_cb_count)}]; [unroll] for (uint i=0u; i<{max(3, source_cb_count)}u; ++i) source[i]=0.f;',
                '    source[0].x=1.f; // Project engine opacity multiplier.',
                '    float4 output=0.f;']
         if model:
@@ -340,6 +401,38 @@ for ordinal, selection in enumerate(selections):
                 lines += ['    source[1].w=input.color.a;'];sky=24
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);',f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);',f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         if mesh: lines += ['    source[1]=input.color; // Native mesh particle color prefix.']
+        if kouku_ice:
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 1]
+            lines += ['    source[0]=float4(0.f,0.f,0.f,1.f); // Original pre-view translation XYZ and opacity W.']
+        kouku_ice_distortion = arguments.profile_domain == 'kouku' and sid == '78af666c4c816d4c93fb104c48d4bafe'
+        if kouku_ice_distortion:
+            assert selection['sourceVS'] == '9c33f202c8d9194ca250340eb7c4da1f'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == []
+            # The original local VS exports LocalToWorld at TEXCOORD5; its
+            # distortion PS then applies ViewProjection from CB1 itself.
+            lines += ['    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
+        kouku_world_distortion = arguments.profile_domain == 'kouku' and sid == '2d8c822c88934149bfa9587fd772c1e8'
+        if kouku_world_distortion:
+            assert selection['sourceVS'] in (
+                '48f2462ce60a75419377f4ac51e71569',
+                '959f42f324748b4386aab65adea222f9',
+                'f560771685f7254fb3e269da6253d5d9'), ('Unreviewed world-position distortion VS', selection['sourceVS'])
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == []
+            assert 'dcl_constantbuffer CB1[4], immediateIndexed' in declarations
+            # These original ribbon/sprite VSs export unprojected position at
+            # TEXCOORD5 and apply CB1 only to SV_POSITION. Their PS projects
+            # TEXCOORD5 itself, so supplying clip position would project twice.
+            lines += ['    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
+        if kouku_lit:
+            sky, prefix_kind = kouku_lit[1:3]
+            if prefix_kind in ('world', 'actor'):
+                lines += ['    source[0]=0.f; // Absolute source world position needs no pre-view translation.', '    source[1]=float4(input.sourceCameraPosition,1.f);', '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
+                if prefix_kind=='actor': lines += ['    source[2]=float4(input.sourceActorPosition,0.f); // Original actor-position pulse seed.']
+            elif prefix_kind=='color':
+                lines += ['    source[0]=input.color; // Native opaque mesh particle color has no opacity prefix.']
+            elif prefix_kind=='actor_only':
+                lines += ['    source[0]=float4(input.sourceActorPosition,0.f); // Native card UV seed is actor location in UE centimetres.']
+            lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         if mesh and sid == '8f0b8e72c2782945b5c7c927c80a73c5':
             # Quest's opaque pass has no leading opacity uniform. Its sole
             # engine-owned row is particle color; selectioncolor binds row 1.
@@ -348,7 +441,7 @@ for ordinal, selection in enumerate(selections):
             lines += ['    source[0]=input.color; // Native opaque quest mesh particle color prefix.']
         if decal:
             lines += ['    source[0]=float4(input.decalProjection.xy,0.f,0.f);', '    source[1]=input.color; // Source decal material color, including particle color modules.', '    source[2].x=input.decalProjection.z;']
-            sky={'be9bb8ea52a06b40bc25b550e349b5b9':7,'316b66ee3867964da197becf270077f0':15}.get(sid)
+            sky=kouku_decal[1] if kouku_decal else {'be9bb8ea52a06b40bc25b550e349b5b9':7,'316b66ee3867964da197becf270077f0':15}.get(sid)
             if sky is not None:
                 lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         for b in bindings['vectors']:
@@ -357,8 +450,22 @@ for ordinal, selection in enumerate(selections):
         for b in bindings['scalarGroups']:
             for lane,exp in enumerate(uniform['pixelScalarExpressions'][b['expressionIndexOrGroup']*4:b['expressionIndexOrGroup']*4+4]):
                 lines += [f'    source[{b["baseIndex"]//16}].'+ 'xyzw'[lane]+f' = ({expression(exp)}).x;']
-        lines += ['    float4 passValues[4]={float4(.5f,-.5f,.5f,.5f),float4(0.f,0.f,0.f,0.f),float4(0.f,0.f,0.f,0.f),float4(0.f,0.f,0.f,0.f)};']
-        if decal: lines += ['    passValues[3]=float4(0.f,0.f,0.f,1.f); // Neutral source scene grading.']
+        pass_count = max(4, next((int(re.search(r'CB2\[(\d+)\]', d)[1]) for d in declarations if d.startswith('dcl_constantbuffer CB2[')), 0))
+        if pass_count > 4:
+            assert arguments.profile_domain == 'kouku' and sid in (
+                '1eb6e82b0befd243ba7ffc9e49b6d067', '42ebb4e66c0c0b4b92db497fcd69ccc2',
+                '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930'), ('Unreviewed source pass constants', sid, pass_count)
+        lines += [f'    float4 passValues[{pass_count}]; [unroll] for(uint passIndex=0u;passIndex<{pass_count}u;++passIndex) passValues[passIndex]=0.f;',
+                  '    passValues[0]=float4(.5f,-.5f,.5f,.5f);']
+        if decal or kouku_lit or model:
+            lines += ['    passValues[3]=float4(0.f,0.f,0.f,1.f); // Neutral source diffuse override: preserve material color.']
+        if pass_count == 5:
+            lines += ['    passValues[4]=float4(0.f,0.f,0.f,1.f); // Neutral specular override; only the original secondary MRT consumes it.']
+        if pass_count == 7:
+            # Original CB2[6].xy is the render target size: the source PS uses
+            # it for a pixel checker or width/height aspect ratio.
+            lines += ['    uint viewportWidth, viewportHeight; g_EffectSceneDepthTexture.GetDimensions(viewportWidth,viewportHeight);',
+                      '    passValues[6]=float4(max(float2(viewportWidth,viewportHeight),1.f),0.f,0.f);']
         dynamic='dynamicparameter' in selection['sourceVF'];subuv='subuv' in selection['sourceVF']
         for sig in p['inputSignature']:
             semantic=sig['semanticName'].lower();index=sig['semanticIndex'];reg=sig['register']
@@ -368,6 +475,13 @@ for ordinal, selection in enumerate(selections):
                     values.update({0:'float4(input.uv,0.f,0.f)',4:'float4(0.f,0.f,0.f,1.f)',5:'float4(input.sourceWorldPosition,1.f)',6:'float4(input.tangentView,1.f)',7:'float4(input.tangentUp,0.f)'})
                 if decal:
                     values.update({0:'float4(input.uv,input.uv1)',7:'float4(input.tangentUp,0.f)'})
+                if kouku_ice_distortion or kouku_world_distortion:
+                    values[5]='float4(input.sourceWorldPosition,1.f)'
+                if kouku_lit:
+                    values[7]='float4(input.tangentUp,0.f)'
+                    if kouku_lit[2] in ('world','actor'): values[5]='float4(input.sourceWorldPosition,1.f)'
+                if kouku_ice:
+                    values[5]='float4(input.sourceWorldPosition,1.f)'
                 if index not in values:
                     raise ValueError(f'Native TEXCOORD{index} has no {selection["rendererShape"]} carrier adapter; source VS {selection["sourceVS"]}, engine CB0 slots {selection.get("cb0Unowned",[])}.')
                 val=values[index]
@@ -404,7 +518,7 @@ for ordinal, selection in enumerate(selections):
                 skip.add(sampleIndex+1);skip.update(range(reconstructionIndex+1,reconstructionIndex+4));break
             else:raise ValueError(('unclosed native depth sample',sid,sampleInstruction))
         for i,ins in enumerate(instructions):
-            if (model or decal) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
+            if (model or decal or kouku_lit or kouku_ice) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
             if i in skip:continue
             if i in depthReconstruct:
                 raw,dst=depthReconstruct[i]
@@ -469,7 +583,10 @@ tail+='\nfloat4 Shade_ArtistModelNative(uint profile, ARTIST_NATIVE_INPUT input)
 for r in rows:
     if r['modelCue']:tail+=f'    case {r["program"]}u: return ArtistNative{r["program"]}(input);\n'
 tail+='    default: clip(-1.f); return 0.f;\n    }\n}\n#endif\n'
-target=OUT/'Shader_EffectArtistNative.hlsli'
+output_dir = arguments.output_dir.resolve() if arguments.output_dir else OUT
+output_dir.mkdir(parents=True, exist_ok=True)
+assert not arguments.install_additional_groups or output_dir == OUT
+target=output_dir/'Shader_EffectArtistNative.hlsli'
 target.write_text(prefix+'\n'+'\n'.join(program_code)+tail,encoding='utf-8')
 if arguments.install_additional_groups:
     assert arguments.program_start is not None and arguments.program_start >= 1600
@@ -504,5 +621,5 @@ if arguments.install_additional_groups:
     marker='    default: clip(-1.f); return output;'
     assert main.count(marker)==1
     main_path.write_text(main.replace(marker,cases+marker,1),encoding='utf8')
-(OUT/'native_runtime_contract.json').write_text(json.dumps({'programs':rows,'deferredPrograms':errors,'hlsli':str(target)},indent=2),encoding='utf-8')
+(output_dir/'native_runtime_contract.json').write_text(json.dumps({'programs':rows,'deferredPrograms':errors,'hlsli':str(target)},indent=2),encoding='utf-8')
 print('Generated',len(rows),'native material programs, deferred',errors,'lines',len(target.read_text().splitlines()))

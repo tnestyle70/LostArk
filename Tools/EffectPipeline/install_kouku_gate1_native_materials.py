@@ -1,14 +1,14 @@
 """Install the selected Kouku native material tables without replacing peers.
 
 The existing Artist material interpreter owns the runtime. This tool updates
-only supplied program IDs within 2304..2495 and emits sourceMaterial patches. It does
+only supplied program IDs within 2304..3711 and emits sourceMaterial patches. It does
 not rewrite the renderer or Has_ArtistMaterialContract implementation.
 """
 from pathlib import Path
 import argparse, copy, hashlib, json, re
 
 ROOT=Path(__file__).resolve().parents[2]
-FIRST,LAST=2304,2495
+FIRST,LAST=2304,3711
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def write(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)

@@ -539,11 +539,11 @@ def append_rows(path, list_key, identity_key, rows):
     path.write_text(raw[:start+1]+body+suffix+insertion+'\n  '+raw[end-1:],encoding="utf-8")
 
 
-def presentation_occurrence(resource, ordinal, start, end):
+def presentation_occurrence(resource, ordinal, start, end, anchor_kind="WORLD"):
     return dict(occurrenceId=f"{PATTERN_ID}.presentation.{ordinal}",resourceId=resource,startMs=start,durationMs=end-start,
         positionOffset=[0,0,0],rotationDegrees=[0,0,0],scale=[1,1,1],fadeInMs=0,fadeOutMs=0,dissolveStart=.95,
         dissolveEnd=1,brightnessMultiplier=1,volume=1,followBoss=False,debugRender=False,bone="",boneTarget="BODY",
-        regionId="",cardSymbol="NONE",cardColor="NONE",anchorKind="WORLD",worldId="",logicOccurrenceId="",worldOccurrenceId="")
+        regionId="",cardSymbol="NONE",cardColor="NONE",anchorKind=anchor_kind,worldId="",logicOccurrenceId="",worldOccurrenceId="")
 
 
 def install_sequence_pattern(path, pattern, worlds, presentations):
@@ -729,7 +729,7 @@ def build(install):
         for n,(start,end,shot) in enumerate(shots)]
     pattern=next(p for p in read(ROOT/'Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json')['patterns']
                  if p['patternId']==PATTERN_ID)
-    fade=dict(resourceId=f'presentation.{PREFIX}.fade',displayName='2관문 진입 / 원본 Fade',defaultAnchorKind='WORLD',kind='EFFECT',
+    fade=dict(resourceId=f'presentation.{PREFIX}.fade',displayName='2관문 진입 / 원본 Fade',defaultAnchorKind='MAP',kind='EFFECT',
         assetId='kouku.gate2.intro.fade',resourceKind='GROUP',elementId='',durationMs=DURATION,
         shape='BOX',colliderKind='GEOMETRY',halfExtents=[1,1,1],radiusM=3,halfAngleDegrees=45)
     camera_resources.append(fade)
@@ -743,8 +743,8 @@ def build(install):
                           for i,w in enumerate(worlds)],
         presentationOccurrences=[presentation_occurrence(camera_resources[i]['resourceId'],i+1,start,end)
                                  for i,(start,end,_) in enumerate(shots)])
-    pattern['presentationOccurrences'].append(presentation_occurrence(fade['resourceId'],len(shots)+1,0,DURATION))
-    pattern['presentationOccurrences'].append(presentation_occurrence(lights['resourceId'],len(shots)+2,0,DURATION))
+    pattern['presentationOccurrences'].append(presentation_occurrence(fade['resourceId'],len(shots)+1,0,DURATION,'MAP'))
+    pattern['presentationOccurrences'].append(presentation_occurrence(lights['resourceId'],len(shots)+2,0,DURATION,'MAP'))
     result=dict(objectResources=resources,templates=templates,instances=instances,worlds=worlds,
                 standaloneWorlds=standalone_worlds,shots=[s for _,_,s in shots],presentations=camera_resources,pattern=pattern)
     write(EVIDENCE/'composition.rows.json',result)

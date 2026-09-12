@@ -27,6 +27,7 @@ struct VS_OUT
     float4 color : COLOR0;
     float4 dynamicParameter : TEXCOORD2;
     float sourceProjectionW : TEXCOORD3;
+    float3 worldPosition : TEXCOORD4;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -36,6 +37,7 @@ VS_OUT VS_MAIN(VS_IN input)
         float4(input.position, 1.f),
         mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix));
     output.sourceProjectionW = output.position.w;
+    output.worldPosition = mul(float4(input.position, 1.f), g_WorldMatrix).xyz;
     output.uv = input.uv * g_UVScale + g_UVOffset;
     output.runtimeUV = input.uv;
     output.color = input.color;
@@ -68,7 +70,7 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         clip(-1.f);
         return output;
     }
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 2495u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.runtimeUV;
@@ -76,6 +78,8 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         nativeInput.vertexColor = input.color;
         nativeInput.dynamicParameter = input.dynamicParameter;
         nativeInput.screenUV = ALTVNativeScreenUV(input.position.xy);
+        nativeInput.sourceWorldPosition = float3(input.worldPosition.x, -input.worldPosition.z, input.worldPosition.y) * 100.f;
+        [unroll] for (uint i = 0u; i < 4u; ++i) nativeInput.sourceProjection[i] = g_KoukuSourceProjection[i];
         nativeInput.projectionW = input.sourceProjectionW * 100.f;
         nativeInput.projectionZ = input.position.z * nativeInput.projectionW;
         nativeInput.frontFace = true;

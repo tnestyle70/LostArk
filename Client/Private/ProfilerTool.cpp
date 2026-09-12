@@ -212,6 +212,14 @@ namespace
         "Picking.Readback",
         "Profiler.Capture.Snapshot",
         "Profiler.Panel.Refresh",
+        "Map.Batch.Material.Bind",
+        "Map.Batch.Pass.Apply",
+        "Map.Batch.Mesh.Submit",
+        "Map.Shadow.Material.Bind",
+        "Map.Shadow.Pass.Apply",
+        "Map.Shadow.Mesh.Submit",
+        "Effect.Particle.Update.Worker",
+        "Effect.Particle.Update.Join",
         "Render.BeginFrame",
         "Render.Blend",
         "Render.Bloom",
@@ -467,7 +475,9 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     ImGui::TextDisabled("%zu / %zu history frames", m_iHistoryFrames, Engine::CProfiler::MAX_HISTORY_FRAMES);
 
     const double now = ImGui::GetTime();
-    if (m_fLastRefreshTime < 0.0 || now - m_fLastRefreshTime >= m_fRefreshIntervalSeconds)
+    if (m_fLastRefreshTime < 0.0 ||
+        ((enabled || (m_bLiveValid && m_Live.LatestFrameGpuStatus == Engine::EProfilerGpuFrameStatus::Pending)) &&
+            now - m_fLastRefreshTime >= m_fRefreshIntervalSeconds))
     {
         Refresh(*profiler); m_fLastRefreshTime = now;
     }
@@ -640,10 +650,11 @@ void Client::CProfilerTool::Render_Gpu()
         }
         ImGui::TreePop();
     }
-    if (!ImGui::BeginTable("##GpuPasses", 5, TABLE_FLAGS)) return;
+    ImGui::TextWrapped("PS / VS count shader invocations, not arithmetic instructions. Selected passes only; -- means unavailable or incomplete. Nested counts must not be added.");
+    if (!ImGui::BeginTable("##GpuPasses", 7, TABLE_FLAGS)) return;
     ImGui::TableSetupScrollFreeze(0, 1);
     ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch, 3.f);
-    for (const char* label : {"Avg ms/frame", "Peak frame ms", "P95 frame ms", "Calls/frame"}) ImGui::TableSetupColumn(label);
+    for (const char* label : {"Avg ms/frame", "Peak frame ms", "P95 frame ms", "Calls/frame", "PS / frame", "VS / frame"}) ImGui::TableSetupColumn(label);
     ImGui::TableHeadersRow();
     const double frames = static_cast<double>((std::max)(m_iGpuValidFrames, size_t{1}));
     for (const auto& row : m_GpuAggregates)
@@ -654,13 +665,21 @@ void Client::CProfilerTool::Render_Gpu()
         ImGui::TableNextColumn(); ImGui::Text("%.3f", row.MaxFrameMs);
         ImGui::TableNextColumn(); ImGui::Text("%.3f", row.P95FrameMs);
         ImGui::TableNextColumn(); ImGui::Text("%.2f", static_cast<double>(row.Calls) / frames);
+        ImGui::TableNextColumn();
+        if (row.PipelineSamples != 0 && row.PipelineSamples == row.Calls)
+            ImGui::Text("%.0f", static_cast<double>(row.PSInvocations) / frames);
+        else ImGui::TextDisabled("--");
+        ImGui::TableNextColumn();
+        if (row.PipelineSamples != 0 && row.PipelineSamples == row.Calls)
+            ImGui::Text("%.0f", static_cast<double>(row.VSInvocations) / frames);
+        else ImGui::TextDisabled("--");
     }
     if (m_bShowUnobserved)
         for (const char* name : GPU_SCOPE_CATALOG)
             if (Contains_CaseInsensitive(name, m_Filter.data()) &&
                 std::none_of(m_GpuAggregates.begin(), m_GpuAggregates.end(),
                     [&](const auto& row) { return name == std::string_view(Scope_Name(row.NameId)); }))
-                Unobserved_Row(name, 5);
+                Unobserved_Row(name, 7);
     ImGui::EndTable();
 }
 

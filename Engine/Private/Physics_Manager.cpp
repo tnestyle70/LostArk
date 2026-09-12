@@ -914,6 +914,33 @@ HRESULT CPhysics_Manager::Set_Active(
 	return S_OK;
 }
 
+bool_t CPhysics_Manager::Sweep_StaticBox(const float3_t& vStart, const float3_t& vEnd,
+    const float3_t& vHalfExtents, PHYSICS_STATIC_SWEEP_HIT& outHit) const
+{
+    outHit = {};
+    if (!m_pImpl || !m_pImpl->pScene) return false;
+    const PxVec3 Start = ToPxVec3(vStart), End = ToPxVec3(vEnd);
+    const PxVec3 Extent = ToPxVec3(vHalfExtents);
+    if (!Start.isFinite() || !End.isFinite() || !Extent.isFinite() ||
+        Extent.x < 0.f || Extent.y < 0.f || Extent.z < 0.f) return false;
+    const PxVec3 Delta = End - Start;
+    const float Distance = Delta.magnitude();
+    if (Distance <= 1.e-6f) return false;
+    PxSweepBuffer Hit;
+    const PxBoxGeometry Box(PxMax(Extent.x, 1.e-4f),
+        PxMax(Extent.y, 1.e-4f), PxMax(Extent.z, 1.e-4f));
+    const PxQueryFilterData Filter(PxQueryFlag::eSTATIC);
+    if (!m_pImpl->pScene->sweep(Box, PxTransform(Start), Delta / Distance,
+        Distance, Hit, PxHitFlag::eNORMAL | PxHitFlag::ePOSITION, Filter) ||
+        !Hit.hasBlock) return false;
+    const auto& Block = Hit.block;
+    if (!Block.normal.isFinite() || Block.normal.magnitudeSquared() < 1.e-8f)
+        return false;
+    outHit.vNormal = float3_t(Block.normal.x, Block.normal.y, Block.normal.z);
+    outHit.fTravelFraction = PxClamp(Block.distance / Distance, 0.f, 1.f);
+    return true;
+}
+
 void CPhysics_Manager::Set_DebugPaused(bool_t isPaused)
 {
 	if (nullptr == m_pImpl)

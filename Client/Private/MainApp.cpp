@@ -8162,6 +8162,12 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	ImGui::TextWrapped("Complete Play runs this Gate's sequences, then its Saved Pattern Flow. All Patterns includes every published Pattern and Bundle.");
 	if (ImGui::SmallButton(m_bKoukuCompletePlayLoadAttempted ? "Reload KoukuSaydon Inventory" : "Load KoukuSaydon Inventory"))
 	{ (void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus); m_bKoukuCompletePlayLoadAttempted = true; }
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_pKoukuSaydonActionWorkbench &&
+		(m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning()));
+	if (ImGui::SmallButton("Publish Saved Patterns##KoukuCompletePlay"))
+		(void)m_pKoukuSaydonBossTool->Request_PublishSavedPatterns(m_strKoukuCompletePlayStatus);
+	ImGui::EndDisabled();
 	if (!m_bKoukuCompletePlayLoadAttempted) { ImGui::TextDisabled("Load the published Boss Patterns tree."); return; }
 	static const char* labels[] = { "\x31\xEA\xB4\x80\xEB\xAC\xB8", "\x32\xEA\xB4\x80\xEB\xAC\xB8", "\x33\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
 	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
@@ -8211,9 +8217,19 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 			{ m_strKoukuCompletePlayStatus = "Save Composition changes and use Publish All Patterns before Complete Play."; return false; }
 		}
 		if (!m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus)) return false;
-		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition() &&
-			m_pKoukuSaydonActionWorkbench->Get_Composition().iRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
-		{ m_strKoukuCompletePlayStatus = "Saved Composition and published Boss Patterns differ. Use Publish All Patterns before Complete Play."; return false; }
+		// A clean editor can still hold a revision from before an external publish.
+		// Compare the saved source, preserving any open editor's draft and selection.
+		CKoukuSaydonCompositionDocument savedComposition;
+		if (!savedComposition.Reload(m_strKoukuCompletePlayStatus)) return false;
+		const auto savedRevision = savedComposition.Get_LastGood().iRevision;
+		const auto publishedRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
+		if (savedRevision != publishedRevision)
+		{
+			m_strKoukuCompletePlayStatus = "Saved Composition revision " + std::to_string(savedRevision) +
+				" differs from published revision " + std::to_string(publishedRevision) +
+				". Use Publish Saved Patterns here, then retry Complete Play.";
+			return false;
+		}
 		return true;
 	};
 	const std::string playLabel=(bundleSelected?"Complete Play - "+std::to_string(selectedBundle->Members.size())+" actors":"Complete Play - Selected Pattern")+"##KoukuServerPattern";

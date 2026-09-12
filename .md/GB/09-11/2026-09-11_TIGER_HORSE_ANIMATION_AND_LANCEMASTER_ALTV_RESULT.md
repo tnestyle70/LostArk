@@ -217,3 +217,25 @@ G07~G09를 반영한 Debug Product 빌드는 2026-09-12 00:26:34 KST에 exit0으
 창술사 수정 19파일은 따로 보존한 snapshot과 전용 Git index로 기존 `codex/lancemaster-effect-admission-fix`에 분리한다. 공유 working tree의 FPS branch/원래 index/사용자 World Effect·tree 편집은 바꾸지 않는다. #360은 앞서 사용자가 merge했으며 이번 후속 PR은 사용자 검증 뒤 merge할 수 있도록 별도로 게시한다.
 
 사용자는 VS 빌드 종료 후 Debug x64 `Server + Client` profile의 Ctrl+F5로 실행하고 창술사 V/Alt+V를 확인한다. F1 → Effect Tool v1 → LanceMaster ALT V full restore → Play All에서도 단일 통합 재생을 유지한다. 확인 항목은 V 손 창의 방향, ALT V 전체 이펙트와 손 창·말·카메라의 동시 재생이다. 실제 GPU 표시와 최종 부착 모양은 USER_PENDING이다.
+
+## G11. T 창의 방향과 사용자 ALT V dragon 위치 적용 — 2026-09-12
+
+사용자가 첨부한 첫 화면에서 T 창이 손에서 떨어져 있고 두 번째 ALT V 화면에서는 무기 방향에 맞게 붙어 있음을 관찰했다. 사용자는 ALT V dragon의 Transform position `[1,0,0]`을 확정했다고 명시했다. 실제 저장된 기준은 `34630.clip1.full.restore`의 `authored.lance-va.51ef8a58177b1be44454baed`이며, 통합 full의 같은 ID는 아직 position `[0,0,0]`이다. 기준 문서와 다른 ALT V/V 파일은 이번 작업에서 수정하지 않았다.
+
+T `34650.clip1.full.restore`와 `34650.clip2.full.restore`의 창 본체·dragon 네 행에 누락 또는 0이던 `detail.mesh.sourceTypeDataRotationDegrees`를 `[0,-90,0]`으로 맞췄다. 원본 TypeData에도 pitch=-90이 있고 기존 Playback이 이 typed detail을 소비한다. 두 dragon 행의 `detail.transform.position`은 사용자 값 `[1,0,0]`으로 맞췄다. 실제 donor와 T의 attachment는 모두 `Midcontrol -> b_weapon_rhand`, socket position 약 `[0.4,0,0]`로 같으므로 bone을 다른 손으로 추정 교체하지 않았다.
+
+변경 전 현재 파일을 `out/LanceTAttachment20260912_090335/before/`에 보존하고 stable ID로 여섯 필드만 수정했다. 두 문서 JSON 재파싱 및 변경 전후 전체 의미 비교에서 그 외 차이가 없으며, clip1 30 Elements/0 ModelCues, clip2 80 Elements/2 ModelCues를 유지했다. 선행 사용자 clip2 저장 변경과 donor bytes 보존도 확인했다. 상세 필드 경로는 같은 폴더의 `result.json`에 있다. 기존 C++/shader/리소스/프로젝트 파일은 변경하지 않아 컴파일·publisher는 실행하지 않았다.
+
+수정 직후 전체 `git diff --check`에서 whitespace 오류는 없었다. Git의 기존 LF/CRLF 변환 예고만 출력됐으며 파일 인코딩과 각 JSON의 기존 줄바꿈은 보존했다.
+
+사용자 확인 경로는 F1 → Effect Tool V1 → T의 두 Full Restore 다시 Load → Play All이다. 개별 dragon 행은 clip1 Mesh Particle 02, clip2 Mesh Particle 16이다. 제품 스킬 T는 Client 재시작 뒤 확인한다. 에이전트는 Client/UI를 실행·조작하지 않았으며 수정 후 실제 손 부착 화면은 사용자 확인 대기다.
+
+## G12. T 돌진 용의 목 경계와 투명도 조정 — 2026-09-12
+
+후속 첨부 이미지에서 돌진 용의 목과 몸통 사이가 끊겨 보이는 현상을 확인했다. 설치된 두 WModel은 9,987/15,207정점, 동일 skeleton33개·animation32채널을 사용한다. 기존 binary reader와 animation sampler를 사용한 독립 검사에서 목 부근 공통 경계 위치14개의 변형은 0~1.2초 13표본 모두 양쪽 차이0이었고, 총327,522정점은 finite였다. 두 ModelCue의 재질·시각·Transform도 같았다. 이는 현재 설치본의 section별 골격 이음 분리가 재현되지 않았다는 결과이며 지형 depth와 실제 화면의 모든 원인을 배제하는 검사는 아니다.
+
+native1360은 translucent 재질이고 alpha에 depth fade, `saturate(6 * abs(NdotV)^5)`, 노이즈 마스크를 곱한다. 현재 알파 노이즈 `fx_c_noise_009.dds`의65,536픽셀에는 RGB0이 없고 선형 RGB 평균 최솟값은0.0984417이다. UV distortion 강도와 alpha panning은0이다. 시선각 감쇠 계수가 NdotV0.2에서0.00192,0.3에서0.01458이므로 목의 비스듬한 면과 서로 다른 경계 normal을 거의 투명하게 만들 수 있다. 알파 테스트의 단순 마스크 구멍으로 확정하지 않는다.
+
+`effect.lancemaster.skill.34650.clip2.full.restore.effect.json`의 두 ModelCue에서 `32.fresnal_power`만5→2로 낮췄다. 같은 각도의 계수는0.24/0.54가 되어 몸통 연결이 더 뚜렷해지는 방향이다. 노이즈·depth·emission·애니메이션·기존 손 부착 수정은 유지한다. 원본 shader 번역 변경이 아니라 사용자가 요청한 선명도 튜닝이다.
+
+변경 전 파일과 결과는 `out/LanceTNeckOpacity20260912_091404/`에 보존했다. JSON 재파싱과 전체 의미 비교에서 두 scalar 외 차이0, 0~1의 시선각1,001표본에서 계수의 finite·0~1범위·기존 대비 감소 없음이 통과했다. C++/shader 변경이 없어 이 T 조정에는 컴파일과 publisher가 필요 없다. 수정 후 T clip2를 다시 Load → Model / Summon (2) 또는 Play All로 확인한다. 실제 목 연결·선명도 화면은 사용자 확인 대기다.

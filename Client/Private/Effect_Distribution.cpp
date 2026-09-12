@@ -161,6 +161,10 @@ float4_t Client::CEffectDistribution::Evaluate(
 			const float4_t Minimum = Lerp(
 				ReadTableValue(Distribution, iStart, false),
 				ReadTableValue(Distribution, iEnd, false), fRatio);
+			// Constant distributions never consume the upper range. Keep the exact
+			// lower interpolation and random operations unchanged.
+			if (2u != Distribution.iOperation && 3u != Distribution.iOperation)
+				return Minimum;
 			const float4_t Maximum = Lerp(
 				ReadTableValue(Distribution, iStart, true),
 				ReadTableValue(Distribution, iEnd, true), fRatio);
@@ -182,7 +186,8 @@ float4_t Client::CEffectDistribution::Evaluate(
 		{
 			const EFFECT_DISTRIBUTION_KEY_DESC& Start = Keys[iKey];
 			const EFFECT_DISTRIBUTION_KEY_DESC& End = Keys[iKey + 1u];
-			if (fTime > End.fTime)
+			// A key owns its exact timestamp, including a Constant segment jump.
+			if (fTime >= End.fTime)
 				continue;
 			const f32_t fDuration = End.fTime - Start.fTime;
 			const f32_t fRatio = fDuration <= 0.f ? 0.f :
@@ -200,6 +205,10 @@ float4_t Client::CEffectDistribution::Evaluate(
 					End.vMinimum, End.vArriveTangentMinimum,
 					fRatio, fDuration) :
 				Lerp(Start.vMinimum, End.vMinimum, fRatio);
+			// Constant distributions never consume the upper range. Keep the exact
+			// lower interpolation and random operations unchanged.
+			if (2u != Distribution.iOperation && 3u != Distribution.iOperation)
+				return Minimum;
 			const float4_t Maximum =
 				EFFECT_DISTRIBUTION_INTERPOLATION::CUBIC ==
 				Start.eInterpolation ?

@@ -132,7 +132,8 @@ void CProfiler::End_Frame()
         std::lock_guard lock(m_Mutex);
         m_CurrentFrame.CpuScopes = std::move(m_PendingScopes);
         m_PendingScopes.clear();
-        m_PendingScopes.reserve(128);
+        if (m_History.size() < MAX_HISTORY_FRAMES)
+            m_PendingScopes.reserve(128);
     }
 
     End_GpuFrame(m_FrameNumber);
@@ -235,7 +236,7 @@ void CProfiler::End_Scope(uint32_t token) noexcept
     }
 }
 
-uint32_t CProfiler::Begin_GpuScope(std::string_view name)
+uint32_t CProfiler::Begin_GpuScope(std::string_view name, bool collectPipeline)
 {
     if (GetCurrentThreadId() != m_MainThreadId ||
         !m_Enabled.load(std::memory_order_relaxed) ||
@@ -255,6 +256,13 @@ uint32_t CProfiler::Begin_GpuScope(std::string_view name)
     scope.NameId = Intern_Name(name);
     scope.Depth = slot.OpenScopeCount;
     scope.Ended = false;
+    scope.PipelineIndex = UINT32_MAX;
+    if (collectPipeline && m_GpuPipelineQueriesAvailable &&
+        slot.PipelineScopeCount < MAX_GPU_PIPELINE_SCOPES_PER_FRAME)
+    {
+        scope.PipelineIndex = slot.PipelineScopeCount++;
+        m_pContext->Begin(slot.PassPipelines[scope.PipelineIndex].Get());
+    }
     if (m_NextGpuScopeToken == UINT32_MAX)
         m_NextGpuScopeToken = 0;
     scope.Token = m_NextGpuScopeToken++;
@@ -278,6 +286,8 @@ void CProfiler::End_GpuScope(uint32_t token) noexcept
         {
             FGpuScopeQuery& scope = slot.Scopes[slot.OpenScopes[--slot.OpenScopeCount]];
             m_pContext->End(scope.End.Get());
+            if (scope.PipelineIndex != UINT32_MAX)
+                m_pContext->End(slot.PassPipelines[scope.PipelineIndex].Get());
             scope.Ended = true;
         }
         return;
@@ -556,6 +566,12 @@ void CProfiler::Get_GpuScopeAggregates(
             value.Aggregate.NameId = sample.NameId;
             ++value.Aggregate.Calls;
             value.Aggregate.InclusiveMs += sample.DurationMs;
+            if (sample.PipelineValid)
+            {
+                ++value.Aggregate.PipelineSamples;
+                value.Aggregate.PSInvocations += sample.PSInvocations;
+                value.Aggregate.VSInvocations += sample.VSInvocations;
+            }
             value.FrameTimes.resize(frameIndex + 1, 0.0);
             value.FrameTimes[frameIndex] += sample.DurationMs;
         }
@@ -724,6 +740,19 @@ bool CProfiler::Create_GpuQueries()
                 scope.End.Reset();
             }
     }
+    // Only the selected leaf passes need pipeline counts, not all 128 scopes.
+    desc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+    m_GpuPipelineQueriesAvailable = m_GpuScopeQueriesAvailable;
+    for (FGpuQuerySlot& slot : m_GpuSlots)
+    {
+        if (!m_GpuPipelineQueriesAvailable) break;
+        for (auto& query : slot.PassPipelines)
+            if (FAILED(m_pDevice->CreateQuery(&desc, &query)))
+            { m_GpuPipelineQueriesAvailable = false; break; }
+    }
+    if (!m_GpuPipelineQueriesAvailable)
+        for (FGpuQuerySlot& slot : m_GpuSlots)
+            for (auto& query : slot.PassPipelines) query.Reset();
     return true;
 }
 
@@ -746,6 +775,7 @@ void CProfiler::Begin_GpuFrame(uint64_t frameNumber)
     slot.Pending = true;
     slot.FrameEnded = false;
     slot.ScopeCount = 0;
+    slot.PipelineScopeCount = 0;
     slot.OpenScopeCount = 0;
     m_ActiveGpuSlot = index;
     m_CurrentFrame.GpuStatus = EProfilerGpuFrameStatus::Pending;
@@ -766,7 +796,12 @@ void CProfiler::End_GpuFrame(uint64_t frameNumber)
         const uint32_t dropped = slot.OpenScopeCount;
         // Complete outstanding query commands, but omit truncated intervals.
         while (slot.OpenScopeCount != 0)
-            m_pContext->End(slot.Scopes[slot.OpenScopes[--slot.OpenScopeCount]].End.Get());
+        {
+            const auto& scope = slot.Scopes[slot.OpenScopes[--slot.OpenScopeCount]];
+            m_pContext->End(scope.End.Get());
+            if (scope.PipelineIndex != UINT32_MAX)
+                m_pContext->End(slot.PassPipelines[scope.PipelineIndex].Get());
+        }
         m_CurrentFrame.DroppedGpuScopes += dropped;
         std::lock_guard lock(m_Mutex);
         m_DroppedGpuScopes += dropped;
@@ -838,15 +873,29 @@ void CProfiler::Resolve_GpuFrames(uint64_t currentPollFrame)
                 sample.BeginMs = static_cast<double>(scopeBegin - begin) * scale;
                 sample.EndMs = static_cast<double>(scopeEnd - begin) * scale;
                 sample.DurationMs = static_cast<double>(scopeEnd - scopeBegin) * scale;
+                if (scope.PipelineIndex != UINT32_MAX)
+                {
+                    D3D11_QUERY_DATA_PIPELINE_STATISTICS passPipeline{};
+                    const HRESULT result = m_pContext->GetData(
+                        slot.PassPipelines[scope.PipelineIndex].Get(),
+                        &passPipeline, sizeof(passPipeline), flags);
+                    if (result == S_FALSE) { ready = false; break; }
+                    sample.PipelineValid = result == S_OK;
+                    if (sample.PipelineValid)
+                    {
+                        sample.PSInvocations = passPipeline.PSInvocations;
+                        sample.VSInvocations = passPipeline.VSInvocations;
+                    }
+                }
             }
             if (status != EProfilerGpuFrameStatus::Error && !ready)
                 continue;
         }
         std::lock_guard lock(m_Mutex);
-        const auto frame = std::find_if(m_History.begin(), m_History.end(),
+        const auto frame = std::find_if(m_History.rbegin(), m_History.rend(),
             [&slot](const FProfilerFrame& value)
             { return value.FrameNumber == slot.FrameNumber; });
-        if (frame != m_History.end())
+        if (frame != m_History.rend())
         {
             frame->GpuStatus = status;
             frame->GpuLatencyFrames = static_cast<uint32_t>(currentPollFrame - slot.SubmittedPollFrame);
@@ -867,7 +916,14 @@ void CProfiler::Resolve_GpuFrames(uint64_t currentPollFrame)
 void CProfiler::Commit_CurrentFrame()
 {
     std::lock_guard lock(m_Mutex);
-    m_History.push_back(m_CurrentFrame);
+    // Preserve worker scopes that completed between End_Frame and this lock.
+    // Otherwise recycle the evicted CPU buffer instead of allocating each frame.
+    if (m_History.size() >= MAX_HISTORY_FRAMES && m_PendingScopes.empty())
+    {
+        m_PendingScopes.swap(m_History.front().CpuScopes);
+        m_PendingScopes.clear();
+    }
+    m_History.push_back(std::move(m_CurrentFrame));
     while (m_History.size() > MAX_HISTORY_FRAMES)
         m_History.pop_front();
 }

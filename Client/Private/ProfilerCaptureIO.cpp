@@ -274,7 +274,10 @@ bool SaveJsonImpl(
 				<< ", \"depth\": " << Scope.Depth
 				<< ", \"beginMs\": " << Scope.BeginMs
 				<< ", \"endMs\": " << Scope.EndMs
-				<< ", \"durationMs\": " << Scope.DurationMs << "}"
+				<< ", \"durationMs\": " << Scope.DurationMs
+				<< ", \"pipelineValid\": " << (Scope.PipelineValid ? "true" : "false")
+				<< ", \"psInvocations\": " << Scope.PSInvocations
+				<< ", \"vsInvocations\": " << Scope.VSInvocations << "}"
 				<< (iScope + 1 < Frame.GpuScopes.size() ? "," : "") << "\n";
 		}
 		Stream << "      ]\n";

@@ -916,7 +916,11 @@ def parse_uniform_expression(
             "constant value is non-finite",
         )
         row["valueTypeOrdinal"] = data[offset + 16]
-        require(row["valueTypeOrdinal"] == 15, "constant value type changed")
+        # EMaterialValueType stores Float1/2/3/4 as 1/2/4/8; Float (15)
+        # is the auto-promoting scalar union. All carry four serialized floats.
+        # The RPCT material corpus also contains an explicit Float2 [1,1,0,0].
+        require(row["valueTypeOrdinal"] in (1, 2, 4, 8, 15),
+                f"constant value type changed: {row['valueTypeOrdinal']} at {offset}; value={row['value']}")
         offset += 17
     elif folded == "fmaterialuniformexpressionscalarparameter":
         name, name_number, offset = read_fname_at(data, offset, names)
@@ -1919,6 +1923,8 @@ def extract_selected_shader_objects(
     package: dict[str, Any],
     layout: dict[str, Any],
     selected_references: list[dict[str, str]],
+    *,
+    allow_mixed_code_preambles: bool = False,
 ) -> dict[str, Any]:
     """Walk the native shader-object table by serialized absolute end pointers.
 
@@ -2003,10 +2009,10 @@ def extract_selected_shader_objects(
         row["serializedShaderCodeSha1Hex"] for row in selected.values()
     }
     require(
-        len(common_sha1) == 1,
+        allow_mixed_code_preambles or len(common_sha1) == 1,
         "selected shader objects do not share one serialized code preamble",
     )
-    common_value = bytes.fromhex(next(iter(common_sha1)))
+    common_value = bytes.fromhex(next(iter(common_sha1))) if len(common_sha1) == 1 else None
     return {
         "table": {
             "platform": platform,
@@ -2015,15 +2021,17 @@ def extract_selected_shader_objects(
             "logicalEndOffset": table_end,
             "materialMapCountFollowingTable": material_map_count,
             "traversal": "SERIALIZED_ABSOLUTE_END_POINTER_MONOTONIC_CONTIGUOUS",
-            "selectedCommonShaderCodeSha1Hex": common_value.hex(),
-            "selectedCommonShaderCodeSha1Sha256": sha256_bytes(common_value),
+            "selectedCommonShaderCodeSha1Hex": common_value.hex() if common_value is not None else None,
+            "selectedCommonShaderCodeSha1Sha256": sha256_bytes(common_value) if common_value is not None else None,
+            "selectedShaderCodeSha1Hexes": sorted(common_sha1),
         },
         "byShaderId": selected,
     }
 
 
 def parse_dxbc_declaration_closure(
-    disassembly: dict[str, Any], *, allow_textureless: bool = False
+    disassembly: dict[str, Any], *, allow_textureless: bool = False,
+    allow_absent_cb0: bool = False,
 ) -> dict[str, Any]:
     """Project the DXBC declarations and sample pairs needed by native wires."""
 
@@ -2036,7 +2044,13 @@ def parse_dxbc_declaration_closure(
         for match in [re.search(r"\bcb0\[(\d+)\]", line, re.IGNORECASE)]
         if match
     ]
-    require(len(cb0_sizes) == 1, "DXBC CB0 declaration is absent or ambiguous")
+    require(len(cb0_sizes) == 1 or (allow_absent_cb0 and not cb0_sizes),
+            "DXBC CB0 declaration is absent or ambiguous")
+    if not cb0_sizes:
+        require(not any(re.search(r'\bcb0\[', line, re.IGNORECASE)
+                        for line in disassembly.get('instructions', [])),
+                "DXBC uses CB0 without a declaration")
+        cb0_sizes = [0]
     declared_textures = sorted(
         {
             int(match.group(1))
@@ -2141,6 +2155,7 @@ def scan_native_binding_array_candidates(
     dxbc_closure: dict[str, Any],
     *,
     required_vector_expression_indices: set[int] | None = None,
+    allow_engine_only_textures: bool = False,
 ) -> list[dict[str, Any]]:
     """Find every three-array wire triple satisfying native+DXBC closure."""
 
@@ -2162,7 +2177,7 @@ def scan_native_binding_array_candidates(
     # still retains its source texture denominator. Only a DXBC closure with no
     # texture/sampler declarations and no samples admits an empty native array.
     require(
-        vector_count > 0 and (texture_count > 0 or textureless_shader),
+        vector_count > 0 and (texture_count > 0 or textureless_shader or allow_engine_only_textures),
         "G03-3 requires non-empty vector/texture expression denominators",
     )
     candidates = []
@@ -2194,7 +2209,7 @@ def scan_native_binding_array_candidates(
                 None,
                 texture_count,
                 object_logical_offset,
-                allow_empty=textureless_shader,
+                allow_empty=textureless_shader or allow_engine_only_textures,
             )
 
             scalar_keys = [row["expressionIndexOrGroup"] for row in scalar_rows]
@@ -2236,19 +2251,19 @@ def scan_native_binding_array_candidates(
             )
             sorted_cb_slots = sorted(cb_slots)
             require(
-                sorted_cb_slots
+                (sorted_cb_slots or cb0_size == 0)
                 and all(0 <= slot < cb0_size for slot in sorted_cb_slots),
                 "native wires fall outside the DXBC CB0 declaration",
             )
             require(
-                sorted_cb_slots
+                not sorted_cb_slots or sorted_cb_slots
                 == list(range(sorted_cb_slots[0], sorted_cb_slots[-1] + 1)),
                 "native material constant-buffer slots are not contiguous",
             )
             unowned_cb_slots = sorted(set(range(cb0_size)) - set(sorted_cb_slots))
-            leading_unowned_cb_slots = list(range(0, sorted_cb_slots[0]))
+            leading_unowned_cb_slots = list(range(0, sorted_cb_slots[0])) if sorted_cb_slots else []
             trailing_unowned_cb_slots = list(
-                range(sorted_cb_slots[-1] + 1, cb0_size)
+                range(sorted_cb_slots[-1] + 1, cb0_size) if sorted_cb_slots else []
             )
             require(
                 all(row["numBytesOrResources"] == 1 for row in texture_rows),
@@ -2307,8 +2322,8 @@ def scan_native_binding_array_candidates(
                 **semantic_rows,
                 "constantBufferClosure": {
                     "declaredConstantBuffer0Float4Count": cb0_size,
-                    "minimumNativeBoundConstantBuffer0Slot": sorted_cb_slots[0],
-                    "maximumNativeBoundConstantBuffer0Slot": sorted_cb_slots[-1],
+                    "minimumNativeBoundConstantBuffer0Slot": sorted_cb_slots[0] if sorted_cb_slots else None,
+                    "maximumNativeBoundConstantBuffer0Slot": sorted_cb_slots[-1] if sorted_cb_slots else None,
                     "boundConstantBuffer0Slots": sorted_cb_slots,
                     "unownedConstantBuffer0Slots": unowned_cb_slots,
                     "leadingUnownedConstantBuffer0Slots": leading_unowned_cb_slots,

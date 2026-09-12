@@ -8,6 +8,7 @@
 #include "DataJson.h"
 #include "EffectEditingSession.h"
 #include "Effect_Object.h"
+#include "Effect_DocumentCodec.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "KoukuSaydonPresentationPlayer.h"
@@ -344,9 +345,9 @@ bool CEffectAuthoringSequencer::Select_CharacterSkill(const std::string& asset, 
 }
 
 bool CEffectAuthoringSequencer::Select_KoukuEffect(const std::string& assetId, const bool requiresSourceModel,
-    const bool reusePlayerAnchor)
+    const bool reusePlayerAnchor, const EFFECT_DOCUMENT_DESC* sourceDocument)
 {
-    return Select_SceneEffectTarget(assetId, requiresSourceModel, reusePlayerAnchor, std::nullopt);
+    return Select_SceneEffectTarget(assetId, requiresSourceModel, reusePlayerAnchor, std::nullopt, std::nullopt, sourceDocument);
 }
 
 bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, const bool reusePlayerAnchor)
@@ -360,11 +361,12 @@ bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, c
 
 bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& assetId, const bool requiresSourceModel,
     const bool reusePlayerAnchor, const std::optional<bool> loopPolicy,
-    const std::optional<std::uint32_t> previewDurationMs)
+    const std::optional<std::uint32_t> previewDurationMs, const EFFECT_DOCUMENT_DESC* sourceDocument)
 {
     m_PendingKoukuEffectPreview.reset();
     const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId;
-    if (reuseTarget && m_KoukuEffectPreview->model.has_value() == requiresSourceModel &&
+    const bool needsModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
+    if (reuseTarget && m_KoukuEffectPreview->model.has_value() == needsModel &&
         m_KoukuEffectPreview->loopPolicy == loopPolicy &&
         m_KoukuEffectPreview->previewDurationMs == previewDurationMs) return true;
     const auto character = CAnimationTargetService::Resolve_SceneCharacter();
@@ -386,32 +388,39 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     XMStoreFloat4x4(&target.playerRoot, XMMatrixRotationY(std::atan2(world._31, world._33)) *
         XMMatrixTranslation(world._41, world._42, world._43));
     if (reuseTarget) target.playerRoot = m_KoukuEffectPreview->playerRoot;
-    if (requiresSourceModel)
+    if (needsModel)
     {
         // Only actual source-bone attachments require a saved model binding.
         // Pure root/camera Effects retain their authored motion at the player.
         target.model.emplace();
         auto& staged = *target.model;
         staged.Set_Player(m_Player);
-        if (!staged.Reload()) { m_Status = staged.Status(); return false; }
-        const auto& document = staged.Get_Document();
-        std::set<std::string> resources;
-        for (const auto& resource : document.PresentationResources)
-            if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strAssetId == assetId &&
-                (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
-                resources.insert(resource.strResourceId);
-        std::string selected;
-        for (const auto& pattern : document.Patterns)
-            if (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
-                [&](const auto& occurrence) { return resources.contains(occurrence.strResourceId); }))
-            {
-                if (!selected.empty())
-                { m_Status = "Kouku source-bone Effect has multiple Composition patterns; its model binding is ambiguous."; return false; }
-                selected = pattern.strPatternId;
-            }
-        if (selected.empty())
-        { m_Status = "Kouku source-bone Effect has no saved Composition model/animation binding."; return false; }
-        if (!staged.Select_Pattern(selected)) { m_Status = staged.Status(); return false; }
+        if (sourceDocument && sourceDocument->SourceModelPreview)
+        {
+            if (!staged.Select_SourceEffect(*sourceDocument)) { m_Status = staged.Status(); return false; }
+        }
+        else
+        {
+            if (!staged.Reload()) { m_Status = staged.Status(); return false; }
+            const auto& document = staged.Get_Document();
+            std::set<std::string> resources;
+            for (const auto& resource : document.PresentationResources)
+                if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strAssetId == assetId &&
+                    (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
+                    resources.insert(resource.strResourceId);
+            std::string selected;
+            for (const auto& pattern : document.Patterns)
+                if (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                    [&](const auto& occurrence) { return resources.contains(occurrence.strResourceId); }))
+                {
+                    if (!selected.empty())
+                    { m_Status = "Kouku source-bone Effect has multiple Composition patterns; its model binding is ambiguous."; return false; }
+                    selected = pattern.strPatternId;
+                }
+            if (selected.empty())
+            { m_Status = "Kouku source-bone Effect has no saved Composition model/animation binding."; return false; }
+            if (!staged.Select_Pattern(selected)) { m_Status = staged.Status(); return false; }
+        }
         if (staged.Actors().size() != 1u || !staged.Actors().front().status.empty() || staged.Rows().empty())
         { m_Status = "Kouku Effect has no valid saved model/animation target: " + staged.Status(); return false; }
     }
@@ -426,7 +435,7 @@ bool CEffectAuthoringSequencer::Select_ModelSequence(const std::string& id)
     if (found == m_Sequences.end() || !found->error.empty())
     { m_Status = found == m_Sequences.end() ? "Saved animation sequence is unavailable." : found->error; return false; }
     Stop(); m_BoxDetailDraft.reset(); m_UseKouku = false; m_CustomAnimation = false; m_AnimationRows.clear(); m_SelectedSequence = id; m_AnchorMember.clear(); m_ClockMs = 0;
-    m_Dirty = true; m_Status = "Selected " + found->label; return true;
+    m_SourceModelEffectId.clear(); m_Dirty = true; m_Status = "Selected " + found->label; return true;
 }
 bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool bundle)
 {
@@ -434,7 +443,7 @@ bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool b
     if (!(bundle ? m_Kouku.Select_Bundle(id) : m_Kouku.Select_Pattern(id))) { m_Status = m_Kouku.Status(); return false; }
     m_BoxDetailDraft.reset(); m_UseKouku = true; m_CustomAnimation = false; m_AnimationRows.clear(); m_ClockMs = 0;
     m_AnchorMember = m_Kouku.Actors().empty() ? "" : m_Kouku.Actors().front().memberId;
-    m_Dirty = true; m_Status = m_Kouku.Status(); return true;
+    m_SourceModelEffectId.clear(); m_Dirty = true; m_Status = m_Kouku.Status(); return true;
 }
 bool CEffectAuthoringSequencer::Begin_Model()
 {
@@ -474,13 +483,23 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
     if (m_KoukuEffectPreview)
     {
         if (!m_KoukuEffectPreview->model) return true;
-        if (!m_KoukuEffectPreview->model->Sample(clockMs, true))
+        if (!m_KoukuEffectPreview->model->Sample(clockMs, true) ||
+            !m_KoukuEffectPreview->model->Place_Root(m_KoukuEffectPreview->playerRoot))
         { m_Status = "Kouku source animation preview owner changed."; return false; }
         return true;
     }
     if (m_UseKouku)
     {
-        if (!m_Kouku.Is_Active() || !m_Kouku.Sample(clockMs, true)) { m_Status = "Kouku model preview owner changed."; return false; }
+        const auto effect = std::find_if(m_Effects.begin(), m_Effects.end(), [&](const auto& row)
+            { return row.key.strStableId == m_SourceModelEffectId; });
+        const auto localMs = effect == m_Effects.end() ? clockMs : (clockMs > effect->startMs ? clockMs - effect->startMs : 0u);
+        if (!m_Kouku.Is_Active() || !m_Kouku.Sample(localMs, true)) { m_Status = "Kouku model preview owner changed."; return false; }
+        if (effect != m_Effects.end())
+        {
+            float4x4_t root;
+            if (!Resolve_RowPivot(*effect, m_WorldRoot, root) || !m_Kouku.Place_Root(root))
+            { m_Status = "The source model could not use its Effect group placement."; return false; }
+        }
         return true;
     }
     const auto* sequence = Selected_Sequence();
@@ -564,10 +583,22 @@ bool CEffectAuthoringSequencer::Render_AnchorChoice(const char* label, std::stri
     return changed;
 }
 
+bool CEffectAuthoringSequencer::Validate_EffectPlacement(const EFFECT_ROW& row)
+{
+    const auto finite = [](const float3_t& value) { return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+        std::abs(value.x) <= 100000.f && std::abs(value.y) <= 100000.f && std::abs(value.z) <= 100000.f; };
+    if (!finite(row.offset) || !finite(row.rotation) || !finite(row.scale) ||
+        row.scale.x <= 0.f || row.scale.y <= 0.f || row.scale.z <= 0.f ||
+        row.scale.x > 1000.f || row.scale.y > 1000.f || row.scale.z > 1000.f ||
+        (row.worldAnchor && row.anchorSlotId != "root"))
+    { m_Status = "Group placement needs finite coordinates, positive scale and a matching anchor."; return false; }
+    return row.worldAnchor || Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku);
+}
+
 bool CEffectAuthoringSequencer::Resolve_RowPivot(const EFFECT_ROW& row, const float4x4_t& root, float4x4_t& pivot)
 {
-    if (!Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku)) return false;
-    matrix_t anchor = XMLoadFloat4x4(&root);
+    if (!Validate_EffectPlacement(row)) return false;
+    matrix_t anchor = row.worldAnchor ? XMMatrixIdentity() : XMLoadFloat4x4(&root);
     if (row.anchorSlotId != "root")
     {
         float4x4_t modelRoot, boneWorld;
@@ -580,7 +611,9 @@ bool CEffectAuthoringSequencer::Resolve_RowPivot(const EFFECT_ROW& row, const fl
         { m_Status = "The selected model root is singular."; return false; }
         anchor = XMLoadFloat4x4(&boneWorld) * inverse * anchor;
     }
-    XMStoreFloat4x4(&pivot, XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * anchor);
+    XMStoreFloat4x4(&pivot, XMMatrixScaling(row.scale.x, row.scale.y, row.scale.z) *
+        XMMatrixRotationRollPitchYaw(XMConvertToRadians(row.rotation.x), XMConvertToRadians(row.rotation.y), XMConvertToRadians(row.rotation.z)) *
+        XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * anchor);
     return true;
 }
 
@@ -637,7 +670,7 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
 {
     if (!row.key.Is_Valid() || !row.durationMs || row.durationMs > MAX_MS || row.startMs > MAX_MS - row.durationMs)
     { m_Status = "Invalid Effect resource or occurrence timing."; return false; }
-    if (!Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku)) return false;
+    if (!Validate_EffectPlacement(row)) return false;
     if (!row.previewElementIds.empty() && (row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || row.startMs != 0u))
     { m_Status = "Element preview requires a V1 document at its original time origin."; return false; }
     if (row.screenPost && row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF)
@@ -749,7 +782,7 @@ bool CEffectAuthoringSequencer::Sample_Row(EFFECT_ROW& row, const float4x4_t& ro
     return true;
 }
 bool CEffectAuthoringSequencer::Resolve_KoukuSourceAnchors(
-    const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root,
+    const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root, const float seconds,
     std::unordered_map<std::string, float4x4_t>& anchors, std::string& error) const
 {
     EFFECT_V2_TARGET target;
@@ -760,14 +793,14 @@ bool CEffectAuthoringSequencer::Resolve_KoukuSourceAnchors(
         model->Actors().front().memberId : m_AnchorMember;
     if (!Uses_KoukuSourceModel() || !model || !model->Resolve_Target(member, target, view))
     { error = "The selected Kouku animation target is unavailable."; return false; }
-    return CKoukuSaydonPresentationPlayer::Resolve_SourceAnchorWorlds(document, view, root, anchors, error);
+    return CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(document, view, root, seconds, anchors, error);
 }
 
 bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4_t& pivot, const float age)
 {
     if (!m_V1Anchors) { m_Status = "V1 source-anchor provider is unavailable."; return false; }
     std::unordered_map<std::string, float4x4_t> current;
-    if (!m_V1Anchors(row.v1, pivot, Uses_KoukuSourceModel(), current, m_Status)) return false;
+    if (!m_V1Anchors(row.v1, pivot, Uses_KoukuSourceModel(), age, current, m_Status)) return false;
     if (current.empty())
     {
         if (row.anchorHistory && !row.anchorHistory->slots.empty())
@@ -812,7 +845,7 @@ bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4
                 { success = false; break; }
                 XMStoreFloat4x4(&historicalPivot, XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * XMLoadFloat4x4(&owner));
                 std::unordered_map<std::string, float4x4_t> worlds;
-                if (!m_V1Anchors(row.v1, historicalPivot, Uses_KoukuSourceModel(), worlds, m_Status) || !record(seconds, worlds)) { success = false; break; }
+                if (!m_V1Anchors(row.v1, historicalPivot, Uses_KoukuSourceModel(), seconds, worlds, m_Status) || !record(seconds, worlds)) { success = false; break; }
             }
         }
         const auto failure = m_Status;
@@ -897,27 +930,50 @@ bool CEffectAuthoringSequencer::Play(const bool paused)
 }
 bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs, const bool screenPost)
 {
-    if (m_Transient && !m_Transient->previewElementIds.empty())
-    { m_Status = "Element preview is temporary. Stop it or preview the whole document before appending a sequence row."; return false; }
-    if (m_Transient && m_Transient->key == key)
+    std::optional<CEffectCompositionModelPreview> appendedModel;
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.kouku."))
     {
-        if (screenPost)
+        if (!key.Is_Valid()) { m_Status = "Select an Effect with a stable ID."; return false; }
+        EFFECT_DOCUMENT_DESC document;
+        const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Effects/Authored") / (key.strStableId + ".effect.json"));
+        if (!CEffectDocumentCodec::Load(path, document, m_Status)) return false;
+        if (document.SourceModelPreview)
         {
-            const auto* document = m_Transient->snapshot ? m_Transient->snapshot->Find_Document(key.strStableId) : nullptr;
-            if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF || !document || document->eType != EFFECT_V2_TYPE::SCREEN_POST)
-            { m_Status = "The selected Screen Post resource has a different Effect type."; return false; }
+            appendedModel.emplace(); appendedModel->Set_Player(m_Player);
+            if (!appendedModel->Select_SourceEffect(document)) { m_Status = appendedModel->Status(); return false; }
+            if (m_UseKouku && !m_Effects.empty() && !m_Kouku.Actors().empty() &&
+                m_Kouku.Actors().front().actorProfileId != appendedModel->Actors().front().actorProfileId)
+            { m_Status = "This group needs a different model. Use a separate benchmark sequence for that actor."; return false; }
         }
-        const bool previousKind = m_Transient->screenPost; m_Transient->screenPost = screenPost;
-        if (Commit_TransientPreview()) return true;
-        m_Transient->screenPost = previousKind; return false;
     }
+    const bool scenePreview = m_KoukuEffectPreview.has_value();
+    const bool selectedPreview = Is_ElementPreview();
+    const auto appendClock = scenePreview || selectedPreview ? 0u : ClockMs();
     if (m_Effects.size() + (m_Transient ? 1u : 0u) >= MAX_EFFECTS)
     { m_Status = "A sequence supports at most 256 Effect occurrences."; return false; }
     while (std::any_of(m_Effects.begin(), m_Effects.end(), [&](const auto& existing)
         { return existing.id == "effect.occurrence." + std::to_string(m_NextEffectOrdinal); })) ++m_NextEffectOrdinal;
     EFFECT_ROW row; row.id = "effect.occurrence." + std::to_string(m_NextEffectOrdinal);
-    row.key = key; row.startMs = ClockMs(); row.durationMs = durationMs ? durationMs : 1u; row.screenPost = screenPost;
+    row.key = key; row.startMs = appendClock; row.durationMs = durationMs ? durationMs : 1u; row.screenPost = screenPost;
     row.anchorSlotId = m_DefaultAnchorSlotId;
+    if (scenePreview)
+    {
+        const auto& world = m_KoukuEffectPreview->playerRoot;
+        row.worldAnchor = true; row.anchorSlotId = "root";
+        row.offset = {world._41, world._42, world._43};
+        row.rotation.y = XMConvertToDegrees(std::atan2(world._31, world._33));
+    }
+    if (!scenePreview && key.strStableId.starts_with("effect.kouku."))
+    {
+        const auto character = CAnimationTargetService::Resolve_SceneCharacter();
+        const auto transform = character ? character->Get_Transform() : nullptr;
+        if (transform)
+        {
+            const auto& world = *transform->Get_WorldMatrixPtr();
+            row.worldAnchor = true; row.anchorSlotId = "root"; row.offset = {world._41, world._42, world._43};
+            row.rotation.y = XMConvertToDegrees(std::atan2(world._31, world._33));
+        }
+    }
     float4x4_t root = m_WorldRoot;
     if (m_Active && !Resolve_Root(root)) return false;
     if (!Stage_Row(row, root)) { Release_Row(row); return false; }
@@ -928,8 +984,31 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
         { m_Status = "The Effect owner did not provide a valid occurrence duration."; Release_Row(row); return false; }
         row.durationMs = static_cast<std::uint32_t>(resolved);
     }
-    if (m_Active && !Sample_Row(row, root)) { Release_Row(row); return false; }
-    if (!Commit_TransientPreview()) { Release_Row(row); return false; }
+    if (m_Active && !scenePreview && !selectedPreview && !appendedModel && !Sample_Row(row, root)) { Release_Row(row); return false; }
+    if (scenePreview || selectedPreview)
+    {
+        std::optional<CEffectCompositionModelPreview> sourceModel;
+        std::string sourceEffect;
+        if (scenePreview && m_KoukuEffectPreview->model)
+        { sourceModel = std::move(m_KoukuEffectPreview->model); sourceEffect = m_KoukuEffectPreview->assetId; }
+        Stop();
+        if (sourceModel)
+        {
+            m_Kouku = std::move(*sourceModel);
+            m_SourceModelEffectId = m_Kouku.Selected_Id().starts_with("effect.model.") ? std::move(sourceEffect) : std::string{};
+            m_UseKouku = true; m_CustomAnimation = false; m_AnimationRows.clear();
+            m_AnchorMember = m_Kouku.Actors().front().memberId;
+        }
+        m_ClockMs = appendClock;
+    }
+    else if (!Commit_TransientPreview()) { Release_Row(row); return false; }
+    if (appendedModel)
+    {
+        Stop();
+        m_Kouku = std::move(*appendedModel); m_SourceModelEffectId = key.strStableId;
+        m_UseKouku = true; m_CustomAnimation = false; m_AnimationRows.clear();
+        m_AnchorMember = m_Kouku.Actors().front().memberId; m_ClockMs = appendClock;
+    }
     Select_TimelineRow(screenPost ? TRACK_KIND::SCREEN_POST : TRACK_KIND::EFFECT, row.id);
     m_Effects.push_back(std::move(row)); ++m_NextEffectOrdinal;
     m_Dirty = true; m_Status = "Appended " + key.strStableId + " at " + std::to_string(ClockMs()) + " ms."; return true;
@@ -1420,16 +1499,16 @@ bool CEffectAuthoringSequencer::Save_Sequence()
     if (!Validate_Anchor(m_DefaultAnchorSlotId, m_ModelRoot, m_UseKouku)) return false;
     std::ostringstream out; out.imbue(std::locale::classic()); out.precision(9);
     out << "{\n  \"schema\": \"lostark.effect-authoring-sequence\",\n  \"formatVersion\": 4,\n  \"sequenceId\": \"" << CDataJson::Escape(id)
-        << "\",\n  \"model\": {\"kind\": \"" << (m_UseKouku ? (m_Kouku.Selected_IsBundle() ? "KOUKU_BUNDLE" : "KOUKU_PATTERN") : "MODEL_SEQUENCE")
+        << "\",\n  \"model\": {\"kind\": \"" << (m_UseKouku ? (!m_SourceModelEffectId.empty() ? "KOUKU_EFFECT" : (m_Kouku.Selected_IsBundle() ? "KOUKU_BUNDLE" : "KOUKU_PATTERN")) : "MODEL_SEQUENCE")
         << "\", \"assetName\": \"" << CDataJson::Escape(m_AssetName) << "\", \"sequenceId\": \""
-        << CDataJson::Escape(m_UseKouku ? m_Kouku.Selected_Id() : m_SelectedSequence) << "\", \"anchorMemberId\": \"" << CDataJson::Escape(m_AnchorMember)
+        << CDataJson::Escape(m_UseKouku ? (!m_SourceModelEffectId.empty() ? m_SourceModelEffectId : m_Kouku.Selected_Id()) : m_SelectedSequence) << "\", \"anchorMemberId\": \"" << CDataJson::Escape(m_AnchorMember)
         << "\"},\n  \"anchorMode\": \"" << (m_ModelRoot ? "MODEL_ROOT" : "WORLD")
         << "\",\n  \"worldPosition\": [" << m_WorldRoot._41 << ", " << m_WorldRoot._42 << ", " << m_WorldRoot._43 << "],\n  \"effects\": [";
     std::set<std::string> ids;
     for (std::size_t i = 0; i < m_Effects.size(); ++i)
     {
         const auto& row = m_Effects[i];
-        if (!Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku)) return false;
+        if (!Validate_EffectPlacement(row)) return false;
         if (!row.key.Is_Valid() || (row.screenPost && row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF) ||
             !ids.insert(row.id).second || !CEffectV2Document::Is_ValidEffectId(row.id) ||
             !row.durationMs || row.durationMs > MAX_MS || row.startMs > MAX_MS - row.durationMs ||
@@ -1439,7 +1518,10 @@ bool CEffectAuthoringSequencer::Save_Sequence()
         out << (i ? ",\n" : "\n") << "    {\"occurrenceId\": \"" << CDataJson::Escape(row.id) << "\", \"owner\": \"" << Owner_Key(row.key.eOwnerKind)
             << "\", \"effectId\": \"" << CDataJson::Escape(row.key.strStableId) << "\", \"anchorSlotId\": \"" << CDataJson::Escape(row.anchorSlotId) << "\", \"startMs\": " << row.startMs << ", \"durationMs\": " << row.durationMs
             << ", \"offset\": [" << row.offset.x << ", " << row.offset.y << ", " << row.offset.z << "], \"muted\": " << (row.muted ? "true" : "false")
-            << ", \"screenPost\": " << (row.screenPost ? "true" : "false") << "}";
+            << ", \"screenPost\": " << (row.screenPost ? "true" : "false")
+            << ", \"worldAnchor\": " << (row.worldAnchor ? "true" : "false")
+            << ", \"rotationDegrees\": [" << row.rotation.x << ", " << row.rotation.y << ", " << row.rotation.z << "]"
+            << ", \"scale\": [" << row.scale.x << ", " << row.scale.y << ", " << row.scale.z << "]}";
     }
     out << "\n  ]"; Write_CameraRows(out); Write_AdditionalRows(out); out << "\n}\n";
     const auto text = out.str(); DATA_JSON_VALUE parsed;
@@ -1466,7 +1548,7 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
     const auto* model = root.Find("model"); const auto* effects = root.Find("effects"); float3_t world;
     if (!model || !model->Is_Object() || !Json_Text(*model, "kind", kind) || !Json_Text(*model, "assetName", asset) ||
         !Json_Text(*model, "sequenceId", sequenceId) || !Json_Text(*model, "anchorMemberId", anchor) ||
-        (kind != "MODEL_SEQUENCE" && kind != "KOUKU_PATTERN" && kind != "KOUKU_BUNDLE") || !Json_Vector(root, "worldPosition", world) ||
+        (kind != "MODEL_SEQUENCE" && kind != "KOUKU_PATTERN" && kind != "KOUKU_BUNDLE" && kind != "KOUKU_EFFECT") || !Json_Vector(root, "worldPosition", world) ||
         !effects || !effects->Is_Array() || effects->Get_Array().size() > MAX_EFFECTS)
     { m_Status = "Invalid Effect sequence model or occurrence list; current timeline preserved."; return false; }
     bool modelRoot = true;
@@ -1498,6 +1580,14 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
             !Json_U32(value, "durationMs", row.durationMs) || !row.durationMs || row.startMs > MAX_MS - row.durationMs ||
             !Json_Vector(value, "offset", row.offset) || !muted || !muted->Is_Boolean())
         { m_Status = "Invalid saved Effect occurrence; current timeline preserved."; return false; }
+        if (value.Find("worldAnchor") || value.Find("rotationDegrees") || value.Find("scale"))
+        {
+            const auto* worldAnchor = value.Find("worldAnchor");
+            if (!worldAnchor || !worldAnchor->Is_Boolean() || !Json_Vector(value, "rotationDegrees", row.rotation) ||
+                !Json_Vector(value, "scale", row.scale))
+            { m_Status = "Saved group placement is incomplete; current timeline preserved."; return false; }
+            row.worldAnchor = worldAnchor->Get_Boolean();
+        }
         if (version >= 2u && !Json_Text(value, "anchorSlotId", row.anchorSlotId))
         { m_Status = "Saved v2 Effect occurrence is missing its anchor; current timeline preserved."; return false; }
         if (version >= 4u)
@@ -1506,7 +1596,12 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
             if (!post || !post->Is_Boolean()) { m_Status = "Saved v4 Effect occurrence is missing its track kind; current timeline preserved."; return false; }
             row.screenPost = post->Get_Boolean();
         }
-        if (!Validate_Anchor(row.anchorSlotId, modelRoot, kind != "MODEL_SEQUENCE")) return false;
+        const auto bounded = [](const float3_t& v, const float limit) { return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z) &&
+            std::abs(v.x) <= limit && std::abs(v.y) <= limit && std::abs(v.z) <= limit; };
+        if (!bounded(row.offset, 100000.f) || !bounded(row.rotation, 100000.f) || !bounded(row.scale, 1000.f) ||
+            row.scale.x <= 0.f || row.scale.y <= 0.f || row.scale.z <= 0.f || (row.worldAnchor && row.anchorSlotId != "root"))
+        { m_Status = "Saved group placement is out of range; current timeline preserved."; return false; }
+        if (!row.worldAnchor && !Validate_Anchor(row.anchorSlotId, modelRoot, kind != "MODEL_SEQUENCE")) return false;
         if (row.anchorSlotId != "root" && asset != CAnimationTargetService::Resolve_AssetName())
         { m_Status = "Load the saved character before resolving its occurrence bones; current timeline preserved."; return false; }
         if (owner == "V1_DOCUMENT") row.key.eOwnerKind = EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT;
@@ -1529,7 +1624,20 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
             if (found == m_Sequences.end() || !found->error.empty()) { m_Status = "Saved model sequence reference is unavailable."; return false; }
         }
     }
-    if (kind != "MODEL_SEQUENCE")
+    std::optional<CEffectCompositionModelPreview> sourceModel;
+    if (kind == "KOUKU_EFFECT")
+    {
+        if (!CEffectV2Document::Is_ValidEffectId(sequenceId))
+        { m_Status = "Saved source Effect identity is malformed; current timeline preserved."; return false; }
+        EFFECT_DOCUMENT_DESC effect;
+        const auto effectPath = CProjectDataRoot::Resolve(std::filesystem::path("Effects/Authored") / (sequenceId + ".effect.json"));
+        if (!CEffectDocumentCodec::Load(effectPath, effect, m_Status) || effect.strEffectAssetId != sequenceId) return false;
+        sourceModel.emplace(); sourceModel->Set_Player(m_Player);
+        if (!sourceModel->Select_SourceEffect(effect)) { m_Status = sourceModel->Status(); return false; }
+        if (sourceModel->Actors().empty() || sourceModel->Actors().front().memberId != anchor)
+        { m_Status = "Saved source Effect actor changed; current timeline preserved."; return false; }
+    }
+    else if (kind != "MODEL_SEQUENCE")
     {
         if (!m_Kouku.Is_Loaded() && !m_Kouku.Reload()) { m_Status = m_Kouku.Status(); return false; }
         const auto& document = m_Kouku.Get_Document();
@@ -1548,7 +1656,9 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
     m_AnimationRows = std::move(animations); m_CustomAnimation = customAnimation;
     m_Sounds = std::move(sounds); m_Colliders = std::move(colliders); m_SelectedRowId.clear();
     if (m_CustomAnimation) m_InventoryGeneration = CAnimationTargetService::Resolve_TargetGeneration();
-    if (m_UseKouku) { if (kind == "KOUKU_BUNDLE") m_Kouku.Select_Bundle(sequenceId); else m_Kouku.Select_Pattern(sequenceId); }
+    m_SourceModelEffectId = sourceModel ? sequenceId : std::string{};
+    if (sourceModel) m_Kouku = std::move(*sourceModel);
+    else if (m_UseKouku) { if (kind == "KOUKU_BUNDLE") m_Kouku.Select_Bundle(sequenceId); else m_Kouku.Select_Pattern(sequenceId); }
     else m_SelectedSequence = sequenceId;
     m_AssetName = asset; m_AnchorMember = anchor; m_ModelRoot = modelRoot;
     m_DefaultAnchorSlotId = "root";

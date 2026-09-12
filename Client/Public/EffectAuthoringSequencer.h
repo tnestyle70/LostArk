@@ -34,7 +34,7 @@ public:
         std::shared_ptr<CEffectObject>&, std::uint32_t&, std::uint32_t&, std::string&)>;
     using V1_RELEASE = std::function<void(const std::shared_ptr<CEffectObject>&)>;
     using V1_ANCHOR_PROVIDER = std::function<bool(const std::shared_ptr<CEffectObject>&,
-        const float4x4_t&, bool, std::unordered_map<std::string, float4x4_t>&, std::string&)>;
+        const float4x4_t&, bool, float, std::unordered_map<std::string, float4x4_t>&, std::string&)>;
     using V2_SNAPSHOT_PROVIDER = std::function<bool(const EFFECT_RESOURCE_KEY&,
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>&, std::string&)>;
 
@@ -46,15 +46,16 @@ public:
     void Set_Camera(const std::shared_ptr<Engine::CCamera>& camera);
     void Set_V1Callbacks(V1_FACTORY factory, V1_RELEASE release);
     void Set_V1AnchorProvider(V1_ANCHOR_PROVIDER provider);
-    bool Resolve_KoukuSourceAnchors(const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root,
+    bool Resolve_KoukuSourceAnchors(const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root, float seconds,
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error) const;
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
     void Render_ModelView(); // Contents inside the existing Model View window.
-    void Render_Sequencer(const char* title = "Sequencer##EffectAuthoring"); // The existing Effect Tool calls this panel.
+    void Render_Sequencer(const char* title = "Sequencer##EffectAuthoring", bool integratedEffectWorkspace = false); // The existing Effect Tool calls this panel.
     void Update(float dt, bool active);
     bool Select_CharacterSkill(const std::string& asset, std::uint32_t skillId,
         std::optional<std::uint32_t> stageIndex = std::nullopt);
-    bool Select_KoukuEffect(const std::string& assetId, bool requiresSourceModel, bool reusePlayerAnchor = false);
+    bool Select_KoukuEffect(const std::string& assetId, bool requiresSourceModel, bool reusePlayerAnchor = false,
+        const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr);
     bool Select_WorldEffect(const std::string& assetId, bool reusePlayerAnchor = false);
     bool Preview(const EFFECT_RESOURCE_KEY& key, std::uint32_t durationMs = 3000u);
     bool Preview_Element(const EFFECT_RESOURCE_KEY& key, const std::string& elementId,
@@ -109,7 +110,9 @@ private:
         bool previewLoop = false;
         std::string anchorSlotId = "root";
         std::uint32_t startMs = 0u, durationMs = 3000u;
-        float3_t offset{};
+        float3_t offset{}, rotation{};
+        float3_t scale{1.f, 1.f, 1.f};
+        bool worldAnchor = false;
         bool muted = false;
         bool screenPost = false;
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
@@ -164,7 +167,7 @@ private:
     void Stop_Sounds();
     void Render_Colliders();
     void Render_CompositionResources();
-    void Render_BoxDetail();
+    void Render_BoxDetail(bool embedded = false);
     bool Refresh_CompositionResourceInventory();
     void Rebuild_CompositionResourceTrees();
     void Select_TimelineRow(TRACK_KIND kind, const std::string& id);
@@ -191,7 +194,7 @@ private:
     bool Select_Kouku(const std::string& id, bool bundle);
     bool Select_SceneEffectTarget(const std::string& assetId, bool requiresSourceModel,
         bool reusePlayerAnchor, std::optional<bool> loopPolicy,
-        std::optional<std::uint32_t> previewDurationMs = std::nullopt);
+        std::optional<std::uint32_t> previewDurationMs = std::nullopt, const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr);
     bool Uses_TransientLoop() const
     { return m_Transient && (Is_ElementPreview() || (m_KoukuEffectPreview && m_KoukuEffectPreview->loopPolicy.has_value())); }
     bool Uses_KoukuSourceModel() const
@@ -204,6 +207,7 @@ private:
     bool Resolve_RowPivot(const EFFECT_ROW& row, const float4x4_t& root, float4x4_t& pivot);
     bool Record_RowPivot(EFFECT_ROW& row, const float4x4_t& pivot, float age);
     bool Render_AnchorChoice(const char* label, std::string& anchor);
+    bool Validate_EffectPlacement(const EFFECT_ROW& row);
     bool Validate_Anchor(const std::string& anchor, bool modelRoot, bool useKouku);
     bool Stage_Row(EFFECT_ROW& row, const float4x4_t& root);
     bool Sample_Row(EFFECT_ROW& row, const float4x4_t& root);
@@ -255,6 +259,7 @@ private:
     std::uint32_t m_PreviousClip = 0u, m_NextEffectOrdinal = 1u;
     float m_PreviousPosition = 0.f;
     bool m_PreviousPaused = true, m_PreviousLoop = false;
+    std::string m_SourceModelEffectId;
     float4x4_t m_WorldRoot{};
     double m_ClockMs = 0.0;
     float m_Zoom = 80.f;

@@ -85,7 +85,7 @@ HRESULT CLight_Manager::Replace_SceneLights(vector<LIGHT_DESC> SceneLights)
 HRESULT CLight_Manager::Render_Lights(
 	shared_ptr<class CShader> pShader,
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
-	bool_t bEnableSceneDirectionalShadow, LIGHT_RECEIVER ePassReceiver)
+	bool_t bEnableSceneDirectionalShadow, LIGHT_RECEIVER ePassReceiver, bool_t bSourceLightMask)
 {
     if (ePassReceiver != LIGHT_RECEIVER::ALL && ePassReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER) return E_INVALIDARG;
 	HRESULT hResult = S_OK;
@@ -103,7 +103,8 @@ HRESULT CLight_Manager::Render_Lights(
         const bool_t applyStaticShadow = !staticShadowConsumed && LIGHT::DIRECTIONAL == LightDesc.eType;
         if (applyStaticShadow) staticShadowConsumed = true;
 		if (FAILED(CLight::Render_Desc(
-			LightDesc, pShader, pVIBuffer, bApplyShadow, applyStaticShadow)))
+			LightDesc, pShader, pVIBuffer, bApplyShadow, applyStaticShadow,
+                bSourceLightMask && ePassReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER)))
 		{
 			hResult = E_FAIL;
 			break;
@@ -118,7 +119,8 @@ HRESULT CLight_Manager::Render_Lights(
 		{
             if (LightDesc.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER && ePassReceiver == LIGHT_RECEIVER::ALL) continue;
 			if (FAILED(CLight::Render_Desc(
-				LightDesc, pShader, pVIBuffer, false)))
+				LightDesc, pShader, pVIBuffer, false, false,
+                    bSourceLightMask && ePassReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER)))
 			{
 				hResult = E_FAIL;
 				break;

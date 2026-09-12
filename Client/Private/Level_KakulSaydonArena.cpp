@@ -467,6 +467,7 @@ Client::CLevel_KakulSaydonArena::CLevel_KakulSaydonArena(
 Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 {
 	Stop_CompositionCamera(true);
+	Clear_EntranceTriggerMarkers();
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
@@ -581,6 +582,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	auto targets = Make_WorldSequenceTargets();
 	const auto& document = sourceDocument ? *sourceDocument : m_SequencePlayer.Get_Document();
 	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> staged;
+	std::vector<CWorldSequencePlayer*> stagedPlayers;
 	std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> placementBindings;
 	bool previewsResourceBook = false;
 	for (const auto& cue : cues)
@@ -606,14 +608,20 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 			}
 		}
 		auto player = make_unique<CWorldSequencePlayer>();
-		if (!player->Set_Document(document, targets, status) ||
-			!player->Prepare_InstanceResources(cue.instanceId, targets))
+		stagedPlayers.push_back(player.get());
+		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{cue, std::move(player)});
+	}
+	if (!CWorldSequencePlayer::Set_DocumentBatch(document, targets, stagedPlayers, status)) return false;
+	for (auto& [id, playback] : staged)
+	{
+		auto& player = *playback.player;
+		const auto& cue = playback.cue;
+		if (!player.Prepare_InstanceResources(cue.instanceId, targets))
 		{
-			status = "WORLD preview: " + player->Get_Status();
+			status = "WORLD preview " + cue.occurrenceId + ": " + player.Get_Status();
 			return false;
 		}
-		if (!player->Validate_ObjectPlacement(cue.instanceId, cue.placement, status)) return false;
-		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{cue, std::move(player)});
+		if (!player.Validate_ObjectPlacement(cue.instanceId, cue.placement, status)) return false;
 	}
 	Debug_StopCompositionWorldPreview();
 	if (!m_CompositionWorldPreviewDeployStates.empty() || !m_CompositionWorldPreviewArenaVisibility.empty())
@@ -1057,6 +1065,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		}
 	}
 
+	(void)Load_EntranceTriggerMarkers();
+
 #ifdef _DEBUG
 	/* A missing wire is a missing wire, not a reason to keep the arena
 	   shut, so this reports and carries on. */
@@ -1248,6 +1258,9 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			if (activeShot != m_CameraShots.end()) Release_CameraShot();
 			if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP) continue;
 		}
+		if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY ||
+			play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::REPLAY)
+			Retire_EntranceTriggerMarker(instanceId);
 		if (!Start_ServerRequestedSequence(instanceId, play.fPlaybackSpeed,
 			float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), targets, status, play.iDurationMs,
 			WorldPlacementFromCue(play)))
@@ -1317,6 +1330,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
+	Update_EntranceTriggerMarkers(fTimeDelta);
 	m_MapRuntime.Update_SelfMotions(fTimeDelta);
 	if (nullptr != m_pMadnessGaugeView)
 	{
@@ -1681,6 +1695,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	const HRESULT drawn = __super::Render();
 	if (FAILED(drawn))
 		return drawn;
+#ifdef _DEBUG
+	CMainApp::Update_DebugWindowTitleWithFps(
+		TEXT("KoukuSaydon arena loading complete"));
+#endif
 	/* Drawn last so it sits over the scene. The text only reports what the
 	   Server is offering -- pressing the shown key submits a command and the Server
 	   decides, so nothing here can move the player by itself. */
@@ -2911,6 +2929,124 @@ void Client::CLevel_KakulSaydonArena::Update_CardMazePresentation(f32_t dt)
 		(void)m_SequencePlayer.Seek_InstanceToMs(instance.instanceId, elapsed, targets);
 	}
 	m_bCardMazeMarchPlaying = playing;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Load_EntranceTriggerMarkers()
+{
+	CWorldGameplayDocument document;
+	std::string status;
+	if (!document.Load(CProjectDataRoot::Resolve(std::filesystem::path("Worlds") /
+		std::string(KAKULSAYDON_AREA_ID) / "Gameplay.world.json"),
+		std::string(KAKULSAYDON_AREA_ID), status))
+	{
+		OutputDebugStringA(("[KoukuEntranceMarker] " + status + "\n").c_str());
+		return false;
+	}
+	static constexpr std::array<std::string_view, 5> triggerIds = {
+		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2" };
+	std::vector<ENTRANCE_TRIGGER_MARKER> staged;
+	for (const std::string_view id : triggerIds)
+	{
+		const auto* placement = document.Find(std::string(id));
+		if (!placement || placement->eKind != WORLD_PLACEMENT_KIND::TRIGGER_BOX ||
+			placement->triggerEvents.size() != 1u)
+		{
+			OutputDebugStringA(("[KoukuEntranceMarker] Invalid trigger: " +
+				std::string(id) + "\n").c_str());
+			return false;
+		}
+		if (!placement->isEnabled) continue;
+		const auto& event = placement->triggerEvents.front();
+		if (event.eKind != WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER &&
+			event.eKind != WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE)
+			return false;
+		ENTRANCE_TRIGGER_MARKER marker;
+		marker.placementId = placement->placementId;
+		if (placement->isTriggerOnce && event.eKind == WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE)
+			marker.sequenceInstanceId = event.targetId;
+		// Trigger_Box::Rebuild_Bounds uses placement.position as its exact center.
+		// No authoring position copy, ground guess, or collider-local offset.
+		XMStoreFloat4x4(&marker.rootWorld, XMMatrixTranslation(
+			placement->position.x, placement->position.y, placement->position.z));
+		staged.push_back(std::move(marker));
+	}
+	Clear_EntranceTriggerMarkers();
+	m_EntranceTriggerMarkers = std::move(staged);
+	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Clear_EntranceTriggerMarkers()
+{
+	for (auto& marker : m_EntranceTriggerMarkers)
+		CEffectPresentationService::Stop_WorldRoot(marker.handle);
+	m_EntranceTriggerMarkers.clear();
+}
+
+void Client::CLevel_KakulSaydonArena::Retire_EntranceTriggerMarker(
+	const std::string& sequenceInstanceId)
+{
+	for (auto& marker : m_EntranceTriggerMarkers)
+	{
+		if (marker.sequenceInstanceId.empty() || marker.sequenceInstanceId != sequenceInstanceId)
+			continue;
+		CEffectPresentationService::Stop_WorldRoot(marker.handle);
+		marker.handle = {};
+		marker.retired = true;
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t deltaSeconds)
+{
+	if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f) return;
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	{
+		Clear_EntranceTriggerMarkers();
+		return;
+	}
+	for (auto& marker : m_EntranceTriggerMarkers)
+	{
+		if (marker.retired) continue;
+		const bool_t firstSample = !marker.started;
+		if (firstSample)
+		{
+			// Defer creation until the Level is current; Loader already prepared
+			// the shared World target. Optional failures are isolated once.
+			marker.started = true;
+			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+			desc.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+			desc.strPlacementId = "kouku.entrance.trigger." + marker.placementId;
+			desc.strEffectAssetId = "effect.world.move_destination";
+			desc.RootWorld = marker.rootWorld;
+			desc.bExternallySampled = true;
+			std::string status;
+			if (!CEffectPresentationService::Spawn_LevelPlacement(desc, marker.handle, status))
+			{
+				marker.retired = true;
+				OutputDebugStringA(("[KoukuEntranceMarker] " + marker.placementId +
+					": " + status + "\n").c_str());
+				continue;
+			}
+		}
+		else marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
+			[root = marker.rootWorld](f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample,
+				std::string& status)
+			{
+				sample.RootWorld = root;
+				sample.SourceAnchorWorlds.clear();
+				status.clear();
+				return true;
+			};
+		if (!CEffectPresentationService::Seek_WorldRoot(marker.handle,
+			marker.seconds, provider, firstSample))
+		{
+			CEffectPresentationService::Stop_WorldRoot(marker.handle);
+			marker.handle = {};
+			marker.retired = true;
+			OutputDebugStringA(("[KoukuEntranceMarker] Sample failed: " +
+				marker.placementId + "\n").c_str());
+		}
+	}
 }
 
 void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(

@@ -3455,6 +3455,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_BundleTransport()
 	ImGui::EndDisabled();
 	ImGui::SameLine(); ImGui::Text("%zu actors | %u / %u ms", bundle->Members.size(), active ? m_PreviewState.iClockMs : m_iCursorMs, Bundle_DurationMs(m_Draft, *bundle));
 	if (!ready) ImGui::TextDisabled("Connect valid child Patterns with a positive lifetime before Play.");
+	if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_BundleTimeline()
@@ -4979,6 +4980,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	ImGui::TextDisabled("%s | %u / %u ms%s", Is_Dirty() ? "Unsaved changes" : "Saved",
 		patternPreview ? m_PreviewState.iClockMs : m_iCursorMs, durationMs,
 		patternPreview && m_PreviewState.bPaused ? " (paused)" : "");
+	if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
 
 	ImGui::SetNextItemWidth(155.f);
 	if (ImGui::SliderFloat("Zoom##KoukuSequencer", &m_fPixelsPerSecond, 1.f, 500.f, "%.1f px/s"))

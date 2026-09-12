@@ -41,8 +41,10 @@ public:
     {
         EFFECT_RESOURCE_OWNER_KIND eKind = EFFECT_RESOURCE_OWNER_KIND::END;
         std::string strAssetId, strDisplayName, strStatus;
+        std::vector<std::string> CategoryPath;
     };
     // Shared metadata inventory for the saved-resource tree and Composition browser.
+    static bool Read_V1Organization(std::vector<RESOURCE>& OutRows, std::string& strOutError);
     static bool Read_V1Inventory(std::vector<RESOURCE>& OutRows, std::string& strOutError);
 
 private:
@@ -87,7 +89,7 @@ private:
     char m_szName[257] = {};
     char m_szSearch[257] = {};
     std::string m_strV1CopySource;
-    char m_szCopyId[129] = {}, m_szCopyName[65] = {};
+    char m_szCopyId[129] = {}, m_szCopyName[257] = {};
 };
 
 NS_END

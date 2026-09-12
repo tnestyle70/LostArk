@@ -223,12 +223,12 @@ bool CEffectAuthoringSequencer::Duplicate_SelectedRow()
     m_Status = "The selected occurrence cannot be duplicated at its end time."; return false;
 }
 
-void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
+void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool integratedEffectWorkspace)
 {
     Engine::CProfilerScope Profile(CGameInstance::Get().Get_Profiler(), "EffectSequencer.Render");
     ImGui::SetNextWindowSize({1180.f, 420.f}, ImGuiCond_FirstUseEver);
-    const bool expanded = ImGui::Begin(title, nullptr, ImGuiWindowFlags_MenuBar);
-    if (ImGui::BeginMenuBar())
+    const bool expanded = ImGui::Begin(title, nullptr, integratedEffectWorkspace ? 0 : ImGuiWindowFlags_MenuBar);
+    if (!integratedEffectWorkspace && ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Window"))
         {
@@ -249,8 +249,11 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
         ImGui::SameLine();
         ImGui::Checkbox("Loop", Uses_TransientLoop() ? &m_Transient->previewLoop : &m_Loop);
         ImGui::SameLine(); if (ImGui::Button("Refresh Effects")) Refresh_Effects();
-        ImGui::SameLine(); if (ImGui::Button("Resources")) m_ResourcesOpen = true;
-        ImGui::SameLine(); if (ImGui::Button("Details")) m_BoxDetailOpen = true;
+        if (!integratedEffectWorkspace)
+        {
+            ImGui::SameLine(); if (ImGui::Button("Resources")) m_ResourcesOpen = true;
+            ImGui::SameLine(); if (ImGui::Button("Details")) m_BoxDetailOpen = true;
+        }
         ImGui::SetNextItemWidth(255.f); ImGui::InputText("Sequence ID", m_SequenceId, sizeof(m_SequenceId));
         ImGui::SameLine(); if (ImGui::Button("Save")) Save_Sequence();
         ImGui::SameLine(); if (ImGui::Button("Load")) Load_Sequence();
@@ -261,7 +264,7 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
             else
             {
                 Stop(); m_Effects.clear(); m_CameraRows.clear(); m_Sounds.clear(); m_Colliders.clear();
-                m_AnimationRows.clear(); m_CustomAnimation = false; m_SelectedSequence.clear(); m_UseKouku = false;
+                m_AnimationRows.clear(); m_CustomAnimation = false; m_SelectedSequence.clear(); m_UseKouku = false; m_SourceModelEffectId.clear();
                 m_SelectedCamera.clear(); m_SelectedEffect.clear(); m_SelectedRowId.clear(); m_BoxDetailDraft.reset();
                 m_ClockMs = 0; m_NextEffectOrdinal = 1u;
                 std::snprintf(m_SequenceId, sizeof(m_SequenceId), "%s", CEffectEditingSession::New_Id("effect.sequence.").c_str());
@@ -278,6 +281,12 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
         const auto firstLine = m_Status.substr(0, m_Status.find('\n'));
         ImGui::TextUnformatted(firstLine.c_str());
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", m_Status.c_str());
+
+        if (integratedEffectWorkspace && ImGui::CollapsingHeader("Selected Group", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (ImGui::BeginChild("GroupSettings", {0.f, 190.f}, ImGuiChildFlags_Borders)) Render_BoxDetail(true);
+            ImGui::EndChild();
+        }
 
         struct BOX final
         {
@@ -367,7 +376,7 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
                     lane % 2 ? IM_COL32(31,34,41,255) : IM_COL32(38,41,49,255));
                 draw->AddLine({origin.x, y}, {origin.x + width, y}, IM_COL32(64,68,76,255));
                 draw->AddText({origin.x + 8.f, y + 6.f}, colors[lane], names[lane]);
-                if (boxes.empty()) draw->AddText({origin.x + labels + 8.f, y + 6.f}, IM_COL32(115,118,127,255), "Add from Composition Resources");
+                if (boxes.empty()) draw->AddText({origin.x + labels + 8.f, y + 6.f}, IM_COL32(115,118,127,255), integratedEffectWorkspace ? "Append from All Effects" : "Add from Composition Resources");
                 for (std::size_t i = 0; i < boxes.size(); ++i)
                 {
                     const auto& box = boxes[i];
@@ -491,8 +500,11 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
         }
     }
     ImGui::End();
-    if (m_ResourcesOpen) Render_CompositionResources();
-    if (m_BoxDetailOpen) Render_BoxDetail();
+    if (!integratedEffectWorkspace)
+    {
+        if (m_ResourcesOpen) Render_CompositionResources();
+        if (m_BoxDetailOpen) Render_BoxDetail();
+    }
     Render_Colliders();
 }
 }

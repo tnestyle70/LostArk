@@ -6,6 +6,7 @@
 namespace Client
 {
 class CKoukuSaydonPresentationPlayer;
+struct EFFECT_DOCUMENT_DESC;
 
 struct EFFECT_COMPOSITION_MODEL_ACTOR final
 {
@@ -31,11 +32,13 @@ class CEffectCompositionModelPreview final
 public:
     void Set_Player(CKoukuSaydonPresentationPlayer* player);
     bool Reload();
+    bool Select_SourceEffect(const EFFECT_DOCUMENT_DESC& effect);
     bool Select_Pattern(const std::string& patternId);
     bool Select_Bundle(const std::string& bundleId);
     void Clear_Selection();
     bool Begin(std::uint32_t clockMs = 0u, bool paused = true);
     bool Sample(std::uint32_t clockMs, bool paused);
+    bool Place_Root(const float4x4_t& root);
     void Stop();
     bool Is_Active() const;
     bool Resolve_Target(const std::string& memberId,

@@ -329,6 +329,10 @@ F1 → `Open Composition Profiler`는 같은 Engine profiler의 CPU 구간, GPU 
 `Saved JSON` 탭에서 `Refresh files`로 목록을 갱신하고 선택한 파일을 `Delete selected JSON`으로 삭제한다.
 외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
 CPU Self는 자식 구간을 제외하며 GPU pass는 겹치는 inclusive timestamp 구간이다.
+GPU 표의 `PS / frame`, `VS / frame`은 선택된 Shadow/NonBlend/SSAO/Lights/Blend/UI 패스의
+셰이더 호출 수이며 ALU 연산 수가 아니다. 미지원·미선택·불완전 값은 `--`로 표시한다.
+v3 JSON의 각 GPU scope에 선택적 `pipelineValid`, `psInvocations`, `vsInvocations`가 추가된다.
+Capture를 끈 뒤에는 남은 GPU 결과 회수를 마치고, 설정이 바뀌기 전까지 패널 집계를 재사용한다.
 GPU pending/미지원과 미관측 구간은 0ms로 해석하지 않는다. `Updated, not submitted`는 같은
 프레임에 평가했지만 성공한 model draw가 없는 경우이며 frustum 밖 판정과 다르다. Server 권위
 navigation 시간은 별도 프로세스의 기존 `[RoomPerf]` 로그 `Nav...` 필드로 확인한다.
@@ -341,8 +345,10 @@ Character Select의 playable class 모델과 presentation 문서는 기존 CMode
 준비 중 기존 캐릭터를 유지하고 최신 선택을 처리한다. 레벨 전환은 취소된 준비·자원 해제의 완료를
 프레임마다 확인한 뒤 진행한다. `CharacterAssets.*`와 `Model.Load.*`로 worker 준비, main commit,
 decode/mesh/material/bone/animation 비용을 구분하며 총 준비 시간과 main frame 정지는 서로 다른 지표다.
-Debug x64는 외부 ImGui core/backend 여섯 소스에만 /O2 /Zi를 적용하므로 해당 내부 stepping은
-최적화된 코드 기준이다. Engine/Client 자체 소스의 Debug 설정과 ImGui assert는 유지한다.
+Debug x64는 외부 ImGui core/backend 여섯 소스와 `Profiler.cpp`, `Shader.cpp`,
+`MapAssetRenderUtils.cpp`, `Effect_Playback.cpp`, `Effect_Distribution.cpp`에 `/O2 /Zi`를 적용한다.
+해당 파일은 명령 재배치·local 변수 생략 때문에 stepping이 제한되고 `/RTC`와 Just My Code를
+사용하지 않는다. `_DEBUG`, Debug CRT, ImGui assert, D3D debug layer와 다른 소스의 Debug 설정은 유지한다.
 
 F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
 snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경

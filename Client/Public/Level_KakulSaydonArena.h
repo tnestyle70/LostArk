@@ -4,6 +4,7 @@
 #include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
 #include "DeployPropRuntime.h"
+#include "Effect_PresentationService.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "MapLightPresentationRuntime.h"
@@ -298,6 +299,10 @@ private:
 	   letting the camera travel that distance on screen. Server owns the
 	   move; this only reads the action state it already replicates. */
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
+	bool_t Load_EntranceTriggerMarkers();
+	void Clear_EntranceTriggerMarkers();
+	void Update_EntranceTriggerMarkers(f32_t deltaSeconds);
+	void Retire_EntranceTriggerMarker(const std::string& sequenceInstanceId);
 	/* Turns replicated player state into floating status words. Reads the
 	   snapshots only; it never decides that a status is on. */
 	void Update_StatusEffectText(f32_t fTimeDelta);
@@ -495,6 +500,17 @@ private:
 	float3_t m_vTriggerMoveFadeLastPosition = {};
 	bool_t m_bTriggerMoveFadeHasLastPosition = false;
 	bool_t m_bTriggerMoveFadeArmed = false;
+	struct ENTRANCE_TRIGGER_MARKER final
+	{
+		std::string placementId;
+		std::string sequenceInstanceId;
+		EFFECT_WORLD_ROOT_HANDLE handle;
+		float4x4_t rootWorld{};
+		f32_t seconds = 0.f;
+		bool_t started = false;
+		bool_t retired = false;
+	};
+	std::vector<ENTRANCE_TRIGGER_MARKER> m_EntranceTriggerMarkers;
 
 #ifdef _DEBUG
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugStageEntryTriggers;

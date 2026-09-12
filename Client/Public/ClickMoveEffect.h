@@ -34,18 +34,11 @@ public:
 	void Clear();
 
 private:
-	void Clear_Destination();
 	void Report_Failure(const std::string& status);
-	bool_t Sample_Destination(bool_t rebuildHistory);
 	uint32_t m_iLevelIndex = ETOUI(LEVEL::END);
 	EFFECT_WORLD_ROOT_HANDLE m_ClickHandle;
-	EFFECT_WORLD_ROOT_HANDLE m_DestinationHandle;
 	weak_ptr<CCharacter> m_pCharacter;
-	float3_t m_WorldPosition{};
-	float4x4_t m_RootWorld{};
 	f32_t m_fClickSeconds = 0.f;
-	f32_t m_fDestinationSeconds = 0.f;
-	bool_t m_hasObservedMovement = false;
 	std::string m_strLastFailure;
 
 public:
