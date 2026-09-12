@@ -671,6 +671,51 @@ void PS_MAIN_SHADOW(
         discard;
 }
 
+// Families 0-5 do not consume tangent frames or baked lighting for shadows.
+// Keep the world/view/projection operation order identical to VS_MAIN.
+struct VS_SHADOW_SIMPLE_OUT
+{
+    float4 vPosition : SV_POSITION;
+    float2 vTexcoord : TEXCOORD0;
+    float2 vRawTexcoord : TEXCOORD1;
+};
+
+float4 MapShadowPosition(VS_IN input)
+{
+    const float4x4 world = float4x4(input.vWorld0, input.vWorld1,
+        input.vWorld2, input.vWorld3);
+    const float4 worldPosition = mul(float4(input.vPosition, 1.f), world);
+    return mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
+}
+
+VS_SHADOW_SIMPLE_OUT VS_SHADOW_SIMPLE(VS_IN input)
+{
+    VS_SHADOW_SIMPLE_OUT output;
+    output.vPosition = MapShadowPosition(input);
+    output.vTexcoord = input.vTexcoord * g_UVScale + g_UVOffset;
+    output.vRawTexcoord = input.vTexcoord;
+    return output;
+}
+
+float4 VS_SHADOW_OPAQUE(VS_IN input) : SV_POSITION
+{
+    return MapShadowPosition(input);
+}
+
+void PS_SHADOW_SIMPLE(VS_SHADOW_SIMPLE_OUT input)
+{
+    if (g_SurfaceProgram != 0u)
+    {
+        // PBR/source-specular are opaque; programs 1/2 use raw source UVs.
+        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular())
+            clip(SampleMapDiffuseTexture(input.vRawTexcoord, LinearSampler).a - 0.3333f);
+        return;
+    }
+    const float4 diffuse = SampleMapDiffuseTexture(input.vTexcoord, LinearSampler) * g_ColorTint;
+    if (diffuse.a < 0.3f)
+        discard;
+}
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -928,4 +973,66 @@ technique11 DefaultTechnique
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_WATER();
     }
+
+    // Appended: preserve all existing map/water pass indices.
+    pass SimpleShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_SIMPLE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SHADOW_SIMPLE();
+    }
+
+    pass SimpleShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_SIMPLE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SHADOW_SIMPLE();
+    }
+
+    pass SimpleShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_SIMPLE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SHADOW_SIMPLE();
+    }
+
+    pass OpaqueShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+
+    pass OpaqueShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+
+    pass OpaqueShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+
 }

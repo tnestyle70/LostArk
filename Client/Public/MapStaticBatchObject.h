@@ -124,6 +124,8 @@ private:
 
 	bool_t m_bMirrored = false;
 	bool_t m_bShadowInstancesDirty = true;
+	bool_t m_bShadowInstancesUsedLight = false;
+	uint64_t m_iShadowLightRevision = {};
 	bool_t m_bVisibleInstancesDirty = true;
 	bool_t m_bVisibleInstancesUsedCamera = false;
 	uint64_t m_iVisibleCameraRevision = {};
@@ -136,8 +138,9 @@ private:
 	// Reused staging storage; m_VisibleInstances remains the committed payload.
 	std::vector<VTXMESHINSTANCE> m_CandidateVisibleInstances;
 	uint32_t m_iAuthoredVisibleInstanceCount = {};
-	/* Authored-visible instances are independent from the camera-frustum list. */
+	/* Committed light-volume casters are independent from camera visibility. */
 	std::vector<VTXMESHINSTANCE> m_ShadowInstances;
+	std::vector<VTXMESHINSTANCE> m_CandidateShadowInstances;
 	//placementId로 m_Instances의 index를 O(1)로 찾을 수 있게 한다.
 	std::unordered_map<uint64_t, uint32_t>
 		m_PlacementLookup;

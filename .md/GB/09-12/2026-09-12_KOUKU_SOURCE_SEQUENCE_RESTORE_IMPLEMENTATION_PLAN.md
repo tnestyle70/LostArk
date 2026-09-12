@@ -1,5 +1,17 @@
 # 쿠크 원본 시퀀스 저작 연결 구현 계획
 
+## G06. 사용자 화면 기준 팝업북·피날레 통합 수정
+
+2026-09-12 후속 사용자 요청은 기존 맵 담당자의 정상 팝업북·피날레 애니메이션과 새 이펙트·흡입을 결합하는 것이다. 아래 G00~G05는 최초 원본 Matinee 후보의 이력이며, G1의 애니메이션 선택은 이 G06이 우선한다. 기준 HEAD는 `a72058637567f21e9b4235ef214133fc70c84963`, Sequence revision6, WorldSequence revision675다. 동시에 진행 중인 Engine/Map 렌더링 성능 변경은 보존한다.
+
+기존 Pattern1은 136개 map placement의 `original_8T6_00~04`, `original_book`, `original_kouku`와 기존 카메라를 소비한다. Pattern2는 `circusfinale`의 23개 map placement에 직접 저작한 회전·표시 키를 소비한다. 현재 Pattern4는 이 행들을 사용하지 않고 새 Book/Saydon/배경266개를 동시에 생성한다. 정상 두 연출의 기존 template·track·카메라를 재사용해 G1 통합을 구성하고, 포탈·흡입·암전·축포의 위치와 시간을 실제 문 열림·책 펼침 구간에 맞춘다. 독립 Pattern1/2도 신규 이펙트·환경을 함께 확인할 수 있는 기존 편집 경로를 유지한다.
+
+책과 펼쳐지는 아레나는 실제 mesh가 사용하는 slot별로 현재 1관문 재질과 비교한다. 기존 승인 map material과 texture/IBL/BRDF 입력을 기존 CModel/CMaterial로 연결하며 이동 부품에 고정 아레나의 baked RNM을 그대로 복사하지 않는다. 조명·Scene Profile은 현재 1관문 값을 소비하고 표시 전환 전후의 적용 차이를 닫는다. 연출 배우와 고정 전투 보스의 표시 소유권은 Level의 기존 lifecycle에서 분리하고 Stop/실패/seek 때 차용 전 상태를 복구한다.
+
+같은 환경을 게시하는 데 필요한 `Publish-RenderingProfiles.ps1`의 비교 정밀도를 C++ `Read_Float`와 맞춘다. JSON의 finite number와 float32 변환 결과를 각각 검사하고 변환한 값으로 float32 하한·상한을 비교한다. fog의 runtime float 필드도 같은 함수를 사용한다. 9자리 저장값을 수동으로 되돌리지 않으며 NaN/Infinity·다른 float32 범위 값은 계속 거부한다. 기존 publisher 테스트에 실제 0.1과 0.0001 하한 저장 왕복·범위 밖 입력·실패 시 runtime 보존을 추가한다.
+
+새 C++ 파일과 project/filter 등록을 추가하지 않는다. 각 소유자가 out 후보를 검증한 뒤 루트가 최신 Data 기준으로 필요한 변경만 병합하고 Area/Rendering의 공식 publisher를 실행한다. 변경 C++의 최소 컴파일과 실제 모델/타임라인 CPU 검사, JSON parse·diff check를 수행한다. Client 실행·UI 조작·캡처·최종 화면 승인은 사용자에게 남긴다.
+
 ## G00. 원본 시간축과 저장 경계
 
 기존 `연출_팝업북`, `연출_1관문 피날레`, 사용자가 편집한 `2관문_진입컷씬`은 보존한다.

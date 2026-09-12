@@ -346,6 +346,11 @@ private:
 	-1 marks a bone the source does not have. */
 	vector<int32_t>						m_SourcePoseBoneIndices;
 	const CModel*						m_pSourcePoseModel = { nullptr };
+	weak_ptr<const CPrototype> m_SourcePoseOwner;
+	// Both poses must still match the copy, including same-frame local edits.
+	uint64_t m_iSourcePoseRevision = 0u;
+	uint64_t m_iCopiedPoseRevision = 0u;
+	uint32_t m_iSourcePoseSuppliedBones = 0u;
 	vector<float4x4_t>					m_BoneRestLocalTransforms;
 	uint64_t							m_iSkeletonHash = {};
 
