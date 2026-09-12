@@ -61,6 +61,9 @@ private:
     bool Assign_SelectedModel();
     void Render_Detail();
     void Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
+    const WORLD_SEQUENCE_OBJECT_RESOURCE* Preview_Group() const;
+    void Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
+    void Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_PhysicalResources();
@@ -98,6 +101,8 @@ private:
     std::string m_Status;
     std::string m_PreviewStatus;
     std::string m_SelectedObject;
+    // Preview scope stays on the combined resource while the editor selects a member.
+    std::string m_SelectedGroup;
     std::string m_SelectedInstance;
     size_t m_SelectedTrack = 0;
     size_t m_SelectedKey = 0;

@@ -1423,7 +1423,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1458,6 +1458,32 @@ function Read-WorldSequenceDocument {
                 throw 'World object boss anchor requires a stable boss ID and bounded optional bone; other anchors cannot carry boss fields'
             }
             $alias = $null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne ''
+            if ($null -ne $resource.PSObject.Properties['motionInstanceIds']) {
+                $members = $resource.motionInstanceIds
+                if ($members -isnot [System.Array] -or $members.Count -lt 1 -or $members.Count -gt 32 -or
+                    $resourceAnchor -cne 'WORLD' -or $alias -or $resource.modelAssetId -cne '' -or $resource.animated -or
+                    @($resource.scale | Where-Object { [double]$_ -ne 1.0 }).Count -ne 0) {
+                    throw 'Object group requires 1..32 Map motion IDs, no model/alias, and unit scale'
+                }
+                foreach ($field in @('defaultMotionInstanceId','diffuseTextureAssetId')) {
+                    if ($null -ne $resource.PSObject.Properties[$field] -and
+                        ($resource.$field -isnot [string] -or $resource.$field -cne '')) { throw "Object group cannot carry $field" }
+                }
+                if ($null -ne $resource.PSObject.Properties['materialProfile'] -or
+                    $null -ne $resource.PSObject.Properties['materialSourceModelAssetId'] -or
+                    ($null -ne $resource.PSObject.Properties['mapMaterialBindings'] -and
+                     ($resource.mapMaterialBindings -isnot [System.Array] -or $resource.mapMaterialBindings.Count -ne 0))) {
+                    throw 'Object group cannot carry material input'
+                }
+                $memberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                foreach ($id in $members) {
+                    if ($id -isnot [string] -or $id -cnotmatch $stableId -or -not $memberIds.Add($id)) {
+                        throw 'Object group needs unique stable motion IDs'
+                    }
+                }
+                $objectResources[$resource.objectId] = $resource
+                continue
+            }
             if ($alias) {
                 if ($resource.sequenceInstanceId -isnot [string] -or $resource.sequenceInstanceId -cnotmatch $stableId -or
                     ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cne 'WORLD') -or
@@ -1934,6 +1960,22 @@ function Read-WorldSequenceDocument {
         }
     }
     foreach ($resource in $objectResources.Values) {
+        if ($null -ne $resource.PSObject.Properties['motionInstanceIds']) {
+            foreach ($id in $resource.motionInstanceIds) {
+                if (-not $instanceRows.ContainsKey($id)) { throw "Unknown Object group motion: $id" }
+                $member = $instanceRows[$id]
+                if (($null -ne $member.PSObject.Properties['anchorKind'] -and $member.anchorKind -cne 'WORLD') -or
+                    ($null -ne $member.PSObject.Properties['motionEnd'] -and $member.motionEnd -cne 'STOP') -or
+                    @($member.bindings).Count -ne 1 -or $member.bindings[0].targetKind -cne 'OBJECT_RESOURCE') {
+                    throw 'Object group member must be one Map Object motion ending with Stop'
+                }
+                $model = $objectResources[$member.bindings[0].targetId]
+                if ($null -eq $model -or $model.modelAssetId -ceq '' -or $null -ne $model.PSObject.Properties['motionInstanceIds']) {
+                    throw 'Object group member must bind a model, not a group'
+                }
+            }
+            continue
+        }
         if ($null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne '' -and
             -not $instanceIds.Contains($resource.sequenceInstanceId)) { throw 'Unknown world object sequence alias' }
         if ($null -eq $resource.PSObject.Properties['defaultMotionInstanceId']) { continue }

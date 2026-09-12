@@ -151,6 +151,7 @@ bool CWorldObjectTool::Load_Source()
     m_AnimationObjectId.clear();
     m_AnimationCandidateObjectId.clear();
     m_AnimationCandidateModelAssetId.clear();
+    if (Preview_Group()) m_SelectedObject = m_SelectedGroup;
     if (!m_Document.Find_ObjectResource(m_SelectedObject))
         m_SelectedObject = m_Document.Get_ObjectResources().empty() ? "" : m_Document.Get_ObjectResources().front().objectId;
     Select_Object(m_SelectedObject);
@@ -260,16 +261,35 @@ void CWorldObjectTool::Stop_Preview()
 
 const WORLD_SEQUENCE_INSTANCE* CWorldObjectTool::Preview_Instance() const
 {
+    if (Preview_Group()) return nullptr;
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     const auto* instance = m_Document.Find_Instance(m_SelectedInstance.empty() && resource ?
         resource->defaultMotionInstanceId : m_SelectedInstance);
     return instance && instance->enabled ? instance : nullptr;
 }
 
+const WORLD_SEQUENCE_OBJECT_RESOURCE* CWorldObjectTool::Preview_Group() const
+{
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedGroup);
+    return resource && !resource->motionInstanceIds.empty() ? resource : nullptr;
+}
+
 bool CWorldObjectTool::Begin_Preview()
 {
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     if (!level) { m_Status = "World object preview requires the active KoukuSaydon arena."; return false; }
+    if (const auto* group = Preview_Group())
+    {
+        if (SpanMs() <= 0.f)
+        {
+            Stop_Preview(); m_ClockMs = 0.f;
+            m_Status = m_PreviewStatus = "All group motions are disabled.";
+            return false;
+        }
+        if (!level->Debug_BeginWorldObjectPreview(m_Document, group->objectId, m_Status, m_PreviewAtCharacter)) return false;
+        m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
+        return true;
+    }
     const auto* instance = Preview_Instance();
     if (!instance) { m_Status = "Choose an enabled Default Motion or select a connected Motion."; return false; }
     if (!level->Debug_BeginWorldObjectPreview(m_Document, instance->instanceId, m_Status, m_PreviewAtCharacter)) return false;
@@ -279,6 +299,18 @@ bool CWorldObjectTool::Begin_Preview()
 
 f32_t CWorldObjectTool::SpanMs() const
 {
+    if (const auto* group = Preview_Group())
+    {
+        float span = 0.f;
+        for (const auto& id : group->motionInstanceIds)
+        {
+            const auto* instance = m_Document.Find_Instance(id);
+            const auto* sequence = instance && instance->enabled ? m_Document.Find_Template(instance->templateId) : nullptr;
+            if (sequence) span = (std::max)(span, static_cast<float>(instance->startDelayMs) +
+                static_cast<float>(sequence->PresentationSpanMs()) / (std::max)(.05f, instance->playbackSpeed));
+        }
+        return span;
+    }
     const auto* instance = Preview_Instance();
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     return !sequence ? 0.f : static_cast<float>(instance->startDelayMs) +
@@ -323,6 +355,7 @@ void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
 
 std::vector<std::string> CWorldObjectTool::StateIds(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource) const
 {
+    if (!resource.motionInstanceIds.empty()) return resource.motionInstanceIds;
     if (!resource.sequenceInstanceId.empty()) return {resource.sequenceInstanceId};
     std::vector<std::string> ids;
     for (const auto& instance : m_Document.Get_Instances())
@@ -335,11 +368,32 @@ std::vector<std::string> CWorldObjectTool::StateIds(const WORLD_SEQUENCE_OBJECT_
 void CWorldObjectTool::Select_Object(const std::string& id)
 {
     Stop_Preview(); m_SelectedObject = id; m_SelectedInstance.clear(); m_ClockMs = 0.f;
+    m_SelectedGroup.clear();
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    if (resource && !resource->motionInstanceIds.empty())
+    {
+        m_SelectedGroup = resource->objectId;
+        m_PreviewAtCharacter = false;
+        Select_State(resource->motionInstanceIds.front());
+    }
     m_SelectedTrack = 0; m_SelectedKey = 0;
 }
 
 void CWorldObjectTool::Select_State(const std::string& id)
 {
+    if (const auto* group = Preview_Group())
+    {
+        const auto* instance = m_Document.Find_Instance(id);
+        if (std::find(group->motionInstanceIds.begin(), group->motionInstanceIds.end(), id) == group->motionInstanceIds.end() ||
+            !instance || instance->bindings.size() != 1u ||
+            !m_Document.Find_ObjectResource(instance->bindings.front().targetId))
+        { m_Status = "The selected motion does not belong to this combined motion."; return; }
+        // Editing another row must not stop, rewind or solo the combined preview.
+        m_SelectedObject = instance->bindings.front().targetId;
+        m_SelectedInstance = id;
+        m_SelectedTrack = 0; m_SelectedKey = 0; m_SelectedEffectRow = 0;
+        return;
+    }
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     const auto motions = resource ? StateIds(*resource) : std::vector<std::string>{};
     if (std::find(motions.begin(), motions.end(), id) == motions.end())
@@ -496,7 +550,8 @@ void CWorldObjectTool::Render()
             Render_Toolbar();
             auto* instance = m_Document.Find_Instance(m_SelectedInstance);
             auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-            if (sequence) Render_Sequence(*sequence);
+            if (const auto* group = Preview_Group()) Render_GroupSequence(*group);
+            else if (sequence) Render_Sequence(*sequence);
             else
             {
                 ImGui::TextWrapped("Select a Motion beneath an Object to open its Lifetime timeline. The parent Object edits shared resources only.");
@@ -621,7 +676,22 @@ void CWorldObjectTool::Render_Resources()
                     }
                 if (!matches) continue;
                 ImGui::PushID(resource.objectId.c_str());
-                const auto label = resource.displayName + (resource.sequenceInstanceId.empty() && resource.modelAssetId.empty() ? " [assign model]" : "");
+                if (!resource.motionInstanceIds.empty())
+                {
+                    // One authoring entry opens every member; it is not a folder of solo previews.
+                    if (ImGui::Selectable(resource.displayName.c_str(), m_SelectedGroup == resource.objectId))
+                    {
+                        Select_Object(resource.objectId);
+                        m_SequencerOpen = true;
+                        m_DetailOpen = true;
+                        Seek(0.f);
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open all %zu motions together in Object Sequencer.", states.size());
+                    ImGui::PopID();
+                    continue;
+                }
+                const auto label = resource.displayName +
+                    (resource.sequenceInstanceId.empty() && resource.modelAssetId.empty() ? " [assign model]" : "");
                 const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                     ImGuiTreeNodeFlags_SpanAvailWidth | (m_SelectedObject == resource.objectId && m_SelectedInstance.empty() ? ImGuiTreeNodeFlags_Selected : 0);
                 if (!search.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
@@ -637,7 +707,11 @@ void CWorldObjectTool::Render_Resources()
                         if (!resourceMatches && !stateMatches(id, sequence)) continue;
                         ImGui::PushID(id.c_str());
                         if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str(), id == m_SelectedInstance))
-                        { m_SelectedObject = resource.objectId; Select_State(id); }
+                        {
+                            m_SelectedGroup.clear();
+                            m_SelectedObject = resource.objectId;
+                            Select_State(id);
+                        }
                         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
                         ImGui::PopID();
                     }
@@ -1169,11 +1243,12 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
 
 void CWorldObjectTool::Render_Detail()
 {
+    if (auto* group = m_Document.Find_ObjectResource(m_SelectedGroup)) Render_GroupDetail(*group);
     auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     if (!resource) { ImGui::TextUnformatted("Select an object resource."); return; }
     if (m_SelectedInstance.empty()) { Render_ObjectDetail(*resource); return; }
     ImGui::TextWrapped("Object: %s", resource->displayName.c_str());
-    if (ImGui::Button("Edit Parent Object")) { Select_Object(resource->objectId); return; }
+    if (!Preview_Group() && ImGui::Button("Edit Parent Object")) { Select_Object(resource->objectId); return; }
     const bool alias = !resource->sequenceInstanceId.empty();
     bool changed = false;
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
@@ -1262,7 +1337,7 @@ void CWorldObjectTool::Render_Detail()
         }
         else m_Status = "Lifetime must leave at least one millisecond between every existing key or clip.";
     }
-    ImGui::BeginDisabled(alias);
+    ImGui::BeginDisabled(alias || Preview_Group());
     int motionEnd = static_cast<int>(instance->motionEnd);
     if (ImGui::Combo("On Complete", &motionEnd, "Stop\0Hold Last Pose\0Loop\0Play Motion\0"))
     {
@@ -1271,6 +1346,7 @@ void CWorldObjectTool::Render_Detail()
         changed = true;
     }
     ImGui::EndDisabled();
+    if (Preview_Group()) ImGui::TextDisabled("Combined preview members use Stop; each Lifetime remains editable.");
     if (alias) ImGui::TextDisabled("Placed Object motions use Stop.");
     else if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT)
     {
@@ -1438,6 +1514,154 @@ void CWorldObjectTool::Render_Detail()
     if (!alias) Render_EffectRows(*sequence);
     ImGui::SeparatorText("Selected Key");
     Render_KeyEditor(*sequence);
+}
+
+void CWorldObjectTool::Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
+{
+    ImGui::SeparatorText(resource.displayName.c_str());
+    if (EditText("Combined Motion Name", resource.displayName)) Mark_Dirty();
+    const auto* current = m_Document.Find_Instance(m_SelectedInstance);
+    const auto* sequence = current ? m_Document.Find_Template(current->templateId) : nullptr;
+    if (ImGui::BeginCombo("Editing Motion", sequence ? sequence->displayName.c_str() : "Choose a row"))
+    {
+        for (const auto& id : resource.motionInstanceIds)
+        {
+            const auto* member = m_Document.Find_Instance(id);
+            const auto* motion = member ? m_Document.Find_Template(member->templateId) : nullptr;
+            ImGui::PushID(id.c_str());
+            if (ImGui::Selectable(motion ? motion->displayName.c_str() : id.c_str(), id == m_SelectedInstance)) Select_State(id);
+            ImGui::PopID();
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::TextWrapped("All %zu motions stay in preview. The full editor below changes the selected row; Save keeps all rows.", resource.motionInstanceIds.size());
+}
+
+void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
+{
+    ImGui::SeparatorText(resource.displayName.c_str());
+    if (ImGui::Button(m_Playing ? "Pause" : "Play"))
+    {
+        if (m_Playing) m_Playing = false;
+        else { if (m_ClockMs >= PreviewSpanMs()) m_ClockMs = 0.f; Seek(m_ClockMs); m_Playing = m_PreviewActive; }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter)) m_PreviewDirty = m_PreviewActive;
+    ImGui::TextWrapped("Click a motion row or key to edit it in Object Detail. All %zu motions keep playing together.", resource.motionInstanceIds.size());
+    if (!m_PreviewStatus.empty()) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
+    // Disabled rows remain on the authoring timeline, even when playback has a shorter span.
+    float extent = 1.f;
+    for (const auto& id : resource.motionInstanceIds)
+    {
+        const auto* instance = m_Document.Find_Instance(id);
+        const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+        if (sequence) extent = (std::max)(extent, instance->startDelayMs +
+            sequence->PresentationSpanMs() / (std::max)(.05f, instance->playbackSpeed));
+    }
+    float clock = m_ClockMs;
+    if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, extent, "%.0f")) Seek(clock);
+    ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
+    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
+    if (ImGui::BeginChild("CombinedObjectTimeline", ImVec2(0.f, (std::max)(110.f, ImGui::GetContentRegionAvail().y)),
+        true, ImGuiWindowFlags_HorizontalScrollbar))
+    {
+        const ImVec2 origin = ImGui::GetCursorScreenPos();
+        auto* draw = ImGui::GetWindowDrawList();
+        const uint32_t duration = static_cast<uint32_t>(std::ceil(extent));
+        const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, extent * m_Zoom * .001f);
+        const float pixelsPerMs = width / extent;
+        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), duration, pixelsPerMs * 1000.f);
+        ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
+        if (ImGui::IsItemActive())
+            Seek((std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, extent));
+        float y = origin.y + 28.f;
+        for (const auto& id : resource.motionInstanceIds)
+        {
+            auto* instance = m_Document.Find_Instance(id);
+            auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+            if (!sequence) continue;
+            ImGui::PushID(id.c_str());
+            const float speed = (std::max)(.05f, instance->playbackSpeed);
+            const auto timeX = [&](float localMs) { return origin.x + (instance->startDelayMs + localMs / speed) * pixelsPerMs; };
+            ImGui::SetCursorScreenPos(ImVec2(origin.x, y));
+            if (ImGui::Selectable(sequence->displayName.c_str(), id == m_SelectedInstance, 0, ImVec2(width, 22.f)))
+                Select_State(id);
+            y += 24.f;
+            for (size_t trackIndex = 0; trackIndex < sequence->tracks.size(); ++trackIndex)
+            {
+                auto& track = sequence->tracks[trackIndex];
+                ImGui::PushID(track.slotId.c_str());
+                const ImVec2 row(timeX(0.f), y);
+                const ImVec2 end(timeX(static_cast<float>(sequence->durationMs)), y + 25.f);
+                CompositionTimeline::DrawBox(draw, row, end,
+                    instance->enabled ? IM_COL32(61, 107, 141, 255) : IM_COL32(65, 65, 65, 255),
+                    id == m_SelectedInstance && m_SelectedTrack == trackIndex, track.slotId.c_str(), false, false);
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, end) && ImGui::IsMouseClicked(0))
+                {
+                    if (m_SelectedInstance != id) Select_State(id);
+                    m_SelectedTrack = trackIndex; m_SelectedKey = 0;
+                }
+                for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
+                {
+                    auto& key = track.keys[keyIndex];
+                    const float x = timeX(static_cast<float>(key.timeMs)), centreY = y + 12.f;
+                    const bool selected = id == m_SelectedInstance && m_SelectedTrack == trackIndex && m_SelectedKey == keyIndex;
+                    draw->AddQuadFilled(ImVec2(x, centreY - 6.f), ImVec2(x + 6.f, centreY),
+                        ImVec2(x, centreY + 6.f), ImVec2(x - 6.f, centreY), selected ? IM_COL32(255, 223, 87, 255) : IM_COL32_WHITE);
+                    ImGui::PushID(static_cast<int>(keyIndex));
+                    ImGui::SetCursorScreenPos(ImVec2((std::clamp)(x - 7.f, origin.x, origin.x + width - 14.f), y + 4.f));
+                    ImGui::InvisibleButton("Key", ImVec2(14.f, 18.f));
+                    if (ImGui::IsItemClicked())
+                    {
+                        if (m_SelectedInstance != id) Select_State(id);
+                        m_SelectedTrack = trackIndex; m_SelectedKey = keyIndex;
+                    }
+                    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
+                    {
+                        const float local = ((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs - instance->startDelayMs) * speed;
+                        const uint32_t time = static_cast<uint32_t>((std::clamp)(local,
+                            static_cast<float>(track.keys[keyIndex - 1].timeMs + 1), static_cast<float>(track.keys[keyIndex + 1].timeMs - 1)));
+                        if (time != key.timeMs) { key.timeMs = time; Mark_Dirty(); }
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s / %u ms", track.slotId.c_str(), key.timeMs);
+                    ImGui::PopID();
+                }
+                ImGui::PopID();
+                y += 32.f;
+            }
+            for (const auto& clip : sequence->animationTracks)
+            {
+                uint32_t end = sequence->durationMs;
+                for (const auto& next : sequence->animationTracks)
+                    if (next.slotId == clip.slotId && next.startMs > clip.startMs) end = (std::min)(end, next.startMs);
+                const ImVec2 first(timeX(static_cast<float>(clip.startMs)), y);
+                const ImVec2 last(timeX(static_cast<float>(end)), y + 25.f);
+                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(113, 82, 147, 255), id == m_SelectedInstance,
+                    clip.displayName.empty() ? clip.clipName.c_str() : clip.displayName.c_str());
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0)) Select_State(id);
+                y += 32.f;
+            }
+            for (size_t index = 0; index < sequence->effectTracks.size(); ++index)
+            {
+                const auto& effect = sequence->effectTracks[index];
+                const float start = static_cast<float>(sequence->EffectStartMs(effect));
+                const ImVec2 first(timeX(start), y), last(timeX(start + effect.durationMs), y + 25.f);
+                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(167, 95, 51, 255),
+                    id == m_SelectedInstance && m_SelectedEffectRow == index, effect.resourceId.c_str());
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
+                { if (m_SelectedInstance != id) Select_State(id); m_SelectedEffectRow = index; }
+                y += 32.f;
+            }
+            ImGui::PopID();
+            y += 8.f;
+        }
+        const float cursor = origin.x + (std::clamp)(m_ClockMs, 0.f, extent) * pixelsPerMs;
+        draw->AddLine(ImVec2(cursor, origin.y), ImVec2(cursor, y), IM_COL32(255, 217, 68, 255), 2.f);
+        ImGui::SetCursorScreenPos(origin); ImGui::Dummy(ImVec2(width, y - origin.y));
+    }
+    ImGui::EndChild();
 }
 
 void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)

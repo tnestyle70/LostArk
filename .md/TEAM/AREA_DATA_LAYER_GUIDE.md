@@ -668,3 +668,10 @@ Area 진입 시 여섯 class binary를 모두 선로드하지 않는다. Lobby�
 증가하며 전체 track은 최대 120000ms다. 잘못된 편집이나 저장 충돌은 기존 shot을
 보존하고 실패 이유를 표시한다. 제품 재생은 기존 camera cue/sampler와 typed presentation
 경로를 사용하며 별도 camera runtime이나 저장 domain을 만들지 않는다.
+
+
+### Object Resources의 동시 재생 묶음
+
+WORLD resource의 optional `motionInstanceIds`는1..32개의 기존 Map Object motion stable instance ID를 참조한다. 이 모델 없는 묶음은 `modelAssetId`가 빈 문자열, `animated=false`, `scale=[1,1,1]`이며 별도 default/alias/material을 갖지 않는다. 각 member는 모델 resource 하나에 바인딩된 WORLD/STOP motion이어야 한다. 중복·누락·중첩 묶음은 codec/publisher가 거부한다. 기존6모션의 값은 복사하지 않고 같은 worldsequences 문서에서 참조한다.
+
+World Object Tool → Object Resources에서 통합 묶음은 자식 없는 한 항목이다. 클릭하면 모든 member를 기존 Object preview에서 함께 표시하고 첫 member의 전체 Motion 편집기를 Object Detail에 연다. Object Sequencer에는 공통 시간축과 각 member Transform/animation/effect 행이 나타난다. 행/키를 클릭하거나 Editing Motion을 바꾸면 편집 대상만 전환하며 전체 preview와 현재 재생 시간은 유지한다. 기존 Physics / Motion / Emission, Authored Emissions, Effect Rows, Selected Key, Animation Clips를 그대로 편집하고 기존 Save/readback/CAS/publisher 경로로 저장한다. 그룹의 WORLD/STOP 계약은 유지하며 일반 개별 Object를 선택하면 통합 scope에서 나간다. 모델과 제품 Boss WORLD binding으로 사용하는 리소스가 아니라 Object Tool의 통합 저작·미리보기 단위다.
