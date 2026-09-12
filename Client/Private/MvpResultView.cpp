@@ -1,6 +1,7 @@
-#include "MvpResultView.h"
+﻿#include "MvpResultView.h"
 
 #include "GameInstance.h"
+#include "UILabelFont.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -27,9 +28,12 @@ namespace
 
 	const wchar_t* const FONT_YOON = TEXT("Font_YoonGasiIIM");
 	const wchar_t* const FONT_YG760 = TEXT("Font_YG760");
-	/* A label's scale must not depend on which glyphs it happens to contain, so
-	both fonts are measured once against a fixed string. */
-	const wchar_t* const METRIC_STRING = TEXT("Ag");
+	/* CanvasPt already yields the value this page has always treated as a line
+	spacing: the old code divided it by Measure_Text().y, which is the atlas line
+	spacing, so a 110 pt title asked for a 110 pt line. UILabelFont wants the same
+	quantity, so there is no em conversion here -- putting the other windows'
+	1.25 em factor in front of it drew every label a quarter too large and ran the
+	headline into the title. */
 
 	/* sys.mvp.button_confirm. Universal character names: this file stays ASCII. */
 	const wchar_t* const EXIT_LABEL = L"\uB098\uAC00\uAE30[Esc]";
@@ -139,9 +143,9 @@ namespace
 	constexpr f32_t EXIT_LABEL_RIGHT_LOCAL_X = 2184.f;
 	constexpr f32_t EXIT_LABEL_CENTER_LOCAL_Y = 49.f;
 
-	constexpr size_t PARTY_COLUMN_COUNT = 3u;
-	constexpr size_t MVP_STAT_COUNT = 3u;
-	constexpr size_t PARTY_STAT_COUNT = 3u;
+	constexpr size_t PARTY_COLUMN_COUNT = MVP_RESULT_MAX_PARTY_COLUMNS;
+	constexpr size_t MVP_STAT_COUNT = MVP_RESULT_MAX_STATS;
+	constexpr size_t PARTY_STAT_COUNT = MVP_RESULT_MAX_STATS;
 
 	f32_t Ramp(const f32_t fFrame, const f32_t fStart, const f32_t fEnd)
 	{
@@ -183,11 +187,6 @@ Client::CMvpResultView::CMvpResultView(
 	m_pView = std::make_unique<CUILayoutRuntime>(pDevice, pContext, iGameObjectLevelIndex,
 		TEXT("Layer_UI"), L"UI/MVP/MvpResult_Layout.json");
 	m_pView->Set_AllSlotsVisible(false);
-
-	const float2_t vYoon = CGameInstance::Get().Measure_Text(FONT_YOON, METRIC_STRING);
-	const float2_t vYG760 = CGameInstance::Get().Measure_Text(FONT_YG760, METRIC_STRING);
-	m_fYoonMetricHeight = vYoon.y;
-	m_fYG760MetricHeight = vYG760.y;
 
 	for (size_t i = 0; i < PARTY_COLUMN_COUNT * PARTY_SLOTS_PER_COLUMN; ++i)
 	{
@@ -334,13 +333,10 @@ void Client::CMvpResultView::Draw_Label(
 	const f32_t fCenterY,
 	const f32_t fFontPx,
 	const float2_t& vOrigin,
-	const fvector_t vColor) const
+	const fvector_t vColor,
+	const bool_t bLatinDisplay) const
 {
 	if (strText.empty())
-		return;
-	const f32_t fMetric =
-		(pFontTag == FONT_YOON) ? m_fYoonMetricHeight : m_fYG760MetricHeight;
-	if (fMetric <= 0.f)
 		return;
 	/* Same convention as CMainApp::RenderRaidClearText: authored 1280x720 coords are
 	stretched per axis, while the glyph scale follows the smaller of the two so text
@@ -349,9 +345,88 @@ void Client::CMvpResultView::Draw_Label(
 	const f32_t fScaleX = vViewport.x / 1280.f;
 	const f32_t fScaleY = vViewport.y / 720.f;
 	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
-	CGameInstance::Get().Draw_Text(pFontTag, strText.c_str(),
+	/* Every label on this page used to be one family atlas resampled to size, which is
+	why the small white rows turned to mush (16pt off a 42px bake is a 0.38x minify with
+	no mips) and the 110pt title looked like a blown-up image (3.4x magnify off a 27px
+	glyph). UILabelFont picks the variant baked nearest the on-screen line spacing and
+	draws it 1:1 when one matches. */
+	f32_t fGlyphScale = 1.f;
+	const f32_t fLineSpacingPx = fFontPx * fUiScale;
+	const wstring_t strFont = bLatinDisplay
+		? UILabelFont::Resolve_LatinDisplay(pFontTag, fLineSpacingPx, fGlyphScale)
+		: UILabelFont::Resolve(pFontTag, fLineSpacingPx, fGlyphScale);
+	/* CCustomFont::Draw calls SpriteBatch::Begin() with no blend state, so DirectXTK
+	uses its premultiplied CommonStates::AlphaBlend (SrcBlend ONE). A straight
+	(rgb, a) colour would draw at full strength no matter what a is -- the whole page
+	of labels would sit there from frame one. Premultiply so the fade actually fades. */
+	const f32_t fAlpha = XMVectorGetW(vColor);
+	const fvector_t vPremultiplied = XMVectorSetW(
+		XMVectorScale(vColor, fAlpha), fAlpha);
+	if (fAlpha <= 0.f)
+		return;
+	CGameInstance::Get().Draw_Text(strFont, strText.c_str(),
 		float2_t(fCenterX * fScaleX, fCenterY * fScaleY),
-		vColor, 0.f, vOrigin, (fFontPx * fUiScale) / fMetric);
+		vPremultiplied, 0.f, vOrigin, fGlyphScale);
+}
+
+/* The headline is one centred line made of differently coloured pieces, so it
+cannot go through Draw_Label: the whole line has to be measured first to find
+where it starts, then each run drawn left to right from there. */
+void Client::CMvpResultView::Draw_ContentName(
+	const f32_t fCenterX,
+	const f32_t fCenterY,
+	const f32_t fFontPx,
+	const f32_t fAlpha) const
+{
+	if (m_Data.ContentName.empty() || fAlpha <= 0.f)
+		return;
+
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / 1280.f;
+	const f32_t fScaleY = vViewport.y / 720.f;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+
+	f32_t fGlyphScale = 1.f;
+	const wstring_t strFont = UILabelFont::Resolve(
+		FONT_YOON, fFontPx * fUiScale, fGlyphScale);
+
+	/* One space of separation between pieces, the way the retail string reads. */
+	const wstring_t strGap = TEXT(" ");
+	const f32_t fGapWidth =
+		CGameInstance::Get().Measure_Text(strFont, strGap.c_str()).x * fGlyphScale;
+
+	f32_t fTotalWidth = 0.f;
+	for (size_t i = 0; i < m_Data.ContentName.size(); ++i)
+	{
+		if (m_Data.ContentName[i].strText.empty())
+			continue;
+		if (fTotalWidth > 0.f)
+			fTotalWidth += fGapWidth;
+		fTotalWidth += CGameInstance::Get().Measure_Text(
+			strFont, m_Data.ContentName[i].strText.c_str()).x * fGlyphScale;
+	}
+
+	f32_t fPenX = fCenterX * fScaleX - fTotalWidth * 0.5f;
+	const f32_t fPenY = fCenterY * fScaleY;
+	bool_t bFirst = true;
+	for (const MVP_TEXT_RUN& Run : m_Data.ContentName)
+	{
+		if (Run.strText.empty())
+			continue;
+		if (!bFirst)
+			fPenX += fGapWidth;
+		bFirst = false;
+
+		const fvector_t vColor = XMVectorSet(
+			Run.vColor.x, Run.vColor.y, Run.vColor.z, fAlpha);
+		const fvector_t vPremultiplied = XMVectorSetW(
+			XMVectorScale(vColor, fAlpha), fAlpha);
+		CGameInstance::Get().Draw_Text(strFont, Run.strText.c_str(),
+			float2_t(fPenX, fPenY), vPremultiplied, 0.f,
+			float2_t(0.f, 0.5f), fGlyphScale);
+		fPenX += CGameInstance::Get().Measure_Text(
+			strFont, Run.strText.c_str()).x * fGlyphScale;
+	}
 }
 
 void Client::CMvpResultView::Render()
@@ -374,7 +449,7 @@ void Client::CMvpResultView::Render_MvpSide() const
 	/* The window's own headline, "MVP" (sys.mvp.main_title). */
 	Draw_Label(FONT_YOON, TEXT("MVP"),
 		CanvasX(MVP_TITLE_CENTER_LOCAL_X), CanvasY(MVP_TITLE_CENTER_LOCAL_Y), CanvasPt(110.f), vCenter,
-		XMVectorSetW(COLOR_WHITE, fPlateAlpha));
+		XMVectorSetW(COLOR_WHITE, fPlateAlpha), true);
 
 	/* contentNameTF and characterNameTF are host-substituted SimpleLabels, but their
 	size and alignment are not lost with the symbol: MvpResultFrame's generated
@@ -383,10 +458,9 @@ void Client::CMvpResultView::Render_MvpSide() const
 	  characterNameTF  size 32, color 0xFFFFFF, align centre / top
 	alignHorizontal "center" makes each PlaceObject translate that label's own box
 	centre, so the two sit on their own x rather than a shared axis. */
-	Draw_Label(FONT_YOON, m_Data.strContentName,
+	Draw_ContentName(
 		CanvasX(MVP_CONTENT_LOCAL_X), CanvasY(MVP_CONTENT_LOCAL_Y),
-		CanvasPt(MVP_CONTENT_POINTS), vCenter,
-		XMVectorSetW(COLOR_WHITE, fPlateAlpha));
+		CanvasPt(MVP_CONTENT_POINTS), fPlateAlpha);
 	/* alignVertical "top": this translate is the box top, not its middle. */
 	Draw_Label(FONT_YOON, m_Data.Mvp.strCharacterName,
 		CanvasX(MVP_NAME_LOCAL_X), CanvasY(MVP_NAME_LOCAL_Y),
@@ -418,7 +492,7 @@ void Client::CMvpResultView::Render_MvpSide() const
 			XMVectorSetW(COLOR_WHITE, fStatAlpha));
 		Draw_Label(FONT_YOON, Stat.strValue,
 			CanvasX(fCenterLocalX), CanvasY(MVP_STAT_LOCAL_Y + MVP_STAT_VALUE_DY), CanvasPt(44.f), vCenter,
-			XMVectorSetW(COLOR_WHITE, fStatAlpha));
+			XMVectorSetW(COLOR_WHITE, fStatAlpha), true);
 	}
 
 	Render_Medals(m_Data.Mvp.Medals, "Mvp", MVP_MEDAL_CENTER_LOCAL_X,

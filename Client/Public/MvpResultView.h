@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
@@ -37,9 +37,26 @@ struct MVP_RESULT_ENTRY
 	vector<int32_t>			Medals;
 };
 
+/* What the authored page has room for: three contribution rows on a card and
+three party columns beside the MVP. The layout owns these numbers; whatever
+composes the page has to agree with them. */
+inline constexpr size_t MVP_RESULT_MAX_STATS = 3u;
+inline constexpr size_t MVP_RESULT_MAX_PARTY_COLUMNS = 3u;
+
+/* One coloured span of the headline above the MVP. contentNameTF is a single
+HTML field in retail and its pieces carry their own <FONT COLOR> in GameMsg --
+the gate is #A9D0F5, most difficulties have a colour of their own, and anything
+without one takes the field's white -- so the page carries runs, not a string. */
+struct MVP_TEXT_RUN
+{
+	wstring_t	strText;
+	float4_t	vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+};
+
 struct MVP_RESULT_DATA
 {
-	wstring_t				strContentName;
+	/* the difficulty, the raid name and the gate, laid out as one centred line. */
+	vector<MVP_TEXT_RUN>	ContentName;
 	MVP_RESULT_ENTRY		Mvp;
 	vector<MVP_RESULT_ENTRY> Party;
 };
@@ -84,9 +101,16 @@ public:
 
 private:
 	void Apply_Timeline();
+	/* bLatinDisplay routes a title-size Latin label (the word "MVP", a
+	   percentage) to the re-rasterised display atlases instead of magnifying the
+	   family one. Never pass it for text that can contain Korean. */
 	void Draw_Label(const wchar_t* pFontTag, const wstring_t& strText,
 		f32_t fCenterX, f32_t fCenterY, f32_t fFontPx,
-		const float2_t& vOrigin, fvector_t vColor) const;
+		const float2_t& vOrigin, fvector_t vColor,
+		bool_t bLatinDisplay = false) const;
+	/* The headline's runs, laid out as one centred line. */
+	void Draw_ContentName(f32_t fCenterX, f32_t fCenterY, f32_t fFontPx,
+		f32_t fAlpha) const;
 	void Render_MvpSide() const;
 	void Render_PartyColumn(size_t iColumn) const;
 	/* szOwner keeps each list's runtime slot ids distinct ("Mvp", "Party0"...). */
@@ -120,10 +144,6 @@ private:
 	bool_t						m_bParticleBoomStarted = false;
 	bool_t						m_bSuccessBurstStarted = false;
 	bool_t						m_bBadgeEffectStarted = false;
-	/* Cached glyph height of a fixed metric string per font, so a label's scale
-	does not change with the characters it happens to contain. */
-	f32_t							m_fYoonMetricHeight = 0.f;
-	f32_t							m_fYG760MetricHeight = 0.f;
 };
 
 NS_END

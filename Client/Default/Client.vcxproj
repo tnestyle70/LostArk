@@ -71,6 +71,7 @@
     <ClInclude Include="..\Public\KoukuMadnessGaugeView.h" />
     <ClInclude Include="..\Public\StatusEffectTextView.h" />
     <ClInclude Include="..\Public\DungeonTimerView.h" />
+    <ClInclude Include="..\Public\MvpAwardCatalog.h" />
     <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
@@ -314,6 +315,7 @@
     <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp" />
     <ClCompile Include="..\Private\StatusEffectTextView.cpp" />
     <ClCompile Include="..\Private\DungeonTimerView.cpp" />
+    <ClCompile Include="..\Private\MvpAwardCatalog.cpp" />
     <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />

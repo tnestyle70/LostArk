@@ -1,4 +1,4 @@
-#include "Level_KakulSaydonArena.h"
+﻿#include "Level_KakulSaydonArena.h"
 #include "WorldSequenceObject.h"
 #include "ActorCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
@@ -18,6 +18,7 @@
 #include "KakulArenaHiddenPlacements.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuMadnessGaugeView.h"
+#include "MvpAwardCatalog.h"
 #include "MvpResultView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -1857,50 +1858,87 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 
 namespace
 {
-	/* Sample page for the F1 preview: three contribution rows for the MVP and
-	   three party columns. Titles and contribution names are the real
-	   EFTable_MvpTitle / sys.mvp.desc_* strings, written as universal character
-	   names because this file has no BOM and must stay ASCII on disk. */
-	Client::MVP_RESULT_DATA Build_MvpResultPreviewData()
+	/* EFTable_Mvp.StatType, for the contributions KoukuSaydon's group tracks. */
+	constexpr int32_t MVP_STAT_DAMAGE = 1;
+	constexpr int32_t MVP_STAT_STAGGER = 3;
+	constexpr int32_t MVP_STAT_HEAL = 4;
+	constexpr int32_t MVP_STAT_BATTLE_ITEM = 9;
+	constexpr int32_t MVP_STAT_COUNTER = 11;
+	constexpr int32_t MVP_STAT_SUPPORT_DAMAGE = 13;
+
+	/* KoukuSaydon is a four-player raid -- the award page seats one MVP and three
+	   party columns -- so the four-player cutoffs apply. */
+	constexpr int32_t MVP_PARTY_SIZE = 4;
+
+	/* EFTable_ZoneEpicGate.GroupId for KoukuSaydon; Valtan is 101, and the
+	   headline follows whichever raid is handed in. SecondaryKey 0 on that row is
+	   the normal difficulty, 2 the hard one. */
+	constexpr int32_t KOUKU_RAID_GROUP_ID = 103;
+	constexpr const char* KOUKU_DIFFICULTY_ID = "normal";
+
+	/* The reference capture shows no guild line under any of the four names:
+	   MvpResultFrame fills guildNameTF only when the character has a guild, so
+	   the sample leaves it empty instead of printing a stand-in word. */
+	const wstring_t PREVIEW_GUILD;
+
+	Client::MVP_AWARD_PARTICIPANT Make_PreviewParticipant(
+		const wchar_t* const pName,
+		vector<Client::MVP_AWARD_CONTRIBUTION> Contributions,
+		vector<int32_t> Medals)
 	{
-		Client::MVP_RESULT_DATA Data;
-		Data.strContentName = L"[\uB178\uB9D0] \uD55C\uBC24\uC911\uC758 \uC11C\uCEE4\uC2A4 3\uAD00\uBB38";
-		Data.Mvp.strCharacterName = L"Test";
-		Data.Mvp.strGuildName = L"\uAE38\uB4DC\uC6D0";
-		Data.Mvp.Stats.push_back({ L"\uC794\uD639\uD55C \uD608\uD22C\uC0AC", L"\uC900 \uD53C\uD574", L"32.4%", true });
-		Data.Mvp.Stats.push_back({ L"\uC9C4\uACA9\uC758 \uC12C\uBA78\uC790", L"\uC900 \uBB34\uB825\uD654", L"21.7%", false });
-		Data.Mvp.Stats.push_back({ L"\uC12C\uAD11\uC758 \uBD09\uC1C4\uC790", L"\uCE74\uC6B4\uD130 \uC131\uACF5", L"11", false });
-		Data.Mvp.Medals = { 1, 9, 13 };
+		Client::MVP_AWARD_PARTICIPANT Participant;
+		Participant.strCharacterName = pName;
+		Participant.strGuildName = PREVIEW_GUILD;
+		Participant.Contributions = std::move(Contributions);
+		Participant.Medals = std::move(Medals);
+		for (const Client::MVP_AWARD_CONTRIBUTION& Contribution
+			: Participant.Contributions)
+			Participant.fTotalScore += Contribution.fScore;
+		return Participant;
+	}
 
-		{
-			Client::MVP_RESULT_ENTRY Entry;
-			Entry.strCharacterName = L"Berserker";
-			Entry.strGuildName = L"\uAE38\uB4DC\uC6D0";
-			Entry.Stats.push_back({ L"\uAC15\uC9C1\uD55C \uD22C\uC0AC", L"\uC900 \uD53C\uD574", {}, true });
-			Entry.Stats.push_back({ L"\uBE44\uC815\uD55C \uC12C\uBA78\uC790", L"\uC900 \uBB34\uB825\uD654", {}, false });
-			Entry.Medals = { 2, 9 };
-			Data.Party.push_back(Entry);
-		}
-		{
-			Client::MVP_RESULT_ENTRY Entry;
-			Entry.strCharacterName = L"Bard";
-			Entry.strGuildName = L"\uAE38\uB4DC\uC6D0";
-			Entry.Stats.push_back({ L"\uACE0\uACB0\uD55C \uCE58\uC720\uC0AC", L"\uD30C\uD2F0 \uD68C\uBCF5", {}, true });
-			Entry.Stats.push_back({ L"\uCC2C\uB780\uD55C \uC870\uB825\uC790", L"\uACF5\uACA9 \uC9C0\uC6D0", {}, false });
-			Entry.Medals = { 14, 16, 17 };
-			Data.Party.push_back(Entry);
-		}
-		{
-			Client::MVP_RESULT_ENTRY Entry;
-			Entry.strCharacterName = L"Sorceress";
-			Entry.strGuildName = L"\uAE38\uB4DC\uC6D0";
-			Entry.Stats.push_back({ L"\uD22C\uC0AC", L"\uC900 \uD53C\uD574", {}, true });
-			Entry.Stats.push_back({ L"\uC9C0\uB7B5\uAC00", L"\uBC30\uD2C0\uC544\uC774\uD15C \uC0AC\uC6A9 \uD69F\uC218", {}, false });
-			Entry.Medals = { 5 };
-			Data.Party.push_back(Entry);
-		}
+	/* Sample page for the F1 preview.
 
-		return Data;
+	   The shares, scores and medal requests below are made-up sample play. Who
+	   ends up as the MVP, which rows each card gets, which title each row shows
+	   and which medals survive are all decided by CMvpAwardCatalog from
+	   Data/UI/MVP/MvpAwards.json -- nothing here states a title.
+
+	   The sample deliberately gives two of the three columns \uC900 \uD53C\uD574 as their
+	   best contribution so the one-damage-title-per-page rule is visible:
+	   Berserker takes it and Sorceress falls through to \uBC30\uD2C0\uC544\uC774\uD15C. Medal 16 is
+	   requested and dropped, because group 220000 cannot award it. */
+	Client::MVP_RESULT_DATA Build_MvpResultPreviewData(const int32_t iGate)
+	{
+		const vector<Client::MVP_AWARD_PARTICIPANT> Participants = {
+			Make_PreviewParticipant(L"Test",
+				{ { MVP_STAT_DAMAGE, 4250.f, 42.5f, L"42.5%" },
+				  { MVP_STAT_STAGGER, 1655.f, 33.1f, L"33.1%" },
+				  { MVP_STAT_COUNTER, 248.f, 24.8f, L"11" } },
+				{ 1, 9, 13 }),
+			Make_PreviewParticipant(L"Berserker",
+				{ { MVP_STAT_DAMAGE, 2830.f, 28.3f, {} },
+				  { MVP_STAT_STAGGER, 1530.f, 30.6f, {} } },
+				{ 2, 9 }),
+			Make_PreviewParticipant(L"Bard",
+				{ { MVP_STAT_SUPPORT_DAMAGE, 2260.f, 22.6f, {} },
+				  { MVP_STAT_HEAL, 1230.f, 41.0f, {} } },
+				{ 14, 16, 17 }),
+			Make_PreviewParticipant(L"Sorceress",
+				{ { MVP_STAT_DAMAGE, 1520.f, 15.2f, {} },
+				  { MVP_STAT_BATTLE_ITEM, 210.f, 21.0f, {} } },
+				{ 5 }),
+		};
+
+		/* The headline is not a written-out string any more: the difficulty, the
+		   raid name and the gate come out of MvpContentNames.json with their own
+		   colours, so a different gate or a different raid reads correctly
+		   without touching this. */
+		const Client::CMvpAwardCatalog& Awards = Client::CMvpAwardCatalog::Get();
+		return Awards.Compose_Page(
+			Awards.Build_ContentName(
+				KOUKU_RAID_GROUP_ID, iGate, KOUKU_DIFFICULTY_ID),
+			Participants, MVP_PARTY_SIZE);
 	}
 }
 
@@ -1928,6 +1966,12 @@ namespace
 	   HUD_RAIDCLEAR_TEXT_RECTS has no alpha field, so the caption is gated on at the frame
 	   its own alphaMultTerm leaves 0; its 126..136 scale-in is not reproduced yet. */
 	constexpr f32_t CLEAR_CAPTION_IN_FRAME = 126.f;
+}
+
+int32_t Client::CLevel_KakulSaydonArena::Current_GateNumber() const
+{
+	return (NO_ACTIVE_DEBUG_GATE == m_iActiveDebugGate)
+		? 1 : static_cast<int32_t>(m_iActiveDebugGate) + 1;
 }
 
 void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
@@ -1965,7 +2009,8 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 	{
 		m_pRaidClearView->Set_AllSlotsVisible(false);
 		if (nullptr != m_pMvpResultView)
-			m_pMvpResultView->Show(Build_MvpResultPreviewData());
+			m_pMvpResultView->Show(
+				Build_MvpResultPreviewData(Current_GateNumber()));
 	}
 }
 
@@ -1980,7 +2025,7 @@ void Client::CLevel_KakulSaydonArena::Debug_Show_MvpResult()
 {
 	if (nullptr == m_pMvpResultView)
 		return;
-	m_pMvpResultView->Show(Build_MvpResultPreviewData());
+	m_pMvpResultView->Show(Build_MvpResultPreviewData(Current_GateNumber()));
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_Hide_MvpResult()

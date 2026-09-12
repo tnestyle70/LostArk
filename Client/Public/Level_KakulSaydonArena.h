@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Client_Defines.h"
 #include "ArenaCameraProfile.h"
@@ -514,6 +514,9 @@ private:
 	/* Negative until a clear starts. */
 	f32_t m_fRaidClearElapsedSeconds = -1.f;
 	void Update_RaidClear(f32_t fTimeDelta);
+	/* 1-based gate for the award headline. The debug gate index is 0-based and
+	   NO_ACTIVE_DEBUG_GATE means none was entered, which reads as gate 1. */
+	int32_t Current_GateNumber() const;
 	f32_t m_fTriggerMoveFadeAlpha = 0.f;
 	/* Speed gate. The short hops share TRIGGER_MOVE with the stage
 	   transition, so the fade arms only once the character is seen moving
