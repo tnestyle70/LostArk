@@ -2684,6 +2684,7 @@ struct Client::CEffectPlayback::PREPARED_RESOURCES final
 	std::unordered_map<std::string, std::vector<SOURCE_UPDATE_MODULE>>
 		SourceUpdateModules;
 	std::unordered_map<std::string, SOURCE_SPAWN_RECIPE> SourceSpawnRecipes;
+	std::vector<size_t> SourceTransformVelocityElementIndices;
 	std::unordered_map<std::string, std::vector<size_t>> SourceVectorFieldModuleIndices;
 	std::unordered_map<std::string, std::vector<size_t>> SourceSpawnPerUnitModuleIndices;
 	std::unordered_set<std::string> SourceDeathEventGeneratorElementIds;
@@ -3323,6 +3324,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		std::make_shared<PREPARED_RESOURCES>(*pPreparedResources);
 	StagedPreparedResources->SourceUpdateModules.clear();
 	StagedPreparedResources->SourceSpawnRecipes.clear();
+	StagedPreparedResources->SourceTransformVelocityElementIndices.clear();
 	StagedPreparedResources->SourceVectorFieldModuleIndices.clear();
 	StagedPreparedResources->SourceSpawnPerUnitModuleIndices.clear();
 	StagedPreparedResources->SourceDeathEventGeneratorElementIds.clear();
@@ -3345,8 +3347,15 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
                 Element.SourceRecipe.Modules[iModule].strClassName == "particlemodulecollision")
                 StagedPreparedResources->SourceWorldCollisionModules.emplace_back(
                     static_cast<size_t>(&Element - Document.Elements.data()), iModule);
-		StagedPreparedResources->SourceSpawnRecipes.emplace(
-			Element.strElementId, SOURCE_SPAWN_RECIPE::Prepare(Element));
+		const auto& SpawnRecipe = StagedPreparedResources->SourceSpawnRecipes.emplace(
+			Element.strElementId, SOURCE_SPAWN_RECIPE::Prepare(Element)).first->second;
+		if (Element.SourceRecipe.bEnabled && Element.SourceTransformTrack &&
+			std::ranges::any_of(SpawnRecipe.Modules, [](const auto& Module)
+			{ return Module.eKind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT; }))
+		{
+			StagedPreparedResources->SourceTransformVelocityElementIndices.push_back(
+				static_cast<size_t>(&Element - Document.Elements.data()));
+		}
 		auto& UpdateModules =
 			StagedPreparedResources->SourceUpdateModules[Element.strElementId];
 		for (size_t iModule = 0u;
@@ -4162,6 +4171,28 @@ bool_t Client::CEffectPlayback::Step(
 		static_cast<f64_t>(m_iSimulationStep) * FIXED_STEP_SECONDS_EXACT);
 	m_PendingSourceEvents.clear();
 	m_bSourceEventQueueOverflow = false;
+
+	// Track only source-motion emitters that consume inherited velocity. Sampling
+	// before their activation delay preserves the actual previous fixed-step pose.
+	for (const size_t iElement : m_pPreparedResources->SourceTransformVelocityElementIndices)
+	{
+		const auto& Element = Get_StagedDocument().Elements[iElement];
+		if (!Is_PlaybackElementAdmitted(Element)) continue;
+		auto& State = m_States[Element.strElementId];
+		State.vSourceTransformVelocity = {};
+		if (!Can_EvaluateElementWorld(Element))
+		{
+			State.bSourceTransformVelocityInitialized = false;
+			continue;
+		}
+		const auto Origin = Get_Translation(Evaluate_ElementWorld(
+			Element, m_fSampleTimeSeconds, RootWorld));
+		if (State.bSourceTransformVelocityInitialized)
+			State.vSourceTransformVelocity = Scale3(Subtract3(
+				Origin, State.vPreviousSourceTransformOrigin), 1.f / fFixedDelta);
+		State.vPreviousSourceTransformOrigin = Origin;
+		State.bSourceTransformVelocityInitialized = true;
+	}
 
 	{
 		Engine::CProfilerScope particleProfile(
@@ -5653,7 +5684,14 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT)
 		{
 			float3_t ParentVelocity = m_vParentVelocity;
-			if (Element.Detail.Particle.bLocalSpace)
+			if (Element.SourceTransformTrack)
+			{
+				// Source-track particles retain ElementWorld as their simulation basis,
+				// even in world space. Undo that basis before the birth matrix applies it.
+				ParentVelocity = Transform_Normal(State.vSourceTransformVelocity,
+					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));
+			}
+			else if (Element.Detail.Particle.bLocalSpace)
 			{
 				ParentVelocity = Transform_Normal(ParentVelocity,
 					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));

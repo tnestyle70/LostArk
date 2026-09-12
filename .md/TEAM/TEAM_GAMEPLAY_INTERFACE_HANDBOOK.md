@@ -965,6 +965,19 @@ Kouku의 독립 V1 Effect/Element Resource에 `sourceModelPreview`가 있으면 
 빈 Resource용 Stage에서 본 애니메이션을 조회하지 않는다. 이 독립 Preview 정책은 제품 Pattern의
 저장된 animation/history 계약을 변경하지 않는다.
 
+Effect Tool의 scene player는 local player의 실제 commit을 소유한 `CClientReplication`이
+`CAnimationTargetService`에 Bind한다. local spawn·class replacement 성공 뒤 갱신하고,
+despawn·Reset_World·종료는 exact character만 Unbind한다. 실패 rollback과 remote player는
+기존 target을 유지한다. 카메라·입력에 연결된 player와 scene target 등록을 혼동하지 않는다.
+
+쿠크 금빛 이동 축포 `effect.kouku.gate1.intro.gold-trails.full.restore`는 기존 V1 문서의
+4경로·24행, tail 포함 9413ms resource다. Effect Tool의 독립 Play All과 Composition의 명시적
+Append에서 사용하며, 기존 P4는 교정된 `.matinee_0.1/.2` source 참조를 유지한다. Matinee Move는
+SourceTransformTrack, 거리 방출은 SpawnPerUnit, 잔광은 기존 world particle·cascadeRibbonV1가
+소유한다. 새 gameplay 이동 권위나 별도 렌더 경로를 만들지 않는다. 원본 camera cut 시점의
+위치 도약과 사용자 화면 미확인 범위는
+[금빛 이동 축포 결과 G07](../GB/09-11/2026-09-11_KOUKU_PLAYER_ANCHOR_RAINBOW_FIREWORKS_IMPLEMENTATION_RESULT.md)을 따른다.
+
 World Object category는 Area 저작 `objectResources`의 model/base texture/pre-scale과 자식 Motion을 읽어 현재 Effect draft에 적용한다. 원본 Object/Motion은 수정하지 않는다. 공의 `objectMotion` velocity/acceleration/count/interval/lifetime은 기존 Mesh Particle로 옮기며 실제 충돌 물리를 추가하지 않는다. 모델 참고는 기존 Kouku preview actor/CModel을 재사용하고 root motion·WORLD gameplay는 실행하지 않는다. 실제 Product 이동 입자는 Server presentation root의 birth 시각 표본을 사용하며 과거 표본이 없으면 해당 Effect 오류를 표시한다.
 
 Kouku Action Workbench Camera는 이름으로 shot 생성 → 현재 view의 eye/lookAt/FOV capture → Box Detail의 blend-in/default hold/blend-out → Save → Append 흐름을 제공한다. `activation: "PATTERN_ONLY"` shot은 명시적으로 배치한 Pattern/Bundle Camera에서 소비하며 저작 Preview는 저장본, Complete Play는 Map publisher 배포본을 읽는다. 진입 pose는 시작 때 취득하고 복귀 목표는 매 프레임 현재 player follow pose를 사용한다. Camera box duration은 진입+유지이며 복귀 tail은 별도로 검사한다. 기존 Valtan 문서 제한을 넓히지 않고 Kouku의 LINEAR/SMOOTHSTEP 전환을 지원한다.

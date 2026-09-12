@@ -4,6 +4,7 @@
 #include "LevelTransitionService.h"
 
 #include "ActionPresentationTimeline.h"
+#include "AnimationTargetService.h"
 #include "ActorCatalog.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
@@ -2168,7 +2169,10 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 	}
 
 	if (isLocallyControlled)
+	{
 		m_LocalCharacterHandle = handle;
+		CAnimationTargetService::Bind(character);
+	}
 
 	return true;
 }
@@ -2206,6 +2210,8 @@ bool Client::CClientReplication::Apply_Despawn(
 	if (m_LocalCharacterHandle.iSlotIndex == handle.iSlotIndex &&
 		m_LocalCharacterHandle.iGeneration == handle.iGeneration)
 	{
+		if (nullptr != character)
+			CAnimationTargetService::Unbind(character);
 		m_LocalCharacterHandle = {};
 		if (m_DeferredLocalCharacterClassReplacement.isPending &&
 			m_DeferredLocalCharacterClassReplacement.Snapshot.iNetEntityId ==
@@ -3844,7 +3850,10 @@ Client::CClientReplication::Replace_CharacterClass(
 	}
 
 	if (isLocallyControlled)
+	{
 		m_LocalCharacterHandle = newHandle;
+		CAnimationTargetService::Bind(stagedCharacter);
+	}
 	return CHARACTER_REPLACE_RESULT::REPLACED;
 }
 
@@ -3896,6 +3905,8 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+	if (const auto character = Get_LocalCharacter())
+		CAnimationTargetService::Unbind(character);
 	if (m_pPlayerAssetPreparation) m_pPlayerAssetPreparation->Cancel_AsyncPreparation();
 	m_PreparingPlayerClass.reset();
 	m_PendingPlayerSpawns.clear();
@@ -4167,7 +4178,12 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 }
 
 Client::CClientReplication::CClientReplication() = default;
-Client::CClientReplication::~CClientReplication() = default;
+Client::CClientReplication::~CClientReplication()
+{
+	// The Level may already have removed its layers; release only our scene binding.
+	if (const auto character = Get_LocalCharacter())
+		CAnimationTargetService::Unbind(character);
+}
 
 void Client::CClientReplication::Stage_PlayerPresentation(
 	const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick,

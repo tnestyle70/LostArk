@@ -1,5 +1,26 @@
 # LostArk merge 회귀 방지 정본
 
+### 이동하는 원본 이펙트는 그룹·반복·방출 이력을 함께 보존한다
+
+- UE Matinee의 FName 연결은 대소문자를 구분하지 않는다. `Pc01tr`/`pc01tr` 차이로 Move를
+  놓친 뒤 빈 key를 정상 정지 상태로 저장하지 않으며 occurrence의 actor/group 연결을 검증한다.
+- SpawnPerUnit·world-space ribbon은 실제 emitter 위치 이력이 필요하다. core 출력이나 finite
+  검사만으로 이동·잔광 완료를 판정하지 않는다. Required의 임시 loop 1은 원본 CDO 값이 아니며,
+  완전한 상속 체인으로 loop 0을 확인한 경우 Toggle 종료와 KillOnDeactivate/Completed를 함께 보존한다.
+- SourceTransformTrack의 VelocityInheritParent는 해당 emitter world 속도를 birth basis로 옮겨
+  source scale을 한 번 적용한다. source track 없는 기존 root/local/bone 경로를 함께 대조한다.
+- 원본 CONSTANT 위치 도약은 같은 시각의 Director camera cut부터 대조한다. 카메라 없는 독립
+  Play All의 차이를 임의 평활·속도 clamp로 숨기지 않는다. 근거와 화면 미확인 범위는
+  [금빛 이동 축포 결과 G07](09-11/2026-09-11_KOUKU_PLAYER_ANCHOR_RAINBOW_FIREWORKS_IMPLEMENTATION_RESULT.md)에 둔다.
+
+### Effect Play All의 scene player 오류는 생성 전 등록부터 확인한다
+
+- `Enter an arena with a scene player before Play All`은 particle·shader 이전의 scene target
+  조회 실패다. 카메라와 이동이 정상이어도 `Resolve_SceneCharacter` 등록은 별개다.
+- local player commit을 소유하는 `CClientReplication`이 scene target을 Bind하고,
+  local despawn·reset·종료 때 자신의 character만 Unbind한다. 실패 rollback과 remote player는
+  기존 target을 보존하며, destructor가 이미 제거된 Layer를 다시 조작하지 않게 한다.
+
 ## 0. 모든 세션의 사용자 전용 화면 검증 경계
 
 - 세션 시작 시 `AGENTS.md`, `CLAUDE.md`, 이 문서, 있으면 `gotchas.local.md`,

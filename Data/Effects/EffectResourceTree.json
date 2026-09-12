@@ -12,7 +12,10 @@
     {"id": "kouku.category.d767402008919487db6b", "parentId": "kouku.category.3af3bc051c90cf62aa71", "kind": "CATEGORY", "displayName": "장판·조준·폭발"},
     {"id": "kouku.category.ac0a55b32339313334b4", "parentId": "kouku.category.3af3bc051c90cf62aa71", "kind": "CATEGORY", "displayName": "공 낙하·폭발"},
     {"id": "kouku.category.06ae0cf5bf6b9aa797d4", "parentId": "kouku.category.dd3ad69607b344ac7646", "kind": "CATEGORY", "displayName": "지팡이 내려찍기"},
-    {"id": "kouku.category.f204b0c871d711d0dee9", "parentId": "kouku.category.dd3ad69607b344ac7646", "kind": "CATEGORY", "displayName": "마리오"}
+    {"id": "kouku.category.f204b0c871d711d0dee9", "parentId": "kouku.category.dd3ad69607b344ac7646", "kind": "CATEGORY", "displayName": "마리오"},
+    {"id": "kouku.category.5f78eaf8101eb09e649c", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "1관문"},
+    {"id": "kouku.category.089c8e359fbe37b517b0", "parentId": "kouku.category.5f78eaf8101eb09e649c", "kind": "CATEGORY", "displayName": "연출"},
+    {"id": "kouku.category.4ce94390100a79177916", "parentId": "kouku.category.089c8e359fbe37b517b0", "kind": "CATEGORY", "displayName": "금빛 이동 축포"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -154,6 +157,7 @@
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.pentagram.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.portal.full.restore", "displayName": "3관문_세이튼_마리오_중앙 진입 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore", "displayName": "작은 오망성", "parentId": "kouku.category.f204b0c871d711d0dee9"},
-    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"}
+    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.intro.gold-trails.full.restore", "displayName": "1관문_금빛 이동 축포_무대 4경로", "parentId": "kouku.category.4ce94390100a79177916"}
   ]
 }

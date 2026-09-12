@@ -331,6 +331,9 @@ private:
 		bool_t bBurstSpawned = false;
 		bool_t bSourceSpawnPerUnitOriginInitialized = false;
 		float3_t vSourceSpawnPerUnitPreviousOrigin{};
+		bool_t bSourceTransformVelocityInitialized = false;
+		float3_t vPreviousSourceTransformOrigin{};
+		float3_t vSourceTransformVelocity{};
 		bool_t bActionRootCaptured = false;
 		float4x4_t ActionRootWorld{};
 		uint32_t iSourceLoopIndex = 0u;
