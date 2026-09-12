@@ -1,8 +1,8 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 15,
-  "effectAssetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2",
-  "displayName": "입장 · 팝업북",
+  "effectAssetId": "effect.kouku.gate1.intro.gold-trails.full.restore",
+  "displayName": "1관문_금빛 이동 축포_무대 4경로",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -293,7 +293,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 20.73161792755127,
+          "startDelaySeconds": 0.0,
           "lifeTimeSeconds": 6.790826797485352,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -2129,11 +2129,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.834c7ea1bdf43eb6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -2668,7 +2668,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 20.73161792755127,
+          "startDelaySeconds": 0.0,
           "lifeTimeSeconds": 6.790826797485352,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -4178,11 +4178,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.834c7ea1bdf43eb6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -4651,7 +4651,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 20.73161792755127,
+          "startDelaySeconds": 0.0,
           "lifeTimeSeconds": 6.790826797485352,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -6409,11 +6409,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.834c7ea1bdf43eb6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -6848,7 +6848,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 20.73161792755127,
+          "startDelaySeconds": 0.0,
           "lifeTimeSeconds": 6.790826797485352,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -8283,11 +8283,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.834c7ea1bdf43eb6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -8711,7 +8711,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 20.73161792755127,
+          "startDelaySeconds": 0.0,
           "lifeTimeSeconds": 6.790826797485352,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -9944,11 +9944,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.834c7ea1bdf43eb6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -10372,7 +10372,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 20.73161792755127,
+          "startDelaySeconds": 0.0,
           "lifeTimeSeconds": 6.790826797485352,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -11563,11 +11563,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.834c7ea1bdf43eb6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -12102,7 +12102,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.372502326965332,
+          "startDelaySeconds": 0.6408843994140625,
           "lifeTimeSeconds": 6.678417205810547,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -13938,11 +13938,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.76e05f85b7414180",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -14477,7 +14477,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.372502326965332,
+          "startDelaySeconds": 0.6408843994140625,
           "lifeTimeSeconds": 6.678417205810547,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -15987,11 +15987,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.76e05f85b7414180",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -16460,7 +16460,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.372502326965332,
+          "startDelaySeconds": 0.6408843994140625,
           "lifeTimeSeconds": 6.678417205810547,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -18218,11 +18218,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.76e05f85b7414180",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -18657,7 +18657,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.372502326965332,
+          "startDelaySeconds": 0.6408843994140625,
           "lifeTimeSeconds": 6.678417205810547,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -20092,11 +20092,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.76e05f85b7414180",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -20520,7 +20520,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.372502326965332,
+          "startDelaySeconds": 0.6408843994140625,
           "lifeTimeSeconds": 6.678417205810547,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -21753,11 +21753,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.76e05f85b7414180",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -22181,7 +22181,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.372502326965332,
+          "startDelaySeconds": 0.6408843994140625,
           "lifeTimeSeconds": 6.678417205810547,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -23372,11 +23372,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.76e05f85b7414180",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -23911,7 +23911,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.506159782409668,
+          "startDelaySeconds": 0.7745418548583984,
           "lifeTimeSeconds": 6.774013519287109,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -25747,11 +25747,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.a3a9bafd195252c6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -26286,7 +26286,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.506159782409668,
+          "startDelaySeconds": 0.7745418548583984,
           "lifeTimeSeconds": 6.774013519287109,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -27796,11 +27796,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.a3a9bafd195252c6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -28269,7 +28269,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.506159782409668,
+          "startDelaySeconds": 0.7745418548583984,
           "lifeTimeSeconds": 6.774013519287109,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -30027,11 +30027,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.a3a9bafd195252c6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -30466,7 +30466,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.506159782409668,
+          "startDelaySeconds": 0.7745418548583984,
           "lifeTimeSeconds": 6.774013519287109,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -31901,11 +31901,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.a3a9bafd195252c6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -32329,7 +32329,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.506159782409668,
+          "startDelaySeconds": 0.7745418548583984,
           "lifeTimeSeconds": 6.774013519287109,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -33562,11 +33562,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.a3a9bafd195252c6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -33990,7 +33990,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 21.506159782409668,
+          "startDelaySeconds": 0.7745418548583984,
           "lifeTimeSeconds": 6.774013519287109,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -35181,11 +35181,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.a3a9bafd195252c6",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -35720,7 +35720,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 23.470101356506348,
+          "startDelaySeconds": 2.738483428955078,
           "lifeTimeSeconds": 4.974468231201172,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -37556,11 +37556,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.aec580c2f2c2b6d7",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -38095,7 +38095,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 23.470101356506348,
+          "startDelaySeconds": 2.738483428955078,
           "lifeTimeSeconds": 4.974468231201172,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -39605,11 +39605,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.aec580c2f2c2b6d7",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -40078,7 +40078,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 23.470101356506348,
+          "startDelaySeconds": 2.738483428955078,
           "lifeTimeSeconds": 4.974468231201172,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -41836,11 +41836,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.aec580c2f2c2b6d7",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -42275,7 +42275,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 23.470101356506348,
+          "startDelaySeconds": 2.738483428955078,
           "lifeTimeSeconds": 4.974468231201172,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -43710,11 +43710,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.aec580c2f2c2b6d7",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -44138,7 +44138,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 23.470101356506348,
+          "startDelaySeconds": 2.738483428955078,
           "lifeTimeSeconds": 4.974468231201172,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -45371,11 +45371,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.aec580c2f2c2b6d7",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {
@@ -45799,7 +45799,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 23.470101356506348,
+          "startDelaySeconds": 2.738483428955078,
           "lifeTimeSeconds": 4.974468231201172,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -46990,11 +46990,11 @@
       },
       "sourceTransformTrack": {
         "sourceOccurrenceId": "source.sequence.aec580c2f2c2b6d7",
-        "sourceTimeOriginSeconds": 2.344761848449707,
+        "sourceTimeOriginSeconds": 23.076379776000977,
         "previewOriginUE3Cm": [
-          5801.60107421875,
-          8686.5615234375,
-          75.05390167236328
+          0.0,
+          -73728.0,
+          0.0
         ],
         "nodes": [
           {

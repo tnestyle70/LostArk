@@ -1700,6 +1700,11 @@
       "effectAssetId": "effect.kouku.gate3.showtime.sector.warning.shot",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.sector.warning.shot.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.intro.gold-trails.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.intro.gold-trails.full.restore.effect.json"
     }
   ]
 }

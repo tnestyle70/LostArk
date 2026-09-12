@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 352,
+  "revision": 353,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -864,7 +864,8 @@
     {"resourceId": "kakulsaydon.effect.7f7dd9d0dee51426c2bd", "displayName": "3관문_세이튼_마리오_중앙 오망성", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate3.mario.center.pentagram.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 21800, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.effect.967443b8e9bc44faea66", "displayName": "3관문_세이튼_마리오_중앙 진입 포탈", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate3.mario.center.portal.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 22000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.effect.7e765b32937e215a2fef", "displayName": "작은 오망성", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 3000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "kakulsaydon.effect.754fe8a043751e365d84", "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate3.mario.center.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 22000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45}
+    {"resourceId": "kakulsaydon.effect.754fe8a043751e365d84", "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate3.mario.center.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 22000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "kakulsaydon.effect.8e7eaa218533fd414f00", "displayName": "1관문_금빛 이동 축포_무대 4경로", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate1.intro.gold-trails.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 9413, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45}
   ],
   "patterns": [
     {

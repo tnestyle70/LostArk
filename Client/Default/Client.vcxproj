@@ -1649,6 +1649,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.gold-trails.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.full.fade.black.effectv2.json" />

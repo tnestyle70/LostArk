@@ -191,3 +191,118 @@ mesh-emitter Dynamic default와 실제 sprite VF의 Dynamic stream을 비교하�
    시간 차이다. 사용자가 관찰한 결과를 기준으로 occurrence 또는 원본 입력을 좁혀 수정한다.
 
 이 세션은 다른 사용자 작업에 메시지를 보내지 않았다. 사용자가 이 결과 문서를 직접 전달한다.
+
+## G06. 09-13 아레나 scene player 등록과 PR 범위
+
+아래 G06–G07은 `main`의 `6e82551d`에서 분리한 `codex/kouku-golden-trail-motion`의 변경 범위다.
+앞의 G00–G05는 09-11 당시 결과이며, 공유 작업 폴더의 다른 미커밋 변경은 이번 PR에 포함하지 않는다.
+
+사용자가 확인한 `Enter an arena with a scene player before Play All. The player is the Effect anchor.`는
+Effect factory와 shader 이전의 scene target 조회 실패였다. Kouku/Bern의 복제 local player는
+카메라·입력에는 연결돼도 `CAnimationTargetService`에 등록되지 않았다.
+
+`ClientReplication.cpp`에서 local spawn과 class replacement의 실제 commit 뒤 Bind한다.
+실패 rollback과 remote player는 기존 target을 유지하고, local despawn·Reset_World·destructor는
+자신이 소유한 character만 Unbind한다. destructor는 Layer를 다시 조작하지 않는다. 새 service나
+별도 runtime을 만들지 않았으며, Effect 데이터의 시간·위치를 이 문제의 우회로 바꾸지 않았다.
+
+원 작업 폴더에서는 실제 lifecycle 함수 추출 28개 검사를 통과했고, 09-13 00:42 Debug Product
+compile/deploy가 성공했다. 근거는 원 작업 폴더의
+`out/ScenePlayerAnchorLifecycle20260913/validation.json`,
+`out/FestivalEffect20260913/product-build.log`다. 이 기록은 이번 main 분리 작업 폴더의
+컴파일 성공으로 대체해서 기록하지 않는다. 분리 작업 폴더의 검증 결과는 아래 G07에서 구분한다.
+
+## G07. 금빛 이동 축포의 원본 곡선·방출 복구
+
+첨부 이미지의 밝은 금빛 선단과 곡선 잔광은 SCENE03A Matinee0의
+`FX_Q_W_01.FX_Par_02.Par_Q_Trail_01`과 원본 actor Move가 구성한다. 방사형 `intro.fireworks`와
+`intro.festival`은 별도 효과다. 원본 6 emitter는 mesh 2개·sprite 3개·cascadeRibbonV1 1개이며,
+DDS 12개와 `fm_e_plan_001.wmodel`은 기존 설치 리소스를 사용한다. native
+2461/3109/3334/2457/2426의 재질·shape·texture·dispatch 계약은 현재 문서와 일치한다.
+
+### 실제 코드와 데이터 변경
+
+`build_kouku_sequence_effect_groups.actor_groups`가 `Pc01tr`와 `pc01tr`를 다르게 비교해
+Move track을 놓쳤다. UE 이름의 대소문자 비구분 연결로 고쳤으며, occurrence의 actor/group
+불일치와 모호한 중복 이름은 거부한다. 원본 key/time/tangent와 정상 곡선은 보존했다.
+
+| 기존 source 문서 | 보완한 node 배열 | 교정한 emitterLoopCount |
+|---|---:|---:|
+| `effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1` | 12 | 24 |
+| `effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2` | 24 | 24 |
+| 합계 | 36 | 48 |
+
+수정한 기존 node는 원본 actor 6개에 대응하며, 이미 정상인 portal actor21/22 곡선은 유지한다.
+원본 Required 6개와 `Engine.Default__ParticleModuleRequired → Default__ParticleModule →
+Core.Default__Object`의 CDO 체인은 duration 1초·loops 0을 사용한다. 임시 loop 1을 0으로 교정해
+원본 Matinee ON/OFF가 방출 종료를 소유하게 했다. KillOnDeactivate/KillOnCompleted는 유지했다.
+
+원본 mesh sparkle은 30cm, smoke tail은 20cm 이동마다 방출한다. Move가 없으면 이 두 행은
+rate/burst 0으로 입자가 생기지 않는다. `Effect_Playback.h/.cpp`는 SourceTransformTrack과
+VelocityInheritParent를 함께 쓰는 요소만 prepared 목록에 모아 60Hz 원점 속도를 계산한다.
+태어난 입자의 simulation basis로 옮긴 뒤 원본 scale을 한 번 적용하며, source track 없는
+기존 root/local/bone 계산은 유지한다. 독립 문서에서는 24행 중 4행만 이 추가 평가를 사용한다.
+
+`build_kouku_gold_trails_restore.py`는 source 두 문서의 node·loop 보완과 독립 문서 생성을
+소유한다. main에 없는 authored 복사본은 만들지 않으며, 이미 존재할 때만 선택적으로 보완한다.
+이번 PR은 `authored.portal-arrival.1/.2`, 별도의 58.81초 retiming과 공유 작업 폴더의 저작 변경을
+가져오지 않았다. 기존 두 문서는 node 배열과 선택 trail의 emitterLoopCount 외 값을 보존했다.
+
+### 독립 문서와 기존 소비자
+
+추가 ID는 `effect.kouku.gate1.intro.gold-trails.full.restore`, 표시명은
+`1관문_금빛 이동 축포_무대 4경로`다. EffectCatalog·EffectResourceTree와 Boss/Sequence Composition의
+추가 가능한 Effect resource에 등록했고, Client project/filter의 96.DataFiles None 항목에 연결했다.
+resource ID는 `kakulsaydon.effect.8e7eaa218533fd414f00`, duration은 9413ms다.
+기존 P4는 교정한 source `.matinee_0.1/.2`를 이미 소비하므로 같은 occurrence를 추가하지 않았다.
+
+| 독립 문서 입력 | 값 |
+|---|---|
+| 구성 | 무대 actor15/16/17/18 × 6 emitter = 24행 |
+| 상대 시작 | 0 / 0.640884399 / 0.774541855 / 2.738483429초 |
+| source clock origin | 23.076379776초 |
+| 기준 placement | `LV_LUT_MIDNIGHTC_ED_SL04:export:206`의 floor08 |
+| preview origin | UE `[0,-73728,0]`cm → Client `[0,0,737.28]`m |
+| 회전·크기 | 원본 WORLD node·scale 2 유지, 바닥 mesh yaw/scale 중복 적용 없음 |
+| 원 작업 폴더 CPU 수명 | 9.41295초, 마지막 시각 요소 관측 9.26667초 |
+
+원본 actor15/16/17은 26.9194545746초에 CONSTANT 키 뒤 위치가 도약한다. 같은 시각
+DirectorTrack1263 shot40도 cm03→cm01로 transitiontime 0 camera cut을 한다. 같은 시각의
+Toggle 재시작이나 actor reset은 없고, 직전 Slomo는 26.884880초에 1배로 돌아온다.
+이 원본 도약을 임의 평활·속도 clamp로 바꾸지 않았다. 독립 Play All은 카메라·Slomo를
+재생하지 않으므로 경계가 더 드러날 수 있다. 원 작업 폴더의 60Hz 차분 최대 상속 속도
+106.269m/s는 원본 PSC 내부 velocity reset 정책까지 입증한 값이 아니다.
+
+### 검증 범위와 남은 확인
+
+원 작업 폴더의 기존 결과와 이번 main 분리 작업 폴더의 결과를 구분한다.
+
+| 범위 | 실제 기록 |
+|---|---|
+| 원 작업 폴더 source 연결 | 480개 검사 PASS, 173 occurrence 연결과 선택 actor의 key/time/tangent 보존 |
+| 원 작업 폴더 codec/playback | 독립 24/24행 관측, world sprite·ribbon 기존 위치 drift 0, finite·종료·rewind 결정성 PASS |
+| 원 작업 폴더 속도 상속 | 9경계 PASS, 최대 오차 0.00002312m/s, source track 없는 3경로의 이전 결과 보존 |
+| 원 작업 폴더 Product | 09-13 01:12 Debug Product compile/deploy PASS |
+| 이번 main 분리 작업 폴더 C++ | `Effect_Playback.cpp`·`ClientReplication.cpp` 격리 컴파일 exit 0, 실제 scene target lifecycle 함수 28개 assertion PASS |
+| 이번 main 분리 작업 폴더 데이터 | 기존 source 2문서의 node 36개·loop 48개 외 변경 없음, source 2개와 독립 문서가 이전 CPU 검사 후보와 byte 일치, JSON/XML/Python·CRLF 검사 PASS |
+| 이번 main 분리 작업 폴더 재생성·rollback | 재생성 추가 교정 0. 두 번째 source에 127바이트 부분 쓰기 후 OSError를 주입해 기존 source 2개 원본 복구·새 독립 문서 미commit 확인 |
+| 이번 main 분리 작업 폴더 CPU | 현재 Client 코드로 standalone·source 2문서의 전체 재생·rewind와 속도 상속 9계약 exit 0 PASS |
+| 이번 main 분리 작업 폴더 기존 경로 | 변경 전 main과 world-root/local-root/bone-follow 각 90프레임 float-bit FNV 일치. source 이동 birth 속도 최대 오차 0.0000231195m/s |
+| Client 화면 | 에이전트 미실행, 사용자 색상·크기·움직임 최종 판정 미완료 |
+
+원 작업 폴더 근거는 `out/KoukuGoldTrails20260913/validation/validation_receipt.json`,
+`validation/legacy_preservation.json`, `product-build.log`,
+`out/KoukuSequenceEffects20260912/trail-motion-review/validation-summary.json`이다.
+그 폴더에서 검사한 authored 복사본까지 이번 PR에 포함됐다는 뜻은 아니다.
+이번 문서 통합에서는 main 기준 source의 node 36개·loop 48개 변경과 현재 C++ diff를 대조했다.
+이번 PR 데이터·재생성 검사는 `out/KoukuGoldTrails20260913/pr-data-validation.json`, 부분 쓰기
+rollback 검사는 `pr-rollback-validation.json`에 기록했다. 설치기는 쓰기 전에 대상 경로를
+rollback 목록에 넣어 실패 도중 부분 기록된 파일도 복구한다. 분리 작업 폴더의 CPU 검사는 현재
+Client 의존 코드를 새로 컴파일하고 기존 EngineSDK lib/DLL을 연결했다. 사용한 Engine ABI는 같지만
+전체 Product 빌드·GPU·화면 검증은 아니다. 실행하지 않은 overlay ABI 범위와 기존 root/local/bone
+경로의 bitwise 대조 최종 결과는 해당 CPU 검사 기록에서 별도로 구분한다.
+
+사용자는 최신 제품 빌드 뒤 아레나 → F1 → Effect Tool V1 → All Effects → KoukuSaydon →
+1관문 → 연출 → 금빛 이동 축포 → `1관문_금빛 이동 축포_무대 4경로` → Play All로 확인한다.
+기존 시퀀스 P4는 저장된 source 시각·MAP 위치를 유지한다. 수치 검사나 빌드를 실제 화면의
+표시·원본 일치 승인으로 기록하지 않는다.

@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 8,
+  "revision": 9,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -3575,6 +3575,25 @@
       "resourceKind": "V1_EFFECT",
       "elementId": "",
       "durationMs": 34461,
+      "shape": "BOX",
+      "colliderKind": "GEOMETRY",
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "radiusM": 3,
+      "halfAngleDegrees": 45
+    },
+    {
+      "resourceId": "kakulsaydon.effect.8e7eaa218533fd414f00",
+      "displayName": "1관문_금빛 이동 축포_무대 4경로",
+      "defaultAnchorKind": "MAP",
+      "kind": "EFFECT",
+      "assetId": "effect.kouku.gate1.intro.gold-trails.full.restore",
+      "resourceKind": "V1_EFFECT",
+      "elementId": "",
+      "durationMs": 9413,
       "shape": "BOX",
       "colliderKind": "GEOMETRY",
       "halfExtents": [
