@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import mmap
+import statistics
 import struct
 import subprocess
 import sys
@@ -26,6 +27,106 @@ LIBRARIES = {
 }
 ASSETS = {4219951: ('staff.flame', 'Staff ground then flame'),
           4222305: ('doll.flame', 'Odd Doll dual flame')}
+
+
+def complete_small_pentagram(document):
+    """Reuse the existing large floor star at the source drawing's measured size."""
+    sys.path.insert(0, str(ROOT / 'Tools/ModelAssetConverter'))
+    from cook_wmodel_geometry_contract import parse_geometry_wmodel
+
+    floor_prefix = 'kouku.mario.small.pentagram.floor.'
+    drawing = [e for e in document['elements'] if not e['id'].startswith(floor_prefix)]
+    assert len(drawing) == 8 and all(e['sourceRecipe']['rendererShape'] == 'mesh' for e in drawing)
+    floor_leaf_id = 'boss.kouku.disarm.star.decal_1'
+    leaf = source.read(ROOT / 'Data/Effects/V2/Authored' / (floor_leaf_id + '.effectv2.json'))
+    group = source.read(ROOT / 'Data/Effects/V2/Groups/boss.kouku.disarm.effectv2group.json')
+    children = [c for c in group['children'] if c['resource']['id'] == floor_leaf_id]
+    assert len(children) == 5 and leaf['effectType'] == 'Decal' and not leaf['params']['loop']
+
+    # UV V=.5 is the drawing ribbon's centre line, excluding its glow thickness.
+    points, ends = [], []
+    for element in drawing:
+        size = next(d for m in element['sourceRecipe']['modules'] if m['className'] == 'particlemodulesize'
+                    for d in m['distributions'] if d['propertyPath'] == 'startsize')['lookupTable'][2:5]
+        assert len(size) == 3 and max(size) - min(size) < 1e-6
+        mesh = next(r['assetId'] for r in element['resources'] if r['slotId'] == 'meshModel')
+        geometry = parse_geometry_wmodel((ROOT / 'Client/Bin/Resources' / mesh).read_bytes())
+        scale = geometry['geometryPreScale'] * size[0]
+        rotation = next(d for m in element['sourceRecipe']['modules'] if m['className'] == 'particlemodulemeshrotation'
+                        for d in m['distributions'] if d['propertyPath'] == 'startrotation')['lookupTable'][2:5]
+        assert rotation[:2] == [0, 0] and element['detail']['mesh'].get('sourceTypeDataRotationDegrees', [0, 0, 0]) == [0, 0, 0]
+        # The lookup table starts with two bounds, followed by UE roll/pitch/yaw
+        # in turns. UE yaw becomes Client Y rotation after basis conversion.
+        source_yaw = rotation[2] * math.tau
+        for part in geometry['submeshes']:
+            for vertex in part['vertices']:
+                if abs(vertex['values'][7] - .5) >= .001:
+                    continue
+                x, z = vertex['values'][0] * scale, vertex['values'][2] * scale
+                points.append((x * math.cos(source_yaw) + z * math.sin(source_yaw),
+                               -x * math.sin(source_yaw) + z * math.cos(source_yaw)))
+        life = element['detail']['particle']['lifeTimeSeconds'][1]
+        ends += [element['detail']['timing']['startDelaySeconds'] +
+                 element['sourceRecipe']['emitterDelaySeconds'] + b['timeSeconds'] + life
+                 for b in element['sourceRecipe']['bursts']]
+    radius = statistics.median(math.hypot(x, z) for x, z in points)
+    target_tip_angle = math.atan2(*max(points, key=lambda p: p[1])[::-1])
+    source_radius = statistics.mean(math.hypot(c['localTransform']['translation'][0],
+        c['localTransform']['translation'][2]) for c in children) / math.cos(math.radians(72))
+    ratio = radius / source_radius
+    yaw = 90 - math.degrees(target_tip_angle)
+    visible_end = max(ends)
+    assert 0 < ratio < 1 and 0 < visible_end < 10
+    angle = math.radians(yaw)
+
+    def key(time, value):
+        return dict(timeSeconds=time, value=[value] * 3, arriveTangent=[0, 0, 0],
+                    leaveTangent=[0, 0, 0], interpolation='linear')
+
+    floor = []
+    for child in children:
+        element = copy.deepcopy(drawing[0])
+        element['id'] = floor_prefix + child['childId']
+        element['displayName'] = '\uc791\uc740 \uc624\ub9dd\uc131 | \ubc14\ub2e5 ' + str(len(floor) + 1)
+        element['sourceNode'] = 'project-authored:small-pentagram-floor|' + group['groupId'] + '|' + child['childId']
+        element['kind'] = 'decal'
+        element['resources'] = [dict(slotId='base', assetId=leaf['slots']['base']),
+                                dict(slotId='dissolve', assetId=leaf['slots']['dissolve'])]
+        element['material'] = dict(templateId='effect.standard', sourceMaterialPath='',
+                                  renderProfile='alpha_two_sided_depth_read', sourceProfile=dict(enabled=False))
+        element['sourceRecipe'] = dict(enabled=False, rendererShape='', emitterDelaySeconds=0,
+            emitterDurationSeconds=0, emitterLoopCount=1, bursts=[], modules=[])
+        element['sourcePresentation'] = dict(enabled=False)
+        transform = element['detail']['transform']
+        x, _, z = child['localTransform']['translation']
+        transform['position'] = [(x * math.cos(angle) + z * math.sin(angle)) * ratio, 0,
+                                 (-x * math.sin(angle) + z * math.cos(angle)) * ratio]
+        transform['rotationDegrees'] = [0, child['localTransform']['rotation'][1] + yaw, 0]
+        transform['scale'] = [1, 1, 1]
+        element['detail']['timing'].update(startDelaySeconds=0, lifeTimeSeconds=visible_end,
+                                           afterImageSeconds=0, dissolveStartNormalized=1)
+        element['detail']['decal'] = dict(size=[v * ratio for v in leaf['params']['decal']['size']],
+                                         depth=leaf['params']['decal']['depth'])
+        element['detail']['mesh']['useModelMaterial'] = False
+        element['detail']['sprite']['billboard'] = False
+        # The V1 alpha curve keeps this one decal alive through the complete cast;
+        # its fade-in uses the source floor's reveal fraction and its fade-out the
+        # drawing's final flash lifetime. The source V2 group remains untouched.
+        reveal_end = visible_end * leaf['params']['dissolveInEnd']
+        flash_life = min(e['detail']['particle']['lifeTimeSeconds'][1] for e in drawing)
+        element['sourceTransformTrack'] = dict(sourceOccurrenceId=element['sourceNode'],
+            sourceTimeOriginSeconds=0, previewOriginUE3Cm=[0, 0, 0], nodes=[dict(
+                sourceObjectPath='project-authored:small-pentagram-floor', frame='RELATIVE_TO_INITIAL',
+                initialPositionUE3Cm=[0, 0, 0], initialEulerDegrees=[0, 0, 0], scaleUE3=[1, 1, 1],
+                positionKeys=[key(0, 0)], eulerKeys=[key(0, 0)])],
+            alphaScaleKeys=[key(0, 0), key(reveal_end, 1), key(visible_end - flash_life, 1), key(visible_end, 0)])
+        floor.append(element)
+    result = copy.deepcopy(document)
+    result['displayName'] = '\uc791\uc740 \uc624\ub9dd\uc131'
+    result['elements'] = drawing + floor
+    return result, dict(sourceFloorGroup=group['groupId'], sourceFloorLeaf=floor_leaf_id,
+        drawingRadiusM=radius, sourceFloorRadiusM=source_radius, scaleRatio=ratio,
+        yawOffsetDegrees=yaw, visibleEndSeconds=visible_end, decalCount=len(floor))
 
 
 def mario_projectile(evidence):
@@ -196,6 +297,9 @@ def project(evidence, material_patch, install):
                 attachment['runtimeAnchorSlotId'] = 'kouku.odd_doll.' + attachment['sourceAnchorSlotId']
                 attachment['socketLocalTransform']['position'] = [v * 100 for v in attachment['socketLocalTransform']['position']]
                 element['detail']['transform']['scale'] = [v * 100 for v in element['detail']['transform']['scale']]
+        elif key == 103:
+            document, floor_fit = complete_small_pentagram(document)
+            source.write(evidence / 'small_pentagram_floor_fit.json', floor_fit)
         source.write(evidence / 'candidate' / (asset + '.effect.json'), document)
         projected[key] = document
         documents.append(dict(effectAssetId=asset, path='Data/Effects/Authored/' + asset + '.effect.json',
@@ -270,8 +374,17 @@ if __name__ == '__main__':
     parser.add_argument('--project', action='store_true')
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--prepare-geometry', action='store_true')
+    parser.add_argument('--complete-small-pentagram', action='store_true')
     arguments = parser.parse_args()
-    if arguments.prepare_geometry:
+    if arguments.complete_small_pentagram:
+        destination = ROOT / 'Data/Effects/Authored/effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json'
+        before = destination.read_bytes()
+        document, fit = complete_small_pentagram(source.read(destination))
+        assert destination.read_bytes() == before, 'Preserve concurrent authored edits'
+        source.write(destination, document)
+        source.write(arguments.evidence_root / 'small_pentagram_floor_fit.json', fit)
+        print(json.dumps(fit))
+    elif arguments.prepare_geometry:
         prepare_geometry(arguments.evidence_root)
     elif arguments.project or arguments.install:
         project(arguments.evidence_root, arguments.native_material_patch, arguments.install)

@@ -3,7 +3,11 @@
   "formatVersion": 1,
   "effects": [
     "boss.valtan.egg.black_1",
-    "boss.valtan.egg.black_2"
+    "boss.valtan.egg.black_2",
+    "kouku.gate1.full.fade.black",
+    "kouku.gate2.clear.fade.black",
+    "kouku.gate2.maze.fade.black",
+    "kouku.gate3.intro.fade.black"
   ],
   "groups": [
     "cardmaze.mark.heart",

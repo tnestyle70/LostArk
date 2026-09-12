@@ -2604,6 +2604,23 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			owner->LogicWindows.push_back(std::move(window));
 		}
+		else if (!fields.empty() && "PATTERNLOGICCANCEL" == fields[0])
+		{
+			if (fields.size() != 4u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
+			{ m_strStatus = "Boss logic cancellation row is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Boss logic cancellation encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& value) { return value.strPatternId == fields[2]; });
+			if (owner == owners->second.end())
+			{ m_strStatus = "Boss logic cancellation pattern is missing"; return false; }
+			const auto window = std::find_if(owner->LogicWindows.begin(), owner->LogicWindows.end(),
+				[&](const auto& value) { return value.strWindowId == fields[3]; });
+			if (window == owner->LogicWindows.end() || window->bCancelAtEnd)
+			{ m_strStatus = "Boss logic cancellation window is missing or duplicated"; return false; }
+			window->bCancelAtEnd = true;
+		}
 		else if (!fields.empty() && "PATTERNLOGICREARM" == fields[0])
 		{
 			if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
@@ -3046,6 +3063,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners->second.end() == owner || owner->MechanicTriggers.size() >= 64u)
 				return false;
 			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNFIXEDTIMELINE" == fields[0])
+		{
+			if (fields.size() != 3u || !IsStableId(fields[1]) || !IsStableId(fields[2]))
+			{ m_strStatus = "Boss fixed timeline row is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Boss fixed timeline encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& value) { return value.strPatternId == fields[2]; });
+			if (owner == owners->second.end() || owner->bFixedTimelineClock)
+			{ m_strStatus = "Boss fixed timeline pattern is missing or duplicated"; return false; }
+			owner->bFixedTimelineClock = true;
 		}
 		else if (!fields.empty() && "PATTERNBOSSMOTION" == fields[0])
 		{

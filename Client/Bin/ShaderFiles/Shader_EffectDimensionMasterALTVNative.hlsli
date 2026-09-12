@@ -2,8 +2,10 @@
 // Existing Product and grouped material programs never select these IDs.
 #ifndef EFFECT_DIMENSIONMASTER_ALTV_NATIVE_HLSLI
 #define EFFECT_DIMENSIONMASTER_ALTV_NATIVE_HLSLI
+#ifndef ALTV_NATIVE_CAPTURE_ONLY
 #include "Shader_EffectSliceSceneDepth.hlsli"
 #include "Shader_EffectCubeSampleScene.hlsli"
+#endif
 
 float4 g_ALTVSourceMaterialParameters[32];
 float g_ALTVSourceMaterialTime = 0.f;
@@ -101,13 +103,13 @@ float4 ALTVNativeSample6(float2 uv, float lod, bool explicitLod)
     return explicitLod ? g_SourceTexture6.SampleLevel(LinearSampler, uv, lod) : g_SourceTexture6.SampleBias(LinearSampler, uv, lod);
 }
 
-#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 64
+#if !defined(ALTV_NATIVE_CAPTURE_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 64)
 #include "Shader_EffectDimensionMasterALTVNativeGroup064.hlsli"
 #endif
-#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 128
+#if defined(ALTV_NATIVE_CAPTURE_ONLY) || !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 128
 #include "Shader_EffectDimensionMasterALTVNativeGroup128.hlsli"
 #endif
-#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 192
+#if !defined(ALTV_NATIVE_CAPTURE_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 192)
 #include "Shader_EffectDimensionMasterALTVNativeGroup192.hlsli"
 #endif
 
@@ -359,6 +361,7 @@ float4 ALTVNativeSample6(float2 uv, float lod, bool explicitLod)
 // Original capture RT0, with explicit project capture-view and masked-alpha adapters.
 
 
+#ifndef ALTV_NATIVE_CAPTURE_ONLY
 EFFECT_PS_OUT Shade_EffectDimensionMasterALTVNative(uint profile, ALTV_NATIVE_INPUT input)
 {
     EFFECT_PS_OUT output=(EFFECT_PS_OUT)0;
@@ -745,4 +748,5 @@ EFFECT_PS_OUT Shade_EffectDimensionMasterALTVNative(uint profile, ALTV_NATIVE_IN
     if(g_ColorClip>0.f) clip(output.SceneColor.a-g_ColorClip);
     return output;
 }
+#endif // ALTV_NATIVE_CAPTURE_ONLY
 #endif

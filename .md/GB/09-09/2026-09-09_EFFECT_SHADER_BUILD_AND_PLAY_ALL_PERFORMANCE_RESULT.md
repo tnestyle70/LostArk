@@ -526,3 +526,122 @@ Load JSON 비용, 큰 투명 면의 pixel 중첩, 원본 burst/cap·무발생 em
 sibling provider, source 광원 초기값은 서로 다른 남은 범위다. 이번 개선으로 해당 원본 복원까지
 완료됐다고 기록하지 않는다. 사용자는 Server+Client profile의 Ctrl+F5로 시작한 뒤 Character
 Select에서 F1 Effect Tool의 같은 full 문서 전체를 Play해 화면과 FPS를 확인한다.
+
+## G09. 쿠크 대형 셰이더 분할과 빌드 재발 방지 — 2026-09-12
+
+이번 작업은 쿠크 native 프로그램 증가 뒤 생긴 FXC 병목과 빌드 도구 선택·출력 배포를 다룬다.
+소스 반영, 최종 FXC·증분 검사와 표준 Product 빌드·배포를 완료했다. 사용자가 Client/Server를
+종료한 뒤 수정 리소스와 source351의 관련 runtime 데이터를 설치·게시했고 전달 ZIP도 준비했다.
+실제 화면 재생과 남은 원본 복원 범위는 별도다.
+
+### 확인한 원인과 변경
+
+13:25 Product receipt의 전체 시간은 2,123,966ms(35분23.966초), Client 단계는
+1,843,670ms(30분43.670초)다. 이후 사용자 IDE 빌드에서도 Kouku2304 Particle FXC의
+시작 13:49:50.693부터 CSO 수정 14:16:57.975까지 27분7.282초였다. 별도 기존 측정의
+`/O1`·`/Zi` 없음 조건에서도 같은 Particle이 1,543.812초였으므로 debug 정보만의 문제가 아니다.
+
+한 Kouku HLSLI에 base853개와 distortion320개가 모였고 Particle 한 PS가617개 재질 case와
+829개 함수를 소비했다. 64 ID 구간16개와 Mesh/Particle FX32개로 나눴다. 총1,173개 함수의
+본문·carrier/MODEL guard·native ID를 유지하고 실행 family 표, dispatcher, project/filter를
+함께 갱신했다. 재생성 도구의 일반 경로와 regroup 경로는 같은 writer를 사용하며 같은 내용은
+다시 쓰지 않는다. source cache가 기존 projection distortion12개를 누락한 경우 쓰기 전에 거부한다.
+
+별도 CModel shader 중복도 줄였다. 정적 Mesh20pass의 CompileShader 표현식40개는9개,
+Animated Mesh9pass의16개는8개다. 동일 entry/profile의 프로그램을 공유하며 pass 이름·순서·
+state와 모든 함수 본문은 보존했다. 공유 표현식을 원문으로 복원하면 두 파일 모두 원문과 일치한다.
+
+runner는 명시 `-MSBuildPath`, 개발자 환경, 설치된 최신 complete C++ Visual Studio 순서로
+선택하고 compiler/SDK host를 x64로 맞춘다. 선택 이유·버전·전후 lastbuildstate를 receipt에 남기며
+선택적인 `-BuildLogDirectory`에서만 diagnostic/binlog를 기록한다. 이번 PC의 기존 runner는
+VS17, IDE는VS18이었다. 이전 state가 보존되지 않아 당시 전체 C++ 재컴파일의 단일 원인으로
+확정하지는 않는다. 이미 존재한 C++ /MP, FXC4병렬, SkipUnchanged SDK 복사를 새 개선으로 세지 않는다.
+
+### 검증과 측정 진행
+
+- 분할 함수·dispatch 동일성, World2351~2359 별도 경로, Python/프로젝트 XML, 생성기 재실행의
+  byte/mtime 보존 검사를 통과했다. 근거는 `out/KoukuShaderSplit20260912/verification.json`과
+  `source_regeneration_verification.json`이다.
+- 첫 별도 FxCompile 배치는109/110개와 신규 Kouku32개를 생성했다. 기존 정적 Mesh가 남아
+  508,994ms에서 그 작업 소유 FXC만 중단했다. 종료1이므로 전체 성공이나 최종 시간으로 쓰지 않는다.
+- 모델 pass 공유 후 같은 출력에서 실제2개 FXC가 종료0, 245,712ms였다. 전체 셰이더 빌드 시간이 아니다.
+  `out/BuildTimeOptimization20260912/FxOnly/shared-models-result.json`과 diagnostic이 근거다.
+- 다음 실행에서 OutDir의 slash 표기를 바꾸어 FXC의 `/Fo` 인자가 달라졌고110개가 다시 컴파일됐다.
+  `nochange` 이름의 중간 로그라도 이 실행은 출력 인자 변경 재빌드다. 종료0,336,270ms였다.
+- 실제 include tracking을 재검토해 Decal/Trail의 고정 GROUP2304가 새 Kouku 구간을 누락하는
+  문제를 찾았다. Mesh/Particle 분할 검사만으로 carrier 전체를 검증했다고 판정하지 않는다.
+  실제 carrier macro에 맞는 그룹 조건을 생성기와 dispatcher에 반영했다. 최종 Mesh196ID,
+  Particle617ID(World 별도), Decal27ID, Trail19ID, Screen3ID가 분할 전 본문·ID와 일치한다.
+  최종48개 FXC 증분은 종료0,122,674ms이며 생성기 재실행 byte/mtime 보존도 통과했다.
+- 같은 명령의 무변경 FxCompile은916ms, CSO110개 hash/mtime 변경0이었다. 실제 현재 시각으로
+  source Group3584의 수정 시각만 갱신한 의존성 무효화 검사에서는 Mesh/Particle3584와
+  NativeScreenPost3개만3,908ms에 컴파일됐다. source bytes와 나머지107개 CSO는 보존됐다.
+  이후 동일 명령은735ms, 재컴파일0이다. 입력/출력을 과거나 미래로 설정하거나 강제 skip하지 않았다.
+  out 검사기의 ScreenPost 파일명 오타는 결과 판정 때 교정했고 원래 측정 기록을 유지했다.
+- 기존 ProductEffectShaderWarpProbe를 현재 family90개 헤더로 컴파일해 최종 out CSO의 실제
+  FX 생성·pass/input layout·resource 경계를 검사했다. 종료0,90개 프로그램 검증3,080.8ms,
+  V1/V2/Glass 각1,352pixel 및 비정상 입력의 표시0을 확인했다. 작은 수치 fixture이며 화면 캡처나
+  사용자 visual fidelity 판정이 아니다. `out/BuildTimeOptimization20260912/ClosureProbe/result.json`.
+
+Product 실행 패키지는 entry EXE, 프로젝트가 배포하는 DLL, 최상위 CSO와 선택한 동일 모듈 PDB만
+담도록 정리했다. DataFiles의 staging/rollback/journal과 검증 EXE/DLL·중간 산출물은 제외한다.
+기존 fixture의 Debug/Release·선택 PDB·설치·금지 Resources 거부·rollback과 정책4검사가 통과했다.
+`out/RuntimeDelivery20260912/fixture.log`가 근거다.
+Data 원본의 Git 전달과 Resources의 팀 Drive 전달 계약은 그대로다.
+
+### 최종 제품 시간·배포
+
+| 측정 | 실제 시간 | 조건 |
+|---|---:|---|
+| 이전 Product Build | 2,123,966ms /35분23.966초 | 기존 receipt 20260912T042510321Z |
+| 이번 변경 반영 Product Build | 403,367ms /6분43.367초 | Engine/Shared/Server/Client, VS18 x64, receipt 20260912T061509949Z |
+| 추가 C++ 증분 | Client13,194ms | 첫 빌드 중 다른 작업에서 PresentationPlayer.cpp를 갱신해 추가 반영; no-change가 아님 |
+| 최종 무변경 Product Build | 3,367ms | receipt 20260912T061809341Z; EXE/DLL/CSO127개 hash/mtime 변경0 |
+
+변경 반영 Product 실측은 이전 기록보다 약81.0% 짧다. 기존 중간 산출물을 유지한 Build 비교이며
+전체 C++ Clean/Rebuild 시간으로 표현하지 않는다. Engine/Shared/Server의 마지막 무변경 시간은
+774/485/507ms, Client는1,200ms다. 기존 shader/C++ 인코딩·PDB 경고는 남지만 컴파일 오류는0이다.
+
+실제 배포 폴더의 정식 Test-CompiledShaderClosure도 종료0이다. active producer112개,
+Client consumer111개, family90개 및8개 resource-root 사례를 검사했다.
+`out/BuildTimeOptimization20260912/deployed-shader-closure.log`가 근거다.
+JSON34개·project XML2개·Python16개의 구문 검사와 git diff --check도 통과했다.
+
+별도 명시 KoukuSaydon owner 게시의 Product/Map/World/Balance4domain이 성공했다.
+source/Encounter/Presentation/Server bootstrap은351로 일치하고 G1/G2/G3 Flow는6/11/1행이다.
+이 게시 시간은 위 C++/shader Build 시간에 포함하지 않았다. 일반 Build에 전체 publisher를 다시
+선행조건으로 붙이지 않으며 데이터 변경 때만 명시 게시한다.
+
+`out/RuntimeDelivery20260912/LostArk-Debug-20260912-build-optimized.zip`은362파일,
+122,906,152bytes(약117.2MiB)다. archive 목록·모든 파일 hash/크기·필수 Map/Camera/Server
+revision351을 검증했다. Resources0개, source Data는 별도이며 실제 Git commit/push는 하지 않았다.
+동일 Data와 Drive Resources를 먼저 맞춰야 한다는 전달 조건은 같은 폴더 README에 기록했다.
+
+빌드 최적화와 시퀀스 WORLD/Table 재생 거부는 서로 다른 원인이다. 후자는
+`../09-12/2026-09-12_KOUKU_SOURCE_SEQUENCE_RESTORE_RESULT.md`의 admission 결과를 따른다.
+`gotchas.md`에는 group 생성·동일 프로그램 공유·toolchain/인자 tracking 및 WORLD 게시와 Table
+bounds 규칙을 기록했다. 사용자 화면의 다음 Play·FPS·최종 연출 fidelity는 아직 확인하지 않았다.
+
+
+## G10. 바탕화면 추가 리소스와 실행 도구 전달
+
+사용자가 지정한 GB_Resources2.zip은 기준본으로 보존하고, 기존 바탕화면
+GB_Resources의 FullRestore/SourceSequences를 유지한 채 Resources 상대 경로의
+31개 폴더295개 파일(65,880,470bytes)을 추가했다. 수정 모델33개와 같은 폴더의
+텍스처·기존 모델을 포함한다. Table·CardEruption·인형·반사26개·외곽불D/E/F·
+차원술사 큐브가 대상이다. Resources payload는 Git에 추가하지 않았다.
+
+Runtime 아래에는 앞서 만든15:23 Debug ZIP과 기존 Install-LostArkRuntimeDelivery.ps1
+사본, 폴더 선택용 Install-Runtime.ps1/.cmd를 넣었다. wrapper는 선택한 저장소의
+실행 중 Client/Server를 검사하고 기존 설치기를 호출하며, Client/Default와
+Server/Default를 시작 위치로 하는 바로가기를 만든다. C++/셰이더 빌드와 Client 실행은
+하지 않는다. PowerShell 구문 검사는 통과했으며 폴더 선택 UI·바로가기 실행은 수행하지 않았다.
+
+C:/Users/user/Desktop/GB_Resources.zip은353,670,118bytes다. 기존450개 ZIP entry를
+보존하고 추가301개 entry의 SHA와 중복 부재를 확인했다. 원본 ZIP 백업과 결과는
+out/RuntimeDelivery20260912/GB_Resources-before-additions.zip 및 desktop-delivery-result.json이다.
+
+이 실행 ZIP은 Product351 시점이다. 이후 다른 작업의 Composition352와 소스 변경은
+포함하지 않는다. 사용자에 따르면 다른 작업이 최종 변경과 ZIP 갱신을 이어서 담당한다.
+받는 PC에는 같은 Git/Data와 기본 Drive Resources, Debug CRT를 제공하는 VS C++
+개발 환경이 필요하며 이 경계를 동봉한 README_사용방법.md에 기록했다.

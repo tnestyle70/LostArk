@@ -718,6 +718,8 @@ namespace LostArk::Server
 		bool bRearmOnExit = false;
 		bool bRepeatAfterKnockback = false;
 		bool bEndsPatternOnSuccess = false;
+		// A scheduled Parent cut this child window short; close without a verdict.
+		bool bCancelAtEnd = false;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnSuccess;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnFail;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnTimeout;
@@ -1105,6 +1107,7 @@ namespace LostArk::Server
 		patterns never carry them. */
 		std::vector<BOSS_PATTERN_LOGIC_WINDOW> LogicWindows;
 		bool bResetBossToSpawn = false;
+		bool bFixedTimelineClock = false;
 		std::optional<float> ResetBossYawDegrees;
 		std::optional<BOSS_PATTERN_BOSS_MOTION> BossMotion;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;

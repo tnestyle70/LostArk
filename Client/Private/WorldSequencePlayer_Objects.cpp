@@ -4,6 +4,7 @@
 #include "DeployPropObject.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "BinaryAsset/ModelDecoderRegistry.h"
 #include "DirectXTK/DDSTextureLoader.h"
 #include "RuntimeAssetRoot.h"
 #include "EffectV2_Catalog.h"
@@ -101,6 +102,7 @@ bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& doc
     {
         auto& player = *players[i];
         player.Stop_All(targets, true);
+        player.Clear_PreparedObjects();
         player.m_ObjectModels.clear();
         player.m_EffectSnapshots.clear();
         player.m_Document = std::move(staged[i]);
@@ -108,6 +110,64 @@ bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& doc
     }
     status = "World Object document admitted.";
     return true;
+}
+
+bool_t CWorldSequencePlayer::Same_ObjectModelInputs(
+    const WORLD_SEQUENCE_OBJECT_RESOURCE& left, const WORLD_SEQUENCE_OBJECT_RESOURCE& right)
+{
+    return left.modelAssetId == right.modelAssetId && left.modelPreScale == right.modelPreScale &&
+        left.animated == right.animated && left.diffuseTextureAssetId == right.diffuseTextureAssetId &&
+        left.materialSourceModelAssetId == right.materialSourceModelAssetId &&
+        left.materialProfile == right.materialProfile && left.mapMaterialBindings == right.mapMaterialBindings;
+}
+
+const CWorldSequencePlayer::OBJECT_MODEL* CWorldSequencePlayer::Find_PreparedObjectModel(
+    const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const TARGET_SET& targets) const
+{
+    const auto matches = [&](const auto& entry) {
+        const auto* prepared = m_Document.Find_ObjectResource(entry.first);
+        return prepared && Same_ObjectModelInputs(*prepared, resource) && entry.second.model &&
+            entry.second.deviceIdentity == targets.device.Get() &&
+            entry.second.contextIdentity == targets.context.Get() && entry.second.catalogIdentity == targets.pCatalog;
+    };
+    // Preserve the exact prototype identity used by an existing object clone pool.
+    const auto exact = m_ObjectModels.find(resource.objectId);
+    if (exact != m_ObjectModels.end() && matches(*exact)) return &exact->second;
+    for (const auto& entry : m_ObjectModels)
+        if (matches(entry)) return &entry.second;
+    return nullptr;
+}
+
+const CWorldSequencePlayer::OBJECT_MODEL* CWorldSequencePlayer::Find_SharedObjectModel(
+    const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const TARGET_SET& targets) const
+{
+    const auto* owner = targets.objectPreparationOwner;
+    if (!owner || owner->m_Document.Get_AreaId() != m_Document.Get_AreaId() ||
+        owner->m_Document.Get_Revision() != m_Document.Get_Revision()) return nullptr;
+    return owner->Find_PreparedObjectModel(resource, targets);
+}
+
+void CWorldSequencePlayer::Remember_SharedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
+    const OBJECT_MODEL& model, const TARGET_SET& targets) const
+{
+    auto* owner = targets.objectPreparationOwner;
+    if (!owner || owner == this || owner->m_Document.Get_AreaId() != m_Document.Get_AreaId() ||
+        owner->m_Document.Get_Revision() != m_Document.Get_Revision() || !model.model ||
+        model.deviceIdentity != targets.device.Get() || model.contextIdentity != targets.context.Get() ||
+        model.catalogIdentity != targets.pCatalog) return;
+    const auto* prepared = owner->m_Document.Find_ObjectResource(resource.objectId);
+    if (!prepared || !Same_ObjectModelInputs(*prepared, resource))
+    {
+        const auto& resources = owner->m_Document.Get_ObjectResources();
+        const auto found = std::find_if(resources.begin(), resources.end(), [&](const auto& row) {
+            return Same_ObjectModelInputs(row, resource);
+        });
+        if (found == resources.end()) return;
+        prepared = &*found;
+    }
+    // The admitted owner document owns this entry and clears it on reload. Each
+    // visible object still clones its own CModel/Bones/Animations from the prototype.
+    owner->m_ObjectModels.emplace(prepared->objectId, model);
 }
 
 bool_t CWorldSequencePlayer::Prepare_ObjectResources(
@@ -146,18 +206,28 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
         if (!targets.device || !targets.context)
         { m_Status = "World Object render device is unavailable."; return false; }
         auto model = m_ObjectModels.find(resource->objectId);
+        if (model != m_ObjectModels.end() &&
+            (model->second.deviceIdentity != targets.device.Get() ||
+                model->second.contextIdentity != targets.context.Get() || model->second.catalogIdentity != targets.pCatalog))
+        { m_Status = "World Object prepared model belongs to different render targets; reload its owner: " + resource->objectId; return false; }
+        if (model == m_ObjectModels.end())
+        {
+            const auto* prepared = Find_PreparedObjectModel(*resource, targets);
+            if (!prepared) prepared = Find_SharedObjectModel(*resource, targets);
+            if (prepared) model = m_ObjectModels.emplace(resource->objectId, *prepared).first;
+        }
         if (model == m_ObjectModels.end())
         {
             OBJECT_MODEL staged;
+            staged.deviceIdentity = targets.device.Get();
+            staged.contextIdentity = targets.context.Get();
+            staged.catalogIdentity = targets.pCatalog;
             const auto path = CRuntimeAssetRoot::Resolve(resource->modelAssetId);
             if (path.empty())
             { m_Status = "World Object model path is invalid: " + resource->modelAssetId; return false; }
             MODEL_ASSET_LOAD_DESC load;
-            const auto& materialSource = resource->materialSourceModelAssetId.empty() ? resource->modelAssetId : resource->materialSourceModelAssetId;
-            if (!CActorCatalog::Build_ModelLoadDescription(materialSource, load, m_Status)) return false;
-            if (!resource->materialSourceModelAssetId.empty() && load.materialOverrides.empty())
-            { m_Status = "World Object original actor materials are unavailable: " + materialSource; return false; }
-            load.meshPath = path;
+            if (!CActorCatalog::Build_DerivedModelLoadDescription(resource->modelAssetId,
+                resource->materialSourceModelAssetId, load, m_Status)) return false;
             for (const auto& binding : resource->mapMaterialBindings)
             {
                 const auto* asset = targets.pCatalog->Find(binding.sourceAssetId);
@@ -193,7 +263,17 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                 resource->animated ? MODEL::ANIM : MODEL::NONANIM, load,
                 XMMatrixScaling(resource->modelPreScale, resource->modelPreScale, resource->modelPreScale));
             if (!staged.model || !staged.model->Get_NumMeshes())
-            { m_Status = "World Object model admission failed: " + resource->modelAssetId; return false; }
+            {
+                m_Status = "World Object model admission failed: " + resource->modelAssetId;
+                // This Create overload decodes the nonempty load.meshPath on this thread.
+                const auto report = CModelDecoderRegistry::Get().Get_LastReport();
+                if (report.meshPath == load.meshPath)
+                {
+                    if (!report.succeeded && !report.error.empty()) m_Status += " / " + report.error;
+                    else if (report.succeeded) m_Status += " / binary decoded; model setup failed";
+                }
+                return false;
+            }
             if (!resource->diffuseTextureAssetId.empty())
             {
                 const auto texture = CRuntimeAssetRoot::Resolve(resource->diffuseTextureAssetId);
@@ -219,6 +299,7 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                     if (animation.clipName == model->second.model->Get_AnimationName(i)) found = true;
                 if (!found) { m_Status = "World Object clip is absent: " + animation.clipName; return false; }
             }
+        Remember_SharedObjectModel(*resource, model->second, targets);
     }
     return true;
 }
@@ -244,6 +325,85 @@ bool_t CWorldSequencePlayer::Prepare_InstanceResources(const std::string& instan
     return Prepare_ObjectMotionChain(*instance, targets);
 }
 
+bool_t CWorldSequencePlayer::Prewarm_ObjectInstances(const std::string& instanceId,
+    const uint32_t copies, const TARGET_SET& targets)
+{
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (!instance || !sequence || !instance->enabled || instance->anchorKind != "WORLD" ||
+        instance->bindings.size() != 1u || instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+        sequence->objectMotion.EmissionCount() != 1u || copies == 0u || copies > 128u ||
+        (targets.objectPreparationOwner && targets.objectPreparationOwner != this))
+    { m_Status = "World Object prewarm requires its owner, an enabled single WORLD object, and 1..128 copies: " + instanceId; return false; }
+    if (!Prepare_InstanceResources(instanceId, targets)) return false;
+    const auto& objectId = instance->bindings.front().targetId;
+    const auto model = m_ObjectModels.find(objectId);
+    if (model == m_ObjectModels.end())
+    { m_Status = "World Object prewarm model is unavailable: " + objectId; return false; }
+    const auto found = m_PreparedObjectPools.find(objectId);
+    auto pool = found == m_PreparedObjectPools.end() ? std::make_shared<PREPARED_OBJECT_POOL>() : found->second;
+    if (found != m_PreparedObjectPools.end() && (!pool->acceptsReturns || pool->levelIndex != targets.levelIndex))
+    { m_Status = "World Object prewarm belongs to another level; reload its owner: " + objectId; return false; }
+    if (pool->capacity >= copies)
+    { m_Status = "World Object clones already prepared: " + objectId + " / " + std::to_string(pool->capacity); return true; }
+    size_t total = copies - pool->capacity;
+    for (const auto& [id, prepared] : m_PreparedObjectPools) total += prepared->capacity;
+    if (total > 1024u) { m_Status = "World Object prepared clone budget reached (1024)."; return false; }
+    pool->idle.reserve(copies);
+    std::vector<shared_ptr<CWorldSequenceObject>> staged;
+    const auto rollback = [&]() {
+        for (auto& object : staged)
+        {
+            object->Hide();
+            CGameInstance::Get().Remove_GameObject_from_Layer(targets.levelIndex, CWorldSequenceObject::LAYER_TAG, object);
+        }
+    };
+    for (uint32_t index = pool->capacity; index < copies; ++index)
+    {
+        CWorldSequenceObject::DESC desc;
+        desc.levelIndex = targets.levelIndex;
+        desc.modelPrototype = model->second.model;
+        desc.diffuseTexture = model->second.diffuse;
+        shared_ptr<CGameObject> created;
+        const HRESULT result = CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
+            CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex, CWorldSequenceObject::LAYER_TAG, &desc, &created);
+        auto object = dynamic_pointer_cast<CWorldSequenceObject>(created);
+        if (FAILED(result) || !object)
+        {
+            if (created) CGameInstance::Get().Remove_GameObject_from_Layer(targets.levelIndex, CWorldSequenceObject::LAYER_TAG, created);
+            rollback();
+            m_Status = "World Object prewarm clone/shader creation failed: " + objectId +
+                " / copy " + std::to_string(index + 1u) + " / HRESULT " + std::to_string(static_cast<int32_t>(result));
+            return false;
+        }
+        object->Hide();
+        staged.push_back(std::move(object));
+    }
+    pool->idle.insert(pool->idle.end(), staged.begin(), staged.end());
+    pool->levelIndex = targets.levelIndex;
+    pool->capacity = copies;
+    m_PreparedObjectPools.insert_or_assign(objectId, std::move(pool));
+    m_Status = "World Object hidden clones prepared: " + objectId + " / " + std::to_string(copies);
+    return true;
+}
+
+void CWorldSequencePlayer::Clear_PreparedObjects()
+{
+    for (auto& [id, pool] : m_PreparedObjectPools)
+    {
+        // Borrowed clones keep this token alive. Once the owner resets, they
+        // remove themselves on release instead of returning to an obsolete pool.
+        pool->acceptsReturns = false;
+        for (auto& object : pool->idle)
+        {
+            object->Hide();
+            CGameInstance::Get().Remove_GameObject_from_Layer(pool->levelIndex, CWorldSequenceObject::LAYER_TAG, object);
+        }
+        pool->idle.clear();
+    }
+    m_PreparedObjectPools.clear();
+}
+
 void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
 {
     for (const auto& effect : active.effects) CEffectV2Runtime::Stop_Group(effect.handle);
@@ -253,6 +413,18 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
         if (entry.object)
         {
             entry.object->Hide();
+            auto& pool = entry.preparationPool;
+            if (pool && pool->acceptsReturns && pool->levelIndex == entry.levelIndex && pool->idle.size() < pool->capacity)
+            {
+                if (entry.object->Reset_ForReuse())
+                {
+                    pool->idle.push_back(std::move(entry.object));
+                    continue;
+                }
+                --pool->capacity;
+                m_Status = "World Object prepared clone could not return to its pool: " +
+                    (entry.object->Get_RenderStatus().empty() ? entry.slotId : entry.object->Get_RenderStatus());
+            }
             CGameInstance::Get().Remove_GameObject_from_Layer(entry.levelIndex,
                 CWorldSequenceObject::LAYER_TAG, entry.object);
         }
@@ -477,17 +649,41 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                     size_t total = 0;
                     for (const auto& value : m_Active) total += value.objects.size();
                     if (total >= 1024u) { m_Status = "World Object instance budget reached (1024)."; return false; }
-                    CWorldSequenceObject::DESC desc;
-                    desc.levelIndex = targets.levelIndex;
-                    desc.modelPrototype = model->second.model;
-                    desc.diffuseTexture = model->second.diffuse;
-                    shared_ptr<CGameObject> staged;
-                    if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
-                        CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex,
-                        CWorldSequenceObject::LAYER_TAG, &desc, &staged)))
-                    { m_Status = "World Object clone/shader creation failed: " + resource->objectId; return false; }
+                    shared_ptr<CWorldSequenceObject> object;
+                    std::shared_ptr<PREPARED_OBJECT_POOL> pool;
+                    const auto* prepared = Find_SharedObjectModel(*resource, targets);
+                    if (prepared && prepared->model == model->second.model)
+                    {
+                        const auto available = targets.objectPreparationOwner->m_PreparedObjectPools.find(resource->objectId);
+                        if (available != targets.objectPreparationOwner->m_PreparedObjectPools.end() &&
+                            available->second->acceptsReturns && available->second->levelIndex == targets.levelIndex &&
+                            !available->second->idle.empty())
+                        {
+                            pool = available->second;
+                            object = std::move(pool->idle.back());
+                            pool->idle.pop_back();
+                        }
+                    }
+                    if (!object)
+                    {
+                        CWorldSequenceObject::DESC desc;
+                        desc.levelIndex = targets.levelIndex;
+                        desc.modelPrototype = model->second.model;
+                        desc.diffuseTexture = model->second.diffuse;
+                        shared_ptr<CGameObject> staged;
+                        if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
+                            CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex,
+                            CWorldSequenceObject::LAYER_TAG, &desc, &staged)))
+                        { m_Status = "World Object clone/shader creation failed: " + resource->objectId; return false; }
+                        object = dynamic_pointer_cast<CWorldSequenceObject>(staged);
+                        if (!object)
+                        {
+                            CGameInstance::Get().Remove_GameObject_from_Layer(targets.levelIndex, CWorldSequenceObject::LAYER_TAG, staged);
+                            m_Status = "World Object clone type is invalid: " + resource->objectId; return false;
+                        }
+                    }
                     active.objects.push_back({binding.slotId, anchor.entityId, emitter, targets.levelIndex,
-                        dynamic_pointer_cast<CWorldSequenceObject>(staged)});
+                        std::move(object), std::move(pool)});
                     found = active.objects.end() - 1;
                 }
                 const auto key = track ? Sample_Track(sequence, *track, ageMs) : WORLD_SEQUENCE_TRANSFORM_KEY{};

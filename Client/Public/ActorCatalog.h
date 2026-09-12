@@ -227,6 +227,12 @@ public:
 	static bool_t Build_ModelLoadDescription(std::string_view modelAssetId,
 		Engine::MODEL_ASSET_LOAD_DESC& outDesc, std::string& outStatus,
 		std::string_view characterAssetId = {});
+	// Explicit material owner for a derived static/skinned model. Empty source
+	// keeps exact-model lookup; a source requires existing, matching native slots.
+	// No material-name search or shader-family substitution. Failure preserves outDesc.
+	static bool_t Build_DerivedModelLoadDescription(std::string_view modelAssetId,
+		std::string_view materialSourceModelAssetId,
+		Engine::MODEL_ASSET_LOAD_DESC& outDesc, std::string& outStatus);
 	static const CHARACTER_ACTOR_ENTRY* Find_Character(
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);

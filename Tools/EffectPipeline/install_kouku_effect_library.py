@@ -16,7 +16,7 @@ NAMES = {
     'doll.flame.full.restore': ('마리오', '기괴한 인형 양쪽 화염'),
     'mario.center.pentagram.full.restore': ('마리오', '중앙 오망성'),
     'mario.center.portal.full.restore': ('마리오', '중앙 진입 포탈'),
-    'mario.boss.pentagram.full.restore': ('마리오', '작은 오망성 원본 후보'),
+    'mario.boss.pentagram.full.restore': ('마리오', '작은 오망성'),
     'mario.center.full.restore': ('마리오', '중앙 오망성와 포탈'),
     'showtime.gun.create': ('쇼타임/기관총', '기관총 생성'),
     'showtime.gun.loop': ('쇼타임/기관총', '기관총 유지'),
@@ -98,6 +98,8 @@ def register(manifests, organization, output, install):
             branch, label = NAMES[suffix]
             labels = ['KoukuSaydon', '3관문', '패턴', '세이튼'] + branch.split('/')
             name = '3관문_세이튼_' + branch.split('/')[0] + '_' + label
+            if suffix == 'mario.boss.pentagram.full.restore':
+                name = label
         else:
             labels = row.get('categoryPath', [])
             name = row['displayName']

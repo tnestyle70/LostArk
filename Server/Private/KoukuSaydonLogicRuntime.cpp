@@ -100,6 +100,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 	ledger.strPatternId = pattern.strPatternId;
 	ledger.iPatternSequence = boss.iPatternSequence;
 	ledger.iPatternStartTick = startTick;
+	std::map<std::string, std::pair<std::uint32_t, std::uint32_t>> scheduledDance;
 	for (std::size_t index = 0u; index < pattern.LogicWindows.size(); ++index)
 	{
 		const BOSS_PATTERN_LOGIC_WINDOW& window = pattern.LogicWindows[index];
@@ -122,11 +123,31 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 		if (BOSS_PATTERN_LOGIC_KIND::POSE_INPUT == window.eKind)
 		{
 			ledger.bDanceActive = true;
-			ledger.eHudMode = LostArk::Shared::KOUKU_HUD_MODE::DANCE;
+			const auto parentScope = window.strWindowId.find(".pattern.");
+			const auto lane = window.strWindowId.rfind(".logic.");
+			if (parentScope != std::string::npos && lane != std::string::npos && lane > parentScope)
+			{
+				const auto scope = window.strWindowId.substr(0u, lane);
+				const auto end = window.iStartMs + window.iDurationMs;
+				const auto found = scheduledDance.find(scope);
+				if (found == scheduledDance.end()) scheduledDance.emplace(scope, std::make_pair(window.iStartMs, end));
+				else
+				{
+					found->second.first = (std::min)(found->second.first, window.iStartMs);
+					found->second.second = (std::max)(found->second.second, end);
+				}
+			}
+			else ledger.eHudMode = LostArk::Shared::KOUKU_HUD_MODE::DANCE;
 		}
 		ledger.Windows.push_back(std::move(state));
 		if (window.eKind == BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT)
 			ledger.ContactWindowOrder.push_back(static_cast<std::uint32_t>(index));
+	}
+	for (const auto& [scope, interval] : scheduledDance)
+	{
+		(void)scope;
+		ledger.ScheduledDanceIntervals.emplace_back(Add_Ticks(startTick, Ticks_FromMs(interval.first)),
+			Add_Ticks(startTick, Ticks_FromMs(interval.second)));
 	}
 	std::sort(ledger.ContactWindowOrder.begin(), ledger.ContactWindowOrder.end(), [&](const auto a, const auto b) {
 		const auto& first = pattern.LogicWindows[a]; const auto& second = pattern.LogicWindows[b];
@@ -865,6 +886,17 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 {
 	if (!ledger.Is_Active() || ledger.strPatternId != pattern.strPatternId)
 		return;
+	// Parent deadlines cancel a child before contact, charge, or end-tick judgement.
+	for (auto& state : ledger.Windows)
+	{
+		if (state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size()) continue;
+		const auto& window = pattern.LogicWindows[state.iWindowIndex];
+		if (window.bCancelAtEnd && Has_ReachedTick(serverTick, state.iEndTick))
+		{
+			state.bChargeStopped = true;
+			Close_Window(boss, window, state, players);
+		}
+	}
 	/* Anyone already hanging rides the same authored region that caught them.
 	The region is catalog data, so this keeps working after the window that
 	judged them closed, and the moment the World Object's track hides the hook
@@ -907,7 +939,19 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		else if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER == trigger.eKind)
 			(void)Enter_CardMaze(trigger, ledger, players, navigation, collision, outOutput.strStatus);
 		else
-			outOutput.MechanicTriggers.push_back(trigger);
+		{
+			auto scheduled = trigger;
+			if (pattern.bFixedTimelineClock)
+			{
+				const auto deadline = Add_Ticks(ledger.iPatternStartTick, Ticks_FromMs(trigger.iStartMs + trigger.iDurationMs));
+				if (Has_ReachedTick(serverTick, deadline)) continue;
+				const auto remainingTicks = deadline >= serverTick ? deadline - serverTick :
+					(std::numeric_limits<std::uint32_t>::max)() - serverTick + deadline;
+				// Clone expiry is relative to actual spawn; preserve the absolute Parent deadline.
+				scheduled.iDurationMs = static_cast<std::uint32_t>(static_cast<std::uint64_t>(remainingTicks) * 1000u / SERVER_TICK_HZ);
+			}
+			outOutput.MechanicTriggers.push_back(std::move(scheduled));
+		}
 	}
 	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.WorldSequences)
 	{
@@ -1347,8 +1391,12 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update_PlayerModes(
 	const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	const KOUKU_HUD_MODE ledgerMode = nullptr != pActiveLedger && pActiveLedger->Is_Active() ?
+	KOUKU_HUD_MODE ledgerMode = nullptr != pActiveLedger && pActiveLedger->Is_Active() ?
 		pActiveLedger->eHudMode : KOUKU_HUD_MODE::NONE;
+	if (ledgerMode == KOUKU_HUD_MODE::NONE && pActiveLedger && pActiveLedger->Is_Active() &&
+		std::any_of(pActiveLedger->ScheduledDanceIntervals.begin(), pActiveLedger->ScheduledDanceIntervals.end(),
+			[&](const auto& interval) { return Has_ReachedTick(serverTick, interval.first) && !Has_ReachedTick(serverTick, interval.second); }))
+		ledgerMode = KOUKU_HUD_MODE::DANCE;
 	for (auto& [playerId, player] : players)
 	{
 		(void)playerId;

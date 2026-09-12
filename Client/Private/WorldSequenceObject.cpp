@@ -74,6 +74,24 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
     return true;
 }
 
+bool_t CWorldSequenceObject::Reset_ForReuse()
+{
+    Hide();
+    if (!m_Model || !m_RenderStatus.empty()) return false;
+    if (m_Model->Is_Skinned())
+    {
+        m_Model->Clear_AnimationTransitionPose();
+        m_Model->Skip_Blend();
+        matrix_t rest;
+        for (uint32_t bone = 0u; m_Model->Get_BoneRestLocalMatrix(bone, rest); ++bone)
+            if (!m_Model->Set_BoneLocalMatrix(bone, rest)) return false;
+        m_Model->Refresh_BoneCombinedMatrices();
+    }
+    XMStoreFloat4x4(&m_World, XMMatrixIdentity());
+    m_SampleTimeSeconds = 0.f;
+    return true;
+}
+
 void CWorldSequenceObject::Late_Update(f32_t)
 {
     if (m_Visible) CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND,

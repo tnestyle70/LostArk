@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 8,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 336,
+  "sourceRevision": 352,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -2109,6 +2109,455 @@
       "playMs": 3000,
       "playRate": 1,
       "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.20",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.20",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.21",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.21",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.22",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.22",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.23",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.23",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.24",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.24",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.25",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.25",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.26",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.26",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.27",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.27",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.28",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.28",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.29",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.29",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.30",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.30",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.31",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.31",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.32",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.32",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.33",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.33",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.34",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.34",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.35",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.animation.35",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_34.stage.19",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_34.animation.19",
+      "clip": "rpct00_att_battle_27_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4667,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.1",
+      "clip": "rpct00_att_battle_28_05_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 933,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.2",
+      "clip": "rpct00_att_battle_28_05_loop_a",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3167,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.4",
+      "clip": "rpct00_att_battle_28_06",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 9733,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.5",
+      "clip": "rpct00_att_battle_28_07",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 9733,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.6",
+      "clip": "rpct00_att_battle_28_08",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4833,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.7",
+      "clip": "rpct00_att_battle_28_09",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2233,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.8",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.9",
+      "clip": "rpct00_att_battle_28_10_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2333,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.3",
+      "clip": "rpct00_att_battle_28_05_loop_b",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3167,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.10",
+      "clip": "rpct00_att_battle_28_10_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3333,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.11",
+      "clip": "rpct00_att_battle_28_10_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1133,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.12",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.12",
+      "clip": "rpct00_att_battle_28_11",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2400,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.13",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.13",
+      "clip": "rpct00_att_battle_28_05_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1400,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.14",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.14",
+      "clip": "rpct00_att_battle_28_08",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4833,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.1",
+      "clip": "rpct00_walk_normal_1",
+      "startOffsetMs": 10277,
+      "sourceStartMs": 0,
+      "playMs": 4997,
+      "playRate": 1.0,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.2",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4275,
+      "playRate": 0.7,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.3",
+      "clip": "rpct00_idle_phase1_start_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2447,
+      "playRate": 0.8,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.4",
+      "clip": "rpct00_att_battle_25_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3161,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.5",
+      "clip": "rpct00_att_battle_13_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2093,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.6",
+      "clip": "rpct00_att_battle_13_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2697,
+      "playRate": 1.0,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.7",
+      "clip": "rpct00_evt2_blk6",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 534,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.8",
+      "clip": "rpct00_evt2_rpct_talk_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 800,
+      "playMs": 1157,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.9",
+      "clip": "rpct00_walk_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2006,
+      "playRate": 1.0,
+      "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.10",
+      "clip": "rpct00_idle_phase1_start_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 899,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.11",
+      "clip": "rpct00_att_battle_13_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4058,
+      "playRate": 0.9,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.12",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.12",
+      "clip": "rpct00_att_battle_13_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 877,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.13",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.13",
+      "clip": "rpct00_idle_battle_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 1000,
+      "playMs": 2010,
+      "playRate": 1.0,
+      "endPolicy": "HOLD_LAST_POSE",
+      "holdAtWindowEnd": true
     }
   ],
   "fearPresentations": [
@@ -2223,6 +2672,21 @@
       "folderId": "kakulsaydon.folder.11",
       "gateId": "GATE2",
       "displayName": "대형세이튼_불뿜기"
+    },
+    {
+      "folderId": "kakulsaydon.folder.12",
+      "gateId": "GATE3",
+      "displayName": "세이튼_쇼타임"
+    },
+    {
+      "folderId": "kakulsaydon.folder.13",
+      "gateId": "GATE3",
+      "displayName": "세이튼_마리오_1페이즈"
+    },
+    {
+      "folderId": "kakulsaydon.folder.14",
+      "gateId": "GATE3",
+      "displayName": "세이튼_마리오_2페이즈"
     }
   ],
   "bundles": [
@@ -13362,6 +13826,38 @@
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 6000,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_33",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 26672,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_34",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 4667,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_35",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 50231,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_36",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 41488,
       "presentationOccurrences": []
     }
   ]

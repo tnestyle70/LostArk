@@ -44,7 +44,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $repositoryPath 'Framework.sln') -Pa
     throw "RepositoryRoot is not a LostArk physical folder: $repositoryPath"
 }
 
-$temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ("lostark-runtime-install-" + [guid]::NewGuid().ToString('N'))
+$temporaryParent = (Resolve-Path -LiteralPath ([IO.Path]::GetTempPath())).Path.TrimEnd('\')
+$temporaryRoot = [IO.Path]::GetFullPath((Join-Path $temporaryParent ("lostark-runtime-install-" + [guid]::NewGuid().ToString('N'))))
 $extractRoot = Join-Path $temporaryRoot 'extract'
 $backupRoot = Join-Path $temporaryRoot 'backup'
 $applied = [Collections.Generic.List[object]]::new()
@@ -135,6 +136,12 @@ catch {
 }
 finally {
     if (Test-Path -LiteralPath $temporaryRoot) {
-        Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
+        $cleanupPath = (Resolve-Path -LiteralPath $temporaryRoot).Path
+        if (-not $cleanupPath.Equals($temporaryRoot, [StringComparison]::OrdinalIgnoreCase) -or
+            -not ([IO.Path]::GetDirectoryName($cleanupPath)).Equals($temporaryParent, [StringComparison]::OrdinalIgnoreCase) -or
+            ((Get-Item -LiteralPath $cleanupPath).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Refusing to remove an unexpected runtime installation directory: $cleanupPath"
+        }
+        Remove-Item -LiteralPath $cleanupPath -Recurse -Force
     }
 }

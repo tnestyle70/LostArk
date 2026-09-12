@@ -813,6 +813,17 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     return float4(color, 1.f);
 }
 
+// BEGIN SHARED MODEL PASS PROGRAMS
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader BinaryMeshVS = compile vs_5_0 VS_MAIN();
+PixelShader BinaryMeshPS = compile ps_5_0 PS_MAIN();
+PixelShader BinaryMeshAlphaPS = compile ps_5_0 PS_MAIN_ALPHA();
+VertexShader BinaryMeshSkyVS = compile vs_5_0 VS_MAIN_SKY();
+PixelShader BinaryMeshSkyPS = compile ps_5_0 PS_MAIN_SKY();
+PixelShader BinaryMeshShadowPS = compile ps_5_0 PS_MAIN_SHADOW();
+PixelShader BinaryMeshWaterPS = compile ps_5_0 PS_MAIN_WATER();
+// END SHARED MODEL PASS PROGRAMS
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -820,162 +831,162 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = BinaryMeshPS;
     }
     pass MirroredPass
     {
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = BinaryMeshPS;
     }
     pass TwoSidedOpaquePass
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = BinaryMeshPS;
     }
     pass AlphaBackPass
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = BinaryMeshAlphaPS;
     }
     pass AlphaFrontPass
     {
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = BinaryMeshAlphaPS;
     }
     pass AlphaTwoSidedPass
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = BinaryMeshAlphaPS;
     }
     pass SkyBackPass
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN_SKY();
+        VertexShader = BinaryMeshSkyVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SKY();
+        PixelShader = BinaryMeshSkyPS;
     }
     pass SkyFrontPass
     {
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN_SKY();
+        VertexShader = BinaryMeshSkyVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SKY();
+        PixelShader = BinaryMeshSkyPS;
     }
     pass SkyTwoSidedPass
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN_SKY();
+        VertexShader = BinaryMeshSkyVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SKY();
+        PixelShader = BinaryMeshSkyPS;
     }
     pass AdditiveBackPass
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = BinaryMeshAlphaPS;
     }
     pass AdditiveFrontPass
     {
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = BinaryMeshAlphaPS;
     }
     pass AdditiveTwoSidedPass
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = BinaryMeshAlphaPS;
     }
     pass ShadowBackPass
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+        PixelShader = BinaryMeshShadowPS;
     }
     pass ShadowFrontPass
     {
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+        PixelShader = BinaryMeshShadowPS;
     }
     pass ShadowTwoSidedPass
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+        PixelShader = BinaryMeshShadowPS;
     }
     pass WaterBackPass
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+        PixelShader = BinaryMeshWaterPS;
     }
     pass WaterFrontPass
     {
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+        PixelShader = BinaryMeshWaterPS;
     }
     pass WaterTwoSidedPass
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+        PixelShader = BinaryMeshWaterPS;
     }
     pass DeferredEmissiveOverlayPass
     {
@@ -983,7 +994,7 @@ technique11 DefaultTechnique
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_DeferredEmissiveOverlay,
             float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_DEFERRED_EMISSIVE_OVERLAY();
     }
@@ -995,7 +1006,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
     }

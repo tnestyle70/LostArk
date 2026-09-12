@@ -5234,4 +5234,19 @@ inline bool Has_DimensionMasterALTVMaterialContract(const EFFECT_ELEMENT_DESC& E
     std::array<float4_t,32> Parameters{};
     return Build_DimensionMasterALTVParameters(Source,Parameters);
 }
+// The source capture material also belongs to the animated central cube.
+inline bool Has_DimensionMasterALTVModelCueMaterialContract(const EFFECT_MODEL_CUE_DESC& Cue)
+{
+    if (!Cue.Material || Cue.strModelAssetId !=
+        "Effect/DimensionMaster/Models/SK_SWP_CUB_00/sk_swp_cub_00_sk.wmodel" ||
+        Cue.Material->SourceMaterial.strRuntimeShaderProfileId != "effect.ue3.altv-178-native.v1")
+        return false;
+    EFFECT_ELEMENT_DESC MaterialCarrier;
+    MaterialCarrier.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+    MaterialCarrier.Material = *Cue.Material;
+    MaterialCarrier.SourceRecipe.bEnabled = true;
+    MaterialCarrier.SourceRecipe.strRendererShape = "mesh";
+    MaterialCarrier.ResourceBindings.push_back({ "meshModel", Cue.strModelAssetId });
+    return Has_DimensionMasterALTVMaterialContract(MaterialCarrier);
+}
 NS_END

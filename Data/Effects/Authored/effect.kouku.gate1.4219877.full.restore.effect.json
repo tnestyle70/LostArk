@@ -27844,5 +27844,20 @@
         ]
       }
     ]
+  },
+  "sourceModelPreview": {
+    "gateId": "GATE1",
+    "actorProfileId": "MN_RPCT_05",
+    "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+    "animations": [
+      {
+        "runtimeClip": "rpct00_att_battle_1_01",
+        "startOffsetMs": 0,
+        "sourceStartMs": 0,
+        "playMs": 2000,
+        "playRate": 1,
+        "endPolicy": "HOLD_LAST_POSE"
+      }
+    ]
   }
 }

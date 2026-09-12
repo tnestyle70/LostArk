@@ -792,8 +792,17 @@ Shared protocol 80의 `CARD_MAZE_PRESENTATION.flags` bit16이 표시 상태를 �
 Server/Client를 함께 다시 빌드하고 publish 뒤 Server를 재시작한다.
 Effect occurrence의 dissolve 시작·끝은 lifetime 정규화 시간이다. 같은 값은 기존 runtime의 즉시
 전환 규칙을 사용하며 1/1은 lifetime 끝까지 dissolve-out을 하지 않는다. 역전된 구간은 거부한다.
-Composition Patterns의 Model View는 표시 필터이며 묶음의 실행 대상을 바꾸지 않는다. 부모는 분류만 하고,
-묶음은 stable child pattern ID와 시작 offset을 참조한다. 묶음을 선택하면 자식별 요약 Sequencer와 공통
+Composition Patterns의 Model View는 표시 필터이며 묶음의 실행 대상을 바꾸지 않는다.
+Parent는 기존 분류 폴더를 유지하면서 optional `timelinePatternId`로 자기 실행 Pattern을 가질 수 있다.
+Parent를 선택해 `Create Parent Timeline`을 누르면 기존 Animation/Logic/Effect/Collider/World 등 행과
+새 Pattern 행을 함께 편집한다. `Append Pattern at Cursor`는 같은 관문·모델·대상 보스의 독립 Pattern을
+stable ID로 참조하고, 배치별 시작·시간창·반복을 저장한다. 원본 편집은 모든 참조에 반영된다.
+부모의 명시 duration과 공통 행은 자식의 종료와 독립이다. 시간창 끝에서는 자식의 미완료 판정을
+실패 결과 없이 취소하고 다음 구간으로 진행한다. Preview와 publisher는 이를 기존 단일 Pattern 경로로
+전개하며 Server는 Parent의 절대 시간으로 stage 경계를 계산한다. 같은 보스의 자식 애니메이션 겹침,
+Parent 중첩·순환, 자식의 전체 패턴 조기 종료·동적 follow-up·강제 BossMotion 등 의미를 보존할 수 없는
+조합은 사유와 함께 거부한다. 원본을 수정하면 참조 Parent와 관련 Bundle도 다시 게시해야 한다.
+Bundle은 여러 보스의 동시 재생을 위해 stable child pattern ID와 시작 offset을 참조한다. 묶음을 선택하면 자식별 요약 Sequencer와 공통
 Camera/Scene Profile 행을, 자식을 선택하면 기존 상세 Sequencer를 편집한다. Create Parent → Create Bundle →
 Create Pattern 또는 Link Existing Pattern으로 연결하며 원본 패턴·클립을 복제하지 않는다.
 모든 Composition Save는 수정 내용을 저장하고, Patterns 목록의 `Publish All Patterns`가 전체
@@ -822,8 +831,9 @@ F1은 관문별 `Saved Pattern Flow`와 `All Patterns`를 구분한다. Boss Too
 Pattern 또는 Bundle stable ID를 추가하고 순서·대기 시간을 편집하여 `Save Pattern Flow` →
 `Publish Saved Patterns`로 게시한다. 정본은 기존 KoukuSaydon Composition의 optional `patternFlows`다.
 Action Workbench는 모델 선택과 무관하게 전체 Gate→Parent→Bundle→Pattern 트리를 표시한다.
-`Complete Play - Sequences + Pattern Flow`는 관문의 Sequence를 순서대로 끝낸 뒤 플레이어 follow camera로
-복귀하여 저장 Flow를 시작한다. 정상 완료 이벤트만 연결되며 Stop/실패/관문·world·게시 revision 변경은
+`Complete Play - Sequences + Pattern Flow`는 관문의 `enterCombatOnFinish=true` 입장 Sequence 하나를
+0ms부터 재생하고 Server Gate 승인 뒤 플레이어 follow camera로 복귀하여 저장 Flow를 시작한다.
+정상 완료 이벤트만 연결되며 Stop/실패/관문·world·게시 revision 변경은
 전투 시작을 막는다. `Play Saved Pattern Flow`는 전투 순서만 실행하고 `Composition Play All`은 선택 관문의
 게시 목록에서 Bundle을 하나의 동시 실행 항목으로 유지하며 해당 child의 중복 단독 재생을 제외한다.
 Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 typed Pattern/Bundle 요청을 보낸다.
@@ -883,10 +893,11 @@ F1 Action Workbench 바로 아래 `Open Sequencer Benchmark`는 동일한 Timeli
 `boss.composition.kakulsaydon.sequencer`이며 기존 Action 문서와 교차 Save/Reload를 거부한다.
 같은 Preview backend의 재생 소유자를 입력 focus와 분리하여 다른 창을 열거나 닫아도 활성 미리보기를
 덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않으며 파티 생성은 후속 Summon/Logic 작업이다.
-Sequence의 `Complete Play`는 선택 Gate의 첫 연출 0ms부터 문서 순서대로 한 번씩 재생한다.
-Pause/Resume은 현재 연출 시간을 유지하고 Stop/Reset·재생 실패·다른 Preview 소유자 전환은 연속 재생을 취소한다.
-현재 1관문은 팝업북 다음 피날레이며, 팝업북의 맵 펼침이 끝나면 고정 전투 아레나 배치를 표시한다.
-Sequence의 Complete Play도 같은 저작 Preview이며 Action Workbench의 Server Complete Play와 실행 경계가 다르다.
+Sequence의 `Complete Play`는 선택 Gate에서 `enterCombatOnFinish=true`인 입장 하나를 0ms부터 재생한다.
+Pause/Resume은 현재 연출 시간을 유지하고 Stop/Reset·재생 실패·다른 Preview 소유자 전환은 전투 연결을 취소한다.
+`1관문_통합_시퀀스`는 흡입·팝업북·피날레를 포함하며, 종료 뒤 기존 F1 Gate command로 열린 전투 아레나에 진입한다.
+입장 Pattern의 Play Sequence도 같은 전투 연결을 사용한다. legacy popup/finale·클리어·카드미로의 개별 Preview는
+저작 확인으로 유지하며 자동으로 보스를 생성하거나 Pattern Flow를 시작하지 않는다.
 
 Kouku `Publish All Patterns`는 Product, 쿠크 범위 World, Gameplay balance를 같은 게시 작업으로 처리한다.
 F1 Boss Tuning의 Save가 기록한 `Gameplay.world.json` 위치·방향도 Server worldbootstrap에 포함한다.
@@ -948,6 +959,11 @@ Grip/animation 재로드 실패는 이전 캐시를 보존하며 owner·bone·gr
 F1 `Effect Tool V1`과 `Effect Tool V2`는 별도 버튼·창·입력 focus·visibility로 연다. V1은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를, V2는 자기 CPU draft·Resources·Sequencer와 기존 target attachment 도구를 소유한다. 한 도구를 닫아도 다른 도구의 창과 draft를 닫지 않으며 각 Sequencer의 창 ID와 기본 저장 ID를 구분한다. 이전 Effect Composition Workbench enum은 V1 호환 진입점이다. 각 Resource 트리는 자기 V1 또는 V2 root만 표시하고 typed resource open은 해당 도구로 전달한다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
 
 Current Effect의 Play All/Family/Element는 미리보기이며 Append만 별도 Effect Sequencer에 occurrence를 추가한다. 캐릭터 skillbinding·Valtan Product·Kouku Pattern/Bundle의 실제 clip sequence는 읽기 전용 모델 참고이며 저장 단위는 `Data/Effects/Sequences/<id>.effectsequence.json`의 stable source reference와 occurrence 시간이다. 해당 Save는 boss Composition이나 skillbinding을 변경하지 않는다. Native V2 leaf Open/Save는 원래 leaf ID/파일을 유지하며 group으로 확장하는 것은 명시적 생성 명령이다. Effect CPU draft 저장에 GPU preview나 타 보스 전체 admission을 선행조건으로 붙이지 않는다.
+
+Kouku의 독립 V1 Effect/Element Resource에 `sourceModelPreview`가 있으면 그 원본 actor·clip·Source In을
+기존 CNpc/CModel Preview에서 함께 준비한다. Effect의 마지막 입자까지 마지막 pose를 유지하며
+빈 Resource용 Stage에서 본 애니메이션을 조회하지 않는다. 이 독립 Preview 정책은 제품 Pattern의
+저장된 animation/history 계약을 변경하지 않는다.
 
 World Object category는 Area 저작 `objectResources`의 model/base texture/pre-scale과 자식 Motion을 읽어 현재 Effect draft에 적용한다. 원본 Object/Motion은 수정하지 않는다. 공의 `objectMotion` velocity/acceleration/count/interval/lifetime은 기존 Mesh Particle로 옮기며 실제 충돌 물리를 추가하지 않는다. 모델 참고는 기존 Kouku preview actor/CModel을 재사용하고 root motion·WORLD gameplay는 실행하지 않는다. 실제 Product 이동 입자는 Server presentation root의 birth 시각 표본을 사용하며 과거 표본이 없으면 해당 Effect 오류를 표시한다.
 
@@ -1353,3 +1369,14 @@ MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인
 카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
 
 문양 플레이어·병사 발밑은 `cardmaze.mark.heart/spade/club/diamond`, 개인 출구는 `cardmaze.exit.heart/spade/club/diamond` Effect GROUP을 사용한다. 두 그룹은 같은 `cardmaze.symbol.*` Decal leaf와 기존 `Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47{,_1,_2,_3}.dds`를 사용한다(하트/스페이드/클럽/다이아몬드 순서). 기존 춤 연출은 수정하지 않는다. 플레이어/병사 표시는 해당 객체의 이동 위치만 따라가고 출구는 서버 출구 좌표에 고정한다. Client는 이동·처치 판정 없이 snapshot과 복제 객체로 표시·정리만 한다. 다인 플레이와 Release의 망원경 담당은 문양과 목표를 받지 않는다. Debug Server에서 방에 정확히 한 명이면 최초 상자 타격자가 HUNTER 문양과 망원경 owner identity를 함께 받는다. 이 1인 테스트만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 세토 접촉·처치·출구는 기존 규칙을 사용한다. 다른 참가자가 죽어 혼자 생존한 상황은 이 예외를 켜지 않는다. Protocol 79 Client/Server를 함께 사용한다. 화면 크기·색상·실제 4인 입력·접촉·암전은 사용자 런타임 확인 대상이다.
+
+
+### 입장 Sequence와 열린 아레나 전투 연결
+
+Kouku Sequence Composition의 Pattern은 optional `enterCombatOnFinish`를 갖는다. GATE1/GATE2/GATE3별로 이 값이 true인 Pattern 정확히 하나를 Complete Play의 입장으로 선택하며, 해당 입장의 Play Sequence도 0ms부터 같은 경로를 사용한다. legacy popup/finale·클리어·카드미로는 자동 순회 대상이 아니다. 데이터와 새 소비 코드가 함께 설치돼야 하며 기존 Client에 새 metadata 문서를 먼저 배포하지 않는다.
+
+MainApp은 입장 중 gameplay 입력과 보스 HUD를 보류하고, 종료 뒤 기존 Debug Gate command를 제출한다. Level은 Server 보스 생성 및 플레이어 이동 승인이 모두 확인된 뒤에만 gate를 확정한다. 성공하면 follow camera/HUD를 복귀하고 입장 시작과 같은 revision의 Pattern Flow를 제출한다. F1의 기존 1관문·3관문은 SL05 열린 전투 아레나를 즉시 시험하는 경로를 유지한다. Client transform이나 cinematic 프록시를 서버 전투 권위로 사용하지 않는다.
+
+Object Tool의 Group Layout은 motion emission의 count·spacing·Delay를 소유한다. Box Detail의 Object/Motion 열기는 stable object ID와 instance ID를 전달하며 자동 preview·저장을 하지 않는다. WORLD Collider/전용 Logic 참조를 함께 바꾸는 저장은 source 변경을 재확인한 뒤 교체하며, 공유 또는 모호한 참조와 미저장 Composition은 이유를 표시하고 기존 문서를 보존한다.
+
+Kouku Animation occurrence의 `sourceStartMs`와 optional `sourceEndMs`는 원본 클립의 선택 구간이며, `sourceEndMs=0` 또는 생략은 원본 끝이다. `startOffsetMs`와 `playMs`는 stage 안의 재생 위치와 길이를 소유한다. `LOOP_TO_WINDOW`는 선택한 source 구간만 반복하며 stage 길이는 별도로 편집한다. Source In/Out은 원본 구간만 바꾸고, 일반 clip 앞 edge는 timeline/source 시작을 함께 자른다. 반복을 켠 뒤 edge 편집은 반복 구간을 유지하며 timeline 길이만 바꾼다. 인접 clip의 Blend In은 이전 clip의 실제 HOLD/LOOP 종료 sample과 보간한다. Preview, 제품 NPC, Server용 bone collider bake는 같은 source 시간 계약을 사용한다. Product는 기존 stage당 animation 하나와 Server action clock을 유지하며 저장 후 기존 publisher를 거쳐 적용한다.

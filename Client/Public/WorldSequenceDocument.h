@@ -82,7 +82,7 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string diffuseTextureAssetId;
 	// Immutable source material input shared by every Motion of this resource.
 	std::optional<WORLD_SEQUENCE_MATERIAL_PROFILE> materialProfile;
-    // Baked cinematic meshes retain an explicit original actor material owner.
+    // Derived static/skinned objects retain their explicit original material owner.
     std::string materialSourceModelAssetId;
     // Reuse admitted map surface inputs, without a static placement's baked light.
     std::vector<WORLD_SEQUENCE_MAP_MATERIAL_BINDING> mapMaterialBindings;

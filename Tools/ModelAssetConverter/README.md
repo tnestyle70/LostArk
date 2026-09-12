@@ -20,7 +20,7 @@ FBX
 ### 런타임 경계
 
 - 신규 런타임의 정본은 `CModel -> CMesh / CMaterial / CBone / CAnimation`입니다.
-- `CCookedModel`과 `CBinaryAssetObject`는 레거시 검증 경로이며 새 기능에서 사용하거나 확장하지 않습니다.
+- `CCookedModel`과 `CBinaryAssetObject`는 제거된 경로이며 새 기능에서 사용하거나 되살리지 않습니다.
 - `.wmodel`의 WMaterial v2는 텍스처 경로를 보존하지만 glTF의 `baseColorFactor` 같은 상수 색은 저장하지 않습니다.
 - diffuse와 emissive 경로가 모두 없는 경우 `CMaterial`이 1×1 회색 diffuse를 제공하지만, 이는 형상 확인용 안전망입니다. 최종 에셋은 실제 diffuse 경로를 가져야 합니다.
 
@@ -101,7 +101,29 @@ LostArk 캐릭터의 `hero_mi`, `hero_1_mi` 같은 재질명과 `hero_d`, `hero-
 
 주의: LostArk의 `_s`가 어떤 채널을 무엇으로 쓰는지는 원본 머티리얼 규칙에 따라 다를 수 있으므로 임의로 표준 ORM이라고 가정하지 않습니다. `_s`는 원본 specular/mask 슬롯으로 그대로 보존합니다.
 
-현재 수업 기반 deferred renderer가 화면에 실제 사용하는 것은 diffuse와 normal입니다. specular/emissive/ORM 등의 경로는 WMA2와 `CMaterial`까지 보존·로드되지만, 물리 기반 조명까지 쓰려면 G-buffer와 deferred lighting shader 확장이 추가로 필요합니다. emissive만 있는 기존 맵 소품은 호환을 위해 emissive를 diffuse 대체 텍스처로도 사용할 수 있게 했습니다.
+현재 제품은 기존 `CModel → CMaterial`에서 SourceCharacter와 map material의 native surface·lighting 경로를 사용합니다. 지원하는 원본 family에서는 specular/mask, roughness, emissive, IBL 반사와 BRDF 입력을 실제로 소비합니다. WMA2에 일반 텍스처 경로를 넣는 것과 그 native 재질 descriptor를 연결하는 것은 별도 단계입니다. 컨버터만 실행하면 원본 shader·환경 반사가 자동 복구되는 것은 아닙니다. emissive를 diffuse로 대체하는 호환 처리는 native 재질 복원 결과가 아닙니다.
+
+## 원본 재질과 환경 반사까지 적용하기
+
+전체 절차의 정본은 [렌더링·이펙트 복원 공통 절차](../../.md/GB/렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)입니다. 모델을 새로 추출하거나 정적·애니메이션 변형을 만들 때 함께 읽습니다.
+
+- 원본 mesh의 material array와 component override, MIC 상속·static switch를 확인합니다. `.props.txt`의 D/N/S 이름만으로 native family, mask 채널, roughness나 환경 반사식을 추정하지 않습니다.
+- 이미 승인된 원본 모델 재질은 `CActorCatalog::Build_ModelLoadDescription`이 실제 생성하는 `CModel`까지 전달합니다. 파생 World Object는 같은 slot의 원본 모델을 `materialSourceModelAssetId`로 지정하고, 배경 재질은 해당 Area의 `mapMaterialBindings`로 연결합니다. 정확한 field와 실패 정책은 [Area 가이드](../../.md/TEAM/AREA_DATA_LAYER_GUIDE.md)를 따릅니다.
+- native descriptor가 요구하는 IBL texture/cube, BRDF LUT, parameter와 색 공간, 추가 UV를 보존합니다. 원본에 없는 반사·금속도를 일괄 추가하지 않습니다. 맵 ambient와 배치 lightmap은 모델 재질과 별도 입력입니다.
+- 실제 사용 slot에 대한 재질 연결과 파일 존재를 검사합니다. `info`의 geometry/material section 성공만으로 환경 반사 복원을 완료 처리하지 않습니다.
+
+이미 식별한 원본 재질을 파생 World Object에 연결하는 공통 명령은 다음과 같습니다. `--object-id`를 반복하면 같은 source를 사용하는 여러 객체를 한 번에 stage합니다. 새 후보를 먼저 쓰며 `--apply`를 지정했을 때만 검증과 source 변경 비교 뒤 저작 파일을 교체합니다. runtime 파일은 기존 Area publisher가 생성합니다.
+
+```powershell
+python Tools/ModelAssetConverter/apply_world_object_material_source.py `
+  --document 'Data/Maps/Authoring/<AreaId>/<AreaId>.worldsequences.json' `
+  --object-id '<stable-object-id>' `
+  --source-model 'Character/<original-model-path>.wmodel' `
+  --output 'out/material-source-candidate.json' `
+  --apply
+```
+
+원본 catalog override, source/target의 실제 material slot과 texture가 있어야 합니다. source를 모를 때 이름이 비슷한 모델을 대신 지정하지 않습니다. `World Object Tool`에서는 `Material Source Model` → `Apply Material Source` → `Save`로 같은 목적의 검증·게시를 수행합니다.
 
 ## 자동 매칭이 불확실한 맵 메시
 
@@ -168,7 +190,7 @@ UModel glTF는 좌표가 meter입니다. 현재 맵 Loader가 기존 centimeter 
 
 section 수, skeleton 유무, animation 수, 재질 버전과 첫 재질의 텍스처 슬롯을 출력합니다. 정적 모델은 보통 `sections=2`, 애니메이션 모델은 mesh/material/skeleton과 animation 수만큼 section이 나옵니다.
 
-맵 에셋은 header 검사만으로 배포하지 않습니다. `info`에서 모든 사용 머티리얼의 base/diffuse 경로가 비어 있지 않은지, 해당 파일이 runtime root에 존재하는지, UModel glTF 입력이라면 bounds가 원본의 약 100배인지도 검사합니다.
+맵 에셋은 header 검사만으로 배포하지 않습니다. 사용 재질이 요구하는 실제 texture와 native 입력이 runtime root에 존재하는지, material slot과 descriptor가 일치하는지, 추가 UV가 보존됐는지 검사합니다. UModel glTF 입력의 bounds는 약 100배로 cook하고 runtime preScale과 합쳐 월드 미터가 되는지 확인합니다. 의도적으로 diffuse를 쓰지 않는 원본 재질에 임의 diffuse를 넣어 검사를 우회하지 않습니다.
 
 ## 게임에 Prototype 등록
 
@@ -184,6 +206,8 @@ CModel::Create(
 ```
 
 정적 맵 모델은 `MODEL::NONANIM`으로 등록합니다.
+
+위 코드는 모델 로드의 최소 예시입니다. 제품 actor·World Object는 해당 catalog가 만든 material override를 포함한 기존 load descriptor를 사용해야 합니다. `.wmodel` 경로만 새로 등록해 원본 native 재질 연결을 생략하지 않습니다.
 
 ## 이미지 포맷
 
@@ -202,4 +226,4 @@ Client/Bin/Resources/
 - 대용량 `Client/Bin/Resources` 결과물은 asset pack으로 배포하며, 최상위에는 `Fonts`, `Character`, `Deploy`, `Effect`, `Map`, `Sound`, `UI`만 둡니다.
 - 팀원은 각자 같은 컨버터와 같은 WMA2/WMODEL 포맷을 사용합니다.
 - `.wmodel` 이름은 달라도 상관없습니다. 내부 magic/section 포맷이 같으면 모두 같은 `CModel` 파이프라인으로 렌더됩니다.
-- zip을 만들기 전 `info`, Engine/Client 빌드, AssetTest 실행을 확인합니다.
+- 해당 domain publisher, 변경한 생성·로더의 최소 컴파일과 실제 재질 입력 검사를 수행합니다. Client/UI 화면 확인은 사용자가 직접 합니다. 관련 없는 전체 하네스를 리소스 적용의 선행조건으로 붙이지 않습니다.

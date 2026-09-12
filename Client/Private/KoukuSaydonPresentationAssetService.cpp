@@ -1,4 +1,5 @@
 #include "KoukuSaydonPresentationAssetService.h"
+#include "KoukuSaydonCompositionDocument.h"
 
 #include "ActorCatalog.h"
 #include "DataJson.h"
@@ -137,6 +138,24 @@ namespace
 		return false;
 	}
 
+    bool Try_GetClipDurationMs(const Engine::CModel& model, const std::string_view clip,
+        double& outDurationMs)
+    {
+        for (uint32_t index = 0; index < model.Get_NumAnimations(); ++index)
+        {
+            const char* name = model.Get_AnimationName(index);
+            if (!name || clip != name) continue;
+            float cursor = 0.f, duration = 0.f;
+            const float ticksPerSecond = model.Get_AnimationTickPerSecond(index);
+            if (!model.Get_AnimationProgress(index, cursor, duration) ||
+                !std::isfinite(duration) || duration <= 0.f ||
+                !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f) return false;
+            outDurationMs = double(duration) * 1000.0 / ticksPerSecond;
+            return true;
+        }
+        return false;
+    }
+
 	bool Load_PresentationBindings(
 		const Engine::CModel& model,
 		std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>& out,
@@ -217,7 +236,7 @@ namespace
             const auto hasAnimationFields = [&value]()
             {
                 const std::initializer_list<std::string_view> required = {"actionId", "occurrenceId", "clip", "startOffsetMs", "sourceStartMs", "playMs", "playRate", "endPolicy"};
-                const std::initializer_list<std::string_view> optional = {"unblendedBoneContact", "animationRootVerticalScale", "blendInMs", "blendFromClip", "blendFromSourceMs", "holdAtWindowEnd"};
+                const std::initializer_list<std::string_view> optional = {"unblendedBoneContact", "animationRootVerticalScale", "blendInMs", "blendFromClip", "blendFromSourceMs", "holdAtWindowEnd", "sourceEndMs"};
                 if (!value.Is_Object()) return false;
                 for (auto name : required) if (!value.Find(name)) return false;
                 for (const auto& [key, field] : value.Get_Object())
@@ -250,16 +269,15 @@ namespace
 			const DATA_JSON_VALUE* unblended = value.Find("unblendedBoneContact");
 			const auto* verticalScale = value.Find("animationRootVerticalScale");
 			const auto* holdAtEnd = value.Find("holdAtWindowEnd");
-			std::uint32_t parsedStartOffset = 0u;
-			std::uint32_t parsedSourceStart = 0u;
+			const auto* sourceEnd = value.Find("sourceEndMs");
 			if (nullptr == action || !Is_StableToken(action->Get_String()) ||
 				nullptr == occurrence ||
 				!Is_StableToken(occurrence->Get_String()) || nullptr == clip ||
 				!Is_StableToken(clip->Get_String()) || nullptr == startOffset ||
-				!Try_U32(*startOffset, 600000u, parsedStartOffset) ||
-				0u != parsedStartOffset || nullptr == sourceStart ||
-				!Try_U32(*sourceStart, 600000u, parsedSourceStart) ||
-				0u != parsedSourceStart || nullptr == playMs ||
+				!Try_U32(*startOffset, 600000u, row.iStartOffsetMs) ||
+				nullptr == sourceStart ||
+				!Try_U32(*sourceStart, 600000u, row.iSourceStartMs) ||
+				(sourceEnd && !Try_U32(*sourceEnd, 600000u, row.iSourceEndMs)) || nullptr == playMs ||
 				!Try_U32(*playMs, 600000u, row.iPlayMs) || 0u == row.iPlayMs ||
 				nullptr == playRate || !playRate->Is_Number() ||
 				!std::isfinite(playRate->Get_Number()) ||
@@ -282,6 +300,16 @@ namespace
 			row.bUnblendedBoneContact = unblended && unblended->Get_Boolean();
             row.bLoopToWindow = endPolicy->Get_String() == "LOOP_TO_WINDOW";
             row.bHoldAtWindowEnd = (holdAtEnd && holdAtEnd->Get_Boolean()) || endPolicy->Get_String() == "HOLD_LAST_POSE";
+            double nativeDurationMs = 0.0, sampledSourceMs = 0.0;
+            if (!Try_GetClipDurationMs(model, row.strClip, nativeDurationMs) ||
+                (endPolicy->Get_String() != "HOLD_LAST_POSE" && row.iSourceStartMs >= nativeDurationMs) ||
+                !CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
+                    row.iSourceStartMs, row.iSourceEndMs, 0.0, row.fPlayRate,
+                    nativeDurationMs, row.bLoopToWindow, sampledSourceMs))
+            {
+                outStatus = "KoukuSaydon Product animation source range is invalid: " + row.strActionId;
+                ++skipped; continue;
+            }
             const auto* blendMs = value.Find("blendInMs");
             const auto* blendClip = value.Find("blendFromClip");
             const auto* blendSource = value.Find("blendFromSourceMs");
@@ -293,8 +321,14 @@ namespace
                     !std::isfinite(blendSource->Get_Number()) || blendSource->Get_Number() < 0.0 ||
                     blendSource->Get_Number() > 600000.0)
                 { outStatus = "KoukuSaydon Product animation transition is invalid."; ++skipped; continue; }
+                double previousDurationMs = 0.0;
+                if (!Try_GetClipDurationMs(model, blendClip->Get_String(), previousDurationMs))
+                { outStatus = "KoukuSaydon Product animation transition clip is invalid."; ++skipped; continue; }
                 row.strBlendFromClip = blendClip->Get_String();
-                row.fBlendFromSourceMs = float(blendSource->Get_Number());
+                // Publisher samples the previous cropped range at its actual
+                // transition boundary. Preserve the legacy native-end clamp when
+                // an older Product row stores an uncapped previous source time.
+                row.fBlendFromSourceMs = float((std::min)(previousDurationMs, blendSource->Get_Number()));
             }
 			const std::string actionId = row.strActionId;
 			if (duplicates.contains(actionId) || !staged.emplace(actionId, std::move(row)).second)

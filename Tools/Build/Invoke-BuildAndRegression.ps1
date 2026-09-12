@@ -4,6 +4,8 @@ param(
     [string]$Configuration = 'Debug',
     [ValidateSet('Product', 'Core', 'FullDiagnostic')]
     [string]$Profile = 'Product',
+    [string]$MSBuildPath = '',
+    [string]$BuildLogDirectory = '',
     [switch]$SkipBuild,
     [string]$ResourceRoot = '',
     [switch]$AllowLocalEffectResources,
@@ -54,6 +56,7 @@ $script:buildStartedUtc = [DateTime]::UtcNow.ToString('o')
 $script:buildRunTimer = [Diagnostics.Stopwatch]::StartNew()
 $script:buildStartGitIdentity = $null
 $script:buildStartProductSourceInputSha256 = ''
+$script:buildToolchain = $null
 
 function Get-ValtanRepositorySourceRevision {
     $manifestText = (& python $valtanPipeline --repository-root $repoRoot `
@@ -88,28 +91,118 @@ function Add-BuildStepRecord {
     param(
         [Parameter(Mandatory = $true)][string]$Name,
         [Parameter(Mandatory = $true)][string]$Result,
-        [Parameter(Mandatory = $true)][long]$ElapsedMilliseconds
+        [Parameter(Mandatory = $true)][long]$ElapsedMilliseconds,
+        [object]$Details = $null
     )
 
-    $script:buildStepRecords.Add([pscustomobject][ordered]@{
+    $record = [ordered]@{
         name = $Name
         result = $Result
         elapsedMs = $ElapsedMilliseconds
-    }) | Out-Null
+    }
+    if ($null -ne $Details) { $record.details = $Details }
+    $script:buildStepRecords.Add([pscustomobject]$record) | Out-Null
+}
+
+function Get-InstallationMSBuild {
+    param([Parameter(Mandatory = $true)][string]$InstallationPath)
+
+    $candidate = Join-Path $InstallationPath 'MSBuild\Current\Bin\amd64\MSBuild.exe'
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    throw "The selected Visual Studio installation has no x64 MSBuild: $InstallationPath"
 }
 
 function Resolve-MSBuild {
-    $command = Get-Command msbuild.exe -ErrorAction SilentlyContinue
-    if ($null -ne $command) {
-        return $command.Source
+    $selection = ''
+    $candidate = ''
+    if (-not [string]::IsNullOrWhiteSpace($MSBuildPath)) {
+        $candidate = $MSBuildPath
+        $selection = 'MSBuildPath parameter'
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:MSBUILD_EXE_PATH)) {
+        $candidate = $env:MSBUILD_EXE_PATH
+        $selection = 'MSBUILD_EXE_PATH environment'
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:VSINSTALLDIR)) {
+        $candidate = Get-InstallationMSBuild $env:VSINSTALLDIR
+        $selection = 'VSINSTALLDIR environment'
+    }
+    else {
+        # Preserve a deliberately configured developer PATH. A discovered
+        # installation uses its x64 host instead of switching to a fixed VS2022.
+        $command = Get-Command msbuild.exe -CommandType Application -ErrorAction SilentlyContinue
+        if ($null -ne $command) {
+            $candidate = $command.Source
+            $selection = 'PATH'
+        }
+        else {
+            $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+            if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+                throw 'MSBuild was not found. Install Visual Studio C++ build tools or supply -MSBuildPath.'
+            }
+            $installationsText = (& $vswhere -all -products '*' -prerelease `
+                -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json -utf8 | Out-String)
+            if ($global:LASTEXITCODE -ne 0) { throw 'Visual Studio discovery failed (vswhere).' }
+            $installations = $installationsText | ConvertFrom-Json
+            $installation = $installations | Where-Object { $_.isComplete -and $_.isLaunchable } |
+                Sort-Object @{ Expression = { [version]$_.installationVersion }; Descending = $true }, `
+                    @{ Expression = { [string]$_.installationPath }; Descending = $false } |
+                Select-Object -First 1
+            if ($null -eq $installation) {
+                throw 'No complete Visual Studio C++ installation was found. Supply -MSBuildPath to select an installed toolchain.'
+            }
+            $candidate = Get-InstallationMSBuild $installation.installationPath
+            $selection = 'vswhere latest complete C++ installation (including Preview)'
+        }
     }
 
-    $candidate =
-        'C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe'
-    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-        return $candidate
+    $candidate = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($candidate))
+    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        throw "Selected MSBuild does not exist ($selection): $candidate"
     }
-    throw 'MSBuild.exe was not found.'
+    # Explicit executable selections remain exact. The compiler and SDK host
+    # architecture are pinned separately for every project invocation below.
+    $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($candidate)
+    $installationRoot = ''
+    $marker = $candidate.IndexOf('\MSBuild\', [StringComparison]::OrdinalIgnoreCase)
+    if ($marker -ge 0) { $installationRoot = $candidate.Substring(0, $marker) }
+    $script:buildToolchain = [pscustomobject][ordered]@{
+        selection = $selection
+        msbuildPath = $candidate
+        msbuildFileVersion = $version.FileVersion
+        msbuildProductVersion = $version.ProductVersion
+        visualStudioInstallation = $installationRoot
+        preferredToolArchitecture = 'x64'
+        windowsSdkToolArchitecture = 'Native64Bit'
+        targetPlatform = 'x64'
+    }
+    Add-BuildStepRecord 'build:toolchain' 'PASS' 0 $script:buildToolchain
+    Write-Host "MSBuild: $candidate ($($version.FileVersion)); selected by $selection; compiler/SDK host x64."
+    return $candidate
+}
+
+function Get-MSBuildProjectState {
+    param([Parameter(Mandatory = $true)][string]$Project)
+
+    $projectPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $Project))
+    $projectDirectory = [IO.Path]::GetDirectoryName($projectPath)
+    $projectName = [IO.Path]::GetFileNameWithoutExtension($projectPath)
+    # Record the Engine/Client and Shared/Server canonical trees plus VC's
+    # older standalone default, without creating paths or inventing a cache hit.
+    foreach ($relative in @(
+            "x64\$Configuration\$projectName.tlog\$projectName.lastbuildstate",
+            "..\Intermediate\x64\$Configuration\$projectName.tlog\$projectName.lastbuildstate",
+            "$projectName\x64\$Configuration\$projectName.tlog\$projectName.lastbuildstate")) {
+        $path = [IO.Path]::GetFullPath((Join-Path $projectDirectory $relative))
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $item = Get-Item -LiteralPath $path
+            [pscustomobject][ordered]@{
+                path = $path
+                lastWriteUtc = $item.LastWriteTimeUtc.ToString('o')
+                state = [IO.File]::ReadAllLines($path)
+            }
+        }
+    }
 }
 
 function Invoke-MSBuildProject {
@@ -118,12 +211,31 @@ function Invoke-MSBuildProject {
         [string]$Project
     )
 
+    $loggingArguments = @()
+    $buildLogs = $null
+    if (-not [string]::IsNullOrWhiteSpace($BuildLogDirectory)) {
+        $logDirectory = [IO.Path]::GetFullPath($BuildLogDirectory)
+        [IO.Directory]::CreateDirectory($logDirectory) | Out-Null
+        $projectLabel = [IO.Path]::GetFileNameWithoutExtension($Project)
+        $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+        $logStem = Join-Path $logDirectory "$stamp-$projectLabel-$Configuration"
+        $buildLogs = [pscustomobject][ordered]@{
+            binaryLog = "$logStem.binlog"
+            diagnosticLog = "$logStem.log"
+        }
+        $loggingArguments = @(
+            "/bl:$($buildLogs.binaryLog)",
+            "/flp:LogFile=$($buildLogs.diagnosticLog);Verbosity=diagnostic;Encoding=UTF-8")
+    }
+    $before = @(Get-MSBuildProjectState $Project)
     $timer = [Diagnostics.Stopwatch]::StartNew()
+    $startedUtc = [DateTime]::UtcNow.ToString('o')
     $result = 'FAIL'
     try {
         & $MSBuild $Project /m /nodeReuse:false /t:Build `
             "/p:Configuration=$Configuration" /p:Platform=x64 `
-            /p:BuildProjectReferences=false /v:minimal
+            /p:PreferredToolArchitecture=x64 /p:WindowsSDKToolArchitecture=Native64Bit `
+            /p:BuildProjectReferences=false /v:minimal @loggingArguments
         if ($global:LASTEXITCODE -ne 0) {
             throw "Build failed: $Project"
         }
@@ -131,7 +243,16 @@ function Invoke-MSBuildProject {
     }
     finally {
         $timer.Stop()
-        Add-BuildStepRecord "msbuild:$Project" $result $timer.ElapsedMilliseconds
+        Add-BuildStepRecord "msbuild:$Project" $result $timer.ElapsedMilliseconds `
+            ([pscustomobject][ordered]@{
+                startedUtc = $startedUtc
+                completedUtc = [DateTime]::UtcNow.ToString('o')
+                toolchain = $script:buildToolchain
+                logs = $buildLogs
+                projectStateBefore = $before
+                projectStateAfter = @(Get-MSBuildProjectState $Project)
+            })
+        Write-Host "Build phase ${Project}: $result in $($timer.ElapsedMilliseconds) ms."
     }
 }
 
@@ -322,6 +443,7 @@ try {
             skippedBuild = [bool]$SkipBuild
             startedUtc = $script:buildStartedUtc
             elapsedMs = $script:buildRunTimer.ElapsedMilliseconds
+            toolchain = $script:buildToolchain
             steps = @($script:buildStepRecords)
             missingRuntimeInputs = @($missingRuntimeInputs)
         }

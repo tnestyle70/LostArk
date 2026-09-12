@@ -1,0 +1,207 @@
+{
+  "schema": "lostark.effect-v2",
+  "formatVersion": 1,
+  "effectId": "kouku.gate2.maze.fade.black",
+  "displayName": "2관문_카드미로 / 원본 암전",
+  "effectType": "ScreenPost",
+  "slots": {
+    "mesh": "",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+    "noise": "",
+    "mask": "",
+    "emissive": "",
+    "dissolve": ""
+  },
+  "params": {
+    "lifetime": 11.95,
+    "loop": false,
+    "playRate": 1.0,
+    "alphaInEnd": 0.0,
+    "alphaOutStart": 1.0,
+    "screenPost": {
+      "profile": "TexturedOverlay",
+      "intensityStart": 1.0,
+      "intensityEnd": 1.0,
+      "intensityLerp": false,
+      "intensitySmoothstep": false,
+      "intensityKeys": [
+        {
+          "timeSeconds": 0.0,
+          "intensity": 1.0
+        },
+        {
+          "timeSeconds": 0.06,
+          "intensity": 0.9933755963392541
+        },
+        {
+          "timeSeconds": 0.14,
+          "intensity": 0.9655151910248319
+        },
+        {
+          "timeSeconds": 0.2,
+          "intensity": 0.9320433317853775
+        },
+        {
+          "timeSeconds": 0.28,
+          "intensity": 0.8731304852326892
+        },
+        {
+          "timeSeconds": 0.36,
+          "intensity": 0.8007334541520232
+        },
+        {
+          "timeSeconds": 0.44,
+          "intensity": 0.7179504695311423
+        },
+        {
+          "timeSeconds": 0.52,
+          "intensity": 0.6278797623578096
+        },
+        {
+          "timeSeconds": 0.78,
+          "intensity": 0.32226415624527527
+        },
+        {
+          "timeSeconds": 0.86,
+          "intensity": 0.23578526768125385
+        },
+        {
+          "timeSeconds": 0.94,
+          "intensity": 0.15828436925053602
+        },
+        {
+          "timeSeconds": 1.02,
+          "intensity": 0.0928596919408855
+        },
+        {
+          "timeSeconds": 1.1,
+          "intensity": 0.04260946674006494
+        },
+        {
+          "timeSeconds": 1.18,
+          "intensity": 0.010631924635837509
+        },
+        {
+          "timeSeconds": 1.24,
+          "intensity": 0.0005039959183827936
+        },
+        {
+          "timeSeconds": 7.98,
+          "intensity": 0.0
+        },
+        {
+          "timeSeconds": 8.0,
+          "intensity": 0.08715216516421576
+        },
+        {
+          "timeSeconds": 8.02,
+          "intensity": 0.300525066803591
+        },
+        {
+          "timeSeconds": 8.04,
+          "intensity": 0.567992746664379
+        },
+        {
+          "timeSeconds": 8.06,
+          "intensity": 0.8174292464927626
+        },
+        {
+          "timeSeconds": 8.08,
+          "intensity": 0.976708608034855
+        },
+        {
+          "timeSeconds": 8.0900002,
+          "intensity": 1.0
+        },
+        {
+          "timeSeconds": 9.14,
+          "intensity": 0.9999999999991248
+        },
+        {
+          "timeSeconds": 9.2,
+          "intensity": 0.9918412521698824
+        },
+        {
+          "timeSeconds": 9.26,
+          "intensity": 0.9685629431547138
+        },
+        {
+          "timeSeconds": 9.32,
+          "intensity": 0.9319614584284551
+        },
+        {
+          "timeSeconds": 9.4,
+          "intensity": 0.8655394025820826
+        },
+        {
+          "timeSeconds": 9.46,
+          "intensity": 0.8048364513765323
+        },
+        {
+          "timeSeconds": 9.54,
+          "intensity": 0.7127993208368081
+        },
+        {
+          "timeSeconds": 9.82,
+          "intensity": 0.3494525290681394
+        },
+        {
+          "timeSeconds": 9.94,
+          "intensity": 0.20604115299946846
+        },
+        {
+          "timeSeconds": 10.0,
+          "intensity": 0.1439910617332929
+        },
+        {
+          "timeSeconds": 10.06,
+          "intensity": 0.09077321561234042
+        },
+        {
+          "timeSeconds": 10.12,
+          "intensity": 0.048184000111446856
+        },
+        {
+          "timeSeconds": 10.18,
+          "intensity": 0.01801980070544662
+        },
+        {
+          "timeSeconds": 10.22,
+          "intensity": 0.005700225092356348
+        },
+        {
+          "timeSeconds": 10.2699995,
+          "intensity": 0.0
+        },
+        {
+          "timeSeconds": 11.95,
+          "intensity": 0.0
+        }
+      ],
+      "tint": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "overlayPositionStart": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionHold": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionEnd": [
+        0.5,
+        0.5
+      ],
+      "overlayScale": [
+        1,
+        1
+      ],
+      "displaySpace": true
+    }
+  },
+  "parts": []
+}

@@ -10,7 +10,7 @@ namespace Client
 	public:
 		virtual ~IWorldEntityCommandSink() = default;
 		virtual bool Request_SpawnWorldEntity(
-			std::string_view placementId) = 0;
+			std::string_view placementId, std::uint64_t* outRequestToken = nullptr) = 0;
 		virtual bool Request_DespawnAllWorldEntities(
 			std::uint32_t requestSequence) = 0;
 		/* Debug authoring entry. The Server stages the normal world-transfer

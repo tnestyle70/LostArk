@@ -45,6 +45,100 @@
 
 namespace
 {
+    bool Requires_StartingSceneCapture(const Client::EFFECT_DOCUMENT_DESC& Document)
+    {
+        return std::ranges::any_of(Document.Elements, [](const auto& Element) {
+            return Element.bVisible && Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
+                "effect.ue3.altv-178-native.v1";
+        }) || std::ranges::any_of(Document.ModelCues, [](const auto& Cue) {
+            return Cue.bVisible && Client::Has_DimensionMasterALTVModelCueMaterialContract(Cue);
+        });
+    }
+
+    bool Is_StartingSceneCaptureCameraEmitter(const Client::EFFECT_ELEMENT_DESC& Element)
+    {
+        return Element.Material.SourceMaterial.strRuntimeShaderProfileId == "effect.ue3.altv-178-native.v1" &&
+            (Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_18" ||
+             Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_31");
+    }
+
+    // Project framing adapter only: endpoint geometry and all authored transforms stay intact.
+    // Return without touching World on invalid bounds/camera or at the exact authored endpoint.
+    void Fit_StartingCaptureMeshToCamera(const float3_t& BoundsMin, const float3_t& BoundsMax,
+        const float4x4_t& View, const float4x4_t& Projection, const f32_t fProgress,
+        float4x4_t& World)
+    {
+        if (!std::isfinite(fProgress) || fProgress >= 1.f ||
+            !std::isfinite(Projection._11) || Projection._11 <= 0.f ||
+            !std::isfinite(Projection._22) || Projection._22 <= 0.f ||
+            !std::isfinite(Projection._33) || Projection._33 == 0.f ||
+            std::abs(Projection._34 - 1.f) > 1e-5f || std::abs(Projection._44) > 1e-5f)
+            return;
+        const f32_t fNear = -Projection._43 / Projection._33;
+        if (!std::isfinite(fNear) || fNear <= 0.f ||
+            !(BoundsMax.x > BoundsMin.x && BoundsMax.y > BoundsMin.y && BoundsMax.z > BoundsMin.z))
+            return;
+        const matrix_t ViewMatrix = XMLoadFloat4x4(&View);
+        const f32_t fViewDeterminant = XMVectorGetX(XMMatrixDeterminant(ViewMatrix));
+        if (!std::isfinite(fViewDeterminant) || std::abs(fViewDeterminant) < 1e-6f) return;
+        const matrix_t WorldView = XMLoadFloat4x4(&World) * ViewMatrix;
+        float3_t Minimum{ FLT_MAX, FLT_MAX, FLT_MAX }, Maximum{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+        for (uint32_t i = 0u; i < 8u; ++i)
+        {
+            float3_t Corner{};
+            XMStoreFloat3(&Corner, XMVector3TransformCoord(XMVectorSet(
+                (i & 1u) ? BoundsMax.x : BoundsMin.x,
+                (i & 2u) ? BoundsMax.y : BoundsMin.y,
+                (i & 4u) ? BoundsMax.z : BoundsMin.z, 1.f), WorldView));
+            if (!std::isfinite(Corner.x) || !std::isfinite(Corner.y) || !std::isfinite(Corner.z)) return;
+            Minimum.x = (std::min)(Minimum.x, Corner.x); Maximum.x = (std::max)(Maximum.x, Corner.x);
+            Minimum.y = (std::min)(Minimum.y, Corner.y); Maximum.y = (std::max)(Maximum.y, Corner.y);
+            Minimum.z = (std::min)(Minimum.z, Corner.z); Maximum.z = (std::max)(Maximum.z, Corner.z);
+        }
+        const f32_t fWidth = Maximum.x - Minimum.x, fHeight = Maximum.y - Minimum.y;
+        if (!(fWidth > 1e-6f && fHeight > 1e-6f) || Maximum.z <= fNear) return;
+        const f32_t fFrontDepth = (std::max)(Minimum.z, fNear * 1.01f);
+        const f32_t fScaleX = 2.f * fFrontDepth / (Projection._11 * fWidth);
+        const f32_t fScaleY = 2.f * fFrontDepth / (Projection._22 * fHeight);
+        const matrix_t Fitted = WorldView *
+            XMMatrixTranslation(-(Minimum.x + Maximum.x) * .5f, -(Minimum.y + Maximum.y) * .5f,
+                fFrontDepth - Minimum.z) * XMMatrixScaling(fScaleX, fScaleY, 1.f) *
+            XMMatrixTranslation(-Projection._31 * fFrontDepth / Projection._11,
+                -Projection._32 * fFrontDepth / Projection._22, 0.f) * XMMatrixInverse(nullptr, ViewMatrix);
+        const f32_t fLinear = std::clamp(fProgress, 0.f, 1.f);
+        const f32_t fBlend = fLinear * fLinear * (3.f - 2.f * fLinear);
+        const matrix_t Authored = XMLoadFloat4x4(&World);
+        float4x4_t Staged{};
+        XMStoreFloat4x4(&Staged, matrix_t(
+            XMVectorLerp(Fitted.r[0], Authored.r[0], fBlend),
+            XMVectorLerp(Fitted.r[1], Authored.r[1], fBlend),
+            XMVectorLerp(Fitted.r[2], Authored.r[2], fBlend),
+            XMVectorLerp(Fitted.r[3], Authored.r[3], fBlend)));
+        for (const auto& Row : Staged.m) for (const f32_t Value : Row)
+            if (!std::isfinite(Value)) return;
+        World = Staged;
+    }
+
+    void Apply_StartingCaptureCameraFraming(const Client::EFFECT_DOCUMENT_DESC& Document,
+        const Client::EFFECT_EVALUATED_PARTICLE& Particle, const Engine::CModel& Model,
+        const f32_t fRootTimeSeconds, float4x4_t& World)
+    {
+        if (!Particle.pElement || !Is_StartingSceneCaptureCameraEmitter(*Particle.pElement) ||
+            !Model.Has_LocalBounds()) return;
+        f32_t fBegin = FLT_MAX, fEnd = FLT_MAX;
+        for (const auto& Element : Document.Elements)
+            if (Element.bVisible && Is_StartingSceneCaptureCameraEmitter(Element))
+                fBegin = (std::min)(fBegin, Element.Detail.Timing.fStartDelaySeconds);
+        for (const auto& Cue : Document.ModelCues)
+            if (Cue.bVisible && Cue.strCueId == "altv.source.notify036.cube")
+                fEnd = Cue.fStartDelaySeconds;
+        const auto* View = Engine::CGameInstance::Get().Get_Transform(Engine::D3DTS::VIEW);
+        const auto* Projection = Engine::CGameInstance::Get().Get_Transform(Engine::D3DTS::PROJ);
+        if (!View || !Projection || fBegin == FLT_MAX || fEnd == FLT_MAX || fEnd <= fBegin) return;
+        Fit_StartingCaptureMeshToCamera(Model.Get_LocalBoundsMin(), Model.Get_LocalBoundsMax(),
+            *View, *Projection, (fRootTimeSeconds - fBegin) / (fEnd - fBegin), World);
+    }
+
     // Copy the current CModel vertex ABI. Instance data never changes map/model vertices.
     const auto NativeMeshInstanceElements = []
     {
@@ -8717,7 +8811,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	std::shared_ptr<const ELEMENT_RESOURCE> MaterialResource;
 	if (Cue.Material)
 	{
-		if (!Has_ArtistModelCueMaterialContract(Cue) && !Has_LanceMasterVAModelCueMaterialContract(Cue))
+		if (!Has_ArtistModelCueMaterialContract(Cue) && !Has_LanceMasterVAModelCueMaterialContract(Cue) &&
+            !Has_DimensionMasterALTVModelCueMaterialContract(Cue))
 		{
 			strOutError = "Animated Model Cue native material is invalid: " + Cue.strCueId;
 			return E_INVALIDARG;
@@ -8734,17 +8829,19 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		const auto& Source = Cue.Material->SourceMaterial;
 		const auto* ArtistProgram = Find_ArtistProgram(Source.strRuntimeShaderProfileId);
 		const auto* LanceProgram = Find_LanceMasterVAProgram(Source.strRuntimeShaderProfileId);
+        const auto* ALTVProgram = Find_DimensionMasterALTVProgram(Source.strRuntimeShaderProfileId);
 		auto StagedMaterial = std::make_shared<ELEMENT_RESOURCE>();
-		const auto Names = ArtistProgram ? ArtistProgram->TextureNames : LanceProgram ? LanceProgram->TextureNames : std::span<const std::string_view>{};
+		const auto Names = ArtistProgram ? ArtistProgram->TextureNames : LanceProgram ? LanceProgram->TextureNames : ALTVProgram ? ALTVProgram->TextureNames : std::span<const std::string_view>{};
 		const bool ParametersValid = ArtistProgram ? Build_ArtistParameters(Source, StagedMaterial->ArtistSourceMaterialParameters) :
-			LanceProgram && Build_LanceMasterVAParameters(Source, StagedMaterial->LanceVASourceMaterialParameters);
+			LanceProgram ? Build_LanceMasterVAParameters(Source, StagedMaterial->LanceVASourceMaterialParameters) :
+            ALTVProgram && Build_DimensionMasterALTVParameters(Source, StagedMaterial->ALTVSourceMaterialParameters);
 		if (!ParametersValid || Names.size() > StagedMaterial->SourceTextures.size())
 		{
 			strOutError = "Animated Model Cue native parameter stage failed: " + Cue.strCueId;
 			return E_FAIL;
 		}
-		StagedMaterial->iSourceMaterialProfile = ArtistProgram ? ArtistProgram->iProfileIndex : LanceProgram->iProfileIndex;
-		StagedMaterial->bSourceRequiresSceneDepth = ArtistProgram ? ArtistProgram->bNeedsDepthSample : LanceProgram->bNeedsDepthSample;
+		StagedMaterial->iSourceMaterialProfile = ArtistProgram ? ArtistProgram->iProfileIndex : LanceProgram ? LanceProgram->iProfileIndex : ALTVProgram->iProfileIndex;
+		StagedMaterial->bSourceRequiresSceneDepth = ArtistProgram ? ArtistProgram->bNeedsDepthSample : LanceProgram ? LanceProgram->bNeedsDepthSample : ALTVProgram->bNeedsDepthSample;
 		for (size_t iLane = 0u; iLane < Names.size(); ++iLane)
 		{
 			const auto* Texture = Find_EffectUniqueNamedTexture(Source, Names[iLane]);
@@ -17392,11 +17489,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 		return false;
 	}
 	ComPtr<ID3D11ShaderResourceView> StartingCapture;
-	const bool_t bNeedsStartingCapture = std::ranges::any_of(Document.Elements,
-		[](const EFFECT_ELEMENT_DESC& Element) {
-			return Element.bVisible && Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.altv-178-native.v1";
-		});
+	const bool_t bNeedsStartingCapture = Requires_StartingSceneCapture(Document);
 	if (bNeedsStartingCapture && !Capture_StartingSceneColor(StartingCapture, strOutError))
 		return false;
 	m_pStartingSceneCapture = std::move(StartingCapture);
@@ -17530,11 +17623,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 		// Visibility edits can reuse the same prepared resources. A previously
 		// hidden capture box still needs its occurrence snapshot on first use.
 		if (nullptr == m_pStartingSceneCapture &&
-			std::ranges::any_of(Document.Elements,
-				[](const EFFECT_ELEMENT_DESC& Element) {
-					return Element.bVisible && Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
-						"effect.ue3.altv-178-native.v1";
-				}) &&
+			Requires_StartingSceneCapture(Document) &&
 			!Capture_StartingSceneColor(m_pStartingSceneCapture, strOutError))
 			return false;
 		m_Document = Document;
@@ -20410,6 +20499,8 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
         Instance.World = Apply_ParticleCameraOffset(Particle);
         if (bLockedAxisMeshFacing && !Make_SourceLockedAxisMeshWorld(Particle, Instance.World))
             return Fail_RenderOperation("Source locked-axis mesh facing is invalid.", E_INVALIDARG, true);
+        Apply_StartingCaptureCameraFraming(Get_StagedDocument(), Particle, *Resource.pModel,
+            Frame.fSampleTimeSeconds, Instance.World);
         const matrix_t World = XMLoadFloat4x4(&Instance.World);
         const f32_t fDeterminant = XMVectorGetX(XMMatrixDeterminant(World));
         if (!std::isfinite(fDeterminant))
@@ -20553,6 +20644,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			MeshParticle.World = Apply_ParticleCameraOffset(Particle);
 			if (bLockedAxisMeshFacing && !Make_SourceLockedAxisMeshWorld(Particle, MeshParticle.World))
 				return Fail_RenderOperation("Source locked-axis mesh facing is invalid.", E_INVALIDARG, true);
+            Apply_StartingCaptureCameraFraming(Get_StagedDocument(), Particle, *pResource->pModel,
+                Frame.fSampleTimeSeconds, MeshParticle.World);
 			MeshParticle.Color = Particle.pElement->Detail.Color;
 			MeshParticle.Color.vColorMultiply = Particle.Color;
 			MeshParticle.fLocalTimeSeconds = (std::max)(0.f,
@@ -21649,14 +21742,19 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
 		FAILED(Shader->Bind_RawValue("g_ArtistModelAmbient", &Ambient, sizeof(Ambient))) ||
 		FAILED(Shader->Bind_RawValue("g_LanceVASourceMaterialParameters", Resource.LanceVASourceMaterialParameters.data(), sizeof(Resource.LanceVASourceMaterialParameters))) ||
 		FAILED(Shader->Bind_RawValue("g_LanceVASourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))) ||
+        FAILED(Shader->Bind_RawValue("g_ALTVSourceMaterialParameters", Resource.ALTVSourceMaterialParameters.data(), sizeof(Resource.ALTVSourceMaterialParameters))) ||
+        FAILED(Shader->Bind_RawValue("g_ALTVSourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))) ||
 		FAILED(Shader->Bind_RawValue("g_SourceTextureClampUMask", &Resource.iSourceTextureClampUMask, sizeof(Resource.iSourceTextureClampUMask))) ||
 		FAILED(Shader->Bind_RawValue("g_SourceTextureClampVMask", &Resource.iSourceTextureClampVMask, sizeof(Resource.iSourceTextureClampVMask))))
 		return E_FAIL;
 	for (size_t iLane = 0u; iLane < Resource.SourceTextures.size(); ++iLane)
 	{
 		const std::string Name = "g_SourceTexture" + std::to_string(iLane);
-		if (FAILED(Shader->Bind_Texture(Name.c_str(), Resource.SourceTextures[iLane] ?
-			Resource.SourceTextures[iLane] : m_pBlackTexture))) return E_FAIL;
+        const bool bFrozenCapture = Resource.iSourceMaterialProfile == 178u && iLane == 2u;
+        if (bFrozenCapture && nullptr == m_pStartingSceneCapture)
+            return Fail_RenderOperation("Animated capture cube has no starting scene snapshot.", E_FAIL, true);
+        const auto& Texture = bFrozenCapture ? m_pStartingSceneCapture : Resource.SourceTextures[iLane];
+        if (FAILED(Shader->Bind_Texture(Name.c_str(), Texture ? Texture : m_pBlackTexture))) return E_FAIL;
 	}
 	return S_OK;
 }
@@ -22449,362 +22547,371 @@ HRESULT Client::CEffectDocumentRenderer::Render_CompositionPhase(
 		return FailFrame(
 			"Effect animated model-cue rendering failed.", hModelCueResult);
 	}
-	size_t iElement = 0u;
-	size_t iParticle = 0u;
-	size_t iTrail = 0u;
-	size_t iAfterImage = 0u;
-	size_t iGpuOccurrence = 0u;
+    // Keep frame row order intact while submitting capture meshes before sprites.
+    // Other documents and world-mark phase preserve their authored draw order.
+    const bool bCaptureMeshFirst = ePhase == EFFECT_COMPOSITION_LAYER::NORMAL &&
+        Requires_StartingSceneCapture(Document);
+    const uint32_t iCapturePassCount = bCaptureMeshFirst ? 2u : 1u;
+    for (uint32_t iCapturePass = 0u; iCapturePass < iCapturePassCount; ++iCapturePass)
+    {
+		size_t iElement = 0u;
+		size_t iParticle = 0u;
+		size_t iTrail = 0u;
+		size_t iAfterImage = 0u;
+		size_t iGpuOccurrence = 0u;
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-	struct ACTIVE_OCCURRENCE_SCOPE final
-	{
-		EFFECT_GPU_RENDER_OCCURRENCE_STATS*& pSlot;
-		explicit ACTIVE_OCCURRENCE_SCOPE(
-			EFFECT_GPU_RENDER_OCCURRENCE_STATS*& pActiveSlot)
-			: pSlot(pActiveSlot)
+		struct ACTIVE_OCCURRENCE_SCOPE final
 		{
-		}
-		~ACTIVE_OCCURRENCE_SCOPE() { pSlot = nullptr; }
-	};
-	size_t iOccurrenceStats = 0u;
-#endif
-	for (const EFFECT_ELEMENT_DESC& DocumentElement : Document.Elements)
-	{
-		const std::string& strElementId = DocumentElement.strElementId;
-		const EFFECT_GPU_RENDER_FAMILY eFamily = DocumentElement.bVisible ?
-			Resolve_GpuRenderFamily(DocumentElement) :
-			EFFECT_GPU_RENDER_FAMILY::END;
-		const bool_t bHasGpuFamily =
-			EFFECT_GPU_RENDER_FAMILY::END != eFamily;
-		const bool_t bOwnsPhase =
-			DocumentElement.eCompositionLayer == ePhase ||
-            (ePhase == EFFECT_COMPOSITION_LAYER::WORLD_MARK &&
-             DocumentElement.eCompositionLayer == EFFECT_COMPOSITION_LAYER::SCENE_BACKDROP);
-		EFFECT_GPU_RENDER_FAMILY_STATS* pFamilyStats =
-			!bHasGpuFamily || !bOwnsPhase ? nullptr :
-				&m_LastRenderSubmissionStats.Families[
-					static_cast<size_t>(eFamily)];
-		const bool_t bSubmitPreviewOccurrence =
-			bOwnsPhase &&
-			Should_SubmitPreviewOccurrence(DocumentElement, eFamily);
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-		EFFECT_GPU_RENDER_OCCURRENCE_STATS* pOccurrenceStats = nullptr;
-		if (bHasGpuFamily)
-		{
-			if (iOccurrenceStats >=
-				m_LastRenderSubmissionStats.Occurrences.size())
+			EFFECT_GPU_RENDER_OCCURRENCE_STATS*& pSlot;
+			explicit ACTIVE_OCCURRENCE_SCOPE(
+				EFFECT_GPU_RENDER_OCCURRENCE_STATS*& pActiveSlot)
+				: pSlot(pActiveSlot)
 			{
-				return FailFrame(
-					"Effect GPU occurrence probe denominator overflow.",
-					E_FAIL, true);
 			}
-			EFFECT_GPU_RENDER_OCCURRENCE_STATS* pDocumentOccurrenceStats =
-				&m_LastRenderSubmissionStats.Occurrences[iOccurrenceStats++];
-			if (pDocumentOccurrenceStats->strElementId != strElementId ||
-				pDocumentOccurrenceStats->eFamily != eFamily)
-			{
-				return FailFrame(
-					"Effect GPU occurrence probe order diverged.", E_FAIL, true);
-			}
-			if (bOwnsPhase)
-				pOccurrenceStats = pDocumentOccurrenceStats;
-		}
-		m_pActiveOccurrenceStats = pOccurrenceStats;
-		ACTIVE_OCCURRENCE_SCOPE ActiveOccurrenceScope(
-			m_pActiveOccurrenceStats);
-#endif
-		const EFFECT_EVALUATED_GPU_OCCURRENCE* pGpuOccurrence = nullptr;
-		if (bHasGpuFamily)
-		{
-			if (iGpuOccurrence >= Frame.GpuOccurrences.size())
-			{
-				return FailFrame(
-					"Effect GPU occurrence evaluation order overflowed.",
-					E_FAIL, true);
-			}
-			pGpuOccurrence = &Frame.GpuOccurrences[iGpuOccurrence++];
-		}
-		if (bHasGpuFamily != (nullptr != pGpuOccurrence) ||
-			(nullptr != pGpuOccurrence &&
-			 (nullptr == pGpuOccurrence->pElement ||
-			  pGpuOccurrence->pElement->strElementId != strElementId ||
-			  eFamily != Resolve_GpuRenderFamily(*pGpuOccurrence->pElement))))
-		{
-			return FailFrame(
-				"Effect GPU occurrence evaluation does not match the document.",
-				E_FAIL, true);
-		}
-		if (nullptr != pFamilyStats)
-			++pFamilyStats->iEvaluated;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-		if (nullptr != pOccurrenceStats)
-			++pOccurrenceStats->iEvaluated;
-#endif
-		bool_t bOccurrenceActive =
-			nullptr != pGpuOccurrence && pGpuOccurrence->bActive;
-		bool_t bOccurrenceSubmitted = false;
-		bool_t bOccurrenceSuppressed = false;
-		const auto HasOccurrenceRow = [&strElementId](const auto& Rows, const size_t iRow)
-		{
-			return iRow < Rows.size() && nullptr != Rows[iRow].pElement &&
-				Rows[iRow].pElement->strElementId == strElementId;
+			~ACTIVE_OCCURRENCE_SCOPE() { pSlot = nullptr; }
 		};
-		if (bSubmitPreviewOccurrence &&
-			(HasOccurrenceRow(Frame.Elements, iElement) ||
-			 HasOccurrenceRow(Frame.Particles, iParticle) ||
-			 HasOccurrenceRow(Frame.Trails, iTrail) ||
-			 HasOccurrenceRow(Frame.AfterImages, iAfterImage)))
+		size_t iOccurrenceStats = 0u;
+#endif
+		for (const EFFECT_ELEMENT_DESC& DocumentElement : Document.Elements)
 		{
-			const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
-			if (nullptr != pResource && !pResource->bSourceMaterialFallbackBlocked &&
-				!pResource->bOccurrenceVisualSuppressed &&
-				(pResource->bSourceRequiresSceneColor ||
-				 pResource->iSourceMaterialProfile == 42u ||
-				 pResource->iSourceMaterialProfile == 69u))
+			const std::string& strElementId = DocumentElement.strElementId;
+			const EFFECT_GPU_RENDER_FAMILY eFamily = DocumentElement.bVisible ?
+				Resolve_GpuRenderFamily(DocumentElement) :
+				EFFECT_GPU_RENDER_FAMILY::END;
+			const bool_t bHasGpuFamily =
+				EFFECT_GPU_RENDER_FAMILY::END != eFamily;
+			const bool_t bOwnsPhase =
+	            (DocumentElement.eCompositionLayer == ePhase ||
+	             (ePhase == EFFECT_COMPOSITION_LAYER::WORLD_MARK &&
+	              DocumentElement.eCompositionLayer == EFFECT_COMPOSITION_LAYER::SCENE_BACKDROP)) &&
+	            (!bCaptureMeshFirst || ((iCapturePass == 0u) == (eFamily == EFFECT_GPU_RENDER_FAMILY::MESH)));
+			EFFECT_GPU_RENDER_FAMILY_STATS* pFamilyStats =
+				!bHasGpuFamily || !bOwnsPhase ? nullptr :
+					&m_LastRenderSubmissionStats.Families[
+						static_cast<size_t>(eFamily)];
+			const bool_t bSubmitPreviewOccurrence =
+				bOwnsPhase &&
+				Should_SubmitPreviewOccurrence(DocumentElement, eFamily);
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			EFFECT_GPU_RENDER_OCCURRENCE_STATS* pOccurrenceStats = nullptr;
+			if (bHasGpuFamily)
 			{
-				// Include earlier translucent occurrences; all particles/material slots
-				// of this occurrence share one snapshot without sampling their own draw.
-				const HRESULT hSnapshot = CGameInstance::Get().Refresh_SceneColorSnapshot();
-				if (FAILED(hSnapshot))
-					return FailFrame("Effect scene-color refresh failed: " + strElementId,
-						hSnapshot, true);
+				if (iOccurrenceStats >=
+					m_LastRenderSubmissionStats.Occurrences.size())
+				{
+					return FailFrame(
+						"Effect GPU occurrence probe denominator overflow.",
+						E_FAIL, true);
+				}
+				EFFECT_GPU_RENDER_OCCURRENCE_STATS* pDocumentOccurrenceStats =
+					&m_LastRenderSubmissionStats.Occurrences[iOccurrenceStats++];
+				if (pDocumentOccurrenceStats->strElementId != strElementId ||
+					pDocumentOccurrenceStats->eFamily != eFamily)
+				{
+					return FailFrame(
+						"Effect GPU occurrence probe order diverged.", E_FAIL, true);
+				}
+				if (bOwnsPhase)
+					pOccurrenceStats = pDocumentOccurrenceStats;
 			}
-		}
-		const size_t iAfterImageBegin = iAfterImage;
-		while (iAfterImage < Frame.AfterImages.size() &&
-			nullptr != Frame.AfterImages[iAfterImage].pElement &&
-			Frame.AfterImages[iAfterImage].pElement->strElementId == strElementId)
-		{
-			++iAfterImage;
-		}
-		const HRESULT hAfterImageResult = bSubmitPreviewOccurrence ?
-			Render_AfterImages(Frame,
-				std::span<const EFFECT_EVALUATED_AFTERIMAGE>(Frame.AfterImages)
-					.subspan(iAfterImageBegin,
-						iAfterImage - iAfterImageBegin)) : S_FALSE;
-		if (iAfterImageBegin != iAfterImage)
-			bOccurrenceActive = true;
-		if (FAILED(hAfterImageResult))
-		{
-			if (nullptr != pFamilyStats)
-				++pFamilyStats->iFailed;
-			return FailFrame(
-				"Effect afterimage rendering failed: " + strElementId,
-				hAfterImageResult);
-		}
-		bOccurrenceSubmitted = bOccurrenceSubmitted ||
-			S_OK == hAfterImageResult;
-		bOccurrenceSuppressed = bOccurrenceSuppressed ||
-			S_FALSE == hAfterImageResult && iAfterImageBegin != iAfterImage;
-
-		const size_t iElementBegin = iElement;
-		while (iElement < Frame.Elements.size() &&
-			nullptr != Frame.Elements[iElement].pElement &&
-			Frame.Elements[iElement].pElement->strElementId == strElementId)
-		{
-			if (!bSubmitPreviewOccurrence)
+			m_pActiveOccurrenceStats = pOccurrenceStats;
+			ACTIVE_OCCURRENCE_SCOPE ActiveOccurrenceScope(
+				m_pActiveOccurrenceStats);
+#endif
+			const EFFECT_EVALUATED_GPU_OCCURRENCE* pGpuOccurrence = nullptr;
+			if (bHasGpuFamily)
 			{
-				++iElement;
-				continue;
+				if (iGpuOccurrence >= Frame.GpuOccurrences.size())
+				{
+					return FailFrame(
+						"Effect GPU occurrence evaluation order overflowed.",
+						E_FAIL, true);
+				}
+				pGpuOccurrence = &Frame.GpuOccurrences[iGpuOccurrence++];
 			}
-			const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
-			if (nullptr == pResource)
+			if (bHasGpuFamily != (nullptr != pGpuOccurrence) ||
+				(nullptr != pGpuOccurrence &&
+				 (nullptr == pGpuOccurrence->pElement ||
+				  pGpuOccurrence->pElement->strElementId != strElementId ||
+				  eFamily != Resolve_GpuRenderFamily(*pGpuOccurrence->pElement))))
 			{
-				if (nullptr != pFamilyStats)
-					++pFamilyStats->iFailed;
 				return FailFrame(
-					"Effect element resource is missing: " + strElementId,
+					"Effect GPU occurrence evaluation does not match the document.",
 					E_FAIL, true);
 			}
-			if (pResource->bSourceMaterialFallbackBlocked ||
-				pResource->bOccurrenceVisualSuppressed)
+			if (nullptr != pFamilyStats)
+				++pFamilyStats->iEvaluated;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			if (nullptr != pOccurrenceStats)
+				++pOccurrenceStats->iEvaluated;
+#endif
+			bool_t bOccurrenceActive =
+				nullptr != pGpuOccurrence && pGpuOccurrence->bActive;
+			bool_t bOccurrenceSubmitted = false;
+			bool_t bOccurrenceSuppressed = false;
+			const auto HasOccurrenceRow = [&strElementId](const auto& Rows, const size_t iRow)
 			{
-				bOccurrenceSuppressed = true;
-				++iElement;
-				continue;
+				return iRow < Rows.size() && nullptr != Rows[iRow].pElement &&
+					Rows[iRow].pElement->strElementId == strElementId;
+			};
+			if (bSubmitPreviewOccurrence &&
+				(HasOccurrenceRow(Frame.Elements, iElement) ||
+				 HasOccurrenceRow(Frame.Particles, iParticle) ||
+				 HasOccurrenceRow(Frame.Trails, iTrail) ||
+				 HasOccurrenceRow(Frame.AfterImages, iAfterImage)))
+			{
+				const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
+				if (nullptr != pResource && !pResource->bSourceMaterialFallbackBlocked &&
+					!pResource->bOccurrenceVisualSuppressed &&
+					(pResource->bSourceRequiresSceneColor ||
+					 pResource->iSourceMaterialProfile == 42u ||
+					 pResource->iSourceMaterialProfile == 69u))
+				{
+					// Include earlier translucent occurrences; all particles/material slots
+					// of this occurrence share one snapshot without sampling their own draw.
+					const HRESULT hSnapshot = CGameInstance::Get().Refresh_SceneColorSnapshot();
+					if (FAILED(hSnapshot))
+						return FailFrame("Effect scene-color refresh failed: " + strElementId,
+							hSnapshot, true);
+				}
 			}
-			const HRESULT hElementResult =
-				Render_Element(Frame.Elements[iElement], *pResource);
-			if (FAILED(hElementResult))
+			const size_t iAfterImageBegin = iAfterImage;
+			while (iAfterImage < Frame.AfterImages.size() &&
+				nullptr != Frame.AfterImages[iAfterImage].pElement &&
+				Frame.AfterImages[iAfterImage].pElement->strElementId == strElementId)
+			{
+				++iAfterImage;
+			}
+			const HRESULT hAfterImageResult = bSubmitPreviewOccurrence ?
+				Render_AfterImages(Frame,
+					std::span<const EFFECT_EVALUATED_AFTERIMAGE>(Frame.AfterImages)
+						.subspan(iAfterImageBegin,
+							iAfterImage - iAfterImageBegin)) : S_FALSE;
+			if (iAfterImageBegin != iAfterImage)
+				bOccurrenceActive = true;
+			if (FAILED(hAfterImageResult))
 			{
 				if (nullptr != pFamilyStats)
 					++pFamilyStats->iFailed;
 				return FailFrame(
-					"Effect element rendering failed: " + strElementId,
-					hElementResult);
+					"Effect afterimage rendering failed: " + strElementId,
+					hAfterImageResult);
 			}
 			bOccurrenceSubmitted = bOccurrenceSubmitted ||
-				S_OK == hElementResult;
+				S_OK == hAfterImageResult;
 			bOccurrenceSuppressed = bOccurrenceSuppressed ||
-				S_FALSE == hElementResult;
-			++iElement;
-		}
-		bOccurrenceActive = bOccurrenceActive || iElementBegin != iElement;
+				S_FALSE == hAfterImageResult && iAfterImageBegin != iAfterImage;
 
-		const size_t iParticleBegin = iParticle;
-		while (iParticle < Frame.Particles.size() &&
-			nullptr != Frame.Particles[iParticle].pElement &&
-			Frame.Particles[iParticle].pElement->strElementId == strElementId)
-		{
-			++iParticle;
-		}
-		const size_t iTrailBegin = iTrail;
-		while (iTrail < Frame.Trails.size() &&
-			nullptr != Frame.Trails[iTrail].pElement &&
-			Frame.Trails[iTrail].pElement->strElementId == strElementId)
-		{
-			++iTrail;
-		}
-		const HRESULT hParticleResult = bSubmitPreviewOccurrence ?
-			Render_Particles(Frame,
-				std::span<const EFFECT_EVALUATED_PARTICLE>(Frame.Particles)
-					.subspan(iParticleBegin,
-						iParticle - iParticleBegin)) : S_FALSE;
-		if (iParticleBegin != iParticle)
-			bOccurrenceActive = true;
-		if (FAILED(hParticleResult))
-		{
-			if (nullptr != pFamilyStats)
-				++pFamilyStats->iFailed;
-			return FailFrame(
-				"Effect particle rendering failed: " + strElementId,
-				hParticleResult);
-		}
-		bOccurrenceSubmitted = bOccurrenceSubmitted ||
-			S_OK == hParticleResult && iParticleBegin != iParticle;
-		bOccurrenceSuppressed = bOccurrenceSuppressed ||
-			S_FALSE == hParticleResult && iParticleBegin != iParticle;
-		const HRESULT hTrailResult = bSubmitPreviewOccurrence ?
-			Render_Trails(Frame,
-				std::span<const EFFECT_EVALUATED_TRAIL>(Frame.Trails)
-					.subspan(iTrailBegin, iTrail - iTrailBegin)) : S_FALSE;
-		if (iTrailBegin != iTrail)
-			bOccurrenceActive = true;
-		if (FAILED(hTrailResult))
-		{
-			if (nullptr != pFamilyStats)
-				++pFamilyStats->iFailed;
-			return FailFrame(
-				"Effect trail rendering failed: " + strElementId,
-				hTrailResult);
-		}
-		bOccurrenceSubmitted = bOccurrenceSubmitted ||
-			S_OK == hTrailResult && iTrailBegin != iTrail;
-		bOccurrenceSuppressed = bOccurrenceSuppressed ||
-			S_FALSE == hTrailResult && iTrailBegin != iTrail;
-		const size_t iCandidateRowCount =
-			(iAfterImage - iAfterImageBegin) +
-			(iElement - iElementBegin) +
-			(iParticle - iParticleBegin) +
-			(iTrail - iTrailBegin);
-		if (nullptr != pGpuOccurrence &&
-			pGpuOccurrence->iCandidateRowCount != iCandidateRowCount)
-		{
-			if (nullptr != pFamilyStats)
-				++pFamilyStats->iFailed;
-			return FailFrame(
-				"Effect GPU occurrence candidate-row denominator mismatch: " +
-				strElementId, E_FAIL, true);
-		}
-		if (0u < iCandidateRowCount && !bOccurrenceActive)
-		{
-			if (nullptr != pFamilyStats)
-				++pFamilyStats->iFailed;
-			return FailFrame(
-				"Effect inactive GPU occurrence produced candidate rows: " +
-				strElementId, E_FAIL, true);
-		}
-		if (bOccurrenceActive && 0u == iCandidateRowCount)
-			bOccurrenceSuppressed = true;
-		if (!bSubmitPreviewOccurrence && bOccurrenceActive)
-			bOccurrenceSuppressed = true;
-		if (bOccurrenceActive && bOwnsPhase)
-		{
-			if (nullptr == pFamilyStats)
+			const size_t iElementBegin = iElement;
+			while (iElement < Frame.Elements.size() &&
+				nullptr != Frame.Elements[iElement].pElement &&
+				Frame.Elements[iElement].pElement->strElementId == strElementId)
 			{
+				if (!bSubmitPreviewOccurrence)
+				{
+					++iElement;
+					continue;
+				}
+				const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
+				if (nullptr == pResource)
+				{
+					if (nullptr != pFamilyStats)
+						++pFamilyStats->iFailed;
+					return FailFrame(
+						"Effect element resource is missing: " + strElementId,
+						E_FAIL, true);
+				}
+				if (pResource->bSourceMaterialFallbackBlocked ||
+					pResource->bOccurrenceVisualSuppressed)
+				{
+					bOccurrenceSuppressed = true;
+					++iElement;
+					continue;
+				}
+				const HRESULT hElementResult =
+					Render_Element(Frame.Elements[iElement], *pResource);
+				if (FAILED(hElementResult))
+				{
+					if (nullptr != pFamilyStats)
+						++pFamilyStats->iFailed;
+					return FailFrame(
+						"Effect element rendering failed: " + strElementId,
+						hElementResult);
+				}
+				bOccurrenceSubmitted = bOccurrenceSubmitted ||
+					S_OK == hElementResult;
+				bOccurrenceSuppressed = bOccurrenceSuppressed ||
+					S_FALSE == hElementResult;
+				++iElement;
+			}
+			bOccurrenceActive = bOccurrenceActive || iElementBegin != iElement;
+
+			const size_t iParticleBegin = iParticle;
+			while (iParticle < Frame.Particles.size() &&
+				nullptr != Frame.Particles[iParticle].pElement &&
+				Frame.Particles[iParticle].pElement->strElementId == strElementId)
+			{
+				++iParticle;
+			}
+			const size_t iTrailBegin = iTrail;
+			while (iTrail < Frame.Trails.size() &&
+				nullptr != Frame.Trails[iTrail].pElement &&
+				Frame.Trails[iTrail].pElement->strElementId == strElementId)
+			{
+				++iTrail;
+			}
+			const HRESULT hParticleResult = bSubmitPreviewOccurrence ?
+				Render_Particles(Frame,
+					std::span<const EFFECT_EVALUATED_PARTICLE>(Frame.Particles)
+						.subspan(iParticleBegin,
+							iParticle - iParticleBegin)) : S_FALSE;
+			if (iParticleBegin != iParticle)
+				bOccurrenceActive = true;
+			if (FAILED(hParticleResult))
+			{
+				if (nullptr != pFamilyStats)
+					++pFamilyStats->iFailed;
 				return FailFrame(
-					"Effect active GPU occurrence has no typed family: " +
+					"Effect particle rendering failed: " + strElementId,
+					hParticleResult);
+			}
+			bOccurrenceSubmitted = bOccurrenceSubmitted ||
+				S_OK == hParticleResult && iParticleBegin != iParticle;
+			bOccurrenceSuppressed = bOccurrenceSuppressed ||
+				S_FALSE == hParticleResult && iParticleBegin != iParticle;
+			const HRESULT hTrailResult = bSubmitPreviewOccurrence ?
+				Render_Trails(Frame,
+					std::span<const EFFECT_EVALUATED_TRAIL>(Frame.Trails)
+						.subspan(iTrailBegin, iTrail - iTrailBegin)) : S_FALSE;
+			if (iTrailBegin != iTrail)
+				bOccurrenceActive = true;
+			if (FAILED(hTrailResult))
+			{
+				if (nullptr != pFamilyStats)
+					++pFamilyStats->iFailed;
+				return FailFrame(
+					"Effect trail rendering failed: " + strElementId,
+					hTrailResult);
+			}
+			bOccurrenceSubmitted = bOccurrenceSubmitted ||
+				S_OK == hTrailResult && iTrailBegin != iTrail;
+			bOccurrenceSuppressed = bOccurrenceSuppressed ||
+				S_FALSE == hTrailResult && iTrailBegin != iTrail;
+			const size_t iCandidateRowCount =
+				(iAfterImage - iAfterImageBegin) +
+				(iElement - iElementBegin) +
+				(iParticle - iParticleBegin) +
+				(iTrail - iTrailBegin);
+			if (nullptr != pGpuOccurrence &&
+				pGpuOccurrence->iCandidateRowCount != iCandidateRowCount)
+			{
+				if (nullptr != pFamilyStats)
+					++pFamilyStats->iFailed;
+				return FailFrame(
+					"Effect GPU occurrence candidate-row denominator mismatch: " +
 					strElementId, E_FAIL, true);
 			}
-			++pFamilyStats->iActive;
-			if (0u < iCandidateRowCount)
-				++pFamilyStats->iCandidate;
-			else
-				++pFamilyStats->iZeroCandidate;
-			++pFamilyStats->iAttempted;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-			++pOccurrenceStats->iActive;
-			pOccurrenceStats->iCandidateRowCount += iCandidateRowCount;
-			++pOccurrenceStats->iAttempted;
-#endif
-			if (bOccurrenceSubmitted)
+			if (0u < iCandidateRowCount && !bOccurrenceActive)
 			{
-				++pFamilyStats->iSubmitted;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-				++pOccurrenceStats->iSubmitted;
-				if (0u == pOccurrenceStats->iMaterialBindCount ||
-					0u == pOccurrenceStats->iTextureSrvBindCount ||
-					0u == pOccurrenceStats->iSamplerBindCount ||
-					0u == pOccurrenceStats->iShaderPassApplyCount ||
-					0u == pOccurrenceStats->iVIBufferBindCount ||
-					0u == pOccurrenceStats->iVIBufferDrawCount ||
-					0u == pOccurrenceStats->iIssuedDrawCallCount ||
-					0u == pOccurrenceStats->iDrawSelectionCount ||
-					pOccurrenceStats->iVIBufferBindCount !=
-						pOccurrenceStats->iVIBufferDrawCount ||
-					pOccurrenceStats->iVIBufferDrawCount !=
-						pOccurrenceStats->iIssuedDrawCallCount ||
-					pOccurrenceStats->iDrawSelectionCount !=
-						pOccurrenceStats->iIssuedDrawCallCount ||
-					pOccurrenceStats->bDrawSelectionDiverged ||
-					EFFECT_GPU_RENDER_CARRIER::END ==
-						pOccurrenceStats->eCarrier ||
-					UINT32_MAX == pOccurrenceStats->iSelectedPassIndex ||
-					!pOccurrenceStats->bHasSubmittedPosition)
-				{
-					++pOccurrenceStats->iFailed;
+				if (nullptr != pFamilyStats)
 					++pFamilyStats->iFailed;
+				return FailFrame(
+					"Effect inactive GPU occurrence produced candidate rows: " +
+					strElementId, E_FAIL, true);
+			}
+			if (bOccurrenceActive && 0u == iCandidateRowCount)
+				bOccurrenceSuppressed = true;
+			if (!bSubmitPreviewOccurrence && bOccurrenceActive)
+				bOccurrenceSuppressed = true;
+			if (bOccurrenceActive && bOwnsPhase)
+			{
+				if (nullptr == pFamilyStats)
+				{
 					return FailFrame(
-						"Effect submitted occurrence bypassed material/pass/VF/draw evidence: " +
+						"Effect active GPU occurrence has no typed family: " +
 						strElementId, E_FAIL, true);
 				}
-#endif
-			}
-			else if (bOccurrenceSuppressed)
-			{
-				++pFamilyStats->iSuppressed;
+				++pFamilyStats->iActive;
+				if (0u < iCandidateRowCount)
+					++pFamilyStats->iCandidate;
+				else
+					++pFamilyStats->iZeroCandidate;
+				++pFamilyStats->iAttempted;
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-				++pOccurrenceStats->iSuppressed;
+				++pOccurrenceStats->iActive;
+				pOccurrenceStats->iCandidateRowCount += iCandidateRowCount;
+				++pOccurrenceStats->iAttempted;
 #endif
-			}
-			else
-			{
-				++pFamilyStats->iFailed;
+				if (bOccurrenceSubmitted)
+				{
+					++pFamilyStats->iSubmitted;
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-				++pOccurrenceStats->iFailed;
+					++pOccurrenceStats->iSubmitted;
+					if (0u == pOccurrenceStats->iMaterialBindCount ||
+						0u == pOccurrenceStats->iTextureSrvBindCount ||
+						0u == pOccurrenceStats->iSamplerBindCount ||
+						0u == pOccurrenceStats->iShaderPassApplyCount ||
+						0u == pOccurrenceStats->iVIBufferBindCount ||
+						0u == pOccurrenceStats->iVIBufferDrawCount ||
+						0u == pOccurrenceStats->iIssuedDrawCallCount ||
+						0u == pOccurrenceStats->iDrawSelectionCount ||
+						pOccurrenceStats->iVIBufferBindCount !=
+							pOccurrenceStats->iVIBufferDrawCount ||
+						pOccurrenceStats->iVIBufferDrawCount !=
+							pOccurrenceStats->iIssuedDrawCallCount ||
+						pOccurrenceStats->iDrawSelectionCount !=
+							pOccurrenceStats->iIssuedDrawCallCount ||
+						pOccurrenceStats->bDrawSelectionDiverged ||
+						EFFECT_GPU_RENDER_CARRIER::END ==
+							pOccurrenceStats->eCarrier ||
+						UINT32_MAX == pOccurrenceStats->iSelectedPassIndex ||
+						!pOccurrenceStats->bHasSubmittedPosition)
+					{
+						++pOccurrenceStats->iFailed;
+						++pFamilyStats->iFailed;
+						return FailFrame(
+							"Effect submitted occurrence bypassed material/pass/VF/draw evidence: " +
+							strElementId, E_FAIL, true);
+					}
 #endif
-				return FailFrame(
-					"Effect active GPU occurrence produced no disposition: " +
-					strElementId, E_FAIL, true);
+				}
+				else if (bOccurrenceSuppressed)
+				{
+					++pFamilyStats->iSuppressed;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+					++pOccurrenceStats->iSuppressed;
+#endif
+				}
+				else
+				{
+					++pFamilyStats->iFailed;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+					++pOccurrenceStats->iFailed;
+#endif
+					return FailFrame(
+						"Effect active GPU occurrence produced no disposition: " +
+						strElementId, E_FAIL, true);
+				}
 			}
 		}
-	}
-	if (iElement != Frame.Elements.size() ||
-		iParticle != Frame.Particles.size() ||
-		iTrail != Frame.Trails.size() ||
-		iAfterImage != Frame.AfterImages.size() ||
-		iGpuOccurrence != Frame.GpuOccurrences.size())
-	{
-		return FailFrame(
-			"Effect frame contains unconsumed evaluated GPU rows.",
-			E_FAIL, true);
-	}
+		if (iElement != Frame.Elements.size() ||
+			iParticle != Frame.Particles.size() ||
+			iTrail != Frame.Trails.size() ||
+			iAfterImage != Frame.AfterImages.size() ||
+			iGpuOccurrence != Frame.GpuOccurrences.size())
+		{
+			return FailFrame(
+				"Effect frame contains unconsumed evaluated GPU rows.",
+				E_FAIL, true);
+		}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-	if (iOccurrenceStats != m_LastRenderSubmissionStats.Occurrences.size())
-	{
-		return FailFrame(
-			"Effect GPU occurrence probe denominator underflow.", E_FAIL, true);
-	}
+		if (iOccurrenceStats != m_LastRenderSubmissionStats.Occurrences.size())
+		{
+			return FailFrame(
+				"Effect GPU occurrence probe denominator underflow.", E_FAIL, true);
+		}
 #endif
+    }
 	if (!bFinalizeSubmission)
 		return S_OK;
 	uint64_t iActive = 0u;
