@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -71,6 +71,7 @@
     <ClInclude Include="..\Public\KoukuMadnessGaugeView.h" />
     <ClInclude Include="..\Public\StatusEffectTextView.h" />
     <ClInclude Include="..\Public\DungeonTimerView.h" />
+    <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
@@ -313,6 +314,7 @@
     <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp" />
     <ClCompile Include="..\Private\StatusEffectTextView.cpp" />
     <ClCompile Include="..\Private\DungeonTimerView.cpp" />
+    <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
@@ -775,6 +777,10 @@
     <None Include="..\..\Data\UI\Minimap\MinimapAreas.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku_Layout.json" />
+    <None Include="..\..\Data\UI\RaidClear\RaidClear_Kouku.keyframes.json" />
+    <None Include="..\..\Data\UI\MVP\MvpResult_Layout.json" />
+    <None Include="..\..\Data\UI\MVP\MvpResult_Intro.keyframes.json" />
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json" />
     <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json" />
     <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json" />

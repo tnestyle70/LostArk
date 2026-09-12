@@ -18,6 +18,7 @@
 #include "KakulArenaHiddenPlacements.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuMadnessGaugeView.h"
+#include "MvpResultView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
@@ -1051,6 +1052,23 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		m_pDeadSceneView->Set_AllSlotsVisible(false);
 	}
 
+	/* Built hidden; only the F1 Developer Tools show it so far. */
+	m_pMvpResultView = std::make_unique<CMvpResultView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
+
+	/* KoukuSaydon's own document rather than the one Valtan drives. Every layer of
+	   epicGateCommanderClearSuccess_Set02 animates its position, size and alpha frame by
+	   frame, and the light layers are authored white with each Set's colorTransform
+	   supplying the raid colour (Kouku pulls blue to 0, which is what makes it gold), so
+	   the whole Set is carried as a keyframe document instead of fixed rects.
+	   epicgatecommonclear.gfx's MainTimeline places the frame at translateX -6400 twips on
+	   a 1920x1080 stage, so local x maps to x - 320 and then the usual 2/3 onto 1280x720;
+	   that mapping is already baked into the generated keys. */
+	m_pRaidClearView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
+		L"UI/RaidClear/RaidClear_Kouku_Layout.json");
+	m_pRaidClearView->Set_AllSlotsVisible(false);
+
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
 	replicationDesc.iPrototypeLevelIndex =
@@ -1154,6 +1172,9 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 #endif
 	Update_DeadScene(fTimeDelta);
+	Update_RaidClear(fTimeDelta);
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Update(fTimeDelta);
 
 #ifdef _DEBUG
 	/* Gate spawn replies arrive one per requested placement. They are Debug
@@ -1826,7 +1847,154 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Floating status words last, over the scene and over the two prompts above,
 	   the way the retail damage-text canvas sits on its own top layer. */
 	m_StatusEffectTextView.Render();
+	/* Award page labels sit over everything else this Level draws, the status
+	   words included. Its own image layers are CUI_Sprite objects on Layer_UI,
+	   so they need no call. */
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Render();
 	return drawn;
+}
+
+namespace
+{
+	/* Sample page for the F1 preview: three contribution rows for the MVP and
+	   three party columns. Titles and contribution names are the real
+	   EFTable_MvpTitle / sys.mvp.desc_* strings, written as universal character
+	   names because this file has no BOM and must stay ASCII on disk. */
+	Client::MVP_RESULT_DATA Build_MvpResultPreviewData()
+	{
+		Client::MVP_RESULT_DATA Data;
+		Data.strContentName = L"[\uB178\uB9D0] \uD55C\uBC24\uC911\uC758 \uC11C\uCEE4\uC2A4 3\uAD00\uBB38";
+		Data.Mvp.strCharacterName = L"Test";
+		Data.Mvp.strGuildName = L"\uAE38\uB4DC\uC6D0";
+		Data.Mvp.Stats.push_back({ L"\uC794\uD639\uD55C \uD608\uD22C\uC0AC", L"\uC900 \uD53C\uD574", L"32.4%", true });
+		Data.Mvp.Stats.push_back({ L"\uC9C4\uACA9\uC758 \uC12C\uBA78\uC790", L"\uC900 \uBB34\uB825\uD654", L"21.7%", false });
+		Data.Mvp.Stats.push_back({ L"\uC12C\uAD11\uC758 \uBD09\uC1C4\uC790", L"\uCE74\uC6B4\uD130 \uC131\uACF5", L"11", false });
+		Data.Mvp.Medals = { 1, 9, 13 };
+
+		{
+			Client::MVP_RESULT_ENTRY Entry;
+			Entry.strCharacterName = L"Berserker";
+			Entry.strGuildName = L"\uAE38\uB4DC\uC6D0";
+			Entry.Stats.push_back({ L"\uAC15\uC9C1\uD55C \uD22C\uC0AC", L"\uC900 \uD53C\uD574", {}, true });
+			Entry.Stats.push_back({ L"\uBE44\uC815\uD55C \uC12C\uBA78\uC790", L"\uC900 \uBB34\uB825\uD654", {}, false });
+			Entry.Medals = { 2, 9 };
+			Data.Party.push_back(Entry);
+		}
+		{
+			Client::MVP_RESULT_ENTRY Entry;
+			Entry.strCharacterName = L"Bard";
+			Entry.strGuildName = L"\uAE38\uB4DC\uC6D0";
+			Entry.Stats.push_back({ L"\uACE0\uACB0\uD55C \uCE58\uC720\uC0AC", L"\uD30C\uD2F0 \uD68C\uBCF5", {}, true });
+			Entry.Stats.push_back({ L"\uCC2C\uB780\uD55C \uC870\uB825\uC790", L"\uACF5\uACA9 \uC9C0\uC6D0", {}, false });
+			Entry.Medals = { 14, 16, 17 };
+			Data.Party.push_back(Entry);
+		}
+		{
+			Client::MVP_RESULT_ENTRY Entry;
+			Entry.strCharacterName = L"Sorceress";
+			Entry.strGuildName = L"\uAE38\uB4DC\uC6D0";
+			Entry.Stats.push_back({ L"\uD22C\uC0AC", L"\uC900 \uD53C\uD574", {}, true });
+			Entry.Stats.push_back({ L"\uC9C0\uB7B5\uAC00", L"\uBC30\uD2C0\uC544\uC774\uD15C \uC0AC\uC6A9 \uD69F\uC218", {}, false });
+			Entry.Medals = { 5 };
+			Data.Party.push_back(Entry);
+		}
+
+		return Data;
+	}
+}
+
+namespace
+{
+	/* epicgatecommonclear.gfx runs at 40fps and every Set variant is 309 frames, so elapsed
+	   seconds * 40 is the Set's own current frame and the keyframe document plays on the
+	   same clock. EpicGateCommonClearFrame picks its variant by an integer the client hands
+	   it -- result_<ClearNoticeImage> -- and EFTable_ZoneEpicGate gives KoukuSaydon 103,
+	   which is epicGateCommanderClearSuccess_Set02, the Set this document was built from. */
+	constexpr f32_t CLEAR_FPS = 40.f;
+	/* The Set sprite is authored 309 frames and fades itself out over 300..308, but retail
+	   never gets there: in the reference capture the clear screen is still at full strength
+	   when it is cut outright, and the award page starts in the same instant. Anchoring the
+	   capture to the document (its light enters at f108, crest f118, caption f126) puts
+	   document frame 1 at capture frame 1038.5 and the cut at capture 1401, i.e. f243.
+	   Document-to-document sequencing lives in the client's C++ and is not in the .gfx, so
+	   this one number is measured rather than extracted. */
+	constexpr f32_t CLEAR_END_FRAME = 243.f;
+
+	/* Layer entry, position, size, alpha and tint all live in the keyframe document now,
+	   so nothing is listed here. The one thing the document cannot carry is the caption:
+	   the clear title is a DefineEditText (char 364, 66pt, scale 1.3 settling to 1.0 over
+	   frames 126..136) and text is drawn by CMainApp::RenderRaidClearText from a rect.
+	   HUD_RAIDCLEAR_TEXT_RECTS has no alpha field, so the caption is gated on at the frame
+	   its own alphaMultTerm leaves 0; its 126..136 scale-in is not reproduced yet. */
+	constexpr f32_t CLEAR_CAPTION_IN_FRAME = 126.f;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pRaidClearView || m_fRaidClearElapsedSeconds < 0.f)
+		return;
+
+	const f32_t fPrevious = m_fRaidClearElapsedSeconds;
+	m_fRaidClearElapsedSeconds += fTimeDelta;
+	const f32_t fFrame = m_fRaidClearElapsedSeconds * CLEAR_FPS;
+	const bool_t isShowing = fFrame < CLEAR_END_FRAME;
+
+	if (0.f == fPrevious)
+	{
+		m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_Frame", true);
+		m_pRaidClearView->Play_KeyframeAnimation("RaidClear_Kouku_Frame", "intro");
+	}
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_Frame", isShowing);
+	/* Authoring-only marker; the caption itself is drawn from the text pass. */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_TitleTextBox", false);
+	m_pRaidClearView->Update(fTimeDelta);
+
+	/* The light enters first, the crest lands on it, the caption follows. */
+	HUD_RAIDCLEAR_TEXT_RECTS TextRects;
+	TextRects.isValid = isShowing &&
+		fFrame >= CLEAR_CAPTION_IN_FRAME &&
+		m_pRaidClearView->Get_SlotRect("RaidClear_Kouku_TitleTextBox",
+			TextRects.fTitleX, TextRects.fTitleY,
+			TextRects.fTitleWidth, TextRects.fTitleHeight);
+	CCombatHUDViewModel::Get().Set_RaidClearTextRects(TextRects);
+
+	/* callbackFrameActionEnd: the document hides itself at its last frame and hands the
+	   screen to whatever comes next. */
+	if (fPrevious * CLEAR_FPS < CLEAR_END_FRAME && fFrame >= CLEAR_END_FRAME)
+	{
+		m_pRaidClearView->Set_AllSlotsVisible(false);
+		if (nullptr != m_pMvpResultView)
+			m_pMvpResultView->Show(Build_MvpResultPreviewData());
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Hide();
+	m_fRaidClearElapsedSeconds = 0.f;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_Show_MvpResult()
+{
+	if (nullptr == m_pMvpResultView)
+		return;
+	m_pMvpResultView->Show(Build_MvpResultPreviewData());
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_Hide_MvpResult()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Hide();
+	m_fRaidClearElapsedSeconds = -1.f;
+	if (nullptr != m_pRaidClearView)
+		m_pRaidClearView->Set_AllSlotsVisible(false);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Debug_Is_MvpResultVisible() const
+{
+	return nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
