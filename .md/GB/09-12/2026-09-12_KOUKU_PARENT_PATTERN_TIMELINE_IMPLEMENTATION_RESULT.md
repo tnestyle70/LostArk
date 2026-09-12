@@ -39,7 +39,7 @@ Composition revision 352에서 공식 `Invoke-BuildDomainOwner.ps1 -Owner KoukuS
 
 사용자의 마무리 요청에 따라 CuttingBlade/HornClown/Trumpet/LaserCannon 네 소품의 신규 재질 셰이더 작업은 중단했다. 해당 후보는 제품에 설치하지 않았고 기존 재질은 보존했다. 노란 부채꼴은 저작 조합이며 원본 엔진 노이즈의 UV 흔들림은 미복원이다. 마리오 전체 시간표 조립과 1~4 진입 카운터도 이번에 추가하지 않았다.
 
-이번에 확인·갱신한 구성은 Debug다. 기존 전달 ZIP은 생성·교체하지 않았다. 다음 ZIP에는 현재 Client/Server EXE, 실행 DLL, CSO와 양쪽 Bin/DataFiles를 함께 넣어야 하며 선택하는 LostArk 정본 폴더의 Data도 이번 변경과 일치해야 한다. 기존 runtime ZIP 도구는 Data 저작 정본과 Resources를 담지 않는다. Git commit/push도 수행하지 않았다.
+이번에 확인·갱신한 구성은 Debug다. 후속 ZIP 갱신 요청에 따라 2026-09-12 15:47:34에 바탕화면 `C:/Users/user/Desktop/GB_Resources.zip`을 갱신했다(335,339,910 bytes). 새 공식 runtime ZIP은 현재 EXE/DLL/CSO 및 양쪽 Bin/DataFiles 363개를 담으며 113개 CSO와 793,187-byte Decal을 포함한다. 모든 manifest hash와 현재 실행 폴더의 일치를 확인했다. 외부 ZIP 751개 엔트리 중 runtime/README 두 개만 교체했고 나머지 749개는 SHA-256으로 보존을 확인했다. 바탕화면 추출 폴더와 out 포장 사본도 갱신했다. 기존 폴더 선택 설치기와 바로가기는 유지한다. 검증 증거는 `out/RuntimeDelivery20260912/session-delivery-result.json`이며 이전 ZIP은 같은 out 폴더의 `GB_Resources-before-session-update.zip`으로 보존했다. 선택하는 LostArk 정본 폴더의 Data도 이번 변경과 일치해야 한다. runtime ZIP은 Data 저작 정본과 Resources를 담지 않는다. Git commit/push는 수행하지 않았다.
 
 최종 확인 시 Client/Server는 실행 중이지 않았다. 에이전트가 종료·실행하지 않았다. 이 PC는 LAN `server-host`이므로 Visual Studio의 `Server + Client` profile을 사용자가 직접 시작한다.
 
