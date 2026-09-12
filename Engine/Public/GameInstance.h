@@ -169,6 +169,7 @@ public: /* For.Shadow */
 	HRESULT Add_Shadow_Light(const SHADOW_LIGHT_DESC& ShadowLightDesc);
 	bool_t Is_ShadowLightEnabled() const;
 	const SHADOW_LIGHT_DESC& Get_ShadowLightDesc() const;
+	const float4x4_t* Get_ShadowLightTransform(D3DTS eType) const;
 	HRESULT Bind_ShadowLight_ShaderResource(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
 	HRESULT Bind_ShadowLight_LightingResources(shared_ptr<class CShader> pShader);
 

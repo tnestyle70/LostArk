@@ -21,6 +21,13 @@ struct MAP_CAMERA_CULL_SNAPSHOT final
 	float4_t worldPlanes[6] = {};
 };
 
+// The light clip volume has its own revision and never consumes camera visibility.
+struct MAP_SHADOW_CULL_SNAPSHOT final
+{
+	uint64_t revision = {};
+	float4_t worldPlanes[6] = {};
+};
+
 struct MAP_FRUSTUM_CULL_DECISION final
 {
 	bool_t wouldBeVisible = true;
@@ -55,6 +62,18 @@ public:
 	static bool_t Capture_CameraCullSnapshot(
 		MAP_CAMERA_CULL_SNAPSHOT& outSnapshot,
 		std::string* outFailureReason = nullptr);
+	static bool_t Build_ShadowCullSnapshot(
+		const float4x4_t& view,
+		const float4x4_t& projection,
+		uint64_t revision,
+		MAP_SHADOW_CULL_SNAPSHOT& outSnapshot);
+	static bool_t Capture_ShadowCullSnapshot(
+		MAP_SHADOW_CULL_SNAPSHOT& outSnapshot);
+	// Invalid inputs retain the caster; only a separated valid sphere is rejected.
+	static bool_t Intersects_ShadowCullSnapshot(
+		const MAP_SHADOW_CULL_SNAPSHOT& snapshot,
+		const float3_t& worldCenter,
+		f32_t worldRadius);
 	static HRESULT Bind_CameraCullSnapshot(
 		const shared_ptr<Engine::CShader>& shader,
 		const MAP_CAMERA_CULL_SNAPSHOT& snapshot);

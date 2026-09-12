@@ -649,6 +649,8 @@ bool_t CModel::Set_BoneLocalMatrix(
         return false;
 
     m_Bones[iBoneIndex]->Update_TransformationMatrix(Matrix);
+    // Costume-only locals are consumed by Pose_BonesFrom before a full refresh.
+    m_iCopiedPoseRevision = 0u;
     return true;
 }
 
@@ -656,8 +658,16 @@ uint32_t CModel::Pose_BonesFrom(const CModel& source)
 {
     /* By name, because the two skeletons are cooked separately and neither order nor count
        matches: a worn part carries the body's bones plus its own. */
-    if (m_SourcePoseBoneIndices.size() != m_Bones.size() ||
-        m_pSourcePoseModel != &source)
+    // A weak owner distinguishes a new model allocated at a retired source address.
+    // Unowned prototypes retain the uncached path without extending their lifetime.
+    const auto sourceOwner = source.weak_from_this().lock();
+    const bool sameSource = sourceOwner && m_pSourcePoseModel == &source &&
+        m_SourcePoseOwner.lock() == sourceOwner;
+    if (sameSource && m_iSourcePoseRevision == source.m_iBonePoseRevision &&
+        m_iCopiedPoseRevision == m_iBonePoseRevision)
+        return m_iSourcePoseSuppliedBones;
+
+    if (!sameSource || m_SourcePoseBoneIndices.size() != m_Bones.size())
     {
         m_SourcePoseBoneIndices.assign(m_Bones.size(), -1);
         for (size_t index = 0; index < m_Bones.size(); ++index)
@@ -674,6 +684,7 @@ uint32_t CModel::Pose_BonesFrom(const CModel& source)
             }
         }
         m_pSourcePoseModel = &source;
+        m_SourcePoseOwner = sourceOwner;
     }
 
     uint32_t supplied = 0u;
@@ -694,11 +705,15 @@ uint32_t CModel::Pose_BonesFrom(const CModel& source)
             m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
     }
     Invalidate_SkinPalettes();
+    m_iSourcePoseRevision = source.m_iBonePoseRevision;
+    m_iCopiedPoseRevision = m_iBonePoseRevision;
+    m_iSourcePoseSuppliedBones = supplied;
     return supplied;
 }
 
 void CModel::Invalidate_SkinPalettes()
 {
+    m_iCopiedPoseRevision = 0u;
     if (++m_iBonePoseRevision == 0u)
     {
         m_SkinPalettes.clear();

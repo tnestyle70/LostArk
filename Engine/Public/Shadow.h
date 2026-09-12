@@ -20,6 +20,12 @@ public:
 	}
 	bool_t Is_Enabled() const { return m_ShadowLightDesc.Settings.bEnabled; }
 	const SHADOW_LIGHT_DESC& Get_Desc() const { return m_ShadowLightDesc; }
+	const float4x4_t* Get_Transform(D3DTS eType) const
+	{
+		if (!Is_Enabled() || (eType != D3DTS::VIEW && eType != D3DTS::PROJ))
+			return nullptr;
+		return &m_TransformMatrices[ETOUI(eType)];
+	}
 	HRESULT Bind_ShaderResource(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
 	HRESULT Bind_LightingShaderResources(shared_ptr<class CShader> pShader);
 

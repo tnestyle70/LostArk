@@ -688,6 +688,11 @@ const SHADOW_LIGHT_DESC& CGameInstance::Get_ShadowLightDesc() const
 	return m_pShadow->Get_Desc();
 }
 
+const float4x4_t* CGameInstance::Get_ShadowLightTransform(D3DTS eType) const
+{
+	return m_pShadow ? m_pShadow->Get_Transform(eType) : nullptr;
+}
+
 HRESULT CGameInstance::Bind_ShadowLight_ShaderResource(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType)
 {
 	return m_pShadow->Bind_ShaderResource(pShader, pConstantName, eType);

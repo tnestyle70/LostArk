@@ -20,6 +20,17 @@
 Resources 경계는 [렌더링이펙트복원V2.md](렌더링이펙트복원V2.md)를 함께 읽는다.
 해당 분야의 재사용 원리와 실제 연결 범위는 그 문서에서 갱신하고 여기에는 복제하지 않는다.
 
+### 맵 그림자 최적화의 보존 조건
+
+- camera frustum을 shadow caster에 적용하지 않는다. 실제 light view/projection을 사용하고
+  frame provider 뒤에 instance를 준비한다. light 변경 없이 실패한 upload도 다음 호출에서 재시도한다.
+- 단순 shadow pass와 opaque null-PS 선택은 surface family뿐 아니라 source-material 활성 설정도
+  함께 확인한다. 설정이 꺼진 경우 기존 legacy diffuse alpha를 보존한다.
+- 장비 pose cache는 source pointer만으로 판정하지 않는다. owner 수명과 source/destination
+  revision을 함께 검사해 동일주소 재할당·같은 프레임 포즈 변경을 반영한다.
+- `Render.Shadow` GPU elapsed를 순수 GPU 실행시간으로 단정하거나 fixture 개선율을 사용자 FPS로
+  환산하지 않는다. 현재 연결과 검증 경계는 [렌더링 복원 가이드](렌더링이펙트복원V2.md)를 따른다.
+
 ## 1. 동기화 전 상태 고정
 
 다음 증거를 먼저 남긴다.
