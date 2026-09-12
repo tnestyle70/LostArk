@@ -435,7 +435,7 @@ HRESULT CGameInstance::Remove_GameObject_from_Layer(uint32_t iLevelIndex, const 
 
 HRESULT CGameInstance::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject)
 {
-	return m_pRenderer->Add_RenderObject(eRenderGroupID, pRenderObject);
+	return m_pRenderer->Add_RenderObject(eRenderGroupID, std::move(pRenderObject));
 }
 
 void CGameInstance::Request_SceneColorSnapshot()

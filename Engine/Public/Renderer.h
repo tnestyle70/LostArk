@@ -57,7 +57,7 @@ private:
 	ComPtr<ID3D11DepthStencilView> m_pSourceLightMaskDSV;
 	uint32_t m_iSourceLightMaskWidth = 0u, m_iSourceLightMaskHeight = 0u;
 	uint32_t m_iSourceLightMaskFailedWidth = 0u, m_iSourceLightMaskFailedHeight = 0u;
-	list<shared_ptr<CGameObject>>			m_RenderObjects[ETOUI(RENDERGROUP::END)];
+	vector<shared_ptr<CGameObject>>		m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };

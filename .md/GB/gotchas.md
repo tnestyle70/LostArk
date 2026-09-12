@@ -1060,3 +1060,11 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 카드 준비 풀은 동일 Area/revision, model/preScale/material 및 device 범위에서만 공유한다. Stop/완료 반환과 문서 교체 시 token 무효화가 함께 있어야 하며, 첫 입장뿐 아니라 Object Save 뒤 reload에서도 다시 준비한다. 실제 GPU/FPS 검증과 CPU 준비 성공을 구분한다.
 - WModel이 이미 30Hz이고 FLOAT weights가 정상이어도 child quaternion conjugate 누락은 별개다. 원본 PSA 전체 clip 회전을 대조하고 기존 geometry/skeleton/material과 위치·scale·시간 키를 보존해 교정한다. 괴기스러운 인형은 말·호랑이와 같은 원인으로 확인됐다. [인형·외곽불 결과](09-12/2026-09-12_KOUKU_DOLL_FIRE_REPAIR_RESULT.md).
 - WINT minor 증가로 정적 mesh 속성이 추가돼도 내장 WMA2 레이아웃이 유지될 수 있다. repair 도구는 실제 구조와 material identity를 검사해 지원 버전을 명시하고 임의 byte offset 교체로 우회하지 않는다. 외곽불 D/E/F의 잘못된 emissive 입력 제거는 원본 native 불 재질 전체 복원과 구분한다.
+
+
+### 렌더링 hot path는 실제 소비 입력과 큐 수명을 함께 보존한다
+
+- source family별 재질 준비를 줄일 때 PS의 family 분기 앞 공통 처리도 검사한다. `Shader_VtxMeshBinary`의 opaque/shadow presentation dither는 source BG에도 `g_Opacity`를 읽는다. native 재질이 raw UV를 쓴다는 이유로 opacity까지 생략하면 소품이 잘못 사라진다. source on/off, diffuse override와 직전 shader 상태를 실제 MRT/depth로 비교한다.
+- per-draw 진단 목록은 닫힌 도구에서도 문자열 검색·삭제·할당 비용을 만들 수 있다. 실제 UI 조회가 있는 동안만 수집하고 level 변경·만료와 재열기 동작을 유지한다.
+- list 렌더 큐를 capacity 재사용 vector로 바꾸면 callback append가 iterator/reference를 무효화할 수 있다. index로 순회하고 객체 수명은 queue의 shared_ptr로 보존한다. sorted BLEND의 snapshot 순서와 실패/pass 종료 clear를 별도로 유지한다.
+- shader instruction/SRV 감소와 CPU Draw 제출 단축을 GPU pixel 실행 단축으로 간주하지 않는다. 같은 입력의 작은·넓은 면적을 각각 비교하고 실제 게임 프레임 결론은 사용자 캡처로 판단한다. [맵·캐릭터 성능 결과](09-12/2026-09-12_MAP_CHARACTER_RENDER_PERFORMANCE_RESULT.md).

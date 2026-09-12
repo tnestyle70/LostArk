@@ -242,6 +242,38 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
     return sideX * weight.x + topDown * weight.y + sideZ * weight.z;
 }
 
+// Opaque source BG uses the same material math with its family fixed at compile time.
+PS_OUT PS_MAIN_SOURCE_BG(VS_OUT input)
+{
+    PS_OUT output = (PS_OUT)0;
+    const MAP_SURFACE_SAMPLE surface = EvaluateMapSourceBGSurface(input.vRawTexcoord,
+        input.vColor, input.vWorldPos.xyz, input.vTangent.xyz,
+        input.vBinormal.xyz, input.vNormal.xyz);
+    output.vDiffuse = surface.diffuse;
+    if (g_SurfaceDebugView == 4u)
+        output.vDiffuse.rgb = surface.reflectionDelta;
+    const float diffuseScale =
+        max(1.f, max(output.vDiffuse.r, max(output.vDiffuse.g, output.vDiffuse.b)));
+    output.vDiffuse.rgb /= diffuseScale;
+    output.vNormal = float4(surface.worldNormal * 0.5f + 0.5f, 0.f);
+    output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f, g_SurfaceSpecularPower, 8.f);
+    output.vPickPos = input.vWorldPos;
+    output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
+        g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
+    output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
+    output.vEmissive = float4(EvaluateMapSourceBGIndirectLighting(surface,
+        input.vLightmapUV, input.vLightmapAverageScale,
+        input.vLightmapDirectionalScale, input.vWorldPos.xyz,
+        input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, false) +
+        EvaluateMapSurfaceEmissive(input.vRawTexcoord, 8u),
+        1.f - EvaluateMapStaticShadow(input.vStaticShadowUV));
+    output.vCharacterSurface =
+        float4(surface.rimlightRadiance, float(g_SourceBgFlags & 1023u));
+    output.vMaterialSpecular = float4(surface.specular, diffuseScale);
+    return output;
+}
+
 PS_OUT PS_MAIN(VS_OUT input)
 {
     PS_OUT output = (PS_OUT)0;
@@ -1033,6 +1065,37 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
         GeometryShader = NULL;
         PixelShader = NULL;
+    }
+
+    // Appended 24-26: source BG opaque, mirrored and two-sided variants.
+    pass SourceBGBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_BG();
+    }
+
+    pass SourceBGFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_BG();
+    }
+
+    pass SourceBGTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_BG();
     }
 
 }

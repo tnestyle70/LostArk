@@ -5,6 +5,7 @@
 #include "Shader.h"
 #include "Presentation_Manager.h"
 #include <array>
+#include <atomic>
 
 #include <algorithm>
 #include <cmath>
@@ -66,6 +67,9 @@ namespace
         return S_OK;
     }
 
+	// Only the Rendering Workbench consumes this diagnostic list. A short lease
+	// lets its next draw populate the view without collecting while tools are shut.
+	std::atomic<uint64_t> g_SurfaceBindingRequestedUntilMs{ 0u };
 	std::mutex g_SurfaceBindingMutex;
 	std::vector<Client::MAP_SURFACE_BINDING_ROW> g_SurfaceBindings;
 	uint32_t g_SurfaceBindingLevelId = (std::numeric_limits<uint32_t>::max)();
@@ -88,6 +92,8 @@ namespace
 		Engine::MODEL_SURFACE_FAMILY family, uint32_t program)
 	{
 		const uint64_t now = GetTickCount64();
+		if (now >= g_SurfaceBindingRequestedUntilMs.load(std::memory_order_relaxed))
+			return;
 		const uint32_t levelId = Engine::CGameInstance::Get().Get_CurrentLevelID();
 		std::lock_guard<std::mutex> lock(g_SurfaceBindingMutex);
 		RefreshSurfaceBindings(levelId, now);
@@ -675,6 +681,7 @@ uint32_t CMapAssetRenderUtils::Select_Pass(const MAP_ASSET_RENDER_PROFILE& profi
 std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_RecentSurfaceBindings()
 {
 	const uint64_t now = GetTickCount64();
+	g_SurfaceBindingRequestedUntilMs.store(now + 1000u, std::memory_order_relaxed);
 	const uint32_t levelId = CGameInstance::Get().Get_CurrentLevelID();
 	std::lock_guard<std::mutex> lock(g_SurfaceBindingMutex);
 	RefreshSurfaceBindings(levelId, now);
@@ -773,6 +780,23 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		shader->Bind_RawValue(name, &noSurfaceEmissive, sizeof(noSurfaceEmissive));
 	shader->Bind_RawValue("g_EmissiveColor", &identityEmissive, sizeof(identityEmissive));
 
+	const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
+	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
+	const bool sourceBg = nativeSurface &&
+		nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+		profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED &&
+		!diffuseOverride && settings.bUseSourceMaterials;
+	// Source BG uses its raw UV and native textures/constants. Keep the diffuse
+	// binder's mirror/reset contract, but do not prepare unused legacy inputs.
+	if (sourceBg)
+	{
+		// Non-instanced opaque props still consume opacity for presentation dither.
+		if (FAILED(model->Bind_Material(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
+			FAILED(shader->Bind_RawValue("g_Opacity", &profile.opacity, sizeof(profile.opacity))))
+			return E_FAIL;
+	}
+	else
+	{
 	const uint32_t hasNormalTexture =
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_NORMALS) ? 1u : 0u;
@@ -789,7 +813,6 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_OPACITY) ? 1u : 0u;
 
-    const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
     const bool constantSource = nativeSurface &&
         nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
         (nativeSurface->sourceCharacter.program == 64u || nativeSurface->sourceCharacter.program == 65u);
@@ -899,6 +922,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	}
 
+	}
+
     // A static World Object may own the same native material contract as an actor.
     // Submit its real CMaterial into the shared direct-light pass after legacy resets.
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyShadowLighting{};
@@ -957,11 +982,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
         return model->Bind_SourceCharacter(shader, meshIndex);
     }
 
-	const auto* surface = model->Get_MaterialSurface(meshIndex);
+	const auto* surface = nativeSurface;
 	const bool_t hasDefinition = surface &&
 		surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY &&
 		profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED && !diffuseOverride;
-	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
 	const uint32_t hasSurface = hasDefinition ? 1u : 0u;
 	const uint32_t program = hasDefinition && settings.bUseSourceMaterials ?
 		static_cast<uint32_t>(surface->family) : 0u;
