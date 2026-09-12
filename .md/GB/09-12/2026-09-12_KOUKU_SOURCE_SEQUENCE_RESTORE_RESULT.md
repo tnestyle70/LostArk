@@ -1,5 +1,19 @@
 # 쿠크 원본 시퀀스 저작 연결 결과
 
+## G07. 팝업북·피날레 사용자 이미지 후속 조사 — 구현 미실행
+
+2026-09-12 후속 요청에서 사용자가 코드 수정 대신 원인 조사와 수정 계획만 요청했다. 이 후속 작업은 PLAN의 G06을 갱신했고, 제품 코드·Data·Resources·runtime·ZIP을 변경하지 않았다. 다른 작업이 같은 작업공간에서 수정한 렌더링 성능 파일은 이 조사 변경이 아니다. 아래 G00~G06의 과거 생성·설치·검증 기록과 이번 미적용 계획을 구분한다.
+
+사용자가 첨부한 세 이미지를 열람하고 정상 P1/P2와 P4의 참조, 실제 WorldSequencePlayer와 Level의 수명·복구 경로, WModel section/재질/광원 데이터를 읽어 대조했다. 정상 피날레23개 MAP track이 P4에 없는 점, 정상 책과 다른 clip/좌표/카메라, MAP box4507ms 종료의 standing arena 복귀, STOP 책의 종료, Deploy5와 source SaydonStage의 겹치는 좌표를 확인했다. 정상 book과 source book의 mesh/material/skeleton section은 동일하다.
+
+popup40개 slot의 texture88개 누락은0이다. F1과 동일 mesh의 기존 material asset으로 교체할 placement6행을 특정했다.136개 배치 전체가 F1과 같은 것은 아니며 최종pose 비교에서24개만 기준 내에 대응됐다. 책과F1은204.8m 떨어져 local light가 다르고 region47 ambient는 region48보다25% 밝다. 효과174개 WORLD track과80개 축포의 위치는 이미 정상 광장·책 공간에 있으므로 book 위치 차이를 더하는 수정은 계획에서 배제했다.
+
+현재 계획은 정상 피날레 0~21.010초, 후반 포탈/흡입 12.258~21.010초, 정상 팝업북 21.010~58.810초다. 정확한 WORLD/카메라 참조, 전용 효과 4문서의 시간 변환, 재질 6행, scoped 조명 32개 복사/14개 제외, profile과 publisher float32 검증 변경을 [구현 계획의 G06](2026-09-12_KOUKU_SOURCE_SEQUENCE_RESTORE_IMPLEMENTATION_PLAN.md)에 기록했다. runtime 검토에서는 광원 Submit을 WORLD 샘플 이후로 이동하고 등록 provider의 Clear를 금지해야 한다는 결함을 계획에 반영했다.
+
+근거는 `out/KoukuPopupFinale20260912/sequence-transition-diagnosis.json`, `sequence-plan-snippets.json`, `material-candidate/`의 JSON/메모다. 이번 검증은 읽기 전용 데이터/코드 비교와 계획 문서 검토이며, 새 구현의 컴파일·publisher·Client/UI 재생·시각 PASS를 실행한 결과가 아니다. 수정 범위와 적용 명세를 준비한 상태다.
+
+마무리 검사에서 Sequence/WorldSequence/CameraShots 세 정본의 SHA256이 조사 baseline과 동일함을 다시 확인했다. 변경한 PLAN/RESULT에 한정한 `git diff --check`는 exit0이었다.
+
 ## G00. 현재 상태와 적용 경계
 
 원본 Matinee를 기존 Sequence Composition, CameraShot, WorldSequence, Effect 문서로 연결한

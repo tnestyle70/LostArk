@@ -154,12 +154,18 @@ HRESULT CMapStaticBatchObject::Render()
 		static_cast<uint32_t>(
 			m_VisibleInstances.size());
 
+	const bool_t useSourceMaterials =
+		CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.BindAndDraw");
 	for (uint32_t meshIndex = 0;
 		meshIndex < m_pModelCom->Get_NumMeshes();
 		++meshIndex)
 	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(meshIndex);
+		const uint32_t meshPass = useSourceMaterials && surface &&
+			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ?
+			24u + passIndex : passIndex;
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Material.Bind");
 			if (FAILED(CMapAssetRenderUtils::Bind_Material(m_pModelCom, m_pShaderCom,
@@ -167,7 +173,7 @@ HRESULT CMapStaticBatchObject::Render()
 		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Pass.Apply");
-			if (FAILED(m_pShaderCom->Begin(passIndex))) return E_FAIL;
+			if (FAILED(m_pShaderCom->Begin(meshPass))) return E_FAIL;
 		}
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Mesh.Submit");

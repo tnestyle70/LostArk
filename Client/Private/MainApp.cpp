@@ -9452,7 +9452,7 @@ void CMainApp::RenderRenderingWorkbench()
 		"Only materials declared in mapmaterials; restart after data edits. "
 		"Reflection view shows absolute base-color change.");
 	const auto surfaceBindings = CMapAssetRenderUtils::Get_RecentSurfaceBindings();
-	ImGui::TextDisabled("Successful material bindings in the last second (up to 32).");
+	ImGui::TextDisabled("Bindings collected while this pane is open (last second, up to 32).");
 	if (surfaceBindings.empty())
 		ImGui::TextDisabled("No declared map material was recently bound.");
 	else if (ImGui::BeginTable("RecentFloorMaterialBindings", 4,

@@ -18897,6 +18897,18 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
     }
     const bool_t bGenericCarrierShader = nullptr != pShaderProgram &&
         pShaderProgram->eFamily == EFFECT_SHADER_FAMILY::GENERIC;
+    // The native ARTIST particle programs consume their source packet and
+    // shared UV/color inputs, but never the generic material textures/effects.
+    // Match the selected executable, not an authored native-profile flag: mesh
+    // and fixed carriers continue to receive the complete common packet.
+    const bool_t bNativeArtistParticle = nullptr != pShaderProgram &&
+        pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE &&
+        pShaderProgram->eFamily == EFFECT_SHADER_FAMILY::ARTIST &&
+        pShaderProgram == Get_EffectShaderProgram(Resource.iShaderProgramIndex) &&
+        Resource.iShaderProgramIndex < m_ShaderPrograms.size() &&
+        pShader == m_ShaderPrograms[Resource.iShaderProgramIndex] &&
+        Resource.iSourceMaterialProfile >= pShaderProgram->iFirstProfile &&
+        Resource.iSourceMaterialProfile <= pShaderProgram->iLastProfile;
 	if ((nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH) || (nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE))
 	{
         const auto BindNativePacket = [&](const char* pParameters, const char* pTime,
@@ -19225,28 +19237,28 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		UVOffset.y += static_cast<f32_t>(
 			iTileIndex / Element.Detail.UV.iTileColumns) * UVScale.y;
 	}
-	const f32_t Dissolve = Element.Detail.Timing.fDissolveStartNormalized >= 1.f ?
+	const f32_t Dissolve = bNativeArtistParticle || Element.Detail.Timing.fDissolveStartNormalized >= 1.f ?
 		0.f : std::clamp(
 			(fNormalizedLife - Element.Detail.Timing.fDissolveStartNormalized) /
 			(1.f - Element.Detail.Timing.fDissolveStartNormalized), 0.f, 1.f);
 
-	const float4_t AuthoredColorMultiply =
+	const float4_t AuthoredColorMultiply = bNativeArtistParticle ? float4_t{} :
 		Evaluate_CommonColor(Element, fNormalizedLife).vColorMultiply;
 	float4_t ColorMultiply = Color.vColorMultiply;
 	ColorMultiply.w *= fAlphaScale;
-	const uint32_t iHasNoise = nullptr != Find_Texture(
+	const uint32_t iHasNoise = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::NOISE_TEXTURE) ? 1u : 0u;
-	const uint32_t iHasMask = nullptr != Find_Texture(
+	const uint32_t iHasMask = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::MASK_TEXTURE) ? 1u : 0u;
-	const uint32_t iHasEmissive = nullptr != Find_Texture(
+	const uint32_t iHasEmissive = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE) ? 1u : 0u;
-	const uint32_t iHasDissolve = nullptr != Find_Texture(
+	const uint32_t iHasDissolve = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE) ? 1u : 0u;
-	const uint32_t iHasBase2 = nullptr != Find_Texture(
+	const uint32_t iHasBase2 = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::BASE2_TEXTURE) ? 1u : 0u;
-	const uint32_t iHasMask2 = nullptr != Find_Texture(
+	const uint32_t iHasMask2 = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::MASK2_TEXTURE) ? 1u : 0u;
-	const uint32_t iHasNoise2 = nullptr != Find_Texture(
+	const uint32_t iHasNoise2 = !bNativeArtistParticle && nullptr != Find_Texture(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::NOISE2_TEXTURE) ? 1u : 0u;
 	const uint32_t iDistortionOnBase =
 		Element.Detail.Color.bDistortionOnBaseMaterial ? 1u : 0u;
@@ -19524,6 +19536,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		BindFailed(pShader->Bind_RawValue("g_ColorMultiply", &ColorMultiply, sizeof(ColorMultiply))) ||
 		BindFailed(pShader->Bind_RawValue("g_ColorClip", &Color.fColorClip, sizeof(Color.fColorClip))) ||
 		BindFailed(pShader->Bind_RawValue("g_EmissiveIntensity", &Color.fEmissiveIntensity, sizeof(Color.fEmissiveIntensity))) ||
+		(!bNativeArtistParticle && (
 		BindFailed(pShader->Bind_RawValue("g_DistortionIntensity", &Color.fDistortionIntensity, sizeof(Color.fDistortionIntensity))) ||
 		BindFailed(pShader->Bind_RawValue("g_DistortionOnBaseMaterial", &iDistortionOnBase, sizeof(iDistortionOnBase))) ||
 		BindFailed(pShader->Bind_RawValue("g_RadialTime", &Color.fRadialTime, sizeof(Color.fRadialTime))) ||
@@ -19553,7 +19566,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		BindFailed(pShader->Bind_Texture("g_EmissiveTexture", iHasEmissive ?
 			Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE) : m_pBlackTexture)) ||
 		BindFailed(pShader->Bind_Texture("g_DissolveTexture", iHasDissolve ?
-			Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE) : m_pBlackTexture)) ||
+			Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE) : m_pBlackTexture)))) ||
 		BindFailed(pShader->Bind_Texture("g_SourceTexture0",
 			Resource.SourceTextures[0] ? Resource.SourceTextures[0] : m_pBlackTexture)) ||
 		BindFailed(pShader->Bind_Texture("g_SourceTexture1",

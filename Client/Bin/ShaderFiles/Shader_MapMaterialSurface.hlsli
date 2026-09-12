@@ -159,11 +159,11 @@ float4 SampleMapDiffuseTexture(float2 uv, SamplerState wrapSampler)
     return sampleValue;
 }
 
-float3 EvaluateMapSurfaceEmissive(float2 meshUV)
+float3 EvaluateMapSurfaceEmissive(float2 meshUV, uint surfaceProgram)
 {
     if (g_HasSurfaceEmissive == 0u)
         return 0.f;
-    if (g_SurfaceProgram == 9u || g_SurfaceProgram == 10u)
+    if (surfaceProgram == 9u || surfaceProgram == 10u)
     {
         const float4 sampleValue = g_SurfaceEmissiveTexture.Sample(SurfaceAnisotropicSampler, meshUV);
         const float phase = g_SurfaceEmissivePhaseOffset + sampleValue.a *
@@ -179,7 +179,7 @@ float3 EvaluateMapSurfaceEmissive(float2 meshUV)
     float flicker = 0.5f * (1.f +
         sin((phase + cos(phase * 3.524534f)) * 1.328987f)) +
         g_SurfaceEmissiveFlickerMinimum;
-    if (g_SurfaceProgram == 8u)
+    if (surfaceProgram == 8u)
     {
         if (g_SourceBgFlicker == 0u) flicker = 1.f;
         else if (g_SourceBgFlicker == 2u)
@@ -191,6 +191,11 @@ float3 EvaluateMapSurfaceEmissive(float2 meshUV)
     return g_SurfaceEmissiveTexture.Sample(SurfaceAnisotropicSampler,
         meshUV * g_SurfaceEmissiveUVTiling).rgb * g_SurfaceEmissiveColor.rgb *
         g_SurfaceEmissiveIntensity * flicker;
+}
+
+float3 EvaluateMapSurfaceEmissive(float2 meshUV)
+{
+    return EvaluateMapSurfaceEmissive(meshUV, g_SurfaceProgram);
 }
 
 bool IsMapSurfacePBR()
@@ -494,6 +499,29 @@ float MapSourceDirectionalLightmapWeight(float3 tangentDirection, float3 coeffic
     return dot(coefficients, weights * weights);
 }
 
+float3 EvaluateMapSourceBGIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 lightmapUV,
+    float4 averageScale, float4 directionalScale, float3 worldPosition,
+    float3 tangent, float3 binormal, float3 normal, bool sourceSpecial)
+{
+    if (g_HasBakedLighting == 0u || averageScale.w == 0.f) return surface.subspecularRadiance;
+    const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
+    const float3 coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
+    float3 radiance = surface.diffuse.rgb * average *
+        MapSourceDirectionalLightmapWeight(surface.tangentNormal, coefficients);
+    if (sourceSpecial || (g_SourceBgFlags & 4u) != 0u)
+    {
+        const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+        const float3 tangentView = normalize(mul(tangentToWorld, g_vCamPosition.xyz - worldPosition));
+        const float3 reflected = reflect(-tangentView, surface.tangentNormal);
+        const float3 lobes = saturate(float3(
+            dot(reflected.yz, float2(0.81649658f, 0.57735027f)),
+            dot(reflected, float3(-0.70710678f, -0.40824829f, 0.57735027f)),
+            dot(reflected, float3(0.70710678f, -0.40824829f, 0.57735027f))));
+        radiance += surface.specular * average * dot(coefficients, pow(lobes, (sourceSpecial ? surface.specularPower : g_SurfaceSpecularPower) + 1.f));
+    }
+    return radiance + surface.subspecularRadiance;
+}
+
 float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 lightmapUV,
     float4 averageScale, float4 directionalScale, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal)
@@ -512,25 +540,9 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
             g_SurfaceSpecularPower, grass);
     }
     if (IsMapSurfaceSourceBG() || IsMapSurfaceSourceSpecial())
-    {
-        if (g_HasBakedLighting == 0u || averageScale.w == 0.f) return surface.subspecularRadiance;
-        const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
-        const float3 coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
-        float3 radiance = surface.diffuse.rgb * average *
-            MapSourceDirectionalLightmapWeight(surface.tangentNormal, coefficients);
-        if (IsMapSurfaceSourceSpecial() || (g_SourceBgFlags & 4u) != 0u)
-        {
-            const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent), MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
-            const float3 tangentView = normalize(mul(tangentToWorld, g_vCamPosition.xyz - worldPosition));
-            const float3 reflected = reflect(-tangentView, surface.tangentNormal);
-            const float3 lobes = saturate(float3(
-                dot(reflected.yz, float2(0.81649658f, 0.57735027f)),
-                dot(reflected, float3(-0.70710678f, -0.40824829f, 0.57735027f)),
-                dot(reflected, float3(0.70710678f, -0.40824829f, 0.57735027f))));
-            radiance += surface.specular * average * dot(coefficients, pow(lobes, (IsMapSurfaceSourceSpecial() ? surface.specularPower : g_SurfaceSpecularPower) + 1.f));
-        }
-        return radiance + surface.subspecularRadiance;
-    }
+        return EvaluateMapSourceBGIndirectLighting(surface, lightmapUV,
+            averageScale, directionalScale, worldPosition, tangent, binormal, normal,
+            IsMapSurfaceSourceSpecial());
     if (IsMapSurfaceSourceSpecular())
     {
         // The original non-PBR BasePass adds three powered reflection lobes

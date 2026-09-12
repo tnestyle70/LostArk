@@ -307,7 +307,7 @@ HRESULT CRenderer::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGame
 		eRenderGroupID >= RENDERGROUP::END)
 		return E_FAIL;
 
-	m_RenderObjects[ETOUI(eRenderGroupID)].push_back(pRenderObject);
+	m_RenderObjects[ETOUI(eRenderGroupID)].push_back(std::move(pRenderObject));
     if (CProfiler* profiler = CGameInstance::Get().Get_Profiler())
     {
         switch (eRenderGroupID)
@@ -681,8 +681,11 @@ HRESULT CRenderer::Render_Priority()
     CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     CProfilerScope cpuScope(profiler, "Render.Priority");
     CProfilerGpuScope gpuScope(profiler, "Render.Priority");
-	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)])
+	// Index iteration permits callbacks to append without retaining vector
+	// iterators or element references; the queue still owns every object.
+	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)].size(); ++renderIndex)
 	{
+		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)][renderIndex].get();
 		if (nullptr != pRenderObject)
 			pRenderObject->Render_Group(RENDERGROUP::PRIORITY);
 	}
@@ -718,8 +721,9 @@ HRESULT CRenderer::Render_Shadow()
 	if (CGameInstance::Get().Is_ShadowLightEnabled())
 	{
 		SetUp_ViewportDesc(m_iShadowMapSize, m_iShadowMapSize);
-		for (auto& pRenderObject : ShadowObjects)
+		for (size_t renderIndex = 0; renderIndex < ShadowObjects.size(); ++renderIndex)
 		{
+			CGameObject* const pRenderObject = ShadowObjects[renderIndex].get();
 			if (nullptr != pRenderObject &&
 				FAILED(pRenderObject->Render_Shadow()))
 			{
@@ -755,16 +759,18 @@ HRESULT CRenderer::Render_NonBlend()
 		m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)];
 	auto& DeferredOverlayObjects =
 		m_RenderObjects[ETOUI(RENDERGROUP::DEFERRED_OVERLAY)];
-	for (auto& pRenderObject : NonBlendObjects)
+	for (size_t renderIndex = 0; renderIndex < NonBlendObjects.size(); ++renderIndex)
 	{
+		CGameObject* const pRenderObject = NonBlendObjects[renderIndex].get();
 		if (nullptr != pRenderObject)
 			pRenderObject->Render_Group(RENDERGROUP::NONBLEND);
 	}
 
 	/* Deferred overlays must run after every opaque object while the complete
 	   game-object MRT, including Target_Emissive, is still bound. */
-	for (auto& pRenderObject : DeferredOverlayObjects)
+	for (size_t renderIndex = 0; renderIndex < DeferredOverlayObjects.size(); ++renderIndex)
 	{
+		CGameObject* const pRenderObject = DeferredOverlayObjects[renderIndex].get();
 		if (nullptr != pRenderObject)
 			pRenderObject->Render_DeferredOverlay();
 	}
@@ -1033,8 +1039,9 @@ HRESULT CRenderer::Render_NonLight()
     CProfilerScope cpuScope(profiler, "Render.NonLight");
     CProfilerGpuScope gpuScope(profiler, "Render.NonLight");
 	HRESULT hFirstFailure = S_OK;
-	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::NONLIGHT)])
+	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::NONLIGHT)].size(); ++renderIndex)
 	{
+		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::NONLIGHT)][renderIndex].get();
 		if (nullptr != pRenderObject)
 		{
 			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::NONLIGHT);
@@ -1145,7 +1152,7 @@ HRESULT CRenderer::Render_Blend()
 	/* Translucent surfaces have to be drawn far to near or they overwrite each
 	   other in submission order, which is what made overlapping water sheets
 	   and their props flip depending on which placement happened to be added
-	   first. The list itself is left alone; only the draw order is sorted, so
+	   first. The queue itself is left alone; only the draw order is sorted, so
 	   nothing else that walks the render group sees a different sequence.
 
 	   The scratch buffer is a function-local static because rendering runs on
@@ -1158,8 +1165,9 @@ HRESULT CRenderer::Render_Blend()
 		SortedBlendObjects.reserve(
 			m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size());
 		const vector_t vCamera = XMLoadFloat4(pCamPosition);
-		for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::BLEND)])
+		for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size(); ++renderIndex)
 		{
+			CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::BLEND)][renderIndex].get();
 			if (nullptr == pRenderObject)
 				continue;
 			/* No transform is not an error here: the object still has to draw,
@@ -1178,7 +1186,7 @@ HRESULT CRenderer::Render_Blend()
 					fDistanceSquared = FLT_MAX;
 			}
 			SortedBlendObjects.emplace_back(
-				fDistanceSquared, pRenderObject.get());
+				fDistanceSquared, pRenderObject);
 		}
 		std::stable_sort(
 			SortedBlendObjects.begin(), SortedBlendObjects.end(),
@@ -1205,8 +1213,9 @@ HRESULT CRenderer::Render_Blend()
 		return hFirstFailure;
 	}
 
-	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::BLEND)])
+	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size(); ++renderIndex)
 	{
+		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::BLEND)][renderIndex].get();
 		if (nullptr != pRenderObject)
 		{
 			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::BLEND);
@@ -1691,8 +1700,9 @@ HRESULT CRenderer::Render_Final()
 
 HRESULT CRenderer::Render_UI()
 {
-	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::UI)])
+	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::UI)].size(); ++renderIndex)
 	{
+		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::UI)][renderIndex].get();
 		if (nullptr != pRenderObject)
 			pRenderObject->Render_Group(RENDERGROUP::UI);
 	}
