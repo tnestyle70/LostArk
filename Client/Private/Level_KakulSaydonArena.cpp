@@ -1529,7 +1529,10 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
 	Update_EntranceTriggerMarkers(fTimeDelta);
-	m_MapRuntime.Update_SelfMotions(fTimeDelta);
+#ifdef _DEBUG
+	if (!m_bMapAuthoringActive)
+#endif
+		m_MapRuntime.Update_SelfMotions(fTimeDelta);
 	if (nullptr != m_pMadnessGaugeView)
 	{
 		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,

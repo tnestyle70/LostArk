@@ -625,6 +625,8 @@ gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입�
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
+Debug `Lobby → KoukuSaydon → F1 → Map Tool`에서는 현재 arena가 소유한 맵을 같은 편집기로 수정·저장할 수 있다. Test처럼 다른 Area로 전환하지 않으며 재생 중 target 변경은 Stop/Restore 후 수행한다. 원본 배치와 런타임 표시 상태를 분리해 저장하고, Server gameplay는 변경하지 않는다. 연결·저장 경계는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
+
 KoukuSaydon의 F1 Tools → `World Object Tool`은 왼쪽 `Object Resources`, 아래 `Object Sequencer`,
 오른쪽 `Object Detail`을 독립 창으로 제공한다. Windows 메뉴에서 다시 열거나 배치를 초기화한다.
 Object Resources는 Map/Character 앵커별 저장 상태와 Physical Resources 폴더를 보여 준다. 모델과 DDS는

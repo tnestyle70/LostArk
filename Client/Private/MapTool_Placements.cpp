@@ -23,6 +23,24 @@
 #include <unordered_set>
 #include "Model.h"
 
+namespace
+{
+	bool_t PreserveLiveDeployPresentation(
+		const Client::CDeployPropRuntime& live,
+		Client::CDeployPropRuntime& staged)
+	{
+		for (const auto& entry : staged.Get_Entries())
+		{
+			const auto previous = live.Find(entry.placement.runtimePlacementId);
+			if (nullptr == previous) continue;
+			if (nullptr == entry.object ||
+				!entry.object->Set_State(previous->Get_State()) ||
+				!entry.object->Apply_SurfacePresentation(previous->Get_SurfacePresentation()))
+				return false;
+		}
+		return true;
+	}
+}
 
 
 
@@ -40,6 +58,7 @@ bool_t Client::CMapTool::Try_PickPlacementPosition(float3_t& outPosition) const
 
 bool_t Client::CMapTool::Try_PlaceSelected()
 {
+	if (!Can_ChangeRuntimeStructure()) return false;
 	const MAP_ASSET_ENTRY* pAsset = Get_SelectedAsset();
 	if (nullptr == pAsset)
 	{
@@ -81,7 +100,8 @@ bool_t Client::CMapTool::Try_PlaceSelected()
 	}
 
 	m_iSelectedPlacementId = placementId;
-	m_Placements.push_back(std::move(placed));
+	Authoring_Placements().push_back(std::move(placed));
+	Remember_RuntimePlacement(record);
 	m_bDirty = true;
 	m_Status = "Placed " + pAsset->label +
 		"; placement remains armed (Esc cancels).";
@@ -90,7 +110,7 @@ bool_t Client::CMapTool::Try_PlaceSelected()
 
 uint64_t Client::CMapTool::Allocate_EditorPlacementId()
 {
-	for (size_t attempt = 0; attempt <= m_Placements.size(); ++attempt)
+	for (size_t attempt = 0; attempt <= Authoring_Placements().size(); ++attempt)
 	{
 		if (0 == m_iNextPlacementId ||
 			m_iNextPlacementId > CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
@@ -146,12 +166,13 @@ bool_t Client::CMapTool::Set_RuntimeVisible(
 
 bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 {
-	const auto iter = std::find_if(m_Placements.begin(), m_Placements.end(),
+	if (!Can_ChangeRuntimeStructure()) return false;
+	const auto iter = std::find_if(Authoring_Placements().begin(), Authoring_Placements().end(),
 		[placementId](const PLACED_ENTRY& entry)
 		{
 			return entry.record.placementId == placementId;
 		});
-	if (iter == m_Placements.end())
+	if (iter == Authoring_Placements().end())
 		return false;
 
 	if (nullptr != iter->object)
@@ -169,7 +190,8 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 	else
 		return false;
 
-	m_Placements.erase(iter);
+	Authoring_Placements().erase(iter);
+	Forget_RuntimePlacement(placementId);
 	if (m_iSelectedPlacementId == placementId)
 		m_iSelectedPlacementId = 0;
 	m_bDirty = true;
@@ -178,7 +200,9 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 
 void Client::CMapTool::Remove_AllPlacements()
 {
-	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
+	if (!Can_ChangeRuntimeStructure()) return;
+	Remove_PlacementRuntime(Authoring_Placements(), Authoring_Batches());
+	if (m_bRuntimeAuthoring) Reset_RuntimePlacementDraft({});
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
 	m_bDirty = true;
@@ -211,8 +235,8 @@ bool_t Client::CMapTool::Save_Placements(
 		}
 	}
 	vector<MAP_PLACEMENT_RECORD> document;
-	document.reserve(m_Placements.size());
-	for (const PLACED_ENTRY& entry : m_Placements)
+	document.reserve(Authoring_Placements().size());
+	for (const PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		const bool_t hasObject = nullptr != entry.object;
 		const bool_t hasBatch = nullptr != entry.batch;
@@ -223,7 +247,7 @@ bool_t Client::CMapTool::Save_Placements(
 			return false;
 		}
 
-		MAP_PLACEMENT_RECORD stored = entry.record;
+		MAP_PLACEMENT_RECORD stored = Authored_Placement(entry);
 		if (entry.record.sourceLevel.starts_with("VALTAN_PHASE_"))
 			stored.visible = false;
 		if (!CMapPlacementDocument::Is_Valid(stored, m_Catalog))
@@ -313,7 +337,7 @@ bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
 	if (saved)
 	{
 		saved = m_pWorldSequenceToolPanel->Save(
-			m_Catalog, m_Placements, m_DeployRuntime, transactionStatus);
+			m_Catalog, Authoring_Placements(), Authoring_Deploy(), transactionStatus);
 		if (!saved)
 			m_Status = transactionStatus;
 	}
@@ -338,7 +362,7 @@ bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
 		{
 			if (!verification.Load_Area(sequencePath, placementPath,
 				m_Catalog.Get_AreaId(), m_Catalog, verifiedPlacements,
-				m_DeployRuntime, transactionStatus))
+				Authoring_Deploy(), transactionStatus))
 			{
 				saved = false;
 				m_Status = "Linked save verification failed for World Sequences: " +
@@ -424,6 +448,7 @@ bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
 
 bool_t Client::CMapTool::Load_Placements()
 {
+	if (!Can_ChangeRuntimeStructure()) return false;
 	if (!m_Catalog.Is_Ready())
 		return false;
 
@@ -463,7 +488,7 @@ bool_t Client::CMapTool::Load_Placements()
 		std::make_unique<CWorldSequenceToolPanel>();
 	if (!stagedWorldSequencePanel->Load_Area(
 		Get_WorldSequencePath(), authoringPath, m_Catalog.Get_AreaId(),
-		m_Catalog, document, m_DeployRuntime, loadStatus))
+		m_Catalog, document, Authoring_Deploy(), loadStatus))
 	{
 		m_Status = loadStatus;
 		return false;
@@ -491,8 +516,8 @@ bool_t Client::CMapTool::Load_Placements()
 	if (nullptr != m_pWorldSequenceToolPanel)
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
-			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
-			m_DeployRuntime);
+			m_iAuthoringLevelIndex, m_Catalog, Authoring_Placements(),
+			Authoring_Deploy());
 		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
 		{
 			Remove_PlacementRuntime(stagedPlacements, stagedBatches);
@@ -501,13 +526,41 @@ bool_t Client::CMapTool::Load_Placements()
 		}
 	}
 
-	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
-	m_Placements = std::move(stagedPlacements);
-	m_StaticBatches = std::move(stagedBatches);
+	if (m_bRuntimeAuthoring)
+	{
+		std::unordered_map<uint64_t, bool_t> liveVisibility;
+		for (const auto& entry : Authoring_Placements())
+		{
+			bool_t visible = false;
+			if (!CMapPlacementRuntime::Try_GetRuntimeVisible(entry, visible))
+			{
+				Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+				m_Status = "Could not preserve live map visibility; Reload cancelled";
+				return false;
+			}
+			// Preserve only a runtime override, not an unsaved inspector edit.
+			if (visible != Authored_Placement(entry).visible)
+				liveVisibility.emplace(entry.record.placementId, visible);
+		}
+		for (auto& entry : stagedPlacements)
+		{
+			const auto previous = liveVisibility.find(entry.record.placementId);
+			if (previous != liveVisibility.end() && !Set_RuntimeVisible(entry, previous->second))
+			{
+				Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+				m_Status = "Could not restore live map visibility; Reload cancelled";
+				return false;
+			}
+		}
+	}
+	Remove_PlacementRuntime(Authoring_Placements(), Authoring_Batches());
+	Authoring_Placements() = std::move(stagedPlacements);
+	Authoring_Batches() = std::move(stagedBatches);
+	if (m_bRuntimeAuthoring) Reset_RuntimePlacementDraft(document);
 	m_pWorldSequenceToolPanel = std::move(stagedWorldSequencePanel);
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
-	for (const PLACED_ENTRY& entry : m_Placements)
+	for (const PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		if ((entry.record.transformSource == "editor" ||
 			entry.record.transformSource == "legacy") &&
@@ -519,21 +572,22 @@ bool_t Client::CMapTool::Load_Placements()
 		}
 	}
 	m_bDirty = false;
-	Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+	if (!m_bRuntimeAuthoring) Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
 	const size_t fallbackCount = static_cast<size_t>(std::count_if(
-		m_Placements.begin(), m_Placements.end(),
+		Authoring_Placements().begin(), Authoring_Placements().end(),
 		[](const PLACED_ENTRY& entry)
 		{
 			return nullptr != entry.object;
 		}));
-	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
-		" placements / " + std::to_string(m_StaticBatches.size()) +
+	m_Status = "Loaded " + std::to_string(Authoring_Placements().size()) +
+		" placements / " + std::to_string(Authoring_Batches().size()) +
 		" batches / " + std::to_string(fallbackCount) + " fallbacks";
 	return true;
 }
 
 bool_t Client::CMapTool::Load_DeployProps()
 {
+	if (!Can_ChangeRuntimeStructure()) return false;
 	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
 	if (nullptr == descriptor)
 	{
@@ -544,15 +598,20 @@ bool_t Client::CMapTool::Load_DeployProps()
 	CDeployPropRuntime stagedRuntime;
 	if (!Stage_DeployProps(*descriptor, stagedRuntime))
 		return false;
-	m_DeployRuntime = std::move(stagedRuntime);
+	if (m_bRuntimeAuthoring && !PreserveLiveDeployPresentation(Authoring_Deploy(), stagedRuntime))
+	{
+		m_Status = "Could not preserve live Deploy presentation; Reload cancelled";
+		return false;
+	}
+	Authoring_Deploy() = std::move(stagedRuntime);
 	m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
 	m_bDeployDirty = false;
 	m_bAnimatedPropPlacementArmed = false;
 	m_iSelectedAnimatedPropPlacementId = 0u;
 	Sync_AnimatedPropTransformDraft();
-	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
+	m_Status = "Loaded " + std::to_string(Authoring_Placements().size()) +
 		" map placements + " +
-		std::to_string(m_DeployRuntime.Get_Entries().size()) +
+		std::to_string(Authoring_Deploy().Get_Entries().size()) +
 		" gameplay DeployProps";
 	return true;
 }
@@ -610,6 +669,7 @@ bool_t Client::CMapTool::Commit_DeployCatalog(
 	CDeployPropCatalog catalog,
 	const std::string& successStatus)
 {
+	if (!Can_ChangeRuntimeStructure()) return false;
 	if (!catalog.Is_Ready() || m_iAuthoringLevelIndex >= ETOUI(LEVEL::END))
 	{
 		m_Status = "DeployProp catalog commit is unavailable";
@@ -623,7 +683,7 @@ bool_t Client::CMapTool::Commit_DeployCatalog(
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
-			m_iAuthoringLevelIndex, m_Catalog, m_Placements, m_DeployRuntime);
+			m_iAuthoringLevelIndex, m_Catalog, Authoring_Placements(), Authoring_Deploy());
 		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
 		{
 			m_Status = m_pWorldSequenceToolPanel->Get_Status();
@@ -644,9 +704,14 @@ bool_t Client::CMapTool::Commit_DeployCatalog(
 		return false;
 	}
 
-	m_DeployRuntime = std::move(stagedRuntime);
-	if (DEPLOY_PROP_STATE::INTACT != m_DeployPhase &&
-		!m_DeployRuntime.Set_State_All(m_DeployPhase))
+	if (m_bRuntimeAuthoring && !PreserveLiveDeployPresentation(Authoring_Deploy(), stagedRuntime))
+	{
+		m_Status = "Could not preserve live Deploy presentation; edit cancelled";
+		return false;
+	}
+	Authoring_Deploy() = std::move(stagedRuntime);
+	if (!m_bRuntimeAuthoring && DEPLOY_PROP_STATE::INTACT != m_DeployPhase &&
+		!Authoring_Deploy().Set_State_All(m_DeployPhase))
 	{
 		m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
 	}
@@ -664,13 +729,13 @@ bool_t Client::CMapTool::Save_DeployPlacements()
 		m_Status = "This Area declares no Deploy placement authoring document";
 		return false;
 	}
-	if (!m_DeployRuntime.Get_Catalog().Is_Ready())
+	if (!Authoring_Deploy().Get_Catalog().Is_Ready())
 	{
 		m_Status = "DeployProp catalog is not loaded";
 		return false;
 	}
 
-	CDeployPropCatalog saved = m_DeployRuntime.Get_Catalog();
+	CDeployPropCatalog saved = Authoring_Deploy().Get_Catalog();
 	if (!saved.Save_Placements(active->sourceDeployPlacements))
 	{
 		m_Status = saved.Get_Status();
@@ -762,7 +827,7 @@ bool_t Client::CMapTool::Try_PlaceSelectedDeploy()
 	DEPLOY_PROP_PLACEMENT placement{};
 	placement.runtimePlacementId = placementId;
 	placement.sourcePlacementId = "editor:" +
-		m_DeployRuntime.Get_Catalog().Get_AreaId() + ":" +
+		Authoring_Deploy().Get_Catalog().Get_AreaId() + ":" +
 		std::to_string(placementId);
 	placement.assetId = asset->id;
 	placement.position = position;
@@ -772,7 +837,7 @@ bool_t Client::CMapTool::Try_PlaceSelectedDeploy()
 		DEPLOY_PROP_PLACEMENT_PROVENANCE::PROJECT_AUTHORED;
 
 	const std::string label = asset->label;
-	CDeployPropCatalog staged = m_DeployRuntime.Get_Catalog();
+	CDeployPropCatalog staged = Authoring_Deploy().Get_Catalog();
 	if (!staged.Add_ProjectAuthoredPlacement(placement))
 	{
 		m_Status = staged.Get_Status();
@@ -825,7 +890,7 @@ bool_t Client::CMapTool::Apply_AnimatedPropTransform()
 	updated.rotationQuaternion = m_AnimatedPropDraftRotation;
 	updated.uniformScale = m_fAnimatedPropDraftScale;
 
-	CDeployPropCatalog staged = m_DeployRuntime.Get_Catalog();
+	CDeployPropCatalog staged = Authoring_Deploy().Get_Catalog();
 	if (!staged.Update_ProjectAuthoredPlacement(updated))
 	{
 		m_Status = staged.Get_Status();
@@ -859,7 +924,7 @@ bool_t Client::CMapTool::Remove_SelectedAnimatedProp()
 
 	const uint64_t placementId = selected->placement.runtimePlacementId;
 	const bool_t wasDirty = m_bDeployDirty;
-	CDeployPropCatalog restore = m_DeployRuntime.Get_Catalog();
+	CDeployPropCatalog restore = Authoring_Deploy().Get_Catalog();
 	CDeployPropCatalog staged = restore;
 	if (!staged.Remove_ProjectAuthoredPlacement(placementId))
 	{
@@ -879,7 +944,7 @@ bool_t Client::CMapTool::Remove_SelectedAnimatedProp()
 	if (nullptr != m_pWorldSequenceToolPanel &&
 		m_pWorldSequenceToolPanel->Is_Ready() &&
 		!m_pWorldSequenceToolPanel->Validate(
-			m_Catalog, m_Placements, m_DeployRuntime, sequenceStatus))
+			m_Catalog, Authoring_Placements(), Authoring_Deploy(), sequenceStatus))
 	{
 		const std::string failure =
 			"Animated prop #" + std::to_string(placementId) +
@@ -906,7 +971,7 @@ uint64_t Client::CMapTool::Allocate_AnimatedPropPlacementId() const
 	   stay at or below MAX_EDITOR_PLACEMENT_ID and can never impersonate one. */
 	uint64_t candidate = 1u;
 	for (const DEPLOY_PROP_PLACEMENT& row :
-		m_DeployRuntime.Get_Catalog().Get_Placements())
+		Authoring_Deploy().Get_Catalog().Get_Placements())
 	{
 		if (row.runtimePlacementId >
 			CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
@@ -925,7 +990,7 @@ Client::CMapTool::Get_SelectedDeployAsset() const
 {
 	if (m_SelectedDeployAssetId.empty())
 		return nullptr;
-	return m_DeployRuntime.Get_Catalog().Find(m_SelectedDeployAssetId);
+	return Authoring_Deploy().Get_Catalog().Find(m_SelectedDeployAssetId);
 }
 
 const Client::DEPLOY_RUNTIME_ENTRY*
@@ -934,7 +999,7 @@ Client::CMapTool::Get_SelectedAnimatedProp() const
 	if (0u == m_iSelectedAnimatedPropPlacementId)
 		return nullptr;
 	const std::vector<DEPLOY_RUNTIME_ENTRY>& entries =
-		m_DeployRuntime.Get_Entries();
+		Authoring_Deploy().Get_Entries();
 	const auto iter = std::find_if(entries.begin(), entries.end(),
 		[this](const DEPLOY_RUNTIME_ENTRY& entry)
 		{
@@ -963,14 +1028,14 @@ void Client::CMapTool::Sync_AnimatedPropTransformDraft()
 
 void Client::CMapTool::Remove_DeployProps()
 {
-	m_DeployRuntime.Clear();
+	Authoring_Deploy().Clear();
 }
 
 void Client::CMapTool::Set_DeployPhase(DEPLOY_PROP_STATE state)
 {
-	if (!m_DeployRuntime.Set_State_All(state))
+	if (!Authoring_Deploy().Set_State_All(state))
 	{
-		m_Status = m_DeployRuntime.Get_Status();
+		m_Status = Authoring_Deploy().Get_Status();
 		return;
 	}
 	m_DeployPhase = state;
@@ -990,7 +1055,7 @@ void Client::CMapTool::Set_DeployPhase(DEPLOY_PROP_STATE state)
 void Client::CMapTool::Set_EnvironmentPhase(ENVIRONMENT_PHASE phase)
 {
 	m_EnvironmentPhase = phase;
-	for (PLACED_ENTRY& entry : m_Placements)
+	for (PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		bool_t visible = entry.record.visible;
 		if (entry.record.sourceLevel == "VALTAN_PHASE_SPACEHOLE")
@@ -1011,8 +1076,8 @@ bool_t Client::CMapTool::Try_PickDeployProp(
 	std::string& outFailure) const
 {
 	outFailure.clear();
-	if (!m_DeployRuntime.Is_Loaded() ||
-		m_DeployRuntime.Get_Entries().empty())
+	if (!Authoring_Deploy().Is_Loaded() ||
+		Authoring_Deploy().Get_Entries().empty())
 	{
 		outFailure = "Wall pick unavailable: DeployProp runtime is not ready";
 		return false;
@@ -1033,7 +1098,7 @@ bool_t Client::CMapTool::Try_PickDeployProp(
 	uint64_t bestId = 0u;
 	f32_t bestDistance = 0.f;
 	size_t missingBounds = 0u;
-	for (const DEPLOY_RUNTIME_ENTRY& entry : m_DeployRuntime.Get_Entries())
+	for (const DEPLOY_RUNTIME_ENTRY& entry : Authoring_Deploy().Get_Entries())
 	{
 		float3_t center{};
 		float3_t halfExtents{};
@@ -1076,10 +1141,10 @@ bool_t Client::CMapTool::Try_PickDeployProp(
 
 Client::CMapTool::PLACED_ENTRY* Client::CMapTool::Find_Placement(uint64_t placementId)
 {
-	const auto iter = std::find_if(m_Placements.begin(), m_Placements.end(),
+	const auto iter = std::find_if(Authoring_Placements().begin(), Authoring_Placements().end(),
 		[placementId](const PLACED_ENTRY& entry)
 		{
 			return entry.record.placementId == placementId;
 		});
-	return iter == m_Placements.end() ? nullptr : &*iter;
+	return iter == Authoring_Placements().end() ? nullptr : &*iter;
 }

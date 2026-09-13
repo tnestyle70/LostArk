@@ -172,14 +172,14 @@ void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
 		   something the Area never showed. */
 		for (const uint64_t placementId : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
 		{
-			const auto found = std::find_if(m_Placements.begin(),
-				m_Placements.end(),
+			const auto found = std::find_if(Authoring_Placements().begin(),
+				Authoring_Placements().end(),
 				[placementId](const PLACED_ENTRY& value)
 				{
 					return value.record.placementId == placementId;
 				});
 			bool_t wasVisible = false;
-			if (m_Placements.end() == found ||
+			if (Authoring_Placements().end() == found ||
 				!CMapPlacementRuntime::Try_GetRuntimeVisible(*found, wasVisible))
 			{
 				++missing;
@@ -200,13 +200,13 @@ void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
 	{
 		for (const auto& restore : m_CutsceneArenaRestoreVisibility)
 		{
-			const auto found = std::find_if(m_Placements.begin(),
-				m_Placements.end(),
+			const auto found = std::find_if(Authoring_Placements().begin(),
+				Authoring_Placements().end(),
 				[&restore](const PLACED_ENTRY& value)
 				{
 					return value.record.placementId == restore.first;
 				});
-			if (m_Placements.end() == found ||
+			if (Authoring_Placements().end() == found ||
 				!Set_RuntimeVisible(*found, restore.second))
 			{
 				++missing;
@@ -242,7 +242,7 @@ void Client::CMapTool::Hide_CutsceneSet()
 {
 	/* The unfold ends where the arena stands, so the cutscene copies step aside
 	   instead of overlapping it. */
-	for (PLACED_ENTRY& entry : m_Placements)
+	for (PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		const uint64_t placementId = entry.record.placementId;
 		if (placementId < KAKUL_CUTSCENE_SET_FIRST_ID ||
@@ -259,7 +259,7 @@ void Client::CMapTool::Release_CutsceneBookPreview(const uint64_t placementId)
 	/* A finished animation instance keeps its authoring preview open, and a
 	   prop under preview refuses every state change, so the next play could
 	   not restore the book. Hand it back before touching its state. */
-	const shared_ptr<CDeployPropObject> book = m_DeployRuntime.Find(placementId);
+	const shared_ptr<CDeployPropObject> book = Authoring_Deploy().Find(placementId);
 	if (nullptr != book)
 		book->End_AnimationAuthoringPreview();
 }
@@ -273,8 +273,8 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	/* Showing a hidden placement for the first time clones its model, so the
 	   frame that starts a cutscene is long. Feeding that whole frame to the
 	   sequence clock would skip most of the authored motion, so advance the
@@ -353,11 +353,11 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	if (m_fCutsceneBookHoldMs < KAKUL_BOOK_HOLD_AFTER_ARENA_MS)
 		return;
 	m_fCutsceneBookHoldMs = -1.f;
-	if (!m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+	if (!Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
 		DEPLOY_PROP_STATE::DESPAWNED } }))
 	{
 		OutputDebugStringA(("[MapTool][CutsceneArena] book despawn failed: " +
-			m_DeployRuntime.Get_Status() + "\n").c_str());
+			Authoring_Deploy().Get_Status() + "\n").c_str());
 	}
 }
 
@@ -366,8 +366,8 @@ bool_t Client::CMapTool::Play_CutsceneArenaRise()
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	if (!targets.Is_Complete())
 	{
 		m_Status = "Arena rise needs a loaded Area";
@@ -393,11 +393,11 @@ bool_t Client::CMapTool::Play_CutsceneArenaRise()
 	/* The book carries its own covers and pages, so it is one asset. The arena
 	   spreads out of it once the unfold is under way. Restore it first: a
 	   previous run despawns it when the arena settles. */
-	if (!m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+	if (!Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
 		DEPLOY_PROP_STATE::INTACT } }))
 	{
 		m_Status = "Arena rise could not restore the book: " +
-			m_DeployRuntime.Get_Status();
+			Authoring_Deploy().Get_Status();
 		return false;
 	}
 	m_fCutsceneBookHoldMs = 0.f;
@@ -425,8 +425,8 @@ bool_t Client::CMapTool::Play_CutsceneOriginalRise()
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	if (!targets.Is_Complete())
 	{
 		m_Status = "Original cutscene needs a loaded Area";
@@ -447,11 +447,11 @@ bool_t Client::CMapTool::Play_CutsceneOriginalRise()
 	/* The replicated cutscene assembles on its own book, and the original
 	   keeps that book under the finished arena, so restore it and leave the
 	   arena_rise despawn timer disarmed. */
-	if (!m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+	if (!Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
 		DEPLOY_PROP_STATE::INTACT } }))
 	{
 		m_Status = "Original cutscene could not restore the book: " +
-			m_DeployRuntime.Get_Status();
+			Authoring_Deploy().Get_Status();
 		return false;
 	}
 	m_fCutsceneBookHoldMs = -1.f;
@@ -535,8 +535,8 @@ bool_t Client::CMapTool::Ensure_ShotCutsceneClock(
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	if (!targets.Is_Complete())
 	{
 		m_CameraShotStatus = "Camera track needs a loaded Area";
@@ -611,8 +611,8 @@ bool_t Client::CMapTool::Play_MarioIntro(const std::string& stageToken)
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	if (!targets.Is_Complete())
 	{
 		m_MarioWalkStatus = "Stage intro needs a loaded Area";
@@ -676,8 +676,8 @@ bool_t Client::CMapTool::Toggle_MarioSequenceLoop()
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	if (!targets.Is_Complete())
 	{
 		m_MarioWalkStatus = "Sequence loop needs a loaded Area";
@@ -834,11 +834,11 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 		CWorldSequencePlayer::TARGET_SET targets{};
 		targets.levelIndex = m_iAuthoringLevelIndex;
 		targets.pCatalog = &m_Catalog;
-		targets.pPlacements = &m_Placements;
-		targets.pDeployRuntime = &m_DeployRuntime;
+		targets.pPlacements = &Authoring_Placements();
+		targets.pDeployRuntime = &Authoring_Deploy();
 		m_ArenaRisePlayer.Stop_All(targets);
 		m_fCutsceneBookHoldMs = -1.f;
-		(void)m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+		(void)Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
 			DEPLOY_PROP_STATE::DESPAWNED } });
 		if (m_bCutsceneOriginalRunning)
 		{
@@ -880,8 +880,8 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 		CWorldSequencePlayer::TARGET_SET targets{};
 		targets.levelIndex = m_iAuthoringLevelIndex;
 		targets.pCatalog = &m_Catalog;
-		targets.pPlacements = &m_Placements;
-		targets.pDeployRuntime = &m_DeployRuntime;
+		targets.pPlacements = &Authoring_Placements();
+		targets.pDeployRuntime = &Authoring_Deploy();
 		m_ArenaRisePlayer.Stop_All(targets);
 		m_MarioWalkStatus = "Intro stopped";
 	}
@@ -936,8 +936,8 @@ bool_t Client::CMapTool::Play_CardMiroMarch()
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	/* A world object builds its own model, which the placement previews
 	   never ask for, so this is the path that needs the device. */
 	targets.device = m_pDevice;
@@ -951,7 +951,7 @@ bool_t Client::CMapTool::Play_CardMiroMarch()
 	}
 	/* The arena Level registers this prototype for itself; the editor
 	   Level does not, so without it the clone fails and nothing appears. */
-	if (!m_bWorldObjectPrototypeReady)
+	if (!m_bWorldObjectPrototypeReady && !m_bRuntimeAuthoring)
 	{
 		if (FAILED(CGameInstance::Get().Add_Prototype(
 			m_iAuthoringLevelIndex, CWorldSequenceObject::PROTOTYPE_TAG,
@@ -1001,8 +1001,8 @@ void Client::CMapTool::Stop_CardMiroMarch()
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
 	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	targets.device = m_pDevice;
 	targets.context = m_pContext;
 	for (const std::string& instanceId :
@@ -1027,10 +1027,10 @@ void Client::CMapTool::Render_AnimatedPropsAuthoring()
 			"This Area declares no Deploy prop catalog, so animated props cannot be authored here.");
 		return;
 	}
-	if (!m_DeployRuntime.Get_Catalog().Is_Ready())
+	if (!Authoring_Deploy().Get_Catalog().Is_Ready())
 	{
 		ImGui::TextWrapped("DeployProp catalog is not loaded: %s",
-			m_DeployRuntime.Get_Status().c_str());
+			Authoring_Deploy().Get_Status().c_str());
 		if (ImGui::Button("Reload Deploy Props"))
 			(void)Load_DeployProps();
 		return;
@@ -1124,7 +1124,7 @@ void Client::CMapTool::Render_AnimatedPropsAuthoring()
 		ImGui::BeginChild("AnimatedPropAssets", ImVec2(0.f, 170.f), true);
 		size_t listedAssets = 0;
 		for (const DEPLOY_PROP_ASSET_ENTRY& asset :
-			m_DeployRuntime.Get_Catalog().Get_Assets())
+			Authoring_Deploy().Get_Catalog().Get_Assets())
 		{
 			if (DEPLOY_PROP_MODEL_KIND::ANIM != asset.kind ||
 				!MatchesAnimatedPropFilter(
@@ -1173,10 +1173,10 @@ void Client::CMapTool::Render_AnimatedPropsAuthoring()
 		ImGui::TableSetColumnIndex(1);
 		ImGui::BeginChild("AnimatedPropPlacements", ImVec2(0.f, 190.f), true);
 		size_t listedPlacements = 0;
-		for (const DEPLOY_RUNTIME_ENTRY& entry : m_DeployRuntime.Get_Entries())
+		for (const DEPLOY_RUNTIME_ENTRY& entry : Authoring_Deploy().Get_Entries())
 		{
 			const DEPLOY_PROP_ASSET_ENTRY* asset =
-				m_DeployRuntime.Get_Catalog().Find(entry.placement.assetId);
+				Authoring_Deploy().Get_Catalog().Find(entry.placement.assetId);
 			if (nullptr == asset ||
 				DEPLOY_PROP_MODEL_KIND::ANIM != asset->kind)
 			{
@@ -1305,7 +1305,7 @@ void Client::CMapTool::Render_AnimatedPropsAuthoring()
 	ShowAuthoringHelp(ANIMATED_PROP_HELP_SAVE);
 	ImGui::SameLine();
 	ImGui::Text("Placements: %zu%s",
-		m_DeployRuntime.Get_Catalog().Get_Placements().size(),
+		Authoring_Deploy().Get_Catalog().Get_Placements().size(),
 		m_bDeployDirty ? "  *unsaved" : "");
 	ImGui::SameLine();
 	if (ImGui::Button("Reload Animated Props"))

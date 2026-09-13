@@ -107,6 +107,13 @@ public:
 	{
 		return m_Placements;
 	}
+#ifdef _DEBUG
+	void Rebase_AuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records);
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_AuthoringBatches()
+	{
+		return m_StaticBatches;
+	}
+#endif
 	/* Reads <AreaId>.mapmotions.json and binds each row to a live placement.
 	   A missing document is not an error: most areas author none. */
 	bool_t Load_SelfMotions(const std::string& areaId);

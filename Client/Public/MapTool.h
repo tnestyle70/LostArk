@@ -225,6 +225,20 @@ public:
 
 private:
 	/* Frame Update */
+	bool_t Is_MapAuthoringLevel() const;
+	CWorldSequencePlayer::TARGET_SET Runtime_AuthoringTargets() const;
+	vector<PLACED_ENTRY>& Authoring_Placements();
+	const vector<PLACED_ENTRY>& Authoring_Placements() const;
+	vector<STATIC_BATCH_ENTRY>& Authoring_Batches();
+	const vector<STATIC_BATCH_ENTRY>& Authoring_Batches() const;
+	CDeployPropRuntime& Authoring_Deploy();
+	const CDeployPropRuntime& Authoring_Deploy() const;
+	bool_t Can_ChangeRuntimeStructure();
+	void Remember_RuntimePlacement(const MAP_PLACEMENT_RECORD& record);
+	void Reset_RuntimePlacementDraft(const vector<MAP_PLACEMENT_RECORD>& records);
+	void Forget_RuntimePlacement(uint64_t placementId);
+	void Rebase_RuntimeMotions();
+	const MAP_PLACEMENT_RECORD& Authored_Placement(const PLACED_ENTRY& entry) const;
 	void Update_DestructionSimulation(
 		f32_t fTimeDelta,
 		bool_t isMapAuthoringLevel);
@@ -563,6 +577,10 @@ private:
 	PLACEMENT_STATE m_ePlacementState = PLACEMENT_STATE::IDLE;
 
 	CMapAssetCatalog m_Catalog;
+	// The arena owns live objects. This full-source draft excludes sampled animation poses.
+	bool_t m_bRuntimeAuthoring = false;
+	vector<MAP_PLACEMENT_RECORD> m_RuntimePlacementDraft;
+	std::unordered_map<uint64_t, size_t> m_RuntimePlacementIndex;
 	CDeployPropRuntime m_DeployRuntime;
 	bool_t m_bDeployDirty = false;
 	bool_t m_bAnimatedPropPlacementArmed = false;

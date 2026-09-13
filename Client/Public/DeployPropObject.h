@@ -122,7 +122,8 @@ public:
 	bool_t Sample_AnimationAuthoringPreview(
 		const std::string& clipName,
 		f32_t normalizedTime,
-		bool_t loop);
+		bool_t loop,
+		bool_t revealHidden = false);
 	void End_AnimationAuthoringPreview();
 	bool_t Is_AnimationAuthoringPreviewActive() const
 	{
@@ -300,6 +301,7 @@ private:
 	bool_t m_bPreAuthoringAnimationLoop = false;
 	bool_t m_bPreAuthoringAnimationPaused = false;
 	bool_t m_bAnimationAuthoringPreviewActive = false;
+	bool_t m_bAnimationAuthoringRevealHidden = false;
 	bool_t m_bAnimationAuthoringPoseActive = false;
 	float3_t m_AnimationAuthoringPosition = {};
 	float4_t m_AnimationAuthoringRotation = float4_t(0.f, 0.f, 0.f, 1.f);

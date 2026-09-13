@@ -5,6 +5,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "MapEditorWorkspaceService.h"
+#include "Level_KakulSaydonArena.h"
 #include "MapAssetPreview.h"
 #include "DestructionSimulationController.h"
 #include "Model.h"
@@ -461,6 +462,119 @@ Client::CMapTool::Get_ActiveEditorArea() const
 		&m_EditorAreas[m_iActiveEditorArea] : nullptr;
 }
 
+CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets() const
+{
+#ifdef _DEBUG
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+			return arena->Get_CompositionWorldTargets();
+#endif
+	return {};
+}
+
+bool_t Client::CMapTool::Is_MapAuthoringLevel() const
+{
+	return (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::DEVELOPMENT) &&
+		CMapEditorWorkspaceService::Is_Active()) ||
+		((m_bOpen || m_bRuntimeAuthoring) && Runtime_AuthoringTargets().pPlacements != nullptr);
+}
+
+vector<Client::CMapTool::PLACED_ENTRY>& Client::CMapTool::Authoring_Placements()
+{
+	const auto targets = m_bRuntimeAuthoring ? Runtime_AuthoringTargets() : CWorldSequencePlayer::TARGET_SET{};
+	return targets.pPlacements ? *targets.pPlacements : m_Placements;
+}
+const vector<Client::CMapTool::PLACED_ENTRY>& Client::CMapTool::Authoring_Placements() const
+{ return const_cast<CMapTool*>(this)->Authoring_Placements(); }
+
+vector<Client::CMapTool::STATIC_BATCH_ENTRY>& Client::CMapTool::Authoring_Batches()
+{
+#ifdef _DEBUG
+	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
+		return CLevel_KakulSaydonArena::Get_Active()->Get_MapAuthoringBatches();
+#endif
+	return m_StaticBatches;
+}
+const vector<Client::CMapTool::STATIC_BATCH_ENTRY>& Client::CMapTool::Authoring_Batches() const
+{ return const_cast<CMapTool*>(this)->Authoring_Batches(); }
+
+CDeployPropRuntime& Client::CMapTool::Authoring_Deploy()
+{
+	const auto targets = m_bRuntimeAuthoring ? Runtime_AuthoringTargets() : CWorldSequencePlayer::TARGET_SET{};
+	return targets.pDeployRuntime ? *targets.pDeployRuntime : m_DeployRuntime;
+}
+const CDeployPropRuntime& Client::CMapTool::Authoring_Deploy() const
+{ return const_cast<CMapTool*>(this)->Authoring_Deploy(); }
+
+bool_t Client::CMapTool::Can_ChangeRuntimeStructure()
+{
+	if (m_bRuntimeAuthoring && m_pWorldSequenceToolPanel && m_pWorldSequenceToolPanel->Is_PreviewActive())
+	{
+		m_Status = "Stop / Restore the Map Tool sequence before changing object membership.";
+		return false;
+	}
+#ifdef _DEBUG
+	if (m_bRuntimeAuthoring)
+	{
+		auto* arena = CLevel_KakulSaydonArena::Get_Active();
+		if (!Runtime_AuthoringTargets().pPlacements || !arena || !arena->Can_ReplaceMapAuthoringTargets())
+		{
+			m_Status = "Stop active arena/Object/Composition playback before adding, deleting or reloading map objects.";
+			return false;
+		}
+	}
+#endif
+	return true;
+}
+
+void Client::CMapTool::Remember_RuntimePlacement(const MAP_PLACEMENT_RECORD& record)
+{
+	if (!m_bRuntimeAuthoring) return;
+	const auto found = m_RuntimePlacementIndex.find(record.placementId);
+	if (found == m_RuntimePlacementIndex.end())
+	{
+		m_RuntimePlacementIndex.emplace(record.placementId, m_RuntimePlacementDraft.size());
+		m_RuntimePlacementDraft.push_back(record);
+	}
+	else m_RuntimePlacementDraft[found->second] = record;
+	Rebase_RuntimeMotions();
+}
+
+void Client::CMapTool::Reset_RuntimePlacementDraft(const vector<MAP_PLACEMENT_RECORD>& records)
+{
+	m_RuntimePlacementDraft = records;
+	m_RuntimePlacementIndex.clear();
+	for (size_t index = 0; index < m_RuntimePlacementDraft.size(); ++index)
+		m_RuntimePlacementIndex.emplace(m_RuntimePlacementDraft[index].placementId, index);
+	Rebase_RuntimeMotions();
+}
+
+void Client::CMapTool::Forget_RuntimePlacement(uint64_t placementId)
+{
+	if (!m_bRuntimeAuthoring) return;
+	std::erase_if(m_RuntimePlacementDraft, [placementId](const auto& record) { return record.placementId == placementId; });
+	// Reset accepts a reference to the same vector; self-assignment preserves it.
+	Reset_RuntimePlacementDraft(m_RuntimePlacementDraft);
+}
+
+void Client::CMapTool::Rebase_RuntimeMotions()
+{
+#ifdef _DEBUG
+	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
+		CLevel_KakulSaydonArena::Get_Active()->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
+#endif
+}
+
+const MAP_PLACEMENT_RECORD& Client::CMapTool::Authored_Placement(const PLACED_ENTRY& entry) const
+{
+	if (m_bRuntimeAuthoring)
+	{
+		const auto found = m_RuntimePlacementIndex.find(entry.record.placementId);
+		if (found != m_RuntimePlacementIndex.end()) return m_RuntimePlacementDraft[found->second];
+	}
+	return entry.record;
+}
+
 bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
 {
 	if (descriptorIndex >= m_EditorAreas.size() ||
@@ -474,8 +588,8 @@ bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
-			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
-			m_DeployRuntime);
+			m_iAuthoringLevelIndex, m_Catalog, Authoring_Placements(),
+			Authoring_Deploy());
 		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
 		{
 			m_Status = m_pWorldSequenceToolPanel->Get_Status();
@@ -589,9 +703,10 @@ void Client::CMapTool::Update_EditorAreaPreload()
 
 bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 {
-	if (descriptorIndex >= m_EditorAreas.size() ||
-		m_iAuthoringLevelIndex != ETOUI(LEVEL::DEVELOPMENT) ||
-		!CMapEditorWorkspaceService::Is_Active())
+	const auto runtimeTargets = Runtime_AuthoringTargets();
+	const bool_t runtimeAttach = runtimeTargets.pPlacements && runtimeTargets.pDeployRuntime && runtimeTargets.pCatalog;
+	if (descriptorIndex >= m_EditorAreas.size() || !Is_MapAuthoringLevel() ||
+		(runtimeAttach && m_EditorAreas[descriptorIndex].areaId != runtimeTargets.pCatalog->Get_AreaId()))
 	{
 		m_Status = "Map editor Area switch is unavailable";
 		return false;
@@ -632,6 +747,11 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_Status = stagedCatalog.Get_Status();
 		return false;
 	}
+	if (runtimeAttach && !stagedCatalog.Bind_RuntimePrototypes(*runtimeTargets.pCatalog))
+	{
+		m_Status = stagedCatalog.Get_Status();
+		return false;
+	}
 
 	std::vector<MAP_PLACEMENT_RECORD> records;
 	std::string stagedStatus;
@@ -643,6 +763,22 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	{
 		m_Status = stagedStatus;
 		return false;
+	}
+	if (runtimeAttach)
+	{
+		// Refuse a partial/stale runtime: Save must never delete an unloaded source row.
+		std::unordered_map<uint64_t, std::string> liveIds;
+		for (const auto& entry : *runtimeTargets.pPlacements)
+			liveIds.emplace(entry.record.placementId, entry.record.assetId);
+		if (liveIds.size() != records.size() || std::any_of(records.begin(), records.end(),
+			[&liveIds](const auto& record) {
+				const auto found = liveIds.find(record.placementId);
+				return found == liveIds.end() || found->second != record.assetId;
+			}))
+		{
+			m_Status = "Runtime/source placement IDs differ. Save in Test, publish and re-enter Kouku before runtime editing.";
+			return false;
+		}
 	}
 	/* The sequence document reference-validates Deploy animation tracks, so
 	   it is loaded once this Area's Deploy runtime has been staged below. */
@@ -802,7 +938,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	   only leaves the list empty with a reported reason. */
 	(void)Load_CameraShots(descriptor);
 
-	if (!Ensure_AuthoringPrototypes(stagedCatalog))
+	if (!runtimeAttach && !Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
 	const bool_t stagedDebrisPrototypesReady =
 		!descriptor.destructionSimulationDocument.empty() &&
@@ -815,7 +951,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_Catalog = stagedCatalog;
 	std::vector<PLACED_ENTRY> stagedPlacements;
 	std::vector<STATIC_BATCH_ENTRY> stagedBatches;
-	if (!Stage_PlacementRuntime(records, stagedPlacements, stagedBatches))
+	if (!runtimeAttach && !Stage_PlacementRuntime(records, stagedPlacements, stagedBatches))
 	{
 		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
 		m_Catalog = std::move(previousCatalog);
@@ -823,7 +959,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		return false;
 	}
 	CDeployPropRuntime stagedDeployRuntime;
-	if (!Stage_DeployProps(descriptor, stagedDeployRuntime))
+	if (!runtimeAttach && !Stage_DeployProps(descriptor, stagedDeployRuntime))
 	{
 		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
 		m_Catalog = std::move(previousCatalog);
@@ -831,7 +967,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	}
 	if (!stagedWorldSequencePanel->Load_Area(
 		worldSequencePath, descriptor.sourcePlacements, descriptor.areaId,
-		stagedCatalog, records, stagedDeployRuntime,
+		stagedCatalog, records, runtimeAttach ? *runtimeTargets.pDeployRuntime : stagedDeployRuntime,
 		stagedStatus))
 	{
 		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
@@ -856,7 +992,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	if (stagedDestruction.Is_Ready() &&
 		!Validate_DestructionExternalReferences(
 			stagedDestruction,
-			stagedDeployRuntime,
+			runtimeAttach ? *runtimeTargets.pDeployRuntime : stagedDeployRuntime,
 			stagedBlockers,
 			stagedWorld,
 			stagedEncounterReference,
@@ -877,7 +1013,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		return false;
 	}
 	vector<NPC_PREVIEW_ENTRY> stagedNpcPreviews;
-	if (!Stage_WorldNpcPreviews(
+	if (!runtimeAttach && !Stage_WorldNpcPreviews(
 		stagedWorld, stagedNpcPreviews, &stagedNavigation, &stagedBlockers))
 	{
 		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
@@ -904,8 +1040,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	if (nullptr != m_pWorldSequenceToolPanel && previousCatalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
-			m_iAuthoringLevelIndex, previousCatalog, m_Placements,
-			m_DeployRuntime);
+			m_iAuthoringLevelIndex, previousCatalog, Authoring_Placements(),
+			Authoring_Deploy());
 		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
 		{
 			const std::string restoreFailure =
@@ -923,14 +1059,31 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	if (nullptr != m_pDestructionSimulationController)
 		m_pDestructionSimulationController->Clear();
 	m_bDestructionSimulationClearRequested = false;
-	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
+	if (!runtimeAttach) Remove_PlacementRuntime(Authoring_Placements(), Authoring_Batches());
 	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 	Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
 	Remove_WorldNpcPreviews(m_WorldNpcPreviews);
-	m_Placements = std::move(stagedPlacements);
-	m_StaticBatches = std::move(stagedBatches);
+	if (!runtimeAttach)
+	{
+		Authoring_Placements() = std::move(stagedPlacements);
+		Authoring_Batches() = std::move(stagedBatches);
+		Authoring_Deploy() = std::move(stagedDeployRuntime);
+	}
+	m_bRuntimeAuthoring = runtimeAttach;
+	Reset_RuntimePlacementDraft(runtimeAttach ? records : vector<MAP_PLACEMENT_RECORD>{});
+	if (runtimeAttach)
+	{
+		// These identities belong to the active arena loader, not a second prototype owner.
+		for (const auto& asset : runtimeTargets.pCatalog->Get_Entries())
+			m_PrototypeModelPaths.emplace(asset.prototypeTag, asset.resolvedModelPath.lexically_normal());
+		for (const auto& asset : runtimeTargets.pDeployRuntime->Get_Catalog().Get_Assets())
+		{
+			m_PrototypeModelPaths.emplace(asset.intactPrototypeTag, asset.intactResolvedPath.lexically_normal());
+			if (!asset.fracturedPrototypeTag.empty())
+				m_PrototypeModelPaths.emplace(asset.fracturedPrototypeTag, asset.fracturedResolvedPath.lexically_normal());
+		}
+	}
 	m_pWorldSequenceToolPanel = std::move(stagedWorldSequencePanel);
-	m_DeployRuntime = std::move(stagedDeployRuntime);
 	m_WorldGameplayDocument = std::move(stagedWorld);
 	m_WorldTriggerBoxes = std::move(stagedTriggerBoxes);
 	m_WorldNpcPreviews = std::move(stagedNpcPreviews);
@@ -1012,7 +1165,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		"World destruction authoring disabled for this Area" :
 		"World destruction authoring ready";
 	m_iNextPlacementId = 1;
-	for (const PLACED_ENTRY& entry : m_Placements)
+	for (const PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		if ((entry.record.transformSource == "editor" ||
 			entry.record.transformSource == "legacy") &&
@@ -1035,12 +1188,12 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		(navigationLoaded ? "Navigation authoring ready" :
 			"Navigation bootstrap: place Nav Bounds and Bake");
 	m_Status = "Active editor Area: " + descriptor.label + " (" +
-		descriptor.areaId + ") / " + std::to_string(m_Placements.size()) +
+		descriptor.areaId + ") / " + std::to_string(Authoring_Placements().size()) +
 		" placements. Runtime publish is separate.";
-	Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+	if (!runtimeAttach) Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
 	Rebuild_EditorSublevelJumps();
 
-	if (!Focus_ActiveEditorAreaCamera())
+	if (!runtimeAttach && !Focus_ActiveEditorAreaCamera())
 		m_Status += " Camera focus unavailable: " + m_CameraStatus;
 	return true;
 }
@@ -1053,11 +1206,15 @@ void Client::CMapTool::Handle_LevelTransition(
 		currentLevelIndex : ETOUI(LEVEL::END);
 	if (targetLevelIndex == m_iAuthoringLevelIndex)
 		return;
+	// Old level ownership is already gone during a Level transition. Never clear borrowed containers.
+	m_bRuntimeAuthoring = false;
+	m_RuntimePlacementDraft.clear();
+	m_RuntimePlacementIndex.clear();
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
-			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
-			m_DeployRuntime);
+			m_iAuthoringLevelIndex, m_Catalog, Authoring_Placements(),
+			Authoring_Deploy());
 	}
 	if (nullptr != m_pDestructionSimulationController)
 		m_pDestructionSimulationController->Clear();
@@ -1094,9 +1251,9 @@ void Client::CMapTool::Handle_LevelTransition(
 	if (nullptr != m_pAssetPreview)
 		m_pAssetPreview->Reset_LevelResources();
 
-	m_Placements.clear();
-	m_StaticBatches.clear();
-	m_DeployRuntime.Reset_ClearedLevelTracking();
+	Authoring_Placements().clear();
+	Authoring_Batches().clear();
+	Authoring_Deploy().Reset_ClearedLevelTracking();
 	m_WorldTriggerBoxes.clear();
 	m_SpawnAnchorBoxes.clear();
 	m_iNextPlacementId = 1;
@@ -1137,7 +1294,16 @@ void Client::CMapTool::Handle_LevelTransition(
 	Find_AssetTestCamera();
 	if (!Load_EditorAreaRegistry() || m_EditorAreas.empty())
 		return;
-	Switch_EditorArea(0);
+	const auto runtimeTargets = Runtime_AuthoringTargets();
+	if (runtimeTargets.pCatalog)
+	{
+		const auto found = std::find_if(m_EditorAreas.begin(), m_EditorAreas.end(),
+			[&runtimeTargets](const auto& area) { return area.areaId == runtimeTargets.pCatalog->Get_AreaId(); });
+		if (found == m_EditorAreas.end())
+			m_Status = "The current runtime Area is not registered for authoring.";
+		else Switch_EditorArea(static_cast<size_t>(found - m_EditorAreas.begin()));
+	}
+	else Switch_EditorArea(0);
 }
 bool_t Client::CMapTool::Find_AssetTestCamera()
 {
@@ -1181,11 +1347,11 @@ bool_t Client::CMapTool::Focus_ActiveEditorAreaCamera()
 		center,
 		radius);
 
-	if (!hasFrame && !m_Placements.empty())
+	if (!hasFrame && !Authoring_Placements().empty())
 	{
-		float3_t minimum = m_Placements.front().record.position;
+		float3_t minimum = Authoring_Placements().front().record.position;
 		float3_t maximum = minimum;
-		for (const PLACED_ENTRY& entry : m_Placements)
+		for (const PLACED_ENTRY& entry : Authoring_Placements())
 		{
 			minimum.x = (std::min)(minimum.x, entry.record.position.x);
 			minimum.y = (std::min)(minimum.y, entry.record.position.y);
@@ -1241,7 +1407,7 @@ void Client::CMapTool::Rebuild_EditorSublevelJumps()
 		size_t count = 0u;
 	};
 	std::map<std::string, SUBLEVEL_BOUNDS> bounds;
-	for (const PLACED_ENTRY& entry : m_Placements)
+	for (const PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		if (entry.record.sourceLevel.empty())
 			continue;

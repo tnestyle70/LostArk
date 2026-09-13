@@ -639,7 +639,7 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
 
     def test_preview_uses_runtime_baseline_and_never_edits_map_records(self) -> None:
         self.assertIn("Try_GetRuntimeVisible", self.panel_cpp)
-        self.assertIn("baseline->runtimeVisible || !baseline->baseline.visible", self.panel_cpp)
+        self.assertIn("sampled.visible = key.visible", self.panel_cpp)
         self.assertIn("restoredRecord.visible = target.runtimeVisible", self.panel_cpp)
         self.assertIn("Stop_AndRestore", self.panel_cpp)
         self.assertNotRegex(self.panel_cpp, r"entry\.record\s*=")
@@ -783,9 +783,9 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         self.assertIn("stableLinkedDocument", body)
         self.assertIn("Matches_LinkedSourceBaseline", body)
         self.assertLess(body.index("stagedWorldSequencePanel->Load_Area"),
-                        body.index("Remove_PlacementRuntime(m_Placements"))
+                        body.index("Remove_PlacementRuntime(Authoring_Placements()"))
         self.assertLess(body.index("Stage_PlacementRuntime"),
-                        body.index("Remove_PlacementRuntime(m_Placements"))
+                        body.index("Remove_PlacementRuntime(Authoring_Placements()"))
         self.assertIn("Is_PreviewActive", body)
         render = re.search(
             r"void Client::CMapTool::Render_WorldSequencePanel\(.*?\n\}",
@@ -976,7 +976,7 @@ class AnimatedPropAuthoringContractTests(unittest.TestCase):
         )
         self.assertIsNotNone(remove)
         body = remove.group(0)
-        self.assertIn("CDeployPropCatalog restore = m_DeployRuntime.Get_Catalog();", body)
+        self.assertIn("CDeployPropCatalog restore = Authoring_Deploy().Get_Catalog();", body)
         self.assertIn("m_pWorldSequenceToolPanel->Validate(", body)
         self.assertIn("Commit_DeployCatalog(std::move(restore)", body)
         self.assertLess(body.index("Validate("), body.index("std::move(restore)"))
@@ -996,7 +996,7 @@ class AnimatedPropAuthoringContractTests(unittest.TestCase):
         self.assertLess(body.index("Stop_AndRestore("), body.index("stagedRuntime.Load("))
         self.assertLess(
             body.index("stagedRuntime.Load("),
-            body.index("m_DeployRuntime = std::move(stagedRuntime);"),
+            body.index("Authoring_Deploy() = std::move(stagedRuntime);"),
         )
 
     def test_korean_help_remains_valid_escaped_utf8(self) -> None:
@@ -1035,6 +1035,82 @@ class AnimatedPropAuthoringContractTests(unittest.TestCase):
             text = data.decode("utf-8")
             self.assertTrue(any("\uac00" <= ch <= "\ud7a3" for ch in text), name)
 
+
+
+class RuntimeMapAuthoringContractTests(unittest.TestCase):
+    """Source integration guards; manual runtime editing remains user-verified."""
+
+    def test_attach_borrows_existing_objects_and_rejects_partial_sources(self):
+        code = read("Client/Private/MapTool_Area.cpp")
+        self.assertIn("Get_CompositionWorldTargets()", code)
+        self.assertIn("liveIds.size() != records.size()", code)
+        self.assertIn("found->second != record.assetId", code)
+        self.assertIn("!runtimeAttach && !Stage_PlacementRuntime", code)
+        self.assertIn("!runtimeAttach && !Stage_DeployProps", code)
+
+    def test_save_uses_authoring_draft_and_live_edits_require_stopped_preview(self):
+        code = read("Client/Private/MapTool.cpp")
+        self.assertIn("stored = Authored_Placement(entry)", code)
+        self.assertIn("Can_ReplaceMapAuthoringTargets()", code)
+        body = code.split("Client::CMapTool::Can_ChangeRuntimeStructure()", 1)[1].split("\n}", 1)[0]
+        self.assertIn("Is_PreviewActive()", body)
+        self.assertIn("return false", body)
+
+    def test_reload_preserves_presentation_but_discards_unsaved_visibility(self):
+        code = read("Client/Private/MapTool_Placements.cpp")
+        body = code.split("Client::CMapTool::Load_Placements()", 1)[1].split("\n}", 1)[0]
+        self.assertIn("visible != Authored_Placement(entry).visible", body)
+        self.assertLess(body.index("liveVisibility.find"),
+                        body.index("Remove_PlacementRuntime(Authoring_Placements()"))
+        self.assertIn("previous->Get_State()", code)
+        self.assertIn("previous->Get_SurfacePresentation()", code)
+        self.assertEqual(code.count("!PreserveLiveDeployPresentation(Authoring_Deploy(), stagedRuntime)"), 2)
+
+    def test_deleted_motion_definition_survives_for_reload(self):
+        code = read("Client/Private/MapPlacementRuntime.cpp")
+        body = code.split("CMapPlacementRuntime::Rebase_AuthoringSelfMotions(", 1)[1].split("\n}", 1)[0]
+        self.assertIn("for (auto& motion : m_SelfMotions)", body)
+        self.assertIn("motion.placementIndex = static_cast<size_t>(-1)", body)
+        self.assertIn("motion.placementIndex = placement->second", body)
+        self.assertNotIn("m_SelfMotions.erase", body)
+        self.assertIn("if (entry.placementIndex >= placements.size())", code)
+
+    def test_runtime_attach_binds_live_model_tags_before_committing_catalog(self):
+        code = read("Client/Private/MapTool_Area.cpp")
+        self.assertLess(code.index("stagedCatalog.Bind_RuntimePrototypes(*runtimeTargets.pCatalog)"),
+                        code.index("m_Catalog = stagedCatalog"))
+        catalog = read("Client/Private/MapAssetCatalog.cpp")
+        body = catalog.split("CMapAssetCatalog::Bind_RuntimePrototypes(", 1)[1].split("\n}", 1)[0]
+        self.assertIn("m_AreaId != runtimeCatalog.m_AreaId", body)
+        self.assertIn("runtimeCatalog.Find(asset.id)", body)
+        self.assertLess(body.index("resolvedModelPath.lexically_normal()"),
+                        body.index("asset.prototypeTag = runtimeCatalog.Find(asset.id)->prototypeTag"))
+
+    def test_deploy_preview_reveal_is_opt_in_and_does_not_change_state(self):
+        panel = read("Client/Private/WorldSequenceToolPanel.cpp")
+        self.assertIn("animationTrack->loop, delayedMs >= 0.f", panel)
+        header = read("Client/Public/DeployPropObject.h")
+        self.assertIn("bool_t revealHidden = false", header)
+        code = read("Client/Private/DeployPropObject.cpp")
+        begin = code.split("CDeployPropObject::Begin_AnimationAuthoringPreview(", 1)[1].split("\n}", 1)[0]
+        self.assertNotIn("Set_State", begin)
+        sample = code.split("CDeployPropObject::Sample_AnimationAuthoringPreview(", 1)[1].split("\n}", 1)[0]
+        self.assertNotIn("Set_State", sample)
+        self.assertIn("m_bAnimationAuthoringRevealHidden = revealHidden", sample)
+        end = code.split("CDeployPropObject::End_AnimationAuthoringPreview()", 1)[1].split("\n}", 1)[0]
+        self.assertIn("m_bAnimationAuthoringRevealHidden = false", end)
+        self.assertEqual(code.count("m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden"), 3)
+
+    def test_card_miro_reuses_runtime_prototype_registration(self):
+        code = read("Client/Private/MapTool_Cutscenes.cpp")
+        body = code.split("Client::CMapTool::Play_CardMiroMarch()", 1)[1].split("\n}", 1)[0]
+        self.assertIn("!m_bWorldObjectPrototypeReady && !m_bRuntimeAuthoring", body)
+
+    def test_failed_restore_identifies_target_and_model_lookup(self):
+        code = read("Client/Private/WorldSequenceToolPanel.cpp")
+        self.assertIn("firstRestoreFailure", code)
+        self.assertIn('"Map model prototype is unavailable at level "', code)
+        self.assertIn('"Map #" + std::to_string(target.placementId)', code)
 
 
 if __name__ == "__main__":

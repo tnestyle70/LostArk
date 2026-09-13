@@ -9040,7 +9040,9 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::Text("Current level id: %u", currentLevelId);
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
-		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
+		(currentLevelId == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
+			"Kouku runtime supports Map, Object, Camera and Sequence authoring through F1." :
+			"F1 opens tools. Map authoring is available in Lobby Test or the Kouku runtime."));
 	RenderSequenceViewer();
 	ImGui::SeparatorText("Tools");
 
@@ -9151,7 +9153,8 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::EndCombo();
 	}
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
-	if (!isMapEditorWorkspace && IsDebugToolVisible(DEBUG_TOOL::MAP))
+	if (!isMapEditorWorkspace && currentLevelId != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		IsDebugToolVisible(DEBUG_TOOL::MAP))
 	{
 		ImGui::TextDisabled(
 			"Map Tool is open in inspect-only mode. Enter Lobby > Test > Map Editor to save map placement/navigation.");
