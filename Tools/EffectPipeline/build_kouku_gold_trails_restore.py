@@ -120,6 +120,10 @@ def build(organization_path, placements_path, defaults_path, output, install):
     for pair in PAIRS:
         for asset in pair:
             path = ROOT / 'Data/Effects/Authored' / (asset + '.effect.json')
+            # Authored portal-arrival copies are optional local authoring output.
+            # Original source documents are required and always repaired.
+            if asset != pair[0] and not path.exists():
+                continue
             before = path.read_bytes()
             value, changed = replace_nodes(before, recovered)
             value, loop_changes = replace_provisional_loops(value)
@@ -168,8 +172,8 @@ def build(organization_path, placements_path, defaults_path, output, install):
         try:
             for path, value in staged.items():
                 if value != snapshots[path]:
-                    path.write_bytes(value)
                     committed.append(path)
+                    path.write_bytes(value)
         except Exception:
             for path in reversed(committed):
                 if snapshots[path] is None:

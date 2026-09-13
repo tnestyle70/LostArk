@@ -194,17 +194,22 @@ mesh-emitter Dynamic default와 실제 sprite VF의 Dynamic stream을 비교하�
 
 ## G06. 2026-09-13 festival 재생 거절 진단과 scene player 연결
 
+G06–G07은 원 작업 폴더 `C:/Users/user/Desktop/LostArk`에서 수행한 전체 구현·검증 기록이다.
+이후 PR373의 부분 병합과 PR374의 전체 통합은 G08–G09에서 구분한다. 아래 기존 CPU·Product
+성공은 PR374 충돌 해결 후 새로 실행한 검증을 뜻하지 않는다.
+
 사용자가 전달한 정확한 문구는 `Enter an arena with a scene player before Play All. The player is the Effect anchor.`다.
 실제 발생 위치는 `CEffectAuthoringSequencer::Select_SceneEffectTarget`의 scene player/Transform 조회다.
 `Resolve_SceneCharacter()`는 `CAnimationTargetService::s_Target`만 읽지만, 조사 시 Bind 호출은
 Character Select Level에만 있었다. Kouku 아레나의 복제 player는 카메라·입력에 정상 연결돼도
-이 전역 scene target에는 등록되지 않았다. 이 코드 경로는 HEAD에도 있어 최근 Effect Tool 분할에서
+이 전역 scene target에는 등록되지 않았다. 이 코드 경로는 조사 당시 HEAD에도 있어 최근 Effect Tool 분할에서
 처음 생긴 결함으로 단정하지 않는다. reported 문구는 V1 factory·입자 평가·shader 실행 이전의 거절이다.
 
 ### 실제 변경
 
 `Client/Private/ClientReplication.cpp`에서 local player의 실제 commit과 scene target 수명을 연결했다.
-local spawn과 class replacement 성공 뒤 Bind하며, 실패 rollback·remote player는 기존 target을 보존한다.
+`Commit_PlayerSpawn`과 `Replace_CharacterClass`의 local character commit 성공 뒤 Bind하며,
+실패 rollback·remote player는 기존 target을 보존한다.
 local despawn 성공·Reset_World·destructor는 해당 local character만 Unbind한다. destructor가 Layer를
 다시 조작하지 않는 기존 종료 계약과 Character Select의 안전한 exact-pointer 호출은 보존한다.
 새 C++ 파일·별도 runtime·project 항목은 없다. 기존 클릭 이동 예측 교정도 보존한다.
@@ -281,8 +286,8 @@ P4에 연결된 것은 authored festival이다. P1 팝업북은 `original_8T6_00
 원본 Matinee7 자체를 배치할 때의 MAP root는 `(70.051201171875,4.18999755859375,-105.66234375)`,
 rotation `(0,0,0)`, scale `(1,1,1)`이다. 원본 최초 ON은 5.9800128937초이며 occurrence로 표현하면
 startMs 5980, 전체 tail을 포함한 durationMs 12239다. 내부 element가 이미 yaw 45도와 1/0.8배 크기를
-소유하므로 root에 중복 적용하지 않는다. 이 값은 P1의 시간·좌표 정렬값이 아니다. 이번 변경에서는
-시퀀스 JSON·폭죽 문서·shader·Resources를 수정하지 않았다.
+소유하므로 root에 중복 적용하지 않는다. 이 값은 P1의 시간·좌표 정렬값이 아니다.
+G06의 scene player 연결 교정에서는 시퀀스 JSON·폭죽 문서·shader·Resources를 수정하지 않았다.
 
 ## G07. 무대 앞 금빛 이동 축포의 원본 곡선·방출 복구
 
@@ -322,7 +327,7 @@ native 2461/3109/3334/2457/2426의 재질·shape·필수 texture·shader dispatc
 새 문서는 `effect.kouku.gate1.intro.gold-trails.full.restore`이며 표시명은
 `1관문_금빛 이동 축포_무대 4경로`다. EffectCatalog·EffectResourceTree와 Boss/Sequence Composition의
 추가 가능한 Effect resource에 등록했고, Client project/filter의 96.DataFiles None 항목에 연결했다.
-resource ID는 `kakulsaydon.effect.8e7eaa218533fd414f00`이다. 기존 시퀀스에 동일 occurrence를
+resource ID는 `kakulsaydon.effect.8e7eaa218533fd414f00`, duration은 tail 포함 9413ms다. 기존 시퀀스에 동일 occurrence를
 중복 추가하지 않았다. P4의 기존 `.presentation.20/.21`이 교정된 authored 문서를 그대로 소비한다.
 
 | 독립 문서 | 원본을 보존한 값 |
@@ -331,7 +336,7 @@ resource ID는 `kakulsaydon.effect.8e7eaa218533fd414f00`이다. 기존 시퀀스
 | 시작 지연 | 0 / 0.640884399 / 0.774541855 / 2.738483429초 |
 | source clock origin | 23.076379776초 |
 | 위치 기준 | SL04 floor08 원본 placement `LV_LUT_MIDNIGHTC_ED_SL04:export:206` |
-| preview origin | UE `[0,-73728,0]` → Client `[0,0,737.28]` |
+| preview origin | UE `[0,-73728,0]`cm → Client `[0,0,737.28]`m |
 | 회전·크기 | 원본 node WORLD·scale 2 유지. 바닥 mesh의 yaw45/scale은 effect root에 복사하지 않음 |
 | CPU 전체 수명 | 9.41295초, 마지막 시각 요소 관측 9.26667초 |
 
@@ -376,3 +381,81 @@ DirectorTrack1263 shot40도 정확히 같은 float 시각에 cm03→cm01로 tran
 1관문 → 연출 → 금빛 이동 축포 → `1관문_금빛 이동 축포_무대 4경로` → Play All로 확인한다.
 기존 시퀀스의 통합 팝업북에서도 저장된 시각·MAP 위치로 재생된다. 에이전트는 Client/Server를
 자율 실행하거나 UI를 조작하지 않았다.
+
+## G08. PR373 부분 병합 이력과 당시 main 검증
+
+PR373은 main `6e82551d`에서 분리한 `codex/kouku-golden-trail-motion`의 부분 반영이었다.
+scene player 수명과 금빛 이동 속도 코드, source 두 문서, 독립 24행 문서와 등록을 가져왔고,
+당시 main에 없던 `authored.portal-arrival.1/.2`와 58.81초 retiming, 공유 작업 폴더의 나머지
+저작 변경은 포함하지 않았다. 당시 P4는 source `.matinee_0.1/.2`를 소비했다. 이 단락은
+PR373 당시 상태이며, 현재 PR374의 전체 범위나 현재 P4 소비자를 설명하는 문장이 아니다.
+
+| PR373의 기존 source 문서 | 보완한 node 배열 | 교정한 emitterLoopCount |
+|---|---:|---:|
+| `effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1` | 12 | 24 |
+| `effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2` | 24 | 24 |
+| 합계 | 36 | 48 |
+
+이 부분 반영에서는 기존 두 문서의 node 배열과 선택 trail의 emitterLoopCount 외 값을 유지했다.
+main의 builder는 source 두 문서를 필수로 읽고 authored 복사본은 존재할 때만 보완하도록 했다.
+설치기는 쓰기 전에 경로를 rollback 목록에 넣어 쓰기 도중 실패한 파일도 복구하도록 교정했다.
+
+| PR373 분리 작업 폴더의 검증 | 당시 실제 기록 |
+|---|---|
+| C++·scene target | `Effect_Playback.cpp`·`ClientReplication.cpp` 격리 컴파일 exit 0, 실제 lifecycle 함수 28개 assertion PASS |
+| 데이터 | source 2문서의 node 36개·loop 48개 외 변경 없음. source 2개와 독립 문서가 이전 CPU 후보와 byte 일치. JSON/XML/Python·CRLF 검사 PASS |
+| 재생성·rollback | 추가 교정 0. 두 번째 source에 127바이트 부분 쓰기 후 OSError를 주입해 기존 source 2개 원본 복구·새 독립 문서 미commit 확인 |
+| CPU | 당시 Client 코드로 standalone·source 2문서의 전체 재생·rewind와 속도 상속 9계약 exit 0 PASS |
+| 기존 경로 | 변경 전 main과 world-root/local-root/bone-follow 각 90프레임 float-bit FNV 일치. source 이동 birth 속도 최대 오차 0.0000231195m/s |
+| Client 화면 | 에이전트 미실행, 사용자 최종 색상·크기·움직임 판정 미완료 |
+
+그 분리 작업 폴더는 `C:/Users/user/Desktop/CodexWorkTree/LostArk-kouku-golden-trails-0913`다.
+데이터·재생성 근거는 그 폴더의 `out/KoukuGoldTrails20260913/pr-data-validation.json`,
+부분 쓰기 복구 근거는 `pr-rollback-validation.json`이다. CPU 검사는 당시 Client 의존 코드를
+새로 컴파일하고 기존 EngineSDK lib/DLL을 연결했다. 사용한 Engine ABI는 같았지만 전체 Product
+빌드·GPU·화면 검증은 아니며, 실행하지 않은 overlay ABI 범위는 해당 CPU 기록에서 구분했다.
+G06–G07에 보존한 원 작업 폴더의 00:42/01:12 Product 성공과 이 격리 검사를 혼동하지 않는다.
+
+## G09. PR374 사용자 전체 변경과 main의 통합 범위
+
+사용자가 전체 반영을 요청했으므로 `codex/kouku-finale-main-integration`에서 사용자 commit
+`3fc23750761107fee9c6933df9f926d93165de05`와 main
+`34b90de5a2e7d27003d34f581435dfc5e22f4fa4`를 통합한다. PR373의 부분 선별을 반복하지 않고
+사용자의 authored 문서·58.81초 시퀀스 저작·그 밖의 전체 변경을 보존하는 범위다.
+
+이 이펙트 작업에서는 source 두 문서와 authored portal-arrival 두 문서의 보완을 모두 유지한다.
+전체 보완 수는 G07의 node 72개·loop 96개이며 P4 `.presentation.20/.21`은 authored 문서를
+소비한다. 독립 24행·9413ms 문서의 등록과 원본 26.9194545746초 위치 도약도 보존한다.
+source·authored의 시각과 MAP 변환을 독립 Play All의 floor 기준으로 덮지 않는다.
+
+충돌한 builder는 main의 authored 선택 처리와 쓰기 전 rollback 등록 순서를 보존했다.
+따라서 authored가 없는 입력에서는 source만, 현재처럼 두 authored가 있는 입력에서는 네 문서가
+같은 node·loop 보완 경로를 사용한다. 부분 쓰기가 실패한 대상도 원본 byte 복구에 포함된다.
+문서의 중복 scene player·금빛 원리는 합치고, 전체 작업에만 있던 이동 예측·Composition Preview
+원리와 G06–G07의 원본 조사·실제 검증·미완료 화면 경계는 보존했다.
+
+### 이번 통합 작업에서 실제 확인한 범위
+
+| 병합 후 검증 | 실제 결과 |
+|---|---|
+| C++ | EffectV2/HUD/Level/MVP/MainApp/WorldObjects/WorldSequence의 병합 영향 11개 CPP를 격리 MSVC `/c`로 컴파일, 모두 exit 0 |
+| 시작 지점 복귀의 preview 종료 | 사용자의 복귀 코드가 main에서 제거한 단일 `m_WorldObjectPreviewInstance`를 참조해 첫 컴파일 실패. 기존 `Debug_StopWorldObjectPreview()`에 연결하여 group preview 전체 종료를 유지했고 해당 CPP 재컴파일 PASS |
+| project/filter union | CPP 295개·H 264개의 등록 대상 실제 존재, 중복 0 |
+| RenderingProfiles | 양쪽 변경 146 leaf와 1 leaf를 함께 보존, revision 37, publisher PASS |
+| WorldSequence 저작·배포 | 사용자와 main의 stable ID별 변경 보존. revision 1736, resource 315개·template 201개·instance 257개. 기존 Map publisher의 WorldSequences Publish와 Check 모두 exit 0 |
+| WorldSequence 계약 검사 | 기존 `test_world_sequence_authoring_contract.py` 31개 검사 PASS |
+| builder·현재 저작 입력 | main의 builder blob과 byte 일치·Python AST parse PASS. 실제 node/loop 교정 함수를 현재 source/authored 4문서에 메모리 적용하여 모두 추가 교정 0·byte 불변, 독립 문서 24행 확인. 설치 실행 없음 |
+| 문서 충돌 정리 | 담당 6파일 conflict marker 0, UTF-8·기존 줄바꿈 보존, `git diff --check HEAD` PASS |
+
+위 결과는 PR374 통합 작업의 격리 컴파일·등록·RenderingProfiles 게시 검사다. 전체 Product
+빌드나 새로운 Effect CPU 재생 검사를 수행했다는 뜻이 아니다. WorldSequence 배포본은 원본
+저작과 JSON 의미가 동일하며 publisher만 재생성했다. Client/UI와 최종 시각적 일치 판정은 사용자가 직접
+수행할 단계로 남는다.
+
+사용자가 병합 도중 저장한 Sequence Composition revision 13도 원본 byte와 SHA-256을 별도
+보존해 통합한다. P4에 추가한 fireworks occurrence의 start 0ms·duration 38418ms·MAP 위치
+`[14,15.77400016784668,745]`와 debugRender 값을 그대로 유지한다. 기존 commit 이후의 저장을
+누락하거나 main의 별도 등록으로 덮지 않는다. 데이터 대조와 publisher 근거는
+`out/KoukuFinaleMerge20260913/`, 컴파일 근거는
+`out/KoukuFinaleMainIntegration20260913/client-compile/integration_validation_receipt.json`,
+31개 검사 결과는 `out/Merge374/world-sequence-contract.log`에 있다.

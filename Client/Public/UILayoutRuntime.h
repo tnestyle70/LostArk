@@ -146,6 +146,11 @@ private:
 		f32_t	fScaleX = 1.f, fScaleY = 1.f;
 		f32_t	fRotationDeg = 0.f;
 		f32_t	fAlpha = 1.f;
+		/* The source PlaceObject carries a full colorTransform, not just alpha. The raid
+		clear screen is the case that needs it: its light layers are authored white and
+		each raid's Set tints them (Kouku pulls blue to 0 to make them gold). Default 1
+		leaves every existing document untouched. */
+		f32_t	fTintR = 1.f, fTintG = 1.f, fTintB = 1.f;
 		bool_t	bAdditive = false;
 		bool_t	bFlipX = false;
 	};

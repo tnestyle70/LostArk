@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 677,
+  "revision": 1736,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -56,17 +56,42 @@
         "sourceMaterial": "mn_rhcn_00.mat.mn_rhcn_00_mi",
         "family": "source.character.monster-pbr-masked.v1",
         "parameters": {
-          "1.use_dyeing_sp": 0.0,
-          "1.use_emissive_flickerspeed_fixed": 0.0,
-          "beckmannspecular_constant_max": 3.3499999046325684,
+          "1.use_dyeing_sp": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "1.use_emissive_flickerspeed_fixed": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "beckmannspecular_constant_max": [
+            3.3499999,
+            3.3499999,
+            3.3499999,
+            3.3499999
+          ],
           "buffcolor": [
             0.0,
             0.0,
             0.0,
             1.0
           ],
-          "constantoutline": 0.0,
-          "constantoutline_blink": 0.5,
+          "constantoutline": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "constantoutline_blink": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
           "constantoutline_color": [
             0.0,
             0.0,
@@ -85,13 +110,48 @@
             0.013473397120833397,
             1.0
           ],
-          "emissive_flicker_speed": 0.6499999761581421,
-          "emissive_intensity": 2.5,
-          "emissive_intensitymin": 0.30000001192092896,
-          "fresnel_radius": 0.949999988079071,
-          "fresnel_rimlightintensity": 0.5,
-          "fx_color_desaturation_actiontool": 0.0,
-          "fx_color_desaturation_buffsettool": 0.0,
+          "emissive_flicker_speed": [
+            0.649999976,
+            0.649999976,
+            0.649999976,
+            0.649999976
+          ],
+          "emissive_intensity": [
+            2.5,
+            2.5,
+            2.5,
+            2.5
+          ],
+          "emissive_intensitymin": [
+            0.300000012,
+            0.300000012,
+            0.300000012,
+            0.300000012
+          ],
+          "fresnel_radius": [
+            0.949999988,
+            0.949999988,
+            0.949999988,
+            0.949999988
+          ],
+          "fresnel_rimlightintensity": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "fx_color_desaturation_actiontool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_desaturation_buffsettool": [
+            0,
+            0,
+            0,
+            0
+          ],
           "fx_color_intensity_actiontool": [
             0.0,
             0.0,
@@ -122,25 +182,90 @@
             1.0,
             1.0
           ],
-          "ibl_exposer": 5.0,
-          "ibl_intensity": 1.0,
-          "ibl_normal_smooth": 0.699999988079071,
-          "ibl_reflect_lodbias": 80.0,
-          "metalicness_power": 0.20000000298023224,
-          "normaltex_intensity": 1.0,
-          "orennayar": 1.0,
-          "orennayar_brightness": 1.0,
-          "pbr_specular_intensity": 10.0,
-          "pbr_specular_power": 6.0,
-          "roughness_power": 3.0,
+          "ibl_exposer": [
+            5,
+            5,
+            5,
+            5
+          ],
+          "ibl_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_normal_smooth": [
+            0.699999988,
+            0.699999988,
+            0.699999988,
+            0.699999988
+          ],
+          "ibl_reflect_lodbias": [
+            80,
+            80,
+            80,
+            80
+          ],
+          "metalicness_power": [
+            0.200000003,
+            0.200000003,
+            0.200000003,
+            0.200000003
+          ],
+          "normaltex_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "orennayar": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "orennayar_brightness": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "pbr_specular_intensity": [
+            10,
+            10,
+            10,
+            10
+          ],
+          "pbr_specular_power": [
+            6,
+            6,
+            6,
+            6
+          ],
+          "roughness_power": [
+            3,
+            3,
+            3,
+            3
+          ],
           "selectioncolor": [
             0.0,
             0.0,
             0.0,
             1.0
           ],
-          "shadowfactor": 0.5,
-          "specular_power_limit": 0.9200000166893005,
+          "shadowfactor": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "specular_power_limit": [
+            0.920000017,
+            0.920000017,
+            0.920000017,
+            0.920000017
+          ],
           "state": [
             0.0,
             0.0,
@@ -153,15 +278,30 @@
             0.0,
             1.0
           ],
-          "trans_rim_hard": 1.0,
-          "trans_rim_inradius": 0.0,
+          "trans_rim_hard": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "trans_rim_inradius": [
+            0,
+            0,
+            0,
+            0
+          ],
           "transcolor": [
             0.0,
             0.0,
             0.0,
             1.0
           ],
-          "transcolor_rimlight ": 1.0
+          "transcolor_rimlight ": [
+            1,
+            1,
+            1,
+            1
+          ]
         },
         "textures": [
           {
@@ -7583,6 +7723,29 @@
       ],
       "sequenceInstanceId": "",
       "defaultMotionInstanceId": "world.object.instance.kouku.iron_maiden.idle_normal_1"
+    },
+    {
+      "objectId": "world.object.group.kouku.g3.outer_fire.all",
+      "displayName": "외곽불_전체",
+      "modelAssetId": "",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.00999999978,
+      "animated": false,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "sequenceInstanceId": "",
+      "motionInstanceIds": [
+        "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+        "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+        "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+        "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+        "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+        "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw"
+      ]
     }
   ],
   "templates": [
@@ -362842,6 +363005,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -367026,6 +367220,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -370850,6 +371075,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -374614,6 +374870,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -378338,6 +378625,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -382122,6 +382440,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -385877,6 +386226,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -389632,6 +390012,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -393387,6 +393798,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -397162,6 +397604,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -400817,6 +401290,37 @@
       "category": "World",
       "durationMs": 27000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404472,6 +404976,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404536,6 +405071,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404600,6 +405166,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404664,6 +405261,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404728,6 +405356,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404792,6 +405451,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -404856,6 +405546,37 @@
       "category": "World",
       "durationMs": 14000,
       "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
       "tracks": [
         {
           "slotId": "actor",
@@ -408097,7 +408818,7 @@
       "sequenceId": "world.object.kouku.cutting_blade.state.1",
       "displayName": "바닥_칼날",
       "category": "World",
-      "durationMs": 6000,
+      "durationMs": 11000,
       "interpolation": "SMOOTH_STEP",
       "objectMotion": {
         "velocity": [
@@ -408125,10 +408846,66 @@
           0,
           0
         ],
-        "count": 1,
+        "count": 6,
         "intervalMs": 0,
         "spreadDegrees": 0,
-        "seed": 1
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              11.5200005,
+              1,
+              -3.64499998
+            ],
+            "yawDegrees": 312,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -6.16699982,
+              1,
+              9.59000015
+            ],
+            "yawDegrees": 132,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              8.84399986,
+              1,
+              -6.6170001
+            ],
+            "yawDegrees": 312,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -8.84399986,
+              1,
+              6.6170001
+            ],
+            "yawDegrees": 132,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              6.16699982,
+              1,
+              -9.59000015
+            ],
+            "yawDegrees": 312,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -11.5200005,
+              1,
+              3.64499998
+            ],
+            "yawDegrees": 132,
+            "startDelayMs": 0
+          }
+        ]
       },
       "tracks": [
         {
@@ -408148,14 +408925,14 @@
                 0.707106709
               ],
               "scaleMultiplier": [
-                1,
-                1,
-                1
+                3,
+                3,
+                3
               ],
               "visible": true
             },
             {
-              "timeMs": 6000,
+              "timeMs": 11000,
               "positionOffset": [
                 0,
                 0,
@@ -408168,9 +408945,9 @@
                 0.707106709
               ],
               "scaleMultiplier": [
-                1,
-                1,
-                1
+                3,
+                3,
+                3
               ],
               "visible": true
             }
@@ -533774,6 +534551,326 @@
           "holdLastFrame": true
         }
       ]
+    },
+    {
+      "sequenceId": "sequence.kouku.hook.original_preview",
+      "displayName": "원본_갈고리",
+      "category": "KoukuGate3",
+      "durationMs": 11334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 15,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              0,
+              0,
+              1
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              2
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              3
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              4
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              5
+            ],
+            "yawDegrees": 180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -2.50200009,
+              0,
+              -0.0939999968
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.13600004,
+              0,
+              -0.460000008
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0.230000004,
+              0,
+              -0.825999975
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              1.59599996,
+              0,
+              -1.19200003
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              2.96199989,
+              0,
+              -1.55799997
+            ],
+            "yawDegrees": 280,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.94299996,
+              0,
+              -2.05500007
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -0.972000003,
+              0,
+              -1.02699995
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0,
+              0,
+              0
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0.972000003,
+              0,
+              1.028
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              1.94299996,
+              0,
+              2.05500007
+            ],
+            "yawDegrees": 43.4000015,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                -12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 8213,
+              "positionOffset": [
+                -12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 8214,
+              "positionOffset": [
+                12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 10334,
+              "positionOffset": [
+                12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 11334,
+              "positionOffset": [
+                12.21875,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Hook_respawn_1",
+          "displayName": "Hook_respawn_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_1_01",
+          "displayName": "Hook_att_battle_1_01",
+          "startMs": 1334,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_2_01",
+          "displayName": "Hook_att_battle_2_01",
+          "startMs": 8221,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_3_01",
+          "displayName": "Hook_att_battle_3_01",
+          "startMs": 9834,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
     }
   ],
   "instances": [
@@ -541488,21 +542585,21 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         {
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.g3.outer_fire.d"
         }
-      ],
-      "anchorKind": "WORLD",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "motionEnd": "STOP",
-      "nextMotionId": ""
+      ]
     },
     {
       "instanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
@@ -541510,21 +542607,21 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         {
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.g3.outer_fire.d"
         }
-      ],
-      "anchorKind": "WORLD",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "motionEnd": "STOP",
-      "nextMotionId": ""
+      ]
     },
     {
       "instanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
@@ -541532,21 +542629,21 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         {
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.g3.outer_fire.e"
         }
-      ],
-      "anchorKind": "WORLD",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "motionEnd": "STOP",
-      "nextMotionId": ""
+      ]
     },
     {
       "instanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
@@ -541554,21 +542651,21 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         {
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.g3.outer_fire.e"
         }
-      ],
-      "anchorKind": "WORLD",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "motionEnd": "STOP",
-      "nextMotionId": ""
+      ]
     },
     {
       "instanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
@@ -541576,21 +542673,21 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         {
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.g3.outer_fire.f"
         }
-      ],
-      "anchorKind": "WORLD",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "motionEnd": "STOP",
-      "nextMotionId": ""
+      ]
     },
     {
       "instanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
@@ -541598,21 +542695,21 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         {
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.g3.outer_fire.f"
         }
-      ],
-      "anchorKind": "WORLD",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "motionEnd": "STOP",
-      "nextMotionId": ""
+      ]
     },
     {
       "instanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
@@ -542678,11 +543775,11 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [
-        -5.11000013,
+        0,
         0.219999999,
-        950.096985
+        942
       ],
-      "motionEnd": "STOP",
+      "motionEnd": "LOOP",
       "nextMotionId": "",
       "bindings": [
         {
@@ -544480,6 +545577,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.iron_maiden"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.kouku.hook.original_preview",
+      "templateId": "sequence.kouku.hook.original_preview",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.20000005,
+        942.080017
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.hook"
         }
       ]
     }

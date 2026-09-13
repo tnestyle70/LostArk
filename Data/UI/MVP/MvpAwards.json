@@ -1,0 +1,382 @@
+{
+  "formatVersion": 1,
+  "source": "EFTable_Mvp / EFTable_MvpTitle / EFTable_MvpMedalGroup / EFTable_MvpMedalDescription (data2.lpk); strings from EFTable_GameMsg",
+  "thresholdNote": "sharePercentThresholds is not in the client data. Retail's server picks the tier and sends an index; these cutoffs are supplied by the project owner.",
+  "mvpGroupId": 220000,
+  "columnExclusiveStatTypes": [
+    1
+  ],
+  "stats": [
+    {
+      "primaryKey": 2200001,
+      "statType": 12,
+      "calcType": 1,
+      "targetNpcGrade": 6,
+      "name": "생존 시간(초)",
+      "tooltip": "생존\n한 명을 제외한 모든 파티원 및 공격대원이 사망할 경우 획득할 수 있습니다.",
+      "titles": [
+        "최후의 1인",
+        "최후의 1인",
+        "최후의 1인"
+      ],
+      "titleRule": "survive",
+      "weightTier": 0,
+      "scoreRole": "none"
+    },
+    {
+      "primaryKey": 2200002,
+      "statType": 1,
+      "calcType": 0,
+      "targetNpcGrade": 6,
+      "name": "준 피해",
+      "tooltip": "준 피해\n적에게 가한 피해량에 따라 기여도를 획득합니다.",
+      "titles": [
+        "투사",
+        "강직한 투사",
+        "잔혹한 혈투사"
+      ],
+      "titleRule": "share",
+      "weightTier": 1,
+      "scoreRole": "core",
+      "sharePercentThresholds": {
+        "party4": [
+          0.0,
+          30.0,
+          40.0
+        ],
+        "party8": [
+          0.0,
+          15.0,
+          20.0
+        ]
+      },
+      "thresholdSource": "external"
+    },
+    {
+      "primaryKey": 2200003,
+      "statType": 3,
+      "calcType": 0,
+      "targetNpcGrade": 6,
+      "name": "준 무력화",
+      "tooltip": "준 무력화\n적에게 가한 무력화 피해량에 따라 기여도를 획득합니다.",
+      "titles": [
+        "섬멸자",
+        "비정한 섬멸자",
+        "진격의 섬멸자"
+      ],
+      "titleRule": "share",
+      "weightTier": 2,
+      "scoreRole": "core",
+      "sharePercentThresholds": {
+        "party4": [
+          10.0,
+          30.0,
+          40.0
+        ],
+        "party8": [
+          5.0,
+          15.0,
+          20.0
+        ]
+      },
+      "thresholdSource": "external"
+    },
+    {
+      "primaryKey": 2200004,
+      "statType": 14,
+      "calcType": 0,
+      "targetNpcGrade": 6,
+      "name": "파티 방어",
+      "tooltip": "파티 방어\n본인을 제외한 파티에게 제공한 보호막이 방어한 피해량과 파티에게 가해지는 피해를 감소시킨 정도에 따라 기여도를 획득합니다.",
+      "titles": [
+        "수호자",
+        "달의 수호자",
+        "태양의 수호자"
+      ],
+      "titleRule": "share",
+      "weightTier": 2,
+      "scoreRole": "core",
+      "sharePercentThresholds": {
+        "party4": [
+          20.0,
+          30.0,
+          40.0
+        ],
+        "party8": [
+          10.0,
+          15.0,
+          20.0
+        ]
+      },
+      "thresholdSource": "external"
+    },
+    {
+      "primaryKey": 2200005,
+      "statType": 4,
+      "calcType": 0,
+      "targetNpcGrade": 6,
+      "name": "파티 회복",
+      "tooltip": "파티 회복\n본인을 제외한 파티의 생명력 회복에 따라 기여도를 획득합니다.",
+      "titles": [
+        "치유사",
+        "온화한 치유사",
+        "고결한 치유사"
+      ],
+      "titleRule": "share",
+      "weightTier": 3,
+      "scoreRole": "core",
+      "sharePercentThresholds": {
+        "party4": [
+          20.0,
+          30.0,
+          40.0
+        ],
+        "party8": [
+          10.0,
+          15.0,
+          20.0
+        ]
+      },
+      "thresholdSource": "external"
+    },
+    {
+      "primaryKey": 2200006,
+      "statType": 11,
+      "calcType": 0,
+      "targetNpcGrade": 6,
+      "name": "카운터 성공",
+      "tooltip": "카운터 성공\n카운터에 성공하는 경우 기여도를 획득합니다.",
+      "titles": [
+        "봉쇄자",
+        "찰나의 봉쇄자",
+        "섬광의 봉쇄자"
+      ],
+      "titleRule": "share",
+      "weightTier": 3,
+      "scoreRole": "support",
+      "sharePercentThresholds": {
+        "party4": [
+          20.0,
+          30.0,
+          40.0
+        ],
+        "party8": [
+          10.0,
+          15.0,
+          20.0
+        ]
+      },
+      "thresholdSource": "external"
+    },
+    {
+      "primaryKey": 2200007,
+      "statType": 9,
+      "calcType": 1,
+      "targetNpcGrade": 6,
+      "name": "배틀아이템 사용 횟수",
+      "tooltip": "배틀 아이템 기여\n배틀 아이템 사용에 따라 기여도를 획득합니다.",
+      "titles": [
+        "지략가",
+        "냉철한 지략가",
+        "탁월한 지략가"
+      ],
+      "titleRule": "share",
+      "weightTier": 4,
+      "scoreRole": "support",
+      "sharePercentThresholds": {
+        "party4": [
+          20.0,
+          30.0,
+          40.0
+        ],
+        "party8": [
+          10.0,
+          15.0,
+          20.0
+        ]
+      },
+      "thresholdSource": "external"
+    },
+    {
+      "primaryKey": 2200008,
+      "statType": 13,
+      "calcType": 0,
+      "targetNpcGrade": 6,
+      "name": "공격 지원",
+      "tooltip": "공격 지원\n팀이 적에게 가하는 피해를 지원할 때마다 기여도를 획득합니다.",
+      "titles": [
+        "조력자",
+        "숭고한 조력자",
+        "찬란한 조력자"
+      ],
+      "titleRule": "share",
+      "weightTier": 1,
+      "scoreRole": "core",
+      "sharePercentThresholds": {
+        "party4": [
+          15.0,
+          20.0,
+          25.0
+        ],
+        "party8": [
+          7.5,
+          10.0,
+          12.5
+        ]
+      },
+      "thresholdSource": "external"
+    }
+  ],
+  "medals": [
+    {
+      "medalIndex": 1,
+      "icon": "MvpMedal",
+      "iconIndex": 1,
+      "name": "폭주 종결자",
+      "tooltip": "폭주 종결자\n목표물의 광폭화를 잠재운 모험가들에게 부여되는 메달입니다.\n\n당신! 그곳에서 살아남으셨군요! 경의를 표합니다.",
+      "param1": 180000,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 2,
+      "icon": "MvpMedal",
+      "iconIndex": 2,
+      "name": "회피의 달인",
+      "tooltip": "회피의 달인\n피해가 발생한 피격의 횟수가 {0}회 이하인 모험가들에게 부여되는 메달입니다.\n\n절제된 화려함 속에서 피어오르는 무의 춤사위로다.",
+      "param1": 3,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 3,
+      "icon": "MvpMedal",
+      "iconIndex": 3,
+      "name": "기사회생",
+      "tooltip": "기사회생\n생명력이 일정 수치 이하로 감소했음에도 불구하고 최종적으로 살아남은 모험가들에게 부여되는 메달입니다.\n\n내가 돌아왔다.",
+      "param1": 20,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 4,
+      "icon": "MvpMedal",
+      "iconIndex": 4,
+      "name": "증명",
+      "tooltip": "증명\n초보 모험가인 상태로 목표를 달성한 모험가들에게 부여되는 메달입니다.\n\n당신의 성장을 볼 수 있어 기쁩니다.",
+      "param1": 9999,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 5,
+      "icon": "MvpMedal",
+      "iconIndex": 5,
+      "name": "불굴의 의지",
+      "tooltip": "불굴의 의지\n불굴의 의지로 끈질긴 재도전 이후 목표를 달성한 모험가들에게 부여되는 메달입니다.\n\n정신이 굴하지 않으면 실패는 부끄러운 게 아닐세!",
+      "param1": 70,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 6,
+      "icon": "MvpMedal",
+      "iconIndex": 6,
+      "name": "프리즌 브레이커",
+      "tooltip": "프리즌 브레이커\n공격을 통해 다른 모험가의 감금에 가장 많은 대미지를 부여한 모험가들에게 부여되는 메달입니다.\n\n나의 손길이 당신께 닿기를...",
+      "param1": 3,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 7,
+      "icon": "MvpMedal",
+      "iconIndex": 7,
+      "name": "피니셔",
+      "tooltip": "피니셔\n최종적으로 주요 목표물들의 숨통을 끊은 모험가들에게 부여되는 메달입니다.\n\n이곳은 내가 맡도록 하지!",
+      "param1": 1,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 8,
+      "icon": "MvpMedal",
+      "iconIndex": 8,
+      "name": "진정한 리더",
+      "tooltip": "진정한 리더\n공격대장이 변경된 기록이 없는 상태로, Mvp를 달성한 공격대장에게 부여되는 메달입니다.\n\n날... 믿어!",
+      "param1": 9999,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 9,
+      "icon": "MvpMedal",
+      "iconIndex": 9,
+      "name": "컨트롤 장인",
+      "tooltip": "컨트롤 장인\n달성 아이템 레벨이 가장 낮으면서, 동시에 입장 제한 레벨을 {0}만큼 초과하지 않은 상태로 Mvp를 달성한 모험가에게 부여되는 메달입니다.\n\n이곳은 내가 접수한다.",
+      "param1": 9999,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 11,
+      "icon": "MvpMedal",
+      "iconIndex": 11,
+      "name": "카운터 스페셜리스트",
+      "tooltip": "카운터 스페셜리스트\n정해진 시간 안에 여러 번의 카운터를 연속하여 달성한 모험가들에게 부여되는 메달입니다.\n\n나야 나! 카운터 스페셜리스트.",
+      "param1": 15,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 12,
+      "icon": "MvpMedal",
+      "iconIndex": 12,
+      "name": "뿌리 깊은 거목",
+      "tooltip": "뿌리 깊은 거목\n넘어진 횟수가 특정 횟수 이하인 모험가들에게 부여되는 메달입니다.\n\n나는 피하지 않아. 쓰러지지도 않지.",
+      "param1": 180000,
+      "param2": 3,
+      "param3": 0
+    },
+    {
+      "medalIndex": 13,
+      "icon": "MvpMedal",
+      "iconIndex": 13,
+      "name": "대형 방패",
+      "tooltip": "대형 방패\n동료에게 가해지는 한 번의 큰 피해를 보호막으로 막아낸 모험가들에게 부여되는 메달입니다.\n\n나의 신념이 곧 나의 방패이니.",
+      "param1": 70,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 14,
+      "icon": "MvpMedal",
+      "iconIndex": 14,
+      "name": "혼신의 수호",
+      "tooltip": "혼신의 수호\n생명력이 낮은 상태인 동료들에게 여러 번 보호막을 제공한 모험가들에게 부여되는 메달입니다.\n\n당신이 무릎을 꿇는 것을 허락할 수 없습니다.",
+      "param1": 30,
+      "param2": 10,
+      "param3": 0
+    },
+    {
+      "medalIndex": 15,
+      "icon": "MvpMedal",
+      "iconIndex": 15,
+      "name": "헤비 스매셔",
+      "tooltip": "헤비 스매셔\n적에게 파괴 피해를 가장 많이 부여한 모험가들에게 부여되는 메달입니다.\n\n아! 파괴 폭탄! 훌륭한 대화 수단이지.",
+      "param1": 0,
+      "param2": 0,
+      "param3": 0
+    },
+    {
+      "medalIndex": 17,
+      "icon": "MvpMedal",
+      "iconIndex": 17,
+      "name": "전투 의료 전문가",
+      "tooltip": "전투 의료 전문가\n스킬을 활용해 동료에게 부여된 해로운 효과를 정화하거나 해로운 효과 부여에 대한 면역을 성공한 경우, 또한 성스러운 부적을 활용해 해로운 효과를 정화한 횟수가 특정 횟수 이상인 모험가들에게 부여되는 메달입니다.\n※ 각 횟수는 모두 합산되어, 최종 합산 값이 정해진 값 이상인 경우에 메달이 부여됩니다.\n\n치료가 필요할 정도의 심각한 부상 상태군요.",
+      "param1": 5,
+      "param2": 0,
+      "param3": 0
+    }
+  ]
+}

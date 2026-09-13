@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Client_Defines.h"
 #include "ArenaCameraProfile.h"
@@ -38,6 +38,7 @@ class IWorldEntityCommandSink;
 
 class CUILayoutRuntime;
 class CKoukuMadnessGaugeView;
+class CMvpResultView;
 
 class CLevel_KakulSaydonArena final : public CLevel
 {
@@ -410,7 +411,7 @@ private:
 		const CWorldSequencePlayer::TARGET_SET& targets);
 #ifdef _DEBUG
 	unique_ptr<CWorldSequencePlayer> m_pWorldObjectPreview;
-	std::string m_WorldObjectPreviewInstance;
+	std::vector<std::string> m_WorldObjectPreviewInstances;
 #endif
 #ifdef _DEBUG
 	struct COMPOSITION_WORLD_PREVIEW_PLAYBACK final
@@ -518,6 +519,19 @@ private:
 	   gameplay truth: Update submits one word per replicated FEAR occurrence and
 	   Render draws whatever is still inside its motion. */
 	CStatusEffectTextView m_StatusEffectTextView;
+	/* Raid-clear MVP award page. Preview only for now: nothing in this Level
+	   shows it, the F1 Developer Tools do. */
+	unique_ptr<CMvpResultView> m_pMvpResultView;
+	/* Dungeon-clear celebration. KoukuSaydon drives its own keyframe document
+	   rather than the fixed-rect one Valtan uses, because every layer of the Set
+	   animates its position, size and tint frame by frame. */
+	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
+	/* Negative until a clear starts. */
+	f32_t m_fRaidClearElapsedSeconds = -1.f;
+	void Update_RaidClear(f32_t fTimeDelta);
+	/* 1-based gate for the award headline. The debug gate index is 0-based and
+	   NO_ACTIVE_DEBUG_GATE means none was entered, which reads as gate 1. */
+	int32_t Current_GateNumber() const;
 	f32_t m_fTriggerMoveFadeAlpha = 0.f;
 	/* Speed gate. The short hops share TRIGGER_MOVE with the stage
 	   transition, so the fade arms only once the character is seen moving
@@ -542,6 +556,15 @@ private:
 #endif
 
 	static CLevel_KakulSaydonArena* s_pActiveInstance;
+
+public:
+	/* F1 Developer Tools only -- the award page has no gameplay trigger yet. */
+	/* Plays the dungeon-clear overlay and hands off to the award page when it ends,
+	   the order retail runs them in. */
+	void Debug_Play_ClearThenMvp();
+	void Debug_Show_MvpResult();
+	void Debug_Hide_MvpResult();
+	bool_t Debug_Is_MvpResultVisible() const;
 
 public:
 	static unique_ptr<CLevel_KakulSaydonArena> Create(

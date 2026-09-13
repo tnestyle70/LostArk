@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  36,
+    "revision":  37,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -659,7 +659,7 @@
                                                  "bloomEnabled":  true,
                                                  "bloomThreshold":  2.74000001,
                                                  "bloomSoftKnee":  1,
-                                                 "bloomIntensity":  0,
+                                                 "bloomIntensity":  1.29999995,
                                                  "bloomScatter":  1,
                                                  "exposure":  0.730000019,
                                                  "whitePoint":  1,
