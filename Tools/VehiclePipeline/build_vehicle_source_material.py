@@ -270,6 +270,9 @@ def translate(instruction, texture_map, lookup, stage):
                 sample += f'.SampleBias({sampler}, ({operand(uv)}).xy, ({operand(a[4])}).x)'
             else:
                 sample += f'.Sample({sampler}, ({operand(uv)}).xy)'
+        elif 'texturecube' in op and stage == 'base' and 'sample_l' in op:
+            sample = ('(g_SourceCharacterEnvironmentEnabled != 0u ? g_SourceCharacterEnvironmentCube.SampleLevel('
+                      f'SourceCharacterLookupSampler, ({operand(uv)}).xyz, ({operand(a[4])}).x) : float4(0.0,0.0,0.0,0.0))')
         elif 'texturecube' in op:
             sample = 'float4(0.0,0.0,0.0,0.0)'
         else:
@@ -367,6 +370,9 @@ def hlsl(node, time_parameter):
         return ('cos(' if node['isCosine'] else 'sin(') + hlsl(node['input'], time_parameter) + ')'
     if kind == 'fmaterialuniformexpressionappendvector':
         return 'SourceCharacterAppend(' + hlsl(node['a'], time_parameter) + ',' + hlsl(node['b'], time_parameter) + ',' + str(node['componentsFromA']) + 'u)'
+    if kind == 'fmaterialuniformexpressionclamp':
+        return ('clamp(' + hlsl(node['input'], time_parameter) + ',' + hlsl(node['minimum'], time_parameter) +
+                ',' + hlsl(node['maximum'], time_parameter) + ')')
     fail(f'unsupported uniform expression {kind}')
 
 
@@ -389,6 +395,8 @@ def cpp(node):
         return 'wave(' + cpp(node['input']) + ',' + ('true' if node['isCosine'] else 'false') + ')'
     if kind == 'fmaterialuniformexpressionappendvector':
         return 'append(' + cpp(node['a']) + ',' + cpp(node['b']) + ',' + str(node['componentsFromA']) + 'u)'
+    if kind == 'fmaterialuniformexpressionclamp':
+        return 'bounded(' + cpp(node['input']) + ',' + cpp(node['minimum']) + ',' + cpp(node['maximum']) + ')'
     fail(f'unsupported uniform expression {kind}')
 
 
@@ -560,7 +568,7 @@ def install_program(path, function, number, stage):
             fail(f'{path.name} already holds a different {name}')
         return text
     evaluate = f'\n\n\nSOURCE_CHARACTER_NATIVE_OUTPUT Evaluate{prefix}(SOURCE_CHARACTER_NATIVE_INPUT input)'
-    last_case = '    case 84u: return ' + prefix + '84(input);\n'
+    last_case = f'    case {number - 1}u: return {prefix}{number - 1}(input);\n'
     if text.count(evaluate) != 1 or text.count(last_case) != 1 or f'case {number}u:' in text:
         fail(f'{path.name} dispatch anchors changed')
     text = text.replace(evaluate, '\n\n' + function.rstrip('\n') + evaluate)
@@ -591,6 +599,7 @@ def command_rows(arguments):
     resources = json.loads(arguments.texture_map.read_text(encoding='utf8'))
     rows = []
     for spec in arguments.entry:
+        spec, _, slot_name = spec.partition('@')
         dump_path, family, *generated = spec.split('=')
         document = load_document(dump_path)
         block = pathlib.Path(generated[0]).read_text(encoding='utf8') if generated else installed_configure(family)
@@ -635,7 +644,7 @@ def command_rows(arguments):
                                  colorSpace='srgb' if texture['srgb'] else 'linear'))
         if sum(1 << t['expressionIndex'] for t in textures) != mask:
             fail(f'{document["sourceMaterial"]} does not supply every required texture')
-        material_name = document['sourceMaterial'].partition('.mat.')[2]
+        material_name = slot_name or document['sourceMaterial'].partition('.mat.')[2]
         rows.append(dict(modelAssetId=arguments.model, materialName=material_name,
                          sourceMaterial=document['sourceMaterial'], family=family,
                          parameters=parameters, textures=textures))

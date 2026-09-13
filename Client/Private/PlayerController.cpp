@@ -810,13 +810,15 @@ void Client::CPlayerController::Update_VehicleRiding(
 	VEHICLE_ID requested = INVALID_VEHICLE_ID;
 	if (INVALID_VEHICLE_ID == player.iVehicleId)
 	{
+		const VEHICLE_ACTOR_ENTRY* preferred = CActorCatalog::Find_Vehicle(s_iPreferredVehicleId);
+		if (nullptr != preferred && nullptr != preferred->Find_Rider(character->Get_CharacterClass()))
+			requested = preferred->vehicleId;
 		for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
 		{
-			if (nullptr != vehicle.Find_Rider(character->Get_CharacterClass()))
-			{
-				requested = vehicle.vehicleId;
+			if (INVALID_VEHICLE_ID != requested)
 				break;
-			}
+			if (nullptr != vehicle.Find_Rider(character->Get_CharacterClass()))
+				requested = vehicle.vehicleId;
 		}
 		if (INVALID_VEHICLE_ID == requested)
 		{

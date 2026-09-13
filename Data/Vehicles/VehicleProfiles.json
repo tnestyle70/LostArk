@@ -12,6 +12,39 @@
         "value": 500,
         "divisor": 100
       }
+    },
+    {
+      "vehicleId": 7104,
+      "moveSpeed": 5.0,
+      "source": {
+        "table": "EFTable_Vehicle",
+        "primaryKey": 7104,
+        "column": "MoveSpeed",
+        "value": 500,
+        "divisor": 100
+      }
+    },
+    {
+      "vehicleId": 9370,
+      "moveSpeed": 5.0,
+      "source": {
+        "table": "EFTable_Vehicle",
+        "primaryKey": 9370,
+        "column": "MoveSpeed",
+        "value": 500,
+        "divisor": 100
+      }
+    },
+    {
+      "vehicleId": 7209,
+      "moveSpeed": 5.0,
+      "source": {
+        "table": "EFTable_Vehicle",
+        "primaryKey": 7209,
+        "column": "MoveSpeed",
+        "value": 500,
+        "divisor": 100
+      }
     }
   ]
 }

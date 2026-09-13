@@ -514,7 +514,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
 
 SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
-    if (18u != g_SourceCharacterProgram) discard;
+    if (18u != g_SourceCharacterProgram && 88u != g_SourceCharacterProgram) discard;
     const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
     const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
         input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
@@ -550,8 +550,13 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
         }
         if (attenuation <= 0.f) continue;
         ambient += colorExponent.rgb * g_SourceMapForwardLightAmbient[index].rgb * attenuation;
-        const SOURCE_CHARACTER_NATIVE_OUTPUT lit = SourceCharacterLight18(
-            MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb));
+        const SOURCE_CHARACTER_NATIVE_INPUT lightInput =
+            MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb);
+        SOURCE_CHARACTER_NATIVE_OUTPUT lit;
+        if (18u == g_SourceCharacterProgram)
+            lit = SourceCharacterLight18(lightInput);
+        else
+            lit = SourceCharacterLight88(lightInput);
         if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;
     }
 
@@ -740,6 +745,16 @@ technique11 DefaultTechnique
     pass SourceCharacterTranslucentTwoSided
     {
         SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
+    }
+    // Appended index 10: source translucent one-sided surface, forward lit after scene lighting.
+    pass SourceCharacterTranslucentOneSided
+    {
+        SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
         VertexShader = EffectSourceModelVS;

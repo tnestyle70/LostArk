@@ -176,9 +176,8 @@ foreach ($p in @(@('86','source.vehicle.starlight-body.v1'), @('87','source.vehi
 }
 ```
 
-- `install`은 `case 85u:` 뒤에 `case 86u:`… 순서로 넣어야 한다. 현재 도구는 `case 84u:` 기준으로 삽입하므로
-  86을 넣은 뒤 87은 `case 86u:`, 88은 `case 87u:` 뒤에 오도록 설치 순서를 지키고, 각 설치 후 `verify … --program <N>`으로 EXACT를 확인한다.
-  기준점이 없어 실패하면 기존 dispatch 줄을 되돌리지 않고 멈춘다.
+- `install`은 dispatch 기준점을 `case {N-1}u:`로 바꿔 86 → 87 → 88 순서로 넣는다(구현 시 도구 수정, program 85 설치 기준과 동일 결과).
+  각 설치 후 `verify … --program <N>`으로 EXACT를 확인한다. 기준점이 없어 실패하면 기존 dispatch 줄을 되돌리지 않고 멈춘다.
 - 생성 결과 줄 수(조사 시 생성본): base86 828 / light86 456, base87 706 / light87 701, base88 495 / light88 393.
   G01 보강 후 86은 clamp packing과 cube 샘플이 들어가 줄 수가 달라질 수 있으며 SHA-256은 RESULT에 고정한다.
 
@@ -288,7 +287,7 @@ foreach ($v in @(@(7104,'SilverBattleRaptor'), @(9370,'SereneStarlightBlessing')
 | 검사 | 통과 기준 |
 |---|---|
 | `validate_wmodel.py` | OK |
-| 재질 이름 | wmodel material 이름이 LookInfo 교체 MIC 이름(`mn_isrx_02-4_mi`/`mn_isrx_00-4_mi`, `mn_pmssm_00_a_mi`/`_b_mi`, `mn_pmsmk_00-4_vfx_mi`)과 같다 |
+| 재질 이름 | `cook_npc.py`는 LookInfo 교체 MIC의 텍스처를 쓰되 슬롯 이름은 메시 기본값을 유지한다(`mn_isrx_02_mi`/`mn_isrx_00_mi`, `mn_pmssm_00_a_mi`/`_b_mi`, `mn_pmsmk_00_mi`). G05 `rows`는 `dump=family@슬롯이름`으로 이 이름을 지정한다(구현 시 도구에 `@` 추가) |
 | 좌석 본·클립 | `b_cockpit` 존재, `npc_idle_normal_1`·`npc_run_normal_1` 존재 |
 | UV1 | program 86/87/88/23/25는 UV1을 요구하지 않는다. 쿠킹 버전(1.0/1.3)은 그대로 둔다 |
 
@@ -334,6 +333,7 @@ foreach ($m in 'Raptor','Swing','Hoverboard') {
 
 12개 전부 `compare_attach.py <Class>_EstherAnimSet.wmodel <candidate>`가 validate OK, bone table·skeletonHash 일치해야 한다(224/218/239/236).
 클립 이름은 `<armature>_ride_<mode>_{idle,run}_normal_1`이다.
+단, WModel section 이름은 40바이트라 차원술사 호버보드는 `pc_sp_m_00_sk_ride_hoverboard_idle_norm` / `_run_norma`로 잘린 이름이 런타임 클립 이름이다(구현 시 확인, 두 이름은 서로 달라 충돌 없음).
 
 ### `Data/Actors/CharacterCatalog.json`
 
@@ -392,15 +392,15 @@ foreach ($m in 'Raptor','Swing','Hoverboard') {
 ```powershell
 & $py $tool rows --model Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel `
   --texture-map Tools/VehiclePipeline/SilverBattleRaptor.texture-map.json --out "$work/rows-raptor.json" `
-  "$work/dumps/mn_isrx_02.mat.mn_isrx_02-4_mi.json=source.character.monster-d9d6c02905c3.v1" `
-  "$work/dumps/mn_isrx_02.mat.mn_isrx_00-4_mi.json=source.character.monster-be5bc0ded311.v1"
+  "$work/dumps/mn_isrx_02.mat.mn_isrx_02-4_mi.json=source.character.monster-d9d6c02905c3.v1@mn_isrx_02_mi" `
+  "$work/dumps/mn_isrx_02.mat.mn_isrx_00-4_mi.json=source.character.monster-be5bc0ded311.v1@mn_isrx_00_mi"
 & $py $tool rows --model Character/Vehicle/SereneStarlightBlessing/SereneStarlightBlessing.wmodel `
   --texture-map Tools/VehiclePipeline/SereneStarlightBlessing.texture-map.json --out "$work/rows-starlight.json" `
   "$work/dumps/mn_pmssm_00.mat.mn_pmssm_00_b_mi.json=source.vehicle.starlight-body.v1" `
   "$work/dumps/mn_pmssm_00.mat.mn_pmssm_00_a_mi.json=source.vehicle.starlight-shell-translucent.v1"
 & $py $tool rows --model Character/Vehicle/RainbowMokoboard/RainbowMokoboard.wmodel `
   --texture-map Tools/VehiclePipeline/RainbowMokoboard.texture-map.json --out "$work/rows-mokoboard.json" `
-  "$work/dumps/mn_pmsmk_00.mat.mn_pmsmk_00-4_vfx_mi.json=source.vehicle.mokoboard-vfx.v1"
+  "$work/dumps/mn_pmsmk_00.mat.mn_pmsmk_00-4_vfx_mi.json=source.vehicle.mokoboard-vfx.v1@mn_pmsmk_00_mi"
 ```
 
 추가할 객체의 고정 필드(`modelMaterialOverrides` 값만 위 출력):
@@ -452,7 +452,7 @@ foreach ($m in 'Raptor','Swing','Hoverboard') {
         { "characterClass": "LANCE_MASTER", "idleClip": "flm_ride_hoverboard_idle_normal_1", "runClip": "flm_ride_hoverboard_run_normal_1" },
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_hoverboard_idle_normal_1", "runClip": "wgl_ride_hoverboard_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_hoverboard_idle_normal_1", "runClip": "sdm_ride_hoverboard_run_normal_1" },
-        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_hoverboard_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_hoverboard_run_normal_1" }
+        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_hoverboard_idle_norm", "runClip": "pc_sp_m_00_sk_ride_hoverboard_run_norma" }
       ],
       "modelMaterialOverrides": "<rows-mokoboard.json 배열>",
       "runtimeStatus": "supported"

@@ -9,13 +9,19 @@
 
 namespace
 {
-	constexpr uint32_t SOURCE_TRANSLUCENT_HAIR_PASS = 9u;
+	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
+	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
 
-	bool_t Is_TranslucentSourceHair(const Engine::MODEL_SURFACE_PARAMETERS* surface)
+	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
-		return nullptr != surface &&
-			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-			surface->sourceCharacter.program == 18u;
+		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+			return 0u;
+		switch (surface->sourceCharacter.program)
+		{
+		case 18u: return SOURCE_TRANSLUCENT_TWO_SIDED_PASS;
+		case 88u: return SOURCE_TRANSLUCENT_ONE_SIDED_PASS;
+		default: return 0u;
+		}
 	}
 }
 
@@ -51,7 +57,7 @@ HRESULT CPart_Vehicle::Initialize(void* pArg)
 		return E_FAIL;
 	}
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
-		m_hasTranslucentMeshes |= Is_TranslucentSourceHair(m_pModelCom->Get_MaterialSurface(i));
+		m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
 	return S_OK;
 }
 
@@ -124,7 +130,7 @@ HRESULT CPart_Vehicle::Render()
 	{
 		uint32_t materialPass = 0u;
 		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-		if (Is_TranslucentSourceHair(surface))
+		if (0u != Resolve_TranslucentSourcePass(surface))
 			continue;
 		if (surface &&
 			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
@@ -156,14 +162,15 @@ HRESULT CPart_Vehicle::Render_Translucent()
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
 	{
-		if (!Is_TranslucentSourceHair(m_pModelCom->Get_MaterialSurface(i)))
+		const uint32_t pass = Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
+		if (0u == pass)
 			continue;
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, {}, nullptr)) ||
 			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(SOURCE_TRANSLUCENT_HAIR_PASS)) ||
+			FAILED(m_pShaderCom->Begin(pass)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}

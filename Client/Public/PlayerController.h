@@ -453,6 +453,10 @@ namespace Client
 		/* Death-screen revive button. Not polled input, so it is a direct call
 		instead of something Update() discovers each frame. */
 		bool_t Request_Revive();
+		/* Debug F1 choice of the vehicle H mounts. Zero, or a vehicle without a
+		rider pose for the class, falls back to the first catalog vehicle that has one. */
+		static void Set_PreferredVehicleId(std::uint32_t vehicleId) { s_iPreferredVehicleId = vehicleId; }
+		static std::uint32_t Get_PreferredVehicleId() { return s_iPreferredVehicleId; }
 #ifdef _DEBUG
 		// O key test aid -- see PACKET_TYPE::C2S_DEBUG_KILL_SELF.
 		bool_t Request_DebugKillSelf();
@@ -584,6 +588,7 @@ namespace Client
 		std::chrono::steady_clock::time_point m_MarioMoveSentAt{};
 
 		bool_t m_wasInteractKeyDown = false;
+		inline static std::uint32_t s_iPreferredVehicleId = 0u;
 		bool_t m_wasVehicleKeyDown = false;
 		std::uint32_t m_nextVehicleRidingSequence = 1u;
 		std::uint32_t m_pendingVehicleRidingSequence = 0u;
