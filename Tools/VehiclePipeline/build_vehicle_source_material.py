@@ -53,6 +53,34 @@ def open_cache(d3dcompiler: pathlib.Path):
         name, number, rest = read_fname(data, offset, names)
         return (f'{number}.{name}' if number else name), 0, rest
     oracle.read_fname = numbered_read_fname
+    parse_static_parameter_set = oracle.parse_static_parameter_set
+
+    def normal_29_byte_static_parameter_set(data, offset, names):
+        # UE3 FNormalParameter is FName + BYTE CompressionSettings + UBOOL bOverride + GUID.
+        cursor = offset + 16
+        for entry_size in (32, 44):
+            if cursor + 4 > len(data):
+                return parse_static_parameter_set(data, offset, names)
+            count = struct.unpack_from('<I', data, cursor)[0]
+            cursor += 4 + min(count, 4097) * entry_size
+        if cursor + 4 > len(data):
+            return parse_static_parameter_set(data, offset, names)
+        normals = struct.unpack_from('<I', data, cursor)[0]
+        rows_at = cursor + 4
+        if normals == 0 or normals > 4096 or rows_at + normals * 29 > len(data):
+            return parse_static_parameter_set(data, offset, names)
+        widened = bytearray(data[:rows_at])
+        for index in range(normals):
+            entry = data[rows_at + index * 29:rows_at + (index + 1) * 29]
+            widened += entry[:8] + struct.pack('<II', entry[8], struct.unpack_from('<I', entry, 9)[0]) + entry[13:29]
+        widened += data[rows_at + normals * 29:]
+        decoded = parse_static_parameter_set(bytes(widened), offset, names)
+        shrink = normals * 3
+        decoded['byteSize'] -= shrink
+        decoded['endOffset'] -= shrink
+        return decoded
+    oracle.parse_static_parameter_set = normal_29_byte_static_parameter_set
+    sm.parse_static_parameter_set = normal_29_byte_static_parameter_set
     ref_cache.EXPECTED_D3DCOMPILER['byteSize'] = d3dcompiler.stat().st_size
     ref_cache.EXPECTED_D3DCOMPILER['sha256'] = hashlib.sha256(d3dcompiler.read_bytes()).hexdigest()
     cache = sm.package_tables(RELEASE / 'EV2LG3OVEH3HGV7THTFFTM7TOKMCC.upk')
