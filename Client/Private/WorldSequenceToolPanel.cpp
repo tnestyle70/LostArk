@@ -660,6 +660,7 @@ void Client::CWorldSequenceToolPanel::Stop_AndRestore(
 	CDeployPropRuntime& deployRuntime)
 {
 	bool_t restored = true;
+	std::string firstRestoreFailure;
 	if (m_bPreviewActive)
 	{
 		for (const PREVIEW_TARGET& target : m_PreviewTargets)
@@ -672,6 +673,9 @@ void Client::CWorldSequenceToolPanel::Stop_AndRestore(
 				authoringLevelIndex, catalog, *entry, restoredRecord))
 			{
 				restored = false;
+				if (firstRestoreFailure.empty())
+					firstRestoreFailure = "Map #" + std::to_string(target.placementId) +
+						(nullptr == entry ? ": target missing" : ": " + m_Status);
 			}
 		}
 		for (const PREVIEW_DEPLOY_TARGET& target : m_PreviewDeployTargets)
@@ -679,7 +683,11 @@ void Client::CWorldSequenceToolPanel::Stop_AndRestore(
 			const shared_ptr<CDeployPropObject> object =
 				deployRuntime.Find(target.runtimePlacementId);
 			if (nullptr == object)
+			{
 				restored = false;
+				if (firstRestoreFailure.empty())
+					firstRestoreFailure = "Deploy #" + std::to_string(target.runtimePlacementId) + ": target missing";
+			}
 			else
 				object->End_AnimationAuthoringPreview();
 		}
@@ -694,7 +702,7 @@ void Client::CWorldSequenceToolPanel::Stop_AndRestore(
 	}
 	else
 	{
-		m_Status = "Preview restore failed; targets remain owned for retry";
+		m_Status = "Preview restore failed; targets remain owned for retry | " + firstRestoreFailure;
 	}
 }
 
@@ -896,7 +904,7 @@ bool_t Client::CWorldSequenceToolPanel::Apply_Preview(
 			}
 			if (!object->Sample_AnimationAuthoringPreview(
 				animationTrack->clipName, Clamp01(normalized),
-				animationTrack->loop))
+				animationTrack->loop, delayedMs >= 0.f))
 			{
 				m_Status = "Animated Deploy sampling failed; original clip will be restored";
 				return false;
@@ -949,12 +957,11 @@ bool_t Client::CWorldSequenceToolPanel::Apply_Preview(
 		sampled.signedScale.x *= key.scaleMultiplier.x;
 		sampled.signedScale.y *= key.scaleMultiplier.y;
 		sampled.signedScale.z *= key.scaleMultiplier.z;
-		const bool_t externalVisibilityAllowsShowing =
-			baseline->runtimeVisible || !baseline->baseline.visible;
-		sampled.visible = externalVisibilityAllowsShowing && key.visible;
+		// Explicit tool preview owns visibility until Stop restores runtimeVisible.
+		sampled.visible = key.visible;
 		if (!Apply_RuntimeRecord(authoringLevelIndex, catalog, *entry, sampled))
 		{
-			m_Status = "Preview transform failed; original placement will be restored";
+			m_Status = "Preview transform failed for Map #" + std::to_string(targetId) + ": " + m_Status;
 			return false;
 		}
 	}
@@ -978,7 +985,10 @@ bool_t Client::CWorldSequenceToolPanel::Apply_RuntimeRecord(
 	{
 		const MAP_ASSET_ENTRY* asset = catalog.Find(record.assetId);
 		if (nullptr == asset)
+		{
+			m_Status = "Map asset is missing: " + record.assetId;
 			return false;
+		}
 		shared_ptr<CModel>& model = m_PreviewModels[record.assetId];
 		if (nullptr == model)
 		{
@@ -986,16 +996,26 @@ bool_t Client::CWorldSequenceToolPanel::Apply_RuntimeRecord(
 				CGameInstance::Get().Clone_Prototype(
 					authoringLevelIndex, asset->prototypeTag));
 		}
+		if (nullptr == model)
+		{
+			m_Status = "Map model prototype is unavailable at level " +
+				std::to_string(authoringLevelIndex) + ": " + record.assetId;
+			return false;
+		}
 		FMapStaticInstance instance{};
-		if (nullptr != model && SUCCEEDED(CMapPlacementRuntime::Build_StaticInstance(
+		if (SUCCEEDED(CMapPlacementRuntime::Build_StaticInstance(
 			*asset, model, record, instance)) &&
 			SUCCEEDED(entry.batch->Update_Instance(record.placementId, instance)))
 		{
 			transformed = true;
 		}
 	}
-	return transformed &&
-		CMapPlacementRuntime::Set_RuntimeVisible(entry, record.visible);
+	if (!transformed || !CMapPlacementRuntime::Set_RuntimeVisible(entry, record.visible))
+	{
+		m_Status = "Map transform/visibility update failed: " + std::to_string(record.placementId);
+		return false;
+	}
+	return true;
 }
 
 void Client::CWorldSequenceToolPanel::Create_Template()

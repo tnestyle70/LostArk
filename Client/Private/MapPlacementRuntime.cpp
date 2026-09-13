@@ -1055,3 +1055,30 @@ void Client::CMapPlacementRuntime::Update_SelfMotions(const f32_t fTimeDelta)
 	Sample_SelfMotions(m_SelfMotions, m_fSelfMotionElapsedSeconds,
 		m_iLevelIndex, m_Catalog, m_SelfMotionModels, m_Placements);
 }
+
+#ifdef _DEBUG
+void Client::CMapPlacementRuntime::Rebase_AuthoringSelfMotions(
+	const std::vector<MAP_PLACEMENT_RECORD>& records)
+{
+	std::unordered_map<uint64_t, const MAP_PLACEMENT_RECORD*> authored;
+	for (const auto& record : records) authored.emplace(record.placementId, &record);
+	std::unordered_map<uint64_t, size_t> live;
+	for (size_t index = 0; index < m_Placements.size(); ++index)
+		live.emplace(m_Placements[index].record.placementId, index);
+	for (auto& motion : m_SelfMotions)
+	{
+		const auto source = authored.find(motion.motion.placementId);
+		const auto placement = live.find(motion.motion.placementId);
+		if (source == authored.end() || placement == live.end())
+		{
+			// Retain the definition so Reload can restore a deleted placement.
+			// The sampler skips this out-of-range index until the ID returns.
+			motion.placementIndex = static_cast<size_t>(-1);
+			continue;
+		}
+		motion.placementIndex = placement->second;
+		motion.basePosition = source->second->position;
+		motion.baseRotation = source->second->rotationQuaternion;
+	}
+}
+#endif

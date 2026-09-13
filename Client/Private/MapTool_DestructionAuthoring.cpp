@@ -128,7 +128,7 @@ bool_t Client::CMapTool::Reload_DestructionAuthoring()
 	std::string validationStatus;
 	if (!Validate_DestructionExternalReferences(
 		stagedDestruction,
-		m_DeployRuntime,
+		Authoring_Deploy(),
 		m_RuntimeBlockerDocument,
 		m_WorldGameplayDocument,
 		stagedEncounter,
@@ -424,7 +424,7 @@ bool_t Client::CMapTool::Load_WorldDestruction()
 	}
 	if (!Validate_DestructionExternalReferences(
 		staged,
-		m_DeployRuntime,
+		Authoring_Deploy(),
 		m_RuntimeBlockerDocument,
 		m_WorldGameplayDocument,
 		m_EncounterReference,
@@ -517,7 +517,7 @@ bool_t Client::CMapTool::Save_DestructionAuthoringPair()
 	std::string status;
 	if (!Validate_DestructionExternalReferences(
 		m_DestructionDocument,
-		m_DeployRuntime,
+		Authoring_Deploy(),
 		m_RuntimeBlockerDocument,
 		m_WorldGameplayDocument,
 		m_EncounterReference,
@@ -878,7 +878,7 @@ bool_t Client::CMapTool::Create_DefaultDestructionSimulationProfile()
 	DESTRUCTION_SIMULATION_PROFILE profile;
 	std::string status;
 	if (!CDestructionSimulationDocument::Create_DefaultForGroup(
-		*group, m_DeployRuntime, profile, status) ||
+		*group, Authoring_Deploy(), profile, status) ||
 		!m_DestructionSimulationDocument.Add_Profile(profile, status))
 	{
 		m_DestructionSimulationStatus = status;
@@ -924,7 +924,7 @@ bool_t Client::CMapTool::Modify_DestructionGroupMember(
 		m_SelectedDestructionGroupId);
 	if (nullptr == stagedGroup ||
 		!stagedSimulation.Synchronize_Group(
-			*stagedGroup, m_DeployRuntime, status) ||
+			*stagedGroup, Authoring_Deploy(), status) ||
 		!stagedSimulation.Validate_GroupReferences(
 			stagedDestruction, status))
 	{
@@ -1003,7 +1003,7 @@ bool_t Client::CMapTool::Request_StageDestructionSimulation(
 		profile,
 		m_SelectedDestructionGroupId,
 		m_DestructionDocument,
-		m_DeployRuntime,
+		Authoring_Deploy(),
 		m_iAuthoringLevelIndex);
 	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == previous.eScope &&
 		!m_SelectedDestructionSimulationFragmentId.empty())
@@ -1297,7 +1297,7 @@ bool_t Client::CMapTool::Validate_CurrentDestructionReferences(
 	}
 	return Validate_DestructionExternalReferences(
 		m_DestructionDocument,
-		m_DeployRuntime,
+		Authoring_Deploy(),
 		m_RuntimeBlockerDocument,
 		m_WorldGameplayDocument,
 		m_EncounterReference,
@@ -1317,13 +1317,13 @@ bool_t Client::CMapTool::Select_DestructionWall(
 
 	Restore_DestructionPreview();
 	const auto entry = std::find_if(
-		m_DeployRuntime.Get_Entries().begin(),
-		m_DeployRuntime.Get_Entries().end(),
+		Authoring_Deploy().Get_Entries().begin(),
+		Authoring_Deploy().Get_Entries().end(),
 		[runtimePlacementId](const DEPLOY_RUNTIME_ENTRY& value)
 		{
 			return value.placement.runtimePlacementId == runtimePlacementId;
 		});
-	if (m_DeployRuntime.Get_Entries().end() == entry)
+	if (Authoring_Deploy().Get_Entries().end() == entry)
 	{
 		m_DestructionStatus = "Wall selection failed: unknown placement " +
 			std::to_string(runtimePlacementId);
@@ -1560,14 +1560,14 @@ void Client::CMapTool::Use_DestructionTimelineTime()
 bool_t Client::CMapTool::Apply_SimpleDestructionAuthoring()
 {
 	const auto entry = std::find_if(
-		m_DeployRuntime.Get_Entries().begin(),
-		m_DeployRuntime.Get_Entries().end(),
+		Authoring_Deploy().Get_Entries().begin(),
+		Authoring_Deploy().Get_Entries().end(),
 		[this](const DEPLOY_RUNTIME_ENTRY& value)
 		{
 			return value.placement.runtimePlacementId ==
 				m_iSelectedDeployPlacementId;
 		});
-	if (m_DeployRuntime.Get_Entries().end() == entry ||
+	if (Authoring_Deploy().Get_Entries().end() == entry ||
 		!entry->placement.destructible)
 	{
 		m_DestructionStatus = "Choose a destructible wall first";
@@ -1832,7 +1832,7 @@ bool_t Client::CMapTool::Refresh_DestructionHighlight()
 	for (const uint64_t placementId : targets)
 	{
 		const shared_ptr<CDeployPropObject> prop =
-			m_DeployRuntime.Find(placementId);
+			Authoring_Deploy().Find(placementId);
 		float3_t center{};
 		float3_t halfExtents{};
 		if (nullptr == prop || !prop->Get_WorldBounds(center, halfExtents))
@@ -1900,12 +1900,12 @@ void Client::CMapTool::Apply_DestructionPreview(const DEPLOY_PROP_STATE state)
 	for (const uint64_t placementId : targets)
 	{
 		const shared_ptr<CDeployPropObject> prop =
-			m_DeployRuntime.Find(placementId);
+			Authoring_Deploy().Find(placementId);
 		if (nullptr == prop)
 			continue;
 		m_DestructionPreviewPreviousStates.push_back(
 			{ placementId, prop->Get_State() });
-		if (m_DeployRuntime.Set_State(placementId, state))
+		if (Authoring_Deploy().Set_State(placementId, state))
 			++applied;
 	}
 	m_DestructionStatus = "Preview applied to " + std::to_string(applied) +
@@ -1916,6 +1916,6 @@ void Client::CMapTool::Apply_DestructionPreview(const DEPLOY_PROP_STATE state)
 void Client::CMapTool::Restore_DestructionPreview()
 {
 	for (const auto& previous : m_DestructionPreviewPreviousStates)
-		m_DeployRuntime.Set_State(previous.first, previous.second);
+		Authoring_Deploy().Set_State(previous.first, previous.second);
 	m_DestructionPreviewPreviousStates.clear();
 }

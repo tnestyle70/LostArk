@@ -134,6 +134,18 @@ public:
 	}
 
 #ifdef _DEBUG
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches()
+	{ return m_MapRuntime.Get_AuthoringBatches(); }
+	void Set_MapAuthoringActive(bool_t active) { m_bMapAuthoringActive = active; }
+	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records)
+	{ m_MapRuntime.Rebase_AuthoringSelfMotions(records); }
+	bool_t Can_ReplaceMapAuthoringTargets() const
+	{
+		return !m_SequencePlayer.Has_ActiveInstances() &&
+			m_CompositionWorldPreviewCues.empty() && m_OwnedWorldCues.empty() &&
+			(!m_pWorldObjectPreview || !m_pWorldObjectPreview->Has_ActiveInstances()) &&
+			(!m_pMarioBombPlayer || !m_pMarioBombPlayer->Has_ActiveInstances());
+	}
 	void Set_DebugGazeView(bool visible, float halfAngleDegrees, float distanceM)
 	{ m_bDebugGazeView = visible; m_fDebugGazeHalfAngle = halfAngleDegrees; m_fDebugGazeDistance = distanceM; }
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
@@ -376,6 +388,9 @@ private:
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	bool_t m_bMapAuthoringActive = false;
+#endif
 	/* The authored deploy catalog carries both paper levers and both paper
 	   stage bridges. A bridge stays DESPAWNED until its lever is pulled, so
 	   suppress the bridges before the first rendered frame instead of letting

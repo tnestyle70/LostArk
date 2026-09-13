@@ -242,6 +242,29 @@ bool_t CMapAssetCatalog::Load_Source(
 	return true;
 }
 
+bool_t CMapAssetCatalog::Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeCatalog)
+{
+	if (!Is_Ready() || !runtimeCatalog.Is_Ready() || m_AreaId != runtimeCatalog.m_AreaId)
+	{
+		m_Status = "Runtime prototype binding requires the same ready Area";
+		return false;
+	}
+	// Validate every identity before changing any tag. Never strip a prefix and guess.
+	for (const auto& asset : m_Entries)
+	{
+		const auto* live = runtimeCatalog.Find(asset.id);
+		if (!live || live->prototypeTag.empty() ||
+			live->resolvedModelPath.lexically_normal() != asset.resolvedModelPath.lexically_normal())
+		{
+			m_Status = "Runtime/source model identity differs: " + asset.id;
+			return false;
+		}
+	}
+	for (auto& asset : m_Entries)
+		asset.prototypeTag = runtimeCatalog.Find(asset.id)->prototypeTag;
+	return true;
+}
+
 bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 {
 	CMapAssetCatalog staged;

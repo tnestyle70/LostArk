@@ -245,7 +245,7 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	const bool_t sourceVisible =
-		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
@@ -270,7 +270,7 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 HRESULT CDeployPropObject::Render()
 {
 	const bool_t sourceVisible =
-		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 	if (sourceVisible)
@@ -311,7 +311,7 @@ HRESULT CDeployPropObject::Render_Shadow()
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	const bool_t sourceVisible =
-		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
 		!Is_BasePresentationSuppressed();
 	if (sourceVisible)
@@ -454,7 +454,8 @@ bool_t CDeployPropObject::Begin_AnimationAuthoringPreview()
 bool_t CDeployPropObject::Sample_AnimationAuthoringPreview(
 	const std::string& clipName,
 	const f32_t normalizedTime,
-	const bool_t loop)
+	const bool_t loop,
+	const bool_t revealHidden)
 {
 	if (!m_bAnimationAuthoringPreviewActive ||
 		!std::isfinite(normalizedTime) || normalizedTime < 0.f ||
@@ -487,6 +488,7 @@ bool_t CDeployPropObject::Sample_AnimationAuthoringPreview(
 		return false;
 	}
 	m_pIntactModelCom->Play_Animation(0.f);
+	m_bAnimationAuthoringRevealHidden = revealHidden;
 	return true;
 }
 
@@ -496,6 +498,7 @@ void CDeployPropObject::End_AnimationAuthoringPreview()
 		return;
 
 	m_bAnimationAuthoringPreviewActive = false;
+	m_bAnimationAuthoringRevealHidden = false;
 	/* The walked pose belongs to the preview, so the prop snaps back to its
 	   authored placement the moment the preview ends. */
 	m_bAnimationAuthoringPoseActive = false;

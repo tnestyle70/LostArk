@@ -226,8 +226,16 @@ def world_pose(rows, group, actor, seconds, matinee=329, interp_data=394):
         ang = curve(rot_points, seconds, [0, 0, 0])
         rot = rotation(ang)
         if m.get("moveframe") == "imf_relativetoinitial":
-            pos = base_rot @ pos + location
-            rot = base_rot @ rot
+            # UE3 InterpTrackInstMove::CalcInitialTransform maps the track's first
+            # key onto the actor's placed transform (InitialTM = KeyTM0^-1 * ActorTM).
+            # SCENE01B cameras store their placement in that first key; treating it
+            # as an offset doubled their position by ~100m.
+            raw_pos = m.get("postrack", {}).get("points", [])
+            raw_rot = m.get("eulertrack", {}).get("points", [])
+            pos0 = vec(raw_pos[0]["outval"]) if raw_pos else np.zeros(3)
+            rot0 = rotation(vec(raw_rot[0]["outval"])) if raw_rot else np.eye(3)
+            pos = base_rot @ (rot0.T @ (pos - pos0)) + location
+            rot = base_rot @ rot0.T @ rot
         elif track_base_position is not None:
             # UE3 attached Move keys are stored in the parent/bone frame.
             # Treating these local keys as absolute world positions strands
