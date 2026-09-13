@@ -103,6 +103,11 @@ public:
 	partial document. No-op if the id already exists (the authored slot wins). */
 	void Ensure_RuntimeSlot(const string& strId, f32_t fX, f32_t fY,
 		f32_t fWidth, f32_t fHeight, const string& strTexturePath);
+	/* Draw order is NOT the slot list's order: every slot's sprite is a CUI_Sprite added
+	to a layer, and RENDERGROUP::UI draws them in the order they were created. A slot made
+	at runtime therefore always draws on top, whatever its list position. Art that has to
+	cover it -- the MVP page's frame gradient over the winner's legs -- needs the covered
+	slot authored in the layout document, ahead of the covering one. */
 	/* Jumps a keyframe slot's document to the frame labelled strLabel and plays forward until
 	the next authored label (or the document's end), then holds on that last frame -- mirrors
 	the original asset's own gotoAndPlay(label) trigger, same contract as CHUDRuntimeView's

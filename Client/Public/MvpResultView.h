@@ -10,6 +10,8 @@
 NS_BEGIN(Client)
 
 class CUILayoutRuntime;
+class CCharacter;
+class CCharacterPortraitRenderer;
 
 /* One contribution row of the award page: the title the contribution earned
 ("Fierce Bloodsport" / "Steadfast Fighter" -- EFTable_MvpTitle joined to
@@ -119,12 +121,31 @@ public:
 	bool_t Is_Visible() const { return m_bVisible; }
 
 	void Update(f32_t fTimeDelta);
+	/* The character one panel shows. mvp.gfx leaves host render targets there
+	   (MvpPlayerTexture and MvpSubPlayerTexture_0..2) rather than any art, so the
+	   page draws each model into an off-screen target and hands the slot that
+	   target's SRV. Slot 0 is the MVP panel, 1..3 the party columns left to
+	   right. Passing nullptr leaves that panel empty. */
+	void Set_StageCharacter(size_t iSlot, const shared_ptr<CCharacter>& pCharacter);
+	/* Draws the staged characters into their own targets and hands each panel
+	   slot the result. Must run in CMainApp's portrait phase -- after
+	   Render_Begin and before the world/UI pass that samples them -- because the
+	   target manager keeps a single saved binding and nesting a second pass
+	   inside the renderer's own frame overwrites it. */
+	void Render_Portraits();
 	/* Text only -- the image layers are CUI_Sprite GameObjects the layout runtime
 	already submitted, so they draw without this call. */
 	void Render();
 
 private:
 	void Apply_Timeline();
+	/* Holds the staged characters on the award page's celebration clip. */
+	void Drive_StageCelebration();
+	/* Resources-relative cue, played through CGameInstance::Play_Sound. */
+	static void Play_Cue(const wchar_t* pRelativePath);
+	/* True when the player asked to close: Esc, or a click on the exit button the
+	page draws as "나가기[Esc]". */
+	bool_t Poll_ExitRequest();
 	/* bLatinDisplay routes a title-size Latin label (the word "MVP", a
 	   percentage) to the re-rasterised display atlases instead of magnifying the
 	   family one. Never pass it for text that can contain Korean. */
@@ -176,6 +197,19 @@ private:
 	bool_t						m_bParticleBoomStarted = false;
 	bool_t						m_bSuccessBurstStarted = false;
 	bool_t						m_bBadgeEffectStarted = false;
+	/* How many badge stamp cues have fired, so each medal gets one as it lands. */
+	size_t						m_iBadgeCuesPlayed = 0u;
+	/* Press edge for the Esc close, so a held key does not re-close a replay. */
+	bool_t						m_bEscapeDownLastFrame = false;
+	/* One per panel: the same off-screen character draw the character info window
+	   and the avatar book already use, which owns its target and draws the parts
+	   with their forward ScreenCutin passes. Built on first use, because a panel
+	   with no character never needs one. */
+	ComPtr<ID3D11Device>		m_pStageDevice;
+	ComPtr<ID3D11DeviceContext>	m_pStageContext;
+	unique_ptr<CCharacterPortraitRenderer>	m_pStagePortrait[4];
+	/* Not owned: the level hands over whichever character the panel should show. */
+	weak_ptr<CCharacter>		m_pStageCharacter[4];
 };
 
 NS_END

@@ -2198,6 +2198,10 @@ HRESULT CMainApp::Render()
 		(void)m_pCharacterInfoView->Render_Portrait();
 	if (nullptr != m_pAvatarBookView)
 		(void)m_pAvatarBookView->Render_Portrait();
+	if (auto* pArena = CLevel_KakulSaydonArena::Get_Active();
+		nullptr != pArena &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		pArena->Render_MvpPortraits();
 	}
 
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
@@ -8088,7 +8092,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextDisabled(
 		"Sample page: three contribution rows, three party columns, the default background.");
 	ImGui::TextDisabled(
-		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 2.7s.");
+		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 3.5s (mvp.gfx's own Setting component).");
 	{
 		const bool_t bMvpVisible = pArena->Debug_Is_MvpResultVisible();
 		if (ImGui::Button("Play Dungeon Clear -> MVP"))

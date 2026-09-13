@@ -145,6 +145,18 @@ public:
 	};
 	const EMBLEM_PLACEMENT& Get_EmblemPlacement() const { return m_Placement; }
 
+	/* How the page reveals the four staged 3D characters, from mvp.gfx's own
+	   timeline for mvpGFxRenderTarget and otherStatItem0..2: the winner fades up
+	   and slides into the panel first, then each party column follows in turn.
+	   iSlot is 0 for the MVP and 1..3 for the columns, matching the page's own
+	   stage order. Offsets are canvas pixels away from the settled position.
+	   False when the document is missing, which leaves the caller drawing the
+	   character with no reveal rather than not at all. */
+	static constexpr size_t MVP_STAGE_SLOT_COUNT = 4u;
+	bool_t Sample_StageReveal(size_t iSlot, f32_t fFrame,
+		f32_t& fOutAlpha, f32_t& fOutOffsetX, f32_t& fOutOffsetY) const;
+	f32_t Get_StageRevealFrameRate() const { return m_fStageRevealFrameRate; }
+
 	/* The headline above the MVP, as coloured runs.
 
 	   iRaidGroupId is EFTable_ZoneEpicGate.GroupId -- 101 is Valtan, 103 is
@@ -189,6 +201,7 @@ private:
 	CMvpAwardCatalog();
 	void Load_ContentNames();
 	void Load_ClassSymbols();
+	void Load_StageReveal();
 
 	/* One card's rows, in the order the page prints them. Contributions already
 	   used up by an earlier column are passed in and added to. */
@@ -210,6 +223,16 @@ private:
 	/* Keyed by CHARACTER_CLASS_ID name. */
 	vector<pair<string, MVP_CLASS_EMBLEM>>	m_ClassEmblems;
 	EMBLEM_PLACEMENT			m_Placement;
+	/* One reveal curve per staged panel, in authored frame order. */
+	struct STAGE_REVEAL_KEY
+	{
+		f32_t	fFrame = 0.f;
+		f32_t	fAlpha = 0.f;
+		f32_t	fOffsetX = 0.f;
+		f32_t	fOffsetY = 0.f;
+	};
+	vector<STAGE_REVEAL_KEY>	m_StageReveal[MVP_STAGE_SLOT_COUNT];
+	f32_t					m_fStageRevealFrameRate = 40.f;
 	int32_t					m_iMvpGroupId = 0;
 	bool_t					m_bLoaded = false;
 };

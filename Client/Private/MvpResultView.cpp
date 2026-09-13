@@ -1,8 +1,19 @@
-﻿#include "MvpResultView.h"
+﻿/* WinSock2 then dinput, ahead of everything else -- the order Level_Bern.cpp and
+PlayerController.cpp already use for the DIK_* constants. dinput.h drags in windows.h,
+which brings winsock.h and clashes with the WinSock2.h a later Client header includes;
+it also declares POINT, which Engine_Enum.h's own Engine::POINT would make ambiguous. */
+#include <WinSock2.h>
+#include <dinput.h>
 
+#include "MvpResultView.h"
+
+#include "Character.h"
+#include "CharacterPortraitRenderer.h"
 #include "GameInstance.h"
 #include "MvpAwardCatalog.h"
+#include "RuntimeAssetRoot.h"
 #include "UILabelFont.h"
+#include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -145,10 +156,83 @@ namespace
 	constexpr f32_t SUCCESS_BURST_FRAME = 99.f;
 	constexpr f32_t EXIT_LABEL_RIGHT_LOCAL_X = 2184.f;
 	constexpr f32_t EXIT_LABEL_CENTER_LOCAL_Y = 49.f;
+	/* confirmBtn sits at frame-local x 2032 and its text field spans -2..124 by
+	-2..26 in the button's own units; the placement scales that so the label's right
+	edge lands on 2184, i.e. about 1.226. The clickable area is that field, which is
+	wider and taller than the glyphs. */
+	constexpr f32_t EXIT_HIT_WIDTH_LOCAL = 152.f;
+	constexpr f32_t EXIT_HIT_HEIGHT_LOCAL = 34.f;
 
 	constexpr size_t PARTY_COLUMN_COUNT = MVP_RESULT_MAX_PARTY_COLUMNS;
 	constexpr size_t MVP_STAT_COUNT = MVP_RESULT_MAX_STATS;
 	constexpr size_t PARTY_STAT_COUNT = MVP_RESULT_MAX_STATS;
+
+	/* mvp.gfx leaves host render targets where the characters go -- MvpPlayerTexture
+	   on the MVP panel and MvpSubPlayerTexture_0..2 on the columns -- so each model
+	   is drawn off-screen and the slot samples that target. The four slots that
+	   carry them are the ones the layout already has with no art of their own.
+
+	   EFTable_MvpCameraOffset PrimaryKey 62907 has ZOffset 78..83 by class family
+	   for the MVP and a flat ZOffsetSub 64 for the columns, with YOffsetSub -4.
+	   Reading those as one camera distance in one unit is wrong: it makes the MVP
+	   the *further* camera, so the winner comes out smaller than the party columns,
+	   and the retail capture has the winner clearly the larger of the two. Whatever
+	   the MVP path does with ZOffset, it is not the same mapping the columns use,
+	   and the table does not say what either is.
+
+	   So the columns keep the value that already framed them acceptably and the MVP
+	   is set from the capture instead: the winner reads about 1.4x the column
+	   characters there. Both are metres, stated outright rather than dressed up as
+	   a conversion of a table value. */
+	constexpr f32_t STAGE_EYE_HEIGHT = 1.05f;
+	constexpr f32_t STAGE_LOOK_HEIGHT = 0.95f;
+	constexpr f32_t STAGE_FOV_DEGREES = 30.f;
+
+	struct STAGE_SLOT
+	{
+		/* The authored backdrop this panel already draws. Its rect and motion are
+		   what the character has to sit on; its art must not be replaced, which is
+		   what blanked the panels the first time round. */
+		const char*	szBackdropSlotId;
+		/* The character's own slot. Authored in the layout between the backdrops
+		   and MvpResult_Frame_Above so it draws under the frame's upper layers. */
+		const char*	szPlayerSlotId;
+		f32_t		fCameraMetres;
+		f32_t		fHeightOffset;
+	};
+
+	/* Every winner in the reference capture cheers with both arms overhead and a
+	   vertical bob, and it is the same pose on all four classes, so the page
+	   plays it rather than the player having picked an emote. That is the social
+	   action sc_hurray_1, baked into each class's *_CustomizingAnimSet.wmodel. */
+	constexpr const char* STAGE_CELEBRATION_CLIP = "sc_hurray_1";
+
+	/* mvp.gfx carries no audio at all -- no DefineSound, and every component sets
+	soundTheme = "" under lockSoundTheme, so Scaleform plays nothing and the host owns
+	the cues. UISoundTheme.loa has no MVP entry either; the real names are Wwise media
+	in SOUND_UI: sys_raid_mvp_show1 / _hide1 / _badge1. _badge1 is a random container
+	with three takes, which is why there are three files and why they are cycled here
+	rather than one being repeated. */
+	const wchar_t* const CUE_SHOW =
+		L"Sound/UI/System/sys_raid_mvp_show1__549406185.wav";
+	const wchar_t* const CUE_HIDE =
+		L"Sound/UI/System/sys_raid_mvp_hide1__41307437.wav";
+	const wchar_t* const CUE_BADGE[] =
+	{
+		L"Sound/UI/System/sys_raid_mvp_badge1__127460076.wav",
+		L"Sound/UI/System/sys_raid_mvp_badge1__1065905816.wav",
+		L"Sound/UI/System/sys_raid_mvp_badge1__876288551.wav",
+	};
+
+
+	constexpr size_t STAGE_SLOT_COUNT = 4u;
+	const STAGE_SLOT STAGE_SLOTS[STAGE_SLOT_COUNT] =
+	{
+		{ "MvpResult_MainBackground", "MvpResult_StagePlayer_Mvp", 3.70f, 0.f },
+		{ "MvpResult_Party_Bg_0", "MvpResult_StagePlayer_Party0", 5.12f, -0.04f },
+		{ "MvpResult_Party_Bg_1", "MvpResult_StagePlayer_Party1", 5.12f, -0.04f },
+		{ "MvpResult_Party_Bg_2", "MvpResult_StagePlayer_Party2", 5.12f, -0.04f },
+	};
 
 	f32_t Ramp(const f32_t fFrame, const f32_t fStart, const f32_t fEnd)
 	{
@@ -167,9 +251,14 @@ namespace
 	constexpr f32_t BADGE_TWEEN_SECONDS = 0.3f;
 	constexpr f32_t BADGE_STAGGER_SECONDS = 0.1f;
 	/* MvpResultFrame does not put the badge list on the timeline -- RollingRepositionList
-	   tweens each item in when the list is populated. The first badge becomes visible at
-	   capture frame 1608, 3.49s after the award page starts. */
-	constexpr f32_t BADGE_DELAY_SECONDS = 3.45f;
+	   tweens each item in when the list is populated, after a setTimeout the frame reads
+	   from its own Setting component:
+
+	     setting.properties = ["몇초뒤에mvp리스트를 보여줄꺼냐,3.5"]
+
+	   so the delay is authored, not measured. It was 3.45 here, read off capture frame
+	   1608; the authored value supersedes that. */
+	constexpr f32_t BADGE_DELAY_SECONDS = 3.5f;
 
 	/* TweenMax Back.easeOut with its default overshoot, which is what gives the badge
 	   the slight past-and-back settle. */
@@ -187,6 +276,8 @@ Client::CMvpResultView::CMvpResultView(
 	ComPtr<ID3D11DeviceContext> pContext,
 	const uint32_t iGameObjectLevelIndex)
 {
+	m_pStageDevice = pDevice;
+	m_pStageContext = pContext;
 	m_pView = std::make_unique<CUILayoutRuntime>(pDevice, pContext, iGameObjectLevelIndex,
 		TEXT("Layer_UI"), L"UI/MVP/MvpResult_Layout.json");
 	m_pView->Set_AllSlotsVisible(false);
@@ -215,15 +306,32 @@ void Client::CMvpResultView::Show(const MVP_RESULT_DATA& Data)
 	m_bParticleBoomStarted = false;
 	m_bSuccessBurstStarted = false;
 	m_bBadgeEffectStarted = false;
+	m_iBadgeCuesPlayed = 0u;
+	/* Whatever opened the page may still be holding Esc; seeding the edge here
+	stops that same press from closing it again on the next frame. */
+	m_bEscapeDownLastFrame =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
+	Play_Cue(CUE_SHOW);
 	m_pView->Set_AllSlotsVisible(true);
 	/* Every authored image layer of MvpResultFrame plays from the extracted
 		keyframe document, so its own per-frame transform drives them instead of a
 		hand-written envelope. */
-	m_pView->Play_KeyframeAnimation("MvpResult_Frame", "intro");
+	/* One authored document, split into the three bands mvp.gfx's own depths make:
+	   under the winner (< 13), over the winner but under the columns (13..26 -- the
+	   opaque column panels live here), and over everything (>= 27, where each
+	   otherStatItem and its own lower gradient sit). The four staged characters are
+	   authored between them. */
+	m_pView->Play_KeyframeAnimation("MvpResult_Frame_Below", "intro");
+	m_pView->Play_KeyframeAnimation("MvpResult_Frame_Mid", "intro");
+	m_pView->Play_KeyframeAnimation("MvpResult_Frame_Above", "intro");
 	for (const string& strMedalSlot : m_MedalSlotIds)
 		m_pView->Set_SlotVisible(strMedalSlot, false);
 	for (const string& strEmblemSlot : m_EmblemSlotIds)
 		m_pView->Set_SlotVisible(strEmblemSlot, false);
+	/* Set_AllSlotsVisible above would otherwise show last run's portraits for
+	   the frame before Render_Portraits redraws them. */
+	for (size_t i = 0; i < STAGE_SLOT_COUNT; ++i)
+		m_pView->Set_SlotVisible(STAGE_SLOTS[i].szPlayerSlotId, false);
 	/* A replay would otherwise resume these mid-sparkle from the previous run. */
 	for (size_t i = 0; i < MVP_MEDAL_MAX; ++i)
 	{
@@ -238,6 +346,23 @@ void Client::CMvpResultView::Hide()
 {
 	m_bVisible = false;
 	m_fElapsedSeconds = 0.f;
+	Play_Cue(CUE_HIDE);
+	/* The celebration loop and the stowed weapons belong to this page, so the arena
+	   gets its character back on its own locomotion clip, armed, when it closes.
+	   Apply_NetworkStance rather than a plain show: stance decides which of a
+	   class's weapons are the ones on screen. */
+	for (size_t i = 0; i < STAGE_SLOT_COUNT; ++i)
+	{
+		const shared_ptr<CCharacter> pCharacter = m_pStageCharacter[i].lock();
+		if (nullptr == pCharacter)
+			continue;
+		pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
+		LostArk::Shared::PLAYER_STANCE_ID eStance{};
+		if (pCharacter->Try_Get_NetworkStance(eStance))
+			pCharacter->Apply_NetworkStance(eStance);
+		else
+			pCharacter->Set_WeaponPartsVisible(true);
+	}
 	m_pView->Set_AllSlotsVisible(false);
 }
 
@@ -245,9 +370,72 @@ void Client::CMvpResultView::Update(const f32_t fTimeDelta)
 {
 	if (!m_bVisible)
 		return;
+	if (Poll_ExitRequest())
+	{
+		Hide();
+		return;
+	}
 	m_fElapsedSeconds += fTimeDelta;
+	Drive_StageCelebration();
 	Apply_Timeline();
 	m_pView->Update(fTimeDelta);
+}
+
+/* Re-asserted every frame instead of once on Show: a run-to-idle edge that was
+still pending when the raid ended fires Commit_Locomotion afterwards and would
+stomp the pose. Set_Animation on the clip already running neither restarts the
+blend nor rewinds it, so holding it costs nothing. The same character can fill
+several panels, so each one is only told once. */
+bool_t Client::CMvpResultView::Poll_ExitRequest()
+{
+	/* A full-screen modal owns the pointer for the frame, so a click that lands on
+	the page never also reaches the arena underneath. */
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	Router.Claim_Mouse_This_Frame();
+
+	const f32_t fWidth = EXIT_HIT_WIDTH_LOCAL * STAGE_TO_CANVAS;
+	const f32_t fHeight = EXIT_HIT_HEIGHT_LOCAL * STAGE_TO_CANVAS;
+	const f32_t fX = CanvasX(EXIT_LABEL_RIGHT_LOCAL_X) - fWidth;
+	const f32_t fY = CanvasY(EXIT_LABEL_CENTER_LOCAL_Y) - fHeight * 0.5f;
+	const bool_t bClicked = Router.Is_Clicked(
+		fX, fY, fWidth, fHeight,
+		static_cast<f32_t>(m_pView->Get_ResolutionWidth()),
+		static_cast<f32_t>(m_pView->Get_ResolutionHeight()));
+
+	const bool_t bEscapeDown =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
+	const bool_t bEscapePressed = bEscapeDown && !m_bEscapeDownLastFrame;
+	m_bEscapeDownLastFrame = bEscapeDown;
+
+	return bClicked || bEscapePressed;
+}
+
+void Client::CMvpResultView::Play_Cue(const wchar_t* const pRelativePath)
+{
+	const filesystem::path Resolved = CRuntimeAssetRoot::Resolve(pRelativePath);
+	if (Resolved.empty())
+		return;
+	CGameInstance::Get().Play_Sound(Resolved.wstring(), 1.f);
+}
+
+void Client::CMvpResultView::Drive_StageCelebration()
+{
+	const CCharacter* pDriven[STAGE_SLOT_COUNT] = {};
+	size_t iDriven = 0u;
+	for (size_t i = 0; i < STAGE_SLOT_COUNT; ++i)
+	{
+		const shared_ptr<CCharacter> pCharacter = m_pStageCharacter[i].lock();
+		if (nullptr == pCharacter)
+			continue;
+		if (pDriven + iDriven !=
+			std::find(pDriven, pDriven + iDriven, pCharacter.get()))
+			continue;
+		pDriven[iDriven++] = pCharacter.get();
+		pCharacter->Set_Animation(STAGE_CELEBRATION_CLIP, true);
+		/* Retail poses all four winners unarmed -- none of them holds a weapon on
+		   the award page -- while keeping the gear they cleared in. */
+		pCharacter->Set_WeaponPartsVisible(false);
+	}
 }
 
 void Client::CMvpResultView::Apply_Timeline()
@@ -273,6 +461,16 @@ void Client::CMvpResultView::Apply_Timeline()
 	   so these are not staggered the way the stamp-in is. Only MvpResult_BadgeListItem_L
 	   owns an iconEffect; the party columns' small item has none. */
 	const size_t iMvpBadges = (std::min)(m_Data.Mvp.Medals.size(), MVP_MEDAL_MAX);
+	/* One cue per medal as it lands, on the same stagger the stamp-in uses. The
+	   authored container holds three takes, so they are cycled instead of one being
+	   repeated down the row. */
+	while (m_iBadgeCuesPlayed < iMvpBadges &&
+		m_fElapsedSeconds >= BADGE_DELAY_SECONDS +
+			BADGE_STAGGER_SECONDS * static_cast<f32_t>(m_iBadgeCuesPlayed))
+	{
+		Play_Cue(CUE_BADGE[m_iBadgeCuesPlayed % _countof(CUE_BADGE)]);
+		++m_iBadgeCuesPlayed;
+	}
 	const f32_t fBadgeEffectStart =
 		BADGE_DELAY_SECONDS + BADGE_STAGGER_SECONDS * static_cast<f32_t>(iMvpBadges);
 	if (!m_bBadgeEffectStarted && 0u < iMvpBadges && m_fElapsedSeconds >= fBadgeEffectStart)
@@ -569,6 +767,99 @@ void Client::CMvpResultView::Render_PartyColumn(const size_t iColumn) const
 	Render_Medals(Entry.Medals, szOwner, fColumnLocalX + PARTY_MEDAL_CENTER_DX,
 		PARTY_MEDAL_CENTER_LOCAL_Y + fRiseLocal, PARTY_MEDAL_PITCH_LOCAL,
 		MEDAL_ICON_LOCAL_PARTY, PARTY_MEDAL_MAX, false);
+}
+
+void Client::CMvpResultView::Set_StageCharacter(
+	const size_t iSlot, const shared_ptr<CCharacter>& pCharacter)
+{
+	if (iSlot < STAGE_SLOT_COUNT)
+		m_pStageCharacter[iSlot] = pCharacter;
+}
+
+void Client::CMvpResultView::Render_Portraits()
+{
+	if (!m_bVisible)
+		return;
+
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	if (vViewport.x <= 0.f || vViewport.y <= 0.f)
+		return;
+
+	const f32_t fFrame = m_fElapsedSeconds *
+		CMvpAwardCatalog::Get().Get_StageRevealFrameRate();
+
+	for (size_t i = 0; i < STAGE_SLOT_COUNT; ++i)
+	{
+		const STAGE_SLOT& Slot = STAGE_SLOTS[i];
+		const shared_ptr<CCharacter> pCharacter = m_pStageCharacter[i].lock();
+		if (nullptr == pCharacter)
+		{
+			m_pView->Set_SlotVisible(Slot.szPlayerSlotId, false);
+			continue;
+		}
+
+		/* mvp.gfx reveals the four panels one at a time -- the winner fades up and
+		   slides in, then each column follows about a sixth of a second apart -- so
+		   the character rides its panel's authored curve instead of appearing with
+		   the others the instant the page opens. */
+		f32_t fRevealAlpha = 1.f, fRevealX = 0.f, fRevealY = 0.f;
+		(void)CMvpAwardCatalog::Get().Sample_StageReveal(
+			i, fFrame, fRevealAlpha, fRevealX, fRevealY);
+		if (fRevealAlpha <= 0.f)
+		{
+			m_pView->Set_SlotVisible(Slot.szPlayerSlotId, false);
+			continue;
+		}
+
+		/* The character rides the backdrop: same rect, same slide, drawn over it.
+		   The target is that rect in real pixels, so nothing is stretched and the
+		   narrow columns do not pay for a wide one. */
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pView->Get_SlotRect(Slot.szBackdropSlotId, fX, fY, fWidth, fHeight) ||
+			fWidth <= 0.f || fHeight <= 0.f)
+			continue;
+		const uint32_t iWidth = static_cast<uint32_t>(
+			fWidth * vViewport.x / m_pView->Get_ResolutionWidth());
+		const uint32_t iHeight = static_cast<uint32_t>(
+			fHeight * vViewport.y / m_pView->Get_ResolutionHeight());
+		if (0u == iWidth || 0u == iHeight)
+			continue;
+
+		if (nullptr == m_pStagePortrait[i])
+			m_pStagePortrait[i] = std::make_unique<CCharacterPortraitRenderer>(
+				m_pStageDevice, m_pStageContext);
+
+		CCharacterPortraitRenderer::CAMERA Camera{};
+		Camera.fDistance = Slot.fCameraMetres;
+		Camera.fEyeHeight = STAGE_EYE_HEIGHT + Slot.fHeightOffset;
+		Camera.fLookHeight = STAGE_LOOK_HEIGHT + Slot.fHeightOffset;
+		Camera.fFovDegrees = STAGE_FOV_DEGREES;
+
+		const HRESULT hResult = m_pStagePortrait[i]->Render(
+			pCharacter, iWidth, iHeight, Camera, 0u, 0u);
+		if (S_OK != hResult)
+		{
+			m_pView->Set_SlotVisible(Slot.szPlayerSlotId, false);
+			continue;
+		}
+
+		/* The layout authors this slot between the panel backdrops and
+		   MvpResult_Frame_Above, which is the only way it draws under the frame's
+		   upper layers: sprites are layer objects rendered in creation order, so a
+		   slot made here would sit on top of everything no matter where it went in
+		   the slot list. This call is the fallback for an older layout document --
+		   it no-ops whenever the authored slot exists, and the SRV below is what
+		   either version actually draws. */
+		m_pView->Ensure_RuntimeSlot(Slot.szPlayerSlotId,
+			fX, fY, fWidth, fHeight, "UI/MVP/MvpResult_MainBackground.png");
+		m_pView->Set_SlotRect(
+			Slot.szPlayerSlotId, fX + fRevealX, fY + fRevealY, fWidth, fHeight);
+		m_pView->Set_SlotTintMultiplier(
+			Slot.szPlayerSlotId, float4_t(1.f, 1.f, 1.f, fRevealAlpha));
+		m_pView->Set_SlotTextureSRV(Slot.szPlayerSlotId,
+			m_pStagePortrait[i]->Get_SRV());
+		m_pView->Set_SlotVisible(Slot.szPlayerSlotId, true);
+	}
 }
 
 /* One class emblem as a runtime image slot, in the same on-demand way the medal

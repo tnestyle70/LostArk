@@ -13,6 +13,12 @@ namespace
 		"UI/MVP/MvpContentNames.json";
 	constexpr const char* MVP_CLASS_SYMBOLS_DOCUMENT =
 		"UI/MVP/MvpClassSymbols.json";
+	constexpr const char* MVP_STAGE_REVEAL_DOCUMENT =
+		"UI/MVP/MvpResult_StageReveal.json";
+	/* The document names its panels the way mvp.gfx names the instances that own
+	   them, so the order here is the page's own stage order. */
+	constexpr const char* MVP_STAGE_REVEAL_KEYS[] =
+		{ "mvp", "party0", "party1", "party2" };
 
 	bool_t Convert_Utf8ToWide(const string& strUtf8, wstring_t& outWide)
 	{
@@ -144,6 +150,7 @@ Client::CMvpAwardCatalog::CMvpAwardCatalog()
 {
 	Load_ContentNames();
 	Load_ClassSymbols();
+	Load_StageReveal();
 
 	DATA_JSON_VALUE Root;
 	if (!Read_Document(MVP_AWARDS_DOCUMENT, Root))
@@ -580,4 +587,89 @@ Client::MVP_CLASS_EMBLEM Client::CMvpAwardCatalog::Find_ClassEmblem(
 		[&strNetworkClassId](const pair<string, MVP_CLASS_EMBLEM>& Entry)
 		{ return Entry.first == strNetworkClassId; });
 	return m_ClassEmblems.end() == it ? MVP_CLASS_EMBLEM() : it->second;
+}
+
+void Client::CMvpAwardCatalog::Load_StageReveal()
+{
+	DATA_JSON_VALUE Root;
+	if (!Read_Document(MVP_STAGE_REVEAL_DOCUMENT, Root))
+		return;
+
+	f32_t fFrameRate = 0.f;
+	if (Read_Number(Root, "frameRate", fFrameRate) && fFrameRate > 0.f)
+		m_fStageRevealFrameRate = fFrameRate;
+
+	const DATA_JSON_VALUE* pSlots = Root.Find("slots");
+	if (nullptr == pSlots)
+		return;
+
+	for (size_t iSlot = 0; iSlot < MVP_STAGE_SLOT_COUNT; ++iSlot)
+	{
+		const DATA_JSON_VALUE* pSlot = pSlots->Find(MVP_STAGE_REVEAL_KEYS[iSlot]);
+		if (nullptr == pSlot)
+			continue;
+		const DATA_JSON_VALUE* pKeys = pSlot->Find("keyframes");
+		if (nullptr == pKeys || !pKeys->Is_Array())
+			continue;
+
+		/* Staged locally so a document that runs out halfway leaves this panel
+		   with no curve -- drawn without a reveal -- instead of a partial one. */
+		vector<STAGE_REVEAL_KEY> Keys;
+		bool_t bComplete = true;
+		for (const DATA_JSON_VALUE& Value : pKeys->Get_Array())
+		{
+			STAGE_REVEAL_KEY Key;
+			if (!Read_Number(Value, "frame", Key.fFrame) ||
+				!Read_Number(Value, "alpha", Key.fAlpha))
+			{
+				bComplete = false;
+				break;
+			}
+			(void)Read_Number(Value, "dx", Key.fOffsetX);
+			(void)Read_Number(Value, "dy", Key.fOffsetY);
+			Keys.push_back(Key);
+		}
+		if (bComplete && !Keys.empty())
+			m_StageReveal[iSlot] = move(Keys);
+	}
+}
+
+bool_t Client::CMvpAwardCatalog::Sample_StageReveal(const size_t iSlot,
+	const f32_t fFrame, f32_t& fOutAlpha, f32_t& fOutOffsetX, f32_t& fOutOffsetY) const
+{
+	if (iSlot >= MVP_STAGE_SLOT_COUNT || m_StageReveal[iSlot].empty())
+		return false;
+
+	const vector<STAGE_REVEAL_KEY>& Keys = m_StageReveal[iSlot];
+	/* Before the first authored key the panel is not on the page yet, and after
+	   the last one it holds -- the same way the authored timeline behaves. */
+	if (fFrame <= Keys.front().fFrame)
+	{
+		fOutAlpha = Keys.front().fAlpha;
+		fOutOffsetX = Keys.front().fOffsetX;
+		fOutOffsetY = Keys.front().fOffsetY;
+		return true;
+	}
+	if (fFrame >= Keys.back().fFrame)
+	{
+		fOutAlpha = Keys.back().fAlpha;
+		fOutOffsetX = Keys.back().fOffsetX;
+		fOutOffsetY = Keys.back().fOffsetY;
+		return true;
+	}
+
+	for (size_t i = 1; i < Keys.size(); ++i)
+	{
+		if (fFrame > Keys[i].fFrame)
+			continue;
+		const STAGE_REVEAL_KEY& From = Keys[i - 1];
+		const STAGE_REVEAL_KEY& To = Keys[i];
+		const f32_t fSpan = To.fFrame - From.fFrame;
+		const f32_t fT = fSpan > 0.f ? (fFrame - From.fFrame) / fSpan : 0.f;
+		fOutAlpha = From.fAlpha + (To.fAlpha - From.fAlpha) * fT;
+		fOutOffsetX = From.fOffsetX + (To.fOffsetX - From.fOffsetX) * fT;
+		fOutOffsetY = From.fOffsetY + (To.fOffsetY - From.fOffsetY) * fT;
+		return true;
+	}
+	return false;
 }
