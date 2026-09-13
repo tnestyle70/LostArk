@@ -370,6 +370,19 @@ namespace Client::EffectDocumentCodecDetail
         if (Track.AlphaScale && (Track.AlphaScale->iComponentCount != 3u ||
             Track.AlphaScale->iOperation != 1u || !CEffectDistribution::Validate(*Track.AlphaScale, Error)))
             return false;
+        if (Track.MaterialParameterTracks.size() > 64u)
+        { Error = "Too many source material parameter tracks."; return false; }
+        std::vector<std::string_view> materialNames;
+        for (const auto& Parameter : Track.MaterialParameterTracks)
+        {
+            if (Parameter.strName.empty() || Parameter.strName.size() > 128u || Parameter.strName.find('\0') != std::string::npos ||
+                std::find(materialNames.begin(), materialNames.end(), Parameter.strName) != materialNames.end() ||
+                Parameter.Values.Keys.empty() || Parameter.Values.iOperation != 1u ||
+                Parameter.Values.iComponentCount != (Parameter.bVector ? 3u : 1u) ||
+                !CEffectDistribution::Validate(Parameter.Values, Error))
+            { if (Error.empty()) Error = "Invalid or duplicate source material parameter track."; return false; }
+            materialNames.push_back(Parameter.strName);
+        }
         for (size_t i = 0u; i < Track.Nodes.size(); ++i)
         {
             const auto& Node = Track.Nodes[i];
@@ -388,14 +401,14 @@ namespace Client::EffectDocumentCodecDetail
 
 
     bool_t Read_SourceTransformCurve(const Client::DATA_JSON_VALUE& Value,
-        Client::EFFECT_DISTRIBUTION_DESC& Out, const char_t* Property, std::string& Error)
+        Client::EFFECT_DISTRIBUTION_DESC& Out, const char_t* Property, std::string& Error, const uint32_t Components = 3u)
     {
         using namespace Client;
         if (!Value.Is_Array() || Value.Get_Array().size() > 4096u)
         { Error = "Effect source transform curve must be a bounded array."; return false; }
         Out.strPropertyPath = Property;
         Out.strSourceClass = "interptrackmove";
-        Out.iComponentCount = 3u;
+        Out.iComponentCount = Components;
         Out.iOperation = 1u;
         for (const DATA_JSON_VALUE& ValueKey : Value.Get_Array())
         {
@@ -405,9 +418,9 @@ namespace Client::EffectDocumentCodecDetail
                 { "timeSeconds", "value", "arriveTangent", "leaveTangent", "interpolation" },
                 "Effect source transform curve key", Error) ||
                 !Read_Float(ValueKey, "timeSeconds", Key.fTime, Error) ||
-                !Read_Array(ValueKey, "value", &Key.vMinimum.x, 3u, Error) ||
-                !Read_Array(ValueKey, "arriveTangent", &Key.vArriveTangentMinimum.x, 3u, Error) ||
-                !Read_Array(ValueKey, "leaveTangent", &Key.vLeaveTangentMinimum.x, 3u, Error) ||
+                !Read_Array(ValueKey, "value", &Key.vMinimum.x, Components, Error) ||
+                !Read_Array(ValueKey, "arriveTangent", &Key.vArriveTangentMinimum.x, Components, Error) ||
+                !Read_Array(ValueKey, "leaveTangent", &Key.vLeaveTangentMinimum.x, Components, Error) ||
                 !Read_String(ValueKey, "interpolation", Interpolation, Error) ||
                 !Parse_Token(Interpolation, DISTRIBUTION_INTERPOLATION_TOKENS,
                     std::size(DISTRIBUTION_INTERPOLATION_TOKENS), Key.eInterpolation))
@@ -426,7 +439,7 @@ namespace Client::EffectDocumentCodecDetail
     {
         using namespace Client;
         if (!Value.Is_Object() || !Validate_ExactFields(Value,
-            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys" },
+            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys", "materialParameterTracks" },
             "Effect source transform track", Error)) return false;
         const auto* Nodes = Find_Field(Value, "nodes", DATA_JSON_TYPE::ARRAY, Error);
         if (!Nodes || !Read_String(Value, "sourceOccurrenceId", Out.strSourceOccurrenceId, Error) ||
@@ -437,7 +450,7 @@ namespace Client::EffectDocumentCodecDetail
             EFFECT_SOURCE_TRANSFORM_NODE N;
             std::string Frame;
             if (!V.Is_Object() || !Validate_ExactFields(V,
-                { "sourceObjectPath", "frame", "initialPositionUE3Cm", "initialEulerDegrees", "scaleUE3", "positionKeys", "eulerKeys" },
+                { "sourceObjectPath", "frame", "initialPositionUE3Cm", "initialEulerDegrees", "scaleUE3", "positionKeys", "eulerKeys", "useQuaternionInterpolation" },
                 "Effect source transform node", Error)) return false;
             const auto* Position = Find_Field(V, "positionKeys", DATA_JSON_TYPE::ARRAY, Error);
             const auto* Euler = Find_Field(V, "eulerKeys", DATA_JSON_TYPE::ARRAY, Error);
@@ -448,7 +461,8 @@ namespace Client::EffectDocumentCodecDetail
                 !Read_Array(V, "initialEulerDegrees", &N.vInitialEulerDegrees.x, 3u, Error) ||
                 !Read_Array(V, "scaleUE3", &N.vScaleUE3.x, 3u, Error) ||
                 !Read_SourceTransformCurve(*Position, N.Position, "position", Error) ||
-                !Read_SourceTransformCurve(*Euler, N.Euler, "euler", Error)) return false;
+                !Read_SourceTransformCurve(*Euler, N.Euler, "euler", Error) ||
+                !Read_OptionalBool(V, "useQuaternionInterpolation", N.bUseQuaternionInterpolation, Error)) return false;
             Out.Nodes.push_back(std::move(N));
         }
         if (const auto* Alpha = Value.Find("alphaScaleKeys"))
@@ -456,6 +470,24 @@ namespace Client::EffectDocumentCodecDetail
             EFFECT_DISTRIBUTION_DESC Curve;
             if (!Read_SourceTransformCurve(*Alpha, Curve, "alphaScale", Error)) return false;
             Out.AlphaScale = std::move(Curve);
+        }
+        if (const auto* Parameters = Value.Find("materialParameterTracks"))
+        {
+            if (!Parameters->Is_Array() || Parameters->Get_Array().size() > 64u)
+            { Error = "Material parameter tracks must be a bounded array."; return false; }
+            for (const auto& Parameter : Parameters->Get_Array())
+            {
+                EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK Track;
+                std::string Kind;
+                if (!Validate_ExactFields(Parameter, {"name", "kind", "keys"}, "Source material parameter track", Error) ||
+                    !Read_String(Parameter, "name", Track.strName, Error) || !Read_String(Parameter, "kind", Kind, Error) ||
+                    (Kind != "SCALAR" && Kind != "VECTOR"))
+                { if (Error.empty()) Error = "Source material parameter kind must be SCALAR or VECTOR."; return false; }
+                Track.bVector = Kind == "VECTOR";
+                const auto* Keys = Find_Field(Parameter, "keys", DATA_JSON_TYPE::ARRAY, Error);
+                if (!Keys || !Read_SourceTransformCurve(*Keys, Track.Values, Track.strName.c_str(), Error, Track.bVector ? 3u : 1u)) return false;
+                Out.MaterialParameterTracks.push_back(std::move(Track));
+            }
         }
         return Validate_SourceTransformTrack(Out, Error);
     }
@@ -469,11 +501,14 @@ namespace Client::EffectDocumentCodecDetail
         {
             const auto& K = Curve.Keys[i];
             Output << (i ? ", " : "") << "{ \"timeSeconds\": " << K.fTime << ", \"value\": ";
-            Write_Float3(Output, {K.vMinimum.x,K.vMinimum.y,K.vMinimum.z});
+            if (Curve.iComponentCount == 1u) Output << '[' << K.vMinimum.x << ']';
+            else Write_Float3(Output, {K.vMinimum.x,K.vMinimum.y,K.vMinimum.z});
             Output << ", \"arriveTangent\": ";
-            Write_Float3(Output, {K.vArriveTangentMinimum.x,K.vArriveTangentMinimum.y,K.vArriveTangentMinimum.z});
+            if (Curve.iComponentCount == 1u) Output << '[' << K.vArriveTangentMinimum.x << ']';
+            else Write_Float3(Output, {K.vArriveTangentMinimum.x,K.vArriveTangentMinimum.y,K.vArriveTangentMinimum.z});
             Output << ", \"leaveTangent\": ";
-            Write_Float3(Output, {K.vLeaveTangentMinimum.x,K.vLeaveTangentMinimum.y,K.vLeaveTangentMinimum.z});
+            if (Curve.iComponentCount == 1u) Output << '[' << K.vLeaveTangentMinimum.x << ']';
+            else Write_Float3(Output, {K.vLeaveTangentMinimum.x,K.vLeaveTangentMinimum.y,K.vLeaveTangentMinimum.z});
             Output << ", \"interpolation\": \"" << DISTRIBUTION_INTERPOLATION_TOKENS[static_cast<size_t>(K.eInterpolation)] << "\" }";
         }
         Output << ']';
@@ -499,6 +534,7 @@ namespace Client::EffectDocumentCodecDetail
             Output << ", \"scaleUE3\": "; Write_Float3(Output,N.vScaleUE3);
             Output << ", \"positionKeys\": "; Write_SourceTransformCurve(Output,N.Position);
             Output << ", \"eulerKeys\": "; Write_SourceTransformCurve(Output,N.Euler);
+            if (N.bUseQuaternionInterpolation) Output << ", \"useQuaternionInterpolation\": true";
             Output << " }";
         }
         Output << ']';
@@ -506,6 +542,19 @@ namespace Client::EffectDocumentCodecDetail
         {
             Output << ", \"alphaScaleKeys\": ";
             Write_SourceTransformCurve(Output,*Track.AlphaScale);
+        }
+        if (!Track.MaterialParameterTracks.empty())
+        {
+            Output << ", \"materialParameterTracks\": [";
+            for (size_t i = 0; i < Track.MaterialParameterTracks.size(); ++i)
+            {
+                const auto& Parameter = Track.MaterialParameterTracks[i];
+                Output << (i ? ", " : "") << "{ \"name\": \"" << Client::CDataJson::Escape(Parameter.strName)
+                    << "\", \"kind\": \"" << (Parameter.bVector ? "VECTOR" : "SCALAR") << "\", \"keys\": ";
+                Write_SourceTransformCurve(Output, Parameter.Values);
+                Output << " }";
+            }
+            Output << ']';
         }
         Output << " },\n";
     }
@@ -1347,6 +1396,16 @@ namespace Client::EffectDocumentCodecDetail
 			{
 				return false;
 			}
+			if (pLight->Find("specularIntensity") != nullptr &&
+				!Read_Float(*pLight, "specularIntensity", Out.Light.fSpecularIntensity, strOutError))
+				return false;
+			if (Out.Light.eProfile != Client::EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 &&
+				!Read_Array(*pLight, "direction", &Out.Light.vDirection.x, 3u, strOutError))
+				return false;
+			if (Out.Light.eProfile == Client::EFFECT_LIGHT_PROFILE::SPOT_RECONSTRUCTED_V1 &&
+				(!Read_Float(*pLight, "innerConeDegrees", Out.Light.fInnerConeDegrees, strOutError) ||
+				 !Read_Float(*pLight, "outerConeDegrees", Out.Light.fOuterConeDegrees, strOutError)))
+				return false;
 		}
 
 		if (Out.ScreenPost.bEnabled)
@@ -1414,6 +1473,16 @@ namespace Client::EffectDocumentCodecDetail
 			Write_Float4(Output, Detail.Light.vAmbient);
 			Output << ", \"falloffExponent\": "
 				<< Detail.Light.fFalloffExponent;
+			if (Detail.Light.fSpecularIntensity > 0.f)
+				Output << ", \"specularIntensity\": " << Detail.Light.fSpecularIntensity;
+			if (Detail.Light.eProfile != Client::EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1)
+			{
+				Output << ", \"direction\": ";
+				Write_Float3(Output, Detail.Light.vDirection);
+			}
+			if (Detail.Light.eProfile == Client::EFFECT_LIGHT_PROFILE::SPOT_RECONSTRUCTED_V1)
+				Output << ", \"innerConeDegrees\": " << Detail.Light.fInnerConeDegrees
+					<< ", \"outerConeDegrees\": " << Detail.Light.fOuterConeDegrees;
 		}
 		Output << " },\n        \"screenPost\": { \"enabled\": "
 			<< (Detail.ScreenPost.bEnabled ? "true" : "false");

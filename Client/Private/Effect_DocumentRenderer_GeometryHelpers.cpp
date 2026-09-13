@@ -278,6 +278,27 @@ namespace EffectDocumentRendererDetail
 			Orientation = XMMatrixRotationZ(fRoll) * CameraWorld;
 			break;
 		}
+		// Matinee-authored local-space axis locks are expressed in the emitter
+		// frame. Keeping EPAL_Z in world Y flattens a vertical portal and makes
+		// occurrence rotation move its center without turning the sprite plane.
+		const bool_t bSourceLocalAxis = Particle.pElement &&
+			Particle.pElement->SourceTransformTrack &&
+			Particle.pElement->SourceRecipe.bEnabled &&
+			Particle.pElement->Detail.Particle.bLocalSpace &&
+			Particle.eSpriteAlignment >= Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X &&
+			Particle.eSpriteAlignment <= Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z;
+		if (bSourceLocalAxis)
+		{
+			matrix_t EmitterBasis = XMLoadFloat4x4(&Particle.SourceEmitterWorld);
+			for (uint32_t Axis = 0u; Axis < 3u; ++Axis)
+			{
+				const f32_t LengthSq = XMVectorGetX(XMVector3LengthSq(EmitterBasis.r[Axis]));
+				if (!std::isfinite(LengthSq) || LengthSq <= 1.e-12f) return false;
+				EmitterBasis.r[Axis] = XMVectorSetW(XMVector3Normalize(EmitterBasis.r[Axis]), 0.f);
+			}
+			EmitterBasis.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+			Orientation *= EmitterBasis;
+		}
 		const matrix_t Pivot = XMMatrixTranslation(
 			0.5f - Particle.vSpritePivot.x,
 			Particle.vSpritePivot.y - 0.5f, 0.f);

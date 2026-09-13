@@ -1,8 +1,8 @@
-{
+﻿{
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 1739,
+  "revision": 1740,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -4524,6 +4524,18 @@
       "scale": [1, 1, 1],
       "sequenceInstanceId": "",
       "motionInstanceIds": ["world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw", "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw", "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw", "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw", "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw", "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw"]
+    },
+    {
+      "objectId": "world.object.kouku.gate1.saydon.intro",
+      "displayName": "세이튼_1관문_연출",
+      "modelAssetId": "",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.00999999978,
+      "animated": false,
+      "scale": [1, 1, 1],
+      "sequenceInstanceId": "world.sequence.instance.original_kouku",
+      "defaultMotionInstanceId": "world.sequence.instance.original_kouku"
     }
   ],
   "templates": [
@@ -80004,7 +80016,7 @@
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.kouku_reveal",
-      "displayName": "kouku_reveal",
+      "displayName": "세이튼_1관문_연출",
       "category": "Animation",
       "durationMs": 37800,
       "interpolation": "SMOOTH_STEP",

@@ -322,6 +322,210 @@ revision과 비교하지 않고 메모리 catalog 전체를 저장하므로, 외
 out/RenderingBloom20260912/RenderingProfiles.user-saved-31.json에 보존했다.
 C++ stale-save 검출·비동기 publisher·상세 로그 개선은 조사 결과이며 구현한 것으로 기록하지 않는다.
 
+## G10. 2026-09-13 포탈·폭죽·연출 배우·재질 후속
+
+기존 미커밋 변경을 유지한 채 `kouku-pattern3-sequence`를 만들고 전환했다. 기준 HEAD는
+`3fc23750761107fee9c6933df9f926d93165de05`다. 실행 중 미저장 편집이 있다는 사용자 답변에 따라
+처음에는 out 후보만 만들었고 Client/Server를 종료하거나 UI를 조작하지 않았다. 이후 두 프로세스가
+없는 상태를 확인하고 최신 저장 Sequence20, Action420, World677의 SHA를 다시 비교해 병합했다.
+원본15파일의 backup/CAS/설치 결과는 `out/KoukuPattern3Sequence20260913/installation_receipt.json`과
+`installation_backup/`에 있다. 최종 저작 revision은 Sequence21, Action421, World678이다.
+사용자의 암전 occurrence, 폭죽 XZ·박스 창, 기존 animation instance와 무관한 Pattern은 보존했다.
+신규 Effect9개는 기존 catalog와 Client `96.DataFiles`의 None/project filter에만 등록했다.
+
+### G10-1. 폭죽은 동시 생성 예산, 포탈은 원점과 sprite 축 결함
+
+`Effect Tool → Play All`의 단독 성공은 P4 동시 생성의 성공을 보장하지 않았다. 기존 포탈 두 문서의
+mesh 예약량1995에 폭죽238을 더하면2233으로 캐릭터 owner 한도2048을 넘었다. 맵의 모든
+LevelPlacement를 하나의 캐릭터 예산으로 합친 원인이다. `Can_AdmitBudget`에서 Level만 기존
+scene hard 한도를 사용하게 했다. Character/Boss owner, remote soft, scene 상한은 유지했다.
+실제 비용 함수의 원본 실패 재현 및 경계·pending·overflow26검사는 통과했다.
+
+폭죽은40요소(visible36/simulation4), 실제 tail 포함 수명12.2385초다. 방출 구간6.2385초와 다르다.
+resource 기본 수명을12239ms로 맞추고 저장한 가로 위치·24785ms 박스는 유지했다. source 발사
+높이4.1899975586m를 복구했다. 낮은 배치만으로 전체 비표시를 설명하지 않았으며 예산 거부를
+주원인으로 분리했다. Box Detail은 현재 플레이어 좌표·MAP 원점까지 거리를 표시하고
+`F1 Move Player → Use Player Position → Apply → Save`의 입력 순서를 안내한다.
+
+포탈 원본1의 공통 원점은 오망성 중심에서19.694m 떨어졌다. 오망성25요소와 흡입5요소를
+`effect.kouku.gate1.intro.portal-suction.centered`로 분리했다. 주변 쥐·금빛120요소는 별도 context로
+그대로 유지하고 원본2의 금빛24요소도 바꾸지 않았다. 새 포탈 중심은 MAP
+`[72.8571191406,1.76162734985,-99.7693652344]m`이다. 기존 임시 회전을 제거하고 local-space
+fixed-axis sprite의 축에 source emitter basis를 한 번 적용했다. 4704표본 중 해당44표본만 바뀌고
+나머지4660표본은 byte 동일했다. 법선Y는1에서0.0010719로 바뀌었고 중심의 yaw0/90 이동 오차는0이다.
+
+문서 내부14.6027618초 대기는 제거하고 P4 박스 시작14603ms가 출현 시각을 소유한다.
+새 문서 수명은15511ms, 흡입 시작은 local2.00966초다. Box Start를 옮겨 일찍 생성할 수 있다.
+박스를 길게 늘리는 것과 원본 입자 수명·흡입 시점을 늘리는 것은 별개다.
+
+### G10-2. 실제 연출 세이튼과 조명 대상
+
+전투 보스와 P4의 연출 배우는 별개다. P4 world.13/world.21은 실제 Deploy5의
+`world.sequence.instance.original_kouku`를 재생한다. `세이튼_1관문_연출` 이름의 alias와 표시명을
+추가하고 기존 World Object의 Animation Clips 목록을 기본 펼침·번호·구간 표시로 연결했다.
+12개 clip은 삭제하지 않았다. `Sequencer → 1관문_통합_시퀀스 → World 세이튼_1관문_연출 →
+Edit This Motion → Animation Clips`에서 현재 항목을 제거하고 Save할 수 있다. 이 instance는
+기존 P1과 P4가 공유하므로 해당 모션 편집은 양쪽에 반영된다.
+
+원래 MAP Spotlight의 절대 위치를 BOSS 상대 offset으로 다시 더해 대상에서 멀어지는 결함을
+수정했다. MAP 단독 사용은 기존 결과를 유지하고 BOSS/PLAYER/WORLD는 실제 대상 높이에서
+source ray가 닿는 중심을 pivot에 맞춘다. 리소스 Preview도 선택한 관문·actor context를 전달한다.
+사용자가 추가한 P4 조명 occurrence31은 WORLD world.13/world.21로 연결했다. start26525ms,
+duration11243ms와 사용자 값은 보존했다. 실제 이 시점의 배우 중심은
+`[-.288301,1.3253,737.629028]m`, 조명 높이는35.470001m이며 range59.8m 안에서 중심에 도달한다.
+공용 resource 기본값은 MAP으로 유지한다. 아직 준비되지 않은 WORLD를 전투 보스나 identity로
+대체하지 않고 실제 샘플된 Deploy pivot을 사용한다.
+
+### G10-3. 팝업북 누락6개와 동적 광원7개
+
+원본 SCENE03A에 연결된 동적 광원5 POINT/1 SPOT/1 DIRECTIONAL을
+`effect.kouku.gate1.popup.movable-lights`로 등록했다. 같은 Matinee의 move/rotation/brightness/color
+시계를 사용하며 관련 없는 l08/float track1269는 추가하지 않았다. 기존 POINT의 기본 specular0을
+보존하고 신규7개만 source specular1을 사용한다. 17,759원본 표본의 최대 위치 오차0.122076mm,
+방향2.98e-8, RGB0.00179757이며 기존 Gate2 POINT325표본의 최종 LIGHT_DESC는 byte 동일하다.
+기존32개 팝업 맵 조명 사본과 사용자 Scene Profile은 별도 소유권으로 유지했다.
+
+`effect.kouku.gate1.popup.source-material-carriers`에는 기존 배치에 없던 actor
+672/691/692/811/812/848의 안개·평면2개·흰 섬광·빛기둥·부착 커튼을 추가했다. Native3616~3620의
+정확한 material/VF/VS/PS, 원본 texture와 기존 CModel/MESH 재생 경로를 사용한다. white_t의
+op/color, shine의32.noisestr/31.fresnal_power 네 곡선은 기존 native parameter 이름과 row/lane으로
+연결한다. vector W와 다른 packet은 보존한다. 실제 codec 저장 왕복과4402시간 표본을 통과했다.
+
+EngineMaterials.DefaultMaterial 평면2개의 cooked graph는 삭제돼 있었지만 shader cache에는
+정확한 material map이 있었다. global shader 참조를0개로 가정한 추출기 결함을 수정해3개 참조를
+소비한 뒤 LocalVF를 찾았다. GUID/static set/repeated set과 물리 cache SHA를 일치시켰고,
+global RadialBlur 등록을 별도 화면 블러 실행으로 해석하지 않았다. 실제 zero-global map은
+HEAD parser의 전체 JSON과 동일하고 focused55검사는 통과했다.
+
+커튼848의 parent는 actor819→camera4→848이다. camera4는 transform carrier이며 director의
+활성 카메라가 아니다. P4 약22.71~26.99초에 가림 전 frustum 기여54표본이 확인됐다.
+기존 child356은 이미 등록돼 있어 중복 생성하지 않았다. 원본 quaternion node4개를 포함한
+실제 transform9753표본에서 기존 false 경로 행렬은 HEAD와 byte 동일했다. 최대 위치 오차는
+0.138mm, occurrence root 한 번 적용 후0.155mm다. native3620은 실제 vertex alpha·tangent
+view/up·masked discard를 소비한다. 신규 Resources9개는 원본/후보 SHA와 크기를 대조해 설치했다.
+
+두 신규 팝업 Effect 박스는 P4 start12258ms/duration46552ms이며 기존 승인된 비선형 시간표를
+사용한다. MAP root는 identity이고 실제 source 좌표는 요소별 SourceTransformTrack에 있다.
+기존136개 MAP 배치, 정상인 책·F1 배경과 기존 floor/decor6행 보정은 바꾸지 않았다.
+기존 MAP 커튼8개는 현재 저작 배치를 보존했으며, 이번 신규6개와 원본 재질 복원 수에 합산하지 않는다.
+
+### G10-4. 쇼타임 총구와 표적의 현재 연결
+
+P35 `세이튼_쇼타임`의 기존7개 창을 유지하며 양쪽 WORLD 총에 발사광·signature를 연결했다.
+설치 총 모델5265정점 중 실제 앞 격자72정점의 중심을 총구 기준으로 사용했다. local 중심은
+`[.01913988,-.02469903,.98251975]m`, 전방은+Z다. WORLD의1.5×사용자1.4 배율을 그대로 소비한다.
+실제 CModel loop A382표본의 중심 오차는6.7435e-7m다. 원본에 없는 socket 이름을 만들지 않았다.
+
+바닥/노란 표적의 원본 BOSS+절대 MAP 좌표 중복을 제거하고 fixed/tracking/end를 저장된
+MAP `[-.07,1.32,942.33]`에 배치했다. 기존 내부-0.1m 때문에 지면 아래에 있던 표적은 별도
+ground variant에서 높이를 교정했다. 원본20개 라이브러리는 보존하고 총구2개·표적3개 variant만
+추가했다. source와 variant25문서의185요소/139물리 DDS·WModel 참조를 확인했다.
+
+Source Projectile421991205는 지면 표적·먼지·착탄을 소유한다. 원본 CEFSequenceSummonsProjectileTrace의
+Key33 target 의미·callback과 총구→목표 비행 경로는 해독 완료가 아니다. 현재 MAP 표적 배치를
+실제 PLAYER 추적 복구라고 기록하지 않는다. 탄피의 Bip002-R-Hand는 총의 B_WP1과 다른 sub-rig여서
+원본 손 부착을 보존했다. 임의 총 측면 socket으로 치환하지 않았다.
+
+### G11. 게시 실패 원인과 최종 실행 경계
+
+기존 실패 로그는 Save420/Product382를 보였다. Product 변환은 성공했지만 World publisher가
+Kouku Parent의 optional boolean fixedTimeline을 unknown field로 거부하여 전체 rollback했다.
+Kouku의 해당 field만 허용하고 다른 encounter·unknown field·잘못된 타입 거절은 유지했다.
+`Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 421` 실행으로
+Product/Map/World/GameplayBalance 네 domain이 모두 PASS했다. 게시된 Product는421이고 Map World는678이다.
+현재 저장47개 Pattern 중 게시 가능한33개가 projection됐다. 기존 미완성 Pattern을 임의로 삭제하거나
+revision freshness 검사를 제거하지 않았다.
+
+Client/Server 실행·UI 조작·화면 캡처는 수행하지 않았다. 코드·게시·수치 검증은 사용자 화면
+판정과 별개다. 사용자 확인 경로는 직접 Server/Client 실행 후 `KoukuSaydon → F1 → Sequencer →
+1관문_통합_시퀀스`의 포탈/폭죽/조명/책 펼침 및 Action Composition의 `세이튼_쇼타임`이다.
+최종 제품 빌드와 실제 최신 OBJ 검증 결과는 아래에 기록한다.
+
+첫 Product 빌드는 PASS(179.262초, Client172OBJ/4CSO/1EXE)했다. 마지막 review에서 source
+static masked3616/3620이 particle용 depth-read profile을 소비한 결함을 확인해 두 프로그램만
+기존 OPAQUE_BACK_DEPTH_WRITE로 교정했다. 원본 masked discard는 유지하고 나머지1139개
+program row와 기존 particle masked profile은 동일하다. 실제 설치 Effect의 두 renderProfile만
+CAS로 교체한 뒤6 carrier actual codec572348검사가 다시 PASS했다. 수정 설치 SHA는
+`03b21102513b6f93f7ec5e0547e7dabbf163188616a0c7f1bf844c6738d5bdb3`이며 근거는
+`masked_installation_receipt.json`, `candidate/popup_carriers/masked-depth-validation.json`이다.
+
+남은 범위는 기존 MAP 커튼79~86의 재질8개와 쇼타임의 실제 target callback/추적·비행이다.
+기존 커튼은 모두 LV curtain01_mi를 사용하지만 SCENE03A 대응은 BG01 네 개와 BG01c 네 개다.
+사용자 TRS를 보존하며 해당8개만 고치는 CModel용 source material variant는 아직 구현하지 않았다.
+Effect용 native3620의 ID만 Map material에 넣으면 동일 ABI가 아니므로 연결 완료로 기록하지 않는다.
+따라서 이번 결과는 모든 팝업 재질·쇼타임 gameplay의 완전 복원 또는 사용자 visual PASS가 아니다.
+
+최종 증분 Product 빌드 PASS: `out/BuildPipeline/runs/20260913T051107655Z-debug-product.json`.
+Client의 변경된 native table1OBJ와 EXE를 갱신했고 shader closure도 통과했다. 첫 빌드의 전체
+소비자172OBJ/4CSO와 함께 최종 상태다. 기존 shader/PDB/charset 경고는 존재하지만 빌드 오류는0이다.
+최종 JSON/XML18파일 parse, 신규 Resources9개 SHA/크기, World source/runtime678 의미 동일성도 PASS다.
+검증 중 Client/Server 프로세스는 없었고 실행·종료·화면 캡처는 하지 않았다.
+
+최종 Product37OBJ와 새 fixture2개를 연결한 Showtime CPU probe는34문서 전부 Load/재생 PASS,
+실패0이다. 원본20개와 신규5개 및 비교9개를 포함하고 Load 실패 또는 입력 수 불일치를 실패로
+처리한다. 실제 CModel 본·총구 수치 검사이며 GPU draw/PLAYER 추적 증거는 아니다.
+근거는 `showtime_probe/final_receipt.json`, `playback_final.json`, `muzzle.json`이다.
+같은 최신 Product codec으로 P4의7 Effect 문서를 검사한 전체 박스 동시 예약 상한은
+particles9310/16384, mesh3783/4096, lights7/32, draw4041/6144이며6개 시간 경계에서 모두 통과했다.
+실제 이펙트가 먼저 종료해도 박스 전체를 예약하는 보수적 검사다. `budget/p4_schedule.json`에 있다.
+
+이후 사용자는 Server와 `Client/Bin/Debug/Client.exe`를 직접 실행해 P4와 쇼타임을 확인한다.
+별도 재빌드는 필요하지 않으며 F5/Ctrl+F5를 무빌드 실행으로 안내하지 않는다. 현재 branch는
+`kouku-pattern3-sequence`이며 사용자 요청이 없었던 commit/push는 수행하지 않았다.
+
+
+## G12. Box Preview와 포탈 context의17초 앞 대기
+
+Box Detail의 Effect Preview는 geometry 드래그의 정지 커서 경로를 잘못 재사용했다.
+명시 Preview는 기존 `Request_PatternPreview`를 박스의 시작 시각에서 재생하도록 수정했다.
+Effect local age는0이고 BOSS 애니메이션/WORLD 시계는 기존 Pattern 시각을 유지한다.
+일반 TRS 드래그의 paused/cursor 상태는 그대로다. 실제 Workbench CPU probe에서
+0/14603/17000/23000ms 즉시 시작, 미적용 Detail override, 다른 박스·WORLD·Animation 보존,
+실패 시 이전 요청 보존과4500ms geometry cursor 유지가 통과했다.
+`out/KoukuBoxPreviewTiming20260913/workbench-probe/run.log`가 실제 요청 경로의 근거다.
+
+사용자가 작업 중 저장한 Sequence revision22의 centered 포탈 박스는 이미 start0/duration36541이다.
+오망성30개 centered 문서의 내부 시작도0이다. 별도 `1관문_전후 쥐·금빛 연결` context120개에는
+원본 장면의17.1347671585083초 대기가 남아 있었다. 해당 context의 모든 StartDelay에서
+이 값을 빼고 SourceTimeOrigin에 더한 후보를 `out/KoukuBoxPreviewTiming20260913/leading-delay`에
+준비했다. 원본 source SHA는 `1f484aea4961c33cd516f379bd988131937e8fdb81a19d30c8cbff399c0014cf`,
+후보 SHA는 `9d09ef9e111913872210c74e48ac599911536a14e33520058a28e19e55c25acb`다.
+240개 timing field만 바뀌었고 이 기록 시점에는 실행 중 사용자 draft를 보호하기 위해 설치하지 않았다.
+원본150개와 금빛 원본2의34초 시각은 변경하지 않았다.
+
+Effect Tool의 Current Effect에 공통 대기 초와 `Remove Leading Delay`를 추가했다.
+독립 SourceTransformTrack 문서만 지원하며 model cue/actor/baked history/attachment/inheritance/
+enabled SourcePresentation 등 다른 시계 의존성은 이유를 표시하고 거절한다. 미적용 Detail은
+Apply한 뒤 처리한다. 검증한 candidate는 기존 `Try_CommitDocument`로 교체하고 `Save Changes`만
+파일을 쓴다. 현재의 요소 간 간격, 수명, native emitter delay와 원본 transform/alpha/material 곡선을 보존한다.
+기존 portal 분리 generator도 context에 같은0초 기준을 적용해 다시17초를 넣지 않게 수정했다.
+
+변경된 Effect Tool 두 CPP의 격리 컴파일은 통과했다. 실제 두 helper 함수의 원문을 그대로
+분리한 CPU probe는 실제 codec, `CEffectPlayback::Sample_SourceTransformTrack`, native material
+packing을 연결해2300검사를 통과했다. context120개×501시점에서 C++ 편집본과 설치 후보를
+각각 원본과 비교했고 실제 popup6개/four material curve도 scratch pre-roll로 검사했다.
+최대 source clock 오차3.8147e-6초, transform matrix component 오차2.95639e-5, native packet
+lane 오차0이다. 지원하지 않는12입력의 거절과 source 보존도 확인했다.
+`leading-delay/probe-receipt.json`, `full_compile_receipt.json`, `generator-receipt.json`에 기록했다.
+Generator 재실행은 결정적이며 원본150개 무변경, centered30개 byte 동일, context 후보 의미 동일이다.
+Client/Server 종료·UI 실행·화면 검증이나 최신 Product EXE 교체는 수행하지 않았다.
+
+후속 범위 감사에서 Effect Tool의 저장 목록에는 전체150개 `portal-arrival.1`도 남아 있음을
+확인했다. 현재 Action427/Sequence22가 직접 참조하는 resource는0개지만 Catalog/EffectResourceTree에서
+Play All할 수 있다. 전체 문서의 공통 대기는14.602761848449706초이고 그 안의 context 요소가
+17.134767초부터 시작한다. 전체150개에도 공통 대기를 제거한 별도 out 후보를 준비했다.
+새 시각은 포탈0/흡입2.00966/context2.532005초이며 서로의 간격은 보존한다.
+`leading-delay/original1/candidate-receipt.json`의 source SHA는
+`637f3b431fa9532de83cd919fcd6e8fcea11b8508900fdef8579d1ae75e8b22c`, 후보 SHA는
+`e867a88b065052b6ebc71f29f4be232a7ee43f57cac1e24563587d355936dbd3`이다. 아직 Data에는 설치하지 않았다.
+
+동일 실제 C++ helper/codec/SourceTransform/native material probe의150개 검사2360회도 통과했다.
+최대 source clock 오차3.8147e-6초, matrix component2.00272e-5, native packet lane0이다.
+정규화된 전체150개를 generator 입력으로 두 번 재생성해 centered30/context120의 시작0과
+모든 파생 field·배치 원점이 종전 생성 결과와 동일함을 확인했다(시간 오차0).
+공통 대기가 이미0인 포탈30개에는 다시 offset을 적용하지 않는다. 전체150개 안에 남은
+context 상대2.532005초는 context 독립 파생본 생성 때만 제거한다. 원본2/금빛34초는 변경하지 않는다.
+
 ## G10. 통합 암전 미표시: BC1 A coverage 거부 교정 (2026-09-13)
 
 사용자 요청대로 포탈과 카메라는 수정하지 않았다. 실제 작업 위치는 C:/Users/USER/source/졸업팀폴/LostArk, 시작 HEAD 461224f9, 적용 브랜치 codex/kouku-g1-fade-visible이다. 기존 암전 timing 16개(+약0.3초)와 Framework.sln의 다른 변경을 보존했으며 자동 stage/commit/push는 하지 않았다.

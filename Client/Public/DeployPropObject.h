@@ -154,6 +154,8 @@ public:
 	bool_t Apply_AnimationAuthoringPose(
 		const float3_t& position,
 		const float4_t& rotationQuaternion);
+	// Read the root actually posed by the active World animation, including authored movement.
+	bool_t Try_GetAnimationAuthoringPivot(float4x4_t& outWorld) const;
 	bool_t Get_PlacedRootPose(
 		float3_t& outPosition,
 		float4_t& outRotationQuaternion) const;

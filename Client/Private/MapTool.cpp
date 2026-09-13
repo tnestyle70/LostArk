@@ -841,9 +841,13 @@ bool_t Client::CMapTool::Sample_ShotCameraTrack(
 		cue, elapsedMs / 1000.f, outPose);
 }
 
-int Client::CMapTool::Debug_SequenceViewer(const std::string& areaId,
-	const std::string& sequenceId, const std::string& triggerId,
-	const bool_t play, const bool_t stop, const float3_t* focus, std::string& status)
+std::string Client::CMapTool::Debug_GetActiveAreaId() const
+{
+	const auto* area = Get_ActiveEditorArea();
+	return area ? area->areaId : "";
+}
+
+int Client::CMapTool::Debug_PrepareEditorArea(const std::string& areaId, std::string& status)
 {
 	if (m_iAuthoringLevelIndex != ETOUI(LEVEL::DEVELOPMENT) || !CMapEditorWorkspaceService::Is_Active())
 	{ status = "Lobby > Test에서 편집 미리보기를 사용할 수 있습니다."; return -1; }
@@ -860,6 +864,50 @@ int Client::CMapTool::Debug_SequenceViewer(const std::string& areaId,
 		{ status = "Area 준비 실패: " + m_Status; return -1; }
 		status = "Area를 준비하고 있습니다."; return 0;
 	}
+	return 1;
+}
+
+int Client::CMapTool::Debug_WorldLevelSelection(const std::string& areaId,
+	const uint64_t placementId, const bool_t deploy, std::string& status)
+{
+	const int ready = Debug_PrepareEditorArea(areaId, status);
+	if (ready != 1) return ready;
+	if (placementId != 0u)
+	{
+		if (deploy)
+		{
+			const auto& entries = m_DeployRuntime.Get_Entries();
+			const auto entry = std::find_if(entries.begin(), entries.end(), [placementId](const auto& value) {
+				return value.placement.runtimePlacementId == placementId; });
+			if (entry == entries.end())
+			{ status = "The Deploy placement is absent from the current Map Tool draft."; return -1; }
+			const auto* asset = m_DeployRuntime.Get_Catalog().Find(entry->placement.assetId);
+			if (!asset || asset->kind != DEPLOY_PROP_MODEL_KIND::ANIM)
+			{ status = "Static Deploy placements are read-only in this owner. Their position remains available in World Level Tool."; return -1; }
+			if (m_iSelectedAnimatedPropPlacementId != placementId)
+			{
+				m_iSelectedAnimatedPropPlacementId = placementId;
+				Sync_AnimatedPropTransformDraft();
+			}
+		}
+		else
+		{
+			if (!Find_Placement(placementId))
+			{ status = "The Map placement is absent from the current Map Tool draft."; return -1; }
+			m_iSelectedPlacementId = placementId;
+		}
+	}
+	m_eToolMode = deploy ? TOOL_MODE::WORLD_SEQUENCE : TOOL_MODE::MAP_ASSETS;
+	status = "Selected in Map Tool. Edit/create here, then use its Save and Publish controls.";
+	return 1;
+}
+
+int Client::CMapTool::Debug_SequenceViewer(const std::string& areaId,
+	const std::string& sequenceId, const std::string& triggerId,
+	const bool_t play, const bool_t stop, const float3_t* focus, std::string& status)
+{
+	const int ready = Debug_PrepareEditorArea(areaId, status);
+	if (ready != 1) return ready;
 	if (!triggerId.empty())
 	{
 		if (!m_WorldGameplayDocument.Find(triggerId))

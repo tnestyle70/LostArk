@@ -192,6 +192,32 @@ bool_t CLightResourceCatalog::Try_BuildLightDesc(const LIGHT_RESOURCE& r,const f
     {status="Resolved light direction is zero.";return false;}
     out=light;return true;
 }
+bool_t CLightResourceCatalog::Try_BuildAnchoredLightDesc(const LIGHT_RESOURCE& resource,
+    const std::string_view anchorKind, const float4x4_t& pivot, const f32_t anchorHeight,
+    const f32_t multiplier, LIGHT_DESC& out, std::string& status)
+{
+    if (anchorKind != "MAP" && anchorKind != "BOSS" && anchorKind != "PLAYER" && anchorKind != "WORLD")
+    { status = "Light requires a MAP, BOSS, PLAYER or WORLD anchor."; return false; }
+    if (anchorKind == "MAP" || resource.strDefaultAnchorKind != "MAP" || resource.eType == LIGHT::DIRECTIONAL)
+        return Try_BuildLightDesc(resource, pivot, multiplier, out, status);
+    if (!Validate_Resource(resource, status) || !std::isfinite(anchorHeight))
+    { if (!std::isfinite(anchorHeight)) status = "Map light target height is not finite."; return false; }
+    auto anchored = resource;
+    const float height = resource.vLocalOffset.y - anchorHeight;
+    anchored.vLocalOffset = {0.f, height, 0.f};
+    if (resource.eType == LIGHT::SPOT)
+    {
+        const matrix_t rotation = XMMatrixRotationRollPitchYaw(XMConvertToRadians(resource.vLocalRotationDegrees.x),
+            XMConvertToRadians(resource.vLocalRotationDegrees.y), XMConvertToRadians(resource.vLocalRotationDegrees.z));
+        const vector_t direction = XMVector3Normalize(rotation.r[2]);
+        const float vertical = XMVectorGetY(direction);
+        const float distance = std::abs(vertical) > 0.000001f ? -height / vertical : -1.f;
+        if (!std::isfinite(distance) || distance <= 0.f || distance > resource.fRangeMeters)
+        { status = "Map spotlight center ray cannot reach this actor height within its saved range."; return false; }
+        XMStoreFloat3(&anchored.vLocalOffset, XMVectorScale(direction, -distance));
+    }
+    return Try_BuildLightDesc(anchored, pivot, multiplier, out, status);
+}
 bool_t CLightResourceCatalog::Load_Runtime(std::string& status)
 {
     if(!Reload_Runtime(status))return false;

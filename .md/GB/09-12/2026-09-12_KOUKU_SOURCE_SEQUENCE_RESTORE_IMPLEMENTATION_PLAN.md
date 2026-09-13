@@ -275,6 +275,139 @@ UI Publish가 stdout/stderr를 버리고 UI thread에서 동기 대기하는 구
 C++ 변경·Client/UI 조작은 하지 않는다. 검증은 두 JSON parse, 원본 변경 범위와 공식 게시,
 기존 RenderingProfiles publisher 회귀로 한정한다.
 
+## G10. 2026-09-13 MAP 중심·독립 포탈 시계와 연출 애니메이션
+
+기준은 `kouku-pattern3-sequence` / `3fc23750761107fee9c6933df9f926d93165de05`다.
+사용자가 저장한 Sequence revision19의 폭죽 추가와 포탈 조절을 out 원본에 보존한다.
+실행 중 미저장 편집이 있으므로 Effect·Sequence·WorldSequence 데이터는 먼저 별도 후보로
+검증한다. 사용자 Save 이후 최신 저장본과 해당 stable ID의 변경 필드만 합치며 외부 수정
+freshness 검사를 제거하거나 현재 문서 전체를 이전 후보로 덮어쓰지 않는다.
+
+`portal-arrival.1`의 공통 원점은 오망성의 실제 emitter 중심에서 약19.694m 떨어졌다.
+이 문서의 오망성25행·흡입5행을 독립 Effect로 분리하고, 오망성의 source 중심을
+회전 원점으로 사용한다. 원본 mesh normal, TypeData pre-rotation, source actor basis를
+실측하여 수직 문 방향을 복구한다. 포탈 첫 발생을 local0초로 옮겨 Box Start가 출현 시각을
+소유하게 한다. 같은 원본 문서의 쥐·금빛120행과 두 번째 문서의 금빛24행은 원래 시각과
+좌표를 보존한다. 새 데이터만 기존 Effect catalog와 Client 96.DataFiles/filters에 등록한다.
+새 C++ 파일이나 별도 Effect runtime을 만들지 않는다.
+
+폭죽은 원본3발사점과 saved MAP root, 지면 높이, source attachment, 실제 particle 수명,
+현재 카메라의 위치를 대조한다. Box24785ms, 방출 구간6.2385초와 tail을 포함한 실제 Playback 수명12.2385초를 구분한다.
+위치와 원본 발사 높이를 보정하고 원본 재질·입자 및 금빛 연출에 전역 보정을 적용하지 않는다.
+`KoukuSaydonActionWorkbench.cpp::Render_PresentationAnchor`에는 현재 플레이어 좌표와
+MAP 원점까지 거리를 표시하고, F1 Move Player 완료 뒤 Use Player Position→Apply→Save
+순서를 명확히 한다. 입력은 기존 편집 상태와 stage/commit 경로로 전달한다.
+
+현재 P4 world.13은 `world.sequence.instance.original_kouku`의 실제12 animationTracks를
+사용한다. `세이튼_1관문_연출` 이름의 placed-sequence alias를 기존 World Object 정본에
+추가하고, Composition World 표시명도 맞춘다. 기존 Animation Clips 편집·삭제·Save가 같은
+sequence instance를 소비하므로 별도 Action Pattern으로 animation을 복제하지 않는다.
+WorldObjectTool의 목록에는 각 clip의 구간과 공유된 저장 대상을 표시한다. 사용자가 지우기
+전에는12개 애니메이션을 모두 보존한다.
+
+## G11. Parent fixedTimeline 게시 실패와 revision 일치
+
+실제 Action 저장 revision420에 대해 게시 로그는 World publisher의 `fixedTimeline` unknown
+field 거부와 전체 rollback을 기록하며 이전 Product382를 유지한다. Sequence19와 Action420의
+revision은 서로 다른 owner다. `Publish-WorldGameplay.ps1::Get-EncounterProfiles`에서 Kouku
+Parent의 optional boolean fixedTimeline을 기존 Gameplay publisher 계약과 같이 검증한다.
+unknown field 거절, 잘못된 타입 거절, 저장·게시·Server-active revision 검사는 유지한다.
+기존 projector focused test에서 실제 PowerShell reader를 사용해 true/false/생략을 승인하고
+잘못된 타입·다른 encounter·unknown field를 거부한다.
+
+검증은 현재 codec/CPU playback의 source transform·수명·되감기, 실제 shader/resource 연결,
+JSON/XML parse, 사용자 변경 보존, 필요한 증분 Product Build와 동일 Area Publish/Check,
+최종 Kouku owner의 Product/Map/World/Balance 게시로 수행한다. 실행 중 Client/Server는
+종료하지 않는다. 미저장 편집 보존과 출력 잠금 해제 뒤에만 정본 교체·최종 링크를 수행하고,
+사용자의 화면 조작·오망성/폭죽 시각 판정을 자동 성공으로 기록하지 않는다.
+
+
+## G12. 맵 연출 예산·실제 배우 스포트라이트·쇼타임 연결
+
+맵의 모든 LevelPlacement를 하나의 캐릭터 owner2048 mesh 예산에 합산하는 경계를 수정한다.
+기존 포탈/금빛1995와 폭죽238은2233으로 owner한도를 넘지만 scene한도4096 안에 있다.
+LevelOwner만 기존 scenehard 한도를 소비하고 Character/Boss owner 및 remote soft 한도는 보존한다.
+실제 예산 함수로 동일 시퀀스 통과, 캐릭터 제한·scene 최대·pending·overflow 거절을 검증한다.
+
+MapLight resource의 절대좌표는 MAP에서만 소비한다. BOSS/PLAYER/WORLD는 기존 광원 모양과
+방향·range를 유지하며 실제 대상 높이의 평면을 비추도록 source ray 중심을 대상 원점에 맞춘다.
+WORLD는 기존 world/occurrence stable ID와 같은 pivot resolver를 사용한다. P4의26525ms 광원은
+전투 보스가 아닌 world.13의 연출 세이튼을 따른다. resource Preview도 선택한 관문/actor owner를
+사용한다. parser/publisher/UI/runtime를 함께 연결하고 기존 MAP와 local actor light를 보존한다.
+
+Showtime의 원본20종 문서와 carrier/texture, R-Hand·B_WP1/2와 실제 WORLD 총구 basis를
+대조한다. 원본 bone용 자산은 유지하고 사용자의 WORLD 총에 맞는 독립 총구 occurrence를
+연결한다. target.fixed의 BOSS+절대 MAP 좌표 중복을 제거하고 바닥/노란 표적의 실제 방향과
+깊이를 검사한다. source ProjectileTrace의 지면 dust/impact를 비행탄으로 재해석하지 않는다.
+
+팝업북은 현재136 MAP 배치·책의 source material과 누락 carrier를 대조하며, SCENE03A의
+동적 광원 brightness/move/rotation 트랙을 기존 typed light 경로로 복원한다. POINT/SPOT/
+DIRECTIONAL 타입을 보존하고 임의 point 치환이나 전체맵 shader 보정을 하지 않는다.
+후보별 정확한 원본/현재 범위와 검증된 완료·미완료 경계는 RESULT에 기록한다.
+
+## G13. 팝업북 StaticMeshActor 재질 곡선과 기존 native 입력
+
+SCENE03A의 actor672·691·692·811·812·848는 기존136 MAP 배치에 없는 안개·바닥 평면·흰 섬광·빛기둥·부착 커튼이다.
+`build_gate1_popup_carriers.py`는 실제 StaticMeshComponent와 연결된 Matinee group의
+move/material parameter track을 읽고 기존 SourceTransformTrack의 시간축으로 투영한다.
+WModel geometry와 source texture는 원본과 대조하며 신규 Resources만 설치한다.
+다섯 native program3616~3620은 실제 source VS/PS·정적 파라미터와 기존 native table/dispatch를
+소비한다. rendererShape만 보고 Cascade mesh particle로 승인하지 않고, 해당 source static
+mesh 프로그램에만 명시적인 sourceTransformMesh 계약을 부여한다.
+
+`EFFECT_SOURCE_TRANSFORM_TRACK::MaterialParameterTracks`는 선택적인 이름·SCALAR/VECTOR·
+기존 Distribution을 소유한다. codec은 실제 프로그램의 parameter table로 이름과 타입을
+검증하고 renderer staging은 그 table의 row/lane을 보관한다. MaterialBinding은 기존
+Frame sample time에 SourceTimeOrigin을 더해32행 native packet 중 해당 lane 또는RGB만
+갱신한다. vector의W, 다른 파라미터, 곡선 없는 기존 문서의 packet은 유지한다.
+알 수 없는 이름·중복·타입 불일치·비유한 값은 저장/준비 단계에서 거절한다.
+별도 애니메이션 시계나 Particle 위장을 만들지 않는다.
+
+white_t의 op/color와 shine의32.noisestr/31.fresnal_power 네 곡선을 기존 이동과 같은
+P4 start12258ms/duration46552ms에 배치한다. 평면 actor691·692의 실제 슬롯은
+EngineMaterials.DefaultMaterial이다. cooked graph는 삭제됐지만 main shader cache의
+정확한 material GUID/static set/repeated set과 LocalVF BasePass VS/PS를 확인했다.
+추출기는 기존 count0 고정 가정 대신 실제 global shader 참조3개를 소비하고 VF를 읽는다.
+별도 radial-blur shader가 캐시에 참조됐다는 이유로 화면 blur 실행을 추가하지 않는다.
+두 평면의 source bUseQuatInterpolation은 선택적인 node bool로 보존하며 기존 source
+Euler endpoint를 quaternion으로 변환한 shortest-arc slerp를 같은 transform 경로에 연결한다.
+flag가 없는 기존 문서는 기존 계산과 직렬화를 유지한다. 누락의 물리·시간·원본 근거와
+최종 복구 범위는 RESULT에 구분한다.
+
+커튼848은 actor819→camera4→curtain848의 원본 부모3개를 같은 node chain으로 소비한다.
+camera4는 이번 구간의 활성 시점 카메라가 아닌 transform carrier다. 원본 director 카메라와
+가림 전 frustum 대조에서 P4 약22.71~26.99초의 기여 후보를 확인했으며 source material
+curtain01c_mi의 실제 정점 alpha·tangent view/up·masked discard를 native3620에 연결한다.
+기존 MAP 커튼8개와 이미 등록된 child356은 새로 생성하지 않는다.
+
+
+## G14. Effect Box Preview의 시작 대기 제거
+
+Box Detail의 명시적인 Effect Preview는 현재 커서의 정지 geometry preview 대신 해당 박스의
+`iStartMs`에서 기존 Pattern preview를 재생한다. 이펙트의 local age는 0으로 시작하면서
+BOSS 본 애니메이션과 WORLD sequence는 같은 절대 Pattern 시각을 소비한다. 일반 TRS
+드래그의 geometry preview는 현재 커서와 일시정지 상태를 유지한다. Box Detail의 미적용
+시간·배치 값은 기존 검증된 임시 override로 전달하며 저장 파일과 다른 occurrence는 바꾸지 않는다.
+
+호출자는 `Queue_PresentationPreview`의 EFFECT occurrence 분기이고 소비자는 기존
+`Request_PatternPreview → MainApp → CKoukuSaydonPresentationPlayer::Sample`이다.
+저장 포탈의 내부 첫 발생은 이미 0초이며 14603ms는 timeline 박스의 시작값이다. 해당 값은
+사용자가 타임라인에서 조절한다. 실제 Workbench 요청·검증·임시 문서와 source 보존을
+CPU probe로 확인하고 변경한 Workbench를 격리 컴파일한다. 실행 중 Client/Server와
+미저장 저작 문서는 유지하며 최종 화면은 사용자가 확인한다.
+
+Effect Tool의 Current Effect에는 공통 앞 대기와 `Remove Leading Delay`를 표시한다.
+지원 범위는 모든 요소가 독립 SourceTransformTrack을 가지며 model cue, source actor,
+본 부착, transform inheritance, baked history, enabled SourcePresentation을 쓰지 않는
+맵 연출 문서다. 기존 Detail 미적용 값은 먼저 Apply하도록 보호하며 문서 전체 candidate를
+검증한 뒤 기존 `Try_CommitDocument`로 한 번 교체한다. 모든 요소의 StartDelay에서 같은
+최솟값을 빼고 각 SourceTimeOrigin에 더한다. 상대 발생 간격, native emitter delay, 수명,
+원본 transform/alpha/material 곡선은 보존한다. Save Changes만 실제 파일을 쓴다.
+
+현재 Sequence revision22의 centered 박스는 사용자가 이미 start0/duration36541로 저장했다.
+별도 portal context의17.134767초 내부 대기 제거 후보를 out에 준비하고 원본 SHA 및
+2개 필드만의 변경 영수증을 남긴다. 실행 중 저작 문서에는 외부 덮어쓰기를 하지 않는다.
+
 ## G10. 통합 암전의 A coverage 입력 교체 (2026-09-13)
 
 사용자 요청은 포탈을 제외하고 재생 시 암전이 표시되도록 수정하는 것이다. C++/HLSL, 카메라 FOV/위치, 포탈, 다른 컷신, 기존 암전 intensity/time 키는 변경하지 않는다.

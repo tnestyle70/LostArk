@@ -718,6 +718,16 @@ bool_t CDeployPropObject::Apply_AnimationAuthoringPose(
 	return true;
 }
 
+bool_t CDeployPropObject::Try_GetAnimationAuthoringPivot(float4x4_t& outWorld) const
+{
+	if (!m_bAnimationAuthoringPreviewActive || !m_pTransformCom) return false;
+	const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();
+	for (const auto& row : world.m)
+		for (const auto value : row) if (!std::isfinite(value)) return false;
+	outWorld = world;
+	return true;
+}
+
 bool_t CDeployPropObject::Get_PlacedRootPose(
 	float3_t& outPosition,
 	float4_t& outRotationQuaternion) const

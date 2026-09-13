@@ -263,6 +263,7 @@ private:
     float m_PreviousPosition = 0.f;
     bool m_PreviousPaused = true, m_PreviousLoop = false;
     std::string m_SourceModelEffectId;
+    std::string m_ExplicitKoukuPatternId;
     float4x4_t m_WorldRoot{};
     double m_ClockMs = 0.0;
     float m_Zoom = 80.f;

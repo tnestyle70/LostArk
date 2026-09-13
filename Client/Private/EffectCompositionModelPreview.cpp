@@ -59,6 +59,20 @@ bool Read_ModelProjection(const std::string& bytes,
     { status = "Model reference requires a valid v3 Composition header and patterns array."; return false; }
     Text(root, "compositionId", staged.strCompositionId);
     Text(root, "areaId", staged.strAreaId);
+    // Keep only the stable Effect-to-pattern join used by model selection.
+    // This projection does not admit or play these presentation resources.
+    if (const auto* resources = root.Find("presentationResources"); resources && resources->Is_Array())
+        for (const auto& value : resources->Get_Array())
+        {
+            std::string kind;
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
+            if (Text(value, "kind", kind) && kind == "EFFECT" &&
+                Text(value, "resourceId", resource.strResourceId) && !resource.strResourceId.empty() &&
+                Text(value, "assetId", resource.strAssetId) && !resource.strAssetId.empty() &&
+                Text(value, "resourceKind", resource.strResourceKind) &&
+                (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
+                staged.PresentationResources.push_back(std::move(resource));
+        }
     std::set<std::string> ids;
     for (const auto& value : patterns->Get_Array())
     {
@@ -121,6 +135,16 @@ bool Read_ModelProjection(const std::string& bytes,
             }
         }
         if (duration > MAX_TIME_MS) Problem(pattern.strLoadError, "Pattern exceeds 600 seconds.");
+        if (const auto* occurrences = value.Find("presentationOccurrences"); occurrences && occurrences->Is_Array())
+            for (const auto& occurrenceValue : occurrences->Get_Array())
+            {
+                KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE occurrence;
+                if (Text(occurrenceValue, "occurrenceId", occurrence.strOccurrenceId) && !occurrence.strOccurrenceId.empty() &&
+                    Text(occurrenceValue, "resourceId", occurrence.strResourceId) &&
+                    std::any_of(staged.PresentationResources.begin(), staged.PresentationResources.end(),
+                        [&](const auto& resource) { return resource.strResourceId == occurrence.strResourceId; }))
+                    pattern.PresentationOccurrences.push_back(std::move(occurrence));
+            }
     }
     if (const auto* folders = root.Find("folders"); folders && folders->Is_Array())
         for (const auto& value : folders->Get_Array())

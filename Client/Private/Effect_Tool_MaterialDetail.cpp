@@ -1482,12 +1482,15 @@ void Client::CEffect_Tool::Render_KindDetail(
 	{
 		EFFECT_LIGHT_DETAIL_DESC& Light = Detail.Light;
 		ImGui::SeparatorText("Presentation Light");
-		ImGui::TextDisabled("Profile: Point Light (Reconstructed v1)");
 		if (!Light.bEnabled)
 		{
 			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
 				"This source row has no admitted typed Light payload. Delete or hide it here; enabling it requires source-backed materialization.");
 		}
+		const char_t* LightType = Light.eProfile == EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 ? "Point" :
+			Light.eProfile == EFFECT_LIGHT_PROFILE::SPOT_RECONSTRUCTED_V1 ? "Spot" :
+			Light.eProfile == EFFECT_LIGHT_PROFILE::DIRECTIONAL_RECONSTRUCTED_V1 ? "Directional" : "Unresolved";
+		ImGui::Text("Light Type: %s", LightType);
 		bool_t bPresentationChanged = false;
 		ImGui::BeginDisabled(!Light.bEnabled);
 		bPresentationChanged |= ImGui::DragFloat("Light Range",
@@ -1495,6 +1498,9 @@ void Client::CEffect_Tool::Render_KindDetail(
 			ImGuiSliderFlags_AlwaysClamp);
 		bPresentationChanged |= ImGui::DragFloat("Light Intensity",
 			&Light.fIntensity, 0.01f, 0.f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Specular Intensity",
+			&Light.fSpecularIntensity, 0.01f, 0.f, 100000.f, "%.3f",
 			ImGuiSliderFlags_AlwaysClamp);
 		bPresentationChanged |= ImGui::ColorEdit4("Light Color",
 			&Light.vColor.x, ImGuiColorEditFlags_Float |
@@ -1508,7 +1514,6 @@ void Client::CEffect_Tool::Render_KindDetail(
 		ImGui::EndDisabled();
 		if (bPresentationChanged)
 		{
-			Light.eProfile = EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
 			Light.eStatus =
 				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
 			bChanged = true;

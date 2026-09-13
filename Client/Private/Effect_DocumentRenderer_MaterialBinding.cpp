@@ -348,6 +348,18 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			hFirstBindFailure = hResult;
 		return true;
 	};
+    std::array<float4_t, 32u> animatedArtistParameters;
+    const auto* artistParameters = &Resource.ArtistSourceMaterialParameters;
+    if (!Resource.ArtistMaterialTrackBindings.empty())
+    {
+        if (!Element.SourceTransformTrack)
+            return Fail_RenderOperation("Native material parameter track is unavailable.", E_INVALIDARG);
+        animatedArtistParameters = Resource.ArtistSourceMaterialParameters;
+        if (!Apply_ArtistMaterialTrackSamples(*Element.SourceTransformTrack, Resource.ArtistMaterialTrackBindings,
+            m_fSourceTrackSampleSeconds, animatedArtistParameters))
+            return Fail_RenderOperation("Native material parameter track sample is invalid.", E_INVALIDARG);
+        artistParameters = &animatedArtistParameters;
+    }
     // Fixed decal/trail carriers share the admitted native parameter packet.
     const bool bKoukuFixedNative = nullptr == pShaderProgram &&
         Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3711u &&
@@ -355,7 +367,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
     if (bKoukuFixedNative)
     {
         if (BindFailed(pShader->Bind_RawValue("g_ArtistSourceMaterialParameters",
-                Resource.ArtistSourceMaterialParameters.data(), sizeof(Resource.ArtistSourceMaterialParameters))) ||
+                artistParameters->data(), sizeof(*artistParameters))) ||
             BindFailed(pShader->Bind_RawValue("g_ArtistSourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))))
             return Fail_RenderOperation("Kouku native fixed-carrier parameter binding failed.", hFirstBindFailure);
         if (Resource.bSourceRequiresSceneDepth &&
@@ -426,7 +438,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
             NativeBindFailed = BindNativePacket("g_ALTVSourceMaterialParameters", "g_ALTVSourceMaterialTime", Resource.ALTVSourceMaterialParameters); break;
         case EFFECT_SHADER_FAMILY::ARTIST:
         {
-            NativeBindFailed = BindNativePacket("g_ArtistSourceMaterialParameters", "g_ArtistSourceMaterialTime", Resource.ArtistSourceMaterialParameters);
+            NativeBindFailed = BindNativePacket("g_ArtistSourceMaterialParameters", "g_ArtistSourceMaterialTime", *artistParameters);
             if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3711u)
             {
                 float4_t SceneAmbient{0.f, 0.f, 0.f, 1.f};

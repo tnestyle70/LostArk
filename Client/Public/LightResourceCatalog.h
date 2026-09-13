@@ -48,6 +48,11 @@ public:
     static bool_t Try_BuildLightDesc(const LIGHT_RESOURCE& resource,
         const float4x4_t& pivot, f32_t brightnessMultiplier, LIGHT_DESC& light,
         std::string& status);
+    // MAP definitions store world positions. Actor anchors retarget their focus
+    // to the actual actor height before applying the occurrence's local pivot.
+    static bool_t Try_BuildAnchoredLightDesc(const LIGHT_RESOURCE& resource,
+        std::string_view anchorKind, const float4x4_t& pivot, f32_t anchorHeight,
+        f32_t brightnessMultiplier, LIGHT_DESC& light, std::string& status);
     static const char* Kind_Name(LIGHT type);
     static bool_t Run_Publisher(const std::filesystem::path& relativeScript,
         const std::wstring& arguments, std::string& status);

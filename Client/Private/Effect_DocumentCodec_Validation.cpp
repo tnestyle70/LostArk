@@ -274,6 +274,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	{
         if (Element.SourceTransformTrack && !Validate_SourceTransformTrack(*Element.SourceTransformTrack, strOutError))
             return false;
+        std::vector<ARTIST_PARAMETER_DESC> materialTrackBindings;
+        if (!Build_ArtistMaterialTrackBindings(Element, materialTrackBindings, strOutError)) return false;
 		if (Element.strDisplayName.size() > 64u ||
 			!Has_VisibleCharacter(Element.strDisplayName))
 		{
@@ -838,11 +840,28 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.AfterImage.iMaxCopies <= 32u && std::isfinite(D.AfterImage.fAlphaExponent) && D.AfterImage.fAlphaExponent > 0.f &&
 			(D.Timing.fAfterImageSeconds <= 0.f || D.AfterImage.iMaxCopies == 0u ||
 				Element.eKind == EFFECT_ELEMENT_KIND::MESH || Element.eKind == EFFECT_ELEMENT_KIND::SPRITE);
+		const f32_t fLightDirectionLengthSquared =
+			D.Light.vDirection.x * D.Light.vDirection.x +
+			D.Light.vDirection.y * D.Light.vDirection.y +
+			D.Light.vDirection.z * D.Light.vDirection.z;
+		const bool_t bLightDirectionValid =
+			D.Light.eProfile == EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 ||
+			(Is_Finite(D.Light.vDirection) && std::isfinite(fLightDirectionLengthSquared) &&
+			 fLightDirectionLengthSquared > 0.000001f);
+		const bool_t bLightConeValid =
+			D.Light.eProfile != EFFECT_LIGHT_PROFILE::SPOT_RECONSTRUCTED_V1 ||
+			(std::isfinite(D.Light.fInnerConeDegrees) &&
+			 std::isfinite(D.Light.fOuterConeDegrees) &&
+			 D.Light.fInnerConeDegrees >= 0.f && D.Light.fOuterConeDegrees > 0.f &&
+			 D.Light.fInnerConeDegrees <= D.Light.fOuterConeDegrees &&
+			 D.Light.fOuterConeDegrees < 90.f);
 		const bool_t bLightValid =
 			(EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 				!D.Light.bEnabled) &&
 			(!D.Light.bEnabled ||
 				(D.Light.eProfile < EFFECT_LIGHT_PROFILE::END &&
+					bLightDirectionValid && bLightConeValid &&
+					std::isfinite(D.Light.fSpecularIntensity) && D.Light.fSpecularIntensity >= 0.f &&
 					D.Light.eStatus ==
 						EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE &&
 					std::isfinite(D.Light.fRange) && D.Light.fRange > 0.f &&
