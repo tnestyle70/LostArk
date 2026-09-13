@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 677,
+  "revision": 678,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -7583,6 +7583,22 @@
       ],
       "sequenceInstanceId": "",
       "defaultMotionInstanceId": "world.object.instance.kouku.iron_maiden.idle_normal_1"
+    },
+    {
+      "objectId": "world.object.kouku.gate1.saydon.intro",
+      "displayName": "세이튼_1관문_연출",
+      "modelAssetId": "",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.01,
+      "animated": false,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "sequenceInstanceId": "world.sequence.instance.original_kouku",
+      "defaultMotionInstanceId": "world.sequence.instance.original_kouku"
     }
   ],
   "templates": [
@@ -216783,7 +216799,7 @@
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.kouku_reveal",
-      "displayName": "kouku_reveal",
+      "displayName": "세이튼_1관문_연출",
       "category": "Animation",
       "durationMs": 37800,
       "interpolation": "SMOOTH_STEP",

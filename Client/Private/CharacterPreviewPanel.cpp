@@ -10,6 +10,7 @@
 #include "GameInstance.h"
 #include "Level_ValtanArena.h"
 #include "Level_KakulSaydonArena.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Model.h"
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
@@ -30,10 +31,6 @@
 
 namespace
 {
-	constexpr const char* SAYDON_HAMMER_ASSET = "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel";
-	constexpr const wchar_t* SAYDON_HAMMER_PROTOTYPE = L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_WP_MN_RPCT_06";
-	constexpr const char* SAYDON_HAMMER_SOCKET = "b_wp_1";
-
 	const char* Resolve_KoukuPreviewArchetype(const std::string_view asset)
 	{
 #ifdef _DEBUG
@@ -257,7 +254,7 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 	if (nullptr == m_pPreviewAsset) return;
 	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
 	// Read live tuning on every seek/play frame, including a paused clip while
-	// the designer rotates the hammer. The player Clown variant is excluded.
+	// the designer adjusts a held weapon. The player Clown variant is excluded.
 	if (nullptr != body && nullptr != body->Get_Model() &&
 		nullptr != Resolve_KoukuPreviewArchetype(m_pPreviewAsset->pAssetName))
 	{
@@ -268,17 +265,21 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 		CAnimationTargetService::Bind_Preview(body->Get_Model(), m_pPreviewAsset->pAssetName, root);
 		body->Update(0.f);
 	}
-	if (std::string_view(m_pPreviewAsset->pAssetName) != "MN_RPCT_06") return;
+	const char* archetype = Resolve_KoukuPreviewArchetype(m_pPreviewAsset->pAssetName);
+	if (nullptr == archetype) return;
+	const auto* boss = CActorCatalog::Find_Boss(archetype);
+	if (nullptr == boss || boss->weaponModel.empty()) return;
+	const char* socket = CKoukuSaydonPresentationAssetService::Get_WeaponSocketBone();
 	const auto weapon = dynamic_pointer_cast<CPart_Body>(m_pPreviewWeaponObject.lock());
 	if (nullptr == body || nullptr == weapon || nullptr == body->Get_Model() || nullptr == weapon->Get_Model()) return;
 	const auto bodyRoot = dynamic_pointer_cast<CTransform>(body->Get_Component(g_strTransformComTag));
 	const auto bodyModel = body->Get_Model();
 	const auto weaponModel = weapon->Get_Model();
-	if (nullptr == bodyRoot || !bodyModel->Has_Bone(SAYDON_HAMMER_SOCKET)) return;
+	if (nullptr == bodyRoot || !bodyModel->Has_Bone(socket)) return;
 	matrix_t weaponLocal = XMMatrixIdentity();
 #ifdef _DEBUG
 	if (const auto* arena = CLevel_KakulSaydonArena::Get_Active())
-		if (const auto npc = arena->Debug_FindArenaBossNpc("BOSS_KAKULSAYDON_G2_BIG_SAYDON"))
+		if (const auto npc = arena->Debug_FindArenaBossNpc(archetype))
 		{
 			const f32_t scale = npc->Get_DebugWeaponScale();
 			weaponLocal = XMLoadFloat4x4(&npc->Get_DebugWeaponRotation()) * XMMatrixScaling(scale, scale, scale);
@@ -287,7 +288,7 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 	// Mirror CNpc's tuned socket transform once; the body bone already carries
 	// body pre-scale and the selected actor parent carries its live multiplier.
 	XMStoreFloat4x4(&m_PreviewWeaponParentMatrices[m_iPreviewParentMatrixIndex],
-		weaponLocal * bodyModel->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) *
+		weaponLocal * bodyModel->Get_BoneMatrix(socket) *
 		XMLoadFloat4x4(bodyRoot->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(&m_PreviewParentMatrices[m_iPreviewParentMatrixIndex]));
 	weapon->Update(0.f);
@@ -694,59 +695,70 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			return false;
 		}
 
-		if (std::string_view(asset.pAssetName) == "MN_RPCT_06")
+		const char* previewArchetype = Resolve_KoukuPreviewArchetype(asset.pAssetName);
+		const BOSS_ACTOR_ENTRY* previewBoss = nullptr == previewArchetype ? nullptr :
+			CActorCatalog::Find_Boss(previewArchetype);
+		if (nullptr != previewArchetype && nullptr == previewBoss)
 		{
-			const auto rejectHammer = [&](const std::string& reason)
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				currentLevel, TEXT("Layer_AnimationPreview"), stagedObject);
+			m_Status = "KoukuSaydon preview catalog is unavailable: " + CActorCatalog::Get_Status();
+			return false;
+		}
+		if (nullptr != previewBoss && !previewBoss->weaponModel.empty())
+		{
+			const auto rejectWeapon = [&](const std::string& reason)
 			{
 				if (nullptr != stagedWeapon)
 					CGameInstance::Get().Remove_GameObject_from_Layer(currentLevel, TEXT("Layer_AnimationPreview"), stagedWeapon);
 				CGameInstance::Get().Remove_GameObject_from_Layer(currentLevel, TEXT("Layer_AnimationPreview"), stagedObject);
-				m_Status = "Large Saydon hammer preview could not stage: " + reason;
+				m_Status = "Saydon weapon preview could not stage: " + reason;
 				return false;
 			};
-			if (!stagedBody->Get_Model()->Has_Bone(SAYDON_HAMMER_SOCKET))
-				return rejectHammer("right-hand bone b_wp_1 is missing");
-			if (!m_PreparedGenericPreviewAssetIds.contains(SAYDON_HAMMER_ASSET))
+			const char* socket = CKoukuSaydonPresentationAssetService::Get_WeaponSocketBone();
+			const std::string weaponCacheId = std::string(previewArchetype) + "_Weapon";
+			const wstring_t weaponPrototype = L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_" +
+				wstring_t(weaponCacheId.begin(), weaponCacheId.end());
+			if (!stagedBody->Get_Model()->Has_Bone(socket))
+				return rejectWeapon("right-hand bone b_wp_1 is missing");
+			if (!m_PreparedGenericPreviewAssetIds.contains(weaponCacheId))
 			{
-				const auto path = CRuntimeAssetRoot::Resolve(SAYDON_HAMMER_ASSET);
-				unique_ptr<CModel> model;
-				/* The hammer previews with the pre-scale and socket rotation the
-				running exe admitted for the big Saydon boss, so the Workbench
-				shows the same hammer the spawned boss holds. Missing catalog input
-				preserves the previous preview instead of using raw asset units. */
-				const BOSS_ACTOR_ENTRY* pBigSaydon =
-					CActorCatalog::Find_Boss("BOSS_KAKULSAYDON_G2_BIG_SAYDON");
-				if (nullptr == pBigSaydon || pBigSaydon->weaponModel != SAYDON_HAMMER_ASSET ||
-					!std::isfinite(pBigSaydon->weaponModelPreScale) || pBigSaydon->weaponModelPreScale <= 0.f)
-					return rejectHammer("BossCatalog big Saydon hammer is unavailable: " + CActorCatalog::Get_Status());
-				const f32_t hammerScale = pBigSaydon->weaponModelPreScale;
-				const float3_t hammerRotation = pBigSaydon->weaponModelPreRotationDegrees;
-				if (!path.empty() && std::filesystem::is_regular_file(path))
-					model = CModel::Create(m_pDevice, m_pContext, MODEL::ANIM, path.string().c_str(),
-						XMMatrixRotationRollPitchYaw(
-							XMConvertToRadians(hammerRotation.x),
-							XMConvertToRadians(hammerRotation.y),
-							XMConvertToRadians(hammerRotation.z)) *
-						XMMatrixScaling(hammerScale, hammerScale, hammerScale));
+				/* Use the same catalog material and pre-transform as CNpc. Both
+				Saydon's staff and the large Saydon hammer are animated models. */
+				const f32_t weaponScale = previewBoss->weaponModelPreScale;
+				const float3_t weaponRotation = previewBoss->weaponModelPreRotationDegrees;
+				if (!std::isfinite(weaponScale) || weaponScale <= 0.f ||
+					!std::isfinite(weaponRotation.x) || !std::isfinite(weaponRotation.y) || !std::isfinite(weaponRotation.z))
+					return rejectWeapon("BossCatalog weapon transform is invalid");
+				MODEL_ASSET_LOAD_DESC weaponLoad;
+				std::string materialStatus;
+				if (!CActorCatalog::Build_ModelLoadDescription(previewBoss->weaponModel, weaponLoad, materialStatus))
+					return rejectWeapon("weapon material input failed: " + materialStatus);
+				unique_ptr<CModel> model = CModel::Create(m_pDevice, m_pContext, MODEL::ANIM, weaponLoad,
+					XMMatrixRotationRollPitchYaw(
+						XMConvertToRadians(weaponRotation.x),
+						XMConvertToRadians(weaponRotation.y),
+						XMConvertToRadians(weaponRotation.z)) *
+					XMMatrixScaling(weaponScale, weaponScale, weaponScale));
 				if (nullptr == model || FAILED(CGameInstance::Get().Add_Prototype(currentLevel,
-					SAYDON_HAMMER_PROTOTYPE, std::move(model))))
-					return rejectHammer(SAYDON_HAMMER_ASSET);
-				m_PreparedGenericPreviewAssetIds.insert(SAYDON_HAMMER_ASSET);
+					weaponPrototype, std::move(model))))
+					return rejectWeapon(previewBoss->weaponModel);
+				m_PreparedGenericPreviewAssetIds.insert(weaponCacheId);
 			}
 			stagedBody->Update(0.f);
 			XMStoreFloat4x4(&m_PreviewWeaponParentMatrices[stagedParentMatrixIndex],
-				stagedBody->Get_Model()->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) * XMLoadFloat4x4(&stagedParentMatrix));
+				stagedBody->Get_Model()->Get_BoneMatrix(socket) * XMLoadFloat4x4(&stagedParentMatrix));
 			CPart_Body::PART_BODY_DESC weaponDesc{};
 			weaponDesc.pParentMatrix = &m_PreviewWeaponParentMatrices[stagedParentMatrixIndex];
 			weaponDesc.iPrototypeLevelIndex = currentLevel;
-			weaponDesc.strModelTag = SAYDON_HAMMER_PROTOTYPE;
+			weaponDesc.strModelTag = weaponPrototype;
 			weaponDesc.strShaderTag = TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 			if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(currentLevel,
 				TEXT("Prototype_GameObject_Part_Body"), currentLevel, TEXT("Layer_AnimationPreview"), &weaponDesc, &stagedWeapon)))
-				return rejectHammer("animated weapon part creation failed");
+				return rejectWeapon("animated weapon part creation failed");
 			const auto weapon = dynamic_pointer_cast<CPart_Body>(stagedWeapon);
 			if (nullptr == weapon || nullptr == weapon->Get_Model())
-				return rejectHammer("weapon model is unavailable");
+				return rejectWeapon("weapon model is unavailable");
 			const auto weaponModel = weapon->Get_Model();
 			weaponModel->Set_AnimPaused(true);
 			matrix_t local;
@@ -756,7 +768,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 				XMStoreFloat4x4(&stored, local);
 				stagedWeaponRestPose.push_back(stored);
 			}
-			if (stagedWeaponRestPose.empty()) return rejectHammer("weapon skeleton rest pose is unavailable");
+			if (stagedWeaponRestPose.empty()) return rejectWeapon("weapon skeleton rest pose is unavailable");
 		}
 		else if (Declares_Weapon(asset))
 		{

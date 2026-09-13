@@ -37,6 +37,7 @@
 		std::array<float4_t, 32u> VSourceMaterialParameters{};
 		std::array<float4_t, 32u> ALTVSourceMaterialParameters{};
 		std::array<float4_t, 32u> ArtistSourceMaterialParameters{};
+		std::vector<ARTIST_PARAMETER_DESC> ArtistMaterialTrackBindings;
 		std::array<float4_t, 32u> LanceVASourceMaterialParameters{};
 		bool_t bSourceRequiresSceneColor = false;
 		bool_t bSourceRequiresSceneDepth = false;

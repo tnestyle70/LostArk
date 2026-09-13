@@ -265,6 +265,7 @@ private:
 		std::optional<OBJECT_PLACEMENT> placement;
 		std::vector<PLACEMENT_BASELINE> placementBaselines;
 		std::unordered_map<uint64_t, MAP_PLACEMENT_RECORD> sampledPlacements;
+		std::unordered_map<uint64_t, float4x4_t> sampledDeployPivots;
 		std::vector<uint64_t> deployTargets;
 		uint32_t durationMs = 0;
 		std::string objectSampleStatus;

@@ -1181,3 +1181,32 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 생성 native material의 큰 표는 Private owner에서 한 번 컴파일한다. public inline 함수가 사용하는 작은 상수까지 Private로 이동하지 않는다. generator는 native_material_tables.py를 통해 읽기·저장을 하고 같은 bytes는 다시 쓰지 않는다.
 - CPP를 분리하면 기존 source 검사도 등록된 same-owner CPP와 Private _Internal.h를 읽어야 한다. 다음 함수의 물리 순서를 기준으로 현재 함수 범위를 추정하지 않는다. cpp_source_domains.py와 Tools/Build/README.md의 소비 경계를 사용한다.
 - 무변경 빌드의 OBJ/PCH/CSO 쓰기 0은 증분 처리 확인이다. 공통 셰이더의 큰 최적화 작업이나 cache 없는 빌드까지 해결한 증거로 쓰지 않는다. 세부 구조와 측정은 09-12/2026-09-12_PROJECT_BUILD_ISOLATION_IMPLEMENTATION_RESULT.md에 있다.
+
+
+### 맵 연출의 원점·렌더 예산·실제 배우를 구분한다
+
+- 클릭 배치는 source 좌표를 추측하지 않고 기존 Picking의 실제 표면 좌표를 사용한다. exact 요청 token·stable 선택 ID·편집 세대를 확인하고 최초 버튼 클릭과 gameplay 클릭을 분리한다. ImGui 다중 viewport에서는 같은 프로세스의 분리 창을 외부 포커스로 오인해 즉시 취소하지 않는다. MAP Effect 원점 표식은 emission 활성 시각과 독립적으로 표시한다.
+
+- 같은 Level의 모든 Effect placement는 캐릭터 한 명의 owner 예산이 아니다. Level 집계는 scene hard 한도 안에서 승인하고 Character/Boss owner와 remote soft 한도는 유지한다. 단독 Play All 성공과 여러 문서 동시 spawn 승인은 별도로 검사하며 실패 asset/occurrence와 원인을 표시한다.
+- 여러 source emitter를 묶은 문서의 공통 원점을 특정 도형의 중심으로 간주하지 않는다. 독립 회전이 필요한 부분만 중심 cue로 나누고 나머지 요소의 source 시각·좌표를 보존한다. sourceTransformTrack이 있는 local-space fixed-axis sprite는 잠금 축에 emitter basis를 한 번 적용하며 camera-facing/world-space/mesh까지 전역 회전시키지 않는다.
+- MAP position은 절대 월드 미터이고 BOSS/WORLD offset은 대상 상대값이다. Use Player Position은 이동 완료 후 현재 좌표를 명시적으로 복사하는 편집 명령이다. 원본 map light의 절대 XZ를 대상 위치에 다시 더하지 않으며 원본 방향/range가 실제 대상 높이에 도달하는지 검사한다.
+- 전투 보스와 World Sequence의 연출 배우는 별개다. WORLD Light는 같은 pattern의 명시적 world occurrence와 실제 샘플된 Deploy/Object/Map pivot을 사용하고, 아직 준비되지 않은 배우에 identity나 다른 보스를 대신 쓰지 않는다.
+- 재사용하는 placed sequence의 animation track을 편집하면 이를 참조하는 모든 연출에 반영된다. 목록 별칭을 추가하는 것과 독립 Action Pattern을 만드는 것을 구분한다. Effect 방출 구간, particle tail을 포함한 재생 수명, 사용자가 정한 Box 창도 서로 다른 값이다.
+- Parent의 fixedTimeline은 Kouku publisher chain 전체가 같은 optional boolean 계약으로 읽어야 한다. Product projection만 성공하고 다음 World 단계가 unknown field로 실패하면 전체 rollback되어 저장 revision과 게시 revision이 계속 다르다. freshness 검사를 삭제해서 해결하지 않는다.
+- cooked Material의 graph가 비어 있어도 native shader map 부재를 뜻하지 않는다. 특수 엔진 재질은 MaterialMap 앞에 global shader 참조가 있을 수 있으므로 count0을 고정 가정하지 않는다. 실제 참조를 소비한 뒤 material GUID·static set/repeated set·VF·uniform trailer·물리 cache hash까지 확인한다. global radial-blur shader 참조를 해당 mesh의 BasePass shader로 선택하지 않는다.
+- Matinee의 StaticMeshActor 재질 곡선은 승인된 native parameter 이름·타입·packing으로 연결하고 move와 같은 시계를 사용한다. source bUseQuatInterpolation이 true면 원본 endpoint quaternion slerp를 사용하며 Euler tangent 경로와 구분한다. 기존 optional field가 없는 문서의 계산·직렬화를 보존한다.
+- source static MESH의 실제 blend_masked/one-sided는 원본 discard를 보존한 depth-write pass를 사용한다. 같은 parent의 Cascade particle이 depth-read를 쓴다는 이유로 정적 맵 가림막의 깊이 기록까지 생략하지 않는다. source component와 renderer kind에 한정해 바꾸고 기존 particle profile은 유지한다.
+
+- Effect Box의 명시 Preview는 해당 박스 시작에서 재생하고, 배치 드래그의 geometry Preview는 현재 커서를 유지한다. Preview 단축을 위해 BOSS/WORLD 종속 시계를0으로 바꾸면 부착 위치가 달라진다. 문서 내부 StartDelay와 Composition 박스 시작은 별개이므로 실제 선택 asset의 두 시계를 함께 확인한다.
+- 원본 맵 연출을 독립 Effect로 바꿀 때 공통 앞 대기를 제거하면 모든 요소 StartDelay에서 같은 값을 빼고 SourceTransformTrack의 SourceTimeOrigin에는 더한다. 상대 emission/native delay/수명과 원본 transform·alpha·material 곡선은 유지한다. source model cue·본·history가 있는 문서에는 이 공식을 일괄 적용하지 않는다. Effect Tool은 미적용 draft를 보존하고 기존 Apply/Save로 처리하며 생성기에도 같은 시간 정책을 반영한다.
+
+
+### 쿠크 Effect 목록과 보스 선택의 정본
+
+- Catalog만 목록으로 사용하면 설치된 Authored 문서가 숨고, Tree 이름만 검색하면 미분류 한글 문서가 검색되지 않는다. 목록은 Catalog·실제 헤더·트리 참조를 합치고 실제 로드는 선택 시 기존 codec으로 검사한다. 미등록 목록 노출을 Product admission으로 기록하지 않는다.
+- 트리의 관문·패턴 분류는 탐색용이다. 원본이 여러 actor/관문에 사용돼도 첫 분류를 재생 보스로 삼지 않는다. sourceModelPreview 또는 실제 Composition resource 연결을 사용하고, 모호하면 사용자가 Model View에서 명시 선택한 보스·clip만 허용한다. 자동 Append가 만든 현재 선택을 사용자 선택처럼 사용하지 않는다.
+- 애니메이션 미리보기의 무기를 특정 모델 이름 한 개로 제한하면 실제 NPC에는 있는 지팡이가 preview에서 빠진다. actor가 resolve한 BossCatalog weaponModel·native material·pre-transform을 동일한 실제 손 본에 연결하고 기존 무기의 크기와 bind/animation 동기화를 보존한다.
+
+- World 트랙의 object anchor와 고정 월드 위치는 둘 다 좌표를 쓰지만 서로 다른 Transform 소비자다. UI의 World 안에서 Fixed position과 Follow world object를 구분하고, 기존 MAP/WORLD 저장 계약은 보존한다. worldId가 필수인 WORLD를 '(world position)'이라는 빈 선택으로 제공하지 않는다. 앵커 전환도 전체 staged occurrence 변경으로 처리해야 preview/Dirty/Save가 일치한다.
+- 원본 Projectile 복원에서 particle 시각과 track 시각을 중복 이동하지 않는다. 절대 source track key와 문서 startDelay가 같이 있으면 실제 CPU 위치·회전·종료를 샘플해 검증한다. 원본 최대거리로 만든 독립 미리보기 경로를 실시간 대상에 따라 결정된 원본 궤적으로 기록하지 않는다.
+- 다수 투사체의 ribbon reserve 합계가 문서 예산을 넘으면 원본 TypeData와 운영 예약을 구분한다. 실제 point 수명·샘플 간격으로 충분한 예약을 계산하고 소스 레시피는 보존한다. 기본 예산을 전역 상향하거나 모든 emitter의 count/size를 줄여 우회하지 않는다.

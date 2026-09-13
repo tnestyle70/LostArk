@@ -1919,6 +1919,18 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::SameLine();
 	ImGui::TextDisabled("%zu Elements", m_ActiveDocument->Elements.size());
 	ImGui::SameLine();
+    float leadingDelay = 0.f;
+    std::string delayError;
+    const bool canTrimMapDelay = Resolve_CinematicLeadingDelay(*m_ActiveDocument, leadingDelay, delayError);
+    if (canTrimMapDelay)
+        ImGui::TextDisabled("Effect leading delay: %.3f s (before the first Element).", leadingDelay);
+    ImGui::BeginDisabled(!canTrimMapDelay || leadingDelay <= 0.f || Has_UnappliedDetailDraft());
+    if (ImGui::SmallButton("Remove Leading Delay")) (void)Try_RemoveCinematicLeadingDelay();
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("%s", !canTrimMapDelay ? delayError.c_str() : Has_UnappliedDetailDraft() ?
+            "Apply the open Detail edits first; they are preserved." :
+            "Move the complete map Effect to time zero, preserving relative emission and source motion/material curves. Save Changes persists this edit.");
 	const bool_t bCanDeleteSelected = !Has_UnappliedDetailDraft() &&
 		(!m_MarkedElementIds.empty() ||
 			(EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
@@ -2193,6 +2205,36 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::TreePop();
 }
 
+bool_t Client::CEffect_Tool::Resolve_SavedKoukuEffectSource(
+	const std::string& strEffectAssetId, std::filesystem::path& outPath, std::string& outStatus)
+{
+	const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, strEffectAssetId};
+	if (!Is_KoukuEffectAssetId(strEffectAssetId) || !key.Is_Valid())
+	{ outStatus = "Select a Kouku Effect with a valid stable ID."; return false; }
+	if (CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId) ||
+		m_DirectAuthoredEditableEntries.contains(strEffectAssetId))
+	{
+		const auto* registered = Resolve_DirectAuthoredEditablePath(strEffectAssetId, outStatus);
+		if (!registered) return false;
+		outPath = *registered;
+		return true;
+	}
+	const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Effects/Authored") /
+		(strEffectAssetId + ".effect.json"));
+	std::error_code error;
+	const auto directory = std::filesystem::weakly_canonical(CProjectDataRoot::Resolve("Effects/Authored"), error);
+	if (error) { outStatus = "Cannot resolve the saved Effect directory: " + error.message(); return false; }
+	const auto resolved = std::filesystem::weakly_canonical(path, error);
+	if (path.empty() || error || resolved.parent_path() != directory ||
+		resolved.filename() != std::filesystem::path(strEffectAssetId + ".effect.json"))
+	{ outStatus = "Saved Effect source escaped its exact authored path."; return false; }
+	if (!std::filesystem::is_regular_file(resolved, error) || error)
+	{ outStatus = "Saved Effect source is missing or unreadable. Restore it and Refresh."; return false; }
+	outPath = resolved;
+	outStatus = "Saved authoring source; exact document identity is checked on Open or Play.";
+	return true;
+}
+
 void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 	const std::string& strSearch, const bool_t bWorld)
 {
@@ -2210,11 +2252,36 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
             m_SavedEffectOrganization = std::move(staged);
         }
         else m_strElementStatus = "Effect categories kept their previous state: " + status;
+        rows.clear();
+        if (CEffectAuthoringResourceTree::Read_V1Inventory(rows, status))
+        {
+            decltype(m_SavedKoukuEffectSources) staged;
+            for (auto& row : rows)
+            {
+                if (!Is_KoukuEffectAssetId(row.strAssetId)) continue;
+                SAVED_KOUKU_EFFECT_SOURCE source;
+                source.strDisplayName = std::move(row.strDisplayName);
+                source.strStatus = std::move(row.strStatus);
+                if (source.strStatus.empty())
+                    source.Path = CProjectDataRoot::Resolve(std::filesystem::path("Effects/Authored") /
+                        (row.strAssetId + ".effect.json"));
+                staged.emplace(row.strAssetId, std::move(source));
+            }
+            m_SavedKoukuEffectSources = std::move(staged);
+            m_strSavedKoukuInventoryStatus.clear();
+        }
+        else m_strSavedKoukuInventoryStatus = "Previous saved Effect list preserved: " + status;
         m_bSavedEffectOrganizationLoaded = true;
     }
     const auto MatchesSearch = [&](const std::string& id)
     {
         if (strSearch.empty() || Contains_NoCase(id, strSearch)) return true;
+        if (!bWorld)
+        {
+            const auto source = m_SavedKoukuEffectSources.find(id);
+            if (source != m_SavedKoukuEffectSources.end() &&
+                Contains_NoCase(source->second.strDisplayName, strSearch)) return true;
+        }
         const auto found = m_SavedEffectOrganization.find(id);
         return found != m_SavedEffectOrganization.end() && (Contains_NoCase(found->second.first, strSearch) ||
             std::any_of(found->second.second.begin(), found->second.second.end(),
@@ -2230,7 +2297,17 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 			EffectIds.push_back(strEffectAssetId);
 		}
 	}
+	if (!bWorld)
+	{
+		for (const auto& [id, source] : m_SavedKoukuEffectSources)
+			if (MatchesSearch(id)) EffectIds.push_back(id);
+		// Retain saved references whose source is missing so the row can explain
+		// the failure. Discovery does not promote an authored file to Product.
+		for (const auto& [id, organization] : m_SavedEffectOrganization)
+			if (MatchesOwner(id) && MatchesSearch(id)) EffectIds.push_back(id);
+	}
 	std::ranges::sort(EffectIds);
+	EffectIds.erase(std::unique(EffectIds.begin(), EffectIds.end()), EffectIds.end());
 	ImGui::SetNextItemOpen(true, strSearch.empty() ?
 		ImGuiCond_FirstUseEver : ImGuiCond_Always);
 	const std::string strLabel = std::string(pOwnerLabel) + " Saved Effects (" +
@@ -2240,9 +2317,11 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 
 	ImGui::TextWrapped("%s", bWorld ?
 		"Play All animates the complete Effect at the scene player. Mouse Click plays once; Move Destination repeats. Open Editor exposes every Element." :
-		"Play All starts the saved Effect at the scene player. Open Editor exposes each Element and its motion. Action Workbench chooses the anchor when it uses this Effect.");
+		"Play All uses the linked boss, animation and saved Effect anchors. Open Editor exposes every Element's position, size and motion.");
 	if (!m_strPreviewStatus.empty())
 		ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
+	if (!bWorld && !m_strSavedKoukuInventoryStatus.empty())
+		ImGui::TextWrapped("%s", m_strSavedKoukuInventoryStatus.c_str());
 	if (m_pAuthoringSequencer && m_ActiveDocument &&
 		MatchesOwner(m_ActiveDocument->strEffectAssetId))
 	{
@@ -2257,8 +2336,10 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 	{
 		ImGui::PushID(strEffectAssetId.c_str());
 		const auto organization = m_SavedEffectOrganization.find(strEffectAssetId);
+        const auto source = m_SavedKoukuEffectSources.find(strEffectAssetId);
         const std::string name = organization != m_SavedEffectOrganization.end() && !organization->second.first.empty() ?
-            organization->second.first : strEffectAssetId;
+            organization->second.first : !bWorld && source != m_SavedKoukuEffectSources.end() &&
+                !source->second.strDisplayName.empty() ? source->second.strDisplayName : strEffectAssetId;
         const bool_t open = ImGui::TreeNodeEx((name + "###SavedEffect").c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", strEffectAssetId.c_str());
 		if (!open) { ImGui::PopID(); return; }
@@ -2266,19 +2347,47 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 			m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 			m_ActiveDocument->strEffectAssetId == strEffectAssetId;
 		std::string strEditableStatus;
+		const auto SourcePath = [&](const bool exact, std::string& status) -> const std::filesystem::path*
+		{
+			// Registered sources retain their existing identity/provenance checks.
+			// Only uncataloged Kouku sources use the canonical authoring directory.
+			if (bWorld || CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId) ||
+				m_DirectAuthoredEditableEntries.contains(strEffectAssetId))
+				return exact ? Resolve_DirectAuthoredEditablePath(strEffectAssetId, status) :
+					Observe_DirectAuthoredEditablePath(strEffectAssetId, status);
+			if (source == m_SavedKoukuEffectSources.end())
+			{ status = "Saved Effect source is missing from Data/Effects/Authored. Restore it and Refresh."; return nullptr; }
+			if (!source->second.strStatus.empty() || source->second.Path.empty())
+			{ status = source->second.strStatus.empty() ? "Saved Effect source path is unavailable." : source->second.strStatus; return nullptr; }
+			if (exact)
+			{
+				std::filesystem::path resolved;
+				if (!Resolve_SavedKoukuEffectSource(strEffectAssetId, resolved, status)) return nullptr;
+				source->second.Path = std::move(resolved);
+			}
+			status = "Saved authoring source; exact document identity is checked on Open or Play.";
+			return &source->second.Path;
+		};
 		const std::filesystem::path* pEditablePath =
-			Observe_DirectAuthoredEditablePath(strEffectAssetId, strEditableStatus);
+			SourcePath(false, strEditableStatus);
+		if (nullptr == pEditablePath) ImGui::TextWrapped("%s", strEditableStatus.c_str());
+		if (!bWorld && source != m_SavedKoukuEffectSources.end() && !source->second.strLoadStatus.empty())
+			ImGui::TextWrapped("%s", source->second.strLoadStatus.c_str());
 		ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
 		if (ImGui::SmallButton("Open Editor") && nullptr != pEditablePath)
 		{
 			std::string strExactStatus;
 			const std::filesystem::path* pExactPath =
-				Resolve_DirectAuthoredEditablePath(strEffectAssetId, strExactStatus);
+				SourcePath(true, strExactStatus);
 			if (nullptr == pExactPath)
 				m_strElementStatus = std::move(strExactStatus);
 			else
-				Try_LoadDocumentPath(*pExactPath, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+			{
+				const bool loaded = Try_LoadDocumentPath(*pExactPath, EFFECT_DOCUMENT_SOURCE::AUTHORED,
 					strEffectAssetId, EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+				if (!bWorld && source != m_SavedKoukuEffectSources.end())
+					source->second.strLoadStatus = loaded ? std::string{} : m_strDocumentStatus;
+			}
 		}
 		ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -2293,7 +2402,7 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 			{
 				std::string strExactStatus;
 				const std::filesystem::path* pExactPath =
-					Resolve_DirectAuthoredEditablePath(strEffectAssetId, strExactStatus);
+					SourcePath(true, strExactStatus);
 				if (nullptr == pExactPath)
 					m_strElementStatus = std::move(strExactStatus);
 				else
@@ -2302,6 +2411,8 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 					bLoaded = Try_LoadDocumentPath(ExactPath,
 						EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId,
 						EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+					if (!bWorld && source != m_SavedKoukuEffectSources.end())
+						source->second.strLoadStatus = bLoaded ? std::string{} : m_strDocumentStatus;
 					if (!bLoaded)
 					{
 						if (m_PendingDocumentLoad.has_value() &&
@@ -2328,7 +2439,8 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", !bActive && nullptr == pEditablePath ?
 				strEditableStatus.c_str() :
-				"Replay every Element from zero at the current player position and facing.");
+				bWorld ? "Replay every Element from zero at the current player position and facing." :
+				"Replay every Element from zero with its linked boss and saved attachment transforms.");
         ImGui::SameLine();
         ImGui::BeginDisabled(!m_pAuthoringSequencer || (!bActive && nullptr == pEditablePath));
         if (ImGui::SmallButton("Append Group"))

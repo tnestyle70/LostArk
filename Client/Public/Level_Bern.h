@@ -62,6 +62,9 @@ public:
 		m_PartyInteraction.Render_ContextMenuText();
 	}
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
+#ifdef _DEBUG
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+#endif
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();

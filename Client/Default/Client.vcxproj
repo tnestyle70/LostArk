@@ -467,6 +467,12 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ForcedIncludeFiles />
     </ClCompile>
+    <ClCompile Include="..\Private\MainApp_WorldLevel.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
 	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp" />
@@ -1146,9 +1152,11 @@
     <ClCompile Include="..\Private\WorldSequencePlayer_Objects.cpp" />
     <ClCompile Include="..\Private\Level_KakulSaydonArena_WorldObjects.cpp" />
     <ClCompile Include="..\Private\WorldObjectTool.cpp" />
+    <ClCompile Include="..\Private\WorldLevelTool.cpp" />
     <ClCompile Include="..\Private\PhysicalResourceCatalog.cpp" />
     <ClInclude Include="..\Public\WorldSequenceObject.h" />
     <ClInclude Include="..\Public\WorldObjectTool.h" />
+    <ClInclude Include="..\Public\WorldLevelTool.h" />
     <ClInclude Include="..\Public\PhysicalResourceCatalog.h" />
   </ItemGroup>
   <ItemGroup>
@@ -2127,5 +2135,21 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.gold-trails.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.centered.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.context.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.movable-lights.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.source-material-carriers.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.muzzle.world.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.signature.world.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.fixed.ground.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.tracking.ground.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.end.ground.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.radial.lasers.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.suit.floor.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.throw.effect.json"></None>
   </ItemGroup>
 </Project>

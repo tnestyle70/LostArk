@@ -1059,14 +1059,14 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 		if (!Should_SubmitPreviewElement(Evaluated.pElement))
 			continue;
 		LIGHT_DESC Light{};
-		if (!Try_BuildEffectPointLightDesc(Evaluated, Light))
+		if (!Try_BuildEffectLightDesc(Evaluated, Light))
 		{
 			Record_LocalSubmissionResult(
 				m_LastPresentationSubmissionStats.Lights, E_INVALIDARG);
 			Presentation.Record_TransientLightValidationFailure();
 			m_ePresentationFailureScope =
 				PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
-			m_strStatus = "Effect point-light presentation validation failed.";
+			m_strStatus = "Effect light presentation validation failed.";
 			return Complete(E_INVALIDARG);
 		}
 		const HRESULT hResult = Presentation.Add_TransientLight(Light);
@@ -1075,7 +1075,7 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 		if (FAILED(hResult))
 		{
 			m_ePresentationFailureScope = Presentation.Get_LastFailureScope();
-			m_strStatus = "Effect point-light presentation submission failed.";
+			m_strStatus = "Effect light presentation submission failed.";
 			return Complete(hResult);
 		}
 		bSuppressed = bSuppressed || S_FALSE == hResult;

@@ -3,6 +3,24 @@
 이 문서는 Animation 담당자가 오늘 바로 작업할 범위와 Character Preview, Effect Tool, Server gameplay
 사이의 금지 경계를 고정한다. 세부 구현 전체 코드는 날짜별 PLAN에 두고, 이 문서는 담당 인터페이스만 소유한다.
 
+## World Level 목록과 MAP Effect 배치
+
+F1의 `Open World Level Tool`은 Area별 Map/Deploy/World Sequence/Gameplay/Light와 열린
+Action/Sequence 문서의 박스를 통합 조회한다. 생성·편집은 기존 MapTool, WorldObjectTool,
+Composition owner로 stable ID를 보내며 각 owner의 Save/Publish 계약을 유지한다. 실제 맵 편집은
+Lobby > Test의 MapTool workspace에서 수행한다. 다른 Area 조회만으로 플레이 중인 Level을
+전환하지 않으며 동적·상대 앵커를 절대 좌표로 표시하지 않는다.
+
+MAP Effect Box Detail의 `Use Mouse Position`은 버튼을 놓은 뒤 화면의 mesh 표면을 한 번
+클릭해 실제 world position을 복사한다. Esc/우클릭이나 선택·편집·레벨 변경은 취소한다.
+표면이 없으면 이전 위치를 보존한다. `Focus Position (F)`와 재생 시간에 독립적인 XYZ 표식으로
+원점을 확인하고 기존 Apply/Save로 저장한다. F는 해당 도구 패널 포커스에서만 사용한다.
+
+개별 Effect Box Preview는 그 박스 시작 시각으로 이동해 재생한다. 전체 시퀀스의 등장 시각은
+박스 Start로 정한다. 파일 내부 공통 대기는 별개이며, 지원되는 맵 연출 문서는 Effect Tool
+Current Effect의 `Remove Leading Delay`로 제거하고 Save Changes한다. 상세 지원 범위와
+미저장 편집 보존은 [배치 도구 결과](../GB/09-13/2026-09-13_WORLD_LEVEL_PLACEMENT_RESULT.md)를 따른다.
+
 ## 1. 한 줄 계약
 
 Animation Tool은 `어떤 animation asset의 어떤 clip에서 언제 cue가 발생하고 어느 anchor에 어떻게
@@ -1007,10 +1025,12 @@ Big Saydon 위치/yaw는 `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`�
 `Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Publish` 후 Server를 재시작해야 반영된다.
 G2 Big Saydon의 저장 Y는 Server 생성·spawn 복귀에서 유지하며 XZ navigation 검사는 계속 수행한다.
 다른 보스의 navigation 높이 처리는 변경하지 않는다.
-Large Saydon의 오른손 `b_wp_1`에는
-기존 `Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`을 부착한다.
+애니메이션 미리보기의 세이튼·쿠크세이튼·대형 세이튼은 선택 actor의 BossCatalog
+`weaponModel`과 native material, preScale/preRotation을 그대로 사용해 오른손 `b_wp_1`에 부착한다.
+세이튼 계열은 기존 `Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel`,
+대형 세이튼은 `Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`을 사용한다.
 무기 자체 skeleton과 대응 clip을 source seconds로 동기화하고, 대응이 없으면 bind pose를 쓴다.
-필요한 물리 폴더는 `Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06`이며
+필요한 물리 폴더는 `Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_05`와 `WP_MN_RPCT_06`이며
 모델과 인접 texture는 팀 Drive Resources 입력으로 전달한다. preview는 Server boss를 바꾸지 않는다.
 
 ### 17.5 Clown과 Composition WORLD
@@ -1145,7 +1165,7 @@ SCENE_PROFILE은 기존 정의·배치를 유지한다. 다른 pattern의 잘못
 | Collider debugRender | 기본 true의 debug wire 표시 스위치이며 gameplay 판정을 끄지 않음 |
 | WORLD companionEffectResourceId / EFFECT worldOccurrenceId | 같은 Composition EFFECT 정의 및 같은 pattern WORLD box 연결, Preview/Append 동반 배치 |
 | LIGHT assetId/defaultAnchorKind | LightResources catalog 또는 해당 Area v2 map light의 stable ID. 색·cone을 Composition에 복제하지 않음 |
-| LIGHT anchorKind/brightnessMultiplier | MAP 고정 world 위치, PLAYER 같은 방에 존재하는 복제 캐릭터마다 1개, BOSS 현재 pattern 소유자. 수명·fade·밝기 배율 적용 |
+| LIGHT anchorKind/brightnessMultiplier | MAP 고정 world 위치, PLAYER 같은 방의 복제 캐릭터마다 1개, BOSS 현재 pattern 소유자, WORLD 같은 pattern의 명시적 World box 배우. 수명·fade·밝기 배율 적용 |
 
 조명 저작은 F1 Tools → Rendering Workbench의 Level 선택 후 독립 Light Resources에서 한다.
 Create Light와 All Lights는 Map Profile / Scene Profile / Anchor Light로 나누며 Anchor Light 아래에 Map/Character/Boss가 있다.
@@ -1157,6 +1177,18 @@ Action Workbench → Resources → Light에서 선택 → Append selected Light�
 같은 위치의 맵 조명을 패턴에서 재사용할 때는 해당 v2 map light ID를 참조한다. Map 고정 조명은 기존 Layer 수명을,
 Append한 조명은 box 수명을 따르므로 중첩 배치가 필요하지 않으면 맵 원본의 enabled를 끈다.
 Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이나 Server gameplay 판정을 추가하지 않는다.
+
+WORLD Light는 `worldId/worldOccurrenceId`로 실제 샘플된 OBJECT/MAP/DEPLOY 배우를 참조하며
+Box Detail Preview도 그 배우의 원래 Pattern 시계에서 시작한다. Light의 미터 오프셋과 광원
+range는 모델 크기를 상속하지 않는다. Resource 정의의 기본 앵커는 MAP/PLAYER/BOSS를
+유지하고 WORLD 대상은 각 occurrence가 소유한다.
+MAP 리소스를 BOSS/PLAYER/WORLD에서 재사용하면 원본 절대 XZ를 더하지 않고, 원본
+광원 중심 ray가 실제 대상 높이의 평면을 비추도록 재배치한다. 방향·cone·range는 보존하며
+그 평면에 도달하지 못하면 오류로 표시한다. BOSS 단독 Preview는 선택한 관문과 actor를 사용한다.
+연출용 placed sequence의 애니메이션은 World Object → Edit This Motion → Animation Clips에서
+관리한다. 같은 instance의 표시 별칭은 새 배우나 새 Action Pattern을 생성하지 않으며,
+클립 삭제/Save는 해당 instance를 공유하는 모든 연출에 반영된다.
+
 패턴의 Scene Profile은 Level base qualityOverride를 상속하므로 쿠크 전용 품질 튜닝이 패턴 전환으로 사라지지 않는다.
 RenderingProfiles의 optional `mapLightIntensityMultiplier`는 0~4(누락 시 1)이며 Light Resources → Scene Profile →
 Light Detail에서 편집·Save Light·Publish Light한다. 맵 배치 광량에만 곱하고 PLAYER/BOSS 패턴 LIGHT는 유지한다.
@@ -1287,10 +1319,27 @@ Detail의 값 변경은 같은 scope와 cursor에서 미리보기를 갱신하�
 `Stop`은 임시 행을 닫고 기존 저장행을 다시 표시한다. 선택 element 행은 미리보기 전용이므로
 Append/Save할 수 없다. 전체 Effect를 저장행에 추가하려면 Stop 또는 전체 Preview 후 Append한다.
 
-쿠크 `.restore`의 Play All/Current Effect Play/Solo는 저장된 Composition의 V1 resource와 유일한
-pattern 연결로 모델과 원본 animation을 선택한다. 같은 `CEffectCompositionModelPreview`가 실제
+쿠크 V1의 Play All/Current Effect Play/Solo는 문서의 `sourceModelPreview`를 우선하고, 없으면
+저장된 Composition의 V1 resource와 유일한 pattern 연결로 모델과 animation을 선택한다. 같은 `CEffectCompositionModelPreview`가 실제
 CNpc/CModel을 제공하고, Sequencer는 원본 소켓의 60Hz 과거 pose를 기록한 뒤 현재 cursor를 복구한다.
-패턴 연결이 없거나 여러 pattern이 모호하게 공유하면 임의 캐릭터로 대체하지 않고 상태 메시지를 표시한다.
+패턴 연결이 없거나 여러 pattern이 공유하면 Model View의 `Pattern source → KoukuSaydon Patterns`에서
+사용자가 직접 고른 단일 보스·애니메이션 문맥을 사용한다. 자동 Append가 선택한 패턴은 이 명시 선택을 대신하지 않는다.
+유효한 문맥이 없으면 상태 메시지를 표시한다. 장면 플레이어는 미리보기 위치·방향만 제공한다.
+
+Effect Tool의 Kouku 목록은 Catalog와 실제 Authored 헤더, EffectResourceTree 참조를 함께 탐색한다.
+한글 표시명과 분류 경로로 검색하며, Catalog에 없는 문서도 Open Editor로 편집할 수 있다.
+목록 노출은 Product admission이 아니다. 누락·손상은 해당 행에서 확인하고, 미저장 문서 전환은
+기존 Save/Discard/Cancel 절차를 따른다. 분류 트리는 관문별 연출·패턴을 유지한다.
+
+Pattern/Sequence Resources의 Effect V1도 같은 owner 메뉴와 EffectResourceTree 이름·폴더를 사용한다.
+Created Resources 이름은 해당 Composition의 별칭이며 assetId가 원본을 참조한다. 새 이름은 원본
+표시 이름으로 시작하고, 기존 별칭은 유지한다. Source/Asset/Category로 관계를 확인하고
+Use Source Name은 현재 Composition 별칭만, Locate Source는 원본 목록 선택만 변경한다.
+
+Effect Box Detail의 Anchor는 Boss/World다. World 안의 Fixed position은 고정 좌표이며
+Use Player Position/Use Mouse Position으로 생성 위치를 고른다. Follow world object는 World
+트랙의 구체적인 오브젝트·박스·emission에 연결한다. 기존 저장 MAP/WORLD 값은 각각 이 두
+동작으로 호환하며 문서를 일괄 변환하지 않는다. 미저장 위치는 Preview와 Apply/Save가 같은 값을 사용한다.
 
 상단 시간 눈금의 원하는 지점을 누르거나 drag하면 노란 커서로 여섯 트랙을 함께 seek한다.
 박스 본체는 이동, 양 끝은 trim이며 mouse release 때 유효한 값을 적용한다. 겹치는 박스는 같은

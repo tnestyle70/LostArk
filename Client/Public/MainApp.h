@@ -40,6 +40,9 @@ class CEquipmentAuthoringTool;
 class CProfilerTool;
 class CSequencerTool;
 class CWorldObjectTool;
+class CWorldLevelTool;
+struct WORLD_LEVEL_TOOL_REQUEST;
+struct KOUKU_MAP_EFFECT_PLACEMENT_REQUEST;
 class CWorldSequenceDocument;
 class CRenderingBenchmark;
 class CSkillWindowView;
@@ -79,6 +82,7 @@ private:
 		SEQUENCER_BENCHMARK,
 		PROFILER,
 		WORLD_OBJECT,
+		WORLD_LEVEL,
 		EFFECT_COMPOSITION,
 		COUNT
 	};
@@ -394,6 +398,12 @@ private:
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
+	std::string GetWorldLevelAreaId() const;
+	bool FocusWorldLevelPosition(const float3_t& position, float radius, std::string& status);
+	bool UpdateMapEffectPlacementInput();
+	void RenderMapEffectPlacementMarker();
+	void UpdateWorldLevelTool();
+	void RenderWorldLevelTool();
 	void ClaimCompositionPreviewOwner(DEBUG_TOOL owner);
 	void StopCompositionPreview(DEBUG_TOOL owner);
 	void RenderDeveloperTools();
@@ -708,6 +718,15 @@ private:
 	unique_ptr<CKoukuSaydonBossTool> m_pKoukuSaydonBossTool = { nullptr };
 	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
 	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
+	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
+	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
+	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};
+	unique_ptr<KOUKU_MAP_EFFECT_PLACEMENT_REQUEST> m_pMapEffectPlacementRequest;
+	DEBUG_TOOL m_eMapEffectPlacementOwner = DEBUG_TOOL::NONE;
+	uint32_t m_iMapEffectPlacementLevel = UINT32_MAX;
+	bool m_bMapEffectPlacementLeftDown = true;
+	bool m_bMapEffectPlacementSuppressMouse = false;
+	std::string m_strMapEffectPlacementStatus;
 	const CWorldSequenceDocument* m_pWorldObjectCatalogSource = nullptr;
 	uint64_t m_iWorldObjectCatalogGeneration = UINT64_MAX;
 	uint32_t m_iWorldObjectCatalogRevision = 0;

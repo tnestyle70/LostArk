@@ -1496,7 +1496,7 @@ namespace
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
-					(row.strAnchorKind == "WORLD" || row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
+					(row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
 					 (row.strAnchorKind != "BOSS" && !row.strBone.empty()) ||
 					 (row.strAnchorKind == "PLAYER" && !row.bFollowBoss))))
 				{ outStatus = "Invalid Light anchor, scale, bone or brightness: " + row.strOccurrenceId; return false; }
@@ -1516,8 +1516,17 @@ namespace
 						if (world->strCompanionEffectResourceId != row.strResourceId || !companionWorldBoxes.insert(row.strWorldOccurrenceId).second)
 						{ outStatus = "Effect companion needs one matching World box/resource in the same Pattern: " + row.strOccurrenceId; return false; }
 					}
-					else if (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || row.strAnchorKind != "WORLD" || row.strWorldId != owner->strWorldId)
-					{ outStatus = "Only a WORLD Collider or companion Effect can select a World occurrence."; return false; }
+					else if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT) ||
+						row.strAnchorKind != "WORLD" || row.strWorldId != owner->strWorldId)
+					{ outStatus = "Only a WORLD Collider/Light or companion Effect can select a World occurrence."; return false; }
+				}
+				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && row.strAnchorKind == "WORLD")
+				{
+					const auto matches = std::count_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
+						[&](const auto& worldBox) { return worldBox.strWorldId == row.strWorldId &&
+							(row.strWorldOccurrenceId.empty() || worldBox.strOccurrenceId == row.strWorldOccurrenceId); });
+					if (row.strWorldId.empty() || matches != 1)
+					{ outStatus = "WORLD Light needs one exact World occurrence in this Pattern."; return false; }
 				}
 				if (!row.strLogicOccurrenceId.empty())
 				{

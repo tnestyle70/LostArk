@@ -128,7 +128,8 @@ source_native.fullref = fullref
 def native_key(program):
     """A source material/VF permutation is reusable only with both exact shaders."""
     return (program.get('resolvedMaterial', program.get('sourceMaterial')),
-            program['rendererShape'], program['sourceVF'], program['sourceVS'], program['sourcePS'])
+            program['rendererShape'], program['sourceVF'], program['sourceVS'], program['sourcePS'],
+            bool(program.get('sourceTransformMesh', False)))
 
 
 def reuse_native_programs(selected, roots):
@@ -193,6 +194,8 @@ def prepare(evidence, first, last, reuse_roots=()):
             mesh_name = occurrence['sourceMesh'].rsplit('.', 1)[-1]
             search = restore.SOURCE / 'EffectRuntimeClosureExports-20260829' / mesh['package']
             gltfs = list(search.rglob(mesh_name + '.gltf'))
+            if not gltfs:
+                gltfs = list((evidence / 'source_geometry_export' / mesh['package']).rglob(mesh_name + '.gltf'))
             assert len(gltfs) == 1, (occurrence['sourceMesh'], gltfs)
             gltf = restore.read(gltfs[0])
             slots = {p['material'] for m in gltf['meshes'] for p in m['primitives']}
@@ -329,8 +332,14 @@ def prepare(evidence, first, last, reuse_roots=()):
             if any('typedatabeam' in name for name in type_classes):
                 shape = 'beam'
             row = by_material[occurrence['sourceMaterial']]
-            required = next(p for p in occurrence['moduleOrder'] if 'particlemodulerequired' in p)
-            properties = effective(required)
+            component = occurrence.get('sourceStaticMeshComponent')
+            if component:
+                assert shape == 'mesh' and records[component]['classPath'] == 'engine.staticmeshcomponent'
+                required = component
+                properties = norm(records[component]['properties'])
+            else:
+                required = next(p for p in occurrence['moduleOrder'] if 'particlemodulerequired' in p)
+                properties = effective(required)
             dynamic = any('parameterdynamic' in p for p in occurrence['moduleOrder'])
             if shape == 'mesh':
                 vf = 'flocalvertexfactory'
@@ -380,9 +389,12 @@ def prepare(evidence, first, last, reuse_roots=()):
             vertices = [s for s in shaders if 'basepassvertexshaderfnolightmappolicy' in s['shaderType'] and 'nodensitypolicy' in s['shaderType']]
             assert len(pixels) == len(vertices) == 1
             pixel, vertex = pixels[0], vertices[0]
-            key = (row['sourceMaterial'], vf, shape)
+            key = (row['sourceMaterial'], vf, shape, bool(component))
             program = selected.setdefault(key, dict(resolvedMaterial=row['sourceMaterial'], sourceVF=vf,
                 sourceVS=vertex['shaderIdHex'], sourcePS=pixel['shaderIdHex'], rendererShape=shape, occurrences=[]))
+            if component:
+                program['sourceTransformMesh'] = True
+                program.setdefault('sourceStaticMeshComponents', []).append(component)
             program['occurrences'].append(occurrence['elementId'])
             referenced_shaders = [pixel, vertex]
             if value(row['parentProperties'], 'busesdistortion', False):
@@ -588,6 +600,22 @@ def prepare_textures(evidence, out):
             (export_root / (package + '.' + name + '.log')).write_text(result.stdout + result.stderr, encoding='utf8')
             assert result.returncode == 0, (key, result.stdout[-1000:], result.stderr)
             matches = [p for p in export_root.rglob('*.dds') if p.stem.lower() == name]
+        if not matches:
+            # UModel keeps uncompressed RGBA source textures as TGA even with
+            # -dds.  Recontainer the exact exported pixels, never substitute a
+            # similarly named/default texture for the source material input.
+            tgas = [p for p in export_root.rglob('*.tga') if p.stem.lower() == name]
+            if len(tgas) == 1:
+                from PIL import Image
+                image = Image.open(tgas[0]).convert('RGBA')
+                destination = tgas[0].with_suffix('.dds')
+                image.save(destination, format='DDS')
+                assert Image.open(destination).convert('RGBA').tobytes() == image.tobytes()
+                restore.write(tgas[0].with_suffix('.dds.json'), dict(sourceTexture=key,
+                    sourceTgaSha256=hashlib.sha256(tgas[0].read_bytes()).hexdigest(),
+                    ddsSha256=hashlib.sha256(destination.read_bytes()).hexdigest(),
+                    size=list(image.size), mode='LOSSLESS_UMODEL_RGBA_CONTAINER_CONVERSION'))
+                matches = [destination]
         assert len(matches) == 1, (key, matches)
         destination = resources / 'Effect/KoukuSaydon/FullRestore/Textures' / package / (name + '.dds')
         destination.parent.mkdir(parents=True, exist_ok=True)

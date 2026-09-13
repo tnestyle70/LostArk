@@ -1965,6 +1965,66 @@
       "effectAssetId": "effect.kouku.gate1.intro.gold-trails.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.gate1.intro.gold-trails.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.intro.portal-suction.centered",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.intro.portal-suction.centered.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.authored.portal-arrival.context",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.authored.portal-arrival.context.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.popup.movable-lights",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.popup.movable-lights.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.popup.source-material-carriers",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.popup.source-material-carriers.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.muzzle.world",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.muzzle.world.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.gun.signature.world",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.gun.signature.world.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.target.fixed.ground",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.target.fixed.ground.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.target.tracking.ground",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.target.tracking.ground.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.target.end.ground",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.target.end.ground.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.trumpet.radial.lasers",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.trumpet.radial.lasers.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.trumpet.suit.floor",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.trumpet.suit.floor.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.spinning.card.throw",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.spinning.card.throw.effect.json"
     }
   ]
 }

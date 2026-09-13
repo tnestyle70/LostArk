@@ -38,6 +38,88 @@
 #include "Effect_ThumbnailCache.h"
 #include "EffectAuthoringSequencer.h"
 
+bool EffectToolDetail::Resolve_CinematicLeadingDelay(
+    const Client::EFFECT_DOCUMENT_DESC& document, float& seconds, std::string& error)
+{
+    seconds = 0.f;
+    error.clear();
+    if (document.Elements.empty() || !document.ModelCues.empty() ||
+        document.SourceModelPreview || !document.RuntimeExtensions.Is_Empty())
+    {
+        error = "Leading-delay removal requires independent map tracks without model cues, actor animation or baked history.";
+        return false;
+    }
+    float first = std::numeric_limits<float>::max();
+    for (const auto& element : document.Elements)
+    {
+        if (!element.SourceTransformTrack || element.SourceTransformTrack->Nodes.empty() ||
+            element.ActionCueAttachment.bEnabled || element.TransformInheritance.bEnabled ||
+            element.SourcePresentation.bEnabled || element.eKind == Client::EFFECT_ELEMENT_KIND::LIGHT ||
+            element.eKind == Client::EFFECT_ELEMENT_KIND::SCREEN_POST)
+        {
+            error = "Leading-delay removal requires an independent map source track on every Element: " + element.strElementId;
+            return false;
+        }
+        const float delay = element.Detail.Timing.fStartDelaySeconds;
+        const float origin = element.SourceTransformTrack->fSourceTimeOriginSeconds;
+        if (!std::isfinite(delay) || delay < 0.f || delay > 600.f || !std::isfinite(origin))
+        {
+            error = "Leading-delay removal rejected a non-finite source clock: " + element.strElementId;
+            return false;
+        }
+        first = (std::min)(first, delay);
+    }
+    for (const auto& element : document.Elements)
+        if (!std::isfinite(element.SourceTransformTrack->fSourceTimeOriginSeconds + first))
+        {
+            error = "Leading-delay removal would overflow a source clock.";
+            return false;
+        }
+    seconds = first;
+    return true;
+}
+
+bool EffectToolDetail::Remove_CinematicLeadingDelay(
+    Client::EFFECT_DOCUMENT_DESC& document, float& removedSeconds, std::string& error)
+{
+    removedSeconds = 0.f;
+    float first = 0.f;
+    if (!Resolve_CinematicLeadingDelay(document, first, error)) return false;
+    if (first <= 0.f) { error = "This map Effect already starts at zero."; return false; }
+    // sourceTime = localEffectTime + origin. Moving the local origin forward
+    // preserves the original transform, alpha and named material curve samples.
+    for (auto& element : document.Elements)
+    {
+        element.Detail.Timing.fStartDelaySeconds -= first;
+        element.SourceTransformTrack->fSourceTimeOriginSeconds += first;
+    }
+    removedSeconds = first;
+    return true;
+}
+
+bool_t Client::CEffect_Tool::Try_RemoveCinematicLeadingDelay()
+{
+    if (!m_ActiveDocument || (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+        m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
+    { m_strElementStatus = "Open an authored Current Effect before removing its leading delay."; return false; }
+    if (Has_UnappliedDetailDraft())
+    { m_strElementStatus = "Apply the open Detail edits before removing the whole Effect's leading delay."; return false; }
+    EFFECT_DOCUMENT_DESC staged = *m_ActiveDocument;
+    float removed = 0.f;
+    std::string error;
+    if (!Remove_CinematicLeadingDelay(staged, removed, error))
+    { m_strElementStatus = std::move(error); return false; }
+    if (!Try_CommitDocument(std::move(staged))) return false;
+    Reset_DetailDraft();
+    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active()) m_pAuthoringSequencer->Stop();
+    if (m_bActiveDocumentDrawable && m_bPreviewVisibleRequested) Start_WorldPreviewFromBeginning();
+    std::ostringstream status;
+    status << std::fixed << std::setprecision(3) << "Removed " << removed <<
+        " s of leading delay. Relative emission and source motion/material timing are preserved. Use Save Changes, then place the Effect on the Sequencer timeline.";
+    m_strElementStatus = m_strDocumentStatus = status.str();
+    return true;
+}
+
 bool_t Client::CEffect_Tool::Try_CreateDocument()
 {
     if (Has_UnsavedWork())

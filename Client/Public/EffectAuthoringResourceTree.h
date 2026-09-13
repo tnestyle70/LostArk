@@ -1,6 +1,9 @@
 #pragma once
 
 #include "EffectResourceCatalog.h"
+#include "Network/PacketType.h"
+
+#include <array>
 
 #include <deque>
 #include <filesystem>
@@ -8,6 +11,56 @@
 #include <vector>
 
 NS_BEGIN(Client)
+
+// Shared owner menu for All Effects and Composition resource selection.
+enum class EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND : uint8_t
+{
+	PLAYER_CLASS,
+	VALTAN_BOSS,
+	KOUKU_BOSS,
+	WORLD
+};
+
+struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
+{
+	EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND eKind =
+		EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS;
+	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string_view strLabel;
+};
+
+inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 9u>
+	EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS = {{
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			"Lance Master" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
+			"Gunslinger" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
+			"Slayer" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			"Artist" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			"Dimension Master" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			"Warlord" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"Valtan" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::KOUKU_BOSS,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"KoukuSaydon" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::WORLD,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"World" }
+	}};
+
 
 /* Saved-resource organization only. Effect documents keep their native owner,
    stable ID, source location, codec and runtime. Render never opens a model. */

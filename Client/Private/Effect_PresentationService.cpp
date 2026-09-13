@@ -1008,8 +1008,14 @@ namespace
 			!Owner.pCharacter->Is_LocallyControlled();
 		const Client::EFFECT_SCENE_BUDGET_COST& SceneLimit =
 			bRemoteCharacter ? REMOTE_SCENE_SOFT_BUDGET : SCENE_HARD_BUDGET;
+		// A level owns all map placements, not one character action. Keep its
+		// aggregate within the scene ceiling while retaining per-actor limits.
+		const bool_t bLevelOwner = !Owner.pCharacter && !Owner.pBoss &&
+			Owner.iLevelIndex < ETOUI(Client::LEVEL::END);
+		const Client::EFFECT_SCENE_BUDGET_COST& OwnerLimit =
+			bLevelOwner ? SCENE_HARD_BUDGET : OWNER_BUDGET;
 		if (!BudgetWithin(Scene, SceneLimit) ||
-			!BudgetWithin(OwnerTotal, OWNER_BUDGET))
+			!BudgetWithin(OwnerTotal, OwnerLimit))
 		{
 			strOutStatus = bRemoteCharacter ?
 				"Remote cosmetic Effect suppressed to preserve local/boss frame budget." :

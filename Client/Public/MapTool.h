@@ -387,10 +387,15 @@ private:
 	bool_t Ensure_DestructionDebrisAuthoringPrototypes();
 	bool_t Load_EditorAreaRegistry();
 public:
+	std::string Debug_GetActiveAreaId() const;
+	shared_ptr<CCamera_Free> Debug_GetCamera() const { return m_pAssetTestCamera.lock(); }
+	int Debug_WorldLevelSelection(const std::string& areaId, uint64_t placementId,
+		bool_t deploy, std::string& status);
 	// -1 rejected, 0 Area preparation in progress, 1 completed. No authoring writes.
 	int Debug_SequenceViewer(const std::string& areaId, const std::string& sequenceId,
 		const std::string& triggerId, bool_t play, bool_t stop, const float3_t* focus, std::string& status);
 private:
+	int Debug_PrepareEditorArea(const std::string& areaId, std::string& status);
 	bool_t Begin_EditorAreaSwitch(size_t descriptorIndex);
 	void Update_EditorAreaPreload();
 	void Report_EditorAreaPreloadProgress();

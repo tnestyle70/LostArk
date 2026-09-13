@@ -7,7 +7,8 @@ This is the class-neutral cooked Material recovery path through G03-6.  It:
   or pin a direct ``Material`` export to its zero-override default set;
 * join that set to exactly one map in a pinned RefShaderCache using the Lost
   Ark v868 engine-equality projection;
-* decode only that map's vertex-factory references and uniform-expression set;
+* decode that map's material-global shader references, separate vertex-factory
+  references, and uniform-expression set;
 * select a renderer-compatible structural VF/pass candidate and extract the
   exact packed DXBC slice named by its shader reference;
 * walk the native shader-object table by each object's serialized end pointer,
@@ -1024,6 +1025,65 @@ def parse_uniform_expression_set(
     }
 
 
+def parse_shader_references(
+    data: bytes, offset: int, count: int, names: list[str]
+) -> tuple[list[dict[str, str]], int]:
+    """Read FShaderMap references shared by material-global and VF maps."""
+
+    require(0 <= count <= 256, "shader-reference count is invalid")
+    require(offset + count * 32 <= len(data), "shader references are truncated")
+    references = []
+    for _ in range(count):
+        shader_type, number, _ = read_fname_at(data, offset, names)
+        require(number == 0, "numbered shader reference is unsupported")
+        shader_id = data[offset + 8 : offset + 24].hex()
+        repeated_type, repeated_number, _ = read_fname_at(data, offset + 24, names)
+        require(
+            repeated_number == 0 and repeated_type == shader_type,
+            "shader-reference type repeat changed",
+        )
+        references.append({"shaderType": shader_type, "shaderIdHex": shader_id})
+        offset += 32
+    return references, offset
+
+
+def parse_material_map_header(
+    data: bytes,
+    offset: int,
+    names: list[str],
+    version: int,
+    licensee_version: int,
+    logical_start: int,
+    logical_limit: int,
+) -> dict[str, Any]:
+    """Consume material-global references before the separate mesh VF count."""
+
+    require(offset + 20 <= len(data), "material-map suffix is truncated")
+    # Keep the historical field as the first five contiguous source words.
+    # When global references exist, word five belongs to their first FName;
+    # the separately returned VF count is read after the complete references.
+    suffix = list(struct.unpack_from("<IIIII", data, offset))
+    require(
+        suffix[0] == version
+        and suffix[1] == licensee_version
+        and logical_start < suffix[2] <= logical_limit,
+        "material-map suffix changed",
+    )
+    global_references, offset = parse_shader_references(
+        data, offset + 16, suffix[3], names
+    )
+    require(offset + 4 <= len(data), "VF count is truncated")
+    vf_count = struct.unpack_from("<I", data, offset)[0]
+    require(0 < vf_count <= 64, "VF count is invalid")
+    return {
+        "suffixU32": suffix,
+        "logicalEndOffset": suffix[2],
+        "globalShaderReferences": global_references,
+        "vertexFactoryCount": vf_count,
+        "endOffset": offset + 4,
+    }
+
+
 def scan_base_material_contexts(
     package: dict[str, Any],
     layout: dict[str, Any],
@@ -1063,7 +1123,7 @@ def scan_base_material_contexts(
         map_contexts = []
         for absolute in offsets:
             candidate = reader.read_logical_range(
-                absolute, min(8192, reader.logical_size - absolute)
+                absolute, min(16384, reader.logical_size - absolute)
             )
             try:
                 static_set = parse_static_parameter_set(candidate, 0, names)
@@ -1079,24 +1139,21 @@ def scan_base_material_contexts(
                 "engineEqualityStaticParameterSetSha256": equality_sha,
             }
             parseable.append(parsed)
-            if static_set["endOffset"] + 20 > len(candidate):
+            try:
+                header = parse_material_map_header(
+                    candidate, static_set["endOffset"], names,
+                    package["summary"].version, package["summary"].licensee_version,
+                    absolute, reader.logical_size,
+                )
+            except (KeyError, ValueError, struct.error):
                 continue
-            suffix = list(
-                struct.unpack_from("<IIIII", candidate, static_set["endOffset"])
-            )
-            if not (
-                suffix[0] == package["summary"].version
-                and suffix[1] == package["summary"].licensee_version
-                and suffix[3] == 0
-                and 0 < suffix[4] <= 64
-                and absolute < suffix[2] <= reader.logical_size
-            ):
-                continue
+            global_count = len(header["globalShaderReferences"])
             map_contexts.append(
                 {
                     **parsed,
-                    "logicalEndOffset": suffix[2],
-                    "vertexFactoryCount": suffix[4],
+                    "logicalEndOffset": header["logicalEndOffset"],
+                    "vertexFactoryCount": header["vertexFactoryCount"],
+                    **({"globalShaderReferenceCount": global_count} if global_count else {}),
                 }
             )
         result[base_id] = {
@@ -1197,42 +1254,27 @@ def parse_material_map(
         "selected map engine-equality identity changed",
     )
     offset = static_set["endOffset"]
-    suffix = list(struct.unpack_from("<IIIII", data, offset))
-    offset += 20
+    header = parse_material_map_header(
+        data, offset, names, package["summary"].version,
+        package["summary"].licensee_version, start, reader.logical_size,
+    )
+    suffix = header["suffixU32"]
+    offset = header["endOffset"]
     require(
-        suffix
-        == [
-            package["summary"].version,
-            package["summary"].licensee_version,
-            end,
-            0,
-            context["vertexFactoryCount"],
-        ],
+        header["logicalEndOffset"] == end
+        and header["vertexFactoryCount"] == context["vertexFactoryCount"]
+        and len(header["globalShaderReferences"])
+        == context.get("globalShaderReferenceCount", 0),
         "material-map suffix changed",
     )
 
     vertex_factories = []
-    for vf_index in range(suffix[4]):
+    for vf_index in range(header["vertexFactoryCount"]):
         require(offset + 4 <= len(data), "VF shader-reference count is truncated")
         reference_count = struct.unpack_from("<I", data, offset)[0]
         offset += 4
         require(0 < reference_count <= 256, "VF shader-reference count is invalid")
-        references = []
-        for _ in range(reference_count):
-            shader_type, number, _ = read_fname_at(data, offset, names)
-            require(number == 0, "numbered shader reference is unsupported")
-            shader_id = data[offset + 8 : offset + 24].hex()
-            repeated_type, repeated_number, _ = read_fname_at(
-                data, offset + 24, names
-            )
-            require(
-                repeated_number == 0 and repeated_type == shader_type,
-                "shader-reference type repeat changed",
-            )
-            references.append(
-                {"shaderType": shader_type, "shaderIdHex": shader_id}
-            )
-            offset += 32
+        references, offset = parse_shader_references(data, offset, reference_count, names)
         vertex_factory, number, offset = read_fname_at(data, offset, names)
         require(number == 0, "numbered vertex factory is unsupported")
         vertex_factories.append(
@@ -1295,6 +1337,11 @@ def parse_material_map(
         "engineEqualityStaticParameterSet": equality,
         "engineEqualityStaticParameterSetSha256": expected_equality_sha256,
         "suffixU32": suffix,
+        **({
+            "globalShaderReferenceCount": len(header["globalShaderReferences"]),
+            "globalShaderReferences": header["globalShaderReferences"],
+            "vertexFactoryCount": header["vertexFactoryCount"],
+        } if header["globalShaderReferences"] else {}),
         "vertexFactories": vertex_factories,
         "opaqueIdentityHex": opaque_identity.hex(),
         "friendlyName": friendly_name,

@@ -365,7 +365,8 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
 {
     m_PendingKoukuEffectPreview.reset();
     const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId;
-    const bool needsModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
+    const bool koukuEffect = assetId.starts_with("effect.kouku.");
+    const bool needsModel = koukuEffect || requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
     if (reuseTarget && m_KoukuEffectPreview->model.has_value() == needsModel &&
         m_KoukuEffectPreview->loopPolicy == loopPolicy &&
         m_KoukuEffectPreview->previewDurationMs == previewDurationMs) return true;
@@ -390,8 +391,8 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     if (reuseTarget) target.playerRoot = m_KoukuEffectPreview->playerRoot;
     if (needsModel)
     {
-        // Only actual source-bone attachments require a saved model binding.
-        // Pure root/camera Effects retain their authored motion at the player.
+        // Kouku Effects use their source model or an explicit saved boss context.
+        // The scene player supplies only the preview placement.
         target.model.emplace();
         auto& staged = *target.model;
         staged.Set_Player(m_Player);
@@ -408,17 +409,30 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
                 if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strAssetId == assetId &&
                     (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
                     resources.insert(resource.strResourceId);
-            std::string selected;
+            std::vector<std::string> candidates;
             for (const auto& pattern : document.Patterns)
-                if (std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
-                    [&](const auto& occurrence) { return resources.contains(occurrence.strResourceId); }))
-                {
-                    if (!selected.empty())
-                    { m_Status = "Kouku source-bone Effect has multiple Composition patterns; its model binding is ambiguous."; return false; }
-                    selected = pattern.strPatternId;
-                }
+                if (pattern.strLoadError.empty() &&
+                    std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                        [&](const auto& occurrence) { return resources.contains(occurrence.strResourceId); }))
+                    candidates.push_back(pattern.strPatternId);
+            std::string selected = candidates.size() == 1u ? candidates.front() : std::string{};
+            // A shared Effect has no implied boss. The existing Model View
+            // selection is an explicit authoring context for ambiguous/unplaced resources.
+            if (selected.empty() && m_UseKouku && !m_Kouku.Selected_IsBundle() &&
+                m_ExplicitKoukuPatternId == m_Kouku.Selected_Id() &&
+                !m_Kouku.Selected_Id().empty() && m_Kouku.Actors().size() == 1u &&
+                m_Kouku.Actors().front().status.empty() && !m_Kouku.Rows().empty() &&
+                std::any_of(document.Patterns.begin(), document.Patterns.end(), [&](const auto& pattern)
+                    { return pattern.strPatternId == m_Kouku.Selected_Id() && pattern.strLoadError.empty(); }))
+                selected = m_Kouku.Selected_Id();
             if (selected.empty())
-            { m_Status = "Kouku source-bone Effect has no saved Composition model/animation binding."; return false; }
+            {
+                m_Status = (candidates.empty() ?
+                    "This Kouku Effect has no connected boss pattern. " :
+                    "This shared Kouku Effect has several connected boss patterns. ") +
+                    std::string("In Model View, choose Pattern source > KoukuSaydon Patterns and select one boss pattern, then Play All.");
+                return false;
+            }
             if (!staged.Select_Pattern(selected)) { m_Status = staged.Status(); return false; }
         }
         if (staged.Actors().size() != 1u || !staged.Actors().front().status.empty() || staged.Rows().empty())
@@ -441,6 +455,7 @@ bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool b
 {
     Stop();
     if (!(bundle ? m_Kouku.Select_Bundle(id) : m_Kouku.Select_Pattern(id))) { m_Status = m_Kouku.Status(); return false; }
+    m_ExplicitKoukuPatternId = bundle ? std::string{} : id;
     m_BoxDetailDraft.reset(); m_UseKouku = true; m_CustomAnimation = false; m_AnimationRows.clear(); m_ClockMs = 0;
     m_AnchorMember = m_Kouku.Actors().empty() ? "" : m_Kouku.Actors().front().memberId;
     m_SourceModelEffectId.clear(); m_Dirty = true; m_Status = m_Kouku.Status(); return true;
@@ -1453,6 +1468,7 @@ void CEffectAuthoringSequencer::Render_ModelView()
     { Stop(); m_UseKouku = source == 1; m_AnimationRows.clear(); m_CustomAnimation = false; m_ClockMs = 0; m_Dirty = true; }
     if (m_UseKouku)
     {
+        ImGui::TextWrapped("Play All uses the Effect's saved source boss. Shared Effects without one use the single boss pattern selected here.");
         if (ImGui::BeginChild("KoukuPatternList", {0.f, 220.f}, ImGuiChildFlags_Borders)) Draw_KoukuInventory();
         ImGui::EndChild();
     }

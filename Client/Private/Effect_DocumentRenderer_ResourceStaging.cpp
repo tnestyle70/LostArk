@@ -420,6 +420,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Staged.bSourceRequiresSceneColor = pNative->bNeedsSceneColor;
 		Staged.bSourceRequiresSceneDepth = pNative->bNeedsDepthSample || pNative->bNeedsSceneColor;
 	}
+	if (!Build_ArtistMaterialTrackBindings(Element, Staged.ArtistMaterialTrackBindings, strOutError)) return E_INVALIDARG;
 	if (const auto* pNative = Find_ArtistProgram(SourceMaterial.strRuntimeShaderProfileId))
 	{
 		if (!Build_ArtistParameters(SourceMaterial, Staged.ArtistSourceMaterialParameters))
