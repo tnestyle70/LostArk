@@ -1,6 +1,7 @@
 ﻿#include "MvpResultView.h"
 
 #include "GameInstance.h"
+#include "MvpAwardCatalog.h"
 #include "UILabelFont.h"
 #include "UILayoutRuntime.h"
 
@@ -128,6 +129,8 @@ namespace
 	constexpr f32_t PARTY_MEDAL_CENTER_LOCAL_Y = 1026.5f;  // canvas 684.3
 	constexpr f32_t PARTY_MEDAL_PITCH_LOCAL = 72.f;
 	constexpr size_t PARTY_MEDAL_MAX = 3u;
+	/* The column's classMc is a 68x68 cell, drawn at the placement's scale. */
+	constexpr f32_t PARTY_CLASS_ICON_LOCAL = 68.f;
 
 	/* Only the render-target stand-ins live outside the keyframe document; the
 	   column's own panel art rides its own layer in there. */
@@ -219,6 +222,8 @@ void Client::CMvpResultView::Show(const MVP_RESULT_DATA& Data)
 	m_pView->Play_KeyframeAnimation("MvpResult_Frame", "intro");
 	for (const string& strMedalSlot : m_MedalSlotIds)
 		m_pView->Set_SlotVisible(strMedalSlot, false);
+	for (const string& strEmblemSlot : m_EmblemSlotIds)
+		m_pView->Set_SlotVisible(strEmblemSlot, false);
 	/* A replay would otherwise resume these mid-sparkle from the previous run. */
 	for (size_t i = 0; i < MVP_MEDAL_MAX; ++i)
 	{
@@ -446,6 +451,21 @@ void Client::CMvpResultView::Render_MvpSide() const
 	const float2_t vCenter(0.5f, 0.5f);
 	const float2_t vTopLeft(0.f, 0.f);
 
+	/* The class watermark sits behind everything on this side: classMc is placed
+	   at depth 194 with alphaMultTerm 0 and stepped up one keyframe at a time
+	   until its colorTransform is dropped, which is full opacity. */
+	{
+		const CMvpAwardCatalog::EMBLEM_PLACEMENT& Placement =
+			CMvpAwardCatalog::Get().Get_EmblemPlacement();
+		const f32_t fEmblemAlpha = Ramp(fFrame,
+			Placement.fBigFadeInStartFrame, Placement.fBigFadeInEndFrame);
+		Render_ClassEmblem(m_Data.Mvp.Emblem, "Mvp",
+			m_Data.Mvp.Emblem.strBigAsset,
+			Placement.fBigStageX + m_Data.Mvp.Emblem.fOffsetX,
+			Placement.fBigStageY + m_Data.Mvp.Emblem.fOffsetY,
+			m_Data.Mvp.Emblem.fWidth, m_Data.Mvp.Emblem.fHeight, fEmblemAlpha);
+	}
+
 	/* The window's own headline, "MVP" (sys.mvp.main_title). */
 	Draw_Label(FONT_YOON, TEXT("MVP"),
 		CanvasX(MVP_TITLE_CENTER_LOCAL_X), CanvasY(MVP_TITLE_CENTER_LOCAL_Y), CanvasPt(110.f), vCenter,
@@ -533,9 +553,64 @@ void Client::CMvpResultView::Render_PartyColumn(const size_t iColumn) const
 
 	char szOwner[16] = {};
 	(void)sprintf_s(szOwner, "Party%zu", iColumn);
+
+	/* The column carries its own classMc at a constant local spot; it has no
+	   fade of its own and rides the column's entry motion. */
+	{
+		const CMvpAwardCatalog::EMBLEM_PLACEMENT& Placement =
+			CMvpAwardCatalog::Get().Get_EmblemPlacement();
+		const f32_t fIconLocal = PARTY_CLASS_ICON_LOCAL * Placement.fColumnScale;
+		Render_ClassEmblem(Entry.Emblem, szOwner, Entry.Emblem.strSmallAsset,
+			fColumnLocalX + Placement.fColumnLocalX,
+			Placement.fColumnLocalY + fRiseLocal,
+			fIconLocal, fIconLocal, fAlpha);
+	}
+
 	Render_Medals(Entry.Medals, szOwner, fColumnLocalX + PARTY_MEDAL_CENTER_DX,
 		PARTY_MEDAL_CENTER_LOCAL_Y + fRiseLocal, PARTY_MEDAL_PITCH_LOCAL,
 		MEDAL_ICON_LOCAL_PARTY, PARTY_MEDAL_MAX, false);
+}
+
+/* One class emblem as a runtime image slot, in the same on-demand way the medal
+rows work. The asset is passed in because the two sides use different art off
+the same class: the watermark is the big shareimagev2 icon, the column is the
+68x68 cell mvp.gfx carries for that class. */
+void Client::CMvpResultView::Render_ClassEmblem(
+	const MVP_CLASS_EMBLEM& Emblem,
+	const char* const szOwner,
+	const wstring_t& strAsset,
+	const f32_t fLeftLocalX,
+	const f32_t fTopLocalY,
+	const f32_t fWidthLocal,
+	const f32_t fHeightLocal,
+	const f32_t fAlpha) const
+{
+	if (!Emblem.Is_Valid() || strAsset.empty() || fAlpha <= 0.f)
+		return;
+
+	char szSlotId[96] = {};
+	(void)sprintf_s(szSlotId, "MvpResult_ClassEmblem_%s_%d",
+		szOwner, Emblem.iClassKey);
+
+	/* Ensure_RuntimeSlot takes the asset id as UTF-8; the document stores it as
+	   an ASCII Resources-relative path, so the narrowing is lossless. */
+	string strNarrow;
+	strNarrow.reserve(strAsset.size());
+	for (const wchar_t cCharacter : strAsset)
+		strNarrow.push_back(static_cast<char_t>(cCharacter));
+
+	m_pView->Ensure_RuntimeSlot(szSlotId,
+		CanvasX(fLeftLocalX), CanvasY(fTopLocalY),
+		fWidthLocal * STAGE_TO_CANVAS, fHeightLocal * STAGE_TO_CANVAS,
+		strNarrow.c_str());
+	m_pView->Set_SlotRect(szSlotId,
+		CanvasX(fLeftLocalX), CanvasY(fTopLocalY),
+		fWidthLocal * STAGE_TO_CANVAS, fHeightLocal * STAGE_TO_CANVAS);
+	m_pView->Set_SlotTintMultiplier(szSlotId, float4_t(1.f, 1.f, 1.f, fAlpha));
+	m_pView->Set_SlotVisible(szSlotId, true);
+	if (m_EmblemSlotIds.end() ==
+			std::find(m_EmblemSlotIds.begin(), m_EmblemSlotIds.end(), szSlotId))
+		m_EmblemSlotIds.push_back(szSlotId);
 }
 
 void Client::CMvpResultView::Render_Medals(
@@ -576,7 +651,11 @@ void Client::CMvpResultView::Render_Medals(
 		const f32_t fRiseLocal = -BADGE_START_RISE_LOCAL * (1.f - fEased);
 
 		char szSlotId[96] = {};
-		(void)sprintf_s(szSlotId, "MvpResult_MedalIcon_%s_%zu", szOwner, i);
+		/* The medal number is part of the id, not just the row position: a slot
+		   keeps the texture it was created with, so reusing the id across a
+		   replay would draw the previous run's medal. */
+		(void)sprintf_s(szSlotId, "MvpResult_MedalIcon_%s_%zu_%02d",
+			szOwner, i, iMedal);
 		char szTexture[64] = {};
 		(void)sprintf_s(szTexture, "UI/MVP/MvpResult_Medal_%02d.png", iMedal);
 		const f32_t fRowLeft = fCenterLocalX

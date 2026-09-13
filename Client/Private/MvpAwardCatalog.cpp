@@ -11,6 +11,8 @@ namespace
 	constexpr const char* MVP_AWARDS_DOCUMENT = "UI/MVP/MvpAwards.json";
 	constexpr const char* MVP_CONTENT_NAMES_DOCUMENT =
 		"UI/MVP/MvpContentNames.json";
+	constexpr const char* MVP_CLASS_SYMBOLS_DOCUMENT =
+		"UI/MVP/MvpClassSymbols.json";
 
 	bool_t Convert_Utf8ToWide(const string& strUtf8, wstring_t& outWide)
 	{
@@ -141,6 +143,7 @@ Client::CMvpAwardCatalog& Client::CMvpAwardCatalog::Get()
 Client::CMvpAwardCatalog::CMvpAwardCatalog()
 {
 	Load_ContentNames();
+	Load_ClassSymbols();
 
 	DATA_JSON_VALUE Root;
 	if (!Read_Document(MVP_AWARDS_DOCUMENT, Root))
@@ -399,6 +402,7 @@ Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Compose_Page(
 		MVP_RESULT_ENTRY Entry;
 		Entry.strCharacterName = Participant.strCharacterName;
 		Entry.strGuildName = Participant.strGuildName;
+		Entry.Emblem = Find_ClassEmblem(Participant.strNetworkClassId);
 		Entry.Stats = Select_Rows(Participant, iPartySize, bIsMvpCard, Taken);
 		for (const int32_t iMedal : Participant.Medals)
 		{
@@ -511,4 +515,69 @@ vector<Client::MVP_TEXT_RUN> Client::CMvpAwardCatalog::Build_ContentName(
 	}
 
 	return Runs;
+}
+
+void Client::CMvpAwardCatalog::Load_ClassSymbols()
+{
+	DATA_JSON_VALUE Root;
+	if (!Read_Document(MVP_CLASS_SYMBOLS_DOCUMENT, Root))
+		return;
+
+	int32_t iFormatVersion = 0;
+	if (!Read_Int(Root, "formatVersion", iFormatVersion) || 1 != iFormatVersion)
+		return;
+
+	if (const DATA_JSON_VALUE* pPlacement = Root.Find("placement"))
+	{
+		if (const DATA_JSON_VALUE* pBig = Find_Member(*pPlacement, "bigSymbol"))
+		{
+			(void)Read_Number(*pBig, "stageX", m_Placement.fBigStageX);
+			(void)Read_Number(*pBig, "stageY", m_Placement.fBigStageY);
+			(void)Read_Number(*pBig, "fadeInStartFrame",
+				m_Placement.fBigFadeInStartFrame);
+			(void)Read_Number(*pBig, "fadeInEndFrame",
+				m_Placement.fBigFadeInEndFrame);
+		}
+		if (const DATA_JSON_VALUE* pColumn =
+			Find_Member(*pPlacement, "partyColumnIcon"))
+		{
+			(void)Read_Number(*pColumn, "localX", m_Placement.fColumnLocalX);
+			(void)Read_Number(*pColumn, "localY", m_Placement.fColumnLocalY);
+			(void)Read_Number(*pColumn, "scale", m_Placement.fColumnScale);
+		}
+	}
+
+	const DATA_JSON_VALUE* pClasses = Root.Find("classes");
+	if (nullptr == pClasses || !pClasses->Is_Array())
+		return;
+
+	for (const DATA_JSON_VALUE& Value : pClasses->Get_Array())
+	{
+		const DATA_JSON_VALUE* pId = Find_Member(Value, "networkClassId");
+		if (nullptr == pId || !pId->Is_String())
+			continue;
+
+		MVP_CLASS_EMBLEM Emblem;
+		(void)Read_Int(Value, "classKey", Emblem.iClassKey);
+		if (!Read_Wide(Value, "bigAsset", Emblem.strBigAsset) ||
+			!Read_Wide(Value, "smallAsset", Emblem.strSmallAsset))
+			continue;
+		(void)Read_Number(Value, "offsetX", Emblem.fOffsetX);
+		(void)Read_Number(Value, "offsetY", Emblem.fOffsetY);
+		(void)Read_Number(Value, "width", Emblem.fWidth);
+		(void)Read_Number(Value, "height", Emblem.fHeight);
+		if (!Emblem.Is_Valid())
+			continue;
+
+		m_ClassEmblems.emplace_back(pId->Get_String(), std::move(Emblem));
+	}
+}
+
+Client::MVP_CLASS_EMBLEM Client::CMvpAwardCatalog::Find_ClassEmblem(
+	const string& strNetworkClassId) const
+{
+	const auto it = std::find_if(m_ClassEmblems.begin(), m_ClassEmblems.end(),
+		[&strNetworkClassId](const pair<string, MVP_CLASS_EMBLEM>& Entry)
+		{ return Entry.first == strNetworkClassId; });
+	return m_ClassEmblems.end() == it ? MVP_CLASS_EMBLEM() : it->second;
 }

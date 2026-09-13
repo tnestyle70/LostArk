@@ -5,6 +5,7 @@
 #include "MvpResultView.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -83,6 +84,9 @@ struct MVP_AWARD_PARTICIPANT final
 {
 	wstring_t						strCharacterName;
 	wstring_t						strGuildName;
+	/* CHARACTER_CLASS_ID's name, as MvpClassSymbols.json keys its rows
+	   ("WARLORD", "LANCE_MASTER"...). A class with no row shows no emblem. */
+	string							strNetworkClassId;
 	/* Sum of the contribution scores, server-owned. Highest becomes the MVP. */
 	f32_t							fTotalScore = 0.f;
 	vector<MVP_AWARD_CONTRIBUTION>	Contributions;
@@ -123,6 +127,23 @@ public:
 	/* A contribution at most one of the three party columns may show. The MVP
 	   is exempt: it is a separate card, not one of the three. */
 	bool_t Is_ColumnExclusive(int32_t iStatType) const;
+
+	/* The class emblem for a CHARACTER_CLASS_ID name, or an empty one. */
+	MVP_CLASS_EMBLEM Find_ClassEmblem(const string& strNetworkClassId) const;
+
+	/* Where mvp.gfx puts the watermark and how it fades, in the movie's own
+	   stage pixels and frames. */
+	struct EMBLEM_PLACEMENT
+	{
+		f32_t	fBigStageX = 0.f;
+		f32_t	fBigStageY = 0.f;
+		f32_t	fBigFadeInStartFrame = 0.f;
+		f32_t	fBigFadeInEndFrame = 0.f;
+		f32_t	fColumnLocalX = 0.f;
+		f32_t	fColumnLocalY = 0.f;
+		f32_t	fColumnScale = 1.f;
+	};
+	const EMBLEM_PLACEMENT& Get_EmblemPlacement() const { return m_Placement; }
 
 	/* The headline above the MVP, as coloured runs.
 
@@ -167,6 +188,7 @@ private:
 private:
 	CMvpAwardCatalog();
 	void Load_ContentNames();
+	void Load_ClassSymbols();
 
 	/* One card's rows, in the order the page prints them. Contributions already
 	   used up by an earlier column are passed in and added to. */
@@ -185,6 +207,9 @@ private:
 	vector<CONTENT_NAME_PIECE>	m_Difficulties;
 	vector<CONTENT_NAME_PIECE>	m_Gates;
 	vector<CONTENT_NAME_PIECE>	m_Raids;
+	/* Keyed by CHARACTER_CLASS_ID name. */
+	vector<pair<string, MVP_CLASS_EMBLEM>>	m_ClassEmblems;
+	EMBLEM_PLACEMENT			m_Placement;
 	int32_t					m_iMvpGroupId = 0;
 	bool_t					m_bLoaded = false;
 };

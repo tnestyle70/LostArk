@@ -26,6 +26,29 @@ struct MVP_RESULT_STAT
 /* One character shown on the page. The MVP owns the wide left area, up to three
 party members own the narrow right columns. Medals are EFTable_MvpMedalDescription
 IconIndex values, 1..17. */
+/* The class emblem a card shows: the watermark behind the MVP and the small
+icon above a party column's name. Both come from the same class_N label -- the
+MVP page's classMc gotoAndStop()s that label -- but from different art: the big
+one is MvpClassIcon_NN out of shareimagev2, the small one is either a shape
+mvp.gfx defines itself or an imported goldClassIcon.
+
+The offset is the icon's own placement inside Shared_MvpClassBigSymbol; the
+forty emblems differ in size (178x179 to 193x181 among the playable four) and
+are not registered on a common origin. Empty when the class has no mapping. */
+struct MVP_CLASS_EMBLEM
+{
+	/* The class_N label number. Part of the runtime slot id, because
+	   Ensure_RuntimeSlot keeps the texture a slot was created with. */
+	int32_t		iClassKey = 0;
+	wstring_t	strBigAsset;
+	wstring_t	strSmallAsset;
+	f32_t		fOffsetX = 0.f;
+	f32_t		fOffsetY = 0.f;
+	f32_t		fWidth = 0.f;
+	f32_t		fHeight = 0.f;
+	bool_t Is_Valid() const { return !strBigAsset.empty() && fWidth > 0.f; }
+};
+
 struct MVP_RESULT_ENTRY
 {
 	wstring_t				strCharacterName;
@@ -33,6 +56,7 @@ struct MVP_RESULT_ENTRY
 	   serverNameTF and neither ever assigns it, so retail leaves it blank and its
 	   authored box overlaps the guild name it sits on. */
 	wstring_t				strGuildName;
+	MVP_CLASS_EMBLEM		Emblem;
 	vector<MVP_RESULT_STAT>	Stats;
 	vector<int32_t>			Medals;
 };
@@ -111,6 +135,11 @@ private:
 	/* The headline's runs, laid out as one centred line. */
 	void Draw_ContentName(f32_t fCenterX, f32_t fCenterY, f32_t fFontPx,
 		f32_t fAlpha) const;
+	/* One emblem, as a runtime image slot. szOwner keeps the slot ids distinct
+	   the way the medal rows do. */
+	void Render_ClassEmblem(const MVP_CLASS_EMBLEM& Emblem, const char* szOwner,
+		const wstring_t& strAsset, f32_t fLeftLocalX, f32_t fTopLocalY,
+		f32_t fWidthLocal, f32_t fHeightLocal, f32_t fAlpha) const;
 	void Render_MvpSide() const;
 	void Render_PartyColumn(size_t iColumn) const;
 	/* szOwner keeps each list's runtime slot ids distinct ("Mvp", "Party0"...). */
@@ -136,6 +165,9 @@ private:
 	/* Medal slots are created on demand and then kept, so Show() has to hide
 	   them again or a replay would skip their delay. */
 	mutable vector<string>		m_MedalSlotIds;
+	/* Same lifetime problem as the medals: created on demand, so Show() has
+	   to hide them again or a replay would keep the previous card's emblem. */
+	mutable vector<string>		m_EmblemSlotIds;
 	MVP_RESULT_DATA					m_Data;
 	bool_t							m_bVisible = false;
 	/* Seconds since Show(); the retail intro is 135 frames at the movie's 40fps. */
