@@ -14,6 +14,10 @@ enum class EFFECT_RUNTIME_RENDERER_KIND : uint8_t;
 
 namespace EffectToolDetail
 {
+    bool Resolve_ElectricPreviewDestinations(const Client::EFFECT_DOCUMENT_DESC& document,
+        std::array<float3_t, 3>& destinationsCm, std::string& error);
+    bool Change_ElectricPreviewDestination(Client::EFFECT_DOCUMENT_DESC& document,
+        size_t branch, const float3_t& destinationCm, std::string& error);
     // Common pre-roll removal is supported only for independent map-source clocks.
     bool Resolve_CinematicLeadingDelay(const Client::EFFECT_DOCUMENT_DESC& document,
         float& seconds, std::string& error);

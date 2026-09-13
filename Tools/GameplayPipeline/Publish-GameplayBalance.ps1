@@ -1680,6 +1680,45 @@ $healthBarTriggerKeys =
 	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $coveredSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
 $sourceTimingByActionId = Read-ValtanSkillTiming
+function Format-RootMotionSamples {
+    param(
+        [object[]]$Samples,
+        [string]$SkillId,
+        [uint32]$LimitMs,
+        [switch]$IncludeUp
+    )
+
+    if ($Samples.Count -lt 2 -or $Samples.Count -gt 512) {
+        throw "Root motion sample count is invalid: $SkillId"
+    }
+    $packed = [Collections.Generic.List[string]]::new()
+    $previousMs = -1
+    foreach ($sample in $Samples) {
+        Assert-ExactProperties $sample @('timeMs','forward','lateral','up') 'root motion sample'
+        Assert-JsonInteger $sample.timeMs "root motion $SkillId timeMs" 0 $LimitMs
+        foreach ($axis in @('forward','lateral','up')) {
+            Assert-JsonNumber $sample.$axis "root motion $SkillId $axis"
+        }
+        $timeMs = [int]$sample.timeMs
+        if ($timeMs -le $previousMs -or $timeMs -gt $LimitMs) {
+            throw "Root motion sample time is out of order or past the action: $SkillId"
+        }
+        $previousMs = $timeMs
+        $row = ('{0}:{1}:{2}' -f $timeMs,
+            (Format-InvariantSignedFloat $sample.forward "root motion $SkillId forward"),
+            (Format-InvariantSignedFloat $sample.lateral "root motion $SkillId lateral"))
+        if ($IncludeUp) {
+            $row += ':' + (Format-InvariantSignedFloat $sample.up "root motion $SkillId up")
+        }
+        $packed.Add($row)
+    }
+    if ($IncludeUp -and ($Samples[0].timeMs -ne 0 -or $Samples[-1].timeMs -ne $LimitMs -or
+            $Samples[0].forward -ne 0 -or $Samples[0].lateral -ne 0 -or $Samples[0].up -ne 0)) {
+        throw "Server XYZ root motion needs a zero origin and the exact stage endpoint: $SkillId"
+    }
+    return ($packed -join ',')
+}
+
 $patternRows = [Collections.Generic.List[string]]::new()
 $serverMotionAnchorIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $serverMotionByPatternId = @{}
@@ -3313,6 +3352,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$koukuStage = $koukuPattern.stages[$stageIndex]
 		$koukuStageOptionalProperties = @()
 		if ($null -ne $koukuStage.PSObject.Properties['actions']) { $koukuStageOptionalProperties += 'actions' }
+		if ($null -ne $koukuStage.PSObject.Properties['rootMotionSamples']) { $koukuStageOptionalProperties += 'rootMotionSamples' }
 		Assert-ExactProperties $koukuStage (@(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
@@ -3384,6 +3424,20 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$koukuStage.actionId, $koukuStage.stageKind,
 			[uint32]$koukuStage.durationMs, 'NONE', '0', '0', '0', '0',
 			'0', 0, 0, 0, '-', '0', 0, 0, 0) -join "`t"))
+		if ($null -ne $koukuStage.PSObject.Properties['rootMotionSamples']) {
+			if ($koukuStage.rootMotionSamples -isnot [Array] -or
+				$null -ne $koukuPattern.PSObject.Properties['bossMotion'] -or
+				@($koukuPattern.logicWindows | Where-Object {
+					$null -ne $_.PSObject.Properties['bossChargeDistanceM'] -and $_.bossChargeDistanceM -gt 0 }).Count -gt 0 -or
+				@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -ceq 'REAL_GAZE_TELEPORT' }).Count -gt 0) {
+				throw 'KoukuSaydon animation root motion cannot share a Pattern with BossMotion, charge, or teleport'
+			}
+			$rootSamples = @($koukuStage.rootMotionSamples)
+			$packedRoot = Format-RootMotionSamples -Samples $rootSamples `
+				-SkillId "$($koukuPattern.patternId)/$($koukuStage.stageId)" -LimitMs $koukuStage.durationMs -IncludeUp
+			$patternRows.Add((@('PATTERNSTAGEROOTMOTION', $koukuEncounterDocument.encounterId,
+				$koukuPattern.patternId, $stageIndex, $rootSamples.Count, $packedRoot) -join "`t"))
+		}
 		if ($null -ne $koukuStage.PSObject.Properties['actions']) {
 			$patternRows.Add((@(
 				'PATTERNSTAGEACTION', $koukuEncounterDocument.encounterId,
@@ -5665,32 +5719,6 @@ foreach ($skill in @($skillDocument.skills)) {
     $skillKindById[[string]$skill.skillId] = [string]$skill.skillKind
 }
 
-function Format-RootMotionSamples {
-    param(
-        [object[]]$Samples,
-        [string]$SkillId,
-        [uint32]$LimitMs
-    )
-
-    if ($Samples.Count -lt 2 -or $Samples.Count -gt 512) {
-        throw "Root motion sample count is invalid: $SkillId"
-    }
-    $packed = [Collections.Generic.List[string]]::new()
-    $previousMs = -1
-    foreach ($sample in $Samples) {
-        Assert-ExactProperties $sample @('timeMs','forward','lateral','up') 'root motion sample'
-        $timeMs = [int]$sample.timeMs
-        if ($timeMs -le $previousMs -or $timeMs -gt $LimitMs) {
-            throw "Root motion sample time is out of order or past the action: $SkillId"
-        }
-        $previousMs = $timeMs
-        $packed.Add(('{0}:{1}:{2}' -f $timeMs,
-            (Format-InvariantSignedFloat $sample.forward "root motion $SkillId forward"),
-            (Format-InvariantSignedFloat $sample.lateral "root motion $SkillId lateral")))
-    }
-    return ($packed -join ',')
-}
-
 $rootMotionRows = [Collections.Generic.List[string]]::new()
 $rootMotionSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\RootMotion') `
@@ -5880,6 +5908,28 @@ function Format-HitShapeExtent([object]$Hit, [string]$SkillId) {
 
 $projectileKinds = @('MISSILE','FIXAREA','GRENADE','TRACE')
 
+function Get-HitResultKind([object]$Hit, [string]$SkillId) {
+    if ($null -eq $Hit.PSObject.Properties['colliderId']) { return 0 }
+    Assert-StableId $Hit.colliderId "skill $SkillId colliderId"
+    Assert-ExactProperties $Hit.logic @('logicId','logicType','judgementKind','colliderId','resultId') 'hit Logic'
+    Assert-ExactProperties $Hit.result @('resultId','logicType','resultKind') 'hit Result'
+    foreach ($id in @($Hit.colliderId, $Hit.logic.logicId, $Hit.result.resultId)) {
+        Assert-StableId $id "skill $SkillId combat identity"
+        if (-not $script:hitCombatIds.Add([string]$id)) { throw "Duplicate hit Collider/Logic/Result identity: $id" }
+    }
+    if ($Hit.logic.logicType -cne 'DURATION' -or $Hit.logic.judgementKind -cne 'AREA_OVERLAP' -or
+        $Hit.result.logicType -cne 'RESULT' -or $Hit.logic.colliderId -cne $Hit.colliderId -or
+        $Hit.logic.resultId -cne $Hit.result.resultId) {
+        throw "Hit Collider -> Logic -> Result join failed: $SkillId/$($Hit.colliderId)"
+    }
+    switch -CaseSensitive ($Hit.result.resultKind) {
+        'DAMAGE' { return 1 }
+        'STAGGER' { return 2 }
+        'COUNTER' { return 3 }
+        default { throw "Unknown player hit Result kind: $SkillId/$($Hit.result.resultKind)" }
+    }
+}
+
 function Format-Projectiles {
     param(
         [object[]]$Projectiles,
@@ -5928,15 +5978,19 @@ function Format-Projectiles {
         }
         $previousMs = $timeMs
         $hits = @($projectile.hits)
-        if ($hits.Count -lt 1 -or $hits.Count -gt 16) {
+        if ($hits.Count -lt 1 -or $hits.Count -gt 48) {
             throw "Projectile hit count is invalid: $SkillId"
         }
         $packed = [Collections.Generic.List[string]]::new()
         $sawTimed = $false
         $previousAtMs = -1
+        $timedCount = 0
         foreach ($hit in $hits) {
-            Assert-ExactProperties $hit @('trigger','atMs','count','everyMs','areaType','range','angle',
-                'width','height','offset','inner','maxTargets','pushMs','pushRange') 'projectile hit'
+            $hitFields = @('trigger','atMs','count','everyMs','areaType','range','angle',
+                'width','height','offset','inner','maxTargets','pushMs','pushRange')
+            if ($script:hitShapeVersion -eq 4) { $hitFields += @('colliderId','logic','result') }
+            Assert-ExactProperties $hit $hitFields 'projectile hit'
+            $resultKind = Get-HitResultKind $hit $SkillId
             $trigger = [string]$hit.trigger
             if ($trigger -ne 'CONTACT' -and $trigger -ne 'TIMED') {
                 throw "Projectile hit trigger is invalid: $SkillId"
@@ -5955,6 +6009,8 @@ function Format-Projectiles {
                 }
                 $previousAtMs = [int]$hit.atMs
                 $sawTimed = $true
+                $timedCount += [int]$hit.count
+                if ($timedCount -gt 192) { throw "Projectile timed hits exceed the bounded mask: $SkillId" }
             }
             elseif ($sawTimed) {
                 throw "Projectile contact hits must precede timed hits: $SkillId"
@@ -5962,9 +6018,9 @@ function Format-Projectiles {
             Assert-HitShapeExtent $hit $SkillId
             $triggerCode = 1
             if ($trigger -eq 'CONTACT') { $triggerCode = 0 }
-            $packed.Add(('{0}:{1}:{2}:{3}:{4}' -f $triggerCode,
+            $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}' -f $triggerCode,
                 [int]$hit.atMs, [int]$hit.count, [int]$hit.everyMs,
-                (Format-HitShapeExtent $hit $SkillId)))
+                (Format-HitShapeExtent $hit $SkillId), $resultKind))
         }
         $originCode = 1
         if ($origin -eq 'CASTER') { $originCode = 0 }
@@ -5990,15 +6046,18 @@ function Format-HitShapes {
         [uint32]$LimitMs
     )
 
-    if ($Hits.Count -lt 1 -or $Hits.Count -gt 64) {
+    if ($Hits.Count -lt 1 -or $Hits.Count -gt 192) {
         throw "Hit shape count is invalid: $SkillId"
     }
     $packed = [Collections.Generic.List[string]]::new()
     $previousMs = -1
     $subHits = 0
     foreach ($hit in $Hits) {
-        Assert-ExactProperties $hit @('timeMs','repeatCount','repeatMs','areaType','range','angle',
-            'width','height','offset','inner','maxTargets','pushMs','pushRange') 'hit shape'
+        $hitFields = @('timeMs','repeatCount','repeatMs','areaType','range','angle',
+            'width','height','offset','inner','maxTargets','pushMs','pushRange')
+        if ($script:hitShapeVersion -eq 4) { $hitFields += @('colliderId','logic','result') }
+        Assert-ExactProperties $hit $hitFields 'hit shape'
+        $resultKind = Get-HitResultKind $hit $SkillId
         Assert-JsonInteger $hit.timeMs "hit shape $SkillId timeMs" 0 $LimitMs
         Assert-JsonInteger $hit.repeatCount "hit shape $SkillId repeatCount" 1 64
         Assert-JsonInteger $hit.repeatMs "hit shape $SkillId repeatMs" 0 100000
@@ -6018,17 +6077,18 @@ function Format-HitShapes {
             throw "Hit shape repeat exceeds its action/stage duration: $SkillId"
         }
         $subHits += [int]$hit.repeatCount
-        $packed.Add(('{0}:{1}:{2}:{3}' -f $timeMs,
-            [int]$hit.repeatCount, [int]$hit.repeatMs, (Format-HitShapeExtent $hit $SkillId)))
+        $packed.Add(('{0}:{1}:{2}:{3}:{4}' -f $timeMs,
+            [int]$hit.repeatCount, [int]$hit.repeatMs, (Format-HitShapeExtent $hit $SkillId), $resultKind))
     }
-    if ($subHits -gt 64) {
-        throw "Hit shape sub-hit count exceeds 64: $SkillId"
+    if ($subHits -gt 192) {
+        throw "Hit shape sub-hit count exceeds 192: $SkillId"
     }
     return ($packed -join ',')
 }
 
 $hitShapeRows = [Collections.Generic.List[string]]::new()
 $hitShapeSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$script:hitCombatIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $hitShapeDocumentClasses = [Collections.Generic.HashSet[string]]::new(
 	[StringComparer]::Ordinal)
 foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\HitShapes') `
@@ -6037,9 +6097,10 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     Assert-ExactProperties $document @(
         'schema','formatVersion','animationAssetId','characterClass','skills') 'hit shape document'
     if ($document.schema -ne 'lostark.animation-hit-shapes' -or
-        [uint32]$document.formatVersion -ne 3) {
+        [uint32]$document.formatVersion -notin @(3,4)) {
         throw "Hit shape header is invalid: $($path.Name)"
     }
+    $script:hitShapeVersion = [uint32]$document.formatVersion
 	$documentClass = [string]$document.characterClass
 	if ($documentClass -notin $supportedPlayerClasses -or
 		-not $hitShapeDocumentClasses.Add($documentClass)) {
@@ -6060,7 +6121,12 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
             throw "Duplicate hit shape entry: $id"
         }
         if ($null -ne $entry.stages) {
-            Assert-ExactProperties $entry @('skillId','stages') 'hit shape skill'
+            $entryFields = @('skillId','stages')
+            if ($null -ne $entry.PSObject.Properties['sourceBasis']) {
+                $entryFields += 'sourceBasis'
+                if ($entry.sourceBasis -cne 'EXISTING_SERVER_MAXIMUM_RANGE') { throw "Unknown hit source basis: $id" }
+            }
+            Assert-ExactProperties $entry $entryFields 'hit shape skill'
             $stageDurations = @($skillStageDurationsById[$id])
             if ($stageDurations.Count -lt 1) {
                 throw "Hit shape stages target a skill without combo stages: $id"
@@ -6118,6 +6184,10 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
             continue
         }
         $skillFields = @('skillId','hits')
+        if ($null -ne $entry.PSObject.Properties['sourceBasis']) {
+            $skillFields += 'sourceBasis'
+            if ($entry.sourceBasis -cne 'EXISTING_SERVER_MAXIMUM_RANGE') { throw "Unknown hit source basis: $id" }
+        }
         if ($null -ne $entry.projectiles) { $skillFields += 'projectiles' }
         Assert-ExactProperties $entry $skillFields 'hit shape skill'
         if (@($skillStageDurationsById[$id]).Count -ne 0) {
@@ -6295,7 +6365,7 @@ $maximumGameplayBootstrapRows = 8192
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 33 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 34 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

@@ -448,13 +448,28 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					arenaRoom->m_GameplayCatalog.Get_ActiveRevision();
 				secondRequest.Scope.iExpectedSourceRevision =
 					CKoukuSaydonBrain::Resolve_ProductSourceRevision(arenaRoom->m_GameplayCatalog.Active());
-				secondRequest.strPatternId = firstProductId;
+				// Product admission now pins the exact Gate and placement as well as the body.
+				secondRequest.Scope.strGateId = "GATE3";
+				const BOSS_PATTERN_DEFINITION* gateThreePattern = nullptr;
+				for (const auto& id : sequence->PatternIds)
+				{
+					const auto found = std::find_if(patterns->begin(), patterns->end(),
+						[&](const auto& pattern) { return pattern.strPatternId == id &&
+							pattern.strGateId == secondRequest.Scope.strGateId &&
+							pattern.strTargetBossPlacementId == secondRequest.Scope.strBossPlacementId; });
+					if (found != patterns->end()) { gateThreePattern = &*found; break; }
+				}
+				secondRequest.strPatternId = gateThreePattern ? gateThreePattern->strPatternId : std::string{};
+				std::uint32_t gateThreeCompletionTicks = 30u;
+				if (gateThreePattern)
+					for (const auto& stage : gateThreePattern->Stages)
+						gateThreeCompletionTicks += CKoukuSaydonLogicRuntime::Ticks_FromMs(stage.iDurationMs);
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT secondResult{};
-				const bool secondQueued = secondBuilt &&
+				const bool secondQueued = secondBuilt && gateThreePattern &&
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
 						arenaRoom->Evaluate_KoukuSaydonPatternAudition(8103u, secondRequest, secondResult);
 				bool originalStayedIdle = secondQueued;
-				for (std::uint32_t tick = 0u; originalStayedIdle && tick < 700u; ++tick)
+				for (std::uint32_t tick = 0u; originalStayedIdle && tick < gateThreeCompletionTicks; ++tick)
 				{
 					arenaRoom->Update_WorldEntities(1.f / 30.f);
 					++arenaRoom->m_iServerTick;
@@ -490,14 +505,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
 						arenaRoom->Evaluate_KoukuSaydonPatternAudition(8103u, secondRequest, secondResult);
 				std::uint32_t stageBeforeDespawn = 0u;
-				for (std::uint32_t tick = 0u; allQueued && tick < 200u; ++tick)
+				std::uint32_t sequenceBeforeDespawn = 0u;
+				const std::uint32_t firstStageTicks = gateThreePattern && !gateThreePattern->Stages.empty() ?
+					CKoukuSaydonLogicRuntime::Ticks_FromMs(gateThreePattern->Stages.front().iDurationMs) + 30u : 0u;
+				for (std::uint32_t tick = 0u; allQueued && tick < firstStageTicks; ++tick)
 				{
 					arenaRoom->Update_WorldEntities(1.f / 30.f);
 					++arenaRoom->m_iServerTick;
 					const SERVER_WORLD_ENTITY* playing = arenaRoom->Find_KoukuSaydonArenaBoss(
 						secondRequest.Scope.strBossPlacementId, secondRequest.Scope.strBossArchetypeId);
 					if (nullptr != playing)
+					{
 						stageBeforeDespawn = playing->iPatternStageIndex;
+						sequenceBeforeDespawn = playing->iPatternSequence;
+					}
 					if (stageBeforeDespawn > 0u)
 						break;
 				}
@@ -511,10 +532,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					nullptr == arenaRoom->Find_KoukuSaydonArenaBoss(
 						secondRequest.Scope.strBossPlacementId, secondRequest.Scope.strBossArchetypeId) &&
 					std::any_of(lifecycle.begin(), lifecycle.end(),
-						[secondKoukuId, stageBeforeDespawn](const auto& entry)
+						[secondKoukuId, sequenceBeforeDespawn](const auto& entry)
 						{
 							return secondKoukuId == entry.Message.iBossNetEntityId &&
-								stageBeforeDespawn == entry.Message.iStageIndex &&
+								// Run termination identifies its owner occurrence; it has no member stage.
+								sequenceBeforeDespawn == entry.Message.iPatternSequence &&
+								0u == entry.Message.iStageIndex && entry.Message.strMemberId.empty() &&
 								2u == entry.Message.iRequestSequence &&
 								KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED == entry.Message.eState;
 						});
@@ -638,14 +661,22 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					const float yaw = (entity.fYawDegrees + 90.f) * 0.017453292519943295f;
 					return distance > 0.f && (std::sin(yaw) * x + std::cos(yaw) * z) / distance > 0.9999f;
 				};
+				const auto gazeDefinition = std::find_if(patterns->begin(), patterns->end(),
+					[](const auto& pattern) { return pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_2"; });
+				const BOSS_PATTERN_MECHANIC_TRIGGER* expectedTeleport = nullptr;
+				if (gazeDefinition != patterns->end())
+					for (const auto& trigger : gazeDefinition->MechanicTriggers)
+						if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT)
+							expectedTeleport = &trigger;
 				std::vector<std::uint8_t> ownerPayload;
 				S2C_WORLD_ENTITY_SPAWNED ownerMessage{};
 				const bool ownerWritten = gazeRoom->Build_WorldEntitySpawnedPayload(*owner, ownerPayload);
 				CPacketReader ownerReader{ ownerPayload };
 				admitted = admitted && ownerWritten && Read_Message(ownerReader, ownerMessage) &&
-					std::abs(owner->fPositionX + 6.36f) < 0.001f &&
-					std::abs(owner->fPositionY - 1.3f) < 0.001f &&
-					std::abs(owner->fPositionZ - 937.92f) < 0.001f &&
+					expectedTeleport &&
+					std::abs(owner->fPositionX - expectedTeleport->fTeleportX) < 0.001f &&
+					std::abs(owner->fPositionY - expectedTeleport->fTeleportY) < 0.001f &&
+					std::abs(owner->fPositionZ - expectedTeleport->fTeleportZ) < 0.001f &&
 					gazeRoom->m_ServerNavigation.Is_PointWalkableExact(owner->fPositionX, owner->fPositionZ) &&
 					looksAtCenter(*owner);
 				std::size_t cloneCount = 0u;
@@ -727,14 +758,24 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
 				const bool queued = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
 					centeredRoom->Evaluate_KoukuSaydonPatternAudition(8197u, request, result);
+				// Spawn reset commits before the first stage's root motion advances in this tick.
+				centeredRoom->Prepare_KoukuAuditionTick(centeredRoom->m_iServerTick + 1u);
+				const bool resetAtStartCommit = centeredBoss->fPositionX == centerX &&
+					centeredBoss->fPositionY == centerY && centeredBoss->fPositionZ == centerZ &&
+					centeredBoss->iPatternStartTick == centeredRoom->m_iServerTick + 1u;
 				centeredRoom->Update_WorldEntities(1.f / 30.f);
 				++centeredRoom->m_iServerTick;
 				centeredBoss = centeredRoom->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
-				tests.Require(queued && nullptr != centeredBoss && centeredBoss->fPositionX == centerX &&
-					centeredBoss->fPositionY == centerY && centeredBoss->fPositionZ == centerZ &&
+				const bool rootStartedAtSpawn = centeredBoss &&
+					(centeredBoss->PatternStageRootMotion.empty() ||
+						(centeredBoss->bPatternStageRootOriginCaptured &&
+							centeredBoss->fPatternStageOriginX == centerX &&
+							centeredBoss->fPatternStageOriginY == centerY &&
+							centeredBoss->fPatternStageOriginZ == centerZ));
+				tests.Require(queued && resetAtStartCommit && rootStartedAtSpawn &&
 					centeredBoss->iPatternStartTick == centeredRoom->m_iServerTick &&
 					MECHANIC_CARD_SYMBOL::NONE != assignedSuit && MECHANIC_CARD_COLOR::NONE != assignedColor,
-					"Reset the production Dance or Roulette boss to spawn and publish its fixed pattern start clock with an encounter card");
+					"Reset the production Dance or Roulette boss to spawn before root motion and publish its fixed start clock with an encounter card");
 				SERVER_WORLD_ENTITY otherGate{};
 				otherGate.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
 				centeredRoom->Apply_KoukuGateEntryCard(centeredRoom->m_Players.at(cardPlayer.iPlayerId), otherGate);
@@ -752,6 +793,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 			selected.eOperation =
 				KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 			selected.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			selected.Scope.strGateId = "GATE1";
 			selected.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
 			selected.Scope.strBossPlacementId =
 				"boss.kakulsaydon.g1.saydon";
@@ -856,7 +898,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 			bool runtimeAdvanced = selectedQueued;
 			for (std::uint32_t tick = 1u; runtimeAdvanced && tick < 700u; ++tick)
 			{
+				// The room prepares all due members before any per-boss update.
+				room->Prepare_KoukuAuditionTick(tick);
 				runtimeAdvanced = room->Update_KoukuSaydonBoss(*liveBoss, tick);
+				room->m_iServerTick = tick;
 				if (CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
 					room->m_KoukuSaydonPatternAudition.ePhase)
 				{
@@ -913,9 +958,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					lifecycle.eState)
 				{
 					++completedCount;
+					// PATTERN_COMPLETED above carries the last stage; COMPLETED closes the run.
 					exactLifecycleIdentity = exactLifecycleIdentity &&
 						occurrenceSequence == lifecycle.iPatternSequence &&
-						firstProductLastStage == lifecycle.iStageIndex;
+						0u == lifecycle.iStageIndex && lifecycle.strMemberId.empty();
 				}
 			}
 			std::vector<std::uint32_t> expectedLiveStages;
@@ -960,7 +1006,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 				duplicateResult.iPinnedSourceRevision ==
 					selected.Scope.iExpectedSourceRevision &&
 				occurrenceSequence == duplicateResult.iPatternSequence &&
-				firstProductLastStage == duplicateResult.iStageIndex;
+				// Duplicate verdicts reconcile to the last run-terminal lifecycle edge.
+				0u == duplicateResult.iStageIndex;
 
 			auto playAll = selected;
 			playAll.iRequestSequence = 3u;
@@ -968,13 +1015,30 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 				KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL;
 			playAll.strPatternId.clear();
 			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT playAllResult{};
-			const bool playAllQueued = duplicateReconciled &&
+			std::vector<std::string> expectedGateOneOrder;
+			std::vector<std::uint32_t> expectedGateOneTransitions;
+			std::vector<std::size_t> expectedGateOneIndices;
+			for (std::size_t index = 0; index < sequence->PatternIds.size(); ++index)
+			{
+				const auto definition = std::find_if(patterns->begin(), patterns->end(),
+					[&](const auto& pattern) { return pattern.strPatternId == sequence->PatternIds[index]; });
+				if (definition != patterns->end() && definition->strGateId == playAll.Scope.strGateId &&
+					definition->strTargetBossPlacementId == playAll.Scope.strBossPlacementId)
+				{
+					expectedGateOneOrder.push_back(definition->strPatternId);
+					expectedGateOneIndices.push_back(index);
+				}
+			}
+			// Only selected adjacent occurrences have a transition; the final one has none.
+			for (std::size_t index = 0; index + 1 < expectedGateOneIndices.size(); ++index)
+				expectedGateOneTransitions.push_back(sequence->TransitionPursuitTicks[expectedGateOneIndices[index]]);
+			const bool playAllQueued = duplicateReconciled && !expectedGateOneOrder.empty() &&
 				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
 					room->Evaluate_KoukuSaydonPatternAudition(
 						8101u, playAll, playAllResult) &&
-				sequence->PatternIds ==
+				expectedGateOneOrder ==
 					room->m_KoukuSaydonPatternAudition.Members.front().PatternIds &&
-				sequence->TransitionPursuitTicks ==
+				expectedGateOneTransitions ==
 					room->m_KoukuSaydonPatternAudition.Members.front().TransitionTicks &&
 				playAllResult.Scope.ExpectedGameplayRevision ==
 					playAll.Scope.ExpectedGameplayRevision &&
@@ -984,7 +1048,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					playAll.Scope.ExpectedGameplayRevision &&
 				playAllResult.iPinnedSourceRevision ==
 					playAll.Scope.iExpectedSourceRevision &&
-				sequence->PatternIds.front() ==
+				expectedGateOneOrder.front() ==
 					playAllResult.strResolvedPatternId;
 			tests.Require(exactScopeRejected && gameplayRevisionRejected &&
 				sourceRevisionRejected && staleSourceRejected &&

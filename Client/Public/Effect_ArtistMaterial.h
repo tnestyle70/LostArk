@@ -107,10 +107,18 @@ inline bool Build_ArtistMaterialTrackBindings(const EFFECT_ELEMENT_DESC& Element
     const auto& Tracks = Element.SourceTransformTrack->MaterialParameterTracks;
     const auto* Program = Find_ArtistProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId);
     std::array<float4_t, 32u> Parameters;
-    if (Element.eKind != EFFECT_ELEMENT_KIND::MESH || !Program || !Program->bMesh || !Program->bSourceTransformMesh ||
+    const bool bSourceMesh = Program && Element.eKind == EFFECT_ELEMENT_KIND::MESH &&
+        Program->bMesh && Program->bSourceTransformMesh;
+    // LocalDecal already binds the same named native parameter packet at the
+    // document source clock. Keep that carrier's existing SourceRecipe contract.
+    const bool bSourceDecal = Program && Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+        !Program->bMesh && !Program->bModelCue && Program->strRuntimeProfileId.starts_with("effect.ue3.kouku-") &&
+        Program->strRendererShape == "decal" && Element.SourceRecipe.bEnabled &&
+        Element.SourceRecipe.strRendererShape == "decal";
+    if ((!bSourceMesh && !bSourceDecal) ||
         Tracks.size() > 64u || !std::isfinite(Element.SourceTransformTrack->fSourceTimeOriginSeconds) ||
         !Build_ArtistParameters(Element.Material.SourceMaterial, Parameters))
-    { Error = "Source material parameter tracks require an admitted native Mesh material."; return false; }
+    { Error = "Source material parameter tracks require an admitted native Mesh or LocalDecal material."; return false; }
     std::vector<ARTIST_PARAMETER_DESC> Candidate;
     for (const auto& Track : Tracks)
     {

@@ -26,10 +26,15 @@ namespace LostArk::Server
 		std::uint32_t iTimeMs = 0;
 		float fForward = 0.f;
 		float fLateral = 0.f;
+		// Optional fourth bootstrap component; existing horizontal consumers ignore it.
+		float fUp = 0.f;
 	};
 
 	struct PLAYER_SKILL_HIT final
 	{
+		// 0 is the legacy combined hit; authored v4 uses one independent channel.
+		// 1 damage/part/push, 2 stagger, 3 counter. No channel borrows another's power.
+		std::uint32_t iResultKind = 0u;
 		std::uint32_t iTimeMs = 0;
 		std::uint32_t iRepeatCount = 1;
 		std::uint32_t iRepeatMs = 0;

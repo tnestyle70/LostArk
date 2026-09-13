@@ -4,6 +4,134 @@
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "materials": [
     {
+      "assetId": "MAP_KOUKU_POPUP_CURTAIN_BG01",
+      "materialName": "SLOT_000_bg_rad_koukusaton_curtain01_mi",
+      "sourceMaterial": "bg_rad_koukusaton_a.mat.bg_rad_koukusaton_curtain01_mi",
+      "family": "bg-source-opaque-masked",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "specular": "linear",
+        "reflection": "linear"
+      },
+      "diffuseBrightness": 1.0,
+      "normalIntensity": 1.0,
+      "specularIntensity": 1.0,
+      "specularPower": 60.0,
+      "reflectionIntensity": 0,
+      "reflectionContrast": 0.5,
+      "reflectionTiling": 1,
+      "diffuseSaturation": 1.0,
+      "diffuseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reflectionColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "uvTiling": [
+        1,
+        1
+      ],
+      "reflectionOriginOffset": [
+        0,
+        0
+      ],
+      "castsShadow": true,
+      "diffuseTexture": "Map/LV_LUT_MIDNIGHTC_ED/SourceMaterials/736602e910ab_bg_rad_koukusaton_curtain01_d.dds",
+      "sourceFlags": 199,
+      "sourceBump": [
+        0.5,
+        0.007499999832361937,
+        0.5,
+        0
+      ],
+      "sourceUV": [
+        0.0,
+        1.0,
+        0,
+        0
+      ],
+      "flickerMode": 0,
+      "addressU": "WRAP",
+      "normalTexture": "Map/LV_LUT_MIDNIGHTC_ED/SourceMaterials/8b35b0d8e8e3_normal.dds"
+    },
+    {
+      "assetId": "MAP_KOUKU_POPUP_CURTAIN_BG01C",
+      "materialName": "SLOT_000_bg_rad_koukusaton_curtain01_mi",
+      "sourceMaterial": "bg_rad_koukusaton_a.mat.bg_rad_koukusaton_curtain01c_mi",
+      "family": "bg-source-opaque-masked",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "specular": "linear",
+        "reflection": "linear"
+      },
+      "diffuseBrightness": 1.0,
+      "normalIntensity": 1.0,
+      "specularIntensity": 1.0,
+      "specularPower": 60.0,
+      "reflectionIntensity": 0,
+      "reflectionContrast": 0.5,
+      "reflectionTiling": 1,
+      "diffuseSaturation": 1.0,
+      "diffuseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reflectionColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "uvTiling": [
+        1,
+        1
+      ],
+      "reflectionOriginOffset": [
+        0,
+        0
+      ],
+      "castsShadow": true,
+      "diffuseTexture": "Map/LV_LUT_MIDNIGHTC_ED/SourceMaterials/895b13789103_bg_rad_koukusaton_curtain01c_d.dds",
+      "sourceFlags": 199,
+      "sourceBump": [
+        0.5,
+        0.007499999832361937,
+        0.5,
+        0
+      ],
+      "sourceUV": [
+        0.0,
+        1.0,
+        0,
+        0
+      ],
+      "flickerMode": 0,
+      "addressU": "WRAP",
+      "normalTexture": "Map/LV_LUT_MIDNIGHTC_ED/SourceMaterials/8b35b0d8e8e3_normal.dds"
+    },
+    {
       "assetId": "MAP_016037AA5266_BG_RAD_KOUKUSATON_FLOOR19B_SM_RSH_OVR_14437C21F072",
       "materialName": "SLOT_000_bg_rad_koukusaton_floor19a_mi_rsh",
       "sourceMaterial": "lv_lut_midnightc.mat.bg_rad_koukusaton_floor19a_mi_rsh",

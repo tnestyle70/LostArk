@@ -19,6 +19,12 @@ enum class COMPOSITION_WORKBENCH_BOSS : std::uint8_t
     KOUKU_SAYDON_ENCORE,
 };
 
+// The target selects an authoring owner; gameplay class and boss IDs remain separate.
+enum class COMPOSITION_WORKBENCH_TARGET : std::uint8_t
+{
+    BOSS, CHARACTER, OBJECT, SEQUENCE
+};
+
 enum class COMPOSITION_WORKBENCH_PANE : std::uint8_t
 {
     SEQUENCER,
@@ -50,6 +56,7 @@ class ICompositionWorkbenchSession
 {
 public:
     virtual ~ICompositionWorkbenchSession() = default;
+    virtual void On_WorkbenchDeactivated() {}
     virtual void Begin_WorkbenchFrame() = 0;
     virtual void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) = 0;
     virtual void End_WorkbenchFrame() = 0;
@@ -60,13 +67,13 @@ public:
     virtual bool Can_AppendCompositionAnimationResource(
         const COMPOSITION_ANIMATION_RESOURCE&, bool, std::string& status) const
     {
-        status = "The selected boss session does not accept physical animation rows.";
+        status = "The selected action session does not accept physical animation rows.";
         return false;
     }
     virtual bool Append_CompositionAnimationResource(
         const COMPOSITION_ANIMATION_RESOURCE&, bool, std::string& status)
     {
-        status = "The selected boss session does not accept physical animation rows.";
+        status = "The selected action session does not accept physical animation rows.";
         return false;
     }
 };

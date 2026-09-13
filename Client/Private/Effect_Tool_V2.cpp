@@ -254,6 +254,9 @@ bool Client::CEffect_Tool_V2::Consume_AuthoringInteraction()
     const bool sequenceInteraction = m_pAuthoringSequencer && m_pAuthoringSequencer->Consume_InteractionRequest();
     return interaction || sequenceInteraction;
 }
+bool Client::CEffect_Tool_V2::Update_AuthoringPlacementInput(const bool active)
+{ return m_pAuthoringSequencer && m_pAuthoringSequencer->Update_PreviewPlacementInput(active); }
+
 void Client::CEffect_Tool_V2::Update_AuthoringWorkspace(float dt, bool active)
 {
     if (!m_pAuthoringSequencer || !m_pAuthoringPane) return;

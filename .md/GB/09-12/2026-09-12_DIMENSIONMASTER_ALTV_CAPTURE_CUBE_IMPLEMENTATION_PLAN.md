@@ -56,3 +56,28 @@ instance 경로와 단일 mesh fallback이 같은 함수로 연결되며 저장 
 보관한다. 작업 전 사용자 원본의 bytes를 유지하고, 새 실행 파일·shader·retimed cube 설치
 시점에 두 데이터를 함께 적용한다. 설치 직전 현재 source와 기록 baseline을 비교하고,
 사용자 추가 편집이 있으면 먼저 합친다. 후보·SHA·보류 상태는 RESULT G04에 기록한다.
+
+## G06. 고정한 시작 화면을 실제 큐브의 첫 프레임까지 축소
+
+09-14 실측 정본은 full311행·tuning26행의 v13 문서다. 두 문서의 기존 ALT178 camera
+emitter18/31을 새 화면 사각형과 겹쳐 그리지 않도록 해당 두 행의 visible만 끈 후보를 만든다.
+새 `screen.scene-capture.cube.v1` 화면 행은 effect0초부터2초까지 시작 장면을 고정하고,
+`captureTargetModelCueId=altv.source.notify036.cube`를 종착 대상으로 참조한다. 사각형
+바깥은 현재 장면을 유지하며 기존 ModelCue material·불투명도·tint·TRS·다른 효과와 카메라
+시퀀스는 보존한다. 원본은 실행 중 Client의 새 profile 미지원에 노출하지 않고 out 후보로 둔다.
+
+`Effect_DocumentRenderer_Particles.cpp`의 `Try_ProjectCaptureTargetBounds`는 기존에
+준비한 ModelCue CModel의 asset pretransform 적용 reference vertex bounds를 읽는다.
+입력은 현재 Effect frame root, stable cue ID, 화면 행의 종료 시각이고 출력은 현재
+view/projection에 투영한 사각형 중심·크기의 UV다. 종료 시각은 cue 시작 시각과1e-4초
+이내로 일치해야 한다. 이 계약은 임의의 미래 animation pose를 지원하는 기능이 아니다.
+기존 CModel의 bind bounds와 실제 설치 cube의 첫 pose는 최대0.00005m 이내로 일치한다.
+live model의 animation cursor는 바꾸지 않는다. 누락 cue/resource, 유효하지 않은 matrix,
+near plane을 가로지르는 bounds는 출력값을 변경하지 않고 실패한다.
+
+현재 WModel은600정점·52본이며 SHA256은
+`21d0e0fb9b983b6ff3e9e10badee5a39bc14f752cb41e20b8a0a909b0c8869ad`다.
+bind bounds 크기는0.085735×0.090912×0.084667m다. 여기에 .01을 추가하지 않고 실제
+ModelCue의 LocalTransform과 Effect Root를 한 번 적용한다. 화면 크기 상수로 큐브를 대신하지
+않는다. 16:9·1:1·9:16의 투영과 실패 시 출력 보존을 숫자로 검사하고 관련 TU를 out에
+컴파일한다. Client/UI 실행·캡처·화면 판정과 Product 설치 완료는 별도 사용자 단계다.

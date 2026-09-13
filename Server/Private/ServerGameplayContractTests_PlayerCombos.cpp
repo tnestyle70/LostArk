@@ -178,7 +178,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerCombos(TESTS& tes
 		bool preservedRepeatedStageDamage = nullptr != warlordBasicAttack &&
 			warlordBasicAttack->ComboStages.size() == 3u &&
 			600u == warlordBasicAttack->ComboStages[1].iComboAdvanceMs &&
-			warlordBasicAttack->ComboStages[1].Hits.size() == 1u &&
+			1 == std::count_if(warlordBasicAttack->ComboStages[1].Hits.begin(), warlordBasicAttack->ComboStages[1].Hits.end(),
+				[](const PLAYER_SKILL_HIT& hit) { return hit.iResultKind == 1u; }) &&
 			3u == warlordBasicAttack->ComboStages[1].Hits.front().iRepeatCount;
 		if (preservedRepeatedStageDamage)
 		{

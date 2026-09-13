@@ -13,7 +13,7 @@ CLASSES = (
     "DIMENSIONMASTER",
     "WARLORD",
 )
-EXPECTED_MISSING = {
+IMPORTED_RUNTIME_FALLBACKS = {
     38120,
     38180,
     38260,
@@ -55,8 +55,8 @@ class PlayerHitShapeCoverageContractTests(unittest.TestCase):
             self.assertTrue(authored, character_class)
             missing.update(damage_ids - authored)
             totals.append((character_class, len(authored), len(damage_ids)))
-        self.assertEqual(EXPECTED_MISSING, missing)
-        self.assertEqual(68, sum(row[1] for row in totals))
+        self.assertEqual(set(), missing)
+        self.assertEqual(76, sum(row[1] for row in totals))
         self.assertEqual(76, sum(row[2] for row in totals))
 
     def test_document_class_owns_every_covered_skill(self) -> None:
@@ -64,7 +64,7 @@ class PlayerHitShapeCoverageContractTests(unittest.TestCase):
         seen_classes = set()
         for document in self.documents:
             self.assertEqual("lostark.animation-hit-shapes", document["schema"])
-            self.assertEqual(3, document["formatVersion"])
+            self.assertEqual(4, document["formatVersion"])
             self.assertNotIn(document["characterClass"], seen_classes)
             seen_classes.add(document["characterClass"])
             for skill in document["skills"]:
@@ -72,6 +72,31 @@ class PlayerHitShapeCoverageContractTests(unittest.TestCase):
                     document["characterClass"], owners[int(skill["skillId"])]
                 )
         self.assertEqual(set(CLASSES), seen_classes)
+
+    def test_explicit_result_graph_and_existing_runtime_fallback_basis(self) -> None:
+        identities = set()
+        imported = set()
+        kinds = set()
+        for document in self.documents:
+            for skill in document["skills"]:
+                if skill.get("sourceBasis") == "EXISTING_SERVER_MAXIMUM_RANGE":
+                    imported.add(skill["skillId"])
+                for stage in skill.get("stages", [skill]):
+                    for owner in [stage] + stage.get("projectiles", []):
+                        for hit in owner["hits"]:
+                            logic, result = hit["logic"], hit["result"]
+                            self.assertEqual("DURATION", logic["logicType"])
+                            self.assertEqual("AREA_OVERLAP", logic["judgementKind"])
+                            self.assertEqual("RESULT", result["logicType"])
+                            self.assertEqual(hit["colliderId"], logic["colliderId"])
+                            self.assertEqual(result["resultId"], logic["resultId"])
+                            self.assertIn(result["resultKind"], {"DAMAGE", "STAGGER", "COUNTER"})
+                            kinds.add(result["resultKind"])
+                            for identity in (hit["colliderId"], logic["logicId"], result["resultId"]):
+                                self.assertNotIn(identity, identities)
+                                identities.add(identity)
+        self.assertEqual(IMPORTED_RUNTIME_FALLBACKS, imported)
+        self.assertEqual({"DAMAGE", "STAGGER", "COUNTER"}, kinds)
 
     def test_publisher_reports_partial_coverage_and_rejects_zero_class(self) -> None:
         source = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(

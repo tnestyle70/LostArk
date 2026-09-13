@@ -1408,6 +1408,14 @@ namespace Client::EffectDocumentCodecDetail
 				return false;
 		}
 
+        if (pScreenPost->Find("captureShrinkSeconds") &&
+            !Read_Float(*pScreenPost, "captureShrinkSeconds", Out.ScreenPost.fCaptureShrinkSeconds, strOutError)) return false;
+		if (const auto* target = pScreenPost->Find("captureTargetModelCueId"))
+		{
+			if (!target->Is_String())
+			{ strOutError = "Screen capture target must be a ModelCue ID string."; return false; }
+			Out.ScreenPost.strCaptureTargetModelCueId = target->Get_String();
+		}
 		if (Out.ScreenPost.bEnabled)
 		{
 			const Client::DATA_JSON_VALUE* pProfile = Find_Field(
@@ -1502,6 +1510,11 @@ namespace Client::EffectDocumentCodecDetail
 			Write_Float4(Output, Detail.ScreenPost.vTint);
 			Output << ", \"randomSeed\": "
 				<< Detail.ScreenPost.iRandomSeed;
+            if (Detail.ScreenPost.fCaptureShrinkSeconds != 0.f)
+                Output << ", \"captureShrinkSeconds\": " << Detail.ScreenPost.fCaptureShrinkSeconds;
+			if (!Detail.ScreenPost.strCaptureTargetModelCueId.empty())
+				Output << ", \"captureTargetModelCueId\": \""
+					<< CDataJson::Escape(Detail.ScreenPost.strCaptureTargetModelCueId) << "\"";
 		}
 		Output << " }\n";
 	}

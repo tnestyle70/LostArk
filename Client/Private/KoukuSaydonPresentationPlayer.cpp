@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "Engine_RenderTypes.h"
 #include "KoukuSaydonPresentationPlayer.h"
+#include "KoukuSaydonAnimationBlend.h"
 
 #include "ActionPresentationTimeline.h"
 #include "AnimationTargetService.h"
@@ -32,6 +33,7 @@
 #include <cmath>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <set>
 #include <stdexcept>
 
@@ -83,10 +85,15 @@ bool Validate_EffectAnchor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
                 [&](const auto& value) { return value.strWorldId == owner->strWorldId; });
         if (!stableId(box.strWorldOccurrenceId) || world == document.Worlds.end())
             return reject("Effect needs an existing World occurrence in the same Pattern");
-        if (world->strCompanionEffectResourceId != box.strResourceId ||
+        if (box.strAnchorKind == "WORLD")
+        {
+            if (box.strWorldId != owner->strWorldId)
+                return reject("Effect World occurrence must match its World anchor");
+        }
+        else if (world->strCompanionEffectResourceId != box.strResourceId ||
             std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
                 [&](const auto& other) {
-                    if (other.strOccurrenceId == box.strOccurrenceId ||
+                    if (other.strOccurrenceId == box.strOccurrenceId || other.strAnchorKind == "WORLD" ||
                         other.strWorldOccurrenceId != box.strWorldOccurrenceId) return false;
                     return std::any_of(document.PresentationResources.begin(), document.PresentationResources.end(),
                         [&](const auto& resource) {
@@ -495,7 +502,8 @@ bool Build_SourceAnchorWorlds(const SOURCE_ATTACHMENTS& attachments,
 }
 
 bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
-    const std::vector<ANCHOR_ANIMATION>& animations, float sampleMs,
+    const std::vector<ANCHOR_ANIMATION>& animations,
+    std::span<const KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> blendWindows, float sampleMs,
     const std::vector<std::string>& names, SOURCE_BONES& bones, std::string& error)
 {
     if (names.empty()) return true;
@@ -537,7 +545,11 @@ bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
     }
     std::vector<float4x4_t> sampled(indices.size());
     bool sampledPose = false;
-    if (previous && animation->iBlendInMs && age < animation->iBlendInMs)
+    CModel::ANIMATION_TRANSITION_POSE logicPose;
+    bool logicActive = false;
+    if (!CKoukuSaydonAnimationBlend::Sample_Pose(*model, blendWindows, sampleMs, logicPose, logicActive, error)) return false;
+    if (logicActive) sampledPose = model->Sample_AnimationTransitionBoneCombinedMatrices(logicPose, indices, sampled);
+    else if (previous && animation->iBlendInMs && age < animation->iBlendInMs)
     {
         CModel::ANIMATION_TRANSITION_POSE pose;
         pose.sourceIndex = clipIndex(previous->strRuntimeClip);
@@ -609,7 +621,7 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         }
     return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
         frozenBones = std::move(frozenBones), frozenError = std::move(frozenError), freezeResourcePose,
-        weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs]
+        blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs]
         (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
     {
         if (!std::isfinite(seconds) || seconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
@@ -624,7 +636,7 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
             return Build_SourceAnchorWorlds(attachments, view, root, frozenBones, anchors, error);
         }
         SOURCE_BONES bones;
-        return Sample_SourceBones(view.pModel, animations, startMs + seconds * 1000.f, names, bones, error) &&
+        return Sample_SourceBones(view.pModel, animations, blendWindows, startMs + seconds * 1000.f, names, bones, error) &&
             Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
     };
 }
@@ -644,6 +656,31 @@ EFFECT_FIXED_STEP_TRANSFORM_PROVIDER Effect_V1TransformProvider(const OCCURRENCE
         error.clear();
         return true;
     };
+}
+
+// A centered WORLD circle is a ground-plane radius proxy. Uniform model
+// scale changes its radius; mesh roll/pitch and self-spin do not tilt the proxy.
+bool Is_CenteredWorldCircle(const RESOURCE& resource, const OCCURRENCE& box)
+{
+    return resource.eKind == KIND::COLLIDER && resource.strShape == "CIRCLE" &&
+        box.strAnchorKind == "WORLD" && box.strBone.empty() &&
+        std::all_of(box.PositionOffset.begin(), box.PositionOffset.end(), [](const double v) { return v == 0.0; }) &&
+        std::abs(box.Scale[0] - box.Scale[1]) <= .0001 && std::abs(box.Scale[0] - box.Scale[2]) <= .0001;
+}
+
+void Flatten_CenteredWorldCircle(const RESOURCE& resource, const OCCURRENCE& box, float4x4_t& anchor)
+{
+    if (!Is_CenteredWorldCircle(resource, box)) return;
+    const matrix_t world = XMLoadFloat4x4(&anchor);
+    const float sx = XMVectorGetX(XMVector3Length(world.r[0]));
+    const float sy = XMVectorGetX(XMVector3Length(world.r[1]));
+    const float sz = XMVectorGetX(XMVector3Length(world.r[2]));
+    // Keep legacy nonuniform upright colliders on their existing path. The
+    // gameplay publisher rejects nonuniform spinning circle sources.
+    if (!std::isfinite(sx) || sx <= 0.f || std::abs(sx - sy) > .0001f || std::abs(sx - sz) > .0001f) return;
+    matrix_t upright = XMMatrixIdentity();
+    upright.r[3] = world.r[3];
+    XMStoreFloat4x4(&anchor, upright);
 }
 
 HIT_AREA_SHAPE Collider_Wire(const RESOURCE& resource, const OCCURRENCE& box)
@@ -754,7 +791,8 @@ struct Client::CKoukuSaydonPresentationPlayer::FRAME_LIGHT_PROVIDER final : Engi
     {
         auto& presentation = CPresentation_Manager::Get();
         const auto used = presentation.Get_TransientLights().size();
-        const std::size_t remaining = used < 64u ? 64u - used : 0u;
+        constexpr auto capacity = CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
+        const std::size_t remaining = used < capacity ? capacity - used : 0u;
         const auto count = (std::min)(remaining, lights.size());
         skippedByBudget = lights.size() - count;
         // Validation is finished before this provider joins the frame transaction.
@@ -890,7 +928,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
         animations.push_back(std::move(animation));
     }
     SOURCE_BONES bones;
-    return Sample_SourceBones(view.pModel, animations, seconds * 1000.f, names, bones, error) &&
+    return Sample_SourceBones(view.pModel, animations, {}, seconds * 1000.f, names, bones, error) &&
         Build_SourceAnchorWorlds(attachments, view, root, bones, anchors, error);
 }
 
@@ -989,6 +1027,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
             if (value.Find("targetBossPlacementId")) item.pattern.strTargetBossPlacementId = Text(value, "targetBossPlacementId");
             if (value.Find("actorProfileId")) item.pattern.strActorProfileId = Text(value, "actorProfileId");
             item.durationMs = UInt(value, "durationMs", 1u, MAX_TIMELINE_MS);
+            if (const auto* windows = value.Find("animationBlendWindows"))
+                if (!CKoukuSaydonAnimationBlend::Read_ProductWindows(*windows, item.pattern.AnimationBlendWindows, parseStatus))
+                    throw std::runtime_error(parseStatus);
             if (const auto* animations = value.Find("sourceAnchorAnimations"))
             {
                 if (!animations->Is_Array() || animations->Get_Array().empty() || animations->Get_Array().size() > 4096u)
@@ -1470,6 +1511,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     placedBox.Scale[axis] *= scale;
                     placedBox.PositionOffset[axis] *= scale;
                 }
+                Flatten_CenteredWorldCircle(resource, box, anchor);
                 placedBox.strBone.clear();
                 anchorModel.reset();
             }
@@ -1617,9 +1659,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         }
         if (row.v1EffectHandle)
         {
+            const bool captureSample = &session == &m_PreviewSession && m_bPreviewCaptureClockHeld;
+            CEffectPresentationService::Set_ScreenPostCaptureAllowed({row.v1EffectHandle},
+                !captureSample || m_bPreviewCaptureAllowed);
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
                 !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, age,
-                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler)))
+                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler),
+                    captureSample) || (captureSample && FAILED(
+                        CEffectPresentationService::Commit_WorldRootCaptureSample({row.v1EffectHandle}))))
             {
                 CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
                 row.v1EffectHandle = 0u;
@@ -1772,7 +1819,8 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
     }
     if (auto* level = CLevel_KakulSaydonArena::Get_Active())
     {
-        if (camera)
+        const bool cameraEnabled = level->Is_CompositionCameraEnabled();
+        if (camera && cameraEnabled)
         {
             if (level->Sample_CompositionCamera(camera->assetId, camera->lastAge, camera->cameraOffset,
                 cameraOwner, camera->cameraDurationMs, cameraPreview))
@@ -1786,7 +1834,7 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
         }
         else if (m_bCameraUsed)
         {
-            level->Stop_CompositionCamera();
+            level->Stop_CompositionCamera(!cameraEnabled);
             m_bCameraUsed = false;
         }
     }
@@ -2025,7 +2073,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         // preparation. Arm the new clock once without charging that setup time.
         const bool advanceClock = !m_bPreviewClockAwaitingFirstUpdate;
         m_bPreviewClockAwaitingFirstUpdate = false;
-        if (advanceClock && !m_bPreviewPaused && !m_bModelReferencePreview)
+        if (advanceClock && !m_bPreviewPaused && !m_bModelReferencePreview && !m_bPreviewCaptureClockHeld)
             m_fPreviewClockMs += double(dt) * 1000.0;
         if (!m_bPreviewPaused && !m_bModelReferencePreview && m_fPreviewClockMs >= m_iPreviewDurationMs)
         {
@@ -2170,7 +2218,13 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     for (auto& member : members)
     {
-        if (member.actor && member.actor->Get_Model()) (void)member.actor->Get_Model()->Set_RootMotionVerticalScale(1.f);
+        if (member.rootMotion)
+        {
+            member.rootMotion.reset();
+            if (member.actor) (void)member.actor->Apply_NetworkState(member.initialPosition, member.initialYawDegrees);
+        }
+        else if (member.actor && member.actor->Get_Model())
+            (void)member.actor->Get_Model()->Set_RootMotionVerticalScale(1.f);
         Stop_Session(member.session);
         if (level)
         {
@@ -2187,7 +2241,8 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
 
 bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const std::string& bundleId,
-    std::uint32_t clockMs, bool paused, std::string& status, const CWorldSequenceDocument* sourceDocument)
+    std::uint32_t clockMs, bool paused, std::string& status, const CWorldSequenceDocument* sourceDocument,
+    const bool automaticRootMotion)
 {
     const auto bundle = std::find_if(document.Bundles.begin(), document.Bundles.end(),
         [&](const auto& value) { return value.strBundleId == bundleId; });
@@ -2252,15 +2307,20 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         member.memberId = sourceMember.strMemberId;
         member.offsetTicks = static_cast<std::uint32_t>((std::uint64_t(sourceMember.iStartOffsetMs) * 30u + 999u) / 1000u);
         member.pattern = *source;
+        if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(document, *source,
+            member.pattern.AnimationBlendWindows, status)) return fail(status);
         member.durationMs = Pattern_Duration(*source);
         if (!member.durationMs) return fail("Empty child pattern cannot be previewed.");
         duration = (std::max)(duration, (std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u + member.durationMs);
         if (duration > MAX_TIMELINE_MS) return fail("Bundle preview exceeds the timeline duration limit.");
         if (!level->Create_CompositionPreviewActor(*source, member.actor, status)) return fail(status);
         const auto model = member.actor->Get_Model();
+        if (!CKoukuSaydonAnimationBlend::Validate_ModelWindows(*model, member.pattern.AnimationBlendWindows, status))
+            return fail(status);
         member.initialAnimation = model->Get_CurrentAnimIndex();
         const auto& initialRoot = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
         member.initialYawDegrees = XMConvertToDegrees(std::atan2(initialRoot._31, initialRoot._33));
+        member.initialPosition = {initialRoot._41, initialRoot._42, initialRoot._43};
         float ignored = 0.f;
         model->Get_AnimationProgress(member.initialAnimation, member.initialTicks, ignored);
         std::uint32_t stageStart = 0u;
@@ -2284,6 +2344,15 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         }
         std::sort(member.animations.begin(), member.animations.end(), [](const auto& a, const auto& b)
             { return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
+        if (automaticRootMotion && !member.animations.empty() &&
+            CKoukuSaydonPreviewRootMotion::Allows_AutomaticMotion(document, *source))
+        {
+            member.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
+            if (!member.rootMotion->Prepare(model, member.animations,
+                    float(source->fAnimationRootVerticalScale), status) ||
+                !member.rootMotion->Begin_Suppression())
+                return fail("Bundle child root motion: " + status);
+        }
         for (const auto& box : source->WorldOccurrences)
         {
             const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
@@ -2404,7 +2473,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
     }
     const std::string bundleId = bundle.strBundleId;
     reference.Bundles.push_back(std::move(bundle));
-    if (!Begin_BundlePreview(reference, bundleId, clockMs, paused, status)) return false;
+    if (!Begin_BundlePreview(reference, bundleId, clockMs, paused, status, nullptr, false)) return false;
     m_bModelReferencePreview = true;
     status = m_strStatus = "Model reference ready. Master cursor owns time; actors stay at authored spawn (no Server movement replay).";
     return true;
@@ -2440,15 +2509,14 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ModelReferenceTarget(
     return true;
 }
 
-void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
+bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
     BUNDLE_PREVIEW_MEMBER& member, const double localMs)
 {
-    if (std::none_of(member.pattern.Stages.begin(), member.pattern.Stages.end(),
-        [](const auto& stage) { return stage.bRetargetOnEnter; })) return;
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     const auto player = level ? level->Get_LocalCharacter() : nullptr;
-    const auto& root = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
+    const auto root = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
     float yaw = member.initialYawDegrees;
+    std::vector<float> rowYaws(member.animations.size(), yaw);
     std::uint32_t stageStartMs = 0u;
     for (const auto& stage : member.pattern.Stages)
     {
@@ -2458,8 +2526,16 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
             auto [sample, inserted] = member.stageFacingYawDegrees.try_emplace(stage.strStageId, yaw);
             if (inserted && player && player->Get_Transform())
             {
+                float3_t stagePosition{root._41, root._42, root._43};
+                if (member.rootMotion)
+                {
+                    float3_t preceding;
+                    if (!member.rootMotion->Sample_Displacement(stageStartMs, rowYaws, preceding)) return false;
+                    stagePosition = {member.initialPosition.x + preceding.x,
+                        member.initialPosition.y + preceding.y, member.initialPosition.z + preceding.z};
+                }
                 const auto& target = *player->Get_Transform()->Get_WorldMatrixPtr();
-                const float dx = target._41 - root._41, dz = target._43 - root._43;
+                const float dx = target._41 - stagePosition.x, dz = target._43 - stagePosition.z;
                 if (std::isfinite(dx) && std::isfinite(dz) && dx * dx + dz * dz > .000001f)
                 {
                     sample->second = XMConvertToDegrees(std::atan2(dx, dz));
@@ -2469,12 +2545,25 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
                         sample->second -= 90.f;
                 }
             }
-            // A seek reuses this stage's first sample, including its held yaw when no target existed.
+            // Reuse each stage's first facing on backward/forward scrubs.
             yaw = sample->second;
         }
+        for (size_t i = 0u; i < member.animations.size(); ++i)
+            if (member.animations[i].iPoseStartMs >= stageStartMs &&
+                member.animations[i].iPoseStartMs < stageStartMs + stage.iDurationMs)
+                rowYaws[i] = yaw;
         stageStartMs += stage.iDurationMs;
     }
-    (void)member.actor->Apply_NetworkState({root._41, root._42, root._43}, yaw);
+    float3_t position{root._41, root._42, root._43};
+    if (member.rootMotion)
+    {
+        float3_t displacement;
+        if (!member.rootMotion->Sample_Displacement((std::clamp)(localMs, 0.0, double(member.durationMs)),
+            rowYaws, displacement)) return false;
+        position = {member.initialPosition.x + displacement.x,
+            member.initialPosition.y + displacement.y, member.initialPosition.z + displacement.z};
+    }
+    return member.actor->Apply_NetworkState(position, yaw);
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
@@ -2486,9 +2575,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     {
         const double localMs = m_fPreviewClockMs - double(member.offsetTicks) * 1000.0 / 30.0;
         const auto model = member.actor->Get_Model();
-        (void)model->Set_RootMotionVerticalScale(float(member.pattern.fAnimationRootVerticalScale));
+        (void)model->Set_RootMotionVerticalScale(member.rootMotion ? 0.f : float(member.pattern.fAnimationRootVerticalScale));
         const auto sampleMs = static_cast<float>((std::clamp)(localMs, 0.0, double(member.durationMs)));
-        Sample_BundlePreviewFacing(member, localMs);
+        if (!Sample_BundlePreviewFacing(member, localMs))
+        { Fail_Preview("Bundle root-motion sample or actor target is unavailable."); return; }
         std::array<double, 3u> bossPosition{};
         double bossYaw = 0.0;
         if (Sample_KoukuSaydonBossMotion(member.pattern, sampleMs, bossPosition, bossYaw))
@@ -2523,7 +2613,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         model->Set_AnimPaused(true);
         model->Set_AnimTrackPosition(animationIndex, ticks);
         model->Update_Animation(0.f);
-        if (animation && animation->iBlendInMs && previousAnimation)
+        CModel::ANIMATION_TRANSITION_POSE logicPose;
+        bool logicActive = false;
+        std::string blendStatus;
+        if (!CKoukuSaydonAnimationBlend::Sample_Pose(*model, member.pattern.AnimationBlendWindows,
+            sampleMs, logicPose, logicActive, blendStatus) ||
+            (logicActive && !model->Set_AnimationTransitionPose(logicPose)))
+        { Fail_Preview("Logic animation blend failed: " + blendStatus); return; }
+        if (!logicActive && animation && animation->iBlendInMs && previousAnimation)
         {
             CModel::ANIMATION_TRANSITION_POSE pose;
             pose.targetIndex = animationIndex; pose.targetTicks = ticks;
@@ -2599,6 +2696,106 @@ void Client::CKoukuSaydonPresentationPlayer::Set_PreviewPivot(
     m_bPreviewPivotReady = true;
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
+    std::uint32_t requestedMs, std::uint32_t& effectiveMs)
+{
+    effectiveMs = requestedMs;
+    if (!m_bPreviewPlaying || Preview_IsBundle()) return true;
+    const bool wasHeld = m_bPreviewCaptureClockHeld;
+    if (wasHeld) requestedMs = m_iPreviewCaptureResumeMs;
+    if (!CPresentation_Manager::Get().Are_ScreenPostsEnabled())
+    {
+        m_bPreviewCaptureClockHeld = false;
+        m_bPreviewCaptureBoundarySampled = false;
+        m_bPreviewCaptureAllowed = true;
+        m_iPreviewCaptureWaitFrames = 0u;
+        effectiveMs = requestedMs;
+        if (wasHeld) m_PreviewSession.lastClockMs = -1.f;
+        return true;
+    }
+    std::optional<std::uint32_t> firstCaptureMs;
+    for (const auto& box : m_PreviewPattern.PresentationOccurrences)
+    {
+        if (requestedMs < box.iStartMs ||
+            double(requestedMs) >= double(box.iStartMs) + box.iDurationMs) continue;
+        const auto resource = std::find_if(m_PreviewDocument.PresentationResources.begin(),
+            m_PreviewDocument.PresentationResources.end(), [&](const auto& value) {
+                return value.strResourceId == box.strResourceId; });
+        if (resource == m_PreviewDocument.PresentationResources.end() || resource->eKind != KIND::EFFECT ||
+            (resource->strResourceKind != "V1_EFFECT" && resource->strResourceKind != "V1_ELEMENT")) continue;
+        const auto document = CEffectCatalog::Find(resource->strAssetId);
+        if (!document) continue; // Existing admission owns missing-document failures.
+        for (const auto& element : document->Elements)
+        {
+            if (!element.bVisible || element.eKind != EFFECT_ELEMENT_KIND::SCREEN_POST ||
+                !element.Detail.ScreenPost.bEnabled || element.Detail.ScreenPost.eStatus !=
+                    EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE || element.Detail.ScreenPost.eProfile !=
+                    EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
+                (!resource->strElementId.empty() && resource->strElementId != element.strElementId)) continue;
+            const double delayMs = double(element.Detail.Timing.fStartDelaySeconds) * 1000.0;
+            if (!std::isfinite(delayMs) || delayMs < 0.0 || delayMs >= box.iDurationMs) continue;
+            // Float seconds can put an authored integer millisecond a fraction
+            // of a microsecond above itself; retain that cursor before rounding up.
+            const auto captureMs = static_cast<std::uint32_t>(box.iStartMs + std::ceil(delayMs - 0.001));
+            const double captureEndMs = double(box.iStartMs) + delayMs +
+                double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0;
+            if (captureMs > requestedMs || double(requestedMs) >= captureEndMs) continue;
+            const auto row = m_PreviewSession.rows.find(box.strOccurrenceId);
+            if (row != m_PreviewSession.rows.end())
+            {
+                if (row->second.failed) return false;
+                const HRESULT captureResult = CEffectPresentationService::Get_ScreenPostCaptureResult(
+                    {row->second.v1EffectHandle}, element.strElementId);
+                if (FAILED(captureResult))
+                {
+                    m_strStatus = "Scene capture failed: " + box.strOccurrenceId + " / " +
+                        element.strElementId + "; HRESULT=" + std::to_string(captureResult);
+                    return false;
+                }
+                if (CEffectPresentationService::Has_CapturedScreenPost(
+                    {row->second.v1EffectHandle}, element.strElementId)) continue;
+            }
+            if (!firstCaptureMs || captureMs < *firstCaptureMs) firstCaptureMs = captureMs;
+        }
+    }
+    m_bPreviewCaptureClockHeld = firstCaptureMs.has_value();
+    if (firstCaptureMs)
+    {
+        if (!wasHeld) m_iPreviewCaptureResumeMs = requestedMs;
+        const bool sameBoundary = wasHeld && m_iPreviewCaptureBoundaryMs == *firstCaptureMs;
+        m_bPreviewCaptureAllowed = sameBoundary && m_bPreviewCaptureBoundarySampled;
+        if (!sameBoundary)
+        {
+            m_bPreviewCaptureBoundarySampled = false;
+            m_iPreviewCaptureWaitFrames = 0u;
+        }
+        m_iPreviewCaptureBoundaryMs = *firstCaptureMs;
+        effectiveMs = *firstCaptureMs;
+        if (++m_iPreviewCaptureWaitFrames > 120u)
+        {
+            m_strStatus = "Scene capture did not receive a renderable frame at " +
+                std::to_string(effectiveMs) + " ms within 120 preview updates. "
+                "Check the active WORLD and Screen Presentation Post, then restart Preview.";
+            return false;
+        }
+    }
+    else
+    {
+        effectiveMs = requestedMs;
+        m_bPreviewCaptureBoundarySampled = false;
+        m_bPreviewCaptureAllowed = true;
+        m_iPreviewCaptureWaitFrames = 0u;
+    }
+    if (wasHeld || m_bPreviewCaptureClockHeld)
+    {
+        // A render boundary is one continuing occurrence, not a new playback.
+        // Keep its capture and observed anchors across the deferred cursor jump.
+        m_PreviewSession.lastClockMs = -1.f;
+        m_strCompletedPreviewPatternId.clear();
+    }
+    return true;
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Sample_Preview(std::uint32_t clockMs,
     bool playing, bool paused, const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model)
 {
@@ -2612,7 +2809,18 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_Preview(std::uint32_t clockM
         CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
     Sample(m_PreviewSession, m_PreviewDocument, m_PreviewPattern, float(m_fPreviewClockMs),
         paused, pivot, model, hasWeapon ? &weaponView : nullptr);
+    if (m_bPreviewCaptureClockHeld && std::any_of(m_PreviewSession.rows.begin(), m_PreviewSession.rows.end(),
+        [](const auto& value) { return value.second.failed; }))
+    {
+        // A failed companion occurrence must not be frozen as a complete scene.
+        Fail_Preview(m_strStatus);
+        return;
+    }
     Refresh_SharedPresentation();
+    // The next Engine Late_Update can now cull and submit this WORLD/camera.
+    // The first boundary render is pass-through; only the next may latch it.
+    if (m_bPreviewCaptureClockHeld && clockMs == m_iPreviewCaptureBoundaryMs)
+        m_bPreviewCaptureBoundarySampled = true;
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Pause_Preview(bool paused)
@@ -2636,6 +2844,12 @@ void Client::CKoukuSaydonPresentationPlayer::Pause_Preview(bool paused)
 
 void Client::CKoukuSaydonPresentationPlayer::Seek_Preview(std::uint32_t clockMs)
 {
+    m_bPreviewCaptureClockHeld = false;
+    m_bPreviewCaptureBoundarySampled = false;
+    m_bPreviewCaptureAllowed = true;
+    m_iPreviewCaptureWaitFrames = 0u;
+    for (const auto& [id, row] : m_PreviewSession.rows)
+        CEffectPresentationService::Set_ScreenPostCaptureAllowed({row.v1EffectHandle}, true);
     m_strCompletedPreviewPatternId.clear();
     m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
     if (m_fPreviewClockMs >= m_iPreviewDurationMs) Pause_Preview(true);
@@ -2700,6 +2914,10 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
     m_bPreviewPlaying = false;
     m_bOwnPreviewClock = false;
     m_bPreviewClockAwaitingFirstUpdate = false;
+    m_bPreviewCaptureClockHeld = false;
+    m_bPreviewCaptureBoundarySampled = false;
+    m_bPreviewCaptureAllowed = true;
+    m_iPreviewCaptureResumeMs = m_iPreviewCaptureBoundaryMs = m_iPreviewCaptureWaitFrames = 0u;
     m_bPreviewPaused = false;
     m_bPreviewPivotReady = false;
     m_bColliderResourcePreview = false;
@@ -3097,7 +3315,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
         edited.PositionOffset = occurrence.PositionOffset;
         edited.RotationDegrees = occurrence.RotationDegrees;
         edited.Scale = occurrence.Scale;
-        bool anchorChanged = false;
+        bool anchorChanged = Is_CenteredWorldCircle(*resource, edited) != Is_CenteredWorldCircle(*resource, *box);
         if (resource->eKind == KIND::EFFECT)
         {
             edited.strAnchorKind = occurrence.strAnchorKind;

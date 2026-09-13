@@ -66,6 +66,7 @@ struct WORLD_SEQUENCE_MAP_MATERIAL_BINDING
     std::string sourceAssetId;
     std::string sourceMaterialName;
     std::string diffuseTextureAssetId;
+    bool unlit = false;
     bool operator==(const WORLD_SEQUENCE_MAP_MATERIAL_BINDING&) const = default;
 };
 
@@ -183,6 +184,9 @@ struct WORLD_SEQUENCE_EFFECT_TRACK
 	std::string slotId;
 	std::string resourceKind = "GROUP";
 	std::string resourceId;
+	// V1_EFFECT uses the same authored catalog as the Effect and Sequence tools.
+	bool_t followObject = false;
+	std::string bone;
 	std::string timing = "MOTION_END";
 	uint32_t startMs = 0;
 	uint32_t durationMs = 1000;

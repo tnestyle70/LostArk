@@ -95,6 +95,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 {
 	if (!IsDamageableWorldTarget(target) ||
+		(WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind && hit.iRawDamage == 0u) ||
 		(target.strSpawnGroupId == "cardmaze.targets" && hit.iSkillId != 56411u) ||
 		LostArk::Shared::INVALID_SKILL_ID == hit.iSkillId)
 	{

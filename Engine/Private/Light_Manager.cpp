@@ -97,7 +97,7 @@ HRESULT CLight_Manager::Render_Lights(
 
     // Scene admission permits 16 and Presentation_Manager permits 384 transient lights.
     // Keep the bounded GPU record array and CPU staging contract together.
-    constexpr uint32_t maximumLightInstances = 400u;
+    constexpr uint32_t maximumLightInstances = 16u + CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
     struct LightInstance
     {
         float4_t direction, position, diffuse, ambient, specular, attenuation;

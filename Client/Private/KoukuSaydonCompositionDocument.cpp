@@ -529,6 +529,14 @@ namespace
 		{
 			if (hasTriggerValues) { outStatus = "Trigger values need a triggerKind."; return false; }
 		}
+		else if (logic.strTriggerKind == "ANIMATION_BLEND")
+		{
+			if (hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback ||
+				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
+				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
+				logic.TeleportPosition != std::array<double, 3>{})
+			{ outStatus = "ANIMATION_BLEND carries only its triggerKind; its Logic box owns start/duration."; return false; }
+		}
 		else if (logic.strTriggerKind == "ALBION_BLUE_CIRCLE")
 		{
 			if (logic.iCountPerPlayer < 1u || logic.iCountPerPlayer > 8u ||
@@ -749,7 +757,7 @@ namespace
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
 			  "dissolveStart", "dissolveEnd", "volume", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
-			  "worldEmissionIndex" })) return false;
+			  "worldEmissionIndex", "selectionGroupId" })) return false;
 		const auto* debugRender = value.Find("debugRender");
 		if (nullptr != debugRender)
 		{
@@ -764,6 +772,7 @@ namespace
 		}
 		return Read_PresentationText(value, "occurrenceId", row.strOccurrenceId, true) &&
 			Read_PresentationText(value, "resourceId", row.strResourceId, true) &&
+			Read_PresentationText(value, "selectionGroupId", row.strSelectionGroupId) &&
 			Read_PresentationText(value, "bone", row.strBone) &&
 			Read_PresentationText(value, "boneTarget", row.strBoneTarget) &&
 			Read_PresentationText(value, "regionId", row.strRegionId) &&
@@ -856,6 +865,7 @@ namespace
             return folder.strTimelinePatternId == pattern.strPatternId; }))
             return fail("Pattern row requires an executable Parent timeline.");
         const auto lifetime = Pattern_Lifetime(pattern);
+        if (pattern.BossMotion) return fail("Parent Boss Motion cannot share a child actor.");
         std::vector<std::pair<std::uint64_t, std::uint64_t>> windows;
         for (const auto& row : pattern.PatternOccurrences)
         {
@@ -873,6 +883,23 @@ namespace
             if (!Pattern_Lifetime(*child) || Pattern_Lifetime(*child) > MAX_TIME_MS ||
                 !row.iDurationMs || std::uint64_t(row.iStartMs) + row.iDurationMs > lifetime)
                 return fail("Child or occurrence duration is invalid: " + row.strOccurrenceId);
+            if (child->BossMotion)
+            {
+                if (pattern.PatternOccurrences.size() != 1u || row.bRepeat ||
+                    row.iDurationMs != Pattern_Lifetime(*child) || pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
+                    std::any_of(pattern.Stages.begin(), pattern.Stages.end(), [](const auto& stage) {
+                        return !stage.AnimationOccurrences.empty() || stage.bRetargetOnEnter; }))
+                    return fail("Moving child needs one complete non-repeated Pattern and no Parent animation, retarget or spawn reset.");
+                for (const auto& box : pattern.LogicOccurrences)
+                {
+                    if (!box.bEnabled) continue;
+                    const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
+                        [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
+                    if (definition != document.Logics.end() && (definition->strTriggerKind == "REAL_GAZE_TELEPORT" ||
+                        (definition->strTriggerKind == "ENTER_AREA" && definition->fBossChargeDistanceM > 0.0)))
+                        return fail("Moving child cannot share Parent teleport or charge Logic.");
+                }
+            }
             windows.emplace_back(row.iStartMs, std::uint64_t(row.iStartMs) + row.iDurationMs);
         }
         std::sort(windows.begin(), windows.end());
@@ -1046,7 +1073,7 @@ namespace
                 row.fDissolveStart < 0. || row.fDissolveEnd > 1. || row.fDissolveStart > row.fDissolveEnd ||
                 row.fBrightnessMultiplier != 1. || row.strAnchorKind != "BOSS" || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
                 !row.strWorldId.empty() || !row.strRegionId.empty() || !row.strLogicOccurrenceId.empty() ||
-                !row.strWorldOccurrenceId.empty() || row.strCardSymbol != "NONE" || row.strCardColor != "NONE")
+                !row.strWorldOccurrenceId.empty() || !row.strSelectionGroupId.empty() || row.strCardSymbol != "NONE" || row.strCardColor != "NONE")
                 return fail("common presentation supports unbound Camera only: " + row.strOccurrenceId);
             span = (std::max)(span, end);
         }
@@ -1458,8 +1485,16 @@ namespace
 					!std::isfinite(motion.fYawDegrees) || std::abs(motion.fYawDegrees) > 360.0)
 				{ outStatus = "Boss Motion needs a valid pattern interval, equal base Y and no spawn reset."; return false; }
 			}
+			if (pattern.PatternOccurrences.empty())
+			{
+				std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> blendWindows;
+				if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(
+					document, pattern, blendWindows, outStatus)) return false;
+			}
 			std::unordered_set<std::string> regionIds;
 			std::unordered_set<std::string> companionWorldBoxes;
+			std::unordered_map<std::string, std::pair<
+				const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE*, std::size_t>> selectionGroups;
 			for (const auto& row : pattern.PresentationOccurrences)
 			{
 				const std::uint64_t endMs = static_cast<std::uint64_t>(row.iStartMs) + row.iDurationMs;
@@ -1490,6 +1525,24 @@ namespace
 					(row.strAnchorKind != "WORLD" && !row.strWorldId.empty()))
 				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
 				const auto* resource = presentationResources.at(row.strResourceId);
+				if (!row.strSelectionGroupId.empty())
+				{
+					if (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
+						!Is_StableId(row.strSelectionGroupId))
+					{ outStatus = "Selection Group requires a stable ID on a Collider: " + row.strOccurrenceId; return false; }
+					if (row.strAnchorKind != "BOSS")
+					{ outStatus = "Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported."; return false; }
+					auto& group = selectionGroups[row.strSelectionGroupId];
+					if (nullptr == group.first) group.first = &row;
+					const auto& first = *group.first;
+					if (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
+						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
+						row.strWorldId != first.strWorldId || row.strWorldOccurrenceId != first.strWorldOccurrenceId ||
+						row.iWorldEmissionIndex != first.iWorldEmissionIndex ||
+						(!row.bFollowBoss && row.iStartMs != first.iStartMs))
+					{ outStatus = "Selection Group Colliders must share an anchor frame: " + row.strSelectionGroupId; return false; }
+					++group.second;
+				}
 				if (row.strBoneTarget != "BODY" && ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) ||
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
 				{ outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone."; return false; }
@@ -1511,14 +1564,15 @@ namespace
 						std::find_if(document.Worlds.begin(), document.Worlds.end(), [&](const auto& value) { return value.strWorldId == owner->strWorldId; });
 					if (!Is_StableId(row.strWorldOccurrenceId) || world == document.Worlds.end())
 					{ outStatus = "Presentation needs an existing World occurrence in the same Pattern: " + row.strOccurrenceId; return false; }
-					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && row.strAnchorKind != "WORLD")
 					{
 						if (world->strCompanionEffectResourceId != row.strResourceId || !companionWorldBoxes.insert(row.strWorldOccurrenceId).second)
 						{ outStatus = "Effect companion needs one matching World box/resource in the same Pattern: " + row.strOccurrenceId; return false; }
 					}
-					else if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT) ||
+					else if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
+						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) ||
 						row.strAnchorKind != "WORLD" || row.strWorldId != owner->strWorldId)
-					{ outStatus = "Only a WORLD Collider/Light or companion Effect can select a World occurrence."; return false; }
+					{ outStatus = "WORLD presentation occurrence must match its World definition and anchor."; return false; }
 				}
 				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && row.strAnchorKind == "WORLD")
 				{
@@ -1547,6 +1601,9 @@ namespace
 						row.strCardColor == "NONE" || row.strAnchorKind != "WORLD" || row.strWorldId.empty()))))
 				{ outStatus = "PRODUCT roulette region needs an explicit World, region ID, symbol and color: " + row.strOccurrenceId; return false; }
 			}
+			for (const auto& [groupId, group] : selectionGroups)
+				if (group.second < 2u)
+				{ outStatus = "Selection Group requires at least two Colliders in one Pattern: " + groupId; return false; }
 			std::unordered_set<std::string> logicBoxIds;
 			std::optional<std::array<double, 3u>> captureGrip;
 			std::vector<std::string> rouletteInstances;
@@ -3662,7 +3719,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "\", \"anchorKind\": \"" << CDataJson::Escape(row.strAnchorKind)
 				<< "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId) << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
 				<< "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
-				<< (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{}) << "}"
+				<< (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{})
+				<< (!row.strSelectionGroupId.empty() ? ", \"selectionGroupId\": \"" + CDataJson::Escape(row.strSelectionGroupId) + "\"" : std::string{}) << "}"
 				<< (i + 1u < pattern.PresentationOccurrences.size() ? "," : "") << '\n';
 		}
 		output << "      ]\n    }"
@@ -4080,11 +4138,17 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
     const auto lifetime = Pattern_Lifetime(*selected);
     if (lifetime > MAX_TIME_MS) return fail("Timeline exceeds 600 seconds.");
     if (selected->PatternOccurrences.empty() && !selected->iDurationMs)
-    { outDocument = source; outStatus.clear(); return true; }
+    {
+        auto staged = source;
+        auto& pattern = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
+        if (!Try_ResolveAnimationBlendWindows(staged, pattern, pattern.AnimationBlendWindows, outStatus)) return false;
+        outDocument = std::move(staged); outStatus.clear(); return true;
+    }
     if (!lifetime) return fail("Timeline needs a positive duration.");
 
     KOUKU_SAYDON_COMPOSITION_DOCUMENT staged = source;
     auto& result = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
+    for (auto& row : result.PresentationOccurrences) row.strSelectionGroupId.clear();
     result.PatternOccurrences.clear();
     result.iNextPatternOccurrenceOrdinal = 1u;
     result.iDurationMs = static_cast<std::uint32_t>(lifetime);
@@ -4156,8 +4220,17 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         const auto childIt = std::find_if(source.Patterns.begin(), source.Patterns.end(),
             [&](const auto& row) { return row.strPatternId == slot.strPatternId; });
         const auto& child = *childIt;
-        if (child.BossMotion || child.bResetBossToSpawn || child.ResetBossYawDegrees || child.bEnterCombatOnFinish)
-            return fail("Child BossMotion, spawn reset or combat-entry completion is unsupported: " + child.strPatternId);
+        if (child.bResetBossToSpawn || child.ResetBossYawDegrees || child.bEnterCombatOnFinish)
+            return fail("Child spawn reset or combat-entry completion is unsupported: " + child.strPatternId);
+        if (child.BossMotion)
+        {
+            // Validation admits a single complete non-repeated actor owner. Its
+            // absolute path keeps source positions and uses the Parent clock.
+            auto motion = *child.BossMotion;
+            motion.iStartMs += slot.iStartMs;
+            motion.iEndMs += slot.iStartMs;
+            result.BossMotion = motion;
+        }
         if (child.fAnimationRootVerticalScale != selected->fAnimationRootVerticalScale)
             return fail("Child animation root vertical scale differs from Parent: " + child.strPatternId);
         const auto childDuration = static_cast<std::uint32_t>(Pattern_Lifetime(child));
@@ -4275,6 +4348,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                 row.iBlendMs = (std::min)(row.iBlendMs, row.iDurationMs); return true;
             })) return false;
             if (!copyLane(child.PresentationOccurrences, result.PresentationOccurrences, [&](auto& row, bool) {
+                // Clipping/repeating runtime rows must not retain partial editor groups.
+                row.strSelectionGroupId.clear();
                 remap(row.strRegionId);
                 row.iFadeInMs = (std::min)(row.iFadeInMs, row.iDurationMs);
                 row.iFadeOutMs = (std::min)(row.iFadeOutMs, row.iDurationMs - row.iFadeInMs);
@@ -4391,7 +4466,70 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         if (resource != staged.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA &&
             !admitExclusive("CAMERA", row)) return false;
     }
+    if (!Try_ResolveAnimationBlendWindows(staged, result, result.AnimationBlendWindows, outStatus)) return false;
     outDocument = std::move(staged);
     outStatus.clear();
+    return true;
+}
+
+bool_t Client::CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+    std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& outWindows, std::string& status)
+{
+    std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> staged;
+    std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> animations;
+    std::uint64_t origin = 0u;
+    for (const auto& stage : pattern.Stages)
+    {
+        const auto first = std::min_element(stage.AnimationOccurrences.begin(), stage.AnimationOccurrences.end(),
+            [](const auto& a, const auto& b) { return a.iStartOffsetMs != b.iStartOffsetMs ?
+                a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
+        for (auto row : stage.AnimationOccurrences)
+        {
+            if (origin + row.iStartOffsetMs > MAX_TIME_MS) { status = "Animation blend timeline exceeds 600 seconds."; return false; }
+            row.iPoseStartMs = uint32_t(origin) + (row.strOccurrenceId == first->strOccurrenceId ? 0u : row.iStartOffsetMs);
+            row.iStartOffsetMs += uint32_t(origin);
+            animations.push_back(std::move(row));
+        }
+        origin += stage.iDurationMs;
+    }
+    const auto lifetime = pattern.iDurationMs ? pattern.iDurationMs : origin;
+    std::sort(animations.begin(), animations.end(), [](const auto& a, const auto& b) {
+        return a.iPoseStartMs != b.iPoseStartMs ? a.iPoseStartMs < b.iPoseStartMs : a.strOccurrenceId < b.strOccurrenceId; });
+    for (const auto& box : pattern.LogicOccurrences)
+    {
+        if (!box.bEnabled) continue;
+        const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& value) { return value.strLogicId == box.strLogicId; });
+        if (logic == document.Logics.end() || logic->strTriggerKind != "ANIMATION_BLEND") continue;
+        const auto fail = [&](const std::string& reason) { status = "Animation blend " + box.strOccurrenceId + ": " + reason; return false; };
+        const uint64_t end = uint64_t(box.iStartMs) + box.iDurationMs;
+        if (!box.iDurationMs || box.iDurationMs > 1000u || end > lifetime)
+            return fail("the existing clip transition requires a 1..1000 ms box inside this Pattern.");
+        size_t target = animations.size(), count = 0u;
+        for (size_t i = 1u; i < animations.size(); ++i)
+            if (box.iStartMs <= animations[i].iPoseStartMs && animations[i].iPoseStartMs <= end)
+            { target = i; ++count; }
+        if (count != 1u) return fail("the box must contain exactly one transition between consecutive pose owners.");
+        const auto& source = animations[target - 1u];
+        const auto& destination = animations[target];
+        if (source.iPoseStartMs >= destination.iPoseStartMs || box.iStartMs < source.iPoseStartMs ||
+            (target + 1u < animations.size() && end >= animations[target + 1u].iPoseStartMs))
+            return fail("the source/target pair is ambiguous or another pose owner enters this window.");
+        if (Resolve_ActorProfileId(source.strProfileId) != Resolve_ActorProfileId(destination.strProfileId))
+            return fail("both clips must belong to the same actor model.");
+        for (const auto& row : animations)
+            if (row.iBlendInMs && uint64_t(row.iStartOffsetMs) < end &&
+                uint64_t(box.iStartMs) < uint64_t(row.iStartOffsetMs) + row.iBlendInMs)
+                return fail("the Logic window overlaps an existing clip blendInMs.");
+        if (std::any_of(staged.begin(), staged.end(), [&](const auto& previous) {
+            return previous.iStartMs < end && box.iStartMs < uint64_t(previous.iStartMs) + previous.iDurationMs; }))
+            return fail("two Logic blend windows overlap.");
+        staged.push_back({box.strOccurrenceId, box.iStartMs, box.iDurationMs, source, destination});
+    }
+    std::sort(staged.begin(), staged.end(), [](const auto& a, const auto& b) { return a.iStartMs < b.iStartMs; });
+    outWindows = std::move(staged);
+    status.clear();
     return true;
 }

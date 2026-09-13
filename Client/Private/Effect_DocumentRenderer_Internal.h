@@ -127,16 +127,18 @@ namespace EffectDocumentRendererDetail
     bool Is_StartingSceneCaptureCameraEmitter(const Client::EFFECT_ELEMENT_DESC& Element);
 
 
-    // Project framing adapter only: endpoint geometry and all authored transforms stay intact.
-    // Return without touching World on invalid bounds/camera or at the exact authored endpoint.
+    // Full-screen starting capture blends to the actual cue cube when a landing is supplied.
     void Fit_StartingCaptureMeshToCamera(const float3_t& BoundsMin, const float3_t& BoundsMax,
         const float4x4_t& View, const float4x4_t& Projection, const f32_t fProgress,
-        float4x4_t& World);
+        float4x4_t& World, const float4x4_t* pLandingWorld = nullptr);
 
+    bool Build_StartingCaptureCubeLandingWorld(const float3_t& SourceMin, const float3_t& SourceMax,
+        const float3_t& CubeMin, const float3_t& CubeMax, const float4x4_t& CubeWorld,
+        float4x4_t& OutWorld);
 
     void Apply_StartingCaptureCameraFraming(const Client::EFFECT_DOCUMENT_DESC& Document,
         const Client::EFFECT_EVALUATED_PARTICLE& Particle, const Engine::CModel& Model,
-        const f32_t fRootTimeSeconds, float4x4_t& World);
+        const f32_t fRootTimeSeconds, float4x4_t& World, const float4x4_t* pLandingWorld = nullptr);
 
 
     // Copy the current CModel vertex ABI. Instance data never changes map/model vertices.

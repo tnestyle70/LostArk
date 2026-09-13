@@ -684,3 +684,10 @@ descriptor의 차이는 데이터와 translated HLSL로 보존하는 방향이�
 
 이 문서의 구조나 admission 기준이 바뀌면 이 문서를 갱신한다. 개별 family의 명령 로그, hash,
 일시적인 실패와 실행 결과는 해당 날짜의 PLAN/RESULT에만 기록한다.
+
+
+### 고정 장면 캡처 프로필의 현재 저작 계약 (2026-09-14)
+
+`detail.screenPost.profileId=screen.scene-collapse.capture.v1`은 시작 시점의 resolved HDR/bloom pair를 고정하고 바깥을 검정으로 그린다. optional `captureShrinkSeconds`의0은 기존 Timing 수명을 사용하며, 양수는 Timing 수명 이하의 수축 구간이다. 나머지 구간은 끝 상태를 유지한다.
+
+`screen.scene-capture.cube.v1`은 live scene 위에서 고정 이미지를 축소하며 `captureTargetModelCueId`가 필수다. target은 같은 문서의 visible ModelCue이고 ScreenPost 끝은 그 cue 시작과 일치해야 한다. 현재 endpoint는 실제 설치 CModel의 첫 pose bounds만 지원한다. 다른 profile의 target ID, 잘못된 끝 시간과 잘못된 수축 구간은 Codec이 거절한다. Tool profile 전환은 이전 target과 별도 수축 시간을 정리하며 저장·재로드가 같은 계약을 사용한다. 원본 SourceMaterial ID와 renderer carrier는 새 profile ID로 위장하지 않는다.

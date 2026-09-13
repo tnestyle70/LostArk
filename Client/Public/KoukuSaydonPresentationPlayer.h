@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "KoukuSaydonPreviewRootMotion.h"
 #include "Network/PacketMessages.h"
 #include "HitAreaWire.h"
 #include <array>
@@ -73,7 +74,7 @@ public:
         std::uint32_t clockMs, bool paused, std::string& status);
     bool Begin_BundlePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const std::string& bundleId, std::uint32_t clockMs, bool paused, std::string& status,
-        const CWorldSequenceDocument* sourceDocument = nullptr);
+        const CWorldSequenceDocument* sourceDocument = nullptr, bool automaticRootMotion = true);
     // Optional Effect Workbench reference: existing actors and model sampler,
     // with all Pattern presentation/WORLD disabled and an external master clock.
     bool Begin_ModelReferencePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
@@ -93,6 +94,8 @@ public:
     bool Preview_IsModelReference() const { return m_bModelReferencePreview; }
     std::uint64_t Preview_Generation() const { return m_iPreviewGeneration; }
     bool Preview_IsBundle() const { return !m_PreviewBundleId.empty(); }
+    // MainApp resolves this before WORLD/model sampling, for either clock owner.
+    bool Resolve_PreviewCaptureClock(std::uint32_t requestedMs, std::uint32_t& effectiveMs);
     void Sample_Preview(std::uint32_t clockMs, bool playing, bool paused,
         const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model);
     void Set_PreviewPivot(const float4x4_t& pivot,
@@ -189,11 +192,13 @@ private:
         std::uint32_t initialAnimation = 0;
         float initialTicks = 0.f;
         float initialYawDegrees = 0.f;
+        float3_t initialPosition{};
+        std::unique_ptr<CKoukuSaydonPreviewRootMotion> rootMotion;
         std::map<std::string, float> stageFacingYawDegrees;
     };
     void Sample_BundlePreview();
     void Fail_Preview(std::string status);
-    void Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
+    bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
     struct CARD final { std::string assetId; std::uint32_t handle = 0; };
@@ -263,6 +268,10 @@ private:
     std::string m_strFailedPreviewPatternId, m_strFailedPreviewStatus;
     bool m_bOwnPreviewClock = false, m_bPreviewPlaying = false, m_bPreviewPaused = false;
     bool m_bPreviewClockAwaitingFirstUpdate = false;
+    bool m_bPreviewCaptureClockHeld = false;
+    bool m_bPreviewCaptureBoundarySampled = false, m_bPreviewCaptureAllowed = true;
+    std::uint32_t m_iPreviewCaptureResumeMs = 0u, m_iPreviewCaptureBoundaryMs = 0u;
+    std::uint32_t m_iPreviewCaptureWaitFrames = 0u;
     bool m_bPreviewPivotReady = false;
     bool m_bColliderResourcePreview = false;
     bool m_bModelReferencePreview = false;

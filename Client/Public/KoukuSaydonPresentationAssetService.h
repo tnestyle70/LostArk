@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "PlayerHandGripTransform.h"
+#include "KoukuSaydonCompositionDocument.h"
 
 #include <cstdint>
 #include <string>
@@ -27,6 +28,7 @@ struct KOUKU_SAYDON_ACTION_PRESENTATION final
 	std::uint32_t iBlendInMs = 0u;
 	std::string strBlendFromClip;
 	f32_t fBlendFromSourceMs = 0.f;
+	std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> AnimationBlendWindows;
 };
 
 /* Loads the embedded-body presentation of every KoukuSaydon arena boss

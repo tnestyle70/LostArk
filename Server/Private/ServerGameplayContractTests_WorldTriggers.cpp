@@ -101,12 +101,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 			{
 				std::ofstream bootstrap(bootstrapPath, std::ios::binary);
 				bootstrap <<
-					"LOSTARK_WORLD_BOOTSTRAP\t7\tVALTAN_ARENA"
+					"LOSTARK_WORLD_BOOTSTRAP\t8\tVALTAN_ARENA"
 					"\tLV_LUT_HEARTRB_ED\t3\t" <<
 					(referenceDisabledNpc ? 5 : 4) << "\n"
 					"player.spawn.contract\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1\n"
 					"trigger.contract.jump\ttriggerBox\t-\t-\t0\t0\t0\t0\t1"
-					"\t2\t2\t2\t0\t1\tmovePlayer\t5\t10\t0\t0\t"
+					"\t2\t2\t2\t0\t1\t0\tmovePlayer\t5\t10\t0\t0\t"
 					<< durationSeconds << "\t13\n"
 					"collision.contract.wall\tcollisionBox\t-\t-\t4\t1\t0\t0\t1"
 					"\t0.5\t1\t2\n"
@@ -148,7 +148,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 			triggerBootstrap.Get_Placements()[3].bHasNpcBehavior &&
 			2u == triggerBootstrap.Get_Placements()[3].NpcBehavior.Waypoints.size() &&
 			1u == triggerBootstrap.Get_Placements()[3].NpcBehavior.Actions.size(),
-			"Parse trigger, collision and logical NPC behavior from world bootstrap v7");
+			"Parse trigger, collision and logical NPC behavior from world bootstrap v8");
 
 		writeTriggerBootstrap(1.f, 0u);
 		tests.Require(

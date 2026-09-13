@@ -90,6 +90,8 @@
 #include "ProfilerTool.h"
 #include "RenderingBenchmark.h"
 #include "SequencerTool.h"
+#include "CharacterActionWorkbench.h"
+#include "EffectAuthoringSequencer.h"
 #include "WorldObjectTool.h"
 #include "WorldLevelTool.h"
 #include "ValtanPatternAuditionService.h"
@@ -421,6 +423,54 @@ void CMainApp::Hide_ItemUpgrade()
 		return;
 	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
 		m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
+}
+
+void CMainApp::Update_KoukuGateSceneProfile()
+{
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+    {
+        // The newly activated Level owns its profile; do not restore across Levels.
+        m_strKoukuGateProfileRequest.clear();
+        m_strKoukuGateProfileApplied.clear();
+        m_strSceneProfileBeforeKoukuGate.clear();
+        return;
+    }
+    const string requested = arena->Get_GatePresentationProfileId();
+    if (requested == m_strKoukuGateProfileRequest) return;
+    // Consume one gate edge, including a failed request. A Sequence may own a
+    // different profile on following frames and must not be overwritten here.
+    m_strKoukuGateProfileRequest = requested;
+    string status;
+    bool changed = false;
+    if (!requested.empty())
+    {
+        const string previous = m_RenderingProfiles.Get_ActiveProfileId();
+        changed = m_RenderingProfiles.Activate_Profile(requested, status);
+        if (changed)
+        {
+            if (m_strSceneProfileBeforeKoukuGate.empty())
+                m_strSceneProfileBeforeKoukuGate = previous;
+            m_strKoukuGateProfileApplied = requested;
+        }
+    }
+    else
+    {
+        if (!m_strKoukuGateProfileApplied.empty() &&
+            m_RenderingProfiles.Get_ActiveProfileId() == m_strKoukuGateProfileApplied &&
+            !m_strSceneProfileBeforeKoukuGate.empty())
+            changed = m_RenderingProfiles.Activate_Profile(m_strSceneProfileBeforeKoukuGate, status);
+        m_strKoukuGateProfileApplied.clear();
+        m_strSceneProfileBeforeKoukuGate.clear();
+    }
+    if (!status.empty())
+    {
+#ifdef _DEBUG
+        m_strRenderingStatus = status;
+#endif
+        if (!changed)
+            OutputDebugStringA(("[MainApp][KoukuGateProfile] " + status + "\n").c_str());
+    }
 }
 
 void CMainApp::Update_CustomizingSceneProfile()
@@ -1164,7 +1214,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		nullptr != foregroundWindow &&
 		foregroundWindow != g_hWnd &&
 		IsWindowOwnedByCurrentProcess(foregroundWindow);
-	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput();
+	const bool_t authoredEffectPlacementConsumed =
+		(nullptr != m_pEffectTool && m_pEffectTool->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
+			IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT)) |
+		(nullptr != m_pEffectToolV2 && m_pEffectToolV2->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
+			IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2));
+	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() || authoredEffectPlacementConsumed;
 	const bool_t worldLeftMouseConsumed = mapEffectPlacementConsumed ||
 		(nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
 #else
@@ -1211,6 +1266,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Engine.Update");
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	}
+	Update_KoukuGateSceneProfile();
 #ifdef _DEBUG
 	// Consume the Server reset before a finished entry preview can queue its next gate.
 	if (auto* startArena = CLevel_KakulSaydonArena::Get_Active(); startArena && startArena->Consume_DebugReturnToStartSucceeded())
@@ -1295,7 +1351,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	{
 		if (m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
 			nullptr != m_pSequencerTool &&
-			COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss())
+			m_pSequencerTool->Is_BossSelected() && COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss())
 		{
 			StopCompositionPreview(m_eCompositionPreviewOwner);
 			m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
@@ -1313,7 +1369,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		const bool_t bAnimationPreviewOwned =
 			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
-			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool && m_pSequencerTool->Is_BossSelected() &&
 			 DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
 			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
 			 DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner) ||
@@ -1366,6 +1422,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
         { if (auto* arena = CLevel_ValtanArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
         else if (effectLevel == LEVEL::KAKULSAYDON_ARENA)
         { if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        if (m_pCharacterActionWorkbench) m_pCharacterActionWorkbench->Set_Camera(effectCamera);
         if (m_pEffectToolV2)
         {
             m_pEffectToolV2->Set_AuthoringCamera(effectCamera);
@@ -1520,7 +1577,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
 			DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner && nullptr != m_pSequencerTool &&
-			COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss());
+			m_pSequencerTool->Is_BossSelected() && COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss());
 	}
 	struct COMPOSITION_SESSION_ROUTE
 	{
@@ -1529,8 +1586,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		CSequencerTool* shell;
 	};
 	const std::array<COMPOSITION_SESSION_ROUTE, 2> compositionRoutes{{
-		{DEBUG_TOOL::SEQUENCER, m_pKoukuSaydonActionWorkbench.get(), m_pSequencerTool.get()},
-		{DEBUG_TOOL::SEQUENCER_BENCHMARK, m_pSequenceActionWorkbench.get(), m_pSequenceBenchmarkTool.get()}
+		{DEBUG_TOOL::SEQUENCER, m_pKoukuSaydonActionWorkbench.get(),
+            m_pSequencerTool && m_pSequencerTool->Is_BossSelected() ? m_pSequencerTool.get() : nullptr},
+		{DEBUG_TOOL::SEQUENCER_BENCHMARK, m_pSequenceActionWorkbench.get(),
+            m_pSequencerTool && m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
+                m_pSequencerTool.get() : nullptr}
 	}};
 	// Drain each edge, read physical inventory once, then distribute immutable rows.
 	bool shellResourceRefresh = false, koukuResourceRefresh = false, presentationResourceRefresh = false;
@@ -2078,6 +2138,28 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		finalPreview.bPaused = sampled.bPaused; finalPreview.iClockMs = sampled.iClockMs;
 		finalPreview.iDurationMs = sampled.iDurationMs; finalPreview.strStatus = sampled.strStatus;
 	}
+    if (!previewFailed && finalPreview.bPlaying && m_pKoukuPresentationPlayer &&
+        !m_pKoukuPresentationPlayer->Preview_IsBundle())
+    {
+        std::uint32_t effectiveMs = finalPreview.iClockMs;
+        if (!m_pKoukuPresentationPlayer->Resolve_PreviewCaptureClock(finalPreview.iClockMs, effectiveMs))
+        {
+            const std::string captureError = m_pKoukuPresentationPlayer->Status();
+            rejectPreview(finalPreview.strPatternId, captureError);
+        }
+        else
+        {
+            // WORLD, animation and Camera must render the capture boundary
+            // together before the user's requested cursor can be displayed.
+            if (effectiveMs != finalPreview.iClockMs && !ownedClock && m_pAnimationTool)
+            {
+                std::string captureStatus;
+                if (!m_pAnimationTool->Seek_KoukuCompositionPreview(effectiveMs, captureStatus))
+                    rejectPreview(finalPreview.strPatternId, captureStatus);
+            }
+            finalPreview.iClockMs = effectiveMs;
+        }
+    }
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); !previewFailed && arena && (!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsBundle()))
 	{
 		std::string worldPreviewStatus;
@@ -2141,6 +2223,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 
 	UpdateKoukuGateCompletePlay();
+    if (m_pCharacterActionWorkbench)
+        m_pCharacterActionWorkbench->Update(fTimeDelta, m_bDeveloperToolsVisible &&
+            IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
+            m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER &&
+            m_eDebugInputOwner == DEBUG_TOOL::SEQUENCER);
 	if (m_pWorldObjectTool)
 		{
 			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.WorldObjects.Update");
@@ -2365,17 +2452,6 @@ HRESULT CMainApp::Render()
 					m_pMapTool->Render();
 				}
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT) && m_pWorldObjectTool)
-			{
-				focusNextWindow(DEBUG_TOOL::WORLD_OBJECT);
-				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.WorldObjects.Build");
-					m_pWorldObjectTool->Render();
-				}
-				if (m_pWorldObjectTool->Consume_InteractionRequest())
-					m_eDebugInputOwner = DEBUG_TOOL::WORLD_OBJECT;
-				if (!m_pWorldObjectTool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT, false);
-			}
 			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool)
 			{
 				focusNextWindow(DEBUG_TOOL::SEQUENCER);
@@ -2383,6 +2459,12 @@ HRESULT CMainApp::Render()
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Composition.Build");
 					m_pSequencerTool->Render();
 				}
+                if (m_pCharacterActionWorkbench && m_pCharacterActionWorkbench->Consume_InteractionRequest() &&
+                    m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER)
+                    m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+				if (m_pWorldObjectTool && m_pWorldObjectTool->Consume_InteractionRequest() &&
+					m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT)
+					m_eDebugInputOwner = DEBUG_TOOL::WORLD_OBJECT;
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
 			}
@@ -2396,16 +2478,6 @@ HRESULT CMainApp::Render()
 				else (void)m_pWorldObjectTool->Open_ObjectMotion(request.strObjectId, request.strMotionInstanceId, status);
 				workbench->Notify_WorldObjectEditResult(std::move(status));
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) && m_pSequenceBenchmarkTool)
-			{
-				focusNextWindow(DEBUG_TOOL::SEQUENCER_BENCHMARK);
-				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.SequenceBenchmark.Build");
-					m_pSequenceBenchmarkTool->Render();
-				}
-				if (!m_pSequenceBenchmarkTool->Is_Open())
-					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK, false);
-			}
 			RenderMapEffectPlacementMarker();
 			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 				nullptr != m_pAnimationTool)
@@ -2416,27 +2488,28 @@ HRESULT CMainApp::Render()
 					m_pAnimationTool->Render();
 				}
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT))
+
+
+			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_pEffectTool)
 			{
 				focusNextWindow(DEBUG_TOOL::EFFECT);
-				if (nullptr != m_pEffectTool)
-					{
-						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Build");
-						m_pEffectTool->Render();
-					}
-                if (m_pEffectTool && m_pEffectTool->Consume_AuthoringInteraction())
-                    m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Build");
+					m_pEffectTool->Render();
+				}
+				if (m_pEffectTool->Consume_AuthoringInteraction())
+					m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
 			}
-            if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_pEffectToolV2)
-            {
-                focusNextWindow(DEBUG_TOOL::EFFECT_V2);
-                {
-                    Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV2.Build");
-                    m_pEffectToolV2->Render();
-                }
-                if (m_pEffectToolV2->Consume_AuthoringInteraction())
-                    m_eDebugInputOwner = DEBUG_TOOL::EFFECT_V2;
-            }
+			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_pEffectToolV2)
+			{
+				focusNextWindow(DEBUG_TOOL::EFFECT_V2);
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV2.Build");
+					m_pEffectToolV2->Render();
+				}
+				if (m_pEffectToolV2->Consume_AuthoringInteraction())
+					m_eDebugInputOwner = DEBUG_TOOL::EFFECT_V2;
+			}
 			if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))
 			{
 				focusNextWindow(DEBUG_TOOL::RENDERING);
@@ -6675,6 +6748,7 @@ void CMainApp::Apply_LevelRequest()
 			m_pCharacterPreviewPanel->On_LevelChanged();
 		if (nullptr != m_pAnimationTool)
 			m_pAnimationTool->On_LevelChanged();
+        if (m_pCharacterActionWorkbench) m_pCharacterActionWorkbench->On_LevelChanged();
 		if (nullptr != m_pValtanActionWorkbench)
 			m_pValtanActionWorkbench->On_LevelChanged();
 		CKoukuSaydonPatternAuditionService::Get().Reset(
@@ -6803,6 +6877,10 @@ HRESULT CMainApp::ReadyDebugTools()
 
 bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
 {
+	if (eTool == DEBUG_TOOL::WORLD_OBJECT || eTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+		return m_pSequencerTool && m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::SEQUENCER)] &&
+			m_pSequencerTool->Get_SelectedTarget() == (eTool == DEBUG_TOOL::WORLD_OBJECT ?
+				COMPOSITION_WORKBENCH_TARGET::OBJECT : COMPOSITION_WORKBENCH_TARGET::SEQUENCE);
 	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_COMPOSITION == eTool ?
 		DEBUG_TOOL::EFFECT :
 		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
@@ -6821,6 +6899,14 @@ void CMainApp::SetDebugToolVisible(
 		DEBUG_TOOL::EFFECT :
 		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
+	if (eTool == DEBUG_TOOL::WORLD_OBJECT || eTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+	{
+		if (bVisible && m_pSequencerTool)
+			m_pSequencerTool->Open(eTool == DEBUG_TOOL::WORLD_OBJECT ?
+				COMPOSITION_WORKBENCH_TARGET::OBJECT : COMPOSITION_WORKBENCH_TARGET::SEQUENCE);
+		if (bVisible || IsDebugToolVisible(eTool)) SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, bVisible);
+		return;
+	}
 	const size_t iTool = static_cast<size_t>(eCanonicalTool);
 	if (DEBUG_TOOL::NONE == eCanonicalTool ||
 		DEBUG_TOOL::COUNT == eCanonicalTool ||
@@ -6841,6 +6927,13 @@ void CMainApp::SetDebugToolVisible(
 	}
 	if (!bVisible)
 	{
+		if (eCanonicalTool == DEBUG_TOOL::SEQUENCER)
+		{
+			if (m_pSequencerTool) m_pSequencerTool->Deactivate();
+			StopCompositionPreview(m_eCompositionPreviewOwner);
+			if (m_eDebugInputOwner == DEBUG_TOOL::WORLD_OBJECT || m_eDebugInputOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+				m_eDebugInputOwner = DEBUG_TOOL::NONE;
+		}
 		if (eCanonicalTool == DEBUG_TOOL::SEQUENCER || eCanonicalTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
 			StopCompositionPreview(eCanonicalTool);
 		if (m_eDebugInputOwner == eCanonicalTool)
@@ -6867,7 +6960,7 @@ void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 		m_pKoukuSaydonActionWorkbench.get() :
 		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequenceActionWorkbench.get() : nullptr);
 	auto* previousShell = m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER ? m_pSequencerTool.get() :
-		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequenceBenchmarkTool.get() : nullptr);
+		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequencerTool.get() : nullptr);
 	if (previousWorkbench)
 	{
 		previousWorkbench->Cancel_CompleteSequencePlay();
@@ -6933,6 +7026,14 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	/* Keep the old enum value as an internal compatibility route only. */
 	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
+	if (eTool == DEBUG_TOOL::WORLD_OBJECT || eTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+	{
+		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER))) return E_FAIL;
+		m_pSequencerTool->Open(eTool == DEBUG_TOOL::WORLD_OBJECT ?
+			COMPOSITION_WORKBENCH_TARGET::OBJECT : COMPOSITION_WORKBENCH_TARGET::SEQUENCE);
+		m_eDebugInputOwner = eTool;
+		return S_OK;
+	}
 	if (DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool)
 	{
@@ -6989,8 +7090,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			}
 		}
         m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
-
-		break;
+        break;
 	}
     case DEBUG_TOOL::EFFECT_V2:
         if (!m_pCharacterPreviewPanel)
@@ -7017,7 +7117,31 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 			pProfiler->Set_Enabled(true);
 		break;
-	case DEBUG_TOOL::WORLD_OBJECT:
+	case DEBUG_TOOL::SEQUENCER:
+		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
+		// Construct both independent sessions without loading the other boss's
+		// documents. The selected session lazily prepares its own frame.
+		if (nullptr == m_pValtanActionWorkbench)
+			m_pValtanActionWorkbench = make_unique<CValtanActionWorkbench>(
+				m_pAnimationTool.get(), m_pBalanceTool.get(), m_pValtanBossTool.get());
+		if (nullptr == m_pKoukuSaydonActionWorkbench)
+		{
+			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
+			m_pWorldObjectCatalogSource = nullptr;
+			m_iWorldObjectCatalogGeneration = UINT64_MAX;
+			m_pKoukuSaydonActionWorkbench->Set_WorldPlacementResolver(
+				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
+				{
+					auto* arena = CLevel_KakulSaydonArena::Get_Active();
+					float3_t position{};
+					if (!arena) { status = "WORLD placement requires the KoukuSaydon arena."; return false; }
+					if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
+					KOUKU_SAYDON_WORLD_PLACEMENT staged;
+					staged.Position = {position.x, position.y, position.z};
+					placement = std::move(staged);
+					return true;
+				});
+		}
 		if (!m_pWorldObjectTool) m_pWorldObjectTool = make_unique<CWorldObjectTool>();
 		m_pWorldObjectTool->Set_LinkedSaveCallbacks(
 			[this](std::string& status) {
@@ -7060,54 +7184,6 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				else status = "Map applied and the linked Sequence source reloaded for the next play.";
 				return true;
 			});
-		m_pWorldObjectTool->Open();
-		break;
-	case DEBUG_TOOL::SEQUENCER:
-		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
-		// Construct both independent sessions without loading the other boss's
-		// documents. The selected session lazily prepares its own frame.
-		if (nullptr == m_pValtanActionWorkbench)
-			m_pValtanActionWorkbench = make_unique<CValtanActionWorkbench>(
-				m_pAnimationTool.get(), m_pBalanceTool.get(), m_pValtanBossTool.get());
-		if (nullptr == m_pKoukuSaydonActionWorkbench)
-		{
-			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
-			m_pWorldObjectCatalogSource = nullptr;
-			m_iWorldObjectCatalogGeneration = UINT64_MAX;
-			m_pKoukuSaydonActionWorkbench->Set_WorldPlacementResolver(
-				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
-				{
-					auto* arena = CLevel_KakulSaydonArena::Get_Active();
-					float3_t position{};
-					if (!arena) { status = "WORLD placement requires the KoukuSaydon arena."; return false; }
-					if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
-					KOUKU_SAYDON_WORLD_PLACEMENT staged;
-					staged.Position = {position.x, position.y, position.z};
-					placement = std::move(staged);
-					return true;
-				});
-		}
-		if (nullptr == m_pSequencerTool)
-		{
-			m_pSequencerTool = make_unique<CSequencerTool>(
-				m_pValtanActionWorkbench.get(), m_pKoukuSaydonActionWorkbench.get());
-			m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
-				CGameInstance::Get().Get_CurrentLevelID() ?
-				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
-		}
-		else
-		{
-			const auto level = CGameInstance::Get().Get_CurrentLevelID();
-			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
-			if (level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
-				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
-			else if (level == ETOUI(LEVEL::VALTAN_ARENA) && !selectedValtan)
-				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::VALTAN);
-			else m_pSequencerTool->Open();
-		}
-		break;
-	case DEBUG_TOOL::SEQUENCER_BENCHMARK:
-		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
 		if (!m_pSequenceActionWorkbench)
 		{
 			m_pSequenceActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>(true);
@@ -7127,12 +7203,62 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pWorldObjectCatalogSource = nullptr;
 			m_iWorldObjectCatalogGeneration = UINT64_MAX;
 		}
-		if (!m_pSequenceBenchmarkTool)
+		if (!m_pCharacterActionWorkbench)
 		{
-			m_pSequenceBenchmarkTool = make_unique<CSequencerTool>(nullptr, m_pSequenceActionWorkbench.get(), true);
-			m_pSequenceBenchmarkTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
+			if (!m_pEffectTool)
+			{
+				m_pEffectTool = make_unique<CEffect_Tool>(m_pDevice, m_pContext,
+					m_pCharacterPreviewPanel, m_pBalanceTool.get());
+				m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
+			}
+			m_pCharacterActionWorkbench = make_unique<CCharacterActionWorkbench>(m_pCharacterPreviewPanel,
+				m_pEffectTool->Create_CompositionSequencer("character.actions"), m_pAnimationTool.get());
+			m_pCharacterActionWorkbench->Set_OpenEffectResourceCallback([this](const std::string& id) {
+				std::string error;
+				if (!CEffectResourceCatalog::Get().Reload_Valtan(error)) { m_strToolStatus = error; return; }
+				auto catalog = CEffectResourceCatalog::Get().Get_Snapshot();
+				const auto* entry = catalog ? catalog->Find(id) : nullptr;
+				if (!entry) { m_strToolStatus = "Effect resource is not in the active catalog: " + id; return; }
+				if (entry->Key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
+				{
+					if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)))
+						(void)m_pEffectTool->Open_AuthoringResource(entry->Key);
+				}
+				else if (entry->Key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_LEAF ||
+					entry->Key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_GROUP)
+				{
+					if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT_V2)))
+						(void)m_pEffectToolV2->Open_Resource(entry->Key);
+				}
+				else m_strToolStatus = "Effect resource has no supported authoring owner: " + id;
+			});
 		}
-		else m_pSequenceBenchmarkTool->Open();
+		if (nullptr == m_pSequencerTool)
+		{
+			m_pSequencerTool = make_unique<CSequencerTool>(
+				m_pValtanActionWorkbench.get(), m_pKoukuSaydonActionWorkbench.get());
+			m_pSequencerTool->Set_ActionSessions(m_pCharacterActionWorkbench.get(),
+				m_pWorldObjectTool.get(), m_pSequenceActionWorkbench.get());
+			m_pSequencerTool->Set_TargetChangedCallback([this](COMPOSITION_WORKBENCH_TARGET target) {
+				StopCompositionPreview(m_eCompositionPreviewOwner);
+				if (m_pValtanActionWorkbench) m_pValtanActionWorkbench->Set_PreviewOwnerActive(false);
+				m_eDebugInputOwner = target == COMPOSITION_WORKBENCH_TARGET::OBJECT ? DEBUG_TOOL::WORLD_OBJECT :
+					(target == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ? DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER);
+			});
+			m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+				CGameInstance::Get().Get_CurrentLevelID() ?
+				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
+		}
+		else
+		{
+			const auto level = CGameInstance::Get().Get_CurrentLevelID();
+			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
+			if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
+			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::VALTAN_ARENA) && !selectedValtan)
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::VALTAN);
+			else m_pSequencerTool->Open();
+		}
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
@@ -8367,7 +8493,6 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
 		if (!m_strKoukuCompletePlayFlowGate.empty()) arena->Debug_RetireGateActivation(finalStatus);
 		arena->Debug_SetSequenceCombatPending(false);
 		arena->Stop_CompositionCamera(true);
-		if (arena->Get_DebugCamera()) arena->Get_DebugCamera()->Set_FollowEnabled(true);
 	}
 	if (m_eDebugInputOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK) m_eDebugInputOwner = DEBUG_TOOL::NONE;
 	m_strKoukuCompletePlayFlowGate.clear();
@@ -8417,7 +8542,6 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 	// the existing Server-owned Pattern Flow, which resolves this gate's live boss.
 	arena->Debug_SetSequenceCombatPending(false);
 	arena->Stop_CompositionCamera(true);
-	if (arena->Get_DebugCamera()) arena->Get_DebugCamera()->Set_FollowEnabled(true);
 	m_eDebugInputOwner = DEBUG_TOOL::NONE;
 	(void)m_pKoukuSaydonBossTool->Play_PatternFlow(gate, status, m_iKoukuCompletePlayFlowRevision);
 	m_strKoukuCompletePlayFlowGate.clear();
@@ -9112,13 +9236,11 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Valtan Logic Pattern", DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
-		toolButton("Sequencer Benchmark", DEBUG_TOOL::SEQUENCER_BENCHMARK, true);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
-		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
-		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
+		toolCell("Open Effect Tool V1", DEBUG_TOOL::EFFECT);
+		toolCell("Open Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("Open World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
-		toolCell("World Object Tool", DEBUG_TOOL::WORLD_OBJECT);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
@@ -9131,10 +9253,10 @@ void CMainApp::RenderDeveloperTools()
 	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 16>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
-			{ DEBUG_TOOL::WORLD_OBJECT, "World Object Tool" },
+			{ DEBUG_TOOL::WORLD_OBJECT, "Action Workbench / Object" },
 			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
-			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Sequencer Benchmark" },
+			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Action Workbench / Sequence" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
 			{ DEBUG_TOOL::EFFECT, "Effect Tool V1" },
             { DEBUG_TOOL::EFFECT_V2, "Effect Tool V2" },
@@ -9951,13 +10073,13 @@ void CMainApp::Free()
 	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 		pProfiler->Set_Enabled(false);
 	m_pSequencerTool.reset();
-	m_pSequenceBenchmarkTool.reset();
 	m_pSequenceActionWorkbench.reset();
 	m_pProfilerTool.reset();
 	m_pRenderingBenchmark.reset();
 	m_pKoukuSaydonActionWorkbench.reset();
 	m_pValtanActionWorkbench.reset();
 	m_pAnimationTool.reset();
+	m_pCharacterActionWorkbench.reset();
 	m_pEffectTool.reset();
 	m_pEffectToolV2.reset();
 	m_pEquipmentAuthoringTool.reset();

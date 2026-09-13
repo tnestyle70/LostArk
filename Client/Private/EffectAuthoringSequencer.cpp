@@ -2,6 +2,10 @@
 #include "EffectAuthoringSequencer.h"
 #include "ActionPresentationTimeline.h"
 #include "AnimationSkillBindingDocument.h"
+#include "AnimationEffectCueDocument.h"
+#include "CharacterActionCombatDocument.h"
+#include "SoundCueCatalog.h"
+#include "RuntimeAssetRoot.h"
 #include "Character.h"
 #include "CharacterSpec.h"
 #include "CompositionTimeline.h"
@@ -15,6 +19,7 @@
 #include "PlayerSkillCatalog.h"
 #include "ProjectDataRoot.h"
 #include "Transform.h"
+#include "UIInputRouter.h"
 #include "ValtanPatternTree.h"
 #include <algorithm>
 #include <cmath>
@@ -86,6 +91,25 @@ bool Json_Vector(const DATA_JSON_VALUE& object, const char* key, float3_t& value
         if (!entry.Is_Number() || !std::isfinite(entry.Get_Number()) || std::abs(entry.Get_Number()) > 100000.f) return false;
         *components[i] = static_cast<float>(entry.Get_Number());
     }
+    return true;
+}
+bool Capture_ScenePlayerPreviewRoot(float4x4_t& root, std::string& error)
+{
+    const auto character = CAnimationTargetService::Resolve_SceneCharacter();
+    const auto transform = character ? character->Get_Transform() : nullptr;
+    if (!transform)
+    { error = "Enter an arena with a scene player, or choose a fixed World anchor."; return false; }
+    const auto& world = *transform->Get_WorldMatrixPtr();
+    for (const auto& row : world.m)
+        for (const auto component : row)
+            if (!std::isfinite(component))
+            { error = "The scene player's Effect anchor is not finite."; return false; }
+    const float forwardLength = world._31 * world._31 + world._33 * world._33;
+    if (!std::isfinite(forwardLength) || forwardLength < 1e-12f ||
+        std::abs(world._41) > 100000.f || std::abs(world._42) > 100000.f || std::abs(world._43) > 100000.f)
+    { error = "The scene player's Effect anchor has no usable position or horizontal facing."; return false; }
+    XMStoreFloat4x4(&root, XMMatrixRotationY(std::atan2(world._31, world._33)) *
+        XMMatrixTranslation(world._41, world._42, world._43));
     return true;
 }
 const char* Owner_Key(const EFFECT_RESOURCE_OWNER_KIND kind)
@@ -344,6 +368,227 @@ bool CEffectAuthoringSequencer::Select_CharacterSkill(const std::string& asset, 
     return Select_ModelSequence(stageIndex ? id + ".stage." + std::to_string(*stageIndex) : id);
 }
 
+bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
+    const ANIMATION_SKILL_BINDING& binding, const ANIMATION_EFFECT_CUE_DOCUMENT& cues,
+    const std::vector<CHARACTER_ACTION_COMBAT_ROW>& combat, const std::optional<std::uint32_t> stageIndex)
+{
+    const auto model = CAnimationTargetService::Resolve_Model();
+    const auto generation = CAnimationTargetService::Resolve_TargetGeneration();
+    if (!model || !m_Panel || !m_Panel->Is_PreviewActive() || asset != CAnimationTargetService::Resolve_AssetName() ||
+        (stageIndex && *stageIndex >= binding.Stages.size()))
+    { m_Status = "Character action needs its exact admitted preview model and stage."; return false; }
+    std::vector<CLIP> animations;
+    std::vector<EFFECT_ROW> effects;
+    std::vector<SOUND_ROW> sounds;
+    std::vector<COLLIDER_ROW> colliders;
+    CSoundCueCatalog::EVENT_VARIANTS variants;
+    std::string soundStatus;
+    CSoundCueCatalog::Load_ClassSnapshot(asset, variants, soundStatus);
+    std::uint32_t clock = 0u;
+    for (std::size_t stage = 0u; stage < binding.Stages.size(); ++stage)
+    {
+        if (stageIndex && *stageIndex != stage) continue;
+        const auto stageStart = clock;
+        for (const auto& source : binding.Stages[stage].Clips)
+        {
+            std::uint32_t index = 0u; float native = 0.f, tps = 0.f;
+            if (!Clip_Metadata(model, source.strClipName, index, native, tps))
+            { m_Status = "Missing or ambiguous Character clip: " + source.strClipName; return false; }
+            float sourceDuration = 0.f, wallDuration = 0.f;
+            const ACTION_PRESENTATION_CLIP_TIMING timing{native / tps, source.iPlayMs, source.fPlayRate, false, source.iSourceStartMs * .001f};
+            if (!CActionPresentationTimeline::Resolve_ClipDuration(timing, sourceDuration, wallDuration))
+            { m_Status = "Invalid Character source window: " + source.strClipName; return false; }
+            CLIP clip;
+            clip.id = source.strClipOccurrenceId.empty() ? CEffectEditingSession::New_Id("character.preview.") : source.strClipOccurrenceId;
+            clip.clipName = clip.label = source.strClipName;
+            clip.sourceStartMs = source.iSourceStartMs; clip.sourcePlayMs = source.iPlayMs; clip.playRate = source.fPlayRate;
+            clip.startMs = clock; clip.durationMs = (std::max)(1u, static_cast<std::uint32_t>(std::ceil(wallDuration * 1000.f)));
+            if (clip.durationMs > MAX_MS || clock > MAX_MS - clip.durationMs)
+            { m_Status = "Character action exceeds the preview timeline limit."; return false; }
+            const auto sourceEnd = source.iSourceStartMs + static_cast<std::uint32_t>(std::ceil(sourceDuration * 1000.f));
+            const auto within = [&](std::uint32_t ms) { return ms >= source.iSourceStartMs && ms < sourceEnd; };
+            const auto local = [&](std::uint32_t ms) { return static_cast<std::uint32_t>((ms - source.iSourceStartMs) / source.fPlayRate); };
+            for (const auto& cue : cues.Cues)
+            {
+                if (cue.strClipName != source.strClipName || !within(cue.iStartMs)) continue;
+                EFFECT_ROW row; row.id = CEffectEditingSession::New_Id("character.effect.preview.");
+                row.key = {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, cue.strEffectAssetId};
+                row.startMs = clock + local(cue.iStartMs);
+                row.productNaturalDuration = cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL;
+                row.productSnapshot = cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT;
+                row.productActionFacing = cue.eOrientationPolicy == EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+                float4x4_t actionRoot;
+                if (!CAnimationTargetService::Resolve_RootTransform(&actionRoot)) { m_Status = "Character root is unavailable."; return false; }
+                row.productFacingDegrees = XMConvertToDegrees(std::atan2(actionRoot._31, actionRoot._33));
+                row.durationMs = cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END && cue.iEndMs > cue.iStartMs ?
+                    (std::max)(1u, static_cast<std::uint32_t>((cue.iEndMs - cue.iStartMs) / source.fPlayRate)) : 10000u;
+                if (!row.productNaturalDuration) row.productStopDuration = row.durationMs;
+                row.anchorSlotId = cue.strAnchorSlotId;
+                row.offset = cue.LocalTransform.vPosition; row.rotation = cue.LocalTransform.vRotationDegrees; row.scale = cue.LocalTransform.vScale;
+                if (!Validate_Anchor(row.anchorSlotId, true, false)) return false;
+                effects.push_back(std::move(row));
+            }
+            for (const auto& cue : cues.Sounds)
+            {
+                if (cue.strClipName != source.strClipName || !within(cue.iStartMs)) continue;
+                const auto found = variants.find(cue.strEventName);
+                if (found == variants.end() || found->second.empty()) continue;
+                SOUND_ROW row; row.id = CEffectEditingSession::New_Id("character.sound.preview.");
+                row.label = cue.strEventName; row.assetId = found->second.front(); row.startMs = clock + local(cue.iStartMs);
+                const auto path = CRuntimeAssetRoot::Resolve(row.assetId);
+                if (path.empty() || !CGameInstance::Get().Get_SoundDurationMs(path.wstring(), row.durationMs) || !row.durationMs) continue;
+                sounds.push_back(std::move(row));
+            }
+            clock += clip.durationMs; animations.push_back(std::move(clip));
+        }
+        for (const auto& source : combat)
+        {
+            if (source.iSkillId != binding.iSkillId || source.iStageIndex != stage) continue;
+            COLLIDER_ROW row; row.id = source.strColliderId; row.label = source.strResultKind;
+            row.startMs = stageStart + source.iProjectileStartMs + source.iTimeMs;
+            row.durationMs = (std::max)(34u, source.iRepeatMs * (source.iRepeatCount > 0u ? source.iRepeatCount - 1u : 0u) + 34u);
+            row.offset.z = static_cast<float>(source.fOffset);
+            row.resource.strResourceId = source.strColliderId; row.resource.strDisplayName = source.strResultKind;
+            row.resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+            row.resource.strColliderKind = "GEOMETRY";
+            row.resource.strShape = source.iAreaType == 2u ? "BOX" : source.iAreaType == 3u ? "SECTOR" : "CIRCLE";
+            row.resource.fRadiusM = source.fRange; row.resource.fHalfAngleDegrees = source.fAngleDegrees * .5;
+            row.resource.HalfExtents = {(std::max)(.001, source.fWidth * .5), (std::max)(.001, source.fHeight * .5), (std::max)(.001, source.fRange * .5)};
+            HIT_AREA_SHAPE shape; shape.iAreaType = static_cast<int32_t>(source.iAreaType);
+            shape.iAreaRange = static_cast<int32_t>(std::round(source.fRange * 100.0));
+            shape.iAreaAngle = static_cast<int32_t>(std::round(source.iAreaType == 2u ? source.fWidth * 100.0 : source.fAngleDegrees));
+            shape.iAreaOffsetX = static_cast<int32_t>(std::round(source.fOffset * 100.0));
+            shape.iAreaInner = static_cast<int32_t>(std::round(source.fInner * 100.0));
+            shape.fBoxHalfHeightM = static_cast<float>(source.fHeight * .5);
+            row.productShape = shape; row.offset = {};
+            colliders.push_back(std::move(row));
+        }
+    }
+    if (animations.empty() || !Validate_AnimationRows(animations) || generation != CAnimationTargetService::Resolve_TargetGeneration()) return false;
+    Stop();
+    m_AnimationRows = std::move(animations); m_Effects = std::move(effects); m_Sounds = std::move(sounds); m_Colliders = std::move(colliders);
+    m_CameraRows.clear(); m_CustomAnimation = true; m_UseKouku = false; m_SelectedSequence.clear();
+    m_AssetName = asset; m_InventoryGeneration = generation; m_ModelRoot = true; m_ClockMs = 0; m_Dirty = false;
+    m_Status = "Character Product preview prepared. Save remains with animation, cue and combat document owners.";
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Resolve_ScenePreviewPlacement(float4x4_t& root)
+{
+    if (!m_ScenePreviewWorldRoot) return Capture_ScenePlayerPreviewRoot(root, m_Status);
+    if (m_ScenePreviewWorldLevel != CGameInstance::Get().Get_CurrentLevelID())
+    { m_Status = "The World anchor belongs to another Level. Pick or enter a position in this Level."; return false; }
+    root = *m_ScenePreviewWorldRoot;
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Set_WorldPreviewPlacement(const float3_t& position, const float yawDegrees)
+{
+    if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
+        std::abs(position.x) > 100000.f || std::abs(position.y) > 100000.f || std::abs(position.z) > 100000.f ||
+        !std::isfinite(yawDegrees) || std::abs(yawDegrees) > 36000.f)
+    { m_Status = "World placement requires finite positions within 100000 m and yaw within 36000 degrees."; return false; }
+    float4x4_t staged;
+    XMStoreFloat4x4(&staged, XMMatrixRotationY(XMConvertToRadians(yawDegrees)) *
+        XMMatrixTranslation(position.x, position.y, position.z));
+    m_ScenePreviewWorldRoot = staged;
+    m_ScenePreviewWorldLevel = CGameInstance::Get().Get_CurrentLevelID();
+    ++m_PreviewPlacementRevision;
+    m_PreviewPlacementPickPending = false;
+    m_Interaction = true;
+    m_Status = "World anchor selected. Play All replays here; Append keeps this position in the new occurrence.";
+    return true;
+}
+
+void CEffectAuthoringSequencer::Render_PreviewPlacementControls()
+{
+    ImGui::PushID("SceneEffectPlacement");
+    ImGui::SeparatorText("Play All / Append Anchor");
+    int mode = m_ScenePreviewWorldRoot ? 1 : 0;
+    if (ImGui::Combo("Placement", &mode, "Player at Play\0World (fixed)\0"))
+    {
+        if (mode == 0)
+        {
+            m_ScenePreviewWorldRoot.reset(); ++m_PreviewPlacementRevision;
+            m_PreviewPlacementPickPending = false; m_Interaction = true;
+            m_Status = "Play All and new occurrences will capture the scene player position and facing.";
+        }
+        else
+        {
+            float4x4_t root;
+            std::string error;
+            if (Capture_ScenePlayerPreviewRoot(root, error))
+                Set_WorldPreviewPlacement({root._41, root._42, root._43}, XMConvertToDegrees(std::atan2(root._31, root._33)));
+            else Set_WorldPreviewPlacement({m_WorldRoot._41, m_WorldRoot._42, m_WorldRoot._43}, 0.f);
+        }
+    }
+    if (ImGui::Button("Use Player Pos"))
+    {
+        float4x4_t root;
+        if (Capture_ScenePlayerPreviewRoot(root, m_Status))
+            Set_WorldPreviewPlacement({root._41, root._42, root._43}, XMConvertToDegrees(std::atan2(root._31, root._33)));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Use Mouse Pos"))
+    {
+        m_PreviewPlacementPickPending = true; m_PreviewPlacementLeftDown = true;
+        m_PreviewPlacementPickLevel = CGameInstance::Get().Get_CurrentLevelID();
+        m_Interaction = true;
+        m_Status = "Click one visible world surface outside the panels. Esc or right-click cancels.";
+    }
+    if (m_PreviewPlacementPickPending)
+    {
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel Pick"))
+        { m_PreviewPlacementPickPending = false; m_Status = "World pick cancelled; previous placement preserved."; }
+        ImGui::TextWrapped("Click a world surface; Esc / right-click cancels. The picked position is used by the next Play All or Append.");
+    }
+    if (m_ScenePreviewWorldRoot)
+    {
+        const auto& root = *m_ScenePreviewWorldRoot;
+        float3_t position{root._41, root._42, root._43};
+        float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
+        bool changed = ImGui::InputFloat3("World Position (m)", &position.x, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
+        changed = ImGui::InputFloat("World Yaw (deg)", &yaw, 0.f, 0.f, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue) || changed;
+        if (changed) Set_WorldPreviewPlacement(position, yaw);
+        if (m_ScenePreviewWorldLevel != CGameInstance::Get().Get_CurrentLevelID())
+            ImGui::TextDisabled("Pick a new position after changing Level.");
+    }
+    ImGui::TextDisabled("Placement is copied into Append. Save the sequence to retain the occurrence.");
+    ImGui::PopID();
+}
+
+bool CEffectAuthoringSequencer::Update_PreviewPlacementInput(const bool active)
+{
+    const bool leftDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+    const bool rightDown = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+    if (!leftDown && !rightDown) m_PreviewPlacementSuppressMouse = false;
+    if (!m_PreviewPlacementPickPending) return m_PreviewPlacementSuppressMouse;
+    const HWND foreground = GetForegroundWindow();
+    DWORD foregroundProcess = 0u;
+    if (foreground) GetWindowThreadProcessId(foreground, &foregroundProcess);
+    if (!active || m_PreviewPlacementPickLevel != CGameInstance::Get().Get_CurrentLevelID() ||
+        foregroundProcess != GetCurrentProcessId() || rightDown || (GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
+    {
+        m_PreviewPlacementPickPending = false;
+        m_PreviewPlacementSuppressMouse = leftDown || rightDown;
+        m_Status = "World pick cancelled; previous placement preserved.";
+        return true;
+    }
+    const bool pressed = leftDown && !m_PreviewPlacementLeftDown;
+    m_PreviewPlacementLeftDown = leftDown;
+    if (!pressed || foreground != g_hWnd || ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantTextInput ||
+        CUIInputRouter::Get().Is_MouseClaimedThisFrame() || CUIInputRouter::Get().Was_MouseClaimedLastFrame()) return true;
+    CUIInputRouter::Get().Claim_Mouse_This_Frame();
+    m_PreviewPlacementSuppressMouse = true;
+    float4_t picked{};
+    if (!CGameInstance::Get().Picking(picked))
+    { m_Status = "No visible surface at this pixel. Click a surface again, or Esc to cancel."; return true; }
+    const float yaw = m_ScenePreviewWorldRoot ? XMConvertToDegrees(std::atan2(m_ScenePreviewWorldRoot->_31, m_ScenePreviewWorldRoot->_33)) : 0.f;
+    Set_WorldPreviewPlacement({picked.x, picked.y, picked.z}, yaw);
+    return true;
+}
+
 bool CEffectAuthoringSequencer::Select_KoukuEffect(const std::string& assetId, const bool requiresSourceModel,
     const bool reusePlayerAnchor, const EFFECT_DOCUMENT_DESC* sourceDocument)
 {
@@ -364,31 +609,22 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     const std::optional<std::uint32_t> previewDurationMs, const EFFECT_DOCUMENT_DESC* sourceDocument)
 {
     m_PendingKoukuEffectPreview.reset();
-    const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId;
-    const bool koukuEffect = assetId.starts_with("effect.kouku.");
-    const bool needsModel = koukuEffect || requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
+    const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId &&
+        m_KoukuEffectPreview->placementRevision == m_PreviewPlacementRevision;
+    // A saved source model or external bone attachment owns model playback.
+    // Independent world/map Effects use their selected placement without
+    // requiring a boss pattern merely because their asset ID names that boss.
+    const bool needsModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
     if (reuseTarget && m_KoukuEffectPreview->model.has_value() == needsModel &&
         m_KoukuEffectPreview->loopPolicy == loopPolicy &&
         m_KoukuEffectPreview->previewDurationMs == previewDurationMs) return true;
-    const auto character = CAnimationTargetService::Resolve_SceneCharacter();
-    const auto transform = character ? character->Get_Transform() : nullptr;
-    if (!transform)
-    { m_Status = "Enter an arena with a scene player before Play All. The player is the Effect anchor."; return false; }
-    const auto& world = *transform->Get_WorldMatrixPtr();
-    for (const auto& row : world.m)
-        for (const auto component : row)
-            if (!std::isfinite(component))
-            { m_Status = "The scene player's Effect anchor is not finite."; return false; }
-    const float forwardLength = world._31 * world._31 + world._33 * world._33;
-    if (!std::isfinite(forwardLength) || forwardLength < 1e-12f)
-    { m_Status = "The scene player's Effect anchor has no usable horizontal facing."; return false; }
     KOUKU_EFFECT_PREVIEW_TARGET target;
     target.assetId = assetId;
     target.loopPolicy = loopPolicy;
     target.previewDurationMs = previewDurationMs;
-    XMStoreFloat4x4(&target.playerRoot, XMMatrixRotationY(std::atan2(world._31, world._33)) *
-        XMMatrixTranslation(world._41, world._42, world._43));
+    target.placementRevision = m_PreviewPlacementRevision;
     if (reuseTarget) target.playerRoot = m_KoukuEffectPreview->playerRoot;
+    else if (!Resolve_ScenePreviewPlacement(target.playerRoot)) return false;
     if (needsModel)
     {
         // Kouku Effects use their source model or an explicit saved boss context.
@@ -439,7 +675,8 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
         { m_Status = "Kouku Effect has no valid saved model/animation target: " + staged.Status(); return false; }
     }
     m_PendingKoukuEffectPreview = std::move(target);
-    m_Status = "Prepared Effect preview at the scene player's position and facing.";
+    m_Status = m_ScenePreviewWorldRoot ? "Prepared Effect preview at the fixed World anchor." :
+        "Prepared Effect preview at the scene player's position and facing.";
     return true;
 }
 
@@ -626,6 +863,13 @@ bool CEffectAuthoringSequencer::Resolve_RowPivot(const EFFECT_ROW& row, const fl
         { m_Status = "The selected model root is singular."; return false; }
         anchor = XMLoadFloat4x4(&boneWorld) * inverse * anchor;
     }
+    if (row.productActionFacing)
+    {
+        EFFECT_TRANSFORM_DESC local; local.vPosition = row.offset; local.vRotationDegrees = row.rotation; local.vScale = row.scale;
+        float4x4_t sampled; XMStoreFloat4x4(&sampled, anchor);
+        return CAnimationEffectCueDocument::Try_ComposeRootTransform(local, sampled,
+            EFFECT_ORIENTATION_POLICY::ACTION_FACING, row.productFacingDegrees, pivot);
+    }
     XMStoreFloat4x4(&pivot, XMMatrixScaling(row.scale.x, row.scale.y, row.scale.z) *
         XMMatrixRotationRollPitchYaw(XMConvertToRadians(row.rotation.x), XMConvertToRadians(row.rotation.y), XMConvertToRadians(row.rotation.z)) *
         XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * anchor);
@@ -699,6 +943,14 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
         if (row.bloomIntensityOverride &&
             !row.v1->Set_BloomIntensity(*row.bloomIntensityOverride, m_Status))
         { Release_Row(row); return false; }
+        if (row.productNaturalDuration)
+        {
+            const double duration = std::ceil(static_cast<double>(row.v1->Get_PreviewDurationSeconds()) * 1000.0);
+            if (!std::isfinite(duration) || duration < 1.0 || duration > MAX_MS || row.startMs > MAX_MS - duration)
+            { m_Status = "Product cue has no valid Effect owner duration."; Release_Row(row); return false; }
+            row.durationMs = static_cast<std::uint32_t>(duration);
+        }
+        if (row.productStopDuration) row.durationMs = *row.productStopDuration;
         // The factory recomputes selected-element tails on Play/Refresh too.
         // Reapply only this temporary target's bounded source cycle afterward.
         if (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == row.key.strStableId &&
@@ -746,9 +998,28 @@ bool CEffectAuthoringSequencer::Sample_Row(EFFECT_ROW& row, const float4x4_t& ro
         return true;
     }
     float4x4_t pivot;
-    if (!Resolve_RowPivot(row, root, pivot)) return false;
+    if (row.productSnapshot)
+    {
+        if (!row.productSpawnPivot)
+        {
+            float4x4_t spawnRoot, spawnPivot;
+            if (!Sample_Model(row.startMs) || !Resolve_Root(spawnRoot) || !Resolve_RowPivot(row, spawnRoot, spawnPivot))
+            { Sample_Model(ClockMs()); return false; }
+            row.productSpawnPivot = spawnPivot; row.productSpawnOwner = spawnRoot;
+            if (!Sample_Model(ClockMs())) return false;
+        }
+        pivot = *row.productSpawnPivot;
+    }
+    else if (!Resolve_RowPivot(row, root, pivot)) return false;
     const float age = static_cast<float>((m_ClockMs - row.startMs) * .001);
-    if (!Record_RowPivot(row, pivot, age)) return false;
+    if (row.productSnapshot)
+    {
+        if (!row.history) row.history = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+        if (row.recordedAge < 0.f && !row.history->Record(0.f, pivot, false, m_Status)) return false;
+        if (age >= row.recordedAge && !row.history->Record(age, pivot, false, m_Status)) return false;
+        row.recordedAge = (std::max)(age, row.recordedAge);
+    }
+    else if (!Record_RowPivot(row, pivot, age)) return false;
     const auto history = row.history;
     if (row.key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
     {
@@ -757,7 +1028,7 @@ bool CEffectAuthoringSequencer::Sample_Row(EFFECT_ROW& row, const float4x4_t& ro
         // The user occurrence bone controls free/root elements only; applying
         // that bone again to native socket worlds would double-transform them.
         float4x4_t sourceOwner;
-        XMStoreFloat4x4(&sourceOwner, XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * XMLoadFloat4x4(&root));
+        XMStoreFloat4x4(&sourceOwner, XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * XMLoadFloat4x4(row.productSpawnOwner ? &*row.productSpawnOwner : &root));
         if (!Record_V1Anchors(row, sourceOwner, age)) return false;
         row.v1->Set_Playing(false);
         const auto anchors = row.anchorHistory;
@@ -906,6 +1177,7 @@ bool CEffectAuthoringSequencer::Play(const bool paused)
     const auto prepareRow = [&](EFFECT_ROW& row)
     {
         row.v1.reset(); row.v2 = 0u; row.sampledAge = -1.f;
+        row.productSpawnPivot.reset(); row.productSpawnOwner.reset();
         if (!wasActive || m_ClockMs == 0.0 ||
             (!row.previewElementIds.empty() && m_ClockMs == row.previewStartMs))
         { row.history.reset(); row.anchorHistory.reset(); row.recordedAge = -1.f; }
@@ -974,23 +1246,28 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
     EFFECT_ROW row; row.id = "effect.occurrence." + std::to_string(m_NextEffectOrdinal);
     row.key = key; row.startMs = appendClock; row.durationMs = durationMs ? durationMs : 1u; row.screenPost = screenPost;
     row.anchorSlotId = m_DefaultAnchorSlotId;
-    if (scenePreview)
+    if (m_ScenePreviewWorldRoot)
+    {
+        float4x4_t world;
+        if (!Resolve_ScenePreviewPlacement(world)) return false;
+        row.worldAnchor = true; row.anchorSlotId = "root";
+        row.offset = {world._41, world._42, world._43};
+        row.rotation.y = XMConvertToDegrees(std::atan2(world._31, world._33));
+    }
+    else if (scenePreview && m_KoukuEffectPreview->placementRevision == m_PreviewPlacementRevision)
     {
         const auto& world = m_KoukuEffectPreview->playerRoot;
         row.worldAnchor = true; row.anchorSlotId = "root";
         row.offset = {world._41, world._42, world._43};
         row.rotation.y = XMConvertToDegrees(std::atan2(world._31, world._33));
     }
-    if (!scenePreview && key.strStableId.starts_with("effect.kouku."))
+    if (!row.worldAnchor && (scenePreview || key.strStableId.starts_with("effect.kouku.") ||
+        key.strStableId.starts_with("effect.world.")))
     {
-        const auto character = CAnimationTargetService::Resolve_SceneCharacter();
-        const auto transform = character ? character->Get_Transform() : nullptr;
-        if (transform)
-        {
-            const auto& world = *transform->Get_WorldMatrixPtr();
-            row.worldAnchor = true; row.anchorSlotId = "root"; row.offset = {world._41, world._42, world._43};
-            row.rotation.y = XMConvertToDegrees(std::atan2(world._31, world._33));
-        }
+        float4x4_t world;
+        if (!Resolve_ScenePreviewPlacement(world)) return false;
+        row.worldAnchor = true; row.anchorSlotId = "root"; row.offset = {world._41, world._42, world._43};
+        row.rotation.y = XMConvertToDegrees(std::atan2(world._31, world._33));
     }
     float4x4_t root = m_WorldRoot;
     if (m_Active && !Resolve_Root(root)) return false;
@@ -1033,6 +1310,11 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
 }
 bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs)
 {
+    // A V2 independent preview has no source-character clock to displace.
+    if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+        (m_ScenePreviewWorldRoot || (m_KoukuEffectPreview &&
+            m_KoukuEffectPreview->placementRevision != m_PreviewPlacementRevision)) &&
+        !Select_SceneEffectTarget(key.strStableId, false, false, std::nullopt)) return false;
     // The Resources tree reaches this entry without an active Tool document.
     if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.world.") &&
         (!m_PendingKoukuEffectPreview || m_PendingKoukuEffectPreview->assetId != key.strStableId) &&
@@ -1119,7 +1401,7 @@ bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const st
     m_SelectedCamera.clear(); m_Active = true; m_Paused = false;
     m_SkipNextPlaybackDelta = true; m_Interaction = true;
     if (!Sample_Camera(ClockMs(), root)) { Stop(); return false; }
-    m_Status = m_KoukuEffectPreview ? "Playing all Elements at the captured player anchor: " + key.strStableId :
+    m_Status = m_KoukuEffectPreview ? "Playing all Elements at the selected anchor: " + key.strStableId :
         "Previewing " + key.strStableId + ". Append adds it to the saved sequence.";
     if (cameraOnlyV4) m_Status += " Load sequence restores its additional Sound and Collider tracks.";
     return true;
@@ -1461,6 +1743,7 @@ void CEffectAuthoringSequencer::Draw_KoukuInventory()
 void CEffectAuthoringSequencer::Render_ModelView()
 {
     ImGui::PushID("EffectAuthoringModel");
+    Render_PreviewPlacementControls();
     ImGui::SeparatorText("Animation sequence");
     if (ImGui::SmallButton("No model sequence")) { Stop(); m_SelectedSequence.clear(); m_AnimationRows.clear(); m_CustomAnimation = false; m_UseKouku = false; m_Dirty = true; }
     int source = m_UseKouku ? 1 : 0;

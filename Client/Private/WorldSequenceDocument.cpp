@@ -494,7 +494,7 @@ bool_t Client::CWorldSequenceDocument::Load(
                 { outStatus = "Invalid world object map material bindings"; return false; }
                 for (const auto& binding : bindings->Get_Array())
                 {
-                    if (!Is_ObjectShape(binding, { "materialName", "sourceAssetId", "sourceMaterialName" }, { "diffuseTextureAssetId" }) ||
+                    if (!Is_ObjectShape(binding, { "materialName", "sourceAssetId", "sourceMaterialName" }, { "diffuseTextureAssetId", "unlit" }) ||
                         !binding.Find("materialName")->Is_String() || !binding.Find("sourceAssetId")->Is_String() ||
                         !binding.Find("sourceMaterialName")->Is_String())
                     { outStatus = "Invalid world object map material binding"; return false; }
@@ -507,6 +507,12 @@ bool_t Client::CWorldSequenceDocument::Load(
                         if (!diffuse->Is_String() || !Is_ResourcePath(diffuse->Get_String(), false))
                         { outStatus = "Invalid map material diffuse texture"; return false; }
                         material.diffuseTextureAssetId = diffuse->Get_String();
+                    }
+                    if (const auto* unlit = binding.Find("unlit"))
+                    {
+                        if (!unlit->Is_Boolean())
+                        { outStatus = "Invalid map material unlit flag"; return false; }
+                        material.unlit = unlit->Get_Boolean();
                     }
                     object.mapMaterialBindings.push_back(std::move(material));
                 }
@@ -729,8 +735,8 @@ bool_t Client::CWorldSequenceDocument::Load(
 			for (const auto& row : effects->Get_Array())
 			{
 				WORLD_SEQUENCE_EFFECT_TRACK effect;
-				if (!Is_ExactObject(row, { "effectTrackId", "slotId", "resourceKind", "resourceId",
-					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }))
+				if (!Is_ObjectShape(row, { "effectTrackId", "slotId", "resourceKind", "resourceId",
+					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }, { "followObject", "bone" }))
 				{ outStatus = "World Object effect track shape is invalid"; return false; }
 				for (const char* key : { "effectTrackId", "slotId", "resourceKind", "resourceId", "timing" })
 					if (!row.Find(key)->Is_String())
@@ -740,6 +746,16 @@ bool_t Client::CWorldSequenceDocument::Load(
 				effect.resourceKind = row.Find("resourceKind")->Get_String();
 				effect.resourceId = row.Find("resourceId")->Get_String();
 				effect.timing = row.Find("timing")->Get_String();
+				if (const auto* follow = row.Find("followObject"))
+				{
+					if (!follow->Is_Boolean()) { outStatus = "World Object effect followObject must be boolean"; return false; }
+					effect.followObject = follow->Get_Boolean();
+				}
+				if (const auto* bone = row.Find("bone"))
+				{
+					if (!bone->Is_String()) { outStatus = "World Object effect bone must be text"; return false; }
+					effect.bone = bone->Get_String();
+				}
 				if (!Read_Uint32(row.Find("startMs"), effect.startMs, MAX_DURATION_MS) ||
 					!Read_Uint32(row.Find("durationMs"), effect.durationMs, MAX_DURATION_MS) ||
 					!Read_Float3(row.Find("positionOffset"), effect.positionOffset) ||
@@ -939,6 +955,7 @@ bool_t Client::CWorldSequenceDocument::Save(
                     << "\", \"sourceAssetId\": \"" << CDataJson::Escape(binding.sourceAssetId)
                     << "\", \"sourceMaterialName\": \"" << CDataJson::Escape(binding.sourceMaterialName) << "\"";
                 if (!binding.diffuseTextureAssetId.empty()) output << ", \"diffuseTextureAssetId\": \"" << CDataJson::Escape(binding.diffuseTextureAssetId) << "\"";
+                if (binding.unlit) output << ", \"unlit\": true";
                 output << "}";
             }
             output << "\n      ]";
@@ -1070,6 +1087,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 					<< "\", \"resourceKind\": \"" << effect.resourceKind
 					<< "\", \"resourceId\": \"" << CDataJson::Escape(effect.resourceId)
 					<< "\", \"timing\": \"" << effect.timing
+					<< "\", \"followObject\": " << (effect.followObject ? "true" : "false")
+					<< ", \"bone\": \"" << CDataJson::Escape(effect.bone)
 					<< "\", \"startMs\": " << effect.startMs << ", \"durationMs\": " << effect.durationMs
 					<< ", \"positionOffset\": [" << effect.positionOffset.x << ", " << effect.positionOffset.y << ", " << effect.positionOffset.z
 					<< "], \"rotationDegrees\": [" << effect.rotationDegrees.x << ", " << effect.rotationDegrees.y << ", " << effect.rotationDegrees.z
@@ -1166,9 +1185,9 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			{
 				const auto* instance = Find_Instance(id);
 				if (!Is_ValidStableId(id) || !members.insert(id).second || !instance || instance->anchorKind != "WORLD" ||
-					instance->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP || instance->bindings.size() != 1u ||
+					(instance->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && instance->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP) || instance->bindings.size() != 1u ||
 					instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
-				{ outStatus = "Object group needs unique existing Map Object motions ending with Stop: " + id; return false; }
+				{ outStatus = "Object group needs unique existing Map Object motions ending with Stop or Loop: " + id; return false; }
 				const auto* model = Find_ObjectResource(instance->bindings.front().targetId);
 				if (!model || model->modelAssetId.empty() || !model->motionInstanceIds.empty())
 				{ outStatus = "Object group member must bind a model, not another group: " + id; return false; }
@@ -1260,7 +1279,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 					[&](const auto& track) { return track.slotId == effect.slotId; });
 			if (!Is_ValidStableId(effect.effectTrackId) || !effectIds.insert(effect.effectTrackId).second ||
 				!Is_ValidStableId(effect.slotId) || !slotExists || !Is_ValidStableId(effect.resourceId) ||
-				(effect.resourceKind != "LEAF" && effect.resourceKind != "GROUP") ||
+				(effect.resourceKind != "LEAF" && effect.resourceKind != "GROUP" && effect.resourceKind != "V1_EFFECT") ||
+				effect.bone.size() > 256u || !Is_ValidUtf8DisplayText(effect.bone) ||
 				(effect.timing != "TIME" && effect.timing != "MOTION_END") ||
 				(effect.timing == "MOTION_END" && effect.startMs != 0u) ||
 				effect.startMs > value.durationMs || effect.durationMs == 0u || effect.durationMs > MAX_DURATION_MS ||
@@ -1702,7 +1722,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		{
 			const auto& a = left.effectTracks[index]; const auto& b = right.effectTracks[index];
 			if (a.effectTrackId != b.effectTrackId || a.slotId != b.slotId || a.resourceKind != b.resourceKind ||
-				a.resourceId != b.resourceId || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
+				a.resourceId != b.resourceId || a.followObject != b.followObject || a.bone != b.bone || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
 				!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat3(a.rotationDegrees, b.rotationDegrees) ||
 				!sameFloat3(a.scale, b.scale)) return false;
 		}

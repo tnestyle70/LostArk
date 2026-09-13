@@ -4866,7 +4866,8 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 		Desc.strEffectAssetId.empty() ||
 		!Is_NonDegenerateAffineMatrix(Desc.RootWorld) ||
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
-		Desc.fInitialSampleTimeSeconds < 0.f)
+		Desc.fInitialSampleTimeSeconds < 0.f ||
+		(Desc.bExternalModelCueAnchors && !Desc.bExternallySampled))
 	{
 		strOutStatus = "Level-placement Effect spawn descriptor is invalid.";
 		return false;
@@ -4887,6 +4888,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 	spawn.bLevelOwned = true;
 	spawn.iLevelOwnerIndex = Desc.iLevelIndex;
 	spawn.bExternallySampled = Desc.bExternallySampled;
+	spawn.bExternalModelCueAnchors = Desc.bExternalModelCueAnchors;
 	spawn.strLevelPlacementId = Desc.strPlacementId;
 	if (!Spawn(spawn, strOutStatus))
 		return false;
@@ -4959,6 +4961,77 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 		}
 	}
 	return false;
+}
+
+HRESULT Client::CEffectPresentationService::Commit_WorldRootCaptureSample(
+	const EFFECT_WORLD_ROOT_HANDLE Handle)
+{
+	if (!Handle.Is_Valid()) return E_INVALIDARG;
+	const auto effect = std::find_if(g_ActiveEffects.begin(), g_ActiveEffects.end(),
+		[Handle](const ACTIVE_EFFECT& value) { return value.iWorldRootHandle == Handle.iValue; });
+	if (effect == g_ActiveEffects.end())
+		return std::any_of(g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+			[Handle](const PENDING_EFFECT_SPAWN& value) { return value.Desc.iWorldRootHandle == Handle.iValue; }) ? S_FALSE : E_FAIL;
+	if (!effect->pObject || !effect->bExternallySampled || effect->bFollowAnchorMissing ||
+		effect->pObject->Is_RenderFailureIsolated())
+	{
+		g_strStatus = "Scene capture sample needs a live externally sampled Effect handle.";
+		return E_FAIL;
+	}
+	if (!effect->bPendingInitialSeek) return S_OK;
+	if (!effect->ExternalTransformProvider)
+	{
+		g_strStatus = "Scene capture sample needs its admitted transform-history provider.";
+		return E_INVALIDARG;
+	}
+	const f32_t target = std::clamp(effect->fPendingInitialSampleTimeSeconds,
+		0.f, effect->pObject->Get_PreviewDurationSeconds());
+	std::string historyError;
+	// MainApp's final preview sample follows the service's normal update.
+	// Commit that exact sample before FrameProviders build this render frame.
+	if (!effect->pObject->Set_SampleTimeWithTransformHistory(target,
+		effect->ExternalTransformProvider, historyError))
+	{
+		g_strStatus = "Scene capture transform-history sample failed: " + historyError;
+		return E_FAIL;
+	}
+	effect->bExternalHistorySampled = true;
+	effect->bPendingInitialSeek = false;
+	effect->fElapsedCueTimeSeconds = target;
+	return S_OK;
+}
+
+void Client::CEffectPresentationService::Set_ScreenPostCaptureAllowed(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const bool_t allowed)
+{
+	if (!Handle.Is_Valid()) return;
+	const auto effect = std::find_if(g_ActiveEffects.begin(), g_ActiveEffects.end(),
+		[Handle](const ACTIVE_EFFECT& value) { return value.iWorldRootHandle == Handle.iValue; });
+	if (effect != g_ActiveEffects.end() && effect->pObject)
+		effect->pObject->Set_ScreenPostCaptureAllowed(allowed);
+}
+
+bool_t Client::CEffectPresentationService::Has_CapturedScreenPost(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const std::string& elementId)
+{
+	if (!Handle.Is_Valid() || elementId.empty()) return false;
+	const auto effect = std::find_if(g_ActiveEffects.begin(), g_ActiveEffects.end(),
+		[Handle](const ACTIVE_EFFECT& value) { return value.iWorldRootHandle == Handle.iValue; });
+	return effect != g_ActiveEffects.end() && effect->pObject &&
+		effect->pObject->Has_CapturedScreenPost(elementId);
+}
+
+HRESULT Client::CEffectPresentationService::Get_ScreenPostCaptureResult(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const std::string& elementId)
+{
+	if (!Handle.Is_Valid()) return S_FALSE;
+	if (elementId.empty()) return E_INVALIDARG;
+	const auto effect = std::find_if(g_ActiveEffects.begin(), g_ActiveEffects.end(),
+		[Handle](const ACTIVE_EFFECT& value) { return value.iWorldRootHandle == Handle.iValue; });
+	if (effect != g_ActiveEffects.end())
+		return effect->pObject ? effect->pObject->Get_ScreenPostCaptureResult(elementId) : E_FAIL;
+	return std::any_of(g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[Handle](const PENDING_EFFECT_SPAWN& value) { return value.Desc.iWorldRootHandle == Handle.iValue; }) ? S_FALSE : E_FAIL;
 }
 
 void Client::CEffectPresentationService::Stop_WorldRoot(
@@ -5250,6 +5323,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
+    if (Desc.bExternalModelCueAnchors) pEffect->Use_ExternalModelCueAnchors();
     if (!Desc.strElementId.empty() && !pEffect->Select_OccurrenceElement(Desc.strElementId, strOutStatus))
     {
         CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);

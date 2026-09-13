@@ -3635,13 +3635,27 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
                                 allSucceeded = false;
                                 m_strPendingPresentationFailure = "KoukuSaydon animation window could not be sampled: " + action.strActionId;
                             }
-                            else if (action.iBlendInMs)
+                            else
                             {
-                                if (!boss->Apply_NetworkAnimationTransition(action.strBlendFromClip.c_str(),
-                                    action.fBlendFromSourceMs, float(action.iBlendInMs), animationAge, action.fPlayRate))
+                                if (action.iBlendInMs)
                                 {
-                                    allSucceeded = false;
-                                    m_strPendingPresentationFailure = "KoukuSaydon animation transition could not be sampled: " + action.strActionId;
+                                    if (!boss->Apply_NetworkAnimationTransition(action.strBlendFromClip.c_str(),
+                                        action.fBlendFromSourceMs, float(action.iBlendInMs), animationAge, action.fPlayRate))
+                                    {
+                                        allSucceeded = false;
+                                        m_strPendingPresentationFailure = "KoukuSaydon animation transition could not be sampled: " + action.strActionId;
+                                    }
+                                }
+                                if (!action.AnimationBlendWindows.empty())
+                                {
+                                    float patternAgeSeconds = 0.f;
+                                    if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(snapshot.iServerTick,
+                                        entity.iPatternStartTick, 30.f, patternAgeSeconds) ||
+                                        !boss->Set_NetworkAnimationBlendWindows(action.AnimationBlendWindows, action.strOccurrenceId, patternAgeSeconds))
+                                    {
+                                        allSucceeded = false;
+                                        m_strPendingPresentationFailure = "KoukuSaydon Logic animation blend could not be sampled: " + action.strActionId;
+                                    }
                                 }
                             }
 						}

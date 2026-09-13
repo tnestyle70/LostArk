@@ -25,6 +25,18 @@
 using namespace Client::EffectDocumentCodecDetail;
 
 
+bool_t Client::CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(
+	const EFFECT_DOCUMENT_DESC& Document)
+{
+	return Document.iLoadedFormatVersion ==
+		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION &&
+		(!Document.RuntimeExtensions.Is_Empty() ||
+		 std::any_of(Document.Elements.begin(), Document.Elements.end(),
+			 [](const EFFECT_ELEMENT_DESC& Element)
+			 { return !Element.RuntimeCarrier.Is_Empty(); }));
+}
+
+
 const char_t* Client::CEffectDocumentCodec::To_Token(
 	const EFFECT_ELEMENT_KIND eKind)
 {

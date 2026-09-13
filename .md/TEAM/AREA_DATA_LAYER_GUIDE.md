@@ -299,13 +299,18 @@ Save와 Map publisher는 같은 field를 보존·검사하며 추출 generator�
 [렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)를 따른다.
 
 optional `mapMaterialBindings`는 최대 64개 `{ materialName, sourceAssetId, sourceMaterialName,
-diffuseTextureAssetId? }`다. target `materialName`은 새 WModel의 실제 slot이고 source는 해당
+diffuseTextureAssetId?, unlit? }`다. target `materialName`은 새 WModel의 실제 slot이고 source는 해당
 Area catalog에서 승인한 `SOURCE_BG_OPAQUE_MASKED` 재질 행이다. optional diffuse만 별도로
 지정할 수 있으며 모든 경로는 Resources 상대 ID다. 중복 target slot, 없는 source/slot, 다른
 family와 경로 이탈을 거부한다. 배치 고유 RNM·static shadow는 복사하지 않는다. 움직이는
 skinned map도 기존 animated shader에서 같은 BG surface 계산과 Composition 시간을 소비한다.
 sequence alias에는 이 두 재질 필드를 저장할 수 없다. Map publisher가 실 모델·재질·텍스처를
 검사하고 `CWorldSequenceDocument`의 Save/Load는 동일 필드를 보존한다.
+
+optional `unlit`은 bool이며 생략값은 false다. true인 binding은 동일 BG diffuse·UV·mask를
+조명과 곱하지 않고 emission으로 출력하며 직접 diffuse/specular 기여는 0이다. 움직이는 발광
+소품에 사용하는 저작 선택이고 원본의 static lightmap을 복제하지 않는다. 다른 binding과 정적
+배경의 조명 정책은 유지하며, Save/Load·동등성·publisher가 이 값을 보존·검사한다.
 
 Object Tool의 부모 선택은 공통 모델·텍스처·크기·Anchor와 연결된 Motion 목록만 표시하고,
 자식 선택은 해당 Motion의 Detail과 Sequencer를 표시한다. `Create Object`는 부모만 만들고

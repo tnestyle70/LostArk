@@ -9,6 +9,7 @@ ready rows. The saved hierarchy remains visible even when a row cannot execute.
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_right
 import copy
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -260,6 +261,7 @@ class _PublicationInputs:
         self.models = {}
         self.actors = {}
         self.memo = {}
+        self.root_motion_diagnostics = {}
 
     def observe(self, path):
         path = Path(path).resolve()
@@ -602,6 +604,9 @@ def _validate_logic_definition(
             _integer(logic["effectLifetimeMs"], f"{context} effectLifetimeMs", 1, 600000)
             if (count == 1) != (radius == 0):
                 raise CompositionError(f"{context} one circle uses radius 0; multiple circles need a positive radius")
+        elif kind == "ANIMATION_BLEND":
+            if extra != {"triggerKind"}:
+                raise CompositionError(f"{context} ANIMATION_BLEND carries unrelated values")
         elif kind == "CARD_MAZE_HIDE_NEXT":
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
@@ -898,8 +903,9 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
     span = duration or stage_duration
     children = _array(parent.get("patternOccurrences", []), "Pattern row", 128)
     seen, intervals = set(), []
+    motion_owners = 0
     if children and parent.get("bossMotion"):
-        raise CompositionError("Parent Boss Motion cannot share a child Pattern actor; move it to a separate Pattern")
+        raise CompositionError("Parent bossMotion cannot share a child Pattern actor")
     for box in children:
         _exact_keys(box, {"occurrenceId", "patternId", "startMs", "durationMs", "repeat"}, "Pattern occurrence")
         identity = _stable_id(box["occurrenceId"], "Pattern occurrenceId")
@@ -925,7 +931,22 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
             raise CompositionError("Child Pattern must retain Parent Gate, actor, and target boss: " + child_id)
         if not _pattern_duration(child):
             raise CompositionError("Child Pattern has no playable duration: " + child_id)
-        for key in ("bossMotion", "resetBossToSpawn", "resetBossYawDegrees", "enterCombatOnFinish"):
+        if child.get("bossMotion"):
+            if len(children) != 1 or box["repeat"] or length != _pattern_duration(child):
+                raise CompositionError("Child bossMotion requires its complete nonrepeating Pattern window: " + child_id)
+            motion_owners += 1
+            if motion_owners > 1:
+                raise CompositionError("Parent expansion requires exactly one bossMotion owner")
+            motion = child["bossMotion"]
+            _exact_keys(motion, {"startMs", "endMs", "startPosition", "endPosition", "yawDegrees"}, "Child bossMotion")
+            motion_start = _integer(motion["startMs"], "Child bossMotion startMs", 0, _pattern_duration(child))
+            motion_end = _integer(motion["endMs"], "Child bossMotion endMs", 1, _pattern_duration(child))
+            _vector3(motion["startPosition"], "Child bossMotion startPosition", -100000, 100000)
+            _vector3(motion["endPosition"], "Child bossMotion endPosition", -100000, 100000)
+            _number(motion["yawDegrees"], "Child bossMotion yawDegrees", -360, 360)
+            if motion_start >= motion_end or motion["startPosition"][1] != motion["endPosition"][1]:
+                raise CompositionError("Child bossMotion requires ordered timing and equal base Y")
+        for key in ("resetBossToSpawn", "resetBossYawDegrees", "enterCombatOnFinish"):
             if child.get(key) or (key == "resetBossYawDegrees" and key in child):
                 raise CompositionError(f"Child Pattern {child_id} uses {key}; keep this action on the Parent or a separate Pattern")
         if child.get("animationRootVerticalScale", 1.0) != parent.get("animationRootVerticalScale", 1.0):
@@ -949,6 +970,20 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
                     raise CompositionError("Parent Animation overlaps a child Pattern window: " + identity)
             stage_start += stage["durationMs"]
 
+    if motion_owners and children:
+        owners = [parent, *[patterns[box["patternId"]] for box in children]]
+        if parent.get("resetBossToSpawn", False) or "resetBossYawDegrees" in parent:
+            raise CompositionError("Inherited bossMotion cannot share Parent spawn reset")
+        if any(stage["animationOccurrences"] for stage in parent["stages"]):
+            raise CompositionError("Inherited bossMotion requires a Parent without its own Animation")
+        if any(stage.get("retargetOnEnter", False) for owner in owners for stage in owner["stages"]):
+            raise CompositionError("Parent expansion retargetOnEnter cannot share bossMotion yaw")
+        if any(row.get("enabled", True) and (
+                logics.get(row["logicId"], {}).get("triggerKind") == "REAL_GAZE_TELEPORT" or
+                logics.get(row["logicId"], {}).get("bossChargeDistanceM", 0) > 0)
+               for owner in owners for row in owner.get("logicOccurrences", [])):
+            raise CompositionError("Parent expansion bossMotion cannot share teleport or charge movement")
+
 
 def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str, Any]:
     """Materialize one fixed Parent for the existing runtime, preserving the saved references."""
@@ -958,6 +993,10 @@ def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str
     _validate_pattern_children(document, parent)
     if not parent.get("patternOccurrences") and not parent.get("durationMs"):
         return document
+    _validate_collider_selection_groups(parent, {row["resourceId"]: row
+        for row in document.get("presentationResources", [])})
+    for row in parent.get("presentationOccurrences", []):
+        row.pop("selectionGroupId", None)
     patterns = {row["patternId"]: row for row in source["patterns"]}
     source_definitions = source.get("logics", [])
     definitions = {row["logicId"]: row for row in source_definitions}
@@ -997,6 +1036,11 @@ def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str
 
     for box in children:
         child = patterns[box["patternId"]]
+        if child.get("bossMotion"):
+            inherited = copy.deepcopy(child["bossMotion"])
+            inherited["startMs"] += box["startMs"]
+            inherited["endMs"] += box["startMs"]
+            parent["bossMotion"] = inherited
         natural = _pattern_duration(child)
         end = box["startMs"] + box["durationMs"]
         repeat_index, offset = 0, box["startMs"]
@@ -1052,6 +1096,8 @@ def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str
                             raise CompositionError("Child charge cannot be truncated without changing its speed; extend the Pattern slot")
                         row["cancelAtEnd"] = True
                     if kind == "presentation":
+                        # Runtime clipping/repeats cannot retain partial editor groups.
+                        row.pop("selectionGroupId", None)
                         for key in ("fadeInMs", "fadeOutMs"):
                             if key in row: row[key] = min(row[key], row["durationMs"])
                         if "fadeOutMs" in row: row["fadeOutMs"] = min(row["fadeOutMs"], row["durationMs"] - row.get("fadeInMs", 0))
@@ -1287,7 +1333,7 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
             _stable_id(row["occurrenceId"], "bundle Scene Profile occurrenceId")
             _stable_id(row["sceneProfileId"], "bundle sceneProfileId")
         for row in _array(bundle["presentationOccurrences"], "bundle Camera rows", 16):
-            _keys(row, PRESENTATION_OCCURRENCE_REQUIRED, set(PRESENTATION_OCCURRENCE_DEFAULTS), "bundle presentation occurrence")
+            _keys(row, PRESENTATION_OCCURRENCE_REQUIRED, set(PRESENTATION_OCCURRENCE_DEFAULTS) | PRESENTATION_OCCURRENCE_EDITOR_KEYS, "bundle presentation occurrence")
             _stable_id(row["occurrenceId"], "bundle presentation occurrenceId")
             _stable_id(row["resourceId"], "bundle presentation resourceId")
         span = _bundle_duration(document, bundle)
@@ -1881,6 +1927,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     )
 
         _validate_pattern_children(document, pattern)
+        resolve_animation_blend_windows(document, pattern)
         pattern_duration_ms = _pattern_duration(pattern)
         charges = sorted((box["startMs"], box["startMs"] + box["durationMs"])
                          for box in pattern.get("logicOccurrences", [])
@@ -2214,12 +2261,13 @@ def _pattern_action_id(pattern_id: str) -> str:
     return pattern_id.lower().replace("_", ".")
 
 
-def _project_stage(stage: dict[str, Any]) -> dict[str, Any]:
+def _project_stage(stage: dict[str, Any], root_motion_samples=None) -> dict[str, Any]:
     return {
         "stageId": stage["stageId"],
         "actionId": stage["actionId"],
         "stageKind": stage["stageKind"],
         "durationMs": stage["durationMs"],
+        **({"rootMotionSamples": root_motion_samples} if root_motion_samples else {}),
         **({"actions": [{"trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
                         "targetId": "boss.target.pattern", "value": 1, "durationMs": 0}]}
            if stage.get("retargetOnEnter", False) else {}),
@@ -2372,14 +2420,27 @@ def _object_motion_emission(template, emission_index, context):
     return row
 
 
-def _require_single_static_object_motion(template, context, emission_index=0):
+def _uses_centered_circle_spin(template, centered_circle):
+    if not centered_circle:
+        return False
+    return (any(float(v) != 0 for v in template.get("objectMotion", {}).get("angularVelocityDegrees", [0, 0, 0])) or
+            any(abs(float(key["rotationQuaternion"][axis])) > .00001
+                for track in template.get("tracks", []) for key in track.get("keys", []) for axis in (0, 2)))
+
+
+def _require_single_static_object_motion(template, context, emission_index=0, allow_centered_spin=False):
     motion = template.get("objectMotion", {})
     emissions = motion.get("emissions", [])
     single = motion.get("count", 1) == 1 if not emissions else (
         motion.get("count", 1) == len(emissions) and motion.get("intervalMs", 0) == 0)
+    physical_keys = ["velocity", "acceleration", "revolutionDegreesPerSecond", "revolutionOffset"]
+    if not allow_centered_spin:
+        physical_keys.append("angularVelocityDegrees")
+    if allow_centered_spin:
+        _vector3(motion.get("angularVelocityDegrees", [0, 0, 0]), f"{context} self rotation", -100000, 100000)
+        physical_keys.append("spawnHalfExtents")
     if not single or motion.get("spreadDegrees", 0) != 0 or any(
-        any(float(value) != 0 for value in motion.get(key, [0, 0, 0]))
-        for key in ("velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond", "revolutionOffset")
+        any(float(value) != 0 for value in motion.get(key, [0, 0, 0])) for key in physical_keys
     ):
         raise CompositionError(f"{context} requires count 1 (or one authored emission row) and zero physical Object Motion")
     _object_motion_emission(template, emission_index, context)
@@ -2563,7 +2624,7 @@ def _project_object_contact_targets(document, pattern, box, logic, logics, seque
             "contactPriority": logic.get("contactPriority", 0)}
 
 
-def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any], cue=None, emission_index=0):
+def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: dict[str, Any], cue=None, emission_index=0, centered_circle=False):
     instance = next((r for r in sequences["instances"] if r["instanceId"] == world["sequenceInstanceId"]), None)
     if instance is None or len(instance.get("bindings", [])) != 1:
         raise CompositionError("Collider WORLD anchor needs exactly one bound placement")
@@ -2573,7 +2634,8 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
     if track is None or not track["keys"]:
         raise CompositionError("Collider WORLD has no transform track")
     if binding["targetKind"] == "OBJECT_RESOURCE":
-        _require_single_static_object_motion(template, "Collider WORLD source", emission_index)
+        centered_spin = _uses_centered_circle_spin(template, centered_circle)
+        _require_single_static_object_motion(template, "Collider WORLD source", emission_index, centered_spin)
         emission = _object_motion_emission(template, emission_index, "Collider WORLD source")
         resource = next((r for r in sequences.get("objectResources", []) if r["objectId"] == binding["targetId"]), None)
         if resource is None or instance.get("anchorKind", "WORLD") != "WORLD" or resource.get("anchorKind", "WORLD") != "WORLD":
@@ -2582,12 +2644,20 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
         _vector3(position, "Collider World Object position", -100000, 100000)
         scale = resource.get("scale", [1,1,1])
         _vector3(scale, "Collider World Object scale", .0001, 10000)
+        if centered_spin and max(scale) - min(scale) > .0001:
+            raise CompositionError("Spinning centered WORLD CIRCLE requires uniform X/Y/Z source scale")
         yaw = 0.0
         if cue is not None and "placement" in cue:
             placement = _validate_world_occurrence_placement(cue, world, sequences)
             if placement["rotationDegrees"][0] != 0 or placement["rotationDegrees"][2] != 0 or abs(placement["scale"][0] - placement["scale"][2]) > .0001:
                 raise CompositionError("XZ WORLD Collider placement needs yaw-only rotation and uniform X/Z scale")
+            if centered_spin and max(placement["scale"]) - min(placement["scale"]) > .0001:
+                raise CompositionError("Spinning centered WORLD CIRCLE requires uniform X/Y/Z placement scale")
             position, yaw, scale = list(placement["position"]), placement["rotationDegrees"][1], [a*b for a,b in zip(scale,placement["scale"])]
+        if centered_spin and max(scale) - min(scale) > .0001:
+            raise CompositionError("Spinning centered WORLD CIRCLE requires uniform X/Y/Z source and placement scale")
+        if centered_circle and any(key["positionOffset"] != track["keys"][0]["positionOffset"] for key in track["keys"]) and instance.get("motionEnd", "STOP") not in {"STOP", "HOLD"}:
+            raise CompositionError("Moving centered WORLD CIRCLE requires STOP or HOLD; repeat its Pattern in a Parent")
         if emission is not None:
             # The Client applies the row after the local motion and before the box TRS,
             # so only the placement scale reaches the offset and the row yaw adds to the baseline.
@@ -2685,8 +2755,9 @@ def _slerp_yaw(first, second, factor):
     return _quaternion_yaw_degrees([v/length for v in q])
 
 
-def _project_region_world_track(root, area, sequences, world, box, emission_index=0):
-    instance, template, track, position, yaw, scale = _load_region_world(root,area,sequences,world,box,emission_index)
+def _project_region_world_track(root, area, sequences, world, box, emission_index=0, centered_circle=False):
+    instance, template, track, position, yaw, scale = _load_region_world(root,area,sequences,world,box,emission_index,centered_circle)
+    centered_spin = instance["bindings"][0]["targetKind"] == "OBJECT_RESOURCE" and _uses_centered_circle_spin(template, centered_circle)
     emission = _object_motion_emission(template, emission_index, "WORLD Trigger")
     speed = float(box["playbackSpeed"]) * float(instance.get("playbackSpeed", 1))
     emission_delay = 0.0
@@ -2712,20 +2783,22 @@ def _project_region_world_track(root, area, sequences, world, box, emission_inde
         if time <= previous: raise CompositionError("WORLD Trigger keys must have increasing times")
         previous = time
         q = key["rotationQuaternion"]
-        if len(q) != 4 or any(not math.isfinite(v) for v in q) or abs(q[0]) > 0.00001 or abs(q[2]) > 0.00001:
-            raise CompositionError("WORLD Trigger must rotate around Y")
+        if len(q) != 4 or any(not math.isfinite(v) for v in q) or (not centered_spin and (abs(q[0]) > 0.00001 or abs(q[2]) > 0.00001)):
+            raise CompositionError("WORLD Trigger must rotate around Y unless it is a centered CIRCLE with uniform scale")
         length = math.sqrt(sum(v*v for v in q))
         if length <= 0.000001: raise CompositionError("WORLD Trigger quaternion is empty")
         _vector3(key["positionOffset"],"WORLD Trigger key position",-100000,100000)
         _vector3(key["scaleMultiplier"],"WORLD Trigger key scale",0,100000)
         if abs(key["scaleMultiplier"][0]-key["scaleMultiplier"][2]) > 0.0001:
             raise CompositionError("WORLD Trigger animated scale must be uniform in X/Z")
+        if centered_spin and max(key["scaleMultiplier"]) - min(key["scaleMultiplier"]) > .0001:
+            raise CompositionError("Spinning centered WORLD CIRCLE requires uniform X/Y/Z animated scale")
         key_position = list(key["positionOffset"])
         if "placement" in box:
             key_position = [a*b for a,b in zip(key_position, box["placement"]["scale"])]
         _vector3(key_position,"WORLD Trigger placed key position",-100000,100000)
         keys.append({"timeMs":time,"positionOffset":key_position,
-                     "rotationY":q[1]/length,"rotationW":q[3]/length,
+                     "rotationY":0.0 if centered_spin else q[1]/length,"rotationW":1.0 if centered_spin else q[3]/length,
                      "scaleMultiplier":list(key["scaleMultiplier"]),"visible":_boolean(key.get("visible",True),"WORLD Trigger visible")})
     return {"startMs":box["startMs"],"startDelayMs":instance.get("startDelayMs",0)+int(emission_delay),"durationMs":template["durationMs"],
             "playbackSpeed":float(box["playbackSpeed"])*float(instance.get("playbackSpeed",1)),
@@ -2886,6 +2959,335 @@ def _clip_native_ms(actor, animation):
     return duration
 
 
+ROOT_MOTION_REDUCTION_ERROR_M = 0.001
+
+
+def _reduce_root_motion_samples(samples, tolerance=ROOT_MOTION_REDUCTION_ERROR_M, maximum=512):
+    """Keep the time-linear XYZ curve within one millimetre of every input knot."""
+    if len(samples) <= 2:
+        return samples
+    retained = {0, len(samples) - 1}
+    pending = [(0, len(samples) - 1)]
+    while pending:
+        begin, end = pending.pop()
+        a, b = samples[begin], samples[end]
+        span = b["timeMs"] - a["timeMs"]
+        largest, split = tolerance * tolerance, None
+        for index in range(begin + 1, end):
+            row = samples[index]
+            alpha = (row["timeMs"] - a["timeMs"]) / span
+            error = sum((row[key] - (a[key] + (b[key] - a[key]) * alpha)) ** 2
+                        for key in ("forward", "lateral", "up"))
+            if error > largest:
+                largest, split = error, index
+        if split is not None:
+            retained.add(split)
+            if len(retained) > maximum:
+                raise CompositionError(f"Animation root motion exceeds {maximum} samples at the error bound; shorten the stage or source loop")
+            pending.extend(((begin, split), (split, end)))
+    return [samples[index] for index in sorted(retained)]
+
+
+def _animation_root_curve(actor, animation, vertical_scale):
+    clip = animation["runtimeClip"]
+    # Reuse the pinned selective WModel reader and its native-key admission.
+    local = _sample_bone_bake_pose(actor, "body", clip, 0.0, local_only=True)
+    model = actor["body"]
+    roots = [i for i, bone in enumerate(model.skeleton_bones) if bone.name == "b_root"]
+    if len(roots) != 1:
+        raise CompositionError("Animation root motion requires one b_root")
+    root_index = roots[0]
+    native = next(row for row in model.animations if row.name == clip)
+    ancestors = set()
+    parent = model.skeleton_bones[root_index].parent
+    while parent >= 0:
+        if parent in ancestors:
+            raise CompositionError("Animation root motion has a cyclic ancestor chain")
+        ancestors.add(parent)
+        parent = model.skeleton_bones[parent].parent
+    for channel in native.channels:
+        if channel.bone_index in ancestors:
+            for keys in (channel.position_keys, channel.rotation_keys, channel.scale_keys):
+                if keys and any(any(abs(a - b) > 1e-7 for a, b in zip(row[1:], keys[0][1:])) for row in keys[1:]):
+                    raise CompositionError("Animation root motion has an animated b_root ancestor; its basis cannot be baked as a fixed actor frame")
+    combined = wmodel_pose.combined_transforms(model.skeleton_bones, local)
+    parent = model.skeleton_bones[root_index].parent
+    basis = actor["bodyPre"] if parent < 0 else wmodel_pose.matrix_multiply(combined[parent], actor["bodyPre"])
+    channels = [row for row in native.channels if row.bone_index == root_index]
+    if len(channels) > 1:
+        raise CompositionError("Animation root motion has duplicate b_root channels")
+    rest = model.skeleton_bones[root_index].transform[12:15]
+    keys = channels[0].position_keys if channels else []
+    if not keys:
+        keys = [(0.0, *(rest if not channels else (0.0, 0.0, 0.0)))]
+    output = []
+    for tick, x, y, z in keys:
+        delta = (x - rest[0], y - rest[1], (z - rest[2]) * vertical_scale)
+        position = [sum(delta[row] * basis[row * 4 + axis] for row in range(3)) for axis in range(3)]
+        row = {"timeMs": tick * 1000.0 / native.ticks_per_second,
+               "forward": position[2], "lateral": position[0], "up": position[1]}
+        if any(not math.isfinite(value) or abs(value) > 100000 for key, value in row.items() if key != "timeMs"):
+            raise CompositionError("Animation root motion contains non-finite or out-of-range displacement")
+        if output and row["timeMs"] == output[-1]["timeMs"]:
+            output[-1] = row
+        else:
+            output.append(row)
+    return native.duration_ticks * 1000.0 / native.ticks_per_second, output
+
+
+def _sample_root_curve(samples, time_ms):
+    index = bisect_right(samples, time_ms, key=lambda row: row["timeMs"])
+    if index == 0:
+        return tuple(samples[0][key] for key in ("forward", "lateral", "up"))
+    if index == len(samples):
+        return tuple(samples[-1][key] for key in ("forward", "lateral", "up"))
+    a, b = samples[index - 1], samples[index]
+    alpha = (time_ms - a["timeMs"]) / (b["timeMs"] - a["timeMs"])
+    return tuple(a[key] + (b[key] - a[key]) * alpha for key in ("forward", "lateral", "up"))
+
+
+def _build_animation_root_motion_samples(actor, animation, stage_duration_ms, vertical_scale=1.0, *, diagnostics=None):
+    native_ms, curve = _animation_root_curve(actor, animation, vertical_scale)
+    # Keep source-range admission identical to the presentation sampler.
+    _sample_animation_source_ms(animation, 0.0, native_ms)
+    source_start = min(animation["sourceStartMs"], native_ms)
+    source_end = min(animation.get("sourceEndMs", 0) or native_ms, native_ms)
+    start, play, rate = animation["startOffsetMs"], animation["playMs"], animation["playRate"]
+    if start + play > stage_duration_ms:
+        raise CompositionError("Animation root motion exceeds its stage window")
+    source_span = source_end - source_start
+    looping = animation["endPolicy"] == "LOOP_TO_WINDOW"
+    baseline = _sample_root_curve(curve, source_start)
+    endpoint = _sample_root_curve(curve, source_end)
+    cycle_delta = tuple(b - a for a, b in zip(baseline, endpoint))
+    source_knots = [source_start, *[row["timeMs"] for row in curve if source_start < row["timeMs"] < source_end], source_end]
+    source_knots = sorted(set(source_knots))
+    source_samples = [{"timeMs": time, **dict(zip(("forward", "lateral", "up"), _sample_root_curve(curve, time)))}
+                      for time in source_knots]
+    # This only removes exactly time-linear source keys before loop expansion.
+    linear_source = _reduce_root_motion_samples(source_samples, tolerance=1e-9, maximum=100000)
+    times = {0, stage_duration_ms, start, start + play}
+    exact_times = set(times)
+    def add_time(value):
+        if start <= value <= start + play:
+            exact_times.add(value)
+        for rounded in (math.floor(value), math.ceil(value)):
+            if start <= rounded <= start + play:
+                times.add(rounded)
+        if len(times) > 100000:
+            raise CompositionError("Animation root motion exceeds the bounded source-knot budget; shorten the source loop")
+    if looping and len(linear_source) <= 2:
+        pass  # Constant velocity remains linear across any number of loop cycles.
+    else:
+        cycles = math.floor(play * rate / source_span) + 1 if looping else 1
+        if cycles * max(1, len(linear_source) - 1) > 100000:
+            raise CompositionError("Animation root motion exceeds the bounded source-knot budget; shorten the source loop")
+        for cycle in range(cycles):
+            for row in linear_source:
+                add_time(start + (cycle * source_span + row["timeMs"] - source_start) / rate)
+    def sample(time):
+        source_age = max(0.0, min(time - start, play)) * rate
+        cycles = math.floor(source_age / source_span) if looping else 0
+        local = source_age - cycles * source_span if looping else min(source_age, source_span)
+        position = _sample_root_curve(curve, source_start + local)
+        return tuple(cycles * delta + value - base for delta, value, base in zip(cycle_delta, position, baseline))
+    samples = [{"timeMs": time, **dict(zip(("forward", "lateral", "up"), sample(time)))} for time in sorted(times)]
+    if any(not math.isfinite(row[key]) or abs(row[key]) > 100000 for row in samples for key in ("forward", "lateral", "up")):
+        raise CompositionError("Animation root motion loop exceeds the finite displacement range")
+    exact_points = [(time, sample(time)) for time in sorted(exact_times)]
+    intervals = {}
+    for time, position in exact_points:
+        interval = math.floor(time)
+        intervals.setdefault(interval, []).append(position)
+        if time == interval:
+            intervals.setdefault(interval - 1, []).append(position)
+    for positions in intervals.values():
+        # All turning keys of a sub-ms excursion may disappear, even if another
+        # axis keeps moving forward. Check each axis and skip its flat sections.
+        # A normal near-key crop has only one short segment in this interval.
+        for axis in range(3):
+            direction, distance, previous_distance = 0, 0.0, 0.0
+            for before, after in zip(positions, positions[1:]):
+                delta = after[axis] - before[axis]
+                if abs(delta) <= 1e-12:
+                    continue
+                sign = 1 if delta > 0 else -1
+                if sign != direction:
+                    previous_distance, distance, direction = distance, 0.0, sign
+                distance += abs(delta)
+                if min(distance, previous_distance) > ROOT_MOTION_REDUCTION_ERROR_M:
+                    raise CompositionError("Animation root motion has a sub-millisecond reversal that the millisecond timeline cannot preserve")
+    if max(abs(value) for _, position in exact_points for value in position) <= 1e-7:
+        if diagnostics is not None:
+            diagnostics.update(sampleCount=0, quantizationErrorM=0.0, reductionErrorM=0.0, nativeErrorM=0.0)
+        return []
+    reduced = _reduce_root_motion_samples(samples)
+    # Integer timestamps have their own measurable error, independent of the
+    # additional 1 mm simplification bound. Do not reject ordinary imported
+    # jumps because a scaled native turning key falls at e.g. 6066.666667 ms.
+    quantization_error = max(math.dist(position, _sample_root_curve(samples, time)) for time, position in exact_points)
+    reduction_error = max(math.dist(tuple(row[key] for key in ("forward", "lateral", "up")),
+        _sample_root_curve(reduced, row["timeMs"])) for row in samples)
+    native_error = max(math.dist(sample(time), _sample_root_curve(reduced, time)) for time in exact_times | times)
+    if reduction_error > ROOT_MOTION_REDUCTION_ERROR_M + 1e-9 or native_error > quantization_error + ROOT_MOTION_REDUCTION_ERROR_M + 1e-9:
+        raise CompositionError("Animation root motion exceeds its additional 1 mm simplification error bound")
+    if diagnostics is not None:
+        diagnostics.update(sampleCount=len(reduced), quantizationErrorM=quantization_error,
+                           reductionErrorM=reduction_error, nativeErrorM=native_error)
+    return reduced
+
+
+def _apply_albion_takeoff_motion(stages, curves):
+    """Pair source 4219903's fixed airborne poses with their landing run."""
+    def is_clip(stage, *clips):
+        animation = stage["animationOccurrences"][0]
+        return animation.get("sourceActionId") == 4219903 and animation["runtimeClip"] in clips
+    def completed_up(stage):
+        samples = curves.get(stage["stageId"])
+        return samples[-1]["up"] if samples else 0.0
+    begin = 0
+    while begin < len(stages):
+        if not is_clip(stages[begin], "rpct00_att_battle_24_03"):
+            begin += 1
+            continue
+        landing = begin
+        while landing < len(stages) and is_clip(stages[landing], "rpct00_att_battle_24_03"):
+            landing += 1
+        end = landing
+        while end < len(stages) and is_clip(stages[end], "rpct00_att_battle_24_04", "rpct00_att_battle_24_05"):
+            end += 1
+        ascent_ms = sum(stage["animationOccurrences"][0]["playMs"] for stage in stages[begin:landing])
+        lift = max(0.0, -sum(completed_up(stage) for stage in stages[begin:end]))
+        if not math.isfinite(lift) or lift > 100000 or not math.isfinite(ascent_ms):
+            raise CompositionError("Albion takeoff exceeds the finite root-motion range")
+        if end > landing and ascent_ms > 0 and lift > 0:
+            for stage in stages[begin:landing]:
+                animation = stage["animationOccurrences"][0]
+                start, play = animation["startOffsetMs"], animation["playMs"]
+                if play <= 0:
+                    continue
+                stage_lift = lift * play / ascent_ms
+                samples = curves.get(stage["stageId"], [{"timeMs": time, "forward": 0.0, "lateral": 0.0, "up": 0.0}
+                    for time in sorted({0, start, start + play, stage["durationMs"]})])
+                # Preserve both slope boundaries even if the native pose has
+                # no root keys there; the added ramp is linear in actor time.
+                times = sorted({row["timeMs"] for row in samples} | {start, start + play})
+                result = [{"timeMs": time, **dict(zip(("forward", "lateral", "up"), _sample_root_curve(samples, time)))}
+                          for time in times]
+                for row in result:
+                    row["up"] += stage_lift * max(0.0, min(1.0, (row["timeMs"] - start) / play))
+                    if not math.isfinite(row["up"]) or abs(row["up"]) > 100000:
+                        raise CompositionError("Albion takeoff exceeds the finite root-motion range")
+                curves[stage["stageId"]] = _reduce_root_motion_samples(result)
+        begin = end
+
+
+def _project_pattern_root_motion(document, pattern, root, cache):
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    if pattern.get("bossMotion") or any(
+            box.get("enabled", True) and (definitions.get(box["logicId"], {}).get("bossChargeDistanceM", 0) > 0 or
+                definitions.get(box["logicId"], {}).get("triggerKind") == "REAL_GAZE_TELEPORT")
+            for box in pattern.get("logicOccurrences", [])):
+        return {}
+    def build():
+        actor = _load_bone_bake_actor(pattern, root, cache)
+        curves = {}
+        if any(len(stage["animationOccurrences"]) != 1 for stage in pattern["stages"]):
+            raise CompositionError("Server animation root motion requires one Animation per stage")
+        # Parse the Pattern's requested clips in one selective read. The shared
+        # pinned model cache serves later stages, bone tracks and presentation.
+        try:
+            _load_bake_model(actor["modelPaths"]["body"], actor["modelCache"],
+                {stage["animationOccurrences"][0]["runtimeClip"] for stage in pattern["stages"]})
+        except (OSError, ValueError, IndexError, KeyError, struct.error) as error:
+            raise CompositionError(f"Cannot read Animation root motion clips: {error}") from error
+        for stage in pattern["stages"]:
+            animations = stage["animationOccurrences"]
+            diagnostics = {}
+            try:
+                samples = _build_animation_root_motion_samples(actor, animations[0], stage["durationMs"],
+                    pattern.get("animationRootVerticalScale", 1.0), diagnostics=diagnostics)
+            except (ValueError, IndexError, KeyError, ZeroDivisionError) as error:
+                raise CompositionError(f"Cannot bake Animation root motion {pattern['patternId']}/{stage['stageId']}: {error}") from error
+            session = _PUBLICATION_INPUTS.get()
+            if session is not None:
+                session.root_motion_diagnostics[f"{pattern['patternId']}/{stage['stageId']}"] = diagnostics
+            if samples:
+                curves[stage["stageId"]] = samples
+        _apply_albion_takeoff_motion(pattern["stages"], curves)
+        session = _PUBLICATION_INPUTS.get()
+        if session is not None:
+            for stage in pattern["stages"]:
+                session.root_motion_diagnostics[f"{pattern['patternId']}/{stage['stageId']}"]["sampleCount"] = len(
+                    curves.get(stage["stageId"], []))
+        return curves
+    key = (str(root.resolve()), hashlib.sha256(serialize_json(pattern)).digest())
+    return copy.deepcopy(_publication_memo("animation-root-motion", key, build))
+
+
+def resolve_animation_blend_windows(document, pattern):
+    """Resolve explicit Logic windows without rewriting either source clip clock."""
+    if pattern.get("patternOccurrences"):
+        expanded = expand_pattern_document(document, pattern["patternId"])
+        return resolve_animation_blend_windows(expanded, next(p for p in expanded["patterns"]
+            if p["patternId"] == pattern["patternId"]))
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    boxes = [row for row in pattern.get("logicOccurrences", []) if row.get("enabled", True)
+             and definitions.get(row["logicId"], {}).get("triggerKind") == "ANIMATION_BLEND"]
+    if not boxes:
+        return []
+    animations = []
+    origin = 0
+    for stage in pattern["stages"]:
+        first = min(stage["animationOccurrences"], key=lambda row: (row["startOffsetMs"], row["occurrenceId"]), default=None)
+        for row in stage["animationOccurrences"]:
+            absolute = origin + row["startOffsetMs"]
+            if absolute > MAX_TIMELINE_MS:
+                raise CompositionError("Animation blend timeline exceeds 600 seconds")
+            animations.append((dict(occurrenceId=row["occurrenceId"], runtimeClip=row["runtimeClip"],
+                startMs=absolute, poseStartMs=origin if row is first else absolute,
+                sourceStartMs=row["sourceStartMs"], sourceEndMs=row.get("sourceEndMs", 0),
+                playMs=row["playMs"], playRate=float(row["playRate"]), endPolicy=row["endPolicy"]), row))
+        origin += stage["durationMs"]
+    animations.sort(key=lambda pair: (pair[0]["poseStartMs"], pair[0]["occurrenceId"]))
+    windows = []
+    for box in boxes:
+        def fail(reason):
+            raise CompositionError(f"Animation blend {box['occurrenceId']}: {reason}")
+        start = _integer(box["startMs"], "Animation blend startMs", 0, MAX_TIMELINE_MS)
+        duration = _integer(box["durationMs"], "Animation blend durationMs", 1, 1000)
+        end = start + duration
+        if end > _pattern_duration(pattern):
+            fail("the window must remain inside this Pattern")
+        boundaries = [i for i in range(1, len(animations)) if start <= animations[i][0]["poseStartMs"] <= end]
+        if len(boundaries) != 1:
+            fail("the box must contain exactly one transition between consecutive pose owners")
+        target = boundaries[0]
+        source, source_row = animations[target - 1]
+        destination, target_row = animations[target]
+        if source["poseStartMs"] >= destination["poseStartMs"] or start < source["poseStartMs"] or (
+                target + 1 < len(animations) and end >= animations[target + 1][0]["poseStartMs"]):
+            fail("the source/target pair is ambiguous or another pose owner enters this window")
+        if resolve_actor_profile_id(source_row["profileId"]) != resolve_actor_profile_id(target_row["profileId"]):
+            fail("both clips must belong to the same actor model")
+        if any(row.get("blendInMs", 0) and descriptor["startMs"] < end and
+               start < descriptor["startMs"] + row["blendInMs"] for descriptor, row in animations):
+            fail("the Logic window overlaps an existing clip blendInMs")
+        if any(previous["startMs"] < end and start < previous["startMs"] + previous["durationMs"] for previous in windows):
+            fail("two Logic blend windows overlap")
+        windows.append(dict(logicOccurrenceId=box["occurrenceId"], startMs=start, durationMs=duration,
+                            source=source, target=destination))
+    return sorted(windows, key=lambda row: row["startMs"])
+
+
+def sample_animation_blend_window(windows, pattern_ms):
+    """Return the same absolute-clock pair/alpha used by Client presentation."""
+    for window in windows:
+        if window["startMs"] <= pattern_ms < window["startMs"] + window["durationMs"]:
+            return window, (pattern_ms - window["startMs"]) / window["durationMs"]
+    return None
+
+
 def _animation_blend_source(pattern, occurrence):
     previous = None
     elapsed = 0
@@ -3009,13 +3411,13 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical
     return combined
 
 
-def _bone_bake_stage_origins(pattern):
+def _bone_bake_stage_origins(pattern, fixed_timeline=False):
     elapsed_ticks = 0
     elapsed_ms = 0
     for index, stage in enumerate(pattern["stages"]):
-        # Brain counts the initial entry tick, then advances subsequent stages
-        # from the replicated action-start tick. Keep its existing schedule.
-        yield stage, (elapsed_ms if pattern.get("durationMs") else max(0, elapsed_ticks - (1 if index else 0)) * 1000 / FIXED_TICK_HZ)
+        # Fixed-timeline patterns share the authored Pattern clock with Logic
+        # blends. Preserve the legacy Brain entry-tick schedule for other rows.
+        yield stage, (elapsed_ms if pattern.get("durationMs") or fixed_timeline else max(0, elapsed_ticks - (1 if index else 0)) * 1000 / FIXED_TICK_HZ)
         elapsed_ticks += math.ceil(stage["durationMs"] * FIXED_TICK_HZ / 1000)
         elapsed_ms += stage["durationMs"]
 
@@ -3025,8 +3427,8 @@ def _animation_holds_window_end(stage, animation):
             animation["endPolicy"] == "HOLD_LAST_POSE")
 
 
-def _bone_bake_clip_sample(pattern, pattern_ms):
-    stages = list(_bone_bake_stage_origins(pattern))
+def _bone_bake_clip_sample(pattern, pattern_ms, fixed_timeline=False):
+    stages = list(_bone_bake_stage_origins(pattern, fixed_timeline))
     selected = [(stage, start) for stage, start in stages if start <= pattern_ms + 1e-8]
     if not selected:
         raise CompositionError("Bone Collider samples before its first stage")
@@ -3058,10 +3460,10 @@ def _bone_bake_clip_sample(pattern, pattern_ms):
     return animation, (animation["sourceStartMs"] + age * animation["playRate"]) / 1000
 
 
-def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
-    key = (str(root.resolve()), hashlib.sha256(serialize_json([pattern, logic_box, collider])).digest())
+def _project_bone_collider_track(pattern, logic_box, collider, root, cache, suppress_root_motion=False, blend_windows=()):
+    key = (str(root.resolve()), hashlib.sha256(serialize_json([pattern, logic_box, collider, suppress_root_motion, blend_windows])).digest())
     track = _publication_memo("bone-track", key,
-        lambda: _build_bone_collider_track(pattern, logic_box, collider, root, cache))
+        lambda: _build_bone_collider_track(pattern, logic_box, collider, root, cache, suppress_root_motion, blend_windows))
     return copy.deepcopy(track)
 
 
@@ -3079,7 +3481,7 @@ def _resolve_saydon_weapon_clip(body_clip, weapon):
     return candidate if any(row.name == candidate for row in weapon.animations) else ""
 
 
-def _build_bone_collider_track(pattern, logic_box, collider, root, cache):
+def _build_bone_collider_track(pattern, logic_box, collider, root, cache, suppress_root_motion=False, blend_windows=()):
     if collider["anchorKind"] != "BOSS" or not collider["followBoss"] or not collider["bone"]:
         raise CompositionError("Bone Collider requires a following BOSS and a named bone")
     actor = _load_bone_bake_actor(pattern, root, cache)
@@ -3096,7 +3498,11 @@ def _build_bone_collider_track(pattern, logic_box, collider, root, cache):
     start, duration = logic_box["startMs"], logic_box["durationMs"]
     end = start + duration
     sample_times = {0: float(start), duration: float(end)}
-    for stage, stage_start in _bone_bake_stage_origins(pattern):
+    for window in blend_windows:
+        for edge in (window["startMs"], window["startMs"] + window["durationMs"]):
+            if start <= edge <= end:
+                sample_times[edge - start] = float(edge)
+    for stage, stage_start in _bone_bake_stage_origins(pattern, bool(blend_windows)):
         for animation in stage["animationOccurrences"]:
             for edge in (stage_start + animation["startOffsetMs"], stage_start + animation["startOffsetMs"] + animation["playMs"]):
                 for absolute in (math.floor(edge - 1e-7), math.ceil(edge)):
@@ -3113,8 +3519,16 @@ def _build_bone_collider_track(pattern, logic_box, collider, root, cache):
     if len(sample_times) > 4096:
         raise CompositionError("Bone Collider trigger needs more than 4096 baked keys; shorten its active window")
     keys = []
+    animation_rows = {row["occurrenceId"]: row for stage in pattern["stages"] for row in stage["animationOccurrences"]}
     for local_ms, pattern_ms in sorted(sample_times.items()):
-        animation, seconds = _bone_bake_clip_sample(pattern, pattern_ms)
+        active_blend = sample_animation_blend_window(blend_windows, pattern_ms)
+        if active_blend:
+            descriptor = active_blend[0]["target"]
+            animation = animation_rows[descriptor["occurrenceId"]]
+            age = min(max(pattern_ms - descriptor["startMs"], 0.0), descriptor["playMs"])
+            seconds = (animation["sourceStartMs"] + age * animation["playRate"]) / 1000.0
+        else:
+            animation, seconds = _bone_bake_clip_sample(pattern, pattern_ms, bool(blend_windows))
         if resolve_actor_profile_id(animation["profileId"]) != actor["actorProfileId"]:
             raise CompositionError("Bone Collider animation belongs to a different actor body")
         body_clip = animation["runtimeClip"]
@@ -3127,17 +3541,25 @@ def _build_bone_collider_track(pattern, logic_box, collider, root, cache):
         elapsed_ms = (seconds * 1000.0 - animation["sourceStartMs"]) / animation["playRate"]
         seconds = _sample_animation_source_ms(animation, elapsed_ms, native_seconds * 1000.0) / 1000.0
         blend = None
-        previous = _animation_blend_source(pattern, animation)
-        if previous:
+        previous = None if active_blend else _animation_blend_source(pattern, animation)
+        if active_blend:
+            descriptor = active_blend[0]["source"]
+            previous_animation = animation_rows[descriptor["occurrenceId"]]
+            age = min(max(pattern_ms - descriptor["startMs"], 0.0), descriptor["playMs"])
+            previous_seconds = _sample_animation_source_ms(previous_animation, age,
+                _clip_native_ms(actor, previous_animation)) / 1000.0
+            blend = previous_animation["runtimeClip"], previous_seconds, active_blend[1]
+        elif previous:
             previous_animation, previous_seconds = previous
             previous_seconds = _sample_animation_source_ms(previous_animation, previous_animation["playMs"],
                 _clip_native_ms(actor, previous_animation)) / 1000.0
-            current_start = next(origin + row["startOffsetMs"] for stage, origin in _bone_bake_stage_origins(pattern)
+            current_start = next(origin + row["startOffsetMs"] for stage, origin in _bone_bake_stage_origins(pattern, bool(blend_windows))
                                  for row in stage["animationOccurrences"] if row["occurrenceId"] == animation["occurrenceId"])
             alpha = min(1.0, max(0.0, (pattern_ms - current_start) / animation["blendInMs"]))
             if alpha < 1.0:
                 blend = previous_animation["runtimeClip"], previous_seconds, alpha
-        body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds, pattern.get("animationRootVerticalScale", 1.0), blend)
+        body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds,
+            0.0 if suppress_root_motion else pattern.get("animationRootVerticalScale", 1.0), blend)
         matrix = body_pose[bone_indices[0]] if part == "body" else None
         if part == "weapon":
             weapon_clip = _resolve_saydon_weapon_clip(body_clip, model)
@@ -3156,7 +3578,7 @@ def _build_bone_collider_track(pattern, logic_box, collider, root, cache):
             "baselineScale": [1.0, 1.0, 1.0], "keys": keys}
 
 
-def _project_collider_regions(document, pattern, logic_box, logic, sequences, root, bone_cache=None):
+def _project_collider_regions(document, pattern, logic_box, logic, sequences, root, bone_cache=None, suppress_root_motion=False):
     resources = {r["resourceId"]:{**PRESENTATION_RESOURCE_DEFAULTS,**r} for r in document.get("presentationResources",[])}
     kind = logic.get("judgementKind",logic.get("triggerKind"))
     candidates = [{**PRESENTATION_OCCURRENCE_DEFAULTS,**r} for r in pattern.get("presentationOccurrences",[])
@@ -3198,7 +3620,9 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
         world_track = None
         if kind == "OBJECT_CONTACT" and row["bone"]:
             try:
-                world_track = _project_bone_collider_track(pattern, logic_box, row, root, bone_cache if bone_cache is not None else {})
+                world_track = _project_bone_collider_track(pattern, logic_box, row, root,
+                    bone_cache if bone_cache is not None else {}, suppress_root_motion,
+                    resolve_animation_blend_windows(document, pattern))
             except (ValueError, IndexError, ZeroDivisionError) as error:
                 raise CompositionError(f"Cannot bake Bone Collider {row['occurrenceId']}: {error}") from error
         if row["anchorKind"] == "WORLD":
@@ -3210,8 +3634,12 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             if world_box["startMs"] > logic_box["startMs"] or world_box["startMs"]+world_box["durationMs"] < end:
                 raise CompositionError("Collider judgement must remain inside its WORLD box lifetime")
             emission_index = row.get("worldEmissionIndex", 0)
+            # A centered spherical-radius proxy is an upright XZ circle. Model
+            # roll/pitch and local self-spin cannot change its gameplay footprint.
+            centered_circle = (resource["shape"] == "CIRCLE" and all(value == 0 for value in row["positionOffset"]) and
+                               row["followBoss"] and not row["bone"] and max(row["scale"]) - min(row["scale"]) <= .0001)
             if kind in {"ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT"}:
-                world_track = _project_region_world_track(root,document["areaId"],sequences,world,world_box,emission_index)
+                world_track = _project_region_world_track(root,document["areaId"],sequences,world,world_box,emission_index,centered_circle)
             else:
                 origin, world_yaw, world_scale = _sample_region_world(root,document["areaId"],sequences,world,world_box,end,emission_index)
                 position = [a+b for a,b in zip(origin,_rotate_y([a*b for a,b in zip(position,world_scale)],world_yaw))]
@@ -3316,6 +3744,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
     for source in document["patterns"]:
         if source["authoringStatus"] != "PRODUCT":
             continue
+        root_motion = _project_pattern_root_motion(document, source, root, bone_cache)
         boss_archetype_ids = list(
             arena_archetypes_by_profile.get(_pattern_actor_profile_id(source), [])
         )
@@ -3365,7 +3794,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             if kind in {"ROULETTE_CARD_MATCH", "AREA_OVERLAP", "ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT"} or linked_shields:
                 if world_sequences is None:
                     world_sequences = load_world_sequences(root, document["areaId"])
-                window["cardRegions"] = _project_collider_regions(document, source, box, logic, world_sequences, root, bone_cache)
+                window["cardRegions"] = _project_collider_regions(document, source, box, logic, world_sequences, root,
+                    bone_cache, bool(root_motion))
             if kind == "OBJECT_OVERLAP":
                 window.update(_project_object_overlap_target(document, source, box, logic, logics, world_sequences))
             elif kind == "OBJECT_CONTACT":
@@ -3376,7 +3806,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             if not box.get("enabled", True):
                 continue
             logic = logics[box["logicId"]]
-            if logic["logicType"] != "TRIGGER" or "triggerKind" not in logic or logic["triggerKind"] in {"ENTER_AREA", "OBJECT_CONTACT"}:
+            if logic["logicType"] != "TRIGGER" or "triggerKind" not in logic or logic["triggerKind"] in {"ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND"}:
                 continue
             clone_id = logic.get("clonePatternId", "")
             if clone_id and not any(p["patternId"] == clone_id and p["authoringStatus"] == "PRODUCT"
@@ -3423,11 +3853,11 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 # untargeted audition never consumes it.
                 "minimumRange": 0.0,
                 "maximumRange": 1.0,
-                "stages": [_project_stage(stage) for stage in source["stages"]],
+                "stages": [_project_stage(stage, root_motion.get(stage["stageId"])) for stage in source["stages"]],
                 # Pattern-clock lanes beside the stages: judgement windows and
                 # the presentation cues the Server broadcasts.
                 "resetBossToSpawn": source.get("resetBossToSpawn", False),
-                **({"fixedTimeline": True} if source.get("durationMs") else {}),
+                **({"fixedTimeline": True} if source.get("durationMs") or resolve_animation_blend_windows(document, source) else {}),
                 **({"resetBossYawDegrees": float(source["resetBossYawDegrees"])}
                    if "resetBossYawDegrees" in source else {}),
                 **({"bossMotion": copy.deepcopy(source["bossMotion"])} if "bossMotion" in source else {}),
@@ -3482,6 +3912,7 @@ PRESENTATION_RESOURCE_DEFAULTS = {
     "defaultAnchorKind": "BOSS",
 }
 PRESENTATION_OCCURRENCE_REQUIRED = {"occurrenceId", "resourceId", "startMs", "durationMs"}
+PRESENTATION_OCCURRENCE_EDITOR_KEYS = {"selectionGroupId"}
 PRESENTATION_OCCURRENCE_DEFAULTS = {
     "positionOffset": [0.0, 0.0, 0.0], "rotationDegrees": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
     "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.85, "dissolveEnd": 1.0,
@@ -3560,6 +3991,30 @@ def _resolve_collider_world_occurrence(pattern, collider):
     return candidates[0]
 
 
+def _validate_collider_selection_groups(pattern: dict[str, Any], resources: dict[str, Any]) -> None:
+    selection_groups = {}
+    for box in pattern.get("presentationOccurrences", []):
+        group_id = box.get("selectionGroupId", "")
+        if group_id == "":
+            continue
+        _stable_id(group_id, "Collider selectionGroupId")
+        if resources.get(box["resourceId"], {}).get("kind") != "COLLIDER":
+            raise CompositionError("Selection Group requires Collider occurrences")
+        normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
+        if normalized["anchorKind"] != "BOSS":
+            raise CompositionError("Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported")
+        frame = tuple(normalized[key] for key in (
+            "anchorKind", "followBoss", "bone", "boneTarget", "worldId", "worldOccurrenceId", "worldEmissionIndex"))
+        if not normalized["followBoss"]:
+            frame += (normalized["startMs"],)
+        group = selection_groups.setdefault(group_id, [frame, 0])
+        if group[0] != frame:
+            raise CompositionError("Selection Group Colliders must share an anchor frame")
+        group[1] += 1
+    if any(count < 2 for _, count in selection_groups.values()):
+        raise CompositionError("Selection Group requires at least two Colliders in one Pattern")
+
+
 def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[str, Any], duration: int, worlds: dict[str, Any]) -> None:
     boxes = _array(pattern.get("presentationOccurrences", []), "presentationOccurrences", 1024)
     next_id = _integer(pattern.get("nextPresentationOccurrenceOrdinal", 1), "nextPresentationOccurrenceOrdinal", 1, 1000000)
@@ -3567,7 +4022,7 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
     linked_world_ids = set()
     prefix = re.escape(pattern["patternId"]) + r"\.presentation\.([1-9][0-9]*)"
     for box in boxes:
-        _keys(box, PRESENTATION_OCCURRENCE_REQUIRED, set(PRESENTATION_OCCURRENCE_DEFAULTS), "presentation occurrence")
+        _keys(box, PRESENTATION_OCCURRENCE_REQUIRED, set(PRESENTATION_OCCURRENCE_DEFAULTS) | PRESENTATION_OCCURRENCE_EDITOR_KEYS, "presentation occurrence")
         generated = re.fullmatch(prefix, box["occurrenceId"])
         if ((not generated and not _derived_occurrence(box["occurrenceId"], pattern["patternId"], "presentation")) or
                 (generated is not None and int(generated.group(1)) >= next_id) or box["occurrenceId"] in ids):
@@ -3583,14 +4038,14 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
             kind = resources[box["resourceId"]]["kind"]
             if owner is None or kind not in {"EFFECT", "COLLIDER", "LIGHT"}:
                 raise CompositionError("worldOccurrenceId requires an EFFECT/COLLIDER/LIGHT and a same-pattern World box")
-            if kind == "EFFECT":
+            if kind == "EFFECT" and normalized["anchorKind"] != "WORLD":
                 if worlds[owner["worldId"]].get("companionEffectResourceId", "") != box["resourceId"]:
                     raise CompositionError("linked Effect must match its World companionEffectResourceId")
                 if world_occurrence_id in linked_world_ids:
                     raise CompositionError("a World box can have at most one linked companion Effect")
                 linked_world_ids.add(world_occurrence_id)
             elif normalized["anchorKind"] != "WORLD" or normalized["worldId"] != owner["worldId"]:
-                raise CompositionError("WORLD Collider/Light occurrenceId must match its World definition and anchor")
+                raise CompositionError("WORLD presentation occurrenceId must match its World definition and anchor")
         if resources[box["resourceId"]]["kind"] in {"COLLIDER", "LIGHT"} and normalized["anchorKind"] == "WORLD":
             _resolve_collider_world_occurrence(pattern, normalized)
         emission_index = _integer(normalized["worldEmissionIndex"], "presentation worldEmissionIndex", 0, 127)
@@ -3648,16 +4103,19 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if normalized["boneTarget"] == "WEAPON" and (resources[box["resourceId"]]["kind"] not in {"COLLIDER", "EFFECT"} or
                 normalized["anchorKind"] != "BOSS" or not normalized["bone"] or not normalized["followBoss"]):
             raise CompositionError("WEAPON boneTarget requires a following BOSS Collider/Effect and a named bone")
+    _validate_collider_selection_groups(pattern, resources)
 
 
-def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, Any]) -> dict[str, Any]:
+def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, Any], suppress_root_motion=False) -> dict[str, Any]:
+    blend_windows = resolve_animation_blend_windows(document, pattern)
     resources = {resource["resourceId"]: resource for resource in document.get("presentationResources", [])}
     occurrences = []
     for box in pattern.get("presentationOccurrences", []):
         resource = {**PRESENTATION_RESOURCE_DEFAULTS, **resources[box["resourceId"]]}
         occurrences.append({
             **{key: value for key, value in resource.items() if key not in {"displayName", "durationMs", "defaultAnchorKind"}},
-            "resourceDurationMs": resource["durationMs"], **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget"}}, **box,
+            "resourceDurationMs": resource["durationMs"], **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget"}},
+            **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS},
             **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
             "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
             **({"worldOccurrenceId": _resolve_collider_world_occurrence(pattern, box)["occurrenceId"]}
@@ -3700,9 +4158,11 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
         source_animations.sort(key=lambda row: row["startOffsetMs"])
     return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": sum(stage["durationMs"] for stage in pattern["stages"]),
             **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),
-            **({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {}),
+            **({"animationRootVerticalScale": 0.0} if suppress_root_motion else
+               ({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {})),
             **({"worldEmissionAnchors": emission_anchors} if emission_anchors else {}),
             **({"sourceAnchorAnimations": source_animations} if source_animations else {}),
+            **({"animationBlendWindows": blend_windows} if blend_windows else {}),
             "presentationOccurrences": occurrences}
 
 
@@ -3814,16 +4274,24 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
     bindings: list[dict[str, Any]] = []
     session = _PUBLICATION_INPUTS.get()
     native_actor_cache = session.actors if session is not None else {}
+    root_motion_patterns = set()
     for pattern in document["patterns"]:
         if pattern["authoringStatus"] != "PRODUCT":
             continue
+        suppress_root_motion = bool(_project_pattern_root_motion(document, pattern, root, native_actor_cache))
+        if suppress_root_motion:
+            root_motion_patterns.add(pattern["patternId"])
         definitions = {row["logicId"]: row for row in document.get("logics", [])}
         contact_ids = {row["occurrenceId"] for row in pattern.get("logicOccurrences", [])
                        if row.get("enabled", True) and definitions[row["logicId"]].get("triggerKind") == "OBJECT_CONTACT"}
         collider_ids = {row["resourceId"] for row in document.get("presentationResources", []) if row["kind"] == "COLLIDER"}
         unblended_bone_contact = any(row["resourceId"] in collider_ids and row.get("logicOccurrenceId") in contact_ids and
             row.get("anchorKind", "BOSS") == "BOSS" and row.get("bone") for row in pattern.get("presentationOccurrences", []))
+        blend_windows = resolve_animation_blend_windows(document, pattern)
+        stage_start = 0
         for stage in pattern["stages"]:
+            stage_blends = [window for window in blend_windows if window["startMs"] < stage_start + stage["durationMs"]
+                            and stage_start < window["startMs"] + window["durationMs"]]
             for occurrence in stage["animationOccurrences"]:
                 previous = _animation_blend_source(pattern, occurrence)
                 # Native resources are only needed for newly authored source ranges
@@ -3843,6 +4311,7 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
                         "occurrenceId": occurrence["occurrenceId"],
                         "clip": occurrence["runtimeClip"],
                         **transition,
+                        **({"animationBlendWindows": copy.deepcopy(stage_blends)} if stage_blends else {}),
                         "startOffsetMs": occurrence["startOffsetMs"],
                         "sourceStartMs": occurrence["sourceStartMs"],
                         **({"sourceEndMs": occurrence["sourceEndMs"]} if occurrence.get("sourceEndMs", 0) else {}),
@@ -3851,9 +4320,11 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
                         "endPolicy": occurrence["endPolicy"],
                         **({"holdAtWindowEnd": True} if _animation_holds_window_end(stage, occurrence) else {}),
                         **({"unblendedBoneContact": True} if unblended_bone_contact else {}),
-                        **({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {}),
+                        **({"animationRootVerticalScale": 0.0} if suppress_root_motion else
+                           ({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {})),
                     }
                 )
+            stage_start += stage["durationMs"]
     return {
         "schema": "lostark.kouku-saydon-pattern-bindings",
         "formatVersion": 1,
@@ -3865,7 +4336,7 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
         "attachmentGrips": _project_attachment_grips(document),
         "folders": _project_folders(document),
         "bundles": _project_bundles(document, presentation=True),
-        "patterns": [_project_pattern_presentation(document, pattern) for pattern in document["patterns"]
+        "patterns": [_project_pattern_presentation(document, pattern, pattern["patternId"] in root_motion_patterns) for pattern in document["patterns"]
                      if pattern["authoringStatus"] == "PRODUCT"],
     }
 
@@ -3981,13 +4452,14 @@ def _run(root: Path, mode: str) -> dict[str, Any]:
     source = load_json(root / SOURCE_PATH)
     document, inventory = prepare_publication(source, root)
     outputs = projected_outputs(document, root, inventory)
+    session = _PUBLICATION_INPUTS.get()
     if mode == "publish":
         publish_outputs(root, outputs)
     else:
         validate_outputs(root, outputs)
-        session = _PUBLICATION_INPUTS.get()
         if session is not None:
             session.assert_unchanged()
+    root_diagnostics = list(session.root_motion_diagnostics.values()) if session is not None else []
     return {
         "compositionId": COMPOSITION_ID,
         "sourceRevision": document["revision"],
@@ -4001,6 +4473,12 @@ def _run(root: Path, mode: str) -> dict[str, Any]:
             if pattern["authoringStatus"] == "PRODUCT"
         ),
         "outputCount": len(outputs),
+        "animationRootMotion": {
+            "stageCount": sum(row["sampleCount"] > 0 for row in root_diagnostics),
+            "maxQuantizationErrorM": max((row["quantizationErrorM"] for row in root_diagnostics), default=0.0),
+            "maxReductionErrorM": max((row["reductionErrorM"] for row in root_diagnostics), default=0.0),
+            "maxNativeErrorM": max((row["nativeErrorM"] for row in root_diagnostics), default=0.0),
+        },
     }
 
 

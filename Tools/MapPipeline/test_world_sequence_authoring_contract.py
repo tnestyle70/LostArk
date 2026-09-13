@@ -135,13 +135,16 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         empty_materials = copy.deepcopy(grouped)
         empty_materials["objectResources"][-1]["mapMaterialBindings"] = []
         cases.append(("object_group_empty_material_bindings", empty_materials, True))
+        loop_group = copy.deepcopy(grouped)
+        loop_group["instances"][-1]["motionEnd"] = "LOOP"
+        cases.append(("object_group_loop", loop_group, True))
         for name, mutate in (
             ("missing", lambda d: d["objectResources"][-1].update(motionInstanceIds=["missing.motion"])),
             ("duplicate", lambda d: d["objectResources"][-1].update(motionInstanceIds=["test.world.instance"] * 2)),
             ("empty", lambda d: d["objectResources"][-1].update(motionInstanceIds=[])),
             ("model", lambda d: d["objectResources"][-1].update(modelAssetId="Map/Test/test.wmodel")),
             ("default", lambda d: d["objectResources"][-1].update(defaultMotionInstanceId="test.world.instance")),
-            ("loop", lambda d: d["instances"][-1].update(motionEnd="LOOP")),
+            ("hold", lambda d: d["instances"][-1].update(motionEnd="HOLD")),
             ("player", lambda d: d["instances"][-1].update(anchorKind="PLAYER")),
             ("nested", lambda d: d["instances"][-1]["bindings"][0].update(targetId="test.world.group")),
         ):
@@ -162,6 +165,20 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         at_time = copy.deepcopy(with_effect)
         at_time["templates"][-1]["effectTracks"][0].update(timing="TIME", startMs=1000)
         cases.append(("effect_time_includes_model_end", at_time, True))
+        v1_follow = copy.deepcopy(with_effect)
+        v1_follow["templates"][-1]["effectTracks"][0].update(
+            resourceKind="V1_EFFECT", resourceId="effect.kouku.gate3.doll.flame.full.restore",
+            timing="TIME", startMs=0, followObject=True, bone="b_mouth_f")
+        cases.append(("effect_v1_follow_bone", v1_follow, True))
+        for name, fields in (
+            ("follow_number", {"followObject": 1}), ("follow_null", {"followObject": None}),
+            ("bone_number", {"bone": 7}), ("bone_control", {"bone": "mouth\n"}),
+            ("bone_long", {"bone": "a" * 257}), ("kind_lowercase", {"resourceKind": "v1_effect"}),
+        ):
+            invalid = copy.deepcopy(v1_follow)
+            invalid["templates"][-1]["effectTracks"][0].update(fields)
+            cases.append(("effect_v1_invalid_" + name, invalid, False))
+
         for name, fields in (
             ("unknown_timing", {"timing": "FINISH"}), ("end_offset", {"startMs": 1}),
             ("missing_slot", {"slotId": "absent"}), ("unknown_kind", {"resourceKind": "WORLD"}),

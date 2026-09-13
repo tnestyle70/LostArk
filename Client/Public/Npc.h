@@ -4,6 +4,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "GameObject.h"
 #include "PlayerHandGripTransform.h"
+#include "KoukuSaydonCompositionDocument.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -291,6 +292,9 @@ public:
 	// A zero hold deadline preserves the existing whole-stage action lifetime.
 	bool_t Set_NetworkAnimationWindow(f32_t ageSeconds, f32_t holdSeconds,
 		f32_t startOffsetSeconds = 0.f, uint32_t sourceStartMs = 0u, uint32_t sourceEndMs = 0u);
+	bool_t Set_NetworkAnimationBlendWindows(
+        const std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& windows,
+        std::string_view semanticOccurrenceId, f32_t patternAgeSeconds);
 	bool_t Apply_NetworkAnimationTransition(const char_t* sourceClip, f32_t sourceMs,
 		f32_t durationMs, f32_t ageSeconds, f32_t playRate);
 	bool_t Play_NetworkAction(
@@ -368,6 +372,12 @@ private:
 	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> m_PlayerHandGripLocalOffset;
 	bool_t Try_SampleNetworkAnimationTicks(f32_t animationAgeSeconds, uint32_t clip,
 		f32_t playRate, f32_t& outTicks) const;
+	// CModel's blended target may precede the actual Server action edge.
+    // Preserve the semantic action clip independently from the displayed pose.
+    uint32_t m_iNetworkSemanticClip = UINT32_MAX;
+    uint32_t m_iNetworkSemanticAbsoluteStartMs = UINT32_MAX;
+    std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> m_NetworkAnimationBlendWindows;
+    double m_fNetworkPatternAgeSeconds = 0.0;
 	bool_t m_bNetworkAnimationWindow = false;
 	bool_t m_bNetworkAnimationTransition = false;
 	bool_t m_isNetworkAnimationLoop = false;

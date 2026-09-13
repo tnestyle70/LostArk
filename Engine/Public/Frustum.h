@@ -22,13 +22,8 @@ public:
 	bool_t isIn_Frustum_InLocalSpace(fvector_t vLocalPoint, f32_t fRange);
 
 private:
-	float3_t				m_vOriginalPoints[8] = {};
-	float3_t				m_vWorldPoints[8] = {};
 	float4_t				m_vWorldPlanes[6] = {};
 	float4_t				m_vLocalPlanes[6] = {};
-
-private:
-	void Make_Planes(const float3_t* pPoints, float4_t* pPlanes);
 
 public:
 	static unique_ptr<CFrustum> Create();

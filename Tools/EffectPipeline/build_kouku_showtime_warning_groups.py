@@ -216,6 +216,44 @@ def independent_document(template, asset_id, display_name):
     return document
 
 
+def animate_radial_fill(element):
+    """Retain native fixed boundaries and animate only the fill radius.
+
+    GroundEffect supplied the material/area/fade, but no serialized inner curve
+    was recovered. The chosen timing is project authored. Native 3600/3601 draw
+    their own boundaries, so cloning extra boundary elements would double blend.
+    """
+    profile = element['material']['sourceProfile']
+    native = profile.get('runtimeShaderProfileId')
+    assert native in ('effect.ue3.kouku-3600-native.v1', 'effect.ue3.kouku-3601-native.v1')
+    assert element['kind'] == 'decal' and element['sourceRecipe']['enabled']
+    assert element['sourceRecipe']['rendererShape'] == 'decal'
+    detail, track = element['detail'], element['sourceTransformTrack']
+    values = {parameter['name']: parameter['value'] for parameter in profile['scalars']}
+    inner = float(values['thickness']) if native.endswith('3601-native.v1') else 0.0
+    assert 0 <= inner < 1
+    start = float(detail['timing']['startDelaySeconds']) + float(track['sourceTimeOriginSeconds'])
+    finish = max(float(key['timeSeconds']) for key in track['alphaScaleKeys'] if min(key['value']) >= 1)
+    end = max(float(key['timeSeconds']) for key in track['alphaScaleKeys'])
+    assert math.isfinite(start) and start < finish < end
+    assert math.isclose(end - start, detail['timing']['lifeTimeSeconds'], abs_tol=1e-6)
+    def key(time, value):
+        return dict(timeSeconds=time, value=[value], arriveTangent=[0],
+                    leaveTangent=[0], interpolation='linear')
+    curve = dict(name='inner', kind='SCALAR', keys=[key(start, inner), key(finish, 1)])
+    tracks = track.setdefault('materialParameterTracks', [])
+    existing = [i for i, item in enumerate(tracks) if item['name'] == 'inner']
+    assert len(existing) <= 1
+    if existing:
+        tracks[existing[0]] = curve
+    else:
+        tracks.append(curve)
+    return dict(parameter='inner', startRadiusRatio=inner, endRadiusRatio=1,
+                fillStartSeconds=start, fillCompleteSeconds=finish, visibleEndSeconds=end,
+                sourceTimeOriginSeconds=float(track['sourceTimeOriginSeconds']),
+                fidelity='SOURCE_NATIVE_BOUNDARIES_AND_FILL_WITH_PROJECT_AUTHORED_TIMING')
+
+
 def resize_warning(document, radius, inner_radius, lifetime, color=None):
     assert len(document['elements']) == 1
     element = document['elements'][0]
@@ -246,6 +284,9 @@ def resize_warning(document, radius, inner_radius, lifetime, color=None):
             scalar['value'] = radius * 2
         elif scalar['name'] == 'thickness' and inner_radius:
             scalar['value'] = inner_radius / radius
+    if element['material']['sourceProfile'].get('runtimeShaderProfileId') in (
+            'effect.ue3.kouku-3600-native.v1', 'effect.ue3.kouku-3601-native.v1'):
+        animate_radial_fill(element)
     return document
 
 
@@ -261,6 +302,10 @@ def install_independent_documents(documents):
     """Preflight every document before writing; authored tuning is never replaced."""
     targets = []
     for document in documents:
+        for element in document['elements']:
+            if element['material']['sourceProfile'].get('runtimeShaderProfileId') in (
+                    'effect.ue3.kouku-3600-native.v1', 'effect.ue3.kouku-3601-native.v1'):
+                animate_radial_fill(element)
         assert document['elements'] and len({e['id'] for e in document['elements']}) == len(document['elements'])
         assert all(not e['actionCueAttachment']['enabled'] for e in document['elements'])
         path = ROOT / 'Data/Effects/Authored' / (document['effectAssetId'] + '.effect.json')
@@ -396,6 +441,70 @@ def compose(evidence):
     return records
 
 
+def sector_fill_candidate(document):
+    """Animate the source Fan's inner radius; its outer boundary stays native.
+
+    The material has a radial mask input, but no serialized source timing curve
+    was found. This curve is project authored and ends before the existing fade.
+    Existing attack elements and their clocks are not regenerated.
+    """
+    candidate = copy.deepcopy(document)
+    warnings = [element for element in candidate['elements']
+                if element['id'] == 'kouku.showtime.warning.sector']
+    assert len(warnings) == 1, 'Expected the existing stable sector warning element'
+    warning = warnings[0]
+    assert warning['kind'] == 'decal'
+    profile = warning['material']['sourceProfile']
+    assert profile['runtimeShaderProfileId'] == 'effect.ue3.kouku-3602-native.v1'
+    assert len([p for p in profile['scalars'] if p['name'] == 'inner']) == 1
+    track = warning['sourceTransformTrack']
+    timing = warning['detail']['timing']
+    start = float(timing['startDelaySeconds']) + float(track['sourceTimeOriginSeconds'])
+    lifetime = float(timing['lifeTimeSeconds'])
+    assert math.isfinite(start) and math.isfinite(lifetime) and lifetime > 0
+    # Respect the existing authored fade plateau; reach the outer edge before it.
+    fade_keys = track.get('alphaScaleKeys', [])
+    full_alpha_times = [float(k['timeSeconds']) for k in fade_keys
+                       if min(k['value']) >= 1 and start < float(k['timeSeconds']) <= start + lifetime]
+    finish = max(full_alpha_times) if full_alpha_times else start + lifetime
+    assert finish > start
+    def key(t, value):
+        return dict(timeSeconds=t, value=[value], arriveTangent=[0],
+                    leaveTangent=[0], interpolation='linear')
+    fill = dict(name='inner', kind='SCALAR', keys=[key(start, 0), key(finish, 1)])
+    tracks = track.setdefault('materialParameterTracks', [])
+    existing = [row for row in tracks if row['name'] == 'inner']
+    assert not existing or existing == [fill], 'Preserve the user-authored inner parameter curve'
+    if not existing:
+        tracks.append(fill)
+    return candidate, dict(authority='PROJECT_AUTHORED_FILL_TIMING',
+        sourceMaterial=profile['runtimeShaderProfileId'], parameter='inner',
+        nativeParameterRow=0, nativeParameterLane=2,
+        fillStartSeconds=start, fillCompleteSeconds=finish, endSeconds=start + lifetime,
+        startRadiusRatio=0, endRadiusRatio=1,
+        outerBoundary='Original native Fan boundary and caustic equations retained',
+        sourceTimeCurve='No serialized source curve found; timing is a project authoring choice')
+
+
+def stage_sector_fill(evidence):
+    """Write a reviewable candidate and freshness receipt, never live Authored."""
+    target = ROOT / 'Data/Effects/Authored/effect.kouku.gate3.showtime.sector.warning.shot.effect.json'
+    original = target.read_bytes()
+    document = json.loads(original)
+    candidate, policy = sector_fill_candidate(document)
+    path = evidence / 'candidate' / target.name
+    source.write(path, candidate)
+    receipt = dict(target=target.relative_to(ROOT).as_posix(),
+        baselineSha256=hashlib.sha256(original).hexdigest(),
+        candidate=path.resolve().as_posix(),
+        candidateSha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        changedElementId='kouku.showtime.warning.sector',
+        preservedElementIds=[e['id'] for e in document['elements'] if e['id'] != 'kouku.showtime.warning.sector'],
+        policy=policy, applied=False)
+    source.write(evidence / 'sector_fill_candidate.json', receipt)
+    return receipt
+
+
 def register_groups(evidence):
     records = source.read(evidence / 'authored_groups.json')['groups']
     path = ROOT / 'Data/Effects/EffectCatalog.json'
@@ -434,8 +543,11 @@ if __name__ == '__main__':
     parser.add_argument('--install-native', action='store_true')
     parser.add_argument('--build-groups', action='store_true')
     parser.add_argument('--register-groups', action='store_true')
+    parser.add_argument('--stage-sector-fill', action='store_true')
     args = parser.parse_args()
-    if args.prepare_native:
+    if args.stage_sector_fill:
+        stage_sector_fill(args.evidence_root.resolve())
+    elif args.prepare_native:
         prepare_native(args.evidence_root.resolve())
     elif args.lower_native:
         lower_native(args.evidence_root.resolve())

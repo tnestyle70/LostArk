@@ -6,6 +6,8 @@
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
 #include "KoukuSaydonPresentationPlayer.h"
+#include "KoukuSaydonCompositionDocument.h"
+#include "KakulArenaHiddenPlacements.h"
 #include "Transform.h"
 #include "WorldGameplayDocument.h"
 #include <cmath>
@@ -512,6 +514,282 @@ bool_t CLevel_KakulSaydonArena::Reload_WorldObjectRuntime(std::string& status)
 }
 
 #ifdef _DEBUG
+namespace
+{
+    struct WORLD_ALIAS_SCREEN_COMPANION final
+    {
+        std::string instanceId;
+        KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+        float startDelayMs = 0.f, playbackSpeed = 1.f, durationMs = 0.f;
+    };
+
+    bool Stage_WorldAliasScreenCompanions(const CWorldSequenceDocument& document,
+        const std::vector<std::string>& ids, std::vector<WORLD_ALIAS_SCREEN_COMPANION>& companions,
+        std::string& status)
+    {
+        for (const auto& id : ids)
+        {
+            const bool alias = std::any_of(document.Get_ObjectResources().begin(), document.Get_ObjectResources().end(),
+                [&](const auto& row) { return row.modelAssetId.empty() && row.sequenceInstanceId == id; });
+            if (alias) { WORLD_ALIAS_SCREEN_COMPANION row; row.instanceId = id; companions.push_back(std::move(row)); }
+        }
+        if (companions.empty()) return true;
+        // Read the actual saved companion references. Object preview never saves or reloads an open draft.
+        for (const auto& path : {CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()})
+        {
+            CKoukuSaydonCompositionDocument composition(path);
+            if (!composition.Reload(status)) return false;
+            const auto& saved = composition.Get_LastGood();
+            for (auto& companion : companions)
+                for (const auto& world : saved.Worlds)
+                {
+                    if (world.strSequenceInstanceId != companion.instanceId || world.strCompanionEffectResourceId.empty()) continue;
+                    const auto resource = std::find_if(saved.PresentationResources.begin(), saved.PresentationResources.end(),
+                        [&](const auto& row) { return row.strResourceId == world.strCompanionEffectResourceId; });
+                    if (resource == saved.PresentationResources.end() || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+                    { status = "Object alias companion Effect resource is unavailable: " + world.strCompanionEffectResourceId; return false; }
+                    if (!companion.resource.strAssetId.empty() &&
+                        (companion.resource.strAssetId != resource->strAssetId || companion.resource.strResourceKind != resource->strResourceKind))
+                    { status = "Object alias has conflicting saved companion Effects: " + companion.instanceId; return false; }
+                    companion.resource = *resource;
+                }
+        }
+        std::erase_if(companions, [](const auto& row) { return row.resource.strAssetId.empty(); });
+        for (auto& companion : companions)
+        {
+            const auto* instance = document.Find_Instance(companion.instanceId);
+            const auto* sequence = instance ? document.Find_Template(instance->templateId) : nullptr;
+            if (!sequence || !instance->enabled || !sequence->durationMs || !std::isfinite(instance->playbackSpeed) || instance->playbackSpeed <= 0.f)
+            { status = "Object alias companion has no valid motion clock: " + companion.instanceId; return false; }
+            const auto& kind = companion.resource.strResourceKind;
+            if ((kind != "GROUP" && kind != "LEAF") ||
+                !CEffectV2Catalog::Get().Load_ResourceSnapshot(kind == "GROUP" ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF,
+                    companion.resource.strAssetId, companion.snapshot, status))
+            { if (kind != "GROUP" && kind != "LEAF") status = "Object alias screen preview needs a saved V2 Leaf or Group."; return false; }
+            if (companion.snapshot->Get_Documents().empty() ||
+                !std::all_of(companion.snapshot->Get_Documents().begin(), companion.snapshot->Get_Documents().end(),
+                    [](const auto& leaf) { return leaf.eType == EFFECT_V2_TYPE::SCREEN_POST; }))
+            { status = "Object alias companion includes a world Effect; play its complete Composition to preserve that anchor."; return false; }
+            companion.startDelayMs = float(instance->startDelayMs);
+            companion.playbackSpeed = instance->playbackSpeed;
+            companion.durationMs = float(sequence->durationMs);
+        }
+        return true;
+    }
+}
+
+bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex, std::string& status)
+{
+    auto staged = std::make_unique<GATE_OBJECT_PRESENTATION>();
+    staged->gateIndex = gateIndex;
+    if (gateIndex != 0u && gateIndex != 2u)
+    { m_pPendingGateObjects = std::move(staged); status.clear(); return true; }
+    const auto& document = m_SequencePlayer.Get_Document();
+    staged->player = std::make_unique<CWorldSequencePlayer>();
+    auto targets = Make_WorldSequenceTargets();
+    targets.objectPreparationOwner = staged->player.get();
+    if (!staged->player->Set_Document(document, targets, status)) return false;
+    if (gateIndex == 0u)
+    {
+        const std::string bookId = "world.sequence.instance.kouku.gate1.authored.book";
+        const auto* book = document.Find_Instance(bookId);
+        if (!book || !book->enabled || book->motionEnd != WORLD_SEQUENCE_MOTION_END::HOLD ||
+            book->bindings.size() != 1u || book->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+            book->bindings.front().targetId != "world.object.kouku.popup.book")
+        { status = "Gate 1 requires its saved popup book HOLD motion."; return false; }
+        staged->instances.emplace_back(bookId, staged->player->Get_InstanceElapsedSpanMs(bookId));
+        // Match the existing Sequence end: the standing copy replaces the
+        // unfolding copy. Holding both copies would draw overlapping floors.
+        for (uint64_t id = 41u; id <= 176u; ++id)
+        {
+            auto* entry = CWorldSequencePlayer::Find_Placement(*targets.pPlacements, id);
+            bool_t visible = false;
+            if (!entry || !CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, visible))
+            { status = "Gate 1 unfolding placement is unavailable: " + std::to_string(id); return false; }
+            staged->visibility.push_back({id, visible, false});
+        }
+        for (const uint64_t id : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
+        {
+            auto* entry = CWorldSequencePlayer::Find_Placement(*targets.pPlacements, id);
+            if (!entry) continue; // The Loader's declared scope owns membership.
+            bool_t visible = false;
+            if (!CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, visible))
+            { status = "Gate 1 standing placement visibility is unavailable: " + std::to_string(id); return false; }
+            staged->visibility.push_back({id, visible, true});
+        }
+        if (staged->visibility.size() == 136u)
+        { status = "Gate 1 standing arena is outside the loaded map scope."; return false; }
+        const auto legacy = m_DeployRuntime.Find(7u);
+        if (legacy && legacy->Is_AnimationAuthoringPreviewActive())
+        { status = "Gate 1 legacy book is already owned by an animation preview."; return false; }
+    }
+    else
+    {
+        const auto* group = document.Find_ObjectResource("world.object.group.kouku.g3.outer_fire");
+        if (!group || group->motionInstanceIds.size() != 6u)
+        { status = "Gate 3 requires the saved 3-gate outer fire Object group with six motions."; return false; }
+        for (const auto& id : group->motionInstanceIds)
+        {
+            const auto* instance = document.Find_Instance(id);
+            if (!instance || !instance->enabled || instance->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP)
+            { status = "Gate 3 outer fire requires six enabled LOOP motions: " + id; return false; }
+            staged->instances.emplace_back(id, 0.f);
+        }
+    }
+    std::map<std::string, std::pair<std::string, uint32_t>> cloneCounts;
+    for (const auto& [id, clock] : staged->instances)
+    {
+        const auto* instance = document.Find_Instance(id);
+        const auto* sequence = instance ? document.Find_Template(instance->templateId) : nullptr;
+        if (!sequence || !std::isfinite(clock) || clock < 0.f || instance->bindings.size() != 1u ||
+            instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+        { status = "Gate Object motion must have one model resource and a valid clock: " + id; return false; }
+        if (!Can_StartCompositionWorld(id, status, &document)) return false;
+        if (!staged->player->Prepare_InstanceResources(id, targets))
+        { status = "Gate Object preparation failed: " + staged->player->Get_Status(); return false; }
+        auto& count = cloneCounts[instance->bindings.front().targetId];
+        count.first = id;
+        count.second += sequence->objectMotion.EmissionCount();
+    }
+    // CW and CCW share one resource pool; reserve their simultaneous emissions.
+    for (const auto& [objectId, count] : cloneCounts)
+        if (!staged->player->Prewarm_ObjectInstances(count.first, count.second, targets))
+        { status = "Gate Object clone preparation failed: " + staged->player->Get_Status(); return false; }
+    m_pPendingGateObjects = std::move(staged);
+    status.clear();
+    return true;
+}
+
+bool_t CLevel_KakulSaydonArena::Debug_ReleaseGateObjectPresentation(
+    GATE_OBJECT_PRESENTATION& state, std::string& status)
+{
+    if (state.suspended) return true;
+    auto targets = Make_WorldSequenceTargets();
+    targets.objectPreparationOwner = state.player.get();
+    if (state.player)
+    {
+        for (auto& [id, clock] : state.instances)
+            (void)state.player->Try_GetElapsedMs(id, clock);
+        state.player->Stop_All(targets, true);
+    }
+    bool restored = true;
+    for (const auto& row : state.visibility)
+    {
+        auto* entry = CWorldSequencePlayer::Find_Placement(*targets.pPlacements, row.placementId);
+        bool_t visible = false;
+        if (entry && (!CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, visible) ||
+            (visible == row.applied && visible != row.previous && !CMapPlacementRuntime::Set_RuntimeVisible(*entry, row.previous))))
+            restored = false;
+    }
+    if (state.previousLegacyBook)
+    {
+        const auto book = m_DeployRuntime.Find(7u);
+        if (book && book->Get_State() == DEPLOY_PROP_STATE::DESPAWNED &&
+            book->Get_State() != *state.previousLegacyBook && !m_DeployRuntime.Set_State(7u, *state.previousLegacyBook))
+            restored = false;
+    }
+    if (!restored) { status = "Gate Object previous visibility/state restore is pending."; return false; }
+    state.suspended = true;
+    return true;
+}
+
+bool_t CLevel_KakulSaydonArena::Debug_StartGateObjectPresentation(
+    GATE_OBJECT_PRESENTATION& state, std::string& status)
+{
+    if (!state.suspended) return true;
+    auto targets = Make_WorldSequenceTargets();
+    targets.objectPreparationOwner = state.player.get();
+    state.suspended = false;
+    const auto fail = [&]() {
+        const auto failure = status;
+        std::string restore;
+        if (!Debug_ReleaseGateObjectPresentation(state, restore)) status = failure + " / " + restore;
+        return false;
+    };
+    for (const auto& [id, clock] : state.instances)
+        if (!state.player->Play(id, targets) || !state.player->Seek_InstanceToMs(id, clock, targets))
+        { status = "Gate Object start failed: " + state.player->Get_Status(); return fail(); }
+    for (const auto& row : state.visibility)
+    {
+        auto* entry = CWorldSequencePlayer::Find_Placement(*targets.pPlacements, row.placementId);
+        if (!entry || !CMapPlacementRuntime::Set_RuntimeVisible(*entry, row.applied))
+        { status = "Gate Object visibility apply failed: " + std::to_string(row.placementId); return fail(); }
+    }
+    if (state.previousLegacyBook && !m_DeployRuntime.Set_State(7u, DEPLOY_PROP_STATE::DESPAWNED))
+    { status = "Gate Object legacy book hide failed: " + m_DeployRuntime.Get_Status(); return fail(); }
+    return true;
+}
+
+bool_t CLevel_KakulSaydonArena::Debug_CommitGateObjects(const size_t gateIndex, std::string& status)
+{
+    if (!m_pPendingGateObjects || m_pPendingGateObjects->gateIndex != gateIndex)
+    { status = "Gate Object activation has no matching prepared stage."; return false; }
+    Debug_StopCompositionWorldPreview();
+    Debug_StopWorldObjectPreview();
+    if (m_pGateObjects && !Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status)) return false;
+    auto staged = std::move(m_pPendingGateObjects);
+    const auto rollback = [&]() {
+        if (m_pGateObjects)
+        {
+            std::string restore;
+            if (!Debug_StartGateObjectPresentation(*m_pGateObjects, restore)) status += " / Previous gate restore: " + restore;
+        }
+        return false;
+    };
+    // Capture after releasing the previous gate; a later stop restores the
+    // original scene, not the previous gate's borrowed presentation.
+    for (auto& row : staged->visibility)
+    {
+        auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), row.placementId);
+        if (!entry || !CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, row.previous))
+        { status = "Gate Object baseline capture failed: " + std::to_string(row.placementId); return rollback(); }
+    }
+    if (gateIndex == 0u)
+        if (const auto book = m_DeployRuntime.Find(7u)) staged->previousLegacyBook = book->Get_State();
+    if (!Debug_StartGateObjectPresentation(*staged, status)) return rollback();
+    m_pGateObjects = std::move(staged);
+    status.clear();
+    return true;
+}
+
+void CLevel_KakulSaydonArena::Debug_CancelGateObjects()
+{
+    m_pPendingGateObjects.reset();
+}
+
+void CLevel_KakulSaydonArena::Debug_StopGateObjects()
+{
+    Debug_CancelGateObjects();
+    m_bCompositionWorldPreviewBorrowsGateObjects = false;
+    std::string status;
+    if (m_pGateObjects && !Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status))
+    { OutputDebugStringA(("[KoukuGateObjects] " + status + "\n").c_str()); return; }
+    m_pGateObjects.reset();
+}
+
+bool_t CLevel_KakulSaydonArena::Debug_SetGateObjectsSuspended(const bool_t suspended, std::string& status)
+{
+    if (!m_pGateObjects || m_pGateObjects->gateIndex != 0u) return true;
+    return suspended ? Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status) :
+        Debug_StartGateObjectPresentation(*m_pGateObjects, status);
+}
+
+void CLevel_KakulSaydonArena::Debug_UpdateGateObjects(const f32_t delta)
+{
+    if (!m_pGateObjects || m_pGateObjects->suspended || m_pGateObjects->gateIndex != 2u) return;
+    auto targets = Make_WorldSequenceTargets();
+    targets.objectPreparationOwner = m_pGateObjects->player.get();
+    m_pGateObjects->player->Update(delta, targets);
+    for (const auto& [id, clock] : m_pGateObjects->instances)
+        if (!m_pGateObjects->player->Is_Playing(id))
+        {
+            m_strDebugGateStatus = "Gate 3 outer fire playback failed: " + m_pGateObjects->player->Get_Status();
+            Debug_StopGateObjects();
+            return;
+        }
+}
+
 bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     const CWorldSequenceDocument& document, const std::string& instanceId, std::string& status,
     const bool_t previewAtCharacter)
@@ -528,15 +806,36 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     if (ids.empty()) { status = "Object group has no enabled motions."; return false; }
     for (const auto& id : ids)
         if (!Can_StartCompositionWorld(id, status, &document)) return false;
+    std::vector<WORLD_ALIAS_SCREEN_COMPANION> companions;
+    if (!Stage_WorldAliasScreenCompanions(document, ids, companions, status)) return false;
+    std::string previewNotice;
+    // A screen companion is independent of camera/map placement. Audition it even
+    // when this single alias's physical scenery lies outside the active map scope.
+    if (ids.size() == 1u && companions.size() == 1u)
+    {
+        const auto* instance = document.Find_Instance(ids.front());
+        const bool mapAlias = instance && instance->anchorKind == "WORLD" && !instance->bindings.empty() &&
+            std::all_of(instance->bindings.begin(), instance->bindings.end(), [](const auto& binding) {
+                uint64_t placementId = 0u;
+                return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
+                    CWorldSequencePlayer::Try_ParseTargetId(binding, placementId);
+            });
+        float3_t baseline;
+        if (mapAlias && !Try_GetWorldSequencePlacementBaseline(*instance, baseline))
+        {
+            previewNotice = "Screen companion only: the alias map placements are outside the current loaded scope.";
+            ids.clear();
+        }
+    }
     const auto targets = Make_WorldSequenceTargets();
     auto staged = std::make_unique<CWorldSequencePlayer>();
-    if (!staged->Set_Document(document, targets, status))
+    if (!ids.empty() && !staged->Set_Document(document, targets, status))
     { status = staged->Get_Status(); return false; }
     for (const auto& id : ids)
         if (!staged->Prepare_InstanceResources(id, targets))
         { status = staged->Get_Status(); return false; }
     float3_t previewOffset{};
-    const auto* instance = document.Find_Instance(ids.front());
+    const auto* instance = ids.empty() ? nullptr : document.Find_Instance(ids.front());
     if (previewAtCharacter && instance && instance->anchorKind == "WORLD")
     {
         float3_t previewPosition{}, baseline{};
@@ -550,13 +849,49 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     // All resources and the preview placement are admitted before releasing the old presentation.
     // Model-only groups stage independent instances before replacing the old
     // preview. A shared offset preserves every member's relative placement.
-    if (!isGroup) Debug_StopWorldObjectPreview();
+    const bool isolatedObjects = std::all_of(ids.begin(), ids.end(), [&](const auto& id) {
+        const auto* motion = document.Find_Instance(id);
+        return motion && !motion->bindings.empty() && std::all_of(motion->bindings.begin(), motion->bindings.end(),
+            [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; });
+    });
+    std::vector<WORLD_OBJECT_PREVIEW_SCREEN_EFFECT> stagedEffects;
+    const auto rollback = [&]() {
+        staged->Stop_All(targets, true);
+        for (const auto& effect : stagedEffects) CEffectV2Runtime::Stop_Group(effect.handle);
+    };
+    for (const auto& companion : companions)
+    {
+        EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+        XMStoreFloat4x4(&playback.PivotWorld, XMMatrixIdentity());
+        playback.fDurationSeconds = companion.durationMs * .001f;
+        playback.fInitialAgeSeconds = companion.startDelayMs > 0.f ? playback.fDurationSeconds : 0.f;
+        playback.bProductOwned = true;
+        playback.bExternalClock = true;
+        uint32_t handle = 0u;
+        if (companion.resource.strResourceKind == "GROUP")
+        {
+            const auto* groupResource = companion.snapshot->Find_Group(companion.resource.strAssetId);
+            if (groupResource) handle = CEffectV2Runtime::Play_Group(*groupResource, companion.snapshot, playback, m_pDevice, m_pContext);
+        }
+        else handle = CEffectV2Runtime::Play_Leaf(companion.resource.strAssetId, companion.snapshot, playback, m_pDevice, m_pContext);
+        if (!handle) { status = CEffectV2Runtime::Last_Error(); rollback(); return false; }
+        stagedEffects.push_back({handle, companion.startDelayMs, companion.playbackSpeed, companion.durationMs});
+        if (!CEffectV2Runtime::Sample_Group(handle, playback.fInitialAgeSeconds, true, m_pDevice, m_pContext))
+        { status = CEffectV2Runtime::Last_Error(); rollback(); return false; }
+    }
+    if (!isGroup && !isolatedObjects) Debug_StopWorldObjectPreview();
     for (const auto& id : ids)
         if (!staged->Play(id, targets, 1.f, previewOffset))
-        { status = staged->Get_Status(); staged->Stop_All(targets, true); return false; }
-    if (isGroup) Debug_StopWorldObjectPreview();
+        { status = staged->Get_Status(); rollback(); return false; }
+    if (isolatedObjects)
+        for (const auto& id : ids)
+            if (!staged->Seek_InstanceToMs(id, 0.f, targets))
+            { status = staged->Get_Status(); rollback(); return false; }
+    if (isGroup || isolatedObjects) Debug_StopWorldObjectPreview();
     m_pWorldObjectPreview = std::move(staged);
     m_WorldObjectPreviewInstances = std::move(ids);
+    m_WorldObjectPreviewScreenEffects = std::move(stagedEffects);
+    m_strWorldObjectPreviewNotice = std::move(previewNotice);
     return Debug_SampleWorldObjectPreview(0.f, status);
 }
 
@@ -573,8 +908,22 @@ bool_t CLevel_KakulSaydonArena::Debug_SampleWorldObjectPreview(const f32_t clock
             return false;
         }
     }
-    status = std::to_string(m_WorldObjectPreviewInstances.size()) + " motion(s). " +
-        m_pWorldObjectPreview->Get_ObjectSampleStatus(m_WorldObjectPreviewInstances.front());
+    for (const auto& effect : m_WorldObjectPreviewScreenEffects)
+    {
+        const float sourceMs = clockMs < effect.startDelayMs ? effect.durationMs :
+            (clockMs - effect.startDelayMs) * effect.playbackSpeed;
+        if (!CEffectV2Runtime::Sample_Group(effect.handle, sourceMs * .001f, true, m_pDevice, m_pContext))
+        {
+            status = "Object screen companion sampling failed: " + CEffectV2Runtime::Last_Error();
+            Debug_StopWorldObjectPreview();
+            return false;
+        }
+    }
+    status = std::to_string(m_WorldObjectPreviewInstances.size()) + " motion(s), " +
+        std::to_string(m_WorldObjectPreviewScreenEffects.size()) + " screen companion(s). ";
+    if (!m_WorldObjectPreviewInstances.empty())
+        status += m_pWorldObjectPreview->Get_ObjectSampleStatus(m_WorldObjectPreviewInstances.front());
+    if (!m_strWorldObjectPreviewNotice.empty()) status += m_strWorldObjectPreviewNotice;
     return true;
 }
 
@@ -583,5 +932,8 @@ void CLevel_KakulSaydonArena::Debug_StopWorldObjectPreview()
     if (m_pWorldObjectPreview) m_pWorldObjectPreview->Stop_All(Make_WorldSequenceTargets(), true);
     m_pWorldObjectPreview.reset();
     m_WorldObjectPreviewInstances.clear();
+    for (const auto& effect : m_WorldObjectPreviewScreenEffects) CEffectV2Runtime::Stop_Group(effect.handle);
+    m_WorldObjectPreviewScreenEffects.clear();
+    m_strWorldObjectPreviewNotice.clear();
 }
 #endif

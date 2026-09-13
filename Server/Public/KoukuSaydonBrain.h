@@ -10,6 +10,8 @@
 
 namespace LostArk::Server
 {
+	class CServerNavigation;
+	class CServerCollisionSystem;
 	inline constexpr std::string_view KOUKUSAYDON_G1_ENCOUNTER_ID =
 		"ENCOUNTER_KAKULSAYDON_G1";
 	inline constexpr std::string_view KOUKUSAYDON_G1_BOSS_ARCHETYPE_ID =
@@ -93,6 +95,13 @@ namespace LostArk::Server
 			std::uint32_t elapsedTicks) noexcept;
 		static void Apply_BossMotion(SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick) noexcept;
+		[[nodiscard]] static ROOT_MOTION_SAMPLE Sample_StageRootMotion(
+			const std::vector<ROOT_MOTION_SAMPLE>& samples, double timeMs) noexcept;
+		// The Room applies this once before Logic, through its authoritative traversal and collision.
+		[[nodiscard]] static bool Apply_StageRootMotion(SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick,
+			const CServerNavigation& navigation, const CServerCollisionSystem& collision,
+			std::string& status);
 		void Abort_Pattern(
 			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick) const;
 		/* A Logic window ended the pattern early on success: the remaining

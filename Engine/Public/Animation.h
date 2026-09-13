@@ -35,6 +35,7 @@ public:
 
 private:
 	friend class CModel;
+	bool_t Is_BoneTransformConstant(uint32_t iBoneIndex) const;
 	bool_t Sample_LocalBoneTransforms(
 		f32_t fTrackPosition,
 		std::span<float4x4_t> InOutLocalTransforms) const;

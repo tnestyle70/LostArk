@@ -27,8 +27,15 @@ void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* 
     if (!m_pAuthoringResources) m_pAuthoringResources = std::make_unique<CEffectAuthoringResourceTree>(EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT);
     if (!m_pAuthoringSequencer)
     {
-        m_pAuthoringSequencer = std::make_unique<CEffectAuthoringSequencer>(m_pDevice, m_pContext, m_pCharacterPreviewPanel);
-        m_pAuthoringSequencer->Set_V1Callbacks(
+        m_pAuthoringSequencer = Create_CompositionSequencer("effect.sequence.default");
+    }
+    m_pAuthoringSequencer->Set_Player(player);
+}
+
+shared_ptr<CEffectAuthoringSequencer> CEffect_Tool::Create_CompositionSequencer(const char* sequenceId)
+{
+        auto sequencer = std::make_shared<CEffectAuthoringSequencer>(m_pDevice, m_pContext, m_pCharacterPreviewPanel, sequenceId);
+        sequencer->Set_V1Callbacks(
             [this](const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root, std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error)
             { return Create_AuthoringOccurrence(key, elementIds, root, object, previewStartMs, previewEndMs, error); },
             [this](const std::shared_ptr<CEffectObject>& object)
@@ -40,19 +47,18 @@ void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* 
                 m_AuthoringOccurrenceDocuments.erase(object.get());
                 m_AuthoringOccurrenceLevels.erase(found);
             });
-        m_pAuthoringSequencer->Set_V1AnchorProvider(
+        sequencer->Set_V1AnchorProvider(
             [this](const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, bool useKouku, float seconds,
                 std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
             { return Resolve_AuthoringSourceAnchors(object, root, useKouku, seconds, anchors, error); });
-        m_pAuthoringSequencer->Set_V2SnapshotProvider(
+        sequencer->Set_V2SnapshotProvider(
             [this](const EFFECT_RESOURCE_KEY& key, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot, std::string& error)
             {
                 return CEffectV2Catalog::Get().Load_ResourceSnapshot(
                     key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_GROUP ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF,
                     key.strStableId, snapshot, error);
             });
-    }
-    m_pAuthoringSequencer->Set_Player(player);
+    return sequencer;
 }
 
 void CEffect_Tool::Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player)
@@ -67,6 +73,9 @@ void CEffect_Tool::Update_AuthoringWorkspace(float dt, bool active)
 {
     if (m_pAuthoringSequencer) m_pAuthoringSequencer->Update(dt, active);
 }
+
+bool CEffect_Tool::Update_AuthoringPlacementInput(const bool active)
+{ return m_pAuthoringSequencer && m_pAuthoringSequencer->Update_PreviewPlacementInput(active); }
 
 void CEffect_Tool::Deactivate_AuthoringWorkspace()
 {
@@ -102,6 +111,7 @@ void CEffect_Tool::Render_AuthoringResourceTree()
     ImGui::SetNextWindowPos(ImVec2(1110.f, 35.f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(430.f, 660.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Effect Resources")) { ImGui::End(); return; }
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Render_PreviewPlacementControls();
     m_pAuthoringResources->Set_V1CopySource(
         m_ActiveDocument ? m_ActiveDocument->strEffectAssetId : std::string{},
         m_ActiveDocument ? m_ActiveDocument->strDisplayName : std::string{});
@@ -257,13 +267,9 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     const auto immutableDocument = std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(document));
     std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> projection;
     std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> prepared;
-    const bool ordinaryElementSolo = !elementIds.empty() &&
-        std::all_of(immutableDocument->Elements.begin(), immutableDocument->Elements.end(),
-            [](const auto& element) { return element.RuntimeCarrier.Is_Empty(); });
-    if (ordinaryElementSolo && !immutableDocument->RuntimeExtensions.Is_Empty())
-    { error = "The selected ordinary Element still references runtime history."; return false; }
-    if (immutableDocument->iLoadedFormatVersion == EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION &&
-        !ordinaryElementSolo)
+    // Whole-document and selected previews use the same validated payload.
+    // An ordinary v15 document does not need a runtime-carrier projection.
+    if (CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(*immutableDocument))
     {
         if (!CEffectVisualProgramCorpusCodec::Create_DocumentOwnedRuntimeProjection(
             immutableDocument, projection, error) || !projection || !projection->Is_Valid() ||

@@ -223,12 +223,12 @@ bool CEffectAuthoringSequencer::Duplicate_SelectedRow()
     m_Status = "The selected occurrence cannot be duplicated at its end time."; return false;
 }
 
-void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool integratedEffectWorkspace)
+void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool integratedEffectWorkspace, const bool embedded)
 {
     Engine::CProfilerScope Profile(CGameInstance::Get().Get_Profiler(), "EffectSequencer.Render");
-    ImGui::SetNextWindowSize({1180.f, 420.f}, ImGuiCond_FirstUseEver);
-    const bool expanded = ImGui::Begin(title, nullptr, integratedEffectWorkspace ? 0 : ImGuiWindowFlags_MenuBar);
-    if (!integratedEffectWorkspace && ImGui::BeginMenuBar())
+    if (!embedded) ImGui::SetNextWindowSize({1180.f, 420.f}, ImGuiCond_FirstUseEver);
+    const bool expanded = embedded || ImGui::Begin(title, nullptr, integratedEffectWorkspace ? 0 : ImGuiWindowFlags_MenuBar);
+    if (!embedded && !integratedEffectWorkspace && ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("Window"))
         {
@@ -255,8 +255,8 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
             ImGui::SameLine(); if (ImGui::Button("Details")) m_BoxDetailOpen = true;
         }
         ImGui::SetNextItemWidth(255.f); ImGui::InputText("Sequence ID", m_SequenceId, sizeof(m_SequenceId));
-        ImGui::SameLine(); if (ImGui::Button("Save")) Save_Sequence();
-        ImGui::SameLine(); if (ImGui::Button("Load")) Load_Sequence();
+        ImGui::SameLine(); if (ImGui::Button(embedded ? "Save Effect Sequence" : "Save")) Save_Sequence();
+        ImGui::SameLine(); if (ImGui::Button(embedded ? "Load Effect Sequence" : "Load")) Load_Sequence();
         ImGui::SameLine(); if (ImGui::Button("Revert")) Load_Sequence(true);
         ImGui::SameLine(); if (ImGui::Button("New"))
         {
@@ -499,8 +499,8 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
             m_DragRowId.clear(); Pause(m_DragWasPaused);
         }
     }
-    ImGui::End();
-    if (!integratedEffectWorkspace)
+    if (!embedded) ImGui::End();
+    if (!embedded && !integratedEffectWorkspace)
     {
         if (m_ResourcesOpen) Render_CompositionResources();
         if (m_BoxDetailOpen) Render_BoxDetail();

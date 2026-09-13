@@ -23,6 +23,7 @@ enum class CHARACTER_PREVIEW_LOCK_OWNER : uint8_t
 	ANIMATION_TOOL,
 	EFFECT_TOOL,
 	EQUIPMENT_TOOL,
+	CHARACTER_ACTION_WORKBENCH,
 	END
 };
 
@@ -73,6 +74,10 @@ public:
 	// always starts from the selected/recentered baseline, never the last scale.
 	bool_t Set_PreviewScaleMultiplier(
 		const shared_ptr<Engine::CModel>& expectedModel, f32_t multiplier);
+	// Absolute model-frame displacement for this generic preview only. The
+	// existing parent basis/scale is applied once; no scene or Server actor moves.
+	bool_t Set_PreviewRootMotionOffset(const shared_ptr<Engine::CModel>& expectedModel,
+		const float3_t& modelOffset);
 	// Samples the selected animated hammer from the body's current source time
 	// and exact right-hand socket. Called after body playback/seek has settled.
 	void Synchronize_PreviewWeapon();
@@ -112,6 +117,8 @@ private:
 	   a failed selection cannot move the previously committed body/root apart. */
 	array<float4x4_t, 2u> m_PreviewParentMatrices{};
 	float4x4_t m_PreviewUnscaledParentMatrix{};
+	float3_t m_PreviewRootMotionOffset{};
+	f32_t m_fPreviewScaleMultiplier = 1.f;
 	array<float4x4_t, 2u> m_PreviewWeaponParentMatrices{};
 	std::vector<float4x4_t> m_PreviewWeaponRestPose;
 	size_t m_iPreviewParentMatrixIndex = 0u;

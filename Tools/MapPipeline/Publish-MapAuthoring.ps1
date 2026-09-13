@@ -1541,6 +1541,10 @@ function Read-WorldSequenceDocument {
                 foreach ($binding in $resource.mapMaterialBindings) {
                     $bindingFields = @('materialName','sourceAssetId','sourceMaterialName')
                     if ($null -ne $binding.PSObject.Properties['diffuseTextureAssetId']) { $bindingFields += 'diffuseTextureAssetId'; Assert-SequenceAssetPath $binding.diffuseTextureAssetId $false }
+                    if ($null -ne $binding.PSObject.Properties['unlit']) {
+                        $bindingFields += 'unlit'
+                        if ($binding.unlit -isnot [bool]) { throw 'World Object map material unlit flag must be boolean' }
+                    }
                     Assert-ExactJsonProperties $binding $bindingFields 'World object map material binding'
                     $sourceRows = @($cinematicMapMaterials | Where-Object { $_.assetId -ceq $binding.sourceAssetId -and $_.materialName -ceq $binding.sourceMaterialName })
                     if (-not $targetNames.ContainsKey($binding.materialName) -or $sourceRows.Count -ne 1 -or $sourceRows[0].family -cne 'bg-source-opaque-masked') { throw 'World Object map material slot/source is absent or unsupported' }
@@ -1797,10 +1801,19 @@ function Read-WorldSequenceDocument {
                 }
             }
             foreach ($effect in $template.effectTracks) {
-                Assert-ExactJsonProperties $effect @('effectTrackId','slotId','resourceKind','resourceId','timing','startMs','durationMs','positionOffset','rotationDegrees','scale') 'World Object effect track'
+                $effectProperties = @('effectTrackId','slotId','resourceKind','resourceId','timing','startMs','durationMs','positionOffset','rotationDegrees','scale')
+                foreach ($optional in @('followObject','bone')) {
+                    if ($null -ne $effect.PSObject.Properties[$optional]) { $effectProperties += $optional }
+                }
+                Assert-ExactJsonProperties $effect $effectProperties 'World Object effect track'
+                if (($null -ne $effect.PSObject.Properties['followObject'] -and $effect.followObject -isnot [bool]) -or
+                    ($null -ne $effect.PSObject.Properties['bone'] -and ($effect.bone -isnot [string] -or
+                    [Text.Encoding]::UTF8.GetByteCount([string]$effect.bone) -gt 256 -or $effect.bone -match '[\x00-\x1f\x7f]'))) {
+                    throw 'Invalid World Object effect followObject or bone'
+                }
                 if ($effect.effectTrackId -isnot [string] -or $effect.effectTrackId -notmatch $stableId -or
                     -not $effectIds.Add([string]$effect.effectTrackId) -or $effect.slotId -isnot [string] -or
-                    -not $slotIds.Contains([string]$effect.slotId) -or $effect.resourceKind -cnotin @('LEAF','GROUP') -or
+                    -not $slotIds.Contains([string]$effect.slotId) -or $effect.resourceKind -cnotin @('LEAF','GROUP','V1_EFFECT') -or
                     $effect.resourceId -isnot [string] -or $effect.resourceId -notmatch $stableId -or
                     $effect.timing -cnotin @('TIME','MOTION_END')) {
                     throw 'Invalid World Object effect identity, resource kind or slot'
@@ -1987,9 +2000,9 @@ function Read-WorldSequenceDocument {
                 if (-not $instanceRows.ContainsKey($id)) { throw "Unknown Object group motion: $id" }
                 $member = $instanceRows[$id]
                 if (($null -ne $member.PSObject.Properties['anchorKind'] -and $member.anchorKind -cne 'WORLD') -or
-                    ($null -ne $member.PSObject.Properties['motionEnd'] -and $member.motionEnd -cne 'STOP') -or
+                    ($null -ne $member.PSObject.Properties['motionEnd'] -and $member.motionEnd -cnotin @('STOP', 'LOOP')) -or
                     @($member.bindings).Count -ne 1 -or $member.bindings[0].targetKind -cne 'OBJECT_RESOURCE') {
-                    throw 'Object group member must be one Map Object motion ending with Stop'
+                    throw 'Object group member must be one Map Object motion ending with Stop or Loop'
                 }
                 $model = $objectResources[$member.bindings[0].targetId]
                 if ($null -eq $model -or $model.modelAssetId -ceq '' -or $null -ne $model.PSObject.Properties['motionInstanceIds']) {

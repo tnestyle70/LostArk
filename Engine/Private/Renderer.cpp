@@ -609,6 +609,8 @@ HRESULT CRenderer::Draw()
 			hSceneResult = Render_Combined();
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_NonLight();
+		if (SUCCEEDED(hSceneResult))
+			hSceneResult = Render_SceneReplacements();
 		if (SUCCEEDED(hSceneResult) && m_bSceneColorSnapshotRequested)
 		{
 			hSceneResult = Capture_SceneColorSnapshot();
@@ -1369,6 +1371,55 @@ HRESULT CRenderer::Render_ScreenPostPass(
 	return S_OK;
 }
 
+HRESULT CRenderer::Render_SceneReplacements()
+{
+    const auto& posts = CPresentation_Manager::Get().Get_ScreenPosts();
+    const bool hasReplacement = std::any_of(posts.begin(), posts.end(), [](const auto& post) {
+        return post.pMaterial && post.pMaterial->Replaces_SceneBeforeBlend();
+    });
+    if (!hasReplacement) return S_OK;
+    auto color = CGameInstance::Get().Get_RT_SRV(TEXT("Target_SceneHDR"));
+    auto bloom = CGameInstance::Get().Get_RT_SRV(TEXT("Target_SceneBloom"));
+    if (!color || !bloom) return E_FAIL;
+    ID3D11RenderTargetView* saved[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+    ID3D11DepthStencilView* depth = nullptr;
+    m_pContext->OMGetRenderTargets(_countof(saved), saved, &depth);
+    HRESULT result = S_OK;
+    for (const auto& post : posts)
+    {
+        if (!post.pMaterial || !post.pMaterial->Replaces_SceneBeforeBlend()) continue;
+        result = Render_ScreenPostPass(color, m_pScenePostRTVs[0], 0u,
+            bloom, m_pSceneBloomPostRTVs[0], &post);
+        if (FAILED(result)) break;
+        ID3D11ShaderResourceView* clear[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+        m_pContext->PSSetShaderResources(0u, _countof(clear), clear);
+        m_pContext->OMSetRenderTargets(0u, nullptr, nullptr);
+        const auto copy = [this](ID3D11ShaderResourceView* source, ID3D11ShaderResourceView* destination) {
+            ComPtr<ID3D11Resource> sourceResource, destinationResource;
+            source->GetResource(&sourceResource); destination->GetResource(&destinationResource);
+            ComPtr<ID3D11Texture2D> sourceTexture, destinationTexture;
+            if (!sourceResource || !destinationResource || sourceResource.Get() == destinationResource.Get() ||
+                FAILED(sourceResource.As(&sourceTexture)) || FAILED(destinationResource.As(&destinationTexture))) return E_FAIL;
+            D3D11_TEXTURE2D_DESC a{}, b{};
+            sourceTexture->GetDesc(&a); destinationTexture->GetDesc(&b);
+            if (a.Width != b.Width || a.Height != b.Height || a.Format != b.Format ||
+                a.ArraySize != b.ArraySize || a.MipLevels != b.MipLevels ||
+                a.SampleDesc.Count != b.SampleDesc.Count || a.SampleDesc.Quality != b.SampleDesc.Quality) return E_FAIL;
+            m_pContext->CopyResource(destinationResource.Get(), sourceResource.Get());
+            return S_OK;
+        };
+        result = copy(m_pScenePostSRVs[0].Get(), color.Get());
+        if (SUCCEEDED(result)) result = copy(m_pSceneBloomPostSRVs[0].Get(), bloom.Get());
+        if (FAILED(result)) break;
+    }
+    ID3D11ShaderResourceView* clear[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+    m_pContext->PSSetShaderResources(0u, _countof(clear), clear);
+    m_pContext->OMSetRenderTargets(_countof(saved), saved, depth);
+    for (auto* target : saved) if (target) target->Release();
+    if (depth) depth->Release();
+    return result;
+}
+
 HRESULT CRenderer::Render_ScreenPosts()
 {
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
@@ -1387,12 +1438,14 @@ HRESULT CRenderer::Render_ScreenPosts()
 		nullptr, m_pSceneBloomPostRTVs[0]);
 	const vector<PRESENTATION_SCREEN_POST_DESC>& ScreenPosts =
 		Presentation.Get_ScreenPosts();
+	size_t composedPostCount = 0u;
 	for (size_t iPost = 0u;
 		SUCCEEDED(hResult) && iPost < ScreenPosts.size(); ++iPost)
 	{
 		const PRESENTATION_SCREEN_POST_DESC& Post = ScreenPosts[iPost];
+		if (Post.pMaterial && Post.pMaterial->Replaces_SceneBeforeBlend()) continue;
 		const PRESENTATION_SCREEN_POST_PLAN_STEP Step =
-			Build_PresentationScreenPostPlanStep(iPost);
+			Build_PresentationScreenPostPlanStep(composedPostCount++);
 		uint32_t iPassIndex = {};
 		switch (Post.eProfile)
 		{
@@ -1433,7 +1486,7 @@ HRESULT CRenderer::Render_ScreenPosts()
 			continue;
 		const PRESENTATION_SCREEN_POST_PLAN_STEP Step =
 			Build_PresentationScreenOverlayPlanStep(
-				ScreenPosts.size(), hdrOverlayCount++);
+				composedPostCount, hdrOverlayCount++);
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV =
 			m_pScenePostSRVs[Step.iSourceTarget];
 		ComPtr<ID3D11RenderTargetView> pDestinationRTV =
@@ -1475,7 +1528,7 @@ HRESULT CRenderer::Render_ScreenPosts()
 			hResult = E_FAIL;
 	}
 	m_iScenePostFinalTarget = PresentationScreenCompositionFinalTarget(
-		ScreenPosts.size(), hdrOverlayCount);
+		composedPostCount, hdrOverlayCount);
 
 	ID3D11ShaderResourceView* pNullSRVs[
 		D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};

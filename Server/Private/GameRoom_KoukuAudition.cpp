@@ -699,6 +699,9 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	if (!pattern || boss.strPatternId != pattern->strPatternId)
 	{ m_strStatus = "KoukuSaydon member lost its exact running pattern"; Clear_KoukuSaydonPatternAudition(); return true; }
 	CKoukuSaydonBrain::Apply_BossMotion(boss, *pattern, serverTick);
+	if (!CKoukuSaydonBrain::Apply_StageRootMotion(boss, *pattern, serverTick,
+		m_ServerNavigation, m_ServerCollisionSystem, status))
+	{ m_strStatus = status; Clear_KoukuSaydonPatternAudition(); return true; }
 	const auto completedPatternId = boss.strPatternId;
 	const auto sequence = boss.iPatternSequence, stage = boss.iPatternStageIndex;
 	KOUKUSAYDON_LOGIC_OUTPUT output;

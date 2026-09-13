@@ -52,6 +52,8 @@ public:
 		f32_t fFovYDegrees);
 	f32_t Get_AspectRatio() const { return m_fAspect; }
 	bool_t End_PresentationOverride(uint64_t iOwnerId);
+	// Hand the displayed pose, including roll and FOV, to the next camera owner.
+	bool_t End_PresentationOverrideAtCurrentPose(uint64_t iOwnerId);
 	/* Release to an explicitly resolved gameplay pose; ordinary End still restores. */
 	bool_t End_PresentationOverrideToPose(uint64_t iOwnerId,
 		const float3_t& vEye, const float3_t& vLookAt, f32_t fFovYDegrees);

@@ -1139,6 +1139,8 @@ enum class EFFECT_SCREEN_POST_PROFILE : uint8_t
 	ZOOM_BLUR_RECONSTRUCTED_V1,
 	FILM_NOISE_RECONSTRUCTED_V1,
 	MOTION_BLUR_RECONSTRUCTED_V1,
+	SCENE_COLLAPSE_CAPTURE_V1,
+	SCENE_CAPTURE_CUBE_V1,
 	END
 };
 
@@ -1163,6 +1165,10 @@ struct EFFECT_LIGHT_DETAIL_DESC final
 
 struct EFFECT_SCREEN_POST_DETAIL_DESC final
 {
+	// Cube capture ends at this ModelCue's first pose; stable ID, never a row index.
+	std::string strCaptureTargetModelCueId;
+	// Zero uses Timing lifetime; a shorter duration holds the final rectangle/black.
+	f32_t fCaptureShrinkSeconds = 0.f;
 	bool_t bEnabled = false;
 	EFFECT_SCREEN_POST_PROFILE eProfile = EFFECT_SCREEN_POST_PROFILE::END;
 	EFFECT_PRESENTATION_RUNTIME_STATUS eStatus =

@@ -11,6 +11,7 @@ namespace
 {
     using BOSS = Client::COMPOSITION_WORKBENCH_BOSS;
     using PANE = Client::COMPOSITION_WORKBENCH_PANE;
+    using TARGET = Client::COMPOSITION_WORKBENCH_TARGET;
 
     constexpr std::array<PANE, 6u> PANES = {
         PANE::SEQUENCER, PANE::PATTERNS, PANE::RESOURCES,
@@ -44,7 +45,7 @@ namespace
         switch (pane)
         {
         case PANE::SEQUENCER: return "Sequencer";
-        case PANE::PATTERNS: return "Patterns";
+        case PANE::PATTERNS: return "Actions";
         case PANE::RESOURCES: return "Resources";
         case PANE::DETAILS: return "Box Detail";
         case PANE::PREVIEW: return "Preview";
@@ -92,7 +93,7 @@ namespace
         case PANE::SEQUENCER:
             return "Composition Sequencer###CompositionSequencerWindowResizableV3";
         case PANE::PATTERNS:
-            return "Composition Patterns###CompositionPatternsWindow";
+            return "Composition Actions###CompositionPatternsWindow";
         case PANE::RESOURCES:
             return "Composition Resources###CompositionResourcesWindowResizableV2";
         case PANE::DETAILS:
@@ -167,6 +168,76 @@ Client::CSequencerTool::CSequencerTool(
 {
 }
 
+void Client::CSequencerTool::Set_ActionSessions(ICompositionWorkbenchSession* character,
+    ICompositionWorkbenchSession* object, ICompositionWorkbenchSession* sequence)
+{
+    m_pCharacterSession = character;
+    m_pObjectSession = object;
+    m_pSequenceSession = sequence;
+}
+
+void Client::CSequencerTool::Set_TargetChangedCallback(std::function<void(TARGET)> callback)
+{
+    m_TargetChanged = std::move(callback);
+}
+
+void Client::CSequencerTool::Select_Target(const TARGET target)
+{
+    if (target == m_eSelectedTarget) return;
+    if (auto* previous = Selected_Session()) previous->On_WorkbenchDeactivated();
+    m_eSelectedTarget = target;
+    m_bAnimationPreviewPending = false;
+    m_eAnimationPreviewTransport = ANIMATION_PREVIEW_TRANSPORT::NONE;
+    m_AnimationPreviewState = {};
+    if (m_TargetChanged) m_TargetChanged(target);
+    if (target == TARGET::BOSS || target == TARGET::SEQUENCE)
+        if (auto* session = Selected_Session())
+            session->Select_WorkbenchBoss(Get_SelectedBoss());
+}
+
+void Client::CSequencerTool::Open(const TARGET target)
+{
+    if (m_bInsideFrame)
+    {
+        m_ePendingTarget = target;
+        m_bTargetChangePending = true;
+        Open();
+        return;
+    }
+    m_bTargetChangePending = false;
+    Select_Target(target);
+    Open();
+}
+
+void Client::CSequencerTool::Open(const TARGET target, const BOSS boss)
+{
+    if (m_bInsideFrame)
+    {
+        m_ePendingTarget = target; m_bTargetChangePending = true;
+        m_ePendingBoss = boss; m_bBossChangePending = true;
+        Open();
+        return;
+    }
+    m_bTargetChangePending = m_bBossChangePending = false;
+    if (target != m_eSelectedTarget)
+    {
+        // Stage the requested gate before entering the session. Never briefly
+        // select the previous gate and discard an exact typed deep-link selection.
+        if (target == TARGET::SEQUENCE && boss != BOSS::VALTAN) m_eSequenceBoss = boss;
+        if (target == TARGET::BOSS) m_eSelectedBoss = boss;
+        Select_Target(target);
+    }
+    else Select_Boss(boss);
+    Open();
+}
+
+void Client::CSequencerTool::Deactivate()
+{
+    if (auto* session = Selected_Session()) session->On_WorkbenchDeactivated();
+    m_bAnimationPreviewPending = false;
+    m_eAnimationPreviewTransport = ANIMATION_PREVIEW_TRANSPORT::NONE;
+}
+
 void Client::CSequencerTool::Open()
 {
     m_bOpen = true;
@@ -179,21 +250,34 @@ void Client::CSequencerTool::Open()
 
 void Client::CSequencerTool::Open(const COMPOSITION_WORKBENCH_BOSS boss)
 {
-    Select_Boss(boss);
-    Open();
+    Open(TARGET::BOSS, boss);
 }
 
 void Client::CSequencerTool::Select_Boss(const COMPOSITION_WORKBENCH_BOSS boss)
 {
-    if (m_bSequenceWorkspace && boss == BOSS::VALTAN)
+    if ((m_bSequenceWorkspace || m_eSelectedTarget == TARGET::SEQUENCE) && boss == BOSS::VALTAN)
         return;
-    m_eSelectedBoss = boss;
+    auto& selectedBoss = m_eSelectedTarget == TARGET::SEQUENCE ? m_eSequenceBoss : m_eSelectedBoss;
+    if (selectedBoss != boss)
+    {
+        if (auto* previous = Selected_Session()) previous->On_WorkbenchDeactivated();
+        if (m_TargetChanged) m_TargetChanged(m_eSelectedTarget);
+    }
+    selectedBoss = boss;
     if (ICompositionWorkbenchSession* session = Selected_Session())
         session->Select_WorkbenchBoss(boss);
 }
 
 Client::ICompositionWorkbenchSession* Client::CSequencerTool::Selected_Session() const noexcept
 {
+    switch (m_eSelectedTarget)
+    {
+    case TARGET::CHARACTER: return m_pCharacterSession;
+    case TARGET::OBJECT: return m_pObjectSession;
+    case TARGET::SEQUENCE: return m_pSequenceSession;
+    case TARGET::BOSS: break;
+    default: return nullptr;
+    }
     switch (m_eSelectedBoss)
     {
     case BOSS::VALTAN: return m_bSequenceWorkspace ? nullptr : m_pValtanSession;
@@ -410,18 +494,39 @@ void Client::CSequencerTool::Render_WindowMenu()
     ImGui::EndMenuBar();
 }
 
+void Client::CSequencerTool::Render_ActionSelector()
+{
+    ImGui::SeparatorText("Composition Actions");
+    constexpr std::array<const char*, 4> labels = { "Boss", "Character", "Object", "Sequence" };
+    for (std::size_t i = 0; i < labels.size(); ++i)
+    {
+        const auto target = static_cast<TARGET>(i);
+        if (ImGui::Selectable(labels[i], m_eSelectedTarget == target))
+        {
+            m_ePendingTarget = target;
+            m_bTargetChangePending = target != m_eSelectedTarget;
+        }
+    }
+    ImGui::Separator();
+    if (m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE)
+        Render_BossSelector();
+}
+
 void Client::CSequencerTool::Render_BossSelector()
 {
     ImGui::SetNextItemWidth(200.f);
-    if (ImGui::BeginCombo("Boss##CompositionWorkbenchBoss", BossLabel(m_eSelectedBoss)))
+    if (ImGui::BeginCombo("Boss##CompositionWorkbenchBoss", BossLabel(Get_SelectedBoss())))
     {
         for (const BOSS boss : BOSS_ENTRIES)
         {
-            if (m_bSequenceWorkspace && boss == BOSS::VALTAN)
+            if ((m_bSequenceWorkspace || m_eSelectedTarget == TARGET::SEQUENCE) && boss == BOSS::VALTAN)
                 continue;
-            const bool selected = boss == m_eSelectedBoss;
+            const bool selected = boss == Get_SelectedBoss();
             if (ImGui::Selectable(BossLabel(boss), selected))
-                Select_Boss(boss);
+            {
+                m_ePendingBoss = boss;
+                m_bBossChangePending = true;
+            }
             if (selected)
                 ImGui::SetItemDefaultFocus();
         }
@@ -487,9 +592,13 @@ void Client::CSequencerTool::Render_Pane(
     Render_WindowMenu();
     if (expanded)
     {
-        if (pane == PANE::RESOURCES && m_bPhysicalAnimationBrowserVisible)
+        if (pane == PANE::PATTERNS) Render_ActionSelector();
+        if (pane == PANE::RESOURCES && m_bPhysicalAnimationBrowserVisible &&
+            (m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE))
             Render_PhysicalAnimationBrowser(session);
-        ImGui::PushID(static_cast<int>(m_eSelectedBoss));
+        const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE;
+        ImGui::PushID(static_cast<int>(m_eSelectedTarget) * 16 +
+            (hasBossOwner ? static_cast<int>(Get_SelectedBoss()) : 0));
         session.Render_WorkbenchPane(pane);
         ImGui::PopID();
     }
@@ -504,6 +613,16 @@ void Client::CSequencerTool::Render()
 {
     if (!m_bOpen)
         return;
+    if (m_bTargetChangePending)
+    {
+        if (m_bBossChangePending) Open(m_ePendingTarget, m_ePendingBoss);
+        else { m_bTargetChangePending = false; Select_Target(m_ePendingTarget); }
+    }
+    if (m_bBossChangePending)
+    {
+        m_bBossChangePending = false;
+        Select_Boss(m_ePendingBoss);
+    }
     m_bApplyResetLayoutThisFrame = m_bResetLayoutRequested;
     m_bResetLayoutRequested = false;
     const PANE_PLACEMENT placement = PanePlacement(PANE::TOOLBAR);
@@ -518,21 +637,25 @@ void Client::CSequencerTool::Render()
     const bool expanded = ImGui::Begin(PaneWindowId(PANE::TOOLBAR, m_bSequenceWorkspace), &m_bOpen, ImGuiWindowFlags_MenuBar);
     Render_WindowMenu();
     if (expanded)
-        Render_BossSelector();
+        ImGui::TextUnformatted("Select Boss, Character, Object or Sequence in Composition Actions.");
     ICompositionWorkbenchSession* const session = Selected_Session();
     if (!m_bOpen || nullptr == session)
     {
         if (expanded && nullptr == session)
-            ImGui::TextDisabled("The selected boss authoring session is unavailable.");
+            ImGui::TextDisabled("The selected action authoring session is unavailable.");
+        if (!m_bOpen) Deactivate();
         ImGui::End();
         return;
     }
+    m_bInsideFrame = true;
     session->Begin_WorkbenchFrame();
     Apply_ViewRequest(*session);
     if (expanded)
     {
         ImGui::Separator();
-        ImGui::PushID(static_cast<int>(m_eSelectedBoss));
+        const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE;
+        ImGui::PushID(static_cast<int>(m_eSelectedTarget) * 16 +
+            (hasBossOwner ? static_cast<int>(Get_SelectedBoss()) : 0));
         session->Render_WorkbenchPane(PANE::TOOLBAR);
         ImGui::PopID();
         Apply_ViewRequest(*session);
@@ -544,6 +667,7 @@ void Client::CSequencerTool::Render()
             Render_Pane(*session, pane);
     }
     session->End_WorkbenchFrame();
+    m_bInsideFrame = false;
     Apply_ViewRequest(*session);
     m_bApplyResetLayoutThisFrame = false;
     m_bRestoreAuthoringPanesRequested = false;

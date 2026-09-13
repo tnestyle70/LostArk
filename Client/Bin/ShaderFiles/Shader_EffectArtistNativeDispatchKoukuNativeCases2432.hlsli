@@ -292,7 +292,8 @@
     {
         nativeColor=ArtistNative2484(input);
         const float4 accumulated=ArtistNative2484Distortion(input);
-        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        // Source additive RGB already includes opacity; match the common native coverage adapter.
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
         output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
         return output;
     }

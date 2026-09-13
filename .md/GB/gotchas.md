@@ -1,5 +1,21 @@
 # LostArk merge 회귀 방지 정본
 
+### 원본 Sprite의 형상 생성과 최종 blend를 함께 검사한다
+
+- 원본 조준점은 완성형 이미지 한 장 대신 화살표·띠 texture와 radial UV shader로 구성될 수 있다. Elements의 `resources=[]`만으로 누락을 판정하지 말고 실제 `material.sourceProfile.textures`, source emitter와 native program을 대조한다.
+- CPU 입자·양수 alpha·texture staging 성공은 최종 RGB 기여의 증거가 아니다. native additive PS가 opacity를 RGB에 이미 곱하고 alpha0을 내면 공통 SrcAlpha/One 합성에서 다시0이 된다. distortion 동반 dispatch의 early return도 일반 native의 source blend에 따른 coverage adapter를 유지해야 한다. translucent까지 alpha1을 강제하지 않는다.
+- 같은 PS·DDS·parameter·시각에서 기존 합성과 source blend 대응을 비교하고, 확정된 program만 설치 교정한다. 원본 fade의 RGB 반영과 별도 distortion MRT 불변을 수치로 확인한다. Sprite2484뿐 아니라 Mesh2811/Sprite2812의 distortion early return에도 같은 결함이 있었으므로 실제 carrier별 출력까지 검사한다. [쇼타임 조준점 결과](09-13/2026-09-13_KOUKU_SHOWTIME_TARGET_BLEND_RESULT.md)와 [작은 오망성 G09](09-13/2026-09-13_KOUKU_PATTERN_RADIAL_MOTION_RESULT.md#g09-작은-오망성-폭발이-투명한-왜곡만-남는-문제)를 따른다.
+
+### 원본 nested CDO와 독립 패턴의 시계를 구분한다
+
+- RawDistribution 구조체의 instance가 `Distribution=0`만 직렬화했다고 CDO의 lookup table까지 지워진 것은 아니다. 원본 class default의 타입·Op·ChunkSize·lookup을 실제 instance delta와 합쳐 확인한다. StartSize fallback이나 LocationDirect의0배가 원본 낙하·바운스를 없앨 수 있다. null alpha/rate처럼 runtime이 이미 identity를 적용하는 경로는 실제 소비자를 먼저 읽는다.
+- disabled 모듈은 raw 증거에 보존하고 독립 runtime projection에는 활성 모듈만 싣는다. 목록 개수 성공으로 codec의 family/cardinality 검사를 대신하지 않는다.
+- 원본 Projectile의 자식 callback·수명·거리 값이 있어도 실제 종료 우선순위·targeting까지 해독한 것은 아니다. 편집용 생성 시계·방향은 이름과 RESULT에서 구분한다. 원본 action의 disabled visual system을 사용자 요청으로 독립 조합해도 enabled cue 복원으로 기록하지 않는다.
+- LocalDecal의 크기 보간은 기존 Detail Life와 SourceRecipe의 입자 수명을 분리해 검사한다. Mesh Particle 전용 transformMotionDuration이나 Ring Fill을 강제로 넣지 않는다. XZ 직경·고정 중심·projector 깊이와 fade 끝을 실제 CPU 행으로 확인한다.
+- 쿠크 원형/도넛 native3600/3601은 고정 경계와 채움을 한 draw에서 계산한다. 발탄의 물리3요소와 같다고 native를 중복하거나 projector 전체 scale을 키우면 경계 합성·위치가 달라진다. `inner`만 원형0 또는 도넛의 고정 내경 비율에서1까지 보간하고 원본 lifetime·fade·thickness·drawscale을 보존한다. sourceTimeOrigin과 start delay를 포함한 native packet의 실제 시각별 값, 끝값 도달 시 양수 alpha, 실제 패턴이 사용하는 warning/impact까지 확인한다.
+
+실제 적용과 검증은 [도넛·분열·손 트레일 결과](09-13/2026-09-13_KOUKU_PATTERN_RADIAL_MOTION_RESULT.md)를 따른다.
+
 ### 이동하는 원본 이펙트는 그룹 이름·반복·거리 방출을 함께 확인한다
 
 - UE Matinee의 FName 연결은 대소문자를 구분하지 않는다. `Pc01tr`/`pc01tr` 같은 표시 차이로
@@ -78,6 +94,15 @@ Resources 경계는 [렌더링이펙트복원V2.md](렌더링이펙트복원V2.m
   revision을 함께 검사해 동일주소 재할당·같은 프레임 포즈 변경을 반영한다.
 - `Render.Shadow` GPU elapsed를 순수 GPU 실행시간으로 단정하거나 fixture 개선율을 사용자 FPS로
   환산하지 않는다. 현재 연결과 검증 경계는 [렌더링 복원 가이드](렌더링이펙트복원V2.md)를 따른다.
+
+### 라이트 Enabled와 새 광원이 무시되면 최종 관문 문서를 확인한다
+
+- 색·밝기는 반영되는데 enabled 해제와 신규 광원이 무시되면 shader 캐시보다 먼저
+  저작 문서 → 관문/Sequence override → 실제 제출 문서의 enabled를 대조한다.
+- 3관문을 특정 청색 lightId 하나만 허용하는 방식으로 만들지 않는다. 기존 배경 제외와
+  사용자가 추가한 광원의 enabled를 분리하고, 새 광원·삭제·off/on을 같은 변경 비교에 포함한다.
+- 조명 RT clear, transient 목록 재수집, shader 입력 재설정 최적화와 구운 lightmap을 구분한다.
+  관문 문서 오류를 고치기 위해 전체 shader 캐시나 광원 budget을 제거하지 않는다.
 
 ### 조명·애니메이션 성능 변경의 merge 경계
 
@@ -1208,9 +1233,124 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 애니메이션 미리보기의 무기를 특정 모델 이름 한 개로 제한하면 실제 NPC에는 있는 지팡이가 preview에서 빠진다. actor가 resolve한 BossCatalog weaponModel·native material·pre-transform을 동일한 실제 손 본에 연결하고 기존 무기의 크기와 bind/animation 동기화를 보존한다.
 
 - World 트랙의 object anchor와 고정 월드 위치는 둘 다 좌표를 쓰지만 서로 다른 Transform 소비자다. UI의 World 안에서 Fixed position과 Follow world object를 구분하고, 기존 MAP/WORLD 저장 계약은 보존한다. worldId가 필수인 WORLD를 '(world position)'이라는 빈 선택으로 제공하지 않는다. 앵커 전환도 전체 staged occurrence 변경으로 처리해야 preview/Dirty/Save가 일치한다.
+- Sequence Effect Append에 resource의 WORLD 기본값만 복사하면 실제 worldId 없는 박스가 생성된다. 새 occurrence는 고정 MAP으로 시작하고 명시 선택한 World box만 연결한다. 기존 WORLD에서도 Player/Mouse 위치 버튼에 접근할 수 있어야 하며 피킹은 hit 성공 때만 MAP·절대좌표·참조 해제를 함께 반영한다. 기존 occurrence Preview에 초기 spawn 좌표를 다시 넣지 않는다.
 - 원본 Projectile 복원에서 particle 시각과 track 시각을 중복 이동하지 않는다. 절대 source track key와 문서 startDelay가 같이 있으면 실제 CPU 위치·회전·종료를 샘플해 검증한다. 원본 최대거리로 만든 독립 미리보기 경로를 실시간 대상에 따라 결정된 원본 궤적으로 기록하지 않는다.
 - 다수 투사체의 ribbon reserve 합계가 문서 예산을 넘으면 원본 TypeData와 운영 예약을 구분한다. 실제 point 수명·샘플 간격으로 충분한 예약을 계산하고 소스 레시피는 보존한다. 기본 예산을 전역 상향하거나 모든 emitter의 count/size를 줄여 우회하지 않는다.
 
+### 쿠크 원본 애니메이션 이동의 Server 소유
+
+- `b_root` translation을 Server로 옮길 때는 실제 skeleton 부모 basis와 BossCatalog preScale을 함께 적용한다. 다른 보스의 cm→m 상수나 preScale 하나만 복사하지 않는다. Source In을 기준으로 전체 궤적을 읽고 끝점이 0이라는 이유로 왕복·점프를 생략하지 않는다.
+- 자동 root와 수동 BossMotion·돌진·teleport는 Pattern 안에서 중복 소유하지 않는다. 모델 및 본 궤적의 root 억제와 Server XYZ를 같이 연결하며, 현재 모델의 vertical scale을 소비하는 과거 source-bone query 때문에 같은 Pattern의 ownership도 일관되게 유지한다. 원본 clip에 없는 actor/script 이동은 추측하지 않는다.
+- stage origin은 ENTER의 spawn reset·retarget 이후에 잡는다. collision이 XYZ를 함께 자른 뒤에는 최종 XZ의 실제 지면 높이와 잘린 원본 up을 구분한다. 지면 보정도 collision을 다시 확인하고 실패하면 위치 전체를 보존한다.
+- 정수 ms로 원본 fractional key를 옮기는 양자화 오차와 표본 축약 오차는 별개다. 원본 turning key까지 대조하지 않고 시작·끝이나 축약된 표본만 검사하면 중간 이동이 지워져도 통과한다. 정상 설치 clip의 단위·속도·배율에서 실제 오차를 먼저 측정한다. WModel 분석은 Publish에만 연결하고 Save에 추가하지 않는다.
+
+### 통합 Action Workbench의 대상·시계·저장 소유자
+
+- Effect V1/V2는 독립 창과 visibility를 소유한다. Action target으로 다시 우회하지 않는다.
+  독립 `Render()`가 이미 catalog/frame/native 복원을 수행하므로 Composition pane Begin/End를
+  중복 호출하지 않는다. Character가 사용하는 Effect sequencer factory는 독립 창과 별개로 유지한다.
+- 공통 창으로 합쳐도 Boss와 Sequence의 gate/selection은 각 세션에 보존한다. typed deep link는
+  대상과 gate를 한 번에 선택한 뒤 exact occurrence를 선택한다. 이전 gate로 잠시 들어가면 다른
+  문서에서 고른 박스가 hierarchy 선택으로 지워진다.
+- 숨겨진 세션의 Save/Publish 완료 Poll은 계속 소비한다. category 변경은 실제 preview owner를
+  정리하고 단일 model clock만 사용한다. pane wrapper만 제거하고 native Attach/Group update를
+  빠뜨리면 버튼은 남아도 실제 모델·부착 편집이 사라진다.
+- Effect sequence 저장과 제품 skillbindings / animevents / HitShapes 저장은 다른 owner다. 각 Save는
+  정확한 source baseline을 검증하고 외부 편집 충돌에서 기존 초안과 파일을 보존한다.
+- 피해·무력화·카운터를 세 collider로 나눌 때 HP 예산은 DAMAGE 행만 센다. zero-HP trait가 legacy
+  카드미로 즉사나 push를 발생시키지 않게 실제 combat sink까지 확인한다. 새 bootstrap v34 배포와
+  Server 재시작 전에 Combat 저장을 제품 적용으로 기록하지 않는다.
+- bootstrap 형식 변경 뒤 EXE만 재빌드하면 기존 생성물과 헤더가 맞지 않아 시작이 거부될 수 있다.
+  이를 저작 파일 초기화로 오판하지 않는다. 실제 설치 헤더와 코드 요구 버전을 확인하고, 미저장
+  편집을 보호한 뒤 저장 정본의 Product projection과 정식 Gameplay Publish를 순서대로 적용한다.
+  생성물 헤더 직접 수정이나 버전 검사 완화로 우회하지 않는다. 복구 보고는 저장본의 바이트 보존과
+  종료된 프로세스의 미저장 메모리 초안을 구분한다.
+
+- Local Animation Play의 몸체 root를 억제하면서 actor 이동을 연결하지 않으면 원본 backstep도 제자리다.
+  실제 parent basis와 preScale로 suppression 전 root를 샘플하고 source crop/rate/loop 끝점 누적을
+  같은 절대 clock으로 처리한다. 제자리 walk의 actor 이동은 별도 원본 actor track 근거로 저작한다.
+- Logic 블렌드 중 CModel current clip은 target으로 먼저 바뀔 수 있다. 이것을 semantic action 진입으로
+  판단하면 effect notify가 반복된다. action occurrence와 pose sample의 소유자를 분리하고, 블렌드 밖의
+  기본 pose도 같은 Pattern clock을 사용해 fixed-tick 경계의 점프를 막는다.
+- Box Set Group은 selected box 수가 1보다 크다. 단일 선택 전용 drag gate로 그룹 이동을 막지 않는다.
+  공통 시간 delta와 linked Logic의 고유 ID를 검증한 뒤 한 번에 적용하며 표시 행도 그룹 전체 구간으로 예약한다.
+- transient light 최대치와 실제 provider의 제출 상한을 공통 상수로 유지한다. 광원 탈락을 카메라
+  frustum만의 문제로 단정하지 말고 provider 순서·남은 예산·실제 sphere 범위를 함께 확인한다.
+- 매우 먼 far plane의 world corner 세 점으로 평면을 만들면 float 정밀도 손실로 가까운 광원도
+  잘못 제거될 수 있다. homogeneous view-projection에서 직접 평면을 추출하고 local 판정에서는
+  같은 covector 변환을 사용한다. 큰 far 값과 실제 카메라 방향·비균일 배율을 수치로 대조한다.
+- Source SpawnPerUnit particle은 source origin이 고정되면 SpawnRate/Burst가 0인 채로 하나도 생성되지
+  않을 수 있다. occurrence metadata 수와 실제 particle birth를 구분하고 source 본 이동 누락을 먼저
+  확인한다. 검증한 본 변위는 사용자 TRS와 source basis 배율을 중복 적용하지 않는 기존 transform 경로로 넣는다.
+
+
+### Object Effect·화면 companion·캡처 수축
+
+- Object에 V1 Effect를 붙일 때 같은 모델을 가진 내장 ModelCue까지 그리면 인형이 중복된다.
+  실제 Object CModel과 같은 pose clock을 외부 anchor로 제공하고 일치한 ModelCue만 대체한다.
+  effect row의 TIME 시작과 followObject/bone, object scale과 modelPreScale을 각각 검증한다.
+- 월드 alias의 MAP placement와 화면 ScreenPost companion은 별도 소비자다. World 행만 복사하거나
+  preview하면 화면 커튼이 누락된다. 저장된 같은 alias association을 유지하고 external clock의
+  Play/Seek/Stop을 같이 호출한다. scope 밖 화면 전용 fallback은 명시 companion에만 허용한다.
+- 불투명 검정 바깥을 가진 장면 수축을 Blend 뒤에 합성하면 함께 재생한 포탈까지 덮는다.
+  scene replacement만 Blend 전에 처리하고 MRT/depth 복원과 일반 post ping-pong 순서를 검증한다.
+- 같은 scene capture를 샘플해도 카메라 앞 mesh와 animated cube가 같은 위치·크기인 것은 아니다.
+  실제 설치 큐브 CModel의 현재 pose와 occurrence root/bounds로 수축 종착 transform을 구한다.
+  캡처 해상도 축소는 표시 면적 축소가 아니다. HDR/Bloom은 같은 UV를 사용한다.
+  검은 바깥은 1관문 도입 수축에만 적용하고 차원술사 Alt+V의 기존 배경은 유지한다.
+- 코드 컴파일·후보 JSON 검증·원본 적용·runtime publish·새 EXE·사용자 화면 판정은 분리해 보고한다.
+  실행 중 Product 출력과 미저장 draft를 guard 우회나 전체 Composition 덮어쓰기로 해결하지 않는다.
+- Object Travel의 개별 visible 수명과 마지막 emission을 포함한 전체 재생 창은 다르다.
+  Effect 첫 추가/마지막 삭제에서 ObjectSpan의 지연 가산 경로가 바뀌므로 개별 수명을 유지해
+  키를 다시 구성한다. 생성 지연 변경과 Save/Load 뒤에도 마지막 생성물이 같은 수명을 갖는지 검사한다.
+- 시각적인 칼날 X축 자전을 서버 ground-plane 원의 회전으로 적용하지 않는다. 중심 offset과
+  균일 배율 조건을 확인하고 translation/visibility만 추적하며, 빠른 이동은 tick 사이 구간도 검사한다.
+  숨김·Lifetime·Parent 주기 경계를 건너 이전 이동 경로를 다시 판정하지 않는다.
+- 최소 TU 검증의 문자 집합 옵션은 실제 해당 파일의 Product compile 명령과 같아야 한다.
+  UTF-8 no-BOM 소스를 CP949로 컴파일하는 기존 파일에 새 한글 literal을 넣으면 문자열 경계가
+  깨질 수 있다. `/utf-8`을 추가한 격리 compile 성공으로 대체하지 말고 파일 인코딩과 프로젝트
+  설정을 유지하면서 필요한 UTF-8 표시 문자열을 byte escape로 표현해 Product Build도 확인한다.
+- 보스의 기본 아레나를 옮길 때 BOSS_SPAWN 상대 행과 NONE/World 절대 좌표를 구분한다.
+  Gaze target으로 clone 반경을 계산하는 경로와 기존 MAP alias의 positionOffset도 같은 이동량을
+  반영해야 한다. 원본 placement·행·시각을 보존하고 실제 nav의 target와 clone 위치를 검사한다.
+- Kouku Product 회귀는 현재 Gate/placement admission과 실제 Prepare_KoukuAuditionTick →
+  per-boss Update 순서를 사용한다. 시작 위치 복귀 직후와 첫 root motion 이후를 구분하고,
+  PATTERN_COMPLETED의 마지막 stage와 전체 run COMPLETED의 stage 0을 혼동하지 않는다.
+  저작 좌표·sequence 길이가 바뀌면 이전 고정 기대값을 제품 오류로 단정하지 말고 실제 정본과
+  테스트 입력·호출 순서를 대조한다. bootstrap fixture도 지원 버전의 필수 열을 갖춰야 한다.
+
+
+### Play All과 Composition의 일반 v15 Effect 준비
+
+v15는 runtimeCarrier와 baked history가 없는 일반 mesh/sprite 문서도 허용한다. 파일 버전만으로
+DocumentOwnedRuntimeProjection을 강제하면 `no admitted runtime carrier`로 Play All·Product worker
+준비가 거절되고, 일반 Stage_Document를 쓰는 Family만 표시될 수 있다. Codec 검증 후
+`CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection`으로 실제 carrier/history를 검사하며
+Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache 검사에 같은 판정을 사용한다.
+특수 carrier와 orphan history의 기존 검증은 유지한다. selector 통과만으로 전체 재생을 검증하지
+말고 실제 문서 staging을 대조한다. [수정 결과 G13](09-13/2026-09-13_KOUKU_CINEMATIC_WORKBENCH_IMPLEMENTATION_RESULT.md).
+
+
+### 2026-09-14 고정 화면 캡처와 저프레임 표시
+
+- 넓게 늘어난 화면을 particle distortion만으로 단정하지 않는다. 현재 camera의 보간 FOV와 projection을 먼저 측정한다. 167~179도 FOV의 원근 확대는 작은 distortion MRT offset과 구분한다.
+- occurrence Stage의 마지막 SceneHDR는 나중의 ScreenPost 시작 장면이 아니다. 고정 화면 전환은 resolved HDR/bloom 입력을 해당 렌더 시점에서 함께 캡처하고, scene 합성 뒤·HUD 앞에서 그린다. 캡처 실패와 아직 대기 중인 상태를 구분한다.
+- Preview의 최종 커서가 Late_Update 뒤에 바뀌면 WORLD/camera뿐 아니라 Effect exact seek와 다음 culling frame까지 맞춰야 한다. ScreenPost A/B off 또는 실패 경로에서 capture 대기를 계속하지 않는다.
+- 큐브로 전환하는 화면 캡처는 ScreenPost의 다음 활성 frame이 온다는 전제에 의존하지 않는다. 마지막 활성 frame에 latch돼도 후속 ModelCue material이 같은 캡처를 직접 소비한다.
+- source action4219903의 알비온 공중 자세 _24_03은 원본 root 상승이0이다. 연속 착지 _24_04/_24_05의 실제 하강 합을 앞 상승 run에 배분한다. 기존 source TRS·XZ·하강과 nav는 보존하며 사용자 저작 duration/clip window에 맞춰 계산한다.
+- 원본 ancestor keys가 상수임을 이미 확인한 경우 scale100 quaternion 보간 행렬의 float noise를 다시 절대1e-5로 비교해 애니메이션 root sampling을 거절하지 않는다. 실제 ancestor key 변화·nonfinite는 계속 거절한다.
+
+
+### Workbench의 반복 계산과 실패 리소스 이름 조회를 구분한다
+
+- UI draw의 이름·상태 표시는 이미 로드된 view나 명시 선택 시 확보한 metadata를 사용한다. 성공만 cache하는 Catalog::Find를 매 프레임 호출하면 손상된 파일 하나가 반복 I/O를 만들 수 있다. 펼친 metadata → Find_Loaded → 저장 stable ID 표시를 사용하고, 실제로 확인한 이름만 Rename 대상으로 제공한다.
+- 이전 camera 실패 cache가 남아 있는지와 실제 camera Load scope를 먼저 확인한다. 문자열·category·트리 계산 비용이 큰 경우를 실패한 로드의 재시도로 단정하지 않는다. kind/version 필터를 텍스트 검색 전에 적용하고 불변 메뉴 문자열은 매 frame 정규화하지 않는다.
+- inclusive Composition Build 시간은 자식 비용을 포함한다. metadata 검색의 CPU 비교를 전체 UI 시간이나 실제 FPS 개선량으로 보고하지 않는다. pane별 계측과 사용자가 저장한 같은 조건의 profiler를 대조한다. [Workbench 결과 G17](09-13/2026-09-13_KOUKU_CINEMATIC_WORKBENCH_IMPLEMENTATION_RESULT.md).
+
+### 짧은 발사 섬광과 움직이는 BG 불
+
+- 40~70ms source particle은10FPS의100ms update 안에서 생성·소멸할 수 있다. box lifetime이나 emission delay와 개별 particle life를 구분하며, 모든 fixed step을 정상 실행해도 마지막 상태만 그리면 섬광이 보이지 않을 수 있다. scoped 표시 후보를 보존할 때 source simulation/lifetime은 그대로 두고 World·Color·Dynamic·SubUV·material sample time을 같은 substep으로 유지한다. 선언 순서와 GpuOccurrence의 contiguous row count까지 맞추며 Seek에는 적용하지 않는다.
+- 정적 배경과 움직이는 오브젝트의 texture가 같아도 RNM/static-shadow 유무로 최종색이 달라진다. 이동 오브젝트에 정적조명 좌표를 복제하지 않는다. 사용자가 조명 독립 불을 요청한 경우 해당 material binding의 optional unlit만 사용해 BG surface RGB를 emission으로 출력하며 기본false와 비불 오브젝트는 유지한다. Engine surface public 구조가 바뀌면 Engine/Client를 함께 빌드한다.
 
 ### ScreenPost TexturedOverlay의 DDS coverage admission
 
@@ -1224,7 +1364,9 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 정본 `.worldsequences.json`은 python `json.dumps(indent=2)`(배열 한 줄에 한 값)로 쓰면 같은 내용이 툴 Save 형식(배열 한 줄, float32 9자리)보다 약 1.4배 크다. 2관문 소품 165개 설치 뒤 indent=2 형식은 16MiB reader 한도를 넘는다. 이 문서를 다시 쓰는 생성기는 `Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py`의 `tool_document`(툴 Save와 같은 형식, 재파싱 float32 동일성 검증 포함)를 사용한다. minify는 툴이 재확장하므로 해결책이 아니다.
 - Composition(`KoukuSaydonSequenceComposition.json`)의 `worlds` 등록 ID는 reader가 `kakulsaydon.g1.world.<n>`(n < `nextWorldOrdinal`) 또는 `world.kouku.gate2.intro.<x>`(인스턴스 `world.sequence.instance.kouku.gate2.intro.<x>`와 짝)만 받는다(`KoukuSaydonCompositionDocument.cpp` 1165행). 다른 이름을 등록하면 Composition 전체가 "not admitted"로 로드되지 않으므로 생성기는 `nextWorldOrdinal`을 소비해 ID를 발급한다.
 - 원본 Matinee의 배우 `drawscale` float 트랙은 `build_source_sequences.actor_world`가 굽지 않는다. 배우가 커지거나 작아지는 컷(3관문 비행 6→2, 1→0.3)은 template `scaleMultiplier` 키로 따로 넣어야 한다. 근거는 09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md G13-R3/R4.
+
+### 탈것·NPC 재질의 UV와 shader cache 해석
+
 - NPC 파이프라인으로 쿠킹한 skinned `.wmodel`은 1.0이라 UV1이 없다. 원본 MIC가 program 5/7/18/19를 쓰면 `CModel`이 "source character requires native extra UV channels"로 모델 전체를 거부하고, 탈것·NPC 표현이 소리 없이 격리된다. 원본 PSK의 EXTRAUVS 유무를 확인하고, set이 1개면 UE3 clamp 규칙대로 해당 submesh UV1=UV0를 `Tools/VehiclePipeline/cook_single_set_uv1.py`로 추가한다. extra set이 있으면 `cook_ocular_uv_channels.py`처럼 원본 채널을 join한다.
 
 - UE3 static parameter set의 `FNormalParameter`는 FName 8 + CompressionSettings 1 + bOverride 4 + GUID 16 = 29바이트다. 공용 shader cache oracle은 32바이트로 읽어 normal 파라미터가 있는 MIC(예: 랩터 `monster_base_msk_high`)에서 `ShaderCache FName index is invalid`로 실패한다. `Tools/VehiclePipeline/build_vehicle_source_material.py`는 도구 안에서만 29바이트로 보정한다. NPC 파이프라인 쿠킹본의 재질 슬롯 이름은 LookInfo 교체 MIC 이름이 아니라 메시 기본 이름이므로 catalog `materialName`은 `rows … @슬롯이름`으로 지정한다.
-

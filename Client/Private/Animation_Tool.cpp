@@ -6,6 +6,7 @@
 #include "ValtanBossTool.h"
 #include "CameraTool.h"
 #include "Character.h"
+#include "CharacterSpec.h"
 #include "Effect_Catalog.h"
 #include "Effect_Tool.h"
 #include "EffectAuthoringTransfer.h"
@@ -557,6 +558,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 		m_iRequestedKoukuSaydonSourceActionId = iRequestedKoukuSaydonSourceActionId;
 	m_PendingAssetName.clear();
 	m_Events.clear();
+	m_EventSourceBaseline.clear(); m_bEventSourceBaselineKnown = false;
 	m_SkillRef.clear();
 	m_ClipMap.clear();
 	m_ClipNotify.clear();
@@ -566,6 +568,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_DuplicateBodyClips.clear();
 	m_bDuplicateScanDone = false;
 	m_SkillBindingDocument = {};
+	m_SkillBindingSourceBaseline.clear(); m_bSkillBindingSourceBaselineKnown = false;
 	m_iSelectedEvent = -1;
 	m_iRefWireSkillId = 0;
 	m_iRefWireHitIndex = -1;
@@ -1565,6 +1568,77 @@ std::vector<std::string> Client::CAnimation_Tool::Collect_ClipNames(
 			clips.emplace_back(clipName);
 	}
 	return clips;
+}
+
+bool_t Client::CAnimation_Tool::Has_CharacterActionCueChanges(const std::string& asset) const
+{
+    return m_AssetName == asset && m_bDirty;
+}
+
+bool_t Client::CAnimation_Tool::Restore_CharacterActionPreview(const std::string& asset, std::string& status)
+{
+    if (!m_pPreviewPanel || asset.empty())
+    { status = "The shared Character preview is unavailable."; return false; }
+    const bool_t dirty = Is_AnyDocumentDirty();
+    const bool_t unrelatedDirty = m_bValtanPatternSoundCuesDirty || m_bValtanCombatObjectSoundCuesDirty ||
+        m_bValtanPatternAnimationBindingDirty || m_bKoukuSaydonActionDirty || m_bKoukuSaydonPatternDirty;
+    if (dirty && (asset != m_AssetName || unrelatedDirty))
+    { status = "Save the Animation Tool's other owner before restoring this Character preview."; return false; }
+    // This only releases this editor's own lock for its exact retained owner.
+    // Character Workbench, Effect Tool and Equipment Tool locks remain intact.
+    struct OWN_LOCK_RESTORE final
+    {
+        CCharacterPreviewPanel& panel; bool_t locked;
+        ~OWN_LOCK_RESTORE() { panel.Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
+            locked, "Save or reload the Character cue draft before changing its model."); }
+    } restore{*m_pPreviewPanel, dirty};
+    m_pPreviewPanel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, false, {});
+    const bool_t selected = m_pPreviewPanel->Select_TargetAsset(asset);
+    status = m_pPreviewPanel->Get_Status();
+    return selected;
+}
+
+bool_t Client::CAnimation_Tool::Render_CharacterActionCueEditor(const std::string& asset,
+    const uint64_t expectedGeneration, const std::string& clip, std::string& status,
+    const bool_t explicitSourceSelection)
+{
+    const auto model = CAnimationTargetService::Resolve_Model();
+    const auto character = CAnimationTargetService::Resolve_Character();
+    if (!model || !character || !character->Get_Spec() || !m_pPreviewPanel->Is_PreviewActive() ||
+        asset != CAnimationTargetService::Resolve_AssetName() || asset != character->Get_Spec()->pAssetName ||
+        expectedGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+    { status = "Restore this action's admitted preview model before editing its cues."; ImGui::TextWrapped("%s", status.c_str()); return false; }
+    if (m_AssetName != asset)
+    {
+        if (Is_AnyDocumentDirty())
+        { status = "Save or reload the Animation Tool's existing draft before changing its cue owner."; ImGui::TextWrapped("%s", status.c_str()); return false; }
+        // Validate with the candidate owner before retiring the previous clean state.
+        const auto priorAsset = m_AssetName;
+        m_AssetName = asset;
+        std::vector<ANIM_EVENT> staged; int32_t version = 0;
+        const bool loaded = Load_EventsFromPath(Get_EventFilePath(), model, staged, version, status) && Validate_Events(model, staged, status);
+        m_AssetName = priorAsset;
+        if (!loaded) { ImGui::TextWrapped("%s", status.c_str()); return false; }
+        Adopt_AssetName(asset);
+        if (!Load_Events(model)) { status = m_Status; ImGui::TextWrapped("%s", status.c_str()); return false; }
+    }
+    else if (!m_bEventSourceBaselineKnown && !m_bDirty && !Load_Events(model))
+    { status = m_Status; ImGui::TextWrapped("%s", status.c_str()); return false; }
+    if (explicitSourceSelection)
+    {
+        Select_Clip(model, clip);
+        model->Set_AnimPaused(true);
+        model->Skip_Blend();
+        model->Play_Animation(0.f);
+    }
+    const auto* currentName = model->Get_AnimationName(model->Get_CurrentAnimIndex());
+    if (!currentName || clip != currentName)
+    { status = "The source clip changed. Open source cue editing again to select it."; ImGui::TextWrapped("%s", status.c_str()); return false; }
+    Render_HitEvents(model);
+    m_pPreviewPanel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
+        Is_AnyDocumentDirty(), "Save or reload the Character cue draft before changing its model.");
+    status = m_Status;
+    return true;
 }
 
 void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>& pModel)

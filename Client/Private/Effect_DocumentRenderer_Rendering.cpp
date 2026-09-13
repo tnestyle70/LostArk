@@ -26,7 +26,7 @@
 
 bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
 {
-	if (m_bOccurrenceElementSelected) return false;
+	if (m_bOccurrenceElementSelected || !m_bModelCueRenderingEnabled) return false;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	return std::ranges::any_of(Document.ModelCues,
 		[&Document](const EFFECT_MODEL_CUE_DESC& Cue)
@@ -221,14 +221,80 @@ bool_t Client::CEffectDocumentRenderer::Collect_ModelCueAnchorWorlds(
 	return true;
 }
 
+HRESULT Client::CEffectDocumentRenderer::Get_ScreenPostCaptureResult(const std::string& elementId) const
+{
+    const auto entry = m_ScreenPostCaptures.find(elementId);
+    if (entry == m_ScreenPostCaptures.end() || !entry->second) return S_FALSE;
+    const auto& document = Get_StagedDocument();
+    const auto element = std::find_if(document.Elements.begin(), document.Elements.end(),
+        [&](const auto& value) { return value.strElementId == elementId; });
+    if (element == document.Elements.end() || !element->bVisible || !element->Detail.ScreenPost.bEnabled ||
+        entry->second->fStartSeconds != element->Detail.Timing.fStartDelaySeconds ||
+        entry->second->fDurationSeconds != element->Detail.Timing.fLifeTimeSeconds) return S_FALSE;
+    return entry->second->hLastResult;
+}
+
+bool_t Client::CEffectDocumentRenderer::Has_CapturedScreenPost(const std::string& elementId) const
+{
+    return Get_ScreenPostCaptureResult(elementId) == S_OK;
+}
+
 HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
-    const EFFECT_EVALUATED_SCREEN_POST& Evaluated,
+    const EFFECT_EVALUATED_FRAME& Frame, const EFFECT_EVALUATED_SCREEN_POST& Evaluated,
     std::shared_ptr<const Engine::IPresentationScreenPostMaterial>& OutMaterial,
-    std::string& strOutError) const
+    std::string& strOutError)
 {
     OutMaterial.reset();
     if (!Evaluated.pElement) { strOutError="Native screen-post has no source element."; return E_INVALIDARG; }
     const auto& Element=*Evaluated.pElement;
+    if (Evaluated.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
+        Evaluated.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1)
+    {
+        if (!m_pNativeScreenPostShader || !std::isfinite(Evaluated.fNormalizedLife))
+        { strOutError = "Scene image capture has no prepared shader or valid time."; return E_FAIL; }
+        auto& capture = m_ScreenPostCaptures[Element.strElementId];
+        const auto& timing = Element.Detail.Timing;
+        if (!capture || capture->fStartSeconds != timing.fStartDelaySeconds ||
+            capture->fDurationSeconds != timing.fLifeTimeSeconds)
+        {
+            capture = std::make_shared<EFFECT_SCENE_CAPTURE_STATE>();
+            capture->pDevice = m_pDevice; capture->pContext = m_pContext;
+            capture->fStartSeconds = timing.fStartDelaySeconds;
+            capture->fDurationSeconds = timing.fLifeTimeSeconds;
+        }
+        EFFECT_NATIVE_SCREEN_POST_SNAPSHOT snapshot;
+        snapshot.pShader = m_pNativeScreenPostShader;
+        snapshot.bSceneCollapse = true;
+        const float shrinkSeconds = Element.Detail.ScreenPost.fCaptureShrinkSeconds;
+        snapshot.fCaptureProgress = shrinkSeconds > 0.f ?
+            std::clamp((Frame.fSampleTimeSeconds - timing.fStartDelaySeconds) / shrinkSeconds, 0.f, 1.f) :
+            std::clamp(Evaluated.fNormalizedLife, 0.f, 1.f);
+        const auto* view = Engine::CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+        const auto* projection = Engine::CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+        if (view && projection)
+        {
+            float4_t clip{};
+            XMStoreFloat4(&clip, XMVector4Transform(XMLoadFloat4x4(&Evaluated.SourceWorld).r[3],
+                XMLoadFloat4x4(view) * XMLoadFloat4x4(projection)));
+            if (std::isfinite(clip.x) && std::isfinite(clip.y) && std::isfinite(clip.w) && clip.w > 1.e-5f)
+                snapshot.vCaptureDestinationUV = {.5f + .5f * clip.x / clip.w, .5f - .5f * clip.y / clip.w};
+        }
+        snapshot.pCapture = capture;
+        snapshot.bCaptureAllowed = m_bScreenPostCaptureAllowed;
+        snapshot.bCaptureOverLiveScene = Evaluated.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+        if (snapshot.bCaptureOverLiveScene)
+        {
+            if (!Try_ProjectCaptureTargetBounds(Frame, Element.Detail.ScreenPost.strCaptureTargetModelCueId,
+                timing.fStartDelaySeconds + timing.fLifeTimeSeconds,
+                snapshot.vCaptureDestinationUV, snapshot.vCaptureDestinationSizeUV))
+            { strOutError = "Screen capture cube first-pose bounds could not be projected."; return E_FAIL; }
+            // The later cube material consumes the very same image as the screen rectangle.
+            if (capture->pColor && capture->pBloom)
+            { m_pStartingSceneCapture = capture->pColor; m_pStartingSceneBloomCapture = capture->pBloom; }
+        }
+        OutMaterial = std::make_shared<CEffectNativeScreenPostMaterial>(std::move(snapshot));
+        return S_OK;
+    }
     const auto& Source=Element.Material.SourceMaterial;
     const auto* V=Find_DimensionMasterVProgram(Source.strRuntimeShaderProfileId);
     const auto* ALTV=Find_DimensionMasterALTVProgram(Source.strRuntimeShaderProfileId);
@@ -285,6 +351,15 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
 HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
 	const ELEMENT_RESOURCE& Resource, const f32_t fLocalTimeSeconds)
 {
+    if (Resource.iSourceMaterialProfile == 178u)
+        for (const auto& element : Get_StagedDocument().Elements)
+        {
+            if (!element.bVisible || !element.Detail.ScreenPost.bEnabled ||
+                element.Detail.ScreenPost.eProfile != EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1) continue;
+            const auto capture = m_ScreenPostCaptures.find(element.strElementId);
+            if (capture != m_ScreenPostCaptures.end() && capture->second && capture->second->pColor && capture->second->pBloom)
+            { m_pStartingSceneCapture = capture->second->pColor; m_pStartingSceneBloomCapture = capture->second->pBloom; break; }
+        }
 	// UE skylight has no current scene owner. Feed the committed scene ambient
 	// into its separate ambient term once; leave both sky hemispheres disabled.
 	float4_t Ambient{ 0.f, 0.f, 0.f, 1.f };
@@ -339,7 +414,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 {
 	// Keep model cues available for anchor sampling, but an explicitly selected
 	// occurrence Element must not draw the source document's standalone models.
-	if (m_bOccurrenceElementSelected) return S_FALSE;
+	if (m_bOccurrenceElementSelected || !m_bModelCueRenderingEnabled) return S_FALSE;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
 	{

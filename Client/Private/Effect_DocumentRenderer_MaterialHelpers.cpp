@@ -29,8 +29,8 @@ namespace EffectDocumentRendererDetail
     bool Requires_StartingSceneCapture(const Client::EFFECT_DOCUMENT_DESC& Document)
     {
         return std::ranges::any_of(Document.Elements, [](const auto& Element) {
-            return Element.bVisible && Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
-                "effect.ue3.altv-178-native.v1";
+            return Element.bVisible && (Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
+                "effect.ue3.altv-178-native.v1");
         }) || std::ranges::any_of(Document.ModelCues, [](const auto& Cue) {
             return Cue.bVisible && Client::Has_DimensionMasterALTVModelCueMaterialContract(Cue);
         });
@@ -43,14 +43,24 @@ namespace EffectDocumentRendererDetail
              Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_31");
     }
 
-    // Project framing adapter only: endpoint geometry and all authored transforms stay intact.
-    // Return without touching World on invalid bounds/camera or at the exact authored endpoint.
+    // Project framing adapter: blend the full starting image into the actual cube bounds.
+    // Without a cube landing, retain the previous authored endpoint and failure behavior.
     void Fit_StartingCaptureMeshToCamera(const float3_t& BoundsMin, const float3_t& BoundsMax,
         const float4x4_t& View, const float4x4_t& Projection, const f32_t fProgress,
-        float4x4_t& World)
+        float4x4_t& World, const float4x4_t* pLandingWorld)
     {
-        if (!std::isfinite(fProgress) || fProgress >= 1.f ||
-            !std::isfinite(Projection._11) || Projection._11 <= 0.f ||
+        if (!std::isfinite(fProgress)) return;
+        if (fProgress >= 1.f)
+        {
+            if (pLandingWorld)
+            {
+                for (const auto& Row : pLandingWorld->m) for (const f32_t Value : Row)
+                    if (!std::isfinite(Value)) return;
+                World = *pLandingWorld;
+            }
+            return;
+        }
+        if (!std::isfinite(Projection._11) || Projection._11 <= 0.f ||
             !std::isfinite(Projection._22) || Projection._22 <= 0.f ||
             !std::isfinite(Projection._33) || Projection._33 == 0.f ||
             std::abs(Projection._34 - 1.f) > 1e-5f || std::abs(Projection._44) > 1e-5f)
@@ -88,7 +98,7 @@ namespace EffectDocumentRendererDetail
                 -Projection._32 * fFrontDepth / Projection._22, 0.f) * XMMatrixInverse(nullptr, ViewMatrix);
         const f32_t fLinear = std::clamp(fProgress, 0.f, 1.f);
         const f32_t fBlend = fLinear * fLinear * (3.f - 2.f * fLinear);
-        const matrix_t Authored = XMLoadFloat4x4(&World);
+        const matrix_t Authored = XMLoadFloat4x4(pLandingWorld ? pLandingWorld : &World);
         float4x4_t Staged{};
         XMStoreFloat4x4(&Staged, matrix_t(
             XMVectorLerp(Fitted.r[0], Authored.r[0], fBlend),
@@ -100,9 +110,29 @@ namespace EffectDocumentRendererDetail
         World = Staged;
     }
 
+    bool Build_StartingCaptureCubeLandingWorld(const float3_t& SourceMin, const float3_t& SourceMax,
+        const float3_t& CubeMin, const float3_t& CubeMax, const float4x4_t& CubeWorld,
+        float4x4_t& OutWorld)
+    {
+        const float3_t SourceSize{SourceMax.x-SourceMin.x, SourceMax.y-SourceMin.y, SourceMax.z-SourceMin.z};
+        const float3_t CubeSize{CubeMax.x-CubeMin.x, CubeMax.y-CubeMin.y, CubeMax.z-CubeMin.z};
+        if (!(SourceSize.x > 1e-6f && SourceSize.y > 1e-6f && SourceSize.z > 1e-6f &&
+              CubeSize.x > 1e-6f && CubeSize.y > 1e-6f && CubeSize.z > 1e-6f)) return false;
+        float4x4_t Staged;
+        XMStoreFloat4x4(&Staged,
+            XMMatrixTranslation(-(SourceMin.x+SourceMax.x)*.5f, -(SourceMin.y+SourceMax.y)*.5f,
+                -(SourceMin.z+SourceMax.z)*.5f) *
+            XMMatrixScaling(CubeSize.x/SourceSize.x, CubeSize.y/SourceSize.y, CubeSize.z/SourceSize.z) *
+            XMMatrixTranslation((CubeMin.x+CubeMax.x)*.5f, (CubeMin.y+CubeMax.y)*.5f,
+                (CubeMin.z+CubeMax.z)*.5f) * XMLoadFloat4x4(&CubeWorld));
+        for (const auto& Row : Staged.m) for (const f32_t Value : Row)
+            if (!std::isfinite(Value)) return false;
+        OutWorld = Staged; return true;
+    }
+
     void Apply_StartingCaptureCameraFraming(const Client::EFFECT_DOCUMENT_DESC& Document,
         const Client::EFFECT_EVALUATED_PARTICLE& Particle, const Engine::CModel& Model,
-        const f32_t fRootTimeSeconds, float4x4_t& World)
+        const f32_t fRootTimeSeconds, float4x4_t& World, const float4x4_t* pLandingWorld)
     {
         if (!Particle.pElement || !Is_StartingSceneCaptureCameraEmitter(*Particle.pElement) ||
             !Model.Has_LocalBounds()) return;
@@ -117,7 +147,7 @@ namespace EffectDocumentRendererDetail
         const auto* Projection = Engine::CGameInstance::Get().Get_Transform(Engine::D3DTS::PROJ);
         if (!View || !Projection || fBegin == FLT_MAX || fEnd == FLT_MAX || fEnd <= fBegin) return;
         Fit_StartingCaptureMeshToCamera(Model.Get_LocalBoundsMin(), Model.Get_LocalBoundsMax(),
-            *View, *Projection, (fRootTimeSeconds - fBegin) / (fEnd - fBegin), World);
+            *View, *Projection, (fRootTimeSeconds - fBegin) / (fEnd - fBegin), World, pLandingWorld);
     }
 
 	bool_t Is_ZeroFloatBits(const FLOAT fValue)

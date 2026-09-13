@@ -1,4 +1,5 @@
 #include "Npc.h"
+#include "KoukuSaydonAnimationBlend.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "EffectV2_Runtime.h"
 #include "AnimationTargetService.h"
@@ -166,6 +167,10 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 		return false;
 	m_bNetworkAnimationWindow = false;
 	m_bNetworkAnimationTransition = false;
+    m_NetworkAnimationBlendWindows.clear();
+    m_iNetworkSemanticClip = UINT32_MAX;
+    m_iNetworkSemanticAbsoluteStartMs = UINT32_MAX;
+    m_fNetworkPatternAgeSeconds = 0.0;
 	m_iNetworkAnimationSourceStartMs = m_iNetworkAnimationSourceEndMs = 0u;
 	m_fNetworkAnimationHoldSeconds = 0.f;
 	m_fNetworkAnimationAgeSeconds = 0.f;
@@ -227,9 +232,62 @@ bool_t CNpc::Set_NetworkAnimationWindow(const f32_t ageSeconds, const f32_t hold
     m_iNetworkAnimationSourceStartMs = sourceStartMs;
     m_iNetworkAnimationSourceEndMs = sourceEndMs;
     m_bNetworkAnimationWindow = true;
+    m_iNetworkSemanticClip = clip;
     m_pModelCom->Skip_Blend();
     m_pModelCom->Set_AnimPaused(true);
     m_pModelCom->Update_Animation(0.f);
+    Synchronize_WeaponPose();
+    return true;
+}
+
+bool_t CNpc::Set_NetworkAnimationBlendWindows(
+    const std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& windows,
+    const std::string_view semanticOccurrenceId, const f32_t patternAgeSeconds)
+{
+    if (!m_pModelCom || !m_bNetworkAnimationWindow || !std::isfinite(patternAgeSeconds) || patternAgeSeconds < 0.f)
+        return false;
+    std::string status;
+    if (!CKoukuSaydonAnimationBlend::Validate_ModelWindows(*m_pModelCom, windows, status)) return false;
+    const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* semantic = nullptr;
+    for (const auto& window : windows)
+        for (const auto* row : {&window.Source, &window.Target})
+            if (row->strOccurrenceId == semanticOccurrenceId)
+            {
+                if (semantic && *semantic != *row) return false;
+                semantic = row;
+            }
+    const char* clipName = m_pModelCom->Get_AnimationName(m_iNetworkSemanticClip);
+    if (!semantic || !clipName || semantic->strRuntimeClip != clipName) return false;
+    CModel::ANIMATION_TRANSITION_POSE pose;
+    bool active = false;
+    if (!CKoukuSaydonAnimationBlend::Sample_Pose(*m_pModelCom, windows, double(patternAgeSeconds) * 1000.0,
+        pose, active, status) || (active && !m_pModelCom->Set_AnimationTransitionPose(pose))) return false;
+    const float semanticAge = (std::max)(0.f, patternAgeSeconds - semantic->iStartOffsetMs * .001f);
+    if (!active)
+    {
+        float ticks = 0.f;
+        if (!Try_SampleNetworkAnimationTicks(semanticAge, m_iNetworkSemanticClip, m_fNetworkAnimationPlayRate, ticks)) return false;
+        if (m_bNetworkAnimationTransition)
+        {
+            pose.sourceIndex = m_iTransitionSourceIndex; pose.sourceTicks = m_fTransitionSourceTicks;
+            pose.targetIndex = m_iNetworkSemanticClip; pose.targetTicks = ticks;
+            pose.durationSeconds = m_fTransitionDurationSeconds; pose.elapsedSeconds = semanticAge;
+            pose.playRate = m_fTransitionPlayRate;
+            if (!m_pModelCom->Set_AnimationTransitionPose(pose)) return false;
+        }
+        else
+        {
+            m_pModelCom->Clear_AnimationTransitionPose();
+            m_pModelCom->Set_Animation(m_iNetworkSemanticClip, false, 0.f);
+            if (!m_pModelCom->Set_AnimTrackPosition(m_iNetworkSemanticClip, ticks)) return false;
+            m_pModelCom->Skip_Blend();
+            m_pModelCom->Update_Animation(0.f);
+        }
+    }
+    m_NetworkAnimationBlendWindows = windows;
+    m_iNetworkSemanticAbsoluteStartMs = semantic->iStartOffsetMs;
+    m_fNetworkPatternAgeSeconds = patternAgeSeconds;
+    m_pModelCom->Set_AnimPaused(true);
     Synchronize_WeaponPose();
     return true;
 }
@@ -278,6 +336,10 @@ bool_t CNpc::Play_NetworkAction(
 {
 	m_bNetworkAnimationWindow = false;
 	m_bNetworkAnimationTransition = false;
+    m_NetworkAnimationBlendWindows.clear();
+    m_iNetworkSemanticClip = UINT32_MAX;
+    m_iNetworkSemanticAbsoluteStartMs = UINT32_MAX;
+    m_fNetworkPatternAgeSeconds = 0.0;
 	m_iNetworkAnimationSourceStartMs = m_iNetworkAnimationSourceEndMs = 0u;
 	m_fNetworkAnimationHoldSeconds = 0.f;
 	m_fNetworkAnimationAgeSeconds = 0.f;
@@ -417,15 +479,23 @@ void CNpc::Update(f32_t fTimeDelta)
 	}
     const float frameDelta = (std::max)(0.f, fTimeDelta);
     m_fNetworkAnimationAgeSeconds += frameDelta;
-    const float animationAge = (std::max)(0.f,
-        m_fNetworkAnimationAgeSeconds - m_fNetworkAnimationStartOffsetSeconds);
+    m_fNetworkPatternAgeSeconds += frameDelta;
+    const float animationAge = m_bNetworkAnimationWindow && m_iNetworkSemanticAbsoluteStartMs != UINT32_MAX ?
+        float((std::max)(0.0, m_fNetworkPatternAgeSeconds - double(m_iNetworkSemanticAbsoluteStartMs) * .001)) :
+        (std::max)(0.f, m_fNetworkAnimationAgeSeconds - m_fNetworkAnimationStartOffsetSeconds);
     if (m_bNetworkAnimationWindow)
     {
-        const auto clip = m_pModelCom->Get_CurrentAnimIndex();
+        const auto clip = m_iNetworkSemanticClip;
         float ticks = 0.f;
         bool sampled = Try_SampleNetworkAnimationTicks(animationAge, clip,
             m_fNetworkAnimationPlayRate, ticks);
-        if (sampled && m_bNetworkAnimationTransition &&
+        CModel::ANIMATION_TRANSITION_POSE logicPose;
+        bool logicActive = false;
+        std::string blendStatus;
+        if (sampled) sampled = CKoukuSaydonAnimationBlend::Sample_Pose(*m_pModelCom,
+            m_NetworkAnimationBlendWindows, m_fNetworkPatternAgeSeconds * 1000.0, logicPose, logicActive, blendStatus);
+        if (sampled && logicActive) sampled = m_pModelCom->Set_AnimationTransitionPose(logicPose);
+        else if (sampled && m_bNetworkAnimationTransition &&
             m_fNetworkAnimationAgeSeconds >= m_fNetworkAnimationStartOffsetSeconds)
         {
             CModel::ANIMATION_TRANSITION_POSE pose;
@@ -438,6 +508,8 @@ void CNpc::Update(f32_t fTimeDelta)
         }
         else if (sampled)
         {
+            m_pModelCom->Clear_AnimationTransitionPose();
+            m_pModelCom->Set_Animation(clip, false, 0.f);
             sampled = m_pModelCom->Set_AnimTrackPosition(clip, ticks);
             if (sampled) { m_pModelCom->Skip_Blend(); m_pModelCom->Update_Animation(0.f); }
         }

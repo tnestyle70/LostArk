@@ -365,6 +365,11 @@ namespace LostArk::Server
 		float fPatternStageOriginX = 0.f;
 		float fPatternStageOriginZ = 0.f;
 		float fPatternStageOriginYawDegrees = 0.f;
+		// Kouku stage root motion captures after spawn reset and ENTER retarget.
+		float fPatternStageOriginY = 0.f;
+		float fPatternStageRootGroundY = 0.f;
+		bool bPatternStageRootOriginCaptured = false;
+		std::uint32_t iPatternStageRootLastTick = 0u;
 		bool bPatternWallContact = false;
 		/* The running stage reaches through a raised encounter prop, so cover
 		does not answer this blow. */

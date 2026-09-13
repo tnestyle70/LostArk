@@ -407,7 +407,7 @@ void Client::CValtanActionWorkbench::Render_BossPatternPane(
 	if (nullptr == pPattern)
 	{
 		ImGui::SeparatorText("Boss Pattern Graph");
-		ImGui::TextDisabled("Select one admitted Pattern in Composition Patterns.");
+		ImGui::TextDisabled("Select one admitted Pattern in Composition Actions.");
 		return;
 	}
 

@@ -184,7 +184,7 @@ namespace
 
 	bool Resolve_LogicRegionTransform(const LostArk::Server::BOSS_LOGIC_REGION& region,
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
-		const std::uint32_t patternElapsedTicks, LOGIC_REGION_TRANSFORM& outTransform) noexcept
+		const double patternElapsedTicks, LOGIC_REGION_TRANSFORM& outTransform, const bool requireVisible = true) noexcept
 	{
 		using namespace LostArk::Server;
 		float centerX = region.fCenterX, centerZ = region.fCenterZ, yaw = region.fYawDegrees;
@@ -206,7 +206,7 @@ namespace
 				[](const double time, const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) { return time < key.iTimeMs; });
 			const auto& left = next == track.Keys.begin() ? track.Keys.front() : *(next - 1);
 			const auto& right = next == track.Keys.end() ? left : *next;
-			if (!left.bVisible) return false;
+			if (requireVisible && !left.bVisible) return false;
 			float factor = right.iTimeMs > left.iTimeMs ?
 				static_cast<float>((timeMs - left.iTimeMs) / (right.iTimeMs - left.iTimeMs)) : 0.f;
 			factor = (std::clamp)(factor, 0.f, 1.f);
@@ -286,6 +286,49 @@ namespace
 		// A shared radial edge belongs to exactly one sector.
 		const bool inside = angle >= -region.fHalfAngleDegrees && angle < region.fHalfAngleDegrees;
 		return region.bReverseSector ? !inside : inside;
+	}
+
+	// Sweep only the existing centered WORLD circle contract. Each visible
+	// key interval is independent, so a hidden gap, delayed birth or expired
+	// lifetime cannot become a phantom segment between two visible samples.
+	bool Swept_CenteredWorldCircleContainsPlayer(const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const LostArk::Server::SERVER_PLAYER& player, const std::uint32_t elapsedTicks,
+		const std::uint32_t windowStartTicks, const std::uint32_t windowEndTicks) noexcept
+	{
+		using namespace LostArk::Server;
+		using namespace LostArk::Shared::CombatCollision;
+		if (!region.bCircle || !region.WorldTrack.bEnabled || region.fCenterX != 0.f || region.fCenterZ != 0.f ||
+			region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT || elapsedTicks <= windowStartTicks ||
+			!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionZ)) return false;
+		const auto& track = region.WorldTrack;
+		if (track.Keys.size() < 2u || !(track.fPlaybackSpeed > 0.f)) return false;
+		const double beginTick = (std::max)(double(elapsedTicks) - 1.0, double(windowStartTicks));
+		const double endTick = (std::min)(double(elapsedTicks), double(windowEndTicks));
+		const double originTick = CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs) + track.iStartDelayMs * .03;
+		const double beginMs = (beginTick - originTick) / .03 * track.fPlaybackSpeed;
+		const auto next = std::upper_bound(track.Keys.begin(), track.Keys.end(), beginMs,
+			[](const double time, const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) { return time < key.iTimeMs; });
+		const auto firstIndex = next == track.Keys.begin() ? 0u : static_cast<std::size_t>(next - track.Keys.begin() - 1u);
+		for (std::size_t index = firstIndex; index + 1u < track.Keys.size(); ++index)
+		{
+			const auto& left = track.Keys[index];
+			const auto& right = track.Keys[index + 1u];
+			if (originTick + left.iTimeMs * .03 / track.fPlaybackSpeed >= endTick) break;
+			if (!left.bVisible || left.iTimeMs >= right.iTimeMs) continue;
+			const double begin = (std::max)(beginTick, originTick + left.iTimeMs * .03 / track.fPlaybackSpeed);
+			const double end = (std::min)(endTick, originTick + right.iTimeMs * .03 / track.fPlaybackSpeed);
+			if (end <= begin) continue;
+			LOGIC_REGION_TRANSFORM first, last;
+			// At the terminal key the pose is still the preceding visible segment's
+			// endpoint. Its visibility applies only to the next segment.
+			if (!Resolve_LogicRegionTransform(region, boss, begin, first, false) ||
+				!Resolve_LogicRegionTransform(region, boss, end, last, false) ||
+				std::abs(first.radius - last.radius) > .00001f) continue;
+			if (Segment_IntersectsCircle(first.centerX, first.centerZ, last.centerX, last.centerZ,
+				CIRCLE_XZ{player.fPositionX, player.fPositionZ, first.radius})) return true;
+		}
+		return false;
 	}
 
 	bool Intersects_LogicRegion(const LostArk::Server::BOSS_LOGIC_REGION& region,
@@ -1237,7 +1280,12 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
 				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
-					[&](const BOSS_LOGIC_REGION& region) { return Contains_LogicRegion(region, boss, player, serverTick - ledger.iPatternStartTick); });
+					[&](const BOSS_LOGIC_REGION& region) {
+						const auto elapsed = serverTick - ledger.iPatternStartTick;
+						return Contains_LogicRegion(region, boss, player, elapsed) ||
+							(enter && Swept_CenteredWorldCircleContainsPlayer(region, boss, player, elapsed,
+								state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick));
+					});
 				const bool inside = window.CardRegions.end() != caught;
 				const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
 					window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;

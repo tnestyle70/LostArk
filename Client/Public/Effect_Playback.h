@@ -79,6 +79,9 @@ struct EFFECT_EVALUATED_PARTICLE final
 	f32_t fSubImageIndex = 0.f;
 	f32_t fDistributionRandom = 0.f;
 	f32_t fNormalizedLife = 0.f;
+    // Retained one-display burst rows sample material inputs at their live step.
+    // Negative uses the ordinary frame clock; no source lifetime is extended.
+    f32_t fMaterialSampleTimeSeconds = -1.f;
 };
 
 struct EFFECT_SUBUV_FRAME_DESC final
@@ -506,7 +509,12 @@ private:
 		std::string& strOutError) const;
 	bool_t Refresh_ModelCueAnchors(f32_t fSampleTimeSeconds, const float4x4_t& RootWorld);
 	bool_t Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
-	void Rebuild_Frame(const float4x4_t& RootWorld);
+	void Rebuild_Frame(const float4x4_t& RootWorld,
+        const std::unordered_set<const EFFECT_ELEMENT_DESC*>* pParticleSelection = nullptr);
+    bool_t Is_UnpresentedShowtimeBurst(const EFFECT_ELEMENT_DESC& Element) const;
+    void Capture_MissedShowtimeBursts(const float4x4_t& RootWorld);
+    void Append_MissedShowtimeBursts();
+    void Mark_ShowtimeBurstsPresented();
 	void Spawn_Particles(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -694,6 +702,10 @@ private:
 	float3_t m_vPreviousRootPosition{};
 	float3_t m_vParentVelocity{};
 	EFFECT_EVALUATED_FRAME m_Frame;
+    // Transient draw candidates only: source birth/death clocks remain untouched.
+    std::unordered_map<const EFFECT_ELEMENT_DESC*, std::vector<EFFECT_EVALUATED_PARTICLE>> m_MissedShowtimeBursts;
+    std::unordered_set<const EFFECT_ELEMENT_DESC*> m_PresentedShowtimeBursts;
+    bool_t m_bShowtimeBurstPresentation = false;
 	// State/anchor writers invalidate CPU rows; render camera work stays separate.
 	bool_t m_bFrameInputsDirty = true;
 	f32_t m_fSampleTimeSeconds = 0.f;

@@ -216,6 +216,8 @@ def main(argv):
         text = json.dumps(document, indent=2, ensure_ascii=False) + '\n'
         path = os.path.join(out_dir, asset + '.hitshapes.json')
         old = io.open(path, encoding='utf-8').read() if os.path.exists(path) else None
+        if old and json.loads(old).get('formatVersion') == 4:
+            raise SystemExit('%s: v4 Collider/Logic/Result edits are owned by Action Workbench; legacy intake cannot overwrite them' % asset)
         skill_count = len(document['skills'])
         hit_count = sum(len(s.get('hits', [])) + sum(len(st['hits']) for st in s.get('stages', [])) for s in document['skills'])
         projectile_count = sum(len(s.get('projectiles', [])) + sum(len(st.get('projectiles', [])) for st in s.get('stages', []))

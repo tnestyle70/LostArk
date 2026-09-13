@@ -942,6 +942,17 @@ bool_t Client::CAnimation_Tool::Save_Events(
 		return false;
 	}
 
+	if (m_bEventSourceBaselineKnown)
+	{
+		std::ifstream source(destination, std::ios::binary);
+		const std::string current{std::istreambuf_iterator<char>(source), {}};
+		if (!source || source.bad() || current != m_EventSourceBaseline)
+		{
+			std::error_code cleanup; std::filesystem::remove(temporary, cleanup);
+			m_Status = "Animation cues changed externally; the file and current draft were preserved.";
+			return false;
+		}
+	}
 	if (!MoveFileExW(
 		temporary.c_str(),
 		destination.c_str(),
@@ -955,6 +966,9 @@ bool_t Client::CAnimation_Tool::Save_Events(
 		return false;
 	}
 
+	std::ifstream committed(destination, std::ios::binary);
+	m_EventSourceBaseline.assign(std::istreambuf_iterator<char>(committed), {});
+	m_bEventSourceBaselineKnown = !committed.bad();
 	m_bDirty = false;
 	m_Status = "Saved " + std::to_string(m_Events.size()) +
 		" event(s) atomically to " + destination.string();
@@ -977,6 +991,10 @@ bool_t Client::CAnimation_Tool::Load_Events(
 		return false;
 	}
 
+	std::ifstream baselineSource(path, std::ios::binary);
+	const std::string baseline{std::istreambuf_iterator<char>(baselineSource), {}};
+	if (!baselineSource || baselineSource.bad()) { m_Status = "Could not pin Animation cue source baseline."; return false; }
+	m_EventSourceBaseline = baseline; m_bEventSourceBaselineKnown = true;
 	m_Events = std::move(staged);
 	m_iSelectedEvent = -1;
 	/* v3 already stores milliseconds and can be represented by v4 without moving

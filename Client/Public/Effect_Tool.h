@@ -515,9 +515,11 @@ public:
     ~CEffect_Tool();
 
     void Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* player);
+    shared_ptr<CEffectAuthoringSequencer> Create_CompositionSequencer(const char* sequenceId);
     void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
     void Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera);
     void Update_AuthoringWorkspace(float dt, bool active);
+    bool Update_AuthoringPlacementInput(bool active);
     void Deactivate_AuthoringWorkspace();
     bool Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key);
     bool Consume_AuthoringInteraction();
@@ -545,6 +547,7 @@ private:
     void Render_AllEffectsWindow();
 	void Render_SavedAuthoredEffectSection(const std::string& strSearch, bool_t bWorld);
 	void Render_ActiveAuthoredEffectTree();
+    void Render_ProjectileDestinationControls();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
         const EFFECT_DOCUMENT_DESC& Document,
@@ -1467,7 +1470,7 @@ private:
         const float4x4_t& root, bool useKouku, float seconds,
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
     std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
-    std::unique_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
+    std::shared_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
     std::vector<EFFECT_COMPOSITION_WORLD_RESOURCE> m_AuthoringWorldObjects;
     std::unordered_map<CEffectObject*, uint32_t> m_AuthoringOccurrenceLevels;
     std::unordered_map<CEffectObject*, std::shared_ptr<const EFFECT_DOCUMENT_DESC>> m_AuthoringOccurrenceDocuments;

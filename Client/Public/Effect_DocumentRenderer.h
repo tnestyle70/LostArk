@@ -35,6 +35,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CEffectMaterialProgramRegistry;
+struct EFFECT_SCENE_CAPTURE_STATE;
 struct EFFECT_VISUAL_PROGRAM_ROW;
 struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
 
@@ -547,9 +548,16 @@ public:
 			OutSnapshots,
 		std::string& strOutError);
 
-	HRESULT Build_NativeScreenPost(const EFFECT_EVALUATED_SCREEN_POST& Evaluated,
+	HRESULT Build_NativeScreenPost(const EFFECT_EVALUATED_FRAME& Frame,
+		const EFFECT_EVALUATED_SCREEN_POST& Evaluated,
 		std::shared_ptr<const Engine::IPresentationScreenPostMaterial>& OutMaterial,
-		std::string& strOutError) const;
+		std::string& strOutError);
+	bool_t Has_CapturedScreenPost(const std::string& elementId) const;
+	HRESULT Get_ScreenPostCaptureResult(const std::string& elementId) const;
+	void Set_ScreenPostCaptureAllowed(bool_t allowed) { m_bScreenPostCaptureAllowed = allowed; }
+	bool Try_ProjectCaptureTargetBounds(const EFFECT_EVALUATED_FRAME& Frame,
+		const std::string& cueId, f32_t targetTimeSeconds,
+		float2_t& centerUV, float2_t& sizeUV) const;
 	HRESULT Initialize();
 	void Preserve_StartingSceneCapture(const CEffectDocumentRenderer& Previous);
 	bool_t Stage_Prepared(
@@ -588,6 +596,7 @@ public:
 		f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
 		std::unordered_map<std::string, float4x4_t>& InOutAnchorWorlds,
 		std::string& strOutError);
+	void Set_ModelCueRenderingEnabled(bool_t enabled) { m_bModelCueRenderingEnabled = enabled; }
 	bool_t Has_NonBlendModelCues() const;
 	bool_t Has_WorldMarkElements() const;
 	bool_t Has_ActiveSceneBackdrop(const EFFECT_EVALUATED_FRAME& Frame) const;
@@ -765,6 +774,8 @@ private:
 		std::span<const EFFECT_NATIVE_MESH_INSTANCE> Instances = {},
 		uint32_t iInstanceByteOffset = 0u,
 		uint32_t iOrderedGeometryHandle = UINT32_MAX);
+    void Apply_StartingCaptureCameraFraming(const EFFECT_EVALUATED_FRAME& Frame,
+        const EFFECT_EVALUATED_PARTICLE& Particle, const Engine::CModel& Model, float4x4_t& World);
 	HRESULT Try_RenderNativeMeshParticles(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_PARTICLE> Particles,
@@ -838,6 +849,7 @@ private:
 		m_pReconstructedDiagnostic;
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
+	bool_t m_bModelCueRenderingEnabled = true;
 	std::array<shared_ptr<Engine::CShader>, EFFECT_SHADER_PROGRAMS.size()> m_ShaderPrograms;
 	shared_ptr<Engine::CShader> m_pMeshShader;
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;
@@ -862,6 +874,8 @@ private:
 	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertexScratch;
 	std::vector<uint32_t> m_TrailIndexScratch;
 	// Per playback occurrence; never retained by the shared prepared-resource cache.
+	bool_t m_bScreenPostCaptureAllowed = true;
+	std::unordered_map<std::string, std::shared_ptr<EFFECT_SCENE_CAPTURE_STATE>> m_ScreenPostCaptures;
 	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneCapture;
 	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneBloomCapture;
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;

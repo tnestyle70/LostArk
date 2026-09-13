@@ -218,6 +218,53 @@ namespace
 	}
 #endif
 
+#ifdef _DEBUG
+    bool_t Prepare_GateMapLights(const CMapLightDocument& source, const size_t gateIndex,
+        std::shared_ptr<CMapLightPresentationRuntime>& result, std::string& status)
+    {
+        result.reset();
+        if (gateIndex != 0u && gateIndex != 2u) return true;
+        if (!source.Is_Ready() || source.Get_AreaId() != KAKULSAYDON_AREA_ID)
+        { status = "Gate lighting requires the current Kouku Area light document."; return false; }
+        auto document = source;
+        if (gateIndex == 0u)
+        {
+            std::shared_ptr<CMapLightPresentationRuntime> popup;
+            if (!Prepare_PopupMapLights(source, popup, status)) return false;
+            document = popup->Get_Document();
+        }
+        auto lights = document.Get_Lights();
+        const std::string popupSpotlightId = "popup.light.LV_LUT_MIDNIGHTC_ED.1";
+        bool foundPopupSpotlight = false;
+        for (auto& light : lights)
+        {
+            if (gateIndex == 2u)
+            {
+                // Keep the dark-stage background mask without overriding authored lights.
+                const bool backgroundLight = light.groupId == "source_baked_character" ||
+                    light.groupId == "source_direct" ||
+                    light.lightId == "light.LV_LUT_MIDNIGHTC_ED.1" ||
+                    light.lightId == "light.LV_LUT_MIDNIGHTC_ED.2" ||
+                    light.lightId == "light.LV_LUT_MIDNIGHTC_ED.3" ||
+                    light.lightId == "light.LV_LUT_MIDNIGHTC_ED.4" ||
+                    light.lightId == "light.LV_LUT_MIDNIGHTC_ED.5";
+                if (backgroundLight) light.enabled = false;
+                continue;
+            }
+            if (light.lightId == "light.LV_LUT_MIDNIGHTC_ED.1" ||
+                light.lightId == "light.LV_LUT_MIDNIGHTC_ED.6") light.enabled = false;
+            if (light.lightId == popupSpotlightId) { light.enabled = true; foundPopupSpotlight = true; }
+        }
+        if (gateIndex == 0u && !foundPopupSpotlight)
+        { status = "Gate spotlight is missing: " + popupSpotlightId; return false; }
+        if (!document.Replace_Authored(lights, source.Get_NextLightOrdinal(), status)) return false;
+        auto staged = std::make_shared<CMapLightPresentationRuntime>();
+        if (!staged->Replace_Document(document)) { status = staged->Get_Status(); return false; }
+        result = std::move(staged);
+        return true;
+    }
+#endif
+
 	/* The follow camera this level installs. Reused when a shot hands the
 	   camera back so the released pose matches the follow pose exactly. */
 
@@ -556,6 +603,7 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 #ifdef _DEBUG
 	Debug_StopWorldObjectPreview();
 	Debug_StopCompositionWorldPreview();
+    Debug_StopGateObjects();
 	// The gate focus is this arena's session state; the next level starts neutral.
 	CCombatHUDViewModel::Get().Clear_BossFocus();
 #endif
@@ -787,6 +835,11 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	m_CompositionWorldPreviewDeployStates = std::move(previousDeployStates);
 	m_CompositionWorldPreviewArenaVisibility = std::move(previousArenaVisibility);
 	m_bCompositionWorldPreviewStandingArenaVisible = false;
+	m_bCompositionWorldPreviewBorrowsGateObjects = previewsResourceBook || previewsCutsceneSet ||
+		placementBindings.contains({WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT,
+			std::to_string(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID)});
+	if (m_bCompositionWorldPreviewBorrowsGateObjects && !Debug_SetGateObjectsSuspended(true, status))
+	{ Debug_StopCompositionWorldPreview(); return false; }
 	if (!visibleDeployStates.empty() && !m_DeployRuntime.Set_States(visibleDeployStates))
 	{
 		status = "WORLD preview could not apply its Deploy states: " + m_DeployRuntime.Get_Status();
@@ -877,6 +930,12 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 	}
 	m_strCompositionWorldPreviewPattern.clear();
 	m_bCompositionWorldPreviewClockBound = false;
+	if (std::exchange(m_bCompositionWorldPreviewBorrowsGateObjects, false))
+	{
+		std::string restore;
+		if (!Debug_SetGateObjectsSuspended(false, restore))
+			OutputDebugStringA(("[KoukuWorldPreview] Gate baseline restore failed: " + restore + "\n").c_str());
+	}
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
@@ -903,6 +962,29 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	auto targets = Make_WorldSequenceTargets();
 	bool_t cutsceneMapPending = false;
 	bool_t popupBookActive = false;
+	bool_t gateBorrowPending = false;
+	if (m_bCompositionWorldPreviewBorrowsGateObjects)
+	{
+		for (const auto& [id, playback] : m_CompositionWorldPreviewCues)
+		{
+			const auto& cue = playback.cue;
+			const auto* instance = playback.player->Get_Document().Find_Instance(cue.instanceId);
+			const auto span = playback.player->Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
+			if (!instance || (clockMs >= cue.startMs && clockMs - cue.startMs >= span)) continue;
+			for (const auto& binding : instance->bindings)
+			{
+				uint64_t targetId = 0u;
+				gateBorrowPending |= (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+					binding.targetId == "world.object.kouku.popup.book") ||
+					(CWorldSequencePlayer::Try_ParseTargetId(binding, targetId) &&
+						((binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
+							KAKULSAYDON_CUTSCENE_SET_FIRST_ID <= targetId && targetId < KAKULSAYDON_CUTSCENE_SET_END_ID) ||
+						 (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT && targetId == KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID)));
+			}
+		}
+		if (gateBorrowPending && !Debug_SetGateObjectsSuspended(true, status))
+		{ Debug_StopCompositionWorldPreview(); return false; }
+	}
 	for (auto& [id, playback] : m_CompositionWorldPreviewCues)
 	{
 		const auto& cue = playback.cue;
@@ -978,6 +1060,9 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		m_bCompositionWorldPreviewStandingArenaVisible = showStandingArena;
 	}
 	m_bCompositionMapLightPreviewActive = popupBookActive && m_pCompositionMapLightPreview != nullptr;
+	if (m_bCompositionWorldPreviewBorrowsGateObjects && !gateBorrowPending &&
+		!Debug_SetGateObjectsSuspended(false, status))
+	{ Debug_StopCompositionWorldPreview(); return false; }
 	return true;
 }
 #endif
@@ -1354,6 +1439,17 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
 			m_iActiveDebugGate = m_iPendingDebugGate;
+            std::string gatePresentationStatus;
+            if (Debug_CommitGateObjects(m_iActiveDebugGate, gatePresentationStatus))
+            {
+                m_iGateLightingIndex = m_iActiveDebugGate;
+                m_pGateMapLightPresentation = std::move(m_pPendingGateMapLights);
+                m_GateMapLightSource = std::move(m_PendingGateMapLightSource);
+                m_strGatePresentationProfileId = m_iActiveDebugGate == 0u ? "scene.kakulsaydon.g1.book-open.v1" :
+                    m_iActiveDebugGate == 2u ? "scene.kakulsaydon.g3.dark.v1" : "";
+            }
+            else m_strDebugGateStatus += "\nServer approved the gate, but its presentation failed: " + gatePresentationStatus;
+
 			// Commit the gimmick mode only after the Server-approved gate move.
 			using LostArk::Shared::KOUKU_HUD_MODE;
 			(void)m_PlayerController.Request_DebugKoukuHudMode(
@@ -1364,6 +1460,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		else
 		{
 			m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+            Debug_CancelGateObjects(); m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
 			m_strDebugGateStatus += "\nGate activation failed; correct the reported cause and retry.";
 		}
 		m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
@@ -1375,6 +1472,12 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		if (m_PlayerController.Did_DebugPlayerPlacementSucceed())
 		{
 			m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+            Debug_StopGateObjects();
+            m_iGateLightingIndex = NO_ACTIVE_DEBUG_GATE;
+            m_strGatePresentationProfileId.clear();
+            m_pGateMapLightPresentation.reset(); m_pPendingGateMapLights.reset();
+            m_GateMapLightSource.reset(); m_PendingGateMapLightSource.reset();
+
 			m_bSequenceCombatPending = false; m_bSequenceCombatFadeHeld = false;
 			CCombatHUDViewModel::Get().Clear_BossFocus();
 			CCombatHUDViewModel::Get().Set_BossHidden(true);
@@ -1493,6 +1596,9 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			if (member.eState == RUN_STATE::COMPLETED || member.eState == RUN_STATE::ABORTED) stopOwner(member.strMemberId, member.eState);
 	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
+#ifdef _DEBUG
+    Debug_UpdateGateObjects(fTimeDelta);
+#endif
 	Update_CardMazePresentation(fTimeDelta);
 	Update_MarioBallBouncePresentation(fTimeDelta);
 	Update_MarioBallPresentation(fTimeDelta);
@@ -2474,7 +2580,7 @@ Client::CLevel_KakulSaydonArena::Get_DebugGates()
 		// 1관문 - 세이튼
 		KAKUL_DEBUG_GATE{ "1" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
 			{ { "boss.kakulsaydon.g1.saydon", nullptr } },
-			float3_t(-2.45f, 1.32f, 945.17f),
+			float3_t(-2.45f, 1.32f, 740.37f),
 			"BOSS_KAKULSAYDON_G1_SAYDON", "boss.kakulsaydon.g1.saydon", nullptr },
 		// 2관문 - 대형 세이튼, 쿠크 (HUD and audition follow Kouku)
 		KAKUL_DEBUG_GATE{ "2" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEB\x8C\x80\xED\x98\x95" " " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC" ", " "\xEC\xBF\xA0\xED\x81\xAC",
@@ -2562,6 +2668,18 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 			label + ": gate request sequence is exhausted; restart the Client.";
 		return false;
 	}
+    if (!Debug_PrepareGateObjects(gateIndex, outStatus))
+    { m_strDebugGateStatus = label + ": " + outStatus; return false; }
+    const auto lightSource = m_pMapLightAuthoringOverride ? m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+    m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
+    if ((gateIndex == 0u || gateIndex == 2u) &&
+        (!lightSource || !Prepare_GateMapLights(lightSource->Get_Document(), gateIndex, m_pPendingGateMapLights, outStatus)))
+    {
+        Debug_CancelGateObjects();
+        if (!lightSource) outStatus = "Gate Area lighting is unavailable.";
+        m_strDebugGateStatus = label + ": " + outStatus; return false;
+    }
+    if (lightSource) m_PendingGateMapLightSource = lightSource->Get_Document();
 	const std::uint32_t requestSequence = m_iNextDebugGateRequestSequence;
 	if ((std::numeric_limits<std::uint32_t>::max)() == m_iNextDebugGateRequestSequence)
 		m_iNextDebugGateRequestSequence = 0u;
@@ -2572,6 +2690,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	   confirmed success commits the active gate, HUD and audition target. */
 	if (!m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(requestSequence))
 	{
+        Debug_CancelGateObjects(); m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
 		outStatus = m_strDebugGateStatus = label + ": despawn command was rejected.";
 		return false;
 	}
@@ -2621,6 +2740,7 @@ void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::stri
 	// Start placement keeps the Controller's pending request until its Server reply.
 	if (m_iPendingDebugGate == NO_ACTIVE_DEBUG_GATE) return;
 	const std::string finalReason = reason;
+    Debug_CancelGateObjects(); m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
 	m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_DebugGatePendingPlacements.clear();
@@ -3665,6 +3785,11 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
  return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Is_CompositionCameraEnabled() const
+{
+	return m_pCamera && m_pCamera->Is_FollowEnabled();
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	const std::string_view shotId, const float seconds, const float3_t& offset,
 	const std::string_view ownerKey, const uint32_t durationMs, const bool_t preview)
@@ -3672,13 +3797,13 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	constexpr uint64_t owner = 0x4b4f554b55434f4dull;
 	if (!m_pCamera || ownerKey.empty() || !std::isfinite(seconds) || seconds < 0.f || durationMs == 0u ||
 		!std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(offset.z)) return false;
+	if (!Is_CompositionCameraEnabled()) return false;
 	if (preview) { std::string status; if (!Ensure_CameraShotAuthoring(status)) return false; }
 	const auto& shots = preview ? m_AuthoringCameraShots : m_CameraShots;
 	const auto found = std::find_if(shots.begin(), shots.end(), [shotId](const auto& shot) { return shot.strShotId == shotId; });
 	if (found == shots.end() || durationMs < found->iBlendInMs) return false;
 	auto& transition = m_CompositionCamera;
 	if (transition.cancelledOwnerKey == ownerKey) return false;
-	if (!preview && !m_pCamera->Is_FollowEnabled()) return false;
 	if (transition.ownerKey != ownerKey || transition.returning || seconds + 0.01f < transition.lastSeconds)
 	{
 		VALTAN_CINEMATIC_CAMERA_POSE current;
@@ -3748,7 +3873,9 @@ void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(const bool_t force)
 	if (transition.ownerKey.empty()) return;
 	if (force)
 	{
-		transition.cancelledOwnerKey = transition.ownerKey;
+		// F6 suspends camera playback; returning to follow may resume this same row.
+		transition.cancelledOwnerKey = m_pCamera && !m_pCamera->Is_FollowEnabled() ?
+			std::string() : transition.ownerKey;
 		if (m_pCamera)
 		{
 			auto pose = transition.appliedPose;
@@ -3757,7 +3884,7 @@ void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(const bool_t force)
 				(void)Resolve_CompositionFollowPose(pose);
 				(void)m_pCamera->End_PresentationOverrideToPose(0x4b4f554b55434f4dull, pose.vEye, pose.vLookAt, pose.fFovYDegrees);
 			}
-			else (void)m_pCamera->End_PresentationOverride(0x4b4f554b55434f4dull);
+			else (void)m_pCamera->End_PresentationOverrideAtCurrentPose(0x4b4f554b55434f4dull);
 		}
 		transition.ownerKey.clear(); transition.returning = false;
 		return;
@@ -3773,6 +3900,12 @@ void Client::CLevel_KakulSaydonArena::Update_CompositionCamera(const f32_t timeD
 {
 	constexpr uint64_t owner = 0x4b4f554b55434f4dull;
 	auto& transition = m_CompositionCamera;
+	if (m_pCamera && !m_pCamera->Is_FollowEnabled())
+	{
+		Stop_CompositionCamera(true);
+		transition.cancelledOwnerKey.clear();
+		return;
+	}
 	if (transition.ownerKey.empty()) return;
 	if (!m_pCamera || !m_pCamera->Is_PresentationOverrideOwnedBy(owner) ||
 		m_pCamera->Is_FollowEnabled() != transition.followAtStart)
@@ -3997,6 +4130,20 @@ void Client::CLevel_KakulSaydonArena::Submit_MapLightFrame()
 {
 	auto lights = m_pMapLightAuthoringOverride ? m_pMapLightAuthoringOverride : m_pMapLightPresentation;
 #ifdef _DEBUG
+    if (lights && (m_iGateLightingIndex == 0u || m_iGateLightingIndex == 2u) &&
+        (!m_GateMapLightSource || !Same_MapLightSource(lights->Get_Document(), *m_GateMapLightSource)))
+    {
+        std::shared_ptr<CMapLightPresentationRuntime> staged;
+        std::string status;
+        if (Prepare_GateMapLights(lights->Get_Document(), m_iGateLightingIndex, staged, status))
+        {
+            m_GateMapLightSource = lights->Get_Document();
+            m_pGateMapLightPresentation = std::move(staged);
+        }
+        else if (m_strDebugGateStatus != status)
+        { m_strDebugGateStatus = status; OutputDebugStringA(("[GateLighting] " + status + "\n").c_str()); }
+    }
+    if (m_pGateMapLightPresentation) lights = m_pGateMapLightPresentation;
 	if (m_bCompositionMapLightPreviewActive && m_pCompositionMapLightPreview)
 		lights = m_pCompositionMapLightPreview;
 #endif

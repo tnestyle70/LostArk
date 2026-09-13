@@ -4,10 +4,14 @@
 #include "ProjectDataRoot.h"
 #include "AnimationTargetService.h"
 #include "CameraTool.h"
+#include "EffectAuthoringResourceTree.h"
+#include "WorldGameplayDocument.h"
+#include "KoukuCinematicAnimationCatalog.h"
 
 #include <Windows.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -21,6 +25,31 @@
 #include <vector>
 
 #ifdef LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS
+bool Client::CKoukuCinematicAnimationCatalog::Load(std::vector<KOUKU_CINEMATIC_ANIMATION_GROUP>&, std::string&)
+{
+	throw std::runtime_error("CPU editor contracts unexpectedly queried the live Cinematic inventory.");
+}
+
+bool Client::CEffectAuthoringResourceTree::Read_V1Organization(std::vector<RESOURCE>&, std::string&)
+{
+	throw std::runtime_error("CPU editor contracts unexpectedly queried the live Effect organization.");
+}
+
+bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE>&, std::string&)
+{
+	throw std::runtime_error("CPU editor contracts unexpectedly queried the live Effect inventory.");
+}
+
+bool_t Client::CWorldGameplayDocument::Load(const std::filesystem::path&, const std::string&, std::string&)
+{
+	throw std::runtime_error("CPU editor contracts unexpectedly queried live World placement.");
+}
+
+Client::WORLD_GAMEPLAY_PLACEMENT* Client::CWorldGameplayDocument::Find(const std::string&)
+{
+	throw std::runtime_error("CPU editor contracts unexpectedly queried live World placement.");
+}
+
 // CPU editor contracts never create a live Level or operate its camera UI.
 // Keep link-only dependencies strict so a new live call fails the contract.
 Client::CLevel_KakulSaydonArena* Client::CLevel_KakulSaydonArena::s_pActiveInstance = nullptr;
@@ -2247,6 +2276,220 @@ namespace
 		reject({ pattern.Stages.front().strStageId }, mixedSelection, "copy-on-write Logic ordinal exhaustion partially inserted a segment");
 		exhausted = source; exhausted.Patterns.front().iNextPresentationOccurrenceOrdinal = 1000000u; reset(exhausted);
 		reject({ pattern.Stages.front().strStageId }, mixedSelection, "presentation ordinal exhaustion partially inserted a segment");
+
+		// Parent Loop owns a complete cycle; Motion LOOP remains local to each
+		// WORLD box. Exercise the actual command and saved canonical document.
+		auto parentSource = source;
+		KOUKU_SAYDON_COMPOSITION_FOLDER cycleFolder;
+		cycleFolder.strFolderId = "kakulsaydon.folder." + std::to_string(parentSource.iNextFolderOrdinal++);
+		cycleFolder.strGateId = pattern.strGateId; cycleFolder.strDisplayName = "Native repeating Parent";
+		cycleFolder.strTimelinePatternId = patternId;
+		parentSource.Folders.push_back(cycleFolder);
+		parentSource.Patterns.front().strFolderId = cycleFolder.strFolderId;
+		parentSource.Patterns.front().iDurationMs = 3000u;
+		reset(parentSource);
+		const auto rejectCycle = [&](const std::string& id, const std::uint32_t window) {
+			const auto before = workbench.Get_Composition(); const auto generation = workbench.Get_DraftGeneration();
+			const auto dirty = workbench.Is_Dirty(); const auto bytes = ReadText(sourcePath);
+			std::string output = "unchanged";
+			Require(!workbench.Repeat_ParentCycle(id, window, output, status) && !status.empty() && output == "unchanged" &&
+				workbench.Get_Composition() == before && workbench.Get_DraftGeneration() == generation &&
+				workbench.Is_Dirty() == dirty && ReadText(sourcePath) == bytes, "rejected Parent Loop changed draft, ordinals, output or source");
+		};
+		rejectCycle("missing.parent", 6000u); rejectCycle(patternId, 0u); rejectCycle(patternId, 2999u);
+		rejectCycle(patternId, 600001u); rejectCycle(patternId, 600000u); // Expanded Stage/repetition capacity.
+		std::string cycleId;
+		const auto beforeCycleBytes = ReadText(sourcePath);
+		auto pendingCycleEffect = EditorPattern(workbench, patternId).PresentationOccurrences.front();
+		pendingCycleEffect.PositionOffset = {7.0, 8.0, 9.0};
+		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, pendingCycleEffect, status), status, "stage unsaved Parent Effect placement");
+		Require(EditorPattern(workbench, patternId).PresentationOccurrences.front().PositionOffset != pendingCycleEffect.PositionOffset,
+			"pending cycle fixture bypassed geometry staging");
+		rejectCycle(patternId, 600000u);
+		RequireEditorStep(workbench.Repeat_ParentCycle(patternId, 6500u, cycleId, status), status, "repeat all Parent lanes as one cycle");
+		const auto& parentCycle = EditorPattern(workbench, patternId);
+		const auto& cycle = EditorPattern(workbench, cycleId);
+		Require(ReadText(sourcePath) == beforeCycleBytes && workbench.Is_Dirty() &&
+			parentCycle.PatternOccurrences.size() == 1u && parentCycle.PatternOccurrences.front().strPatternId == cycleId &&
+			parentCycle.PatternOccurrences.front().bRepeat && parentCycle.PatternOccurrences.front().iStartMs == 0u &&
+			parentCycle.PatternOccurrences.front().iDurationMs == 6500u && parentCycle.iDurationMs == 6500u &&
+			parentCycle.Stages.empty() && parentCycle.WorldOccurrences.empty() && parentCycle.PresentationOccurrences.empty() &&
+			parentCycle.LogicOccurrences.empty() && parentCycle.SummonOccurrences.empty() && parentCycle.SceneProfileOccurrences.empty(),
+			"Parent Loop did not move the entire cycle into one repeating reference or saved without user Save");
+		Require(cycle.iDurationMs == 3000u && cycle.PatternOccurrences.empty() && cycle.Stages.size() == 3u &&
+			cycle.WorldOccurrences.size() == 2u && cycle.PresentationOccurrences.size() == 5u && cycle.LogicOccurrences.size() == 3u &&
+			cycle.SummonOccurrences.size() == 1u && cycle.SceneProfileOccurrences.size() == 1u,
+			"new cycle omitted a lane or changed its authored lifetime");
+		Require(cycle.PresentationOccurrences.front().PositionOffset == pendingCycleEffect.PositionOffset,
+			"Parent Loop lost the current unsaved Effect placement");
+		for (std::size_t i = 0; i < pattern.WorldOccurrences.size(); ++i)
+		{
+			auto expected = pattern.WorldOccurrences[i]; expected.strOccurrenceId = cycle.WorldOccurrences[i].strOccurrenceId;
+			Require(expected == cycle.WorldOccurrences[i] && expected.strOccurrenceId.starts_with(cycleId + ".world."),
+				"cycle World copy changed Motion, placement, speed or timing");
+		}
+		const auto& cycleContact = cycle.LogicOccurrences.front();
+		Require(cycle.PresentationOccurrences.front().strWorldOccurrenceId == cycle.WorldOccurrences.front().strOccurrenceId &&
+			cycle.PresentationOccurrences[1].strLogicOccurrenceId == cycleContact.strOccurrenceId &&
+			findLogic(cycleContact.strLogicId).TargetWorldOccurrenceIds == std::vector<std::string>{cycle.WorldOccurrences.front().strOccurrenceId} &&
+			findLogic(cycleContact.OnSuccessLogicIds[0]).ContactMotions.front().strTargetWorldOccurrenceId == cycle.WorldOccurrences.front().strOccurrenceId &&
+			findLogic(cycleContact.OnSuccessLogicIds[1]).strTargetLogicOccurrenceId == cycle.LogicOccurrences[1].strOccurrenceId &&
+			findLogic(cycleContact.OnSuccessLogicIds[1]).strContactTargetWorldOccurrenceId == cycle.WorldOccurrences.front().strOccurrenceId,
+			"cycle Effect, Collider or exact Logic target retained the old Parent occurrence");
+		for (const auto& originalLogic : source.Logics) Require(findLogic(originalLogic.strLogicId) == originalLogic, "Parent Loop rewrote a shared Logic definition");
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT repeated;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(workbench.Get_Composition(), patternId, repeated, status),
+			status, "expand complete and partial Parent cycles");
+		const auto repeatOwner = std::find_if(repeated.Patterns.begin(), repeated.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+		Require(repeatOwner != repeated.Patterns.end() && repeatOwner->WorldOccurrences.size() == 6u &&
+			repeatOwner->WorldOccurrences[0].iStartMs == 100u && repeatOwner->WorldOccurrences[2].iStartMs == 3100u &&
+			repeatOwner->WorldOccurrences[4].iStartMs == 6100u && repeatOwner->WorldOccurrences[4].iDurationMs == 400u,
+			"Parent Loop did not restart all Worlds together or cancel its partial final cycle");
+		RequireEditorRoundtrip(workbench);
+		const auto loopBoxId = EditorPattern(workbench, patternId).PatternOccurrences.front().strOccurrenceId;
+		RequireEditorStep(workbench.Set_PatternBoxWindow(patternId, loopBoxId, 0u, 6000u, true, status), status, "edit saved Parent repeat window");
+		RequireEditorRoundtrip(workbench);
+
+		// A Parent already containing a reusable child is flattened once, so the
+		// resulting cycle stays within the existing non-nested runtime contract.
+		auto childSource = source;
+		cycleFolder.strTimelinePatternId.clear(); childSource.Folders.push_back(cycleFolder);
+		childSource.iNextFolderOrdinal = parentSource.iNextFolderOrdinal;
+		reset(childSource);
+		const auto originalChild = EditorPattern(workbench, patternId);
+		RequireEditorStep(workbench.Append_PatternBox(cycleFolder.strFolderId, patternId, 0u, 3000u, status), status, "create Parent around an existing complete child");
+		const auto newParentId = workbench.Get_SelectedPatternId();
+		RequireEditorStep(workbench.Set_PatternDuration(newParentId, 3000u, status), status, "set one child cycle duration");
+		RequireEditorStep(workbench.Repeat_ParentCycle(newParentId, 6000u, cycleId, status), status, "repeat a Parent containing an existing child");
+		Require(EditorPattern(workbench, patternId) == originalChild && EditorPattern(workbench, cycleId).PatternOccurrences.empty() &&
+			EditorPattern(workbench, cycleId).WorldOccurrences.size() == 2u && EditorPattern(workbench, cycleId).PresentationOccurrences.size() == 5u,
+			"repeating Parent changed its shared child or retained a forbidden nested reference");
+		RequireEditorRoundtrip(workbench);
+	}
+
+	void VerifyKoukuColliderSelectionGroups()
+	{
+		using namespace Client;
+		const auto sourceRoot = CProjectDataRoot::Get();
+		const auto scratchRoot = std::filesystem::temp_directory_path() /
+			("LostArkKoukuColliderGroups-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+		SCOPED_TEST_DIRECTORY cleanup(scratchRoot);
+		const auto dataRoot = scratchRoot / "Data";
+		const auto relativeSource = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+		const auto sourcePath = dataRoot / relativeSource;
+		for (const char* profile : { "MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00" })
+		{
+			const auto relative = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+				(std::string(profile) + ".actionreference.json");
+			Require(CopyFixture(sourceRoot / relative, dataRoot / relative), "could not copy Collider group action reference");
+		}
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT source;
+		std::string status;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(ReadText(sourceRoot / relativeSource), source, status),
+			status, "parse Collider group source");
+		const auto owner = std::find_if(source.Patterns.begin(), source.Patterns.end(), [](const auto& row) {
+			return row.strLoadError.empty() && !row.Stages.empty() && !row.Stages.front().AnimationOccurrences.empty(); });
+		Require(owner != source.Patterns.end(), "Collider groups need an authored actor fixture");
+		KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+		pattern.strPatternId = owner->strPatternId; pattern.strActorProfileId = owner->strActorProfileId;
+		pattern.strGateId = owner->strGateId; pattern.strTargetBossPlacementId = owner->strTargetBossPlacementId;
+		pattern.strDisplayName = "Collider selection group fixture"; pattern.strAuthoringStatus = "DRAFT";
+		pattern.strCategory = "NORMAL"; pattern.iDurationMs = 10000u;
+		const auto patternId = pattern.strPatternId;
+		source.Patterns.clear(); source.Folders.clear(); source.Bundles.clear(); source.PlayAllPatternIds.clear();
+		source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
+		source.SceneProfiles.clear(); source.PresentationResources.clear();
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
+		resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+		resource.strDisplayName = "Group collider"; resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+		source.PresentationResources.push_back(resource);
+		std::vector<std::string> ids;
+		for (unsigned i = 0u; i < 5u; ++i)
+		{
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE box;
+			box.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+			box.strResourceId = resource.strResourceId; box.iStartMs = 100u + i * 137u; box.iDurationMs = 400u + i;
+			box.PositionOffset = { double(i) * 2.0 - 4.0, 1.0, 3.0 }; box.RotationDegrees = { 0.0, 30.0, 0.0 };
+			box.Scale = { 1.0, 2.0, 11.45 }; box.strAnchorKind = "BOSS"; box.bFollowBoss = true;
+			ids.push_back(box.strOccurrenceId); pattern.PresentationOccurrences.push_back(box);
+		}
+		source.Patterns.push_back(pattern);
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "could not write Collider group fixture");
+		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+		Require(environment.Set(dataRoot), "could not select Collider group scratch root");
+		CKoukuSaydonActionWorkbench workbench;
+		RequireEditorStep(workbench.Reload(status), status, "load Collider group fixture");
+		const auto before = workbench.Get_Composition();
+		Require(!workbench.Set_ColliderSelectionGroup(patternId, {ids.front()}, true, status) &&
+			workbench.Get_Composition() == before, "singleton Set Group did not preserve draft");
+		Require(!workbench.Set_ColliderSelectionGroup(patternId, {ids.front(), "missing.collider"}, true, status) &&
+			workbench.Get_Composition() == before, "missing member Set Group did not preserve draft");
+		RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, ids, true, status), status, "Set Group five Colliders");
+		const auto grouped = EditorPattern(workbench, patternId).PresentationOccurrences;
+		const auto groupId = grouped.front().strSelectionGroupId;
+		Require(!groupId.empty(), "Set Group did not assign a stable group ID");
+		for (std::size_t i = 0u; i < grouped.size(); ++i)
+		{
+			auto expected = pattern.PresentationOccurrences[i]; expected.strSelectionGroupId = groupId;
+			Require(grouped[i] == expected, "Set Group changed geometry, timing, scale or Logic");
+		}
+		RequireEditorRoundtrip(workbench);
+		RequireEditorStep(workbench.Select_PresentationBoxById(patternId, ids[2], status), status, "click one saved group member");
+		RequireEditorStep(workbench.Transform_SelectedColliders({10.0, 2.0, -5.0}, 90.0, status), status, "rotate group at its center");
+		Require(workbench.Is_Dirty(), "group geometry preview was not dirty");
+		Require(EditorPattern(workbench, patternId).PresentationOccurrences == grouped,
+			"group drag bypassed staged geometry and mutated the saved draft");
+		RequireEditorRoundtrip(workbench);
+		const auto rotated = EditorPattern(workbench, patternId).PresentationOccurrences;
+		const auto almostEqual = [](double a, double b) { return std::abs(a - b) < 1e-8; };
+		for (std::size_t i = 0u; i < rotated.size(); ++i)
+		{
+			auto expected = grouped[i];
+			expected.PositionOffset = {10.0, 3.0, -2.0 - grouped[i].PositionOffset[0]};
+			expected.RotationDegrees[1] = 120.0;
+			Require(almostEqual(rotated[i].PositionOffset[0], expected.PositionOffset[0]) &&
+				almostEqual(rotated[i].PositionOffset[1], expected.PositionOffset[1]) &&
+				almostEqual(rotated[i].PositionOffset[2], expected.PositionOffset[2]) &&
+				almostEqual(rotated[i].RotationDegrees[1], expected.RotationDegrees[1]),
+				"common pivot rotation/translation moved the wrong center or used the wrong yaw sign");
+			expected.PositionOffset = rotated[i].PositionOffset; expected.RotationDegrees = rotated[i].RotationDegrees;
+			Require(rotated[i] == expected, "group rotation changed timing, scale, anchor or Logic");
+		}
+		RequireEditorStep(workbench.Select_PresentationBoxById(patternId, ids.front(), status), status, "reselect saved group");
+		const auto stable = workbench.Get_Composition();
+		Require(!workbench.Transform_SelectedColliders({0.0, 0.0, 0.0}, std::numeric_limits<double>::quiet_NaN(), status) &&
+			workbench.Get_Composition() == stable && !workbench.Is_Dirty(), "invalid group rotation partially changed state");
+		RequireEditorStep(workbench.Duplicate_TimelineSelection(patternId, {}, ids, status), status, "duplicate group");
+		const auto duplicated = EditorPattern(workbench, patternId).PresentationOccurrences;
+		Require(duplicated.size() == 10u, "group duplicate count is wrong");
+		std::vector<std::string> duplicateIds;
+		std::string duplicateGroup;
+		for (const auto& box : duplicated)
+			if (std::find(ids.begin(), ids.end(), box.strOccurrenceId) == ids.end())
+			{
+				duplicateIds.push_back(box.strOccurrenceId);
+				if (duplicateGroup.empty()) duplicateGroup = box.strSelectionGroupId;
+				Require(!duplicateGroup.empty() && duplicateGroup != groupId && box.strSelectionGroupId == duplicateGroup,
+					"duplicate group still selects the original or split its new members");
+			}
+		RequireEditorRoundtrip(workbench);
+		RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, {duplicateIds.front()}, false, status), status, "Ungroup copied set");
+		for (const auto& box : EditorPattern(workbench, patternId).PresentationOccurrences)
+			Require(std::find(ids.begin(), ids.end(), box.strOccurrenceId) != ids.end() ? box.strSelectionGroupId == groupId : box.strSelectionGroupId.empty(),
+				"Ungroup changed the original group or left some copied members grouped");
+		RequireEditorStep(workbench.Delete_TimelineSelection(patternId, {}, {ids[0], ids[1], ids[2], ids[3]}, status), status, "delete four group members");
+		for (const auto& box : EditorPattern(workbench, patternId).PresentationOccurrences)
+			Require(box.strSelectionGroupId.empty(), "deletion left an orphan singleton group");
+		RequireEditorRoundtrip(workbench);
+		RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, duplicateIds, true, status), status, "regroup copied rows");
+		RequireEditorStep(workbench.Transform_SelectedColliders({1.0, 0.0, 0.0}, 15.0, status), status, "stage before Save conflict");
+		const auto pending = workbench.Get_Composition();
+		auto external = pending; external.iRevision += 100u; external.Patterns.front().strDisplayName += " external";
+		const auto externalBytes = CKoukuSaydonCompositionDocument::Serialize(external);
+		Require(WriteText(sourcePath, externalBytes), "could not write external conflict fixture");
+		Require(!workbench.Save(status) && !status.empty() && workbench.Is_Dirty() &&
+			workbench.Get_Composition() == pending && ReadText(sourcePath) == externalBytes,
+			"Save conflict lost group geometry, draft or external source");
 	}
 
 	void VerifyKoukuPreviewTransportContracts()
@@ -2455,6 +2698,15 @@ namespace
 			expectedOverlay.PositionOffset = expectedBox.PositionOffset;
 			expectedOverlay.RotationDegrees = expectedBox.RotationDegrees;
 			expectedOverlay.Scale = expectedBox.Scale;
+			const auto kind = std::find_if(source.PresentationResources.begin(), source.PresentationResources.end(),
+				[&](const auto& row) { return row.strResourceId == expectedBox.strResourceId; });
+			if (kind != source.PresentationResources.end() && kind->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+			{
+				expectedOverlay.strAnchorKind = expectedBox.strAnchorKind; expectedOverlay.bFollowBoss = expectedBox.bFollowBoss;
+				expectedOverlay.strBone = expectedBox.strBone; expectedOverlay.strBoneTarget = expectedBox.strBoneTarget;
+				expectedOverlay.strWorldId = expectedBox.strWorldId; expectedOverlay.strWorldOccurrenceId = expectedBox.strWorldOccurrenceId;
+				expectedOverlay.iWorldEmissionIndex = expectedBox.iWorldEmissionIndex;
+			}
 			KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST request;
 			Require(workbench.Consume_PresentationGeometryPreviewRequest(request) && request.strPatternId == patternId &&
 				request.Occurrence == expectedOverlay, ("live Collider geometry lost its identity or changed unrelated fields at check " + std::to_string(++geometryCheck)).c_str());
@@ -2985,11 +3237,12 @@ namespace
 		state.strPatternId = patternId; state.bPlaying = true; state.bPaused = true; state.iClockMs = 543u;
 		workbench.Set_PreviewState(state);
 		auto firstEffectEdit = effects[0]; firstEffectEdit.PositionOffset = {1.1, 2.2, 3.3};
+		firstEffectEdit.strBone = "staged_bone";
 		firstEffectEdit.RotationDegrees = {10.0, 75.0, -20.0}; firstEffectEdit.Scale = {0.5, 1.5, 2.5};
 		auto secondEffectEdit = effects[1]; secondEffectEdit.PositionOffset = {-3.5, 1.25, 7.0};
 		secondEffectEdit.RotationDegrees = {25.0, -45.0, 5.0}; secondEffectEdit.Scale = {2.0, 3.0, 4.0};
 		auto unrelatedDetail = firstEffectEdit; unrelatedDetail.iStartMs = 999999u; unrelatedDetail.iDurationMs = 0u;
-		unrelatedDetail.strBone = "unapplied_bone"; unrelatedDetail.strLogicOccurrenceId = "unapplied.logic";
+		unrelatedDetail.strLogicOccurrenceId = "unapplied.logic";
 		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, unrelatedDetail, status), status, "stage first Effect geometry only");
 		expectGeometry(firstEffectEdit);
 		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, secondEffectEdit, status), status, "stage second Effect geometry");
@@ -3005,9 +3258,9 @@ namespace
 			for (auto& row : pattern.PresentationOccurrences)
 				for (const auto* value : {&firstEffectEdit, &secondEffectEdit})
 					if (row.strOccurrenceId == value->strOccurrenceId)
-					{ row.PositionOffset = value->PositionOffset; row.RotationDegrees = value->RotationDegrees; row.Scale = value->Scale; }
+					{ row.PositionOffset = value->PositionOffset; row.RotationDegrees = value->RotationDegrees; row.Scale = value->Scale; row.strBone = value->strBone; }
 		Require(!workbench.Is_Dirty() && workbench.Get_Composition() == expectedEffectSave,
-			"Effect Save lost a box or applied unrelated timing, Bone or Logic fields");
+			"Effect Save lost placement or applied unrelated timing or Logic fields");
 		RequireEditorStep(workbench.Reload(status), status, "reload saved Effect geometry");
 		Require(workbench.Get_Composition() == expectedEffectSave, "Effect geometry Save/Reload changed its P/R/S");
 
@@ -3360,13 +3613,29 @@ int Run_KoukuCompositionEditorContractTests()
 	}
 }
 
+int Run_KoukuColliderGroupContractTests()
+{
+	try
+	{
+		VerifyKoukuColliderSelectionGroups();
+		std::cout << "KoukuColliderGroupContractTests: Set-Group/click/center-rotation/translation/Save-Reopen/duplicate/Ungroup/singleton-cleanup/invalid-transform/CAS-preservation passed\n";
+		return 0;
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << "KoukuColliderGroupContractTests: FAIL: " << error.what() << '\n';
+		return 1;
+	}
+}
+
 int Run_KoukuPreviewTransportContractTests()
 {
 	try
 	{
+		VerifyKoukuColliderSelectionGroups();
 		VerifyKoukuPreviewTransportContracts();
 		VerifyKoukuAllLaneDuplicateContracts();
-		std::cout << "KoukuPreviewTransportContractTests: pause-clock/cold-live-end-scrub/Play-restart/paused-Collider/one-shot/Collider-Apply-window-link/Collider-save-without-Apply/linked-Sector-scale/Stage-retarget/source-preservation/all-lane-segment-copy/linked-definition-COW passed\n";
+		std::cout << "KoukuPreviewTransportContractTests: pause-clock/cold-live-end-scrub/Play-restart/paused-Collider/one-shot/Collider-Apply-window-link/Collider-save-without-Apply/linked-Sector-scale/Stage-retarget/source-preservation/all-lane-segment-copy/linked-definition-COW/Parent-cycle-all-lanes-pending-placement-repeat-clipping-rollback-save-reload passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

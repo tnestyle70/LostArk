@@ -24,6 +24,99 @@
 #include "Engine_RenderTypes.h"
 #include "VIBuffer_Rect.h"
 
+bool Client::CEffectDocumentRenderer::Try_ProjectCaptureTargetBounds(
+    const EFFECT_EVALUATED_FRAME& Frame, const std::string& cueId,
+    const f32_t targetTimeSeconds, float2_t& centerUV, float2_t& sizeUV) const
+{
+    if (cueId.empty() || !std::isfinite(targetTimeSeconds)) return false;
+    const auto& Document = Get_StagedDocument();
+    const auto Cue = std::find_if(Document.ModelCues.begin(), Document.ModelCues.end(),
+        [&cueId](const auto& value) { return value.strCueId == cueId; });
+    if (Cue == Document.ModelCues.end() || !Cue->bVisible ||
+        !std::isfinite(Cue->fStartDelaySeconds) ||
+        std::abs(targetTimeSeconds - Cue->fStartDelaySeconds) > 1e-4f) return false;
+    const auto Resource = m_ModelCueResources.find(cueId);
+    float3_t Minimum, Maximum;
+    if (Resource == m_ModelCueResources.end() || !Resource->second.pModel ||
+        !Resource->second.pModel->Try_GetBindGeometryBounds(Minimum, Maximum) ||
+        !(Maximum.x > Minimum.x && Maximum.y > Minimum.y && Maximum.z > Minimum.z)) return false;
+    const auto* View = Engine::CGameInstance::Get().Get_Transform(Engine::D3DTS::VIEW);
+    const auto* Projection = Engine::CGameInstance::Get().Get_Transform(Engine::D3DTS::PROJ);
+    if (!View || !Projection) return false;
+    const auto Finite = [](const float4x4_t& value) {
+        for (const auto& row : value.m) for (const f32_t component : row)
+            if (!std::isfinite(component)) return false;
+        return true;
+    };
+    if (!Finite(*View) || !Finite(*Projection) || !Finite(Frame.RootWorld)) return false;
+    const matrix_t ViewMatrix = XMLoadFloat4x4(View), ProjectionMatrix = XMLoadFloat4x4(Projection);
+    const auto ViewDeterminant = XMVectorGetX(XMMatrixDeterminant(ViewMatrix));
+    const auto ProjectionDeterminant = XMVectorGetX(XMMatrixDeterminant(ProjectionMatrix));
+    if (!std::isfinite(ViewDeterminant) || std::abs(ViewDeterminant) < 1e-12f ||
+        !std::isfinite(ProjectionDeterminant) || std::abs(ProjectionDeterminant) < 1e-12f) return false;
+    // This endpoint is the cue's first pose. The installed reference vertices
+    // already contain asset pretransform; do not rescale or seek the live clone.
+    const auto& Transform = Cue->LocalTransform;
+    const matrix_t Local = XMMatrixScaling(Transform.vScale.x, Transform.vScale.y, Transform.vScale.z) *
+        XMMatrixRotationRollPitchYaw(XMConvertToRadians(Transform.vRotationDegrees.x),
+            XMConvertToRadians(Transform.vRotationDegrees.y), XMConvertToRadians(Transform.vRotationDegrees.z)) *
+        XMMatrixTranslation(Transform.vPosition.x, Transform.vPosition.y, Transform.vPosition.z);
+    const matrix_t WorldViewProjection = Local * XMLoadFloat4x4(&Frame.RootWorld) * ViewMatrix * ProjectionMatrix;
+    float2_t Lower{FLT_MAX, FLT_MAX}, Upper{-FLT_MAX, -FLT_MAX};
+    for (uint32_t i = 0u; i < 8u; ++i)
+    {
+        float4_t Clip;
+        XMStoreFloat4(&Clip, XMVector4Transform(XMVectorSet(
+            (i & 1u) ? Maximum.x : Minimum.x, (i & 2u) ? Maximum.y : Minimum.y,
+            (i & 4u) ? Maximum.z : Minimum.z, 1.f), WorldViewProjection));
+        if (!std::isfinite(Clip.x) || !std::isfinite(Clip.y) || !std::isfinite(Clip.z) ||
+            !std::isfinite(Clip.w) || Clip.w <= 1e-5f || Clip.z < 0.f) return false;
+        const float2_t UV{.5f + .5f * Clip.x / Clip.w, .5f - .5f * Clip.y / Clip.w};
+        if (!std::isfinite(UV.x) || !std::isfinite(UV.y)) return false;
+        Lower.x = (std::min)(Lower.x, UV.x); Lower.y = (std::min)(Lower.y, UV.y);
+        Upper.x = (std::max)(Upper.x, UV.x); Upper.y = (std::max)(Upper.y, UV.y);
+    }
+    const float2_t Center{(Lower.x + Upper.x) * .5f, (Lower.y + Upper.y) * .5f};
+    const float2_t Size{Upper.x - Lower.x, Upper.y - Lower.y};
+    if (!std::isfinite(Center.x) || !std::isfinite(Center.y) ||
+        !std::isfinite(Size.x) || !std::isfinite(Size.y) || Size.x <= 0.f || Size.y <= 0.f) return false;
+    centerUV = Center; sizeUV = Size;
+    return true;
+}
+
+void Client::CEffectDocumentRenderer::Apply_StartingCaptureCameraFraming(
+    const EFFECT_EVALUATED_FRAME& Frame, const EFFECT_EVALUATED_PARTICLE& Particle,
+    const Engine::CModel& Model, float4x4_t& World)
+{
+    if (!Particle.pElement || !Is_StartingSceneCaptureCameraEmitter(*Particle.pElement)) return;
+    const auto& Document = Get_StagedDocument();
+    const auto Cue = std::find_if(Document.ModelCues.begin(), Document.ModelCues.end(), [](const auto& Value) {
+        return Value.bVisible && Value.strCueId == "altv.source.notify036.cube" &&
+            Has_DimensionMasterALTVModelCueMaterialContract(Value);
+    });
+    float4x4_t Landing;
+    bool HasLanding = false;
+    if (Cue != Document.ModelCues.end() && Model.Has_LocalBounds())
+    {
+        const auto Resource = m_ModelCueResources.find(Cue->strCueId);
+        float3_t CubeMin, CubeMax;
+        if (Resource != m_ModelCueResources.end() && Resource->second.pModel &&
+            Resource->second.pModel->Try_GetBindGeometryBounds(CubeMin, CubeMax))
+        {
+            float4x4_t CubeWorld; std::string Error;
+            // Before the cue begins, its clock clamps to the first pose; an overlapping tail
+            // samples the same current clock as ModelCue rendering and never rewinds it.
+            // The installed cube's bind bounds match its first pose within 0.00005 metres.
+            if (Sample_ModelCuePose(*Cue, Resource->second, Frame.fSampleTimeSeconds,
+                Frame.RootWorld, CubeWorld, Error))
+                HasLanding = Build_StartingCaptureCubeLandingWorld(Model.Get_LocalBoundsMin(),
+                    Model.Get_LocalBoundsMax(), CubeMin, CubeMax, CubeWorld, Landing);
+        }
+    }
+    EffectDocumentRendererDetail::Apply_StartingCaptureCameraFraming(Document, Particle, Model,
+        Frame.fSampleTimeSeconds, World, HasLanding ? &Landing : nullptr);
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_AfterImages(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const std::span<const EFFECT_EVALUATED_AFTERIMAGE> AfterImages)
@@ -145,8 +238,7 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
         Instance.World = Apply_ParticleCameraOffset(Particle);
         if (bLockedAxisMeshFacing && !Make_SourceLockedAxisMeshWorld(Particle, Instance.World))
             return Fail_RenderOperation("Source locked-axis mesh facing is invalid.", E_INVALIDARG, true);
-        Apply_StartingCaptureCameraFraming(Get_StagedDocument(), Particle, *Resource.pModel,
-            Frame.fSampleTimeSeconds, Instance.World);
+        Apply_StartingCaptureCameraFraming(Frame, Particle, *Resource.pModel, Instance.World);
         const matrix_t World = XMLoadFloat4x4(&Instance.World);
         const f32_t fDeterminant = XMVectorGetX(XMMatrixDeterminant(World));
         if (!std::isfinite(fDeterminant))
@@ -290,8 +382,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			MeshParticle.World = Apply_ParticleCameraOffset(Particle);
 			if (bLockedAxisMeshFacing && !Make_SourceLockedAxisMeshWorld(Particle, MeshParticle.World))
 				return Fail_RenderOperation("Source locked-axis mesh facing is invalid.", E_INVALIDARG, true);
-            Apply_StartingCaptureCameraFraming(Get_StagedDocument(), Particle, *pResource->pModel,
-                Frame.fSampleTimeSeconds, MeshParticle.World);
+            Apply_StartingCaptureCameraFraming(Frame, Particle, *pResource->pModel, MeshParticle.World);
 			MeshParticle.Color = Particle.pElement->Detail.Color;
 			MeshParticle.Color.vColorMultiply = Particle.Color;
 			MeshParticle.fLocalTimeSeconds = (std::max)(0.f,
@@ -446,8 +537,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	Record_TestGeometryUpload();
 #endif
+    // Playback's scoped missed-burst batch contains one live substep snapshot.
+    // Color/life/dynamic inputs and common material time must describe that step.
+    const f32_t MaterialSampleTime = Particles.front().fMaterialSampleTimeSeconds >= 0.f ?
+        Particles.front().fMaterialSampleTimeSeconds : Frame.fSampleTimeSeconds;
 	const f32_t LocalTime = (std::max)(0.f,
-		Frame.fSampleTimeSeconds - Source.Detail.Timing.fStartDelaySeconds);
+		MaterialSampleTime - Source.Detail.Timing.fStartDelaySeconds);
 	const f32_t Normalized = std::clamp(
 		LocalTime / Source.Detail.Timing.fLifeTimeSeconds, 0.f, 1.f);
 	EFFECT_COLOR_DESC CommonColor =

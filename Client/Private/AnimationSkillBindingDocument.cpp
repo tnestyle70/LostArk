@@ -191,13 +191,15 @@ namespace
 		const ANIMATION_SKILL_CLIP& clip)
 	{
 		if (0u == clip.iPlayMs && 1.f == clip.fPlayRate &&
-			0u == clip.iSourceStartMs)
+			0u == clip.iSourceStartMs && clip.strClipOccurrenceId.empty())
 		{
 			output << '"' << CDataJson::Escape(clip.strClipName) << '"';
 			return;
 		}
 		output << "{ \"clip\": \""
 			<< CDataJson::Escape(clip.strClipName) << '"';
+		if (!clip.strClipOccurrenceId.empty())
+			output << ", \"clipOccurrenceId\": \"" << CDataJson::Escape(clip.strClipOccurrenceId) << '"';
 		if (0u != clip.iSourceStartMs)
 			output << ", \"sourceStartMs\": " << clip.iSourceStartMs;
 		if (0u != clip.iPlayMs)
@@ -211,6 +213,7 @@ namespace
 		const ANIMATION_SKILL_BINDING_DOCUMENT& document)
 	{
 		std::ostringstream output;
+		output << std::setprecision(std::numeric_limits<f32_t>::max_digits10);
 		output << "{\n"
 			<< "  \"schema\": \"" << DOCUMENT_SCHEMA << "\",\n"
 			<< "  \"formatVersion\": 3,\n"
@@ -956,8 +959,12 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 					stagedClip.strClipName = clip.Get_String();
 				}
 				else if (Has_OnlyKnownProperties(
-					clip, { "clip", "sourceStartMs", "playMs", "playRate" }))
+					clip, { "clip", "sourceStartMs", "playMs", "playRate", "clipOccurrenceId" }))
 				{
+					const DATA_JSON_VALUE* occurrence = clip.Find("clipOccurrenceId");
+					if (occurrence && (!occurrence->Is_String() || !Is_StableToken(occurrence->Get_String())))
+					{ outStatus = "Invalid clip occurrence ID."; return false; }
+					if (occurrence) stagedClip.strClipOccurrenceId = occurrence->Get_String();
 					const DATA_JSON_VALUE* clipName = Required(
 						clip, "clip", DATA_JSON_TYPE::STRING);
 					const DATA_JSON_VALUE* sourceStartMs =
@@ -966,7 +973,7 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 					const DATA_JSON_VALUE* playRate = clip.Find("playRate");
 					if (nullptr == clipName ||
 						(nullptr == sourceStartMs && nullptr == playMs &&
-							nullptr == playRate) ||
+							nullptr == playRate && nullptr == occurrence) ||
 						(nullptr != sourceStartMs &&
 							!Try_ParseSourceMs(
 								*sourceStartMs, stagedClip.iSourceStartMs)) ||
@@ -1035,6 +1042,7 @@ bool_t Client::CAnimationSkillBindingDocument::Validate(
 	}
 
 	std::unordered_set<SKILL_ID> claimedSkills;
+	std::unordered_set<std::string> occurrenceIds;
 	std::size_t expectedBindingCount = 0u;
 	for (const PLAYER_SKILL_DEFINITION& skill : skills)
 	{
@@ -1095,6 +1103,9 @@ bool_t Client::CAnimationSkillBindingDocument::Validate(
 			}
 			for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
 			{
+				if (!clip.strClipOccurrenceId.empty() &&
+					(!Is_StableToken(clip.strClipOccurrenceId) || !occurrenceIds.insert(clip.strClipOccurrenceId).second))
+				{ outStatus = "Skill clip occurrence identity is invalid or duplicated."; return false; }
 				if (!Is_StableToken(clip.strClipName) ||
 					clip.iSourceStartMs > MAX_CLIP_PLAY_MS ||
 					clip.iPlayMs > MAX_CLIP_PLAY_MS ||
@@ -1164,7 +1175,8 @@ bool_t Client::CAnimationSkillBindingDocument::Save_Atomic(
 	const LostArk::Shared::CHARACTER_CLASS_ID expectedCharacterClass,
 	const std::vector<PLAYER_SKILL_DEFINITION>& skills,
 	const std::vector<std::string>& availableClips,
-	std::string& outStatus)
+	std::string& outStatus,
+	const std::string* expectedSourceBytes)
 {
 	if (!Validate(document, expectedAnimationAssetId,
 		expectedCharacterClass, skills, availableClips, outStatus))
@@ -1222,6 +1234,16 @@ bool_t Client::CAnimationSkillBindingDocument::Save_Atomic(
 		return false;
 	}
 
+	if (expectedSourceBytes)
+	{
+		std::string current;
+		if (!Read_BinaryText(destination, current) || current != *expectedSourceBytes)
+		{
+			std::error_code cleanupError; std::filesystem::remove(temporary, cleanupError);
+			outStatus = "Skill bindings changed externally; the existing file and draft were preserved.";
+			return false;
+		}
+	}
 	if (!MoveFileExW(
 		temporary.c_str(), destination.c_str(),
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
@@ -1234,6 +1256,18 @@ bool_t Client::CAnimationSkillBindingDocument::Save_Atomic(
 	outStatus = "Saved " + std::to_string(document.Bindings.size()) +
 		" skill animation binding(s) to " + destination.string();
 	return true;
+}
+
+bool_t Client::CAnimationSkillBindingDocument::Save_AtomicWithBaseline(
+    const ANIMATION_SKILL_BINDING_DOCUMENT& document, const std::string_view asset,
+    const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+    const std::vector<PLAYER_SKILL_DEFINITION>& skills, const std::vector<std::string>& clips,
+    const std::string_view expectedBytes, std::string& committedBytes, std::string& status)
+{
+    const std::string baseline(expectedBytes);
+    if (!Save_Atomic(document, asset, characterClass, skills, clips, status, &baseline)) return false;
+    committedBytes = Serialize(document);
+    return true;
 }
 
 std::filesystem::path

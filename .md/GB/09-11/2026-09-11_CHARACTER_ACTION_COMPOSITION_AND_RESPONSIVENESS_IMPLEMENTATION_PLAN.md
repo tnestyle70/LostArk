@@ -7,6 +7,11 @@
 조회 당시 origin/main보다 3 commit 앞서 있고, 다른 작업의 staged/unstaged 변경이 함께 있다.
 아래 설계는 현재 미커밋 코드를 포함한 조사 결과이며 해당 HEAD 단독의 구현 상태를 뜻하지 않는다.
 
+2026-09-13 통합 구현은 `../09-13/2026-09-13_ACTION_WORKBENCH_UNIFIED_ACTIONS_IMPLEMENTATION_PLAN.md`와
+대응 RESULT가 정본이다. G01~G03의 실제 최소 연결은 기존 cue owner를 공통 Details에 포함하여 사용하며,
+아래 전면 `.animevents.json` 이관 설계 전체를 구현한 것은 아니다. G04 이후 조작감 목표는 이번 창 통합과
+분리하고, 기존 G05 완료 증거는 이 문서의 기존 RESULT에 유지한다.
+
 ## G00. 최초 조사 당시 입력과 재생 구조를 먼저 이해한다
 
 이 절은 09-11 구현 전 기준이다. 일반 이동 예측의 09-12 변경은 G05와 대응 RESULT를 따른다.

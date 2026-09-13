@@ -103,6 +103,7 @@ private:
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
 	HRESULT Capture_SceneColorSnapshot();
+	HRESULT Render_SceneReplacements();
 	HRESULT Render_ScreenPosts();
 	HRESULT Render_DisplayOverlays();
 	HRESULT Render_ScreenOverlay(const PRESENTATION_SCREEN_OVERLAY_DESC& Overlay);

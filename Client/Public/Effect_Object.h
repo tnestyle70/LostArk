@@ -105,6 +105,7 @@ public:
 		std::string& strOutError);
 	void Set_ReconstructedDiagnosticSolo(
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	void Use_ExternalModelCueAnchors();
 	bool_t Select_OccurrenceElement(std::string_view elementId, std::string& status);
 	// Product source-local visibility reuses the same object-local submission mask.
 	// Evaluation and the admitted document remain unchanged.
@@ -176,6 +177,9 @@ public:
 			m_bPlaying = bPlaying;
 	}
 	void Preserve_StartingSceneCapture(const CEffectObject& Previous);
+	bool_t Has_CapturedScreenPost(const std::string& elementId) const;
+	HRESULT Get_ScreenPostCaptureResult(const std::string& elementId) const;
+	void Set_ScreenPostCaptureAllowed(bool_t allowed);
 	void Set_Visible(bool_t bVisible);
 	void Reset();
 	bool_t Is_Finished() const

@@ -1,4 +1,5 @@
 #include "KoukuSaydonPresentationAssetService.h"
+#include "KoukuSaydonAnimationBlend.h"
 #include "KoukuSaydonCompositionDocument.h"
 
 #include "ActorCatalog.h"
@@ -236,7 +237,7 @@ namespace
             const auto hasAnimationFields = [&value]()
             {
                 const std::initializer_list<std::string_view> required = {"actionId", "occurrenceId", "clip", "startOffsetMs", "sourceStartMs", "playMs", "playRate", "endPolicy"};
-                const std::initializer_list<std::string_view> optional = {"unblendedBoneContact", "animationRootVerticalScale", "blendInMs", "blendFromClip", "blendFromSourceMs", "holdAtWindowEnd", "sourceEndMs"};
+                const std::initializer_list<std::string_view> optional = {"unblendedBoneContact", "animationRootVerticalScale", "blendInMs", "blendFromClip", "blendFromSourceMs", "holdAtWindowEnd", "sourceEndMs", "animationBlendWindows"};
                 if (!value.Is_Object()) return false;
                 for (auto name : required) if (!value.Find(name)) return false;
                 for (const auto& [key, field] : value.Get_Object())
@@ -329,6 +330,12 @@ namespace
                 // transition boundary. Preserve the legacy native-end clamp when
                 // an older Product row stores an uncapped previous source time.
                 row.fBlendFromSourceMs = float((std::min)(previousDurationMs, blendSource->Get_Number()));
+            }
+            if (const auto* windows = value.Find("animationBlendWindows"))
+            {
+                if (!CKoukuSaydonAnimationBlend::Read_ProductWindows(*windows, row.AnimationBlendWindows, outStatus) ||
+                    !CKoukuSaydonAnimationBlend::Validate_ModelWindows(model, row.AnimationBlendWindows, outStatus))
+                { ++skipped; continue; }
             }
 			const std::string actionId = row.strActionId;
 			if (duplicates.contains(actionId) || !staged.emplace(actionId, std::move(row)).second)

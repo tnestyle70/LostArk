@@ -304,7 +304,7 @@ void CEffectAuthoringSequencer::Render_Colliders()
         { m_Status = "Collider footprint needs a nonvertical forward axis: " + row.id; continue; }
         float4x4_t world; XMStoreFloat4x4(&world, placed);
         // Preview geometry only; no collision object, damage or Server state is created.
-        CHitAreaWire::Draw(world, Collider_Wire(row.resource, row.scale), 0xff40dfff);
+        CHitAreaWire::Draw(world, row.productShape ? *row.productShape : Collider_Wire(row.resource, row.scale), 0xff40dfff);
     }
 }
 }

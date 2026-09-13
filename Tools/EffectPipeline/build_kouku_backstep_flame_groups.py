@@ -180,9 +180,103 @@ def build(evidence, install):
     print(json.dumps(dict(installed=install, documents=len(rows), elements=sum(r['elementCount'] for r in rows))))
 
 
+def stage_flame_origin_repair(evidence, samples_path):
+    """Keep current authoring and restore the distance-driven fire layer only.
+
+    Input is a numeric sample of the installed CModel's actual head socket;
+    translation is rebased at the first pose, without another actor/authoring
+    scale or an invented spawn rate. Existing runtime SourceTransformTrack is
+    applied after the element's local transform. A translation-only track
+    therefore preserves that transform's position, direction and scale.
+    """
+    evidence = evidence.resolve()
+    assert evidence.is_relative_to((ROOT / 'out').resolve()), 'Candidates must stay under out'
+    sample = source.read(samples_path)
+    assert sample['model'] == 'Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
+    assert sample['preScale'] == .017 and sample['clip'] == 'rpct00_att_battle_14_02'
+    assert sample['socket'] == 'FX_Prj_02' and sample['bone'] == 'bip001-head'
+    assert sample['sourceStartSeconds'] == .1 and sample['sourceDurationSeconds'] == 1.7
+    frames = sample['samples']
+    assert len(frames) == 103
+    keys, previous = [], -1
+    for index, frame in enumerate(frames):
+        time, matrix = frame['seconds'], frame['matrix']
+        assert math.isfinite(time) and time > previous and abs(time - index / 60) < 1e-6
+        assert len(matrix) == 16 and all(math.isfinite(v) for v in matrix)
+        assert all(abs(matrix[i]) < 1e-6 for i in (3, 7, 11)) and matrix[15] == 1
+        # CModel has already applied .017 to its 100x source rig basis.
+        assert all(abs(math.sqrt(sum(matrix[r * 4 + c] ** 2 for c in range(3))) - 1.7) < 1e-4
+                   for r in range(3))
+        # Inverse of the existing UE3 cm -> Client metre translation adapter.
+        position = [matrix[12] * 100, -matrix[14] * 100, matrix[13] * 100]
+        keys.append(dict(timeSeconds=time, value=position, arriveTangent=[0, 0, 0],
+                         leaveTangent=[0, 0, 0], interpolation='linear'))
+        previous = time
+    assert previous >= 1.7 - 1e-6
+    first = keys[0]['value']
+    travel = sum(math.dist(a['value'], b['value']) * .01 for a, b in zip(keys, keys[1:]))
+    assert 1.5 < travel < 1.55, 'The measured source head motion changed; inspect before regenerating'
+    object_path = 'fx_mn_rpct_05_l.par_l_rpct_05_sk_01_loc_int.particlespriteemitter_8'
+    source_occurrence = 'action-4219940/stage-001/notify-002/FX_Prj_02'
+    writes = []
+    for suffix in ('flame', 'full', 'ring.flame'):
+        target = AUTHORED / (PREFIX + suffix + '.effect.json')
+        before = target.read_bytes()
+        document = json.loads(before.decode('utf-8-sig'))
+        elements = [e for e in document['elements']
+                    if e['sourcePresentation']['sourceObjectPath'] == object_path]
+        assert len(elements) == 1
+        element = elements[0]
+        assert not element['actionCueAttachment']['enabled'], 'Preserve a user-authored attachment'
+        assert 'sourceTransformTrack' not in element, 'Preserve an existing authored motion track'
+        assert element['material']['sourceProfile']['runtimeShaderProfileId'] == 'effect.ue3.kouku-2580-native.v1'
+        assert element['detail']['particle']['spawnRatePerSecond'] == 0
+        assert element['detail']['particle']['burstCount'] == 0 and not element['sourceRecipe']['bursts']
+        modules = [m for m in element['sourceRecipe']['modules'] if m['className'] == 'particlemodulespawnperunit']
+        assert len(modules) == 1
+        assert next(x['value'] for x in modules[0]['literals'] if x['propertyPath'] == 'unitscalar') == 30
+        assert next(x['lookupTable'] for x in modules[0]['distributions']
+                    if x['propertyPath'] == 'spawnperunit') == [1, 1, 1, 1]
+        element['sourceTransformTrack'] = dict(sourceOccurrenceId=source_occurrence,
+            sourceTimeOriginSeconds=-element['detail']['timing']['startDelaySeconds'],
+            previewOriginUE3Cm=first, nodes=[dict(sourceObjectPath=source_occurrence + '/baked-head-translation',
+                frame='WORLD', initialPositionUE3Cm=first, initialEulerDegrees=[0, 0, 0], scaleUE3=[1, 1, 1],
+                positionKeys=keys, eulerKeys=[])])
+        candidate = evidence / 'candidate' / target.relative_to(ROOT)
+        source.write(candidate, document)
+        baseline = evidence / 'baseline' / target.relative_to(ROOT)
+        baseline.parent.mkdir(parents=True, exist_ok=True)
+        baseline.write_bytes(before)
+        unchanged = copy.deepcopy(document)
+        del next(e for e in unchanged['elements'] if e['id'] == element['id'])['sourceTransformTrack']
+        assert unchanged == json.loads(before.decode('utf-8-sig'))
+        checked = inspect_document(document)
+        writes.append(dict(target=target.relative_to(ROOT).as_posix(),
+            candidate=candidate.relative_to(ROOT).as_posix(), baseline=baseline.relative_to(ROOT).as_posix(),
+            baselineSha256=hashlib.sha256(before).hexdigest(),
+            candidateSha256=hashlib.sha256(candidate.read_bytes()).hexdigest(),
+            effectAssetId=document['effectAssetId'], modifiedElementId=element['id'], **checked))
+    source.write(evidence / 'installation.json', dict(installed=False, writes=writes,
+        sourceSamples=dict(path=str(samples_path.resolve()), sha256=hashlib.sha256(samples_path.read_bytes()).hexdigest()),
+        sourceOccurrenceId=source_occurrence, sourceModel=sample['model'], sourceClip=sample['clip'],
+        sourceSocket=sample['socket'], sourceStartSeconds=.1, sourceDurationSeconds=1.7,
+        sourceOwnerScale=1.7, measuredTravelMetres=travel, sampledFrames=len(keys),
+        fidelityBoundary='Current selected Sk_01 layer only: actual head translation rebased at its initial pose. '
+            'Other emitters, source recipes, materials and user transforms remain unchanged. '
+            'This is not a complete original backstep action or animated head orientation reconstruction.',
+        validationStatus='CANDIDATE_ONLY', manualVisualValidation='USER_PENDING'))
+    print(json.dumps(dict(installed=False, documents=len(writes), sampledFrames=len(keys), sourceTravelMetres=travel)))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--evidence-root', type=Path, default=ROOT / 'out/KoukuSaitenGroups20260912/backstep')
     parser.add_argument('--install', action='store_true')
+    parser.add_argument('--flame-motion-samples', type=Path,
+                        help='Stage three current flame repairs from actual CModel head samples; never installs')
     args = parser.parse_args()
-    build(args.evidence_root, args.install)
+    if args.flame_motion_samples:
+        assert not args.install, 'The live authoring repair is candidate-only'
+        stage_flame_origin_repair(args.evidence_root, args.flame_motion_samples)
+    else:
+        build(args.evidence_root, args.install)

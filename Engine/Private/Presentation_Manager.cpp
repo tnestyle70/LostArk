@@ -6,7 +6,7 @@
 namespace
 {
 	constexpr size_t MAX_PRESENTATION_PROVIDERS = 256u;
-	constexpr size_t MAX_TRANSIENT_LIGHTS = 384u;
+	constexpr size_t MAX_TRANSIENT_LIGHTS = CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
 	constexpr size_t MAX_SCREEN_POSTS = 64u;
 	constexpr size_t MAX_SCREEN_OVERLAYS = 64u;
 

@@ -795,6 +795,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	shader->Bind_RawValue("g_EmissiveColor", &identityEmissive, sizeof(identityEmissive));
 
 	const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
+    const uint32_t sourceBgUnlit = nativeSurface && nativeSurface->sourceBgUnlit &&
+        nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ? 1u : 0u;
+    if (FAILED(shader->Bind_RawValue("g_SourceBgUnlit", &sourceBgUnlit, sizeof(sourceBgUnlit)))) return E_FAIL;
 	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
 	const bool sourceBg = nativeSurface &&
 		nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&

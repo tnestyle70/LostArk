@@ -1,5 +1,7 @@
 # 마리오 작은 오망성 바닥 연결 결과
 
+2026-09-13 사용자 후속 요청으로 이 문서의 추가 바닥5개는 제거하고 source star-shot7로 교체했다. 아래는 당시의 검증 이력이며 현재 작은 오망성 구성은 [후속 결과](../09-13/2026-09-13_KOUKU_PATTERN_RADIAL_MOTION_RESULT.md)를 따른다.
+
 ## G00. 반영 상태
 
 `effect.kouku.gate3.mario.boss.pentagram.full.restore`에 기존 별 그리기 mesh 8개와 바닥 decal 5개를 연결했다. 효과 문서, Resource Tree, 재설치 생성기의 표시 이름은 `작은 오망성`이다. stable asset ID와 기존 별 그리기 8개 요소는 보존했다.

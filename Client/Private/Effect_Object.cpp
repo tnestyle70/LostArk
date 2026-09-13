@@ -724,6 +724,12 @@ bool_t Client::CEffectObject::Should_SubmitPreviewElement(
 			Isolation.ElementIds.end(), pElement->strElementId));
 }
 
+void Client::CEffectObject::Use_ExternalModelCueAnchors()
+{
+	m_Playback.Set_ModelCueAnchorProvider({});
+	m_pRenderer->Set_ModelCueRenderingEnabled(false);
+}
+
 void Client::CEffectObject::Bind_ModelCueAnchorProvider()
 {
 	m_Playback.Set_ModelCueAnchorProvider([this](const f32_t Time,
@@ -846,6 +852,21 @@ void Client::CEffectObject::Preserve_StartingSceneCapture(const CEffectObject& P
 {
 	if (m_pRenderer && Previous.m_pRenderer)
 		m_pRenderer->Preserve_StartingSceneCapture(*Previous.m_pRenderer);
+}
+
+bool_t Client::CEffectObject::Has_CapturedScreenPost(const std::string& elementId) const
+{
+	return m_pRenderer && m_pRenderer->Has_CapturedScreenPost(elementId);
+}
+
+HRESULT Client::CEffectObject::Get_ScreenPostCaptureResult(const std::string& elementId) const
+{
+	return m_pRenderer ? m_pRenderer->Get_ScreenPostCaptureResult(elementId) : E_FAIL;
+}
+
+void Client::CEffectObject::Set_ScreenPostCaptureAllowed(const bool_t allowed)
+{
+	if (m_pRenderer) m_pRenderer->Set_ScreenPostCaptureAllowed(allowed);
 }
 
 void Client::CEffectObject::Set_Visible(const bool_t bVisible)
@@ -1087,7 +1108,7 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 			continue;
 		PRESENTATION_SCREEN_POST_DESC Post;
 		const HRESULT hNative = m_pRenderer->Build_NativeScreenPost(
-			Evaluated, Post.pMaterial, m_strStatus);
+			Frame, Evaluated, Post.pMaterial, m_strStatus);
 		if (FAILED(hNative))
 		{
 			Record_LocalSubmissionResult(m_LastPresentationSubmissionStats.ScreenPosts, hNative);

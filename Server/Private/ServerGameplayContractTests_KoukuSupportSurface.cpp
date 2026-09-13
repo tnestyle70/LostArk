@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
+#include "KoukuSaydonBrain.h"
 #include "GameRoom.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
@@ -82,6 +83,22 @@ REGION "blocked" "closed" 0 1
 		std::abs(path.front().y - 1.6f) < .00001f && nav.Has_LineOfSight(2.f, 6.f, 10.f, 6.f) &&
 		nav.Resolve_TraversalStep(3.9f, 6.f, 4.1f, 6.f, point) && std::abs(point.y - 1.6f) < .00001f,
 		"A-star, line of sight and live movement use the same supported height");
+	{
+		// A wall can truncate a root step after crossing the exact raised-floor edge.
+		CServerCollisionSystem collision;
+		collision.Set_BlockingBodies({ { 4.25f, 6.f, .05f } });
+		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "KAKULSAYDON_ROOT_SUPPORT_CONTRACT";
+		pattern.Stages.emplace_back(); pattern.Stages.front().iDurationMs = 1000u;
+		pattern.Stages.front().Motion.RootMotion = { {0u, 0.f, 0.f, 0.f}, {1000u, 0.f, .4f, 0.f} };
+		SERVER_WORLD_ENTITY boss; boss.strPatternId = pattern.strPatternId;
+		boss.fPositionX = 3.9f; boss.fPositionY = 1.f; boss.fPositionZ = 6.f;
+		boss.fCollisionRadius = .05f; boss.iPatternStageFirstEvaluationTick = 1u;
+		boss.PatternStageRootMotion = pattern.Stages.front().Motion.RootMotion;
+		const bool moved = CKoukuSaydonBrain::Apply_StageRootMotion(boss, pattern, 30u, nav, collision, status);
+		tests.Require(moved && boss.fPositionX > 4.f && boss.fPositionX < 4.25f &&
+			std::abs(boss.fPositionY - 1.6f) < .00001f && boss.fPositionZ == 6.f,
+			"A collision-clipped root step uses ground at resolved XZ instead of sinking into the raised support");
+	}
 	floor.fRadiusM = .25f; floor.fHeightY = 3.f;
 	nav.Set_RuntimeSupportSurfaces({ floor }, status);
 	tests.Require(!nav.Resolve_TraversalStep(5.f, 6.f, 7.f, 6.f, point) &&

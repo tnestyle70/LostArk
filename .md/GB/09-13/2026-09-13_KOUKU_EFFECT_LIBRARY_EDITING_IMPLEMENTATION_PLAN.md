@@ -40,6 +40,10 @@ Created Resources의 이름은 Composition 별칭이며 `assetId`가 원본과 �
 
 ## G06. 검증과 전달
 
+### G05 후속. Sequence Append와 직접 월드 피킹
+
+2026-09-14 첨부 화면의 `KAKULSAYDON_G1_PATTERN_4.presentation.35`는 빈 `worldId`를 가진 WORLD다. 신규 Sequence Effect의 기본 배치는 MAP으로 준비하고, 명시적으로 선택한 World box 연결은 유지한다. 기존 WORLD 박스에도 Player/Mouse 위치 버튼을 표시한다. 피킹 요청 자체는 기존 박스를 바꾸지 않고 유효한 hit에서만 MAP, 절대 위치, follow/bone/world 참조 해제를 함께 stage한다. 취소와 stale 요청은 기존 편집을 보존한다. CPP/H의 기존 placement 경로만 수정하며 새 파일·프로젝트 등록·데이터 일괄 변환은 없다. 수정 TU 컴파일과 요청/취소/완료의 집중 검증으로 확인한다.
+
 분류 재생성의 중복·유실·동일성, JSON/XML parse, 선택한 실제 문서의 codec/CPU 재생, 수정 C++의 컴파일과 정상 증분 Product Build, `git diff --check`를 확인한다. 실행 중인 Client에는 사용자 편집이 있을 수 있으므로 종료·Reload·UI 조작·캡처를 하지 않는다. 출력 점유나 미저장 상태로 제품 바이너리를 교체할 수 없으면 현재 컴파일·데이터 반영 상태와 필요한 사용자 동작을 RESULT에 분리한다.
 
 화면에서의 최종 위치·크기·본 부착·재생 판단은 사용자가 한다. 최종 안내는 Effect Tool V1의 KoukuSaydon 분류에서 불뿜기 Open Editor/Play All과 Current Effect의 요소 Transform 편집으로 이어지도록 구체적으로 작성한다.
