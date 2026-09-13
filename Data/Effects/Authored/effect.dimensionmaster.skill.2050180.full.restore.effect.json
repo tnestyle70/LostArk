@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.dimensionmaster.skill.2050180.full.restore",
   "displayName": "\uc774\ud399\ud2b8_\ucc28\uc6d0\uc220\uc0acR_\uc804\uccb4",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

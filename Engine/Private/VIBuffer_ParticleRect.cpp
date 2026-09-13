@@ -1,4 +1,5 @@
 #include "VIBuffer_ParticleRect.h"
+#include "Engine_VertexTypes.h"
 #include "GameInstance.h"
 #include "Profiler.h"
 

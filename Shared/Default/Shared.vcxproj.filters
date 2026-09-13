@@ -78,4 +78,8 @@
       <Filter>Private\Network</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Shared_Pch.cpp" />
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
 </Project>

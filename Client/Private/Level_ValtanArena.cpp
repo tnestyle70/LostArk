@@ -1,3 +1,5 @@
+#include <WinSock2.h>
+#include <dinput.h>
 /* imgui.h defines its own placement-new helper and has to precede the project
 headers, which is the same order Level_CharacterSelect.cpp uses. Previously
 _DEBUG-only (the audition panel was its only user); the death-screen overlay

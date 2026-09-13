@@ -6,6 +6,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+import sys
+sys.path.insert(0, str(ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain, read_source_text
+
 
 
 class ValtanRaidCapacityContractTests(unittest.TestCase):
@@ -16,9 +20,7 @@ class ValtanRaidCapacityContractTests(unittest.TestCase):
         self.assertRegex(packet_type, r"MAX_PARTY_MEMBERS\s*=\s*4\s*;")
         self.assertRegex(packet_type, r"MAX_VALTAN_RAID_PLAYERS\s*=\s*8\s*;")
 
-        room = (ROOT / "Server/Private/GameRoom.cpp").read_text(
-            encoding="utf-8", errors="replace"
-        )
+        room = read_source_text(ROOT / "Server/Private/GameRoom.cpp", encoding="utf-8", errors="replace")
         self.assertIn("m_Players.size() >= LostArk::Shared::MAX_VALTAN_RAID_PLAYERS", room)
         self.assertIn("return nullptr == Find_AvailablePlayerSpawn();", room)
 
@@ -120,9 +122,7 @@ class ValtanRaidCapacityContractTests(unittest.TestCase):
                 )
 
     def test_room_full_regression_targets_ninth_entry(self) -> None:
-        server_tests = (
-            ROOT / "Server/Private/ServerGameplayContractTests.cpp"
-        ).read_text(encoding="utf-8", errors="replace")
+        server_tests = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")
         self.assertIn("NinthRaidFixture", server_tests)
         self.assertIn("Reject a ninth Valtan admission", server_tests)
         self.assertIn('find("enabledPlayerSpawns=8")', server_tests)

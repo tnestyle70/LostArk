@@ -6538,7 +6538,7 @@ float4 LanceVANative1325(LANCE_VA_NATIVE_INPUT input)
     // 70: add r0.xy, r0.xyxx, r0.zwzz
     r0.xy = ((r0.xyxx)+(r0.zwzz)).xy;
     // 71: sample_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t3.xyzw, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.xyz = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r0.xyxx).xy).xyzw).xyz;
+    r0.xyz = (Read_EffectSceneColor(LinearClampUVSampler, (r0.xyxx).xy).xyzw).xyz;
     // 72: add r0.w, -cb0[6].x, l(1.000000)
     r0.w = ((-(source[6].xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
     // 73: mul r0.xyz, r0.wwww, r0.xyzx

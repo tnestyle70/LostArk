@@ -38,6 +38,8 @@
 
 namespace LostArk::Server
 {
+	class CServerGameplayContractRunner;
+
 	//clientsession 전방 선언
 	class CClientSession;
 
@@ -66,7 +68,7 @@ namespace LostArk::Server
 
 	class CServerApp final
 	{
-		friend int Run_ServerGameplayContractTests(bool, bool, bool, bool);
+		friend class CServerGameplayContractRunner;
 	public:
 		//소멸자 - 중간 실패나 정상 종료 여부 상관 없이
 		//socket과 thread를 정리

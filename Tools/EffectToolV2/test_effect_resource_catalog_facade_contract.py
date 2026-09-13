@@ -1,4 +1,9 @@
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import re
 import unittest
@@ -18,7 +23,7 @@ MAIN_APP_SOURCE = ROOT / "Client/Private/MainApp.cpp"
 
 
 def read(path: Path) -> str:
-    return path.read_text(encoding="utf-8-sig")
+    return read_source_text(path, encoding="utf-8-sig")
 
 
 def function_tail(text: str, signature: str, next_signature: str) -> str:

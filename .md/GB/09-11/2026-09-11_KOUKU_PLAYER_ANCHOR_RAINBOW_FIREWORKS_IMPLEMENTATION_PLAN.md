@@ -64,60 +64,83 @@ None으로 등록한다. 새 shader producer가 필요한 경우 기존 FxCompil
 않는다. 마지막 RESULT에는 실제 빌드 범위와 사용자 화면 확인을 분리한다. 사용자는
 F1 → Effect Tool V1 → All Effects → KoukuSaydon → Play All/Open Editor에서 확인한다.
 
-## G04. 아레나 local player와 Effect preview target 수명 연결
+## G04. 09-13 실제 아레나 플레이어 등록 누락 교정
 
-`Enter an arena with a scene player before Play All. The player is the Effect anchor.`는
-`Select_SceneEffectTarget → Resolve_SceneCharacter`에서 발생하는 생성 전 오류다.
-카메라·입력에 local player가 연결돼도 `CAnimationTargetService` 등록이 없으면 Effect를
-준비할 수 없다. local player transaction의 소유자인 `CClientReplication`에서 연결한다.
+사용자가 확인한 오류는 `Enter an arena with a scene player before Play All. The player is the Effect anchor.`다.
+`Select_SceneEffectTarget → Resolve_SceneCharacter`의 scene player가 없어서 V1 factory보다 먼저 거절된다.
+조사 당시 Bind 호출은 Character Select Level에만 있고 Kouku/Bern의 복제 player는 카메라·입력만 연결돼 있었다.
+이 누락은 당시 HEAD에도 있어 최근 Effect Tool 파일 분할이 만든 새 셰이더 결함으로 단정하지 않는다.
 
-`Commit_PlayerSpawn`과 `Replace_CharacterClass`의 local character commit 성공 뒤 Bind한다.
-실패 rollback과 remote player는 기존 target을 보존하고, local despawn·Reset_World·destructor는
-해당 character만 Unbind한다. destructor에서 이미 제거됐을 수 있는 Layer를 다시 조작하지 않는다.
-Character Select의 기존 exact-pointer Bind/Unbind 계약과 Effect factory·shader는 유지한다.
+기존 `CClientReplication`이 local player transaction을 실제 commit한 시점에만
+`CAnimationTargetService::Bind`를 호출한다. `Commit_PlayerSpawn`과 `Replace_CharacterClass`의
+local character commit 성공을 연결하고 실패는 기존 target을 보존한다. local despawn·Reset_World·destructor는 해당 local character만 Unbind한다.
+remote player와 preview model은 바꾸지 않으며 destructor가 Layer를 다시 조작하는 경로는 추가하지 않는다.
+Character Select의 기존 exact-pointer Bind/Unbind는 중복 호출에도 안전하므로 별도 재작성하지 않는다.
 
-기존 target service를 재사용하므로 새 C++ 파일이나 프로젝트 항목은 없다. local/remote 생성,
-class 교체 성공·실패, 퇴장·reset·종료의 target 소유권과 변경 번역 단위 컴파일을 확인한다.
-Effect의 시작 시각이나 MAP 위치를 이 오류의 우회 수단으로 바꾸지 않는다.
+현재 festival 두 문서의 root attachment·발사 원점·material은 보존한다. saved P4 occurrence는
+MAP 고정 위치이고 authored festival의 첫 발생은 33.40897초다. 독립 full.restore의 첫 발생은 0초다.
+이 둘의 timeline을 합치거나 Play All을 위해 authored 시작 시각을 일괄 당기지 않는다.
 
-## G05. 무대 앞 금빛 이동 축포의 원본 Move·반복·속도 연결
+현재 실제 codec/playback으로 festival·authored festival·fireworks를 다시 평가하고,
+local 생성·교체·remote·실패·퇴장에 따른 실제 target 수명을 focused CPU 검사한다.
+관련 번역 단위 컴파일 뒤 잠금이 없는 경우 기존 Product 빌드를 사용한다. 새 C++/harness/project 등록은 없고
+Client/UI 실행·화면 판정은 사용자에게 남긴다. 결과와 한계는 같은 RESULT의 G06에 기록한다.
 
-첨부 이미지의 금빛 선단과 곡선 잔광은 SCENE03A Matinee0의
-`FX_Q_W_01.FX_Par_02.Par_Q_Trail_01`과 actor Move를 함께 사용한다. 이 효과의 mesh sparkle과
-smoke tail은 SpawnPerUnit이므로 실제 이동 거리가 없으면 꼬리 입자가 생성되지 않는다.
+## G05. 무대 앞 금빛 이동 축포와 원본 Move 연결
 
-`build_kouku_sequence_effect_groups.py::actor_groups`의 UE FName 연결을 대소문자 비구분으로
-수정한다. `Pc01tr`/`pc01tr` 차이로 누락된 Move를 복구하고 actor/group 불일치와 모호한 이름은
-거부한다. 기존 SourceTransformTrack schema와 source key의 시간·값·접선은 유지한다.
+새 첨부 이미지의 곡선형 금빛 잔광은 SCENE03A Matinee0의 `Par_Q_Trail_01`이다.
+무대 앞 emitter15~18과 포탈 앞 4개 actor는 기존 sequence source/authored 문서에 존재한다.
+`actor_groups`가 UE 이름을 대소문자 구분으로 비교해 `Pc01tr`와 `pc01tr`를 다른 그룹으로
+판정했고, 6개 actor의 Move 곡선이 빈 배열로 저장됐다. 금빛 sparkle/tail의 SpawnPerUnit은
+이동 거리가 없으면 생성되지 않으므로, 정지한 core만으로 원본 움직임을 대신할 수 없다.
 
-이번 main 기준 적용 대상은 아래 두 source 문서다.
+`build_kouku_sequence_effect_groups.py`의 원본 그룹 연결을 UE 이름의 대소문자 비구분 계약으로
+고친다. 원본 곡선 key/time/tangent와 기존 SourceTransformTrack schema는 유지하며 actor/group
+불일치와 모호한 이름을 거부한다. 연결 실패를 정상 정지 위치로 통과시키지 않는다. 현재 `.1/.2` source와 대응 `authored.portal-arrival.1/.2`의
+누락된 node 곡선만 보완한다. 사용자 저작 시작 시각, source clock 보정, 밝기, 재질, MAP 앵커와
+정상 곡선은 유지한다. V1의 기존 birth transform history와 cascadeRibbonV1를 소비한다.
+선택한 6 Required의 완전한 CDO 체인은 EmitterDuration=1, EmitterLoops=0을 사용한다.
+임시 loop 1이 원본 Toggle보다 먼저 효과를 종료하므로 선택 trail의 SourceRecipe만 0으로 복구한다.
+KillOnDeactivate/KillOnCompleted와 Matinee ON/OFF 수명은 기존 원본 값을 유지한다.
 
-- `effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1`: node 12개, loop 24개.
-- `effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2`: node 24개, loop 24개.
-
-원본 Required 인스턴스와 완전한 CDO 체인이 확인한 EmitterDuration 1초·EmitterLoops 0을
-사용한다. 선택한 trail의 임시 loop 1만 교정하고 원본 Toggle 종료와 KillOnDeactivate/Completed는
-보존한다. 기존 P4가 이 source `.1/.2`를 소비하므로 occurrence를 중복 추가하지 않는다.
-main에 없는 `authored.portal-arrival.1/.2` 복사본이나 58.81초 retiming은 이번 PR 대상이 아니다.
+무대 앞 4경로는 독립 `effect.kouku.gate1.intro.gold-trails.full.restore` 문서로도 제공한다.
+원본 경로·상대 발생 시각을 유지하고 첫 발생을 0초로 맞춰 Effect Tool에서 바로 확인할 수 있게 한다.
+EffectCatalog·EffectResourceTree와 Boss/Sequence Composition의 추가 가능한 Effect resource,
+Client project/filter의 96.DataFiles None 항목에 등록한다. 원본 SL04 floor08 위치
+UE `[0,-73728,0]`cm를 preview origin으로 사용하고 WORLD node scale 2를 보존한다.
+독립 resource의 duration은 tail을 포함한 9413ms다. 기존 P4 occurrence가 소비하는 authored 문서도 함께 고치므로
+기존 sequence는 저장된 시각·MAP 위치에서 같은 곡선을 재생한다.
 `build_kouku_gold_trails_restore.py`는 source 두 문서를 필수로 읽고 authored 복사본은 존재할 때만
-같은 node·loop 보완 대상으로 처리한다. 나머지 저작 값과 정상 node를 보존한다.
+같은 node·loop 보완 대상으로 처리한다. 현재 전체 작업에는 authored 두 문서도 있으므로 총 4문서가
+대상이다. authored 복사본을 새로 만들거나 나머지 저작 값을 바꾸지 않는다. 기존 library installer로
+Catalog·Resource Tree·Composition의 추가 가능 목록을 연결한다. 설치 중 부분 쓰기가 실패해도
+복구하도록 대상 경로를 쓰기 전에 rollback 목록에 넣는다.
 
-`Effect_Playback.h/.cpp`의 기존 ELEMENT_STATE와 prepared 목록은 SourceTransformTrack과
-VelocityInheritParent가 함께 있는 요소의 world origin 속도를 fixed step에서 계산한다.
-속도를 birth simulation basis로 옮기고 원본 scale을 한 번 적용한다. source track 없는 기존
-root/local/bone 속도 경로는 유지한다.
+원본 금빛 입자의 `VelocityInheritParent`도 고정 MAP root가 아닌 이동 emitter 속도를 필요로 한다.
+기존 `Effect_Playback.h/.cpp`의 ELEMENT_STATE와 fixed step에서 해당 source track 소비자의
+world origin 속도를 계산해 birth simulation basis로 옮긴 뒤 원본 scale을 한 번 적용하고
+기존 spawn 모듈에 전달한다. source track 없는 기존 root/local/bone 속도 경로는 보존한다.
+새 C++ 파일·shader·Resources는 필요하지 않으며, 변경한 기존 번역 단위와 제품 연결은 컴파일한다.
 
-무대 앞 actor15~18의 4경로·24행은 독립
-`effect.kouku.gate1.intro.gold-trails.full.restore`로도 제공한다. 첫 발생만 0초로 옮기고,
-SL04 floor08 원본 위치 `[0,-73728,0]`cm를 preview origin으로 사용한다. 원본 경로와 상대 시각,
-node scale 2는 보존한다. EffectCatalog·EffectResourceTree·Boss/Sequence Composition의 추가 가능
-resource와 Client project/filter의 기존 96.DataFiles None 항목에 등록한다. resource duration은
-tail을 포함한 9413ms다. 새 shader나 Resources payload는 필요하지 않다.
+기존 CPU probe로 변경 전후의 emitter 이동 거리, SpawnPerUnit 생성, world-space 잔광과 ribbon,
+seek 결정성을 대조한다. JSON/XML parse, importer 최소 검사와 diff 검사를 수행한다.
+다른 세션의 MSBuild와 공유 출력 빌드를 겹치지 않는다. 이번 속도 상속 교정은 C++ 변경을
+포함하므로 최종 제품 빌드를 수행한다. Client/UI 실행 및 최종 화면 판정은 사용자에게 남긴다.
 
-원본 26.9194545746초의 CONSTANT 위치 도약과 같은 시각의 즉시 camera cut은 보존한다.
-독립 문서는 원본 카메라·Slomo 연출을 포함하지 않으므로 이를 임의 평활·속도 clamp로 숨기지 않는다.
+## G06. PR374 전체 저작 변경과 main 통합
 
-검증은 source 연결·key 보존, node/loop 외 값 보존, 실제 codec/playback의 이동 거리·거리 방출·
-world 잔광·ribbon·수명·seek 결정성과 속도 상속 경계로 제한한다. 공유 작업 폴더의 기존 Product
-성공 기록과 main에서 분리한 이번 작업 폴더의 컴파일 결과를 구분한다. Client/UI 실행과 최종
-색상·크기·움직임 판정은 사용자에게 남기며, 실제 결과는 같은 RESULT의 G06–G07에 기록한다.
+PR374는 사용자 전체 commit `3fc23750761107fee9c6933df9f926d93165de05`를
+main `34b90de5a2e7d27003d34f581435dfc5e22f4fa4`와 통합한다. G04–G05의 코드뿐 아니라
+사용자의 authored portal-arrival 두 문서, 58.81초 시퀀스 저작과 전체 변경을 보존한다.
+PR373의 부분 반영 범위·당시 소비자·검증은 RESULT G08의 과거 이력이며 현재 PR의 제외 조건이 아니다.
+
+원본 두 문서의 node 36개·loop 48개와 authored 두 문서의 같은 보완을 모두 유지한다.
+원본 key/time/tangent, 정상 node, authored 시작 시각·sourceTimeOrigin·MAP 위치·밝기·재질을
+함께 보존하고 기존 P4가 소비하는 authored occurrence를 source 참조로 되돌리지 않는다.
+독립 24행 문서는 별도 Play All/명시적 Append용이며 같은 occurrence를 중복 추가하지 않는다.
+
+builder는 main의 authored 선택 처리와 부분 쓰기 rollback 순서를 유지한다. 원본
+26.9194545746초의 CONSTANT 위치 도약과 동일 시각 camera cut도 보존하며 임의 평활이나
+속도 clamp를 추가하지 않는다. 독립 문서에는 원본 camera/Slomo 연출이 없다는 경계를 유지한다.
+충돌 해결 검사는 기존 원 작업 폴더와 PR373의 CPU·Product 성공 기록을 새 통합 빌드 결과로
+재사용하지 않는다. Client/UI와 최종 화면 판정은 계속 사용자 확인 범위다.

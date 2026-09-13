@@ -2,6 +2,11 @@
 """Focused source contract for the KoukuSaydon Client product level."""
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
+
 
 from pathlib import Path
 import re
@@ -17,7 +22,7 @@ LEVEL = "KAKULSAYDON_ARENA"
 
 
 def read(relative: str) -> str:
-    return (ROOT / relative).read_text(encoding="utf-8-sig")
+    return read_source_text(ROOT / relative, encoding="utf-8-sig")
 
 
 class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
@@ -455,10 +460,9 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
         self.assertIn('Include="..\\Public\\CompositionResourceTree.h"', self.filters)
         # Resources reads physical metadata without creating a model or entering
         # either boss's document admission. Failed files retain their prior rows.
-        inventory = _region(
+        inventory = cpp_function_definition(
             self.animation_cpp,
             "bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(",
-            "bool_t Client::CAnimation_Tool::Preview_CompositionAnimationResource(",
         )
         self.assertIn("Read_AnimationCatalog(", inventory)
         self.assertIn("previous rows retained", inventory)

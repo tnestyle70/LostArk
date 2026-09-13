@@ -2,7 +2,6 @@
 
 #include "Client_Defines.h"
 #include "MapAssetCatalog.h"
-#include "MapAssetPreview.h"
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
 #include "WorldSequencePlayer.h"
@@ -30,6 +29,7 @@
 NS_BEGIN(Client)
 
 class CMapAssetObject;
+class CMapAssetPreview;
 class CMapStaticBatchObject;
 class CTrigger_Box;
 class CNpc;

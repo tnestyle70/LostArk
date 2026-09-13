@@ -2282,10 +2282,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 80u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 81u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 80");
+			"Mario direction packet retains its appended identity in protocol 81");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2709,14 +2709,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 80u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 81u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 80 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 81 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2777,7 +2777,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 80u, "World Object owner lifecycle and fear use protocol 80");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 81u, "World Object owner lifecycle and fear use protocol 81");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2790,7 +2790,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) == 80u &&
 			static_cast<std::uint8_t>(PLAYER_ACTION_STATE::FEAR) == 9u &&
 			static_cast<std::uint8_t>(PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP) == 2u,
-			"Protocol 80 preserves main identities and bundle state");
+			"Protocol 81 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -3130,8 +3130,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 80u,
-			"Protocol 80 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 81u,
+			"Protocol 81 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3247,8 +3247,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(80u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 80");
+			testRunner.Require(81u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 81");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3481,6 +3481,125 @@ namespace
 			"Reject Zero Class Change Sequence");
 	}
 
+	void Test_MovePredictionSnapshotProtocol(TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_SNAPSHOT source{};
+		source.iServerTick = 100u;
+		source.eWorldId = WORLD_ID::CHARACTER_SELECT_ARENA;
+		source.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		PLAYER_SNAPSHOT player{};
+		player.iNetEntityId = 100u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+		player.iLastProcessedMoveSequence = 41u;
+		player.fMoveSpeed = 3.f;
+		player.canPredictMove = true;
+		player.hasMoveGoal = true;
+		player.fMoveWaypointX = 4.f;
+		player.fMoveWaypointY = 2.f;
+		player.fMoveWaypointZ = -8.f;
+		player.eLocomotionState = PLAYER_LOCOMOTION_STATE::MOVING;
+		source.Players.push_back(player);
+		std::vector<std::uint8_t> payload;
+		const bool written = Build_WorldSnapshotPayload(source, payload);
+		CPacketReader reader{ payload };
+		S2C_WORLD_SNAPSHOT decoded{};
+		testRunner.Require(written && Read_Message(reader, decoded) &&
+			reader.Get_RemainingSize() == 0u && decoded.Players.size() == 1u &&
+			decoded.Players.front().iLastProcessedMoveSequence == 41u &&
+			decoded.Players.front().fMoveSpeed == 3.f &&
+			decoded.Players.front().canPredictMove && decoded.Players.front().hasMoveGoal &&
+			decoded.Players.front().fMoveWaypointX == 4.f &&
+			decoded.Players.front().fMoveWaypointY == 2.f &&
+			decoded.Players.front().fMoveWaypointZ == -8.f,
+			"Movement prediction preserves acknowledgement, effective speed and next Server waypoint");
+		if (!written) return;
+		for (const std::uint32_t sequence : { 0u, 1u, 0xFFFFFFFFu })
+		{
+			auto boundary = source;
+			boundary.Players.front().iLastProcessedMoveSequence = sequence;
+			CPacketWriter writer;
+			const bool encoded = Write_Message(writer, boundary);
+			CPacketReader boundaryReader{ writer.Get_Buffer() };
+			testRunner.Require(encoded && Read_Message(boundaryReader, decoded) &&
+				decoded.Players.front().iLastProcessedMoveSequence == sequence,
+				"Movement acknowledgement keeps initial and wrapped sequence values");
+		}
+		for (unsigned scenario = 0u; scenario < 8u; ++scenario)
+		{
+			auto invalid = source;
+			auto& bad = invalid.Players.front();
+			switch (scenario)
+			{
+			case 0u: bad.fMoveSpeed = -1.f; break;
+			case 1u: bad.fMoveSpeed = (std::numeric_limits<float>::infinity)(); break;
+			case 2u: bad.fMoveSpeed = 0.f; break;
+			case 3u: bad.fMoveWaypointY = (std::numeric_limits<float>::quiet_NaN)(); break;
+			case 4u: bad.canPredictMove = false; break;
+			case 5u: bad.hasMoveGoal = false; break;
+			case 6u: bad.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE; bad.iActionStartTick = 90u; break;
+			case 7u: bad.iMarioStage = 1u; break;
+			}
+			CPacketWriter writer;
+			testRunner.Require(!Write_Message(writer, invalid) && writer.Get_Buffer().empty(),
+				"Invalid prediction speed, waypoint or movement permission rejects before writing");
+		}
+		auto stopped = source;
+		auto& idle = stopped.Players.front();
+		idle.hasMoveGoal = false;
+		idle.fMoveWaypointX = idle.fMoveWaypointY = idle.fMoveWaypointZ = 0.f;
+		idle.eLocomotionState = PLAYER_LOCOMOTION_STATE::IDLE;
+		std::vector<std::uint8_t> idlePayload;
+		testRunner.Require(Build_WorldSnapshotPayload(stopped, idlePayload),
+			"A rejected or stopped move keeps its acknowledgement without an active waypoint");
+		auto nextSequence = source;
+		nextSequence.Players.front().iLastProcessedMoveSequence = 42u;
+		std::vector<std::uint8_t> nextPayload;
+		const bool nextWritten = Build_WorldSnapshotPayload(nextSequence, nextPayload);
+		std::size_t acknowledgementOffset = payload.size();
+		if (nextWritten && nextPayload.size() == payload.size())
+		{
+			for (std::size_t index = 0u; index < payload.size(); ++index)
+			{
+				if (payload[index] != nextPayload[index])
+				{
+					acknowledgementOffset = index;
+					break;
+				}
+			}
+		}
+		testRunner.Require(acknowledgementOffset + 22u <= payload.size(),
+			"Locate the complete prediction wire block from its sequence field");
+		if (acknowledgementOffset + 22u <= payload.size())
+		{
+			for (const std::size_t relativeOffset : { 8u, 9u })
+			{
+				auto malformed = payload;
+				malformed[acknowledgementOffset + relativeOffset] = 2u;
+				CPacketReader malformedReader{ malformed };
+				decoded.iServerTick = 777u;
+				testRunner.Require(!Read_Message(malformedReader, decoded) && decoded.iServerTick == 777u,
+					"Malformed movement permission booleans preserve the previous snapshot");
+			}
+			auto nonFiniteSpeed = payload;
+			nonFiniteSpeed[acknowledgementOffset + 4u] = 0u;
+			nonFiniteSpeed[acknowledgementOffset + 5u] = 0u;
+			nonFiniteSpeed[acknowledgementOffset + 6u] = 0x80u;
+			nonFiniteSpeed[acknowledgementOffset + 7u] = 0x7Fu;
+			CPacketReader nonFiniteReader{ nonFiniteSpeed };
+			testRunner.Require(!Read_Message(nonFiniteReader, decoded) && decoded.iServerTick == 777u,
+				"Non-finite movement speed on the wire preserves the previous snapshot");
+			bool allTruncatedPreserved = true;
+			for (std::size_t length = acknowledgementOffset; length < acknowledgementOffset + 22u; ++length)
+			{
+				CPacketReader truncatedReader{ std::span<const std::uint8_t>{ payload.data(), length } };
+				allTruncatedPreserved = !Read_Message(truncatedReader, decoded) &&
+					decoded.iServerTick == 777u && allTruncatedPreserved;
+			}
+			testRunner.Require(allTruncatedPreserved,
+				"Every truncated prediction field preserves the previous snapshot");
+		}
+	}
+
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -3624,10 +3743,12 @@ namespace
         constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
         constexpr std::size_t playerFearBytes = 4 + 2;
+		// Protocol 81 appends the acknowledgement and ordinary movement state.
+		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
-			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes;
+			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerPredictionBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -6459,7 +6580,7 @@ namespace
 		}
 
 		testRunner.Require(
-			80u == NETWORK_PROTOCOL_VERSION,
+			81u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 80");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6487,8 +6608,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			80u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 80");
+			81u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 81");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -7749,6 +7870,13 @@ namespace
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--move-prediction-only")
+	{
+		Test_MoveRoundTrip(testRunner);
+		Test_MovePredictionSnapshotProtocol(testRunner);
+		Test_WorldSnapshotRoundTrip(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--kouku-bundle-only")
 	{ Test_KoukuSaydonPatternAuditionProtocol(testRunner); Test_WorldObjectMotionProtocol(testRunner); return 0u == testRunner.iFailureCount ? 0 : 1; }
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--world-motion-only")
@@ -7810,6 +7938,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_MarioStageSnapshotProtocol(testRunner);
 	Test_CardMazeSnapshotProtocol(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
+	Test_MovePredictionSnapshotProtocol(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 	Test_WorldDestructionProtocol(testRunner);
 	Test_EncounterPropSyncProtocol(testRunner);

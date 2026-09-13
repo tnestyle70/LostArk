@@ -14,12 +14,17 @@ from pathlib import Path
 import re
 import unittest
 
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_body, read_source_text
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def read(relative: str) -> str:
-    return (ROOT / relative).read_text(encoding="utf-8")
+    return read_source_text(ROOT / relative, encoding="utf-8")
 
 
 def function_body(source: str, signature: str) -> str:
@@ -1433,9 +1438,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             sound,
             "the inspector must delegate commit to the typed Sound owner API",
         )
-        duration_lookup = function_body(
+        duration_lookup = cpp_function_body(
             self.animation_cpp,
-            "CollectModelClipSourceDurationSeconds(",
+            "std::unordered_map<std::string, f32_t>\n\tCollectModelClipSourceDurationSeconds(",
         )
         for token in (
             "pModel->Get_NumAnimations()",

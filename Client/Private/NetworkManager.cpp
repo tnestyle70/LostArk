@@ -1054,6 +1054,21 @@ bool CNetworkManager::Connect_To_Server(
 		return false;
 	}
 
+	/* Input and snapshot frames are small: do not wait for another payload or
+	   a delayed ACK before sending a movement command. */
+	const int noDelay = 1;
+	if (SOCKET_ERROR == ::setsockopt(m_hServerSocket, IPPROTO_TCP, TCP_NODELAY,
+		reinterpret_cast<const char*>(&noDelay), sizeof(noDelay)))
+	{
+		m_iLastErrorCode = ::WSAGetLastError();
+		m_SessionDiagnostic.Record_Terminal(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			m_iLastErrorCode.load(), LostArk::Shared::PACKET_TYPE::INVALID,
+			"Could not enable TCP_NODELAY for gameplay input.");
+		Close_ServerConnection();
+		return false;
+	}
+
 	sockaddr_in localAddress{};
 	int localAddressLength = sizeof(localAddress);
 	char localAddressText[INET_ADDRSTRLEN]{};

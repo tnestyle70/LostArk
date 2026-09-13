@@ -31,7 +31,9 @@ git lfs pull
 
 팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` 물리 폴더에 둔다. 이 물리 트리는 Git이 추적하지 않는다. 빌드된 EXE/DataFiles를 다른 PC에 전달할 때는 `.md/TEAM/RUNTIME_BUILD_DELIVERY_GUIDE.md`의 runtime ZIP 설치기를 사용하며, Resource pack 자체를 ZIP manifest나 Git 정본으로 승격하지 않는다.
 
-세팅 후 Debug 제품 빌드를 실행한다. 최초 실행 데이터가 없으면 아래 명시 publisher 명령으로 준비한다.
+배포 ZIP을 설치하고 그 배포본을 실행만 할 때는 설치 안내의 `Client (no build)` 바로가기를 사용한다.
+ZIP의 EXE/DLL/CSO는 실행용이며 다른 PC의 OBJ/PCH/증분 추적 기록을 제공하지 않는다.
+소스를 수정해 개발할 때는 아래 Debug 제품 빌드를 실행한다. 최초 실행 데이터가 없으면 아래 명시 publisher 명령으로 준비한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 `
@@ -69,6 +71,19 @@ Product: Engine → Shared → Server → Client (SDK·shader·runtime DLL 배�
 기능별 반복에는 필요한 최소 컴파일을 사용한다. 화면과 재생 결과가 예상과 다르면 사용자의 관찰을
 바탕으로 animation benchmark와 해당 family를 조정한다. JSON parse 및 실패 시 기존 항목 보존은
 유지한다. 에이전트는 Client를 자율 실행·조작하지 않으며 광역 진단은 사용자가 요청할 때만 실행한다.
+
+| 이번에 변경한 입력 | 필요한 처리 | 결과 확인 |
+|---|---|---|
+| 위치·개수·offset 등 JSON 저작 데이터 | Save, 해당 domain에 필요한 Publish/Reload 또는 재시작 | 변경 데이터를 읽는 기존 실행 파일 사용; C++/FX 컴파일 불필요 |
+| CPP 또는 헤더 | 같은 설정의 Product `Build`로 필요한 OBJ 재컴파일·링크 | 변경·누락이 없는 셰이더와 유효한 tracking은 재사용 |
+| HLSL/HLSLI·FX 옵션·shader project 등록 | Product `Build`가 실제 include/command 의존성에 따라 CSO 갱신 | 공통 include 변경은 여러 FX에 영향을 줄 수 있음 |
+| 받은 runtime ZIP을 실행만 함 | 설치 후 실제 target을 확인한 no-build 바로가기 실행 | 최초 VS Build가 생략된다는 보장은 아님 |
+
+`F5`와 `Ctrl+F5`는 모두 VS의 최신 여부 확인과 Build를 유발할 수 있다. 이미 Product 빌드가
+끝난 결과만 확인할 때는 `Client/Bin/<Configuration>/Client.exe`를 가리키는 no-build 바로가기를
+사용할 수 있다. 직접 실행의 작업 디렉터리는 `Client/Default`다. Server host는 해당 Server도
+준비해야 하며 다른 팀 PC는 공유 LAN Server를 사용한다. 바로가기를 실행하는 것은 재설치가 아니다.
+설치기를 다시 실행하면 ZIP의 EXE/DLL/CSO와 DataFiles로 로컬 수정 결과를 교체할 수 있다.
 
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
 
@@ -115,6 +130,23 @@ UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는
 
 `EngineSDK\`는 `.gitignore` 대상이다. **clean clone에서 Engine 산출물 없이 Client부터 빌드하면 반드시 실패한다.** 정본 runner는 Engine을 먼저 빌드하고 마지막 Client 빌드의 `PrepareEngineSdk`가 SDK를 준비하므로 중복 복사나 병렬 race를 만들지 않는다. x64 Debug/Release 제품 프로젝트는 `/MP`를 사용하되 이 dependency 순서는 그대로 유지한다.
 
+### C++ 수정·병합 빌드 범위
+
+제품 네 프로젝트의 x64 Debug/Release는 `Tools/Build/CppCompilation.props`를 공유하고,
+각 IntDir에 별도 PCH를 생성한다. PCH는 표준 라이브러리만 포함하며 게임·저작·렌더 설정
+헤더를 넣지 않는다. 컴파일 옵션이 다른 최적화 CPP와 외부 구현은 PCH를 사용하지 않는다.
+C++ worker 기본은 논리 CPU 수와8 중 작은 값이고 명시한 `CL_MPCount`가 우선한다.
+runner의 `-MaxCompilerProcesses`로 한 실행만 지정할 수 있다.
+
+`Engine_Defines.h`는 Assimp/DirectXTK/FX11/DirectInput과 전체 `Engine_Struct.h`를 일괄
+포함하지 않는다. 초기화·렌더 설정·정점·애니메이션 선언을 사용하는 파일은 해당 도메인
+헤더를 직접 포함한다. `GameInstance.h`의 렌더 반환값을 실제로 소비하는 CPP도 렌더 타입
+정의를 포함한다. 헤더 대응표와 신규 CPP/PCH 사용 규칙은 `Tools/Build/README.md`를 따른다.
+
+일반 Product 결과는 OBJ/PCH/CSO의 크기·수정 시각 변화와 설정 변화를 기록한다. 이 수치는
+실제 출력 쓰기이며 실패한 컴파일 시도 수나 내용 hash가 아니다. 빌드 실패도 실행한 단계와
+실패 이유를 같은 결과 JSON에 남긴다. 병합 후에는 정상 Build의 의존성 추적을 사용한다.
+
 ### 정리 스크립트
 
 - `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
@@ -129,6 +161,15 @@ host는 x64로 맞춘다. IDE와 반복 빌드에 같은 설치를 사용하고 
 프로젝트 전후 lastbuildstate를 확인한다. toolchain·SDK·host 변경은 소스 변경 없이도 전체
 재컴파일을 유발할 수 있다. `-BuildLogDirectory <경로>`를 지정한 실행에만 프로젝트별
 MSBuild binary/diagnostic 로그를 추가하여 재컴파일 원인과 작업 시간을 확인한다.
+
+에이전트는 일반 수정·pull·merge 확인에 `/t:Build`를 사용한다. `Rebuild`, CleanBuild 또는
+중간 산출물 삭제를 속도 문제의 첫 대응으로 사용하지 않는다. 소스가 안 바뀌었는데 FX가 다시
+컴파일되면 기존 결과의 `toolchain`, `projectStateBefore/After`, `trackingStateChanged`,
+`outputChanges`와 FX command/read/write tlog를 먼저 비교한다. 현재 lastbuildstate만으로 과거
+실행 원인을 확정할 수는 없다. 도구 구성, compiler 옵션, IntDir/OutDir, 의존 include의 실제 변경과
+출력/추적 파일 누락을 구분한 뒤 필요한 빌드 한 번에만 상세 로그를 붙인다. 처음부터 대형 shader
+재빌드나 전체 하네스를 진단 전제로 붙이지 않는다. `CSO 쓰기 0`은 기존 출력 재사용 결과이고,
+최초 빌드나 shader 변경 빌드가 같은 시간에 끝난다는 뜻은 아니다.
 
 runtime 데이터를 바꾼 경우 해당 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. Map의 `.mapassets`·`.mapplacements`는 시퀀스와 함께 PR에 포함하는 Git LFS 추적 출력이다. 같은 commit을 pull하고 LFS 파일을 받은 PC는 그 맵 snapshot을 사용한다. 맵 원본을 수정한 작업자는 Area Publish/Check 후 변경된 출력을 함께 커밋한다. 일반 컴파일은 실행 데이터를 재생성하지 않으며, Client/Server의 pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작한다. 최초 실행 데이터나 Git 제외 domain의 입력이 없는 경우 준비 명령은 다음과 같다.
 
@@ -269,7 +310,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v80 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v81 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -440,7 +481,7 @@ Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift �
 레이아웃에서 전부 터지면 `iMarioCurseReleasedMask`가 그 색 비트를 세운다. Client는 그 비트로 배치를
 `CWorldSequencePlayer`의 억제 집합에 넣어 숨기고 `boss.kouku.ball.smoke.<색>_1` 연기를 한 번 재생하며
 `빨간/파란/노란 인형의 저주 해제` 문구를 화면 중앙에 3초 표시한다. 뿅망치 접촉 틱은 카드미로와 공용인
-`HAMMER_HIT_TICK_OFFSET`이며 실측 스윙에 맞춘 30틱(1.0초)이다. 이 배치는 protocol 80을 쓰므로
+`HAMMER_HIT_TICK_OFFSET`이며 실측 스윙에 맞춘 30틱(1.0초)이다. 이 배치는 protocol 81을 쓰므로
 Server와 Client를 같은 버전으로 함께 빌드·재시작한다.
 카드미로 문양 몬스터는 Server 권위다. 미로 중앙의 `cardmaze.telescope` 상자(`claimCardMazeTelescope` trigger action,
 Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모드 뿅망치로 먼저 가격한 플레이어가 망원경 담당이 되고, 그 순간
@@ -516,7 +557,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v80의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v81의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -782,7 +823,7 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 - 아이템: `Data/Items/ItemCatalog.json`이 정본이다. 명시 실행하는 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
-- 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다. Area는 선택적으로 `Data/Navigation/<AreaId>.navregions`에 세부 영역 격자를 선언한다. 각 영역은 `<AreaId>.<regionId>` grid ID로 자기 `.navsource/.navpaint`와 런타임 `.navgrid/.navpolicy`를 갖고, Server는 질의의 첫 점을 담는 영역이 있으면 그 격자에서만 판정한다. 영역은 서로 겹칠 수 없고 runtime blocker를 갖지 않으며, 매니페스트가 없으면 Area는 기본 격자 하나로 종전과 동일하게 동작한다.
+- 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다. Client 제품 Loader도 같은 정책 값을 `CNavigation::Create_NavGrid`의 네 번째 인자로 전달하며 prototype/Clone과 Character 클릭 이동 예측의 `Get_MaxStepHeight()` 경로 요청이 이를 보존한다. 기존 명시적 raw/editor factory 호출의 기본값은 0.6이다. Area는 선택적으로 `Data/Navigation/<AreaId>.navregions`에 세부 영역 격자를 선언한다. 각 영역은 `<AreaId>.<regionId>` grid ID로 자기 `.navsource/.navpaint`와 런타임 `.navgrid/.navpolicy`를 갖고, Server는 질의의 첫 점을 담는 영역이 있으면 그 격자에서만 판정한다. 영역은 서로 겹칠 수 없고 runtime blocker를 갖지 않으며, 매니페스트가 없으면 Area는 기본 격자 하나로 종전과 동일하게 동작한다.
 - 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.
 - 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
 - 플레이어 스킬 히트 셰이프: `Data/Animation/HitShapes/<AssetId>.hitshapes.json`이 Server 판정 정본이다. `Tools/CharacterAnimationIntake/build_hitshapes.py`가 `.animevents` HIT 행과 skillbindings 체인에서 생성하고 `Publish-GameplayBalance.ps1`이 `SKILLHIT/SKILLSTAGEHIT` 행으로 publish한다. `areaType`은 원본 SkillEffect 의미 그대로 1=원/링, 2=전방 박스(원본 `AreaAngle`이 폭 cm → `width` m), 3=부채꼴(`angle` 도)이다. Server는 스킬당 damage rate를 sub-hit 수로 분할해 셰이프 안의 대상 전부에 적용하며, 셰이프가 없는 스킬만 `maximumRange` 원형 단일 판정을 유지한다. notify HIT가 없는 스킬은 `fill_animevents_hit_shapes.py`가 `PlayerSkills.json hitTimeMs` 위치에 skilltiming caster 셰이프 한 행을 합성한다. 원작이 투사체/장판으로 때리는 스킬은 `Data/Animation/Reference/<AssetId>/<AssetId>.projectiles`(원본 `XMLData/Projectile/<PK>.loa` 추출) → `Tools/CharacterAnimationIntake/fill_projectiles.py` → `Data/Animation/Authored/<AssetId>/<AssetId>.projectiles.json` → `build_hitshapes.py`의 skill/stage `projectiles[]`(v3) → `SKILLPROJ/SKILLSTAGEPROJ` 행으로 이어지며, Server `CPlayerSkillSystem`이 spawn 시각에 MISSILE(조준 방향 직진, 거리·수명 소멸, 접촉 히트는 대상당 1회)·FIXAREA(조준 지점, 최대 거리 clamp, 예약 시각 히트) 오브젝트를 만들어 caster 히트와 같은 damage rate를 sub-hit로 나눠 적용한다. Client는 Debug 와이어 예측만 그리고 판정하지 않는다.

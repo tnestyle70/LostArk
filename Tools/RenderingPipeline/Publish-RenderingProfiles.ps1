@@ -72,16 +72,18 @@ function Assert-FiniteFloatRange(
         throw "$Context must be a JSON number."
     }
 
-    # Workbench Save serializes the exact binary32 value (for example,
-    # 0.0312f becomes 0.0311999992). Compare against the same binary32
-    # boundaries used by CRenderingProfileService instead of wider decimal
-    # literals, otherwise a valid Save cannot be published again.
+    # Workbench writes nine significant digits. Read the value as binary32
+    # before comparing, as CRenderingProfileService::Read_Float does; the
+    # decimal spelling may be just outside the exact binary32 boundary.
     $number = [double]$Value
-    $minimumFloat = [double]$Minimum
-    $maximumFloat = [double]$Maximum
-    if ([double]::IsNaN($number) -or [double]::IsInfinity($number) -or
-        $number -lt $minimumFloat -or $number -gt $maximumFloat) {
-        throw "$Context must be finite in [$minimumFloat, $maximumFloat]."
+    if ([double]::IsNaN($number) -or [double]::IsInfinity($number)) {
+        throw "$Context must be finite in [$Minimum, $Maximum]."
+    }
+    try { $runtimeValue = [single]$number }
+    catch { throw "$Context must fit a finite float32 value." }
+    if ([single]::IsNaN($runtimeValue) -or [single]::IsInfinity($runtimeValue) -or
+        $runtimeValue -lt $Minimum -or $runtimeValue -gt $Maximum) {
+        throw "$Context must be finite in [$Minimum, $Maximum]."
     }
 }
 
@@ -95,6 +97,7 @@ function Assert-Vector4(
         throw "$Context must contain exactly four numbers."
     }
     for ($index = 0; $index -lt 4; ++$index) {
+        Assert-FiniteRange $items[$index] -64.0 64.0 "$Context[$index]"
         Assert-FiniteFloatRange $items[$index] $Minimum $Maximum "$Context[$index]"
     }
 }
@@ -109,6 +112,7 @@ function Assert-Vector3(
         throw "$Context must contain exactly three numbers."
     }
     for ($index = 0; $index -lt 3; ++$index) {
+        Assert-FiniteRange $items[$index] -100000.0 100000.0 "$Context[$index]"
         Assert-FiniteFloatRange $items[$index] $Minimum $Maximum "$Context[$index]"
     }
 }
@@ -242,6 +246,9 @@ function Assert-RenderingProfileDocument([object]$Document) {
             Assert-Vector4 $environment.color 0.0 64.0 'profile.environment.color'
             $rotation = @($environment.rotationIntensity)
             if ($rotation.Count -ne 4) { throw 'profile.environment.rotationIntensity requires four numbers.' }
+            foreach ($component in $rotation) {
+                Assert-FiniteRange $component -64.0 64.0 'profile.environment.rotationIntensity'
+            }
             Assert-FiniteFloatRange $rotation[0] -1.0 1.0 'profile.environment.rotationIntensity[0]'
             Assert-FiniteFloatRange $rotation[1] -1.0 1.0 'profile.environment.rotationIntensity[1]'
             Assert-FiniteFloatRange $rotation[2] 0.0 64.0 'profile.environment.rotationIntensity[2]'
@@ -286,17 +293,19 @@ function Assert-RenderingProfileDocument([object]$Document) {
                 $planes = @($region.planes)
                 if ($planes.Count -lt 4 -or $planes.Count -gt 64) { throw 'Environment volume requires 4 to 64 planes.' }
                 foreach ($plane in $planes) {
-                    Assert-Vector4 $plane -100000 100000 'environment plane'
+                    if (@($plane).Count -ne 4) { throw 'Environment plane requires 4 numbers.' }
+                    # The runtime bounds these raw double coordinates before conversion.
+                    foreach ($coordinate in $plane) { Assert-FiniteRange $coordinate -100000 100000 'environment plane' }
                     if ([Math]::Abs($plane[0]*$plane[0]+$plane[1]*$plane[1]+$plane[2]*$plane[2]-1) -gt .001) { throw 'Environment plane normal is not normalized.' }
                 }
-                Assert-FiniteRange $region.blendTimeIn 0 60 'environment blendTimeIn'
-                Assert-FiniteRange $region.blendTimeOut 0 60 'environment blendTimeOut'
+                Assert-FiniteFloatRange $region.blendTimeIn 0 60 'environment blendTimeIn'
+                Assert-FiniteFloatRange $region.blendTimeOut 0 60 'environment blendTimeOut'
                 Assert-Color $region.directionalColor 'environment directionalColor'
                 Assert-Color $region.ambientColor 'environment ambientColor'
                 $regionFog = $region.fog
                 Assert-ExactProperties $regionFog @('density','heightFalloff','topHeight','startDistance','maximumOpacity','color','inscatteringColor','lightDirection') 'environment fog'
                 foreach ($v in @(@('density',0,8),@('heightFalloff',.0001,4),@('topHeight',-10000,10000),@('startDistance',0,100000),@('maximumOpacity',0,1))) {
-                    Assert-FiniteRange $regionFog.($v[0]) $v[1] $v[2] ('environment '+$v[0])
+                    Assert-FiniteFloatRange $regionFog.($v[0]) $v[1] $v[2] ('environment '+$v[0])
                 }
                 Assert-Color $regionFog.color 'environment color'
                 Assert-SourceFog $regionFog
@@ -357,7 +366,7 @@ function Assert-RenderingProfileDocument([object]$Document) {
             "$profileId.shadow.near"
         Assert-FiniteFloatRange $shadow.far 0.0001 100000.0 `
             "$profileId.shadow.far"
-        if ([double]$shadow.far -le [double]$shadow.near) {
+        if ([single]$shadow.far -le [single]$shadow.near) {
             throw "$profileId.shadow.far must be greater than near."
         }
         Assert-FiniteFloatRange $shadow.depthBias 0.0 0.05 `
@@ -385,39 +394,39 @@ function Assert-RenderingProfileDocument([object]$Document) {
             throw "$profileId.fog.enabled must be boolean."
         }
         Assert-Color $fog.color "$profileId.fog.color"
-        Assert-FiniteRange $fog.density 0.0 8.0 `
+        Assert-FiniteFloatRange $fog.density 0.0 8.0 `
             "$profileId.fog.density"
-        Assert-FiniteRange $fog.heightFalloff 0.0001 4.0 `
+        Assert-FiniteFloatRange $fog.heightFalloff 0.0001 4.0 `
             "$profileId.fog.heightFalloff"
-        Assert-FiniteRange $fog.topHeight -10000.0 10000.0 `
+        Assert-FiniteFloatRange $fog.topHeight -10000.0 10000.0 `
             "$profileId.fog.topHeight"
-        Assert-FiniteRange $fog.startDistance 0.0 100000.0 `
+        Assert-FiniteFloatRange $fog.startDistance 0.0 100000.0 `
             "$profileId.fog.startDistance"
-        Assert-FiniteRange $fog.maximumOpacity 0.0 1.0 `
+        Assert-FiniteFloatRange $fog.maximumOpacity 0.0 1.0 `
             "$profileId.fog.maximumOpacity"
-        Assert-FiniteRange $fog.driftSpeed 0.0 8.0 `
+        Assert-FiniteFloatRange $fog.driftSpeed 0.0 8.0 `
             "$profileId.fog.driftSpeed"
-        Assert-FiniteRange $fog.driftHeightAmplitude 0.0 1000.0 `
+        Assert-FiniteFloatRange $fog.driftHeightAmplitude 0.0 1000.0 `
             "$profileId.fog.driftHeightAmplitude"
-        Assert-FiniteRange $fog.driftDensityAmplitude 0.0 8.0 `
+        Assert-FiniteFloatRange $fog.driftDensityAmplitude 0.0 8.0 `
             "$profileId.fog.driftDensityAmplitude"
-        Assert-FiniteRange $fog.coveragePercent 0.0 1.0 `
+        Assert-FiniteFloatRange $fog.coveragePercent 0.0 1.0 `
             "$profileId.fog.coveragePercent"
-        Assert-FiniteRange $fog.windDirectionX -1.0 1.0 `
+        Assert-FiniteFloatRange $fog.windDirectionX -1.0 1.0 `
             "$profileId.fog.windDirectionX"
-        Assert-FiniteRange $fog.windDirectionZ -1.0 1.0 `
+        Assert-FiniteFloatRange $fog.windDirectionZ -1.0 1.0 `
             "$profileId.fog.windDirectionZ"
-        Assert-FiniteRange $fog.windSpeed 0.0 200.0 `
+        Assert-FiniteFloatRange $fog.windSpeed 0.0 200.0 `
             "$profileId.fog.windSpeed"
-        Assert-FiniteRange $fog.patchScale 0.0001 1.0 `
+        Assert-FiniteFloatRange $fog.patchScale 0.0001 1.0 `
             "$profileId.fog.patchScale"
-        Assert-FiniteRange $fog.patchSoftness 0.001 0.5 `
+        Assert-FiniteFloatRange $fog.patchSoftness 0.001 0.5 `
             "$profileId.fog.patchSoftness"
 
-        $effectiveExposure = [double]$quality.exposure *
-            [double]$profile.exposureMultiplier
-        $effectiveBloom = [double]$quality.bloomIntensity *
-            [double]$profile.bloomIntensityMultiplier
+        $effectiveExposure = [single]([single]$quality.exposure *
+            [single]$profile.exposureMultiplier)
+        $effectiveBloom = [single]([single]$quality.bloomIntensity *
+            [single]$profile.bloomIntensityMultiplier)
         Assert-FiniteFloatRange $effectiveExposure 0.01 32.0 "$profileId.effectiveExposure"
         Assert-FiniteFloatRange $effectiveBloom 0.0 16.0 "$profileId.effectiveBloomIntensity"
     }

@@ -236,6 +236,7 @@ public:
 	static const CHARACTER_ACTOR_ENTRY* Find_Character(
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);
+	static const std::vector<BOSS_ACTOR_ENTRY>& Get_Bosses();
 	static const BOSS_COMBAT_OBJECT_VISUAL_ENTRY*
 		Find_BossCombatObjectVisual(
 			std::string_view bossArchetypeId,

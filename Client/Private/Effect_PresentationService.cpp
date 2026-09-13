@@ -5,6 +5,7 @@
 
 #include "Character.h"
 #include "Effect_Catalog.h"
+#include "Effect_MaterialProgramRegistry.h"
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_Object.h"
 #include "Effect_Playback.h"

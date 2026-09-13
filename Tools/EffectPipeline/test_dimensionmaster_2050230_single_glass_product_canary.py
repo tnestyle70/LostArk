@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import copy
 import json
@@ -211,16 +216,12 @@ class DimensionMasterSingleGlassProductCanaryTests(unittest.TestCase):
         self.assertEqual("700", admitted.group(1))
 
     def test_renderer_and_shader_keep_color_and_distortion_outputs_typed(self) -> None:
-        renderer = (
-            REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp"
-        ).read_text(encoding="utf-8-sig")
+        renderer = read_source_text(REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp", encoding="utf-8-sig")
         shader = (
             REPOSITORY_ROOT
             / "Client/Bin/ShaderFiles/Shader_EffectUe3MaterialFamilies.hlsli"
         ).read_text(encoding="utf-8")
-        tool = (
-            REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
-        ).read_text(encoding="utf-8-sig")
+        tool = read_source_text(REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp", encoding="utf-8-sig")
         for witness in (PRODUCT_ID, ELEMENT_ID, MODEL_ASSET):
             self.assertIn(witness, renderer)
         self.assertIn("Shade_EffectProjectTunedGlassMeshV1", shader)

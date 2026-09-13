@@ -3,6 +3,7 @@
   "version": 15,
   "effectAssetId": "effect.kouku.gate1.4219877.full.restore",
   "displayName": "쿠크 1관문 내려치기C 전체 복원",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

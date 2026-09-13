@@ -20,6 +20,8 @@ public:
 
 	virtual bool Request_DebugTeleportToPosition(
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) = 0;
+	// Exact authored arena start; unsupported sinks reject this Debug reset.
+	virtual bool Request_DebugReturnToKoukuStart(std::uint32_t) { return false; }
 	virtual bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) = 0;
 	// Unsupported sinks explicitly reject the optional Debug test aid.

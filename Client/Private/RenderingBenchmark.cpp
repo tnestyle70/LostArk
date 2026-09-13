@@ -1,4 +1,9 @@
+#include <WinSock2.h>
 #include "imgui.h"
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
 
 #include "RenderingBenchmark.h"
 #include "GameInstance.h"

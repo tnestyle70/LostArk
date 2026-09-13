@@ -12,6 +12,7 @@ from extract_ue3_placements import resolve_physical_package
 import extract_ue3_material_shader_maps as sm
 import build_kouku_gate1_full_restore as restore
 from build_warlord_asvf_full_restore import norm, merge
+from native_material_tables import read_material_bytes
 
 SOURCE = restore.SOURCE / 'CanonicalSource/Effect'
 RELEASE = pathlib.Path('C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC')
@@ -188,7 +189,7 @@ def prepare(evidence):
     import install_kouku_gate1_native_materials as tables
     tables.FIRST, tables.LAST = 2400, 2409
     candidate = out / 'Effect_ArtistMaterial.candidate.h'
-    shutil.copyfile(ROOT / 'Client/Public/Effect_ArtistMaterial.h', candidate)
+    candidate.write_bytes(read_material_bytes(ROOT / 'Client/Public/Effect_ArtistMaterial.h'))
     tables.install(out / 'native_runtime_contract.json', out, candidate)
 
 

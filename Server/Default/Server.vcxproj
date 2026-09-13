@@ -232,6 +232,141 @@
   <Target Name="PublishServerBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Server" />
   </Target>
+  <Import Project="..\..\Tools\Build\CppCompilation.props" />
+  <ItemGroup>
+    <ClCompile Include="..\Private\Server_Pch.cpp">
+      <PrecompiledHeader Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">Create</PrecompiledHeader>
+      <ExcludedFromBuild Condition="'$(LostArkUsePch)'!='true' or '$(Platform)'!='x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
+  <ItemGroup>
+    <ClInclude Include="..\Private\GameRoom_Internal.h" />
+    <ClCompile Include="..\Private\GameRoom_CatalogGenerations.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Admission.cpp" />
+    <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
+    <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp" />
+    <ClCompile Include="..\Private\GameRoom_ValtanAudition.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Replication.cpp" />
+    <ClCompile Include="..\Private\GameRoom_WorldEntities.cpp" />
+    <ClCompile Include="..\Private\GameRoom_BossStageActions.cpp" />
+    <ClCompile Include="..\Private\GameRoom_WorldDestruction.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuMiniGames.cpp" />
+    <ClCompile Include="..\Private\GameRoom_PlayerSimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Helpers.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_Internal.h" />
+    <ClInclude Include="..\Private\ServerGameplayContractTests_PinnedGenerationFixture.h" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Helpers.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuLogic.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldPlayback.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_DebugTeleport.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuBundles.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuProduct.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanLifecycle.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanPinnedGeneration.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanRevision.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_RevisionProtocol.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_GenerationRetention.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SessionTransport.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_RoomIngress.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_CharacterAdmission.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_GroundTarget.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerCombos.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerActions.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanMechanicLedger.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanSkyAxe.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanTimelines.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldTriggers.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SkillStages.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SpawnGroups.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanDash.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanAudition.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanResetlessNext.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanReleaseControl.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldDestruction.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_Runner.h" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Runner.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuOverlap.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_CardMaze.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Bingo.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuSupportSurface.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Navigation.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h" />
+  </ItemGroup>
 </Project>

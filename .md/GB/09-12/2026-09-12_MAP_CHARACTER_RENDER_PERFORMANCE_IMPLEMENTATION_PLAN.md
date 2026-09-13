@@ -58,3 +58,65 @@ RESULT는 구현, 자동 검증, 사용자 FPS·화면 미확인을 분리한다
 ## G09. 렌더 제출 큐의 프레임별 메모리 할당 제거
 
 Renderer의 렌더 큐는 list<shared_ptr<CGameObject>>이며 매 프레임 push_back/clear로 노드를 생성·해제한다. 쿠크 맵의 NONBLEND962+SHADOW962만으로1924개의 노드가 반복된다. 동일 순서와 소유 수명을 유지하는 vector로 교체해 clear 이후 capacity를 재사용하고, GameInstance→Renderer 전달에서 이미 소유한 shared_ptr을 move해 불필요한 참조 증가를 줄인다. blend 정렬·그리기 도중 제출·queue 정리 등 전체 호출자를 먼저 확인하고 iterator 수명 계약을 보존한다. 최종 camera 준비보다 앞에서 맵을 잘라내지 않는다. 기존 큐와 새 큐의 순서, 수명, 비활성 shadow/scene replacement 정리 및 반복 프레임 할당을 검증한다. Engine public header 배포와 Client 소비까지 Product 빌드로 확인한다.
+
+## G10. 100fps·Alt+V 40fps 후속 측정과 조명 제출
+
+사용자 merge PR369의 소스 5168899d가 적용된 17:30~17:31의 세 캡처를 비교한다. 시작 위치251–548은 interval13.914ms, 3관문2161–2416은18.488ms다. 맵 BindAndDraw는1.688→1.259ms로 줄지만 조명 CPU는1.576→3.420ms, GPU PS는11.330M→23.741M로 늘었다. Alt+V 마지막3918–3953은 interval38.396ms, 조명 CPU7.664ms/GPU8.688ms/PS192.60M다. NonBlend elapsed에는 CPU 제출 간격이 섞이므로 map shader 단독 비용으로 읽지 않는다. 로딩 frame1624의1.681초 지연과 ring 누락/미완료 query는 일반 FPS 비교에서 분리한다.
+
+기존 CRenderer→CLight_Manager→CLight의 실제 조명 경로에서 반복되는 전체 화면 제출을 줄인다. scene→transient 순서, receiver, 첫 directional shadow와 static channel, source material row, stencil, FP16 누적 순서를 유지한다. 동등한 조명들의 입력은 한 번 준비하고 기존 quad의 instanced 제출 또는 보수적인 투영 영역 제한을 검토한다. 조명 수·반경·밝기와 화면 해상도는 성능을 위해 줄이지 않는다. invalid 투영/near-plane 교차는 기존 전체 영역을 유지하며 명시적 실패는 기존 frame 실패 경로로 전달한다. 기존 shader pass는 유지하고 새 pass는 뒤에 추가한다. 실제 구현 전 shader 전역 입력·D3D 상태 소유를 확인하며 새 C++ 파일은 필요할 때만 project/filter에 함께 등록한다.
+
+## G11. Alt+V CPU 준비와 native 재질 중복
+
+Alt+V 구간의 Animation.Channels.Update4.130ms, Sprite.InstanceBuild3.787ms, Effect.FrameRebuild1.615ms를 실제 호출·데이터로 나누어 조사한다. 동일 emitter/pose에서 반복되는 준비만 제거하고 입자 수·수명·정렬·발생 순서·bone/socket 변환을 보존한다. 같은 Bind_Material 호출 안의 중복 SurfaceLighting와 native source texture 이름 생성은 실패 순서를 보존하면서 정리한다. native character의 미사용 legacy 입력 생략은 실제 shader base pass가 입증된 caller에만 적용한다. 객체별 uniform 캐시는 공유 Effect의 sibling 변경을 놓치므로 사용하지 않는다.
+
+현재 공유 checkout의 쿠크 연출·데이터·MainApp 변경은 다른 작업이 소유한다. 해당 변경을 보존하고 이번 성능 변경의 파일과 검증 증거를 따로 기록한다. headless 수치 비교와 최소 컴파일을 먼저 완료하고 제품 빌드는 다른 MSBuild 및 실행 중 Client/Server와 겹치지 않는다. 100fps/40fps 달성은 같은 위치·같은 연출의 사용자 재캡처 전까지 미확인으로 남긴다.
+
+
+G11의 compact WAnimation 키 탐색은 CAnimation이 실제 재생한 clip에만 scale/rotation/translation별 left cursor를 할당한다. CChannel의 공유 key 배열은 변경하지 않는다. 현재 time이 보관 구간에 포함될 때만 그 구간을 쓰고, seek·역재생·loop·중복 timestamp·다른 clone time은 같은 upper_bound의 raw pointer 탐색으로 돌아간다. transition용 stateless sampling도 기존 값과 보간 수학을 유지한다. Channel/Animation의 기존 H/CPP만 수정하며 project/filter 추가는 없다.
+
+
+G10 조명 shader 정본은 Engine/Bin/ShaderFiles/Shader_Deferred.hlsl이다. 같은 Git 관리 Client 사본도 동기화하며, Product의 PrepareEngineSdk가 Engine→EngineSDK→Client로 배포하는 방향을 따른다. 400개 light record(16scene+384transient,112byte/개)는 별도44,800byte constant buffer에 담고 같은 type의 연속 구간만 DrawIndexedInstanced로 제출한다. 기존0–21 pass와 light helper wrapper를 보존하고 ordinary/source-stencil의 directional/point/spot pass22–27을 뒤에 추가한다. 범용 CVIBuffer::Render_Instanced는 실제 Light_Manager가 소비하고 기존 profiler draw/instance/index 카운터를 유지한다.
+
+
+G11 최종 비교에서 기존 Channel/Animation 모두 /Od와 변경 Channel/Animation 모두 /O2를 별도 translation unit으로 링크해 검사한다. bone storage와 main은 /Od, Debug CRT·_DEBUG·checked iterator·/fp:precise는 유지한다. compact 및 legacy combined-key 649,002개 행렬과 seek/clone/loop 결과가 bitwise 일치했으므로 Engine.vcxproj의 기존 Animation.cpp와 Channel.cpp 두 항목에만 Debug x64 MaxSpeed를 적용한다. 기존 Shader.cpp/Profiler.cpp와 같은 BasicRuntimeChecks=Default, ProgramDatabase, SupportJustMyCode=false를 사용한다. 이 두 파일의 최적화된 debug stepping·지역변수 관찰은 제한될 수 있으며 Engine 전체 Debug ABI는 변경하지 않는다. 새 파일과 filters 등록은 없다. 최종 Product compile command에서 두 파일의 /O2 적용을 확인한다.
+
+
+## G12. Debug 180fps 목표와 실제 광원 영향 영역
+
+사용자는 Release가 아닌 현재 Debug에서180fps를 목표로 선택했다. 기본 창 크기1280×720를 유지하며, CPU frame과 GPU frame 각각5.56ms 이내가 목표 예산이다. 18:20 Product 이후 사용자가 저장한20:06 쿠크 캡처의190–249,60프레임은 interval13.251ms(75.46fps), CPU12.357ms다. 약0.795초의 짧은 표본이며17:31의71.87/54.09/26.04fps를 현재 비용으로 재사용하지 않는다. Debug CRT·D3D debug layer·일부 /Od와 Release의 차이는 측정 조건으로 유지하고, 일괄 Release 전환으로 목표를 대체하지 않는다.
+
+다음 렌더링 변경의 첫 범위는 Engine Light_Manager 및 Deferred shader의 source-character point/spot 광원이다. 현재 Resolve_SourceCharacterLight는 attenuation<=0일 때 native 프로그램보다 먼저 discard하고 native RGB와 별도 ambient도 attenuation으로 감쇠한다. 따라서 이 공통 wrapper에 들어오는 local light의 fRange 밖은 기여가0이다. 같은 카메라의 광원 구체를 보수적으로 화면에 투영해 기존 전체 quad를 영향 영역으로 제한한다. spot은 우선 range 구체로 감싸고 directional은 전체 화면을 유지한다. near-plane 교차·nonfinite·projection 불가·경계 오차는 영역을 확대하거나 기존 전체 quad로 돌아간다. forward native 및 다른 map family에 이 근거를 확대하지 않는다.
+
+기존 light record·instanced VS의 실제 소비를 확장하고 scene→transient·light별 FP16 blend 순서를 유지한다. 구현은 Engine/Private/Light_Manager.cpp, Engine/Bin/ShaderFiles/Shader_Deferred.hlsl와 동일 Client 사본의 현재 경로를 사용한다. 새 C++·prototype·두 번째 renderer·Resource payload를 추가하지 않는다. 계획 단계에서 project/filter 등록 추가는 없다. 투영 bounds의 포함 관계, camera/near-plane/해상도, source receiver/row, 실제 이전·수정 FP16 출력, PS invocation과 CPU/GPU 시간을 기존 out 수치 fixture에서 비교한 뒤 Product 빌드를 한다. 현재 섹션은 후속 계획이며 구현 완료 기록이 아니다.
+
+## G13. 가시성·CPU 준비·재질 제출 구조의 후속 순서
+
+현재 맵 CPU sphere frustum과 assetId+mirror instancing은 유지한다. 공간 계층과 큰 mesh의 부분 bounds로 candidate를 줄이고 최종 camera/light가 결정된 뒤 가시성을 확정하는 단계가 필요하다. 가려진 객체의 geometry 제출을 줄이는 occlusion은 이 후보 집합을 소비해야 한다. shadow caster는 camera visibility와 분리한다. 캐릭터/NPC는 authoritative state·animation/cue clock을 유지하면서 화면·그림자·socket의 실제 소비 여부에 따라 visual pose와 draw 준비를 분리한다.
+
+Effect는 기존60Hz simulation과 presentation을 구분하고 simulation/root/anchor/camera revision에 맞춰 FrameRebuild와 instance 준비의 재사용 범위를 넓힌다. simulation step이0인 frame에도 현재 FrameRebuild를 수행하는 실제 경로가 대상이며, 입자 수·발생 순서·속도·trail·부착점은 유지한다. Draw/Effects Apply와 CShader의 공유 Effect 소유는 그대로 두고 먼저 CPU 준비를 줄인다. 병렬화 대상은 독립 계산으로 한정하며 같은 immediate context를 여러 worker에서 동시에 호출하지 않는다.
+
+GPU source-row/tile 가시성은 G12 이후의 별도 변경이다. 현재 global marker-5 mask 한 번을 row마다 전체 화면 mask로 바꾸면 source 면적이 작은 장면에서 mask 비용이 커지므로 단순 교체하지 않는다. GPU에 실제 남은 depth/material row의 점유 영역과 local light 영역을 교차하는 방향으로 설계한다. 최신 frame 측정 없이 MRT8개 축소·depth prepass·후처리 합치기를 일괄 적용하지 않는다.
+
+## G14. Geometry·material LOD의 구현 전제
+
+현재 CModel의 MODEL_MESH_DATA는 단일 vertices/indices이고 runtime LOD chain/전환 기준이 없다. GPU가 완성된 저해상도 mesh를 자동 생성한다고 가정하지 않는다. 기존 변환기·CModel→CMaterial asset 경로에 LOD별 geometry와 화면상 오차 기준을 먼저 연결한 뒤 CPU 또는 GPU가 선택한다. texture mipmap과 runtime geometry LOD를 구분한다. 정적 map에서 시작하고 material 비용/애니메이션 pose 빈도도 별도 LOD 대상으로 평가한다. GPU cull/LOD 선택·indirect draw는 이 데이터와 가시성 계약을 소비하는 후속이며, geometry 병목 실측과 사용자 실루엣/전환 판정을 거친다.
+
+
+## G12–G14. 20:06 쿠크 캡처 이후 구현 단위
+
+20:06 캡처는 맵 mesh submit21회와 BindAndDraw0.464ms, 전체 draw255회, light CPU0.672ms를 기록했다. NonBlend 등록991개는 실제 draw 수가 아니다. ImGui BuildAndSubmit1.952ms, particle Render1.327ms, FrameRebuild0.207ms와 객체 갱신도 CPU 비용을 차지한다. GPU timestamp에는 CPU 제출 간격이 포함될 수 있으므로 NonBlend5.228ms를 순수 맵 shader 비용으로 단정하지 않는다.
+
+G12의112-byte light record는 예약 flags.w를 source local bounds 활성화에 사용한다. instanced VS는 range 구체를 감싸는8개 world box 꼭짓점을 현재 source camera로 투영하고 기존 quad의 위치·UV를 유지한 채4개 clip distance로 제한한다. 해상도 margin은 기존 orthographic projection에서 구해 VS에 새 depth SRV를 추가하지 않는다. directional/ordinary와 near-plane·invalid 투영은 전체 영역을 유지한다. 기존 FP16 순서·출력 및1280×720 PS invocation을 비교한다.
+
+G13의 Effect_Playback H/CPP는60Hz step이 없고 root/anchor/document 상태가 동일한 경우 FrameRebuild 결과를 재사용한다. 외부 frame provider는 매 호출 검사하며 실패나 상태 변경은 cache를 무효화한다. Effect_DocumentRenderer H/CPP는 실제 native particle VS의 위치 변환 계약이 일치하는 sprite만 최종 camera clip XY 밖일 때 material/upload/draw 전에 제외한다. 크기·alpha·depth occlusion 추정으로 입자를 숨기지 않고 invalid 계산은 제출을 유지한다.
+
+G13의 Shader H/CPP는 같은 Effect를 공유하는 Clone 전부의 실제 마지막 입력을 동일한 EFFECT_BINDINGS owner에서 기록하는 방식을 검증한다. 객체별 uniform cache는 사용하지 않는다. 작은 raw/matrix 입력과 단일 SRV의 완전히 동일한 재설정만 생략하고, setter 종류 변경·array/큰 입력·실패는 해당 값 기록을 무효화한다. pass Apply는 생략하지 않는다. 모든 Effect variable 쓰기가 CShader를 통하는 현재 private 소유 계약과 clone 교차, 서로 다른 Effect, 선행 상태 오염, 실패 재시도, raw/matrix/array 교차 및 실제8 MRT 출력/제출 시간을 확인한다. 개선이 없으면 이 변경은 채택하지 않는다.
+
+G14는 CMesh가 기존 MODEL_MESH_DATA의 decoded static vertex/index를 소비할 때 원본 vertex buffer를 유지하고 seam/border를 보존하는 index LOD를 준비한다. meshoptimizer v1.0의 고정 commit73583c335e541c139821d0de2bf5f12960a04941에서 MIT source subset를 vendor하며 Engine project/filter에 등록한다. Engine private StaticMeshLod H/CPP가 GPU resource와 selection을 소유하고 public MeshLod.h는 실제 CModel/MapStaticBatch caller의 bounds·screen error 입력이다. Shader_MeshLod.hlsl은 Engine 정본으로 컴파일하고 기존 SDK shader 복사 및 Client compiled shader 배포 target에 연결한다.
+
+최종 camera CPU cull에서 남은 큰 static opaque mesh에만 GPU dispatch를 수행하고, visible batch의 가장 가까운 instance보다 보수적인 bounds·최대 scale로 단일 LOD를 선택한다. 합쳐진 index buffer range와 DrawIndexedInstancedIndirect1회로 제출해 LOD별3개 draw를 만들지 않는다. 작은 mesh, animated/morph/투명/변위 재질과 invalid/near projection은 기존 LOD0 경로를 유지한다. shadow는 기존 LOD0/light culling이다. MapStaticBatch의 전체 bounds broad phase는 per-instance margin·히스테리시스를 포함한 확실한 외부 batch에만 적용하며 최종 camera revision과 placement 변경을 반영한다. Resources 원본이나 별도 모델 runtime을 만들지 않는다. 실제 GPU index 수를 CPU가 알 수 없는 indirect counter는 LOD0 상한과 구분하며 동기 readback을 넣지 않는다.
+
+최소 검증은 새 CPP/CS 컴파일과 기존 out 수치 fixture에서 index 범위·감소율·경계/invalid fallback·clone 수명·GPU selected args·큰/작은 mesh 손익을 확인한다. Engine public header 변경은 Product SDK 배포와 Client 전체 소비까지 빌드한다. 최종 visual/LOD 전환과180fps는 사용자의 같은 위치·해상도·캐릭터·Alt+V 재캡처로만 판정한다.
+
+
+G14 최종 적용은 실측 손익에 맞춰 draw별 원본 index×instance≥294,912로 제한한다. 작은 draw는 기존 direct LOD0이며 GPU가 쓸모없는 선택 비용을 추가하지 않게 한다. `.25px`는 meshoptimizer의 속성 포함 오차 지표를 투영한 선택 기준으로, 엄밀한 최대 실루엣 오차 보장을 뜻하지 않는다. Engine project의 새 StaticMeshLod·vendor·compute shader 등록, public MeshLod header와 Client compiled-shader 배포는 실제 소비 경로까지 함께 반영한다.

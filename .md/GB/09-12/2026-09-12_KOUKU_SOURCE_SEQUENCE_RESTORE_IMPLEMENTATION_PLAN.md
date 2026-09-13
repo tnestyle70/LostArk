@@ -1,8 +1,8 @@
 # 쿠크 원본 시퀀스 저작 연결 구현 계획
 
-## G06. 정상 팝업북·피날레를 기준으로 결합하는 수정 계획 — 미적용
+## G06. 정상 팝업북·피날레를 기준으로 결합하는 수정 계획 — 코드·데이터·빌드 적용 완료
 
-2026-09-12 사용자가 **코드를 수정하지 말고 원인 조사와 수정 계획까지만 진행**하도록 범위를 변경했다. 이 G06은 조사 결과와 다음 구현의 명세다. 이 후속 조사에서 제품 코드·Data·Resources·runtime·ZIP은 수정하지 않았고 publisher·빌드·Client 실행도 하지 않았다. 아래 G00~G05는 최초 원본 Matinee 연결 이력이다. 그중 G1의 41,488ms, source Book/배경/배우 선택은 다음 구현에서 이 G06으로 대체한다. 다른 관문의 기존 변경은 이 계획의 대상이 아니다.
+2026-09-12 조사 단계에서는 코드 수정 없이 이 G06을 작성했고, 이후 사용자의 **전부 반영하자** 요청으로 구현이 승인됐다. 적용 시작 HEAD는 `5168899d`, 작업 브랜치는 `codex/kouku-authored-finale-popup`이다. 아래 명세를 현재 정본에 병합하며 실제 적용·검증·남은 화면 확인은 대응 RESULT의 G08에 기록한다. 아래 G00~G05는 최초 원본 Matinee 연결 이력이다. 그중 G1의 41,488ms와 source Book/배경/배우 선택은 이 G06으로 대체한다. 다른 관문의 기존 변경은 이 계획의 대상이 아니다.
 
 조사 시작 HEAD는 `a72058637567f21e9b4235ef214133fc70c84963`, 문서 정리 중 공유 작업공간 HEAD는 `aac4fbdd`로 바뀌었다. 브랜치는 `codex/map-character-render-performance`다. 다른 작업의 렌더링 성능 변경을 보존하고 실제 구현 시작 때 최신 diff를 다시 확인한다. 조사한 Sequence revision은 6, WorldSequence revision은 675다.
 
@@ -83,6 +83,8 @@
 | `Data/Effects/Authored/effect.kouku.gate1.intro.festival.full.restore.effect.json` | `Data/Effects/Authored/effect.kouku.gate1.authored.festival.effect.json` |
 | `Data/Effects/V2/Authored/kouku.gate1.full.fade.black.effectv2.json` | `Data/Effects/V2/Authored/kouku.gate1.authored.fade.black.effectv2.json` |
 
+`Data/Effects/EffectCatalog.json`에는 신규 V1 3개를 `DIRECT_AUTHORED_DOCUMENT`와 실제 저작 경로로 등록한다. V2는 기존 Authored 스캔으로 해석한다. 파일 생성이나 프로젝트 None 등록만으로 V1 lookup이 연결됐다고 처리하지 않는다.
+
 새4개 EFFECT presentation occurrence는 통합 시각0ms부터58810ms까지 유지한다. source effect의 기존 MAP root/offset/rotation/scale은 대응 사본 row에 보존한다. `sourceNode`의 emitter/activation 경계(구분자 `|` 앞부분)가 같은 요소를 원본 activation 그룹으로 묶는다. split 문서0.1/0.2에 걸친 같은 activation도 같은 그룹의 기준 시각을 사용한다. sourceTransformTrack의 원래 origin `o=2.344761848449707`, 그룹의 최소 element delay를 `d_min`이라 하면 다음과 같다. 아래 T는 위 시간 대응을 초 단위로 계산한 함수다.
 
 ```text
@@ -118,7 +120,7 @@ FLOOR08A의 F1 표면은 `bg_base_msk`/floor08b_mi이며 diffuse .7, specular .2
 
 현재 책은 `[0,-1.41,737.28]`, F1 중심은 Z942.08이다. F1 주요 SPOT은 책에서 약205.75m 떨어지고 range는59.8m다. 같은 profile 이름만 연결해도 광원은 책에 도달하지 않는다. 또한 `CRenderingProfileService::Apply_CameraEnvironment`는 카메라 위치로 region을 고른다. popup region47 ambient는 F1 region48보다 25% 밝다.
 
-RenderingProfiles에 `scene.kakulsaydon.g1.popup.v1`을 추가한다. 현재 `scene.kakulsaydon.g1.base.v1`을 복사해 qualityOverride, shadow, 환경 반사 입력과 scalar는 보존한다. light.diffuse/ambient에는 region `kouku.ps.environment.48`의 directionalColor/ambientColor를 사용한다. fog의 density/heightFalloff/topHeight/startDistance/maximumOpacity/color도 region48 값으로 교체하고, region fog의 inscatteringColor/lightDirection은 기존 base fog의 `sourceExponential` 안으로 대응시킨다. 나머지 fog 필드는 base를 유지한다. `environmentRegions=[]`로 두어 이 연출 동안 카메라가 region47 또는 바깥 영역에 들어가도 F1 환경이 유지되게 한다. 기존 G1 profile과 지역 조명 문서를 변경하지 않는다.
+RenderingProfiles에 `scene.kakulsaydon.g1.popup.v1`을 추가한다. 현재 `scene.kakulsaydon.g1.base.v1`을 복사해 qualityOverride, shadow, 환경 반사 입력과 scalar는 보존한다. light.diffuse/ambient에는 region `kouku.ps.environment.48`의 directionalColor/ambientColor를 사용한다. fog의 density/heightFalloff/topHeight/startDistance/maximumOpacity/color도 region48 값으로 교체하고, region fog의 inscatteringColor/lightDirection은 기존 base fog의 `sourceExponential` 안으로 대응시킨다. 나머지 fog 필드는 base를 유지한다. optional `environmentRegions` 필드를 생략해(명시적 빈 배열은 현재 reader가 거부함) 이 연출 동안 카메라가 region47 또는 바깥 영역에 들어가도 F1 환경이 유지되게 한다. 기존 G1 profile과 지역 조명 문서를 변경하지 않는다.
 
 Sequence에는 `kakulsaydon.g1.sceneprofile.3` → 위 renderingProfileId를 추가한다. P4의 기본 profile occurrence는 0~21010ms, popup profile은 21010~58810ms로 나눈다. P1에도 popup profile을 0~37800ms 적용한다. profile 종료·Stop·실패의 복귀는 기존 sceneProfileOccurrences 소유권 경로를 유지한다.
 
@@ -155,7 +157,7 @@ hiddenBridges.emplace_back(
 
 이 함수는 JSON number 타입과 double finite를 먼저 확인하고, single 변환의 예외/overflow 및 single finite를 검사한 뒤 **변환한 single 값**을 single 하한·상한과 비교하도록 교체한다. `CRenderingProfileService.cpp::Read_Float`의 순서와 같게 한다. 현재 `Assert-FiniteRange`를 쓰는 base fog와 region fog의 runtime float 필드, blendTimeIn/Out도 이 함수로 변경한다. 특히 `heightFalloff=9.99999975e-05`도0.0001f와 같은 값이라 통과해야 한다. version/revision, 별도 double 원문 검사를 요구하는 bound/plane 검증은 무조건 바꾸지 않는다.
 
-effectiveExposure/effectiveBloom 계산은 각 operand를 single로 읽은 뒤 product를 single로 변환해 runtime과 맞춘다. 기존 테스트 파일에0.1/0.0001/0.0312의9유효숫자 저장→Validate/Publish 왕복, 다음 범위 밖 float32, NaN/Infinity/overflow, 실패 시 기존 destination 보존을 추가한다. Rendering runtime revision이 authored와 같은지 검사하는 기존 테스트는 정상 Publish 후에 실행한다. 이번 조사에서는 이 변경과 Publish를 실행하지 않았다.
+effectiveExposure/effectiveBloom 계산은 각 operand를 single로 읽은 뒤 product를 single로 변환해 runtime과 맞춘다. 기존 테스트 파일에0.1/0.0001/0.0312의9유효숫자 저장→Validate/Publish 왕복, 다음 범위 밖 float32, NaN/Infinity/overflow, 실패 시 기존 destination 보존을 추가한다. Rendering runtime revision이 authored와 같은지 검사하는 기존 테스트는 정상 Publish 후에 실행한다. 실제 실행 결과는 RESULT G08에 구분한다.
 
 ### G06-08. 구현 순서·검증·완료 경계
 
@@ -181,7 +183,7 @@ Visual Studio 2022 Developer PowerShell에서는 아래 기존 Client 프로젝�
 msbuild Client/Default/Client.vcxproj /t:Build /p:Configuration=Debug /p:Platform=x64 /m:1 /nologo
 ```
 
-변경한 C++는 기존 Client Debug x64 빌드로 컴파일한다. 새 H/CPP·shader 등록은 없다. `Client/Default/Client.vcxproj`의 기존 Effect None ItemGroup에 G06-03의4개 JSON을 `..\..\Data\Effects\...` 상대 경로로 추가하고, `Client.vcxproj.filters`에는 같은 Include와 `<Filter>96.DataFiles</Filter>`를 추가한다. 기존 항목과 필터는 재배치하지 않는다. 실제 데이터 변경과 함께 Area publisher의 runtime map 출력을 전달한다. 이번 계획에는 Resources 신규 물리 파일이 필요하지 않다. ZIP은 코드 적용·게시·빌드가 끝난 후 별도 배포 단계에서만 갱신하며 현재 ZIP에는 이 미적용 계획이 반영되지 않았다.
+변경한 C++는 기존 Client Debug x64 빌드로 컴파일한다. 새 H/CPP·shader 등록은 없다. `Client/Default/Client.vcxproj`의 기존 Effect None ItemGroup에 G06-03의4개 JSON을 `..\..\Data\Effects\...` 상대 경로로 추가하고, `Client.vcxproj.filters`에는 같은 Include와 `<Filter>96.DataFiles</Filter>`를 추가한다. 기존 항목과 필터는 재배치하지 않는다. 실제 데이터 변경과 함께 Area publisher의 runtime map 출력을 전달한다. 이번 계획에는 Resources 신규 물리 파일이 필요하지 않다. ZIP은 코드 적용·게시·빌드가 끝난 후 별도 배포 단계에서만 갱신하며 실제 ZIP 갱신 여부와 배포 경계는 RESULT G08에 기록한다.
 
 CPU/문서 검증은 stable ID, WORLD23+136배치 참조, camera 키 유한성,3쌍 WMSH 동일성,6행 material 참조, 광원151행/3SPOT사본/중복 제출0,실패 시 기존 문서 보존을 확인한다. 시간 경계는 popup local2369/2370ms와 실재생 clip 종료 전후,4506/4507ms,통합21009/21010ms,58809/58810ms,역방향Seek와 중간Stop이다. 특히 box가 늘어나도 모션 속도가 느려지지 않고 마지막 pose를 유지해야 한다. 광원·profile·Deploy와 카메라가 같은 종료 프레임에 반환되는지 확인한다.
 
@@ -257,3 +259,18 @@ Client/UI 실행·조작·캡처와 최종 화면 판정은 사용자가 직접 
 visible_table_mesh는 bone10개를 그대로 보존하고 선택된 submesh1/2의 bounds만 남긴다. 이미 저작된 WANM, skeleton, material section은 그대로 유지한 교체 후보를 out/KoukuSequenceAdmission20260912에 작성한다. 실제 decoder로 후보 및 신규5개 시퀀스가 참조하는 모델을 검사하고, Data/Resources의 현재 bytes는 보존한다. runtime Area Publish와 기존 Table 교체는 실행 중인 사용자 Client/Server 종료 후 부모 작업이 소유한다. 이 검사는 CModel GPU 생성이나 화면 성공 판정이 아니다.
 
 Level의 WORLD admission 실패는 missing instance, disabled, duration, speed, stable ID, duplicate를 구분하고 occurrence/instance ID와 실제 문서 revision 및 supplied snapshot/runtime 출처를 표시한다. WorldSequencePlayer는 기존 CModel Create 직후 같은 thread의 ModelDecoderRegistry report가 요청 meshPath와 일치할 때 실제 decoder 실패 이유를 덧붙인다. decode 성공 뒤 geometry/material 생성 실패는 별도로 표시하며 다른 모델의 오래된 report는 사용하지 않는다. 새 로더나 Engine public API는 만들지 않는다.
+
+
+## G09. Rendering Benchmark Bloom 1.3과 게시 경계
+
+사용자가 요청한 쿠크 레벨 Bloom의 정본은 scene.kakulsaydon.g1.base.v1의 qualityOverride다.
+bloomIntensity를 1.3으로 변경한다. 팝업북 profile의 qualityOverride는 변경 전 기본 profile의
+18개 값과 모두 동일한 복사본이므로 제거하여 기존 active Level 품질을 상속한다. 팝업북의
+light/fog/environment 및 scene multiplier, 다른 Level과 전역 quality는 보존한다.
+revision을 한 번 증가시키고 공식 RenderingProfiles publisher로 Validate와 Publish를 수행한다.
+
+Save/Authored, Publish/Runtime, Reload/메모리의 실제 소유권과 오류 전달을 조사한다.
+UI Publish가 stdout/stderr를 버리고 UI thread에서 동기 대기하는 구조는 확정 사항으로 기록하되,
+사용자의 실제 실패 문구 없이 개별 실패 원인을 단정하지 않는다. 이 변경은 JSON과 게시이며
+C++ 변경·Client/UI 조작은 하지 않는다. 검증은 두 JSON parse, 원본 변경 범위와 공식 게시,
+기존 RenderingProfiles publisher 회귀로 한정한다.

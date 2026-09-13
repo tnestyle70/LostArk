@@ -1,13 +1,15 @@
 # 캐릭터 Action Composition과 조작감 개선 구현 계획서
 
-작성일: 2026-09-11. 상태: **설계만 작성. 코드·데이터 반영 및 빌드·실행 없음.**
+작성일: 2026-09-11. 2026-09-12 후속 요청으로 G05의 일반 클릭 이동 예측을 구현한다. 다른 G는 기존 설계 범위이며 실제 완료·빌드 상태는 대응 RESULT에서 구분한다.
 
-사용자의 최종 요청은 설계 계획이며, 캐릭터 크기 역시 향후 적용 대상으로 남긴다. 기준은
+09-11 최초 요청은 설계 계획이었다. 09-12에는 G05 일반 클릭 이동의 실제 구현을 요청받았고, 캐릭터 크기와 다른 G는 향후 적용 대상으로 남긴다. 최초 조사 기준은
 `codex/pr360-main-resource-sync`, HEAD `89477fd78b24e111789a6dd0aabbcc57c50c08fd`의 현재 working copy다.
 조회 당시 origin/main보다 3 commit 앞서 있고, 다른 작업의 staged/unstaged 변경이 함께 있다.
 아래 설계는 현재 미커밋 코드를 포함한 조사 결과이며 해당 HEAD 단독의 구현 상태를 뜻하지 않는다.
 
-## G00. 현재 입력과 재생 구조를 먼저 이해한다
+## G00. 최초 조사 당시 입력과 재생 구조를 먼저 이해한다
+
+이 절은 09-11 구현 전 기준이다. 일반 이동 예측의 09-12 변경은 G05와 대응 RESULT를 따른다.
 
 ### 실제 호출자와 데이터 정본
 
@@ -359,72 +361,74 @@ bone-follow tail을 분리할 때는 outer root와 source bone anchor의 마지�
 이 단계는 공용 attachment 정책과 연결 진단을 소유한다. 과거 모든 차원술사 재질·renderer 결함의 해결이나
 원작 visual fidelity 완료를 이 기능의 결과로 선언하지 않는다.
 
-## G05. 로컬 이동 예측과 Server 보정을 기존 이동 경로에 연결한다
+## G05. 일반 클릭 이동의 즉시 표시와 Server 보정 — 2026-09-12 구현 범위
 
-### 권위와 실행 위치
+### 현재 실측과 목표
 
-목표는 정상 이동 가능한 상태에서 입력을 받는 프레임부터 자기 캐릭터의 이동과 RUN을 보여 주는 것이다.
-Server의 이동 승인·navigation·충돌·피해·스킬 stage 권위는 유지한다. 다른 플레이어는 기존 보간을 사용한다.
-예측은 locomotion에 한정하며 skill 승인, 피해, cooldown, 자동 combo 진행을 Client가 만들지 않는다.
+구현 전 첫 RMB 입력은 지연 없이 CPlayerController::Request_MoveToPoint에서 송신하지만 CCharacter는 자기 캐릭터도 30 Hz 2 tick 보간으로 표시한다. 약 66.7 ms 보간 대기에 통신과 tick이 추가된다. 0.3초는 사용자 체감이며 자동 실측값이 아니다. 구현 전 TCP 양쪽 socket에 TCP_NODELAY가 없어 작은 패킷 전송 대기 가능성도 있다.
 
-`CNetworkPlayerCommandSink`에서 송신에 성공한 typed movement intent를 `CClientReplication`이 관찰하는
-bounded queue에 남긴다. Controller는 transport나 Character Transform을 직접 다루지 않는다.
-기존 자기 player replication에 `CLocalPlayerPrediction`을 연결하고 authoritative state와 predicted state를
-구분한다. Character에 실제 표시할 pose/locomotion을 전달하는 caller는 계속 ClientReplication이다.
+일반 이동 가능한 내 캐릭터는 송신 직후 기존 CNavigation/CNavPathFollower로 경로를 준비하고 RUN을 요청한다. Engine의 ObjectUpdate가 Level 입력보다 먼저이므로 위치 전진과 모델 갱신은 다음 ObjectUpdate부터 진행하며 Server 응답을 기다리지 않는다. Server 처리 전에는 최신 클릭 경로를 표시하고, 처리 뒤에는 Server 위치·다음 경유점·실효 속도로 짧게 예측하며 작은 차이는 표시 offset으로 보정한다. 다른 플레이어는 기존 보간을 유지한다.
 
-### Shared에 필요한 계약
+### 파일과 호출 흐름
 
-`iLastMoveSequence`는 현재 action 차단·navigation 성공 전에 증가하므로 승인 ACK로 재사용하지 않는다.
-기존 MOVE sequence와 USE_SKILL/RELEASE_SKILL이 공유하는 action sequence 두 stream은 중복 방지에 유지한다.
-그 사이의 순서를 보존할 global `inputOrder`를 MOVE/USE_SKILL/RELEASE_SKILL wire에 epoch와 함께 싣고
-Server 수신부터 검사한다. Client 로컬 값으로만 두지 않는다. pending 최신 명령도 이 순서 기준으로 결정한다.
+- PlayerController.cpp: Request_MoveToPoint의 typed sink 송신 성공 뒤 Character의 예측 시작을 호출한다. 송신 실패면 새 예측을 만들지 않는다. Controller는 패킷이나 서버 위치를 조작하지 않는다.
+- Character.h/.cpp: 로컬 캐릭터의 예측 상태, 임시로 준비한 기존 path follower의 commit, 즉시 RUN 전환과 프레임 표시를 소유한다. source snapshot buffer는 그대로 보존한다.
+- LocalMovePrediction.h: 표준 C++만 사용하는 처리 sequence·freshness·보정 상태다. 명령 전송이나 navigation query는 하지 않는다. 새 header는 Client.vcxproj와 filters에 등록한다.
+- ClientReplication.cpp: 일반 snapshot과 지연 class 교체의 두 소비자에 같은 예측 입력을 전달한다. Character 교체·world 종료는 객체 수명으로 이전 예측을 폐기한다.
+- PacketMessages.h/.cpp, PacketType.h: protocol 81 snapshot에 처리한 이동 sequence, 실효 이동 속도, 일반 이동 가능 여부, 활성 이동 목표 여부와 다음 경유점을 싣는다. 수신 ACK는 승인과 다르며, 현재 권위 이동 상태로 거절/정지/기존 이동 지속을 구분한다.
+- GameRoom.cpp: 기존 Server navigation·collision·action gate를 유지하고 snapshot의 예측용 read-only view만 생성한다.
+- NetworkManager.cpp, ClientSession.cpp: gameplay TCP socket에 TCP_NODELAY를 적용하고 실패 이유를 기존 연결 오류 경계에 보존한다.
 
-| 전달 값 | 실제 의미 |
-|---|---|
-| input order / command sequence | 어떤 명시 입력에 대한 결과인지 |
-| BUFFERED / REJECTED / APPLIED와 이유 | 수신됨과 실행됨을 구분; 보관 뒤의 최종 결과도 보냄 |
-| applied server tick | 승인 이동을 실제 simulation에 적용한 시점 |
-| movement epoch | world 이동·teleport·class 변경·강제 reset 이후 이전 입력 재사용 금지 |
-| authoritative position·goal·속도·상태 | snapshot 기준부터 계속 재생할 이동 상태 |
-| move cancel deadline·pending identity | 회수 구간에서 예측 시작 가능 여부 |
-| navigation/collision revision와 채택 path 정보 | Client가 같은 장애물과 경로 정책으로 예측하도록 하는 입력 |
+명령 송신 성공 → 로컬 경로 stage → 예측/경로 commit → RUN → 서버 처리 sequence와 상태 수신 → 미처리 최신 명령은 보존 / 처리된 명령은 서버 이동 상태로 보정 순서다. local 경로 준비 실패는 송신한 명령을 취소하지 않고 기존 표시 상태를 보존한다.
 
-`PacketMessages.h/.cpp`, `PacketType.h`, Server result producer, Client result consumer와 protocol 검사를
-같은 변경 단위로 갱신한다. 오래된 Client/Server 조합은 version으로 거부한다.
-보관 결과만 받고 실행 결과를 놓쳤을 때 snapshot의 최종 applied/terminal identity로 대조한다.
-상태 없는 송신 성공을 ACK나 실측 적용 성공으로 표시하지 않는다.
+### 보정과 실패 경계
 
-### 이동 계산과 보정
+미확인 최신 클릭은 오래된 IDLE snapshot으로 덮지 않는다. 서버 다음 경유점을 넘어서 외삽하지 않으며 외삽은 최대 0.15초, 입력과 snapshot의 무응답 예측은 최대 0.35초로 제한한다. 작은 오차는 약 0.08초 표시 보정으로 소거하고 이동 불가·강제 이동·불연속 위치는 예측을 버리고 권위 위치로 맞춘다. 도착·거절은 RUN을 무한 유지하지 않는다. stale tick/sequence와 wrap을 검사한다.
 
-현재 Server의 navgrid·navpolicy·영역 선택·path smoothing·정적 collision 이동 평가에서 순수 계산을
-Shared로 분리하고 Server와 예측기가 함께 소비한다. Server의 기존 simulation이 그 helper의 실제 첫 소비자다.
-Client 전용 CNavigation 경로를 별도 정답으로 만들지 않는다. 같은 runtime navigation/collision revision을
-진입 승인에 연결하고, prediction에 필요한 입력이 없거나 불일치하면 그 이유를 표시하고 승인 snapshot을 따른다.
-정상 제품 Area의 입력 준비까지 구현 범위에 포함하며 이 상태를 예측 완료로 세지 않는다.
+기존 Client navigation은 짧은 미승인 표시 예측용이며 서버 정답으로 보내지 않는다. 서버 navgrid·navpolicy·정적 collision과 장애물 판정은 계속 Server가 소유한다. 방어 태세 등의 속도는 Client의 6.f 생성 기본값 대신 Server가 복제한 실제 속도를 사용한다. 스킬/피격/사망/잡힘/마리오/강제 이동/관전 전용 상태는 canPredictMove=false로 일반 클릭 예측에서 제외한다.
 
-1. 이동 가능 상태의 입력에서 같은 query/step 함수로 path를 만들고 즉시 로컬 표시를 시작한다.
-2. local monotonic clock과 관측 Server tick의 대응으로 별도 prediction tick을 추정하고 입력마다 그 tick을
-   보관한다. cancel deadline을 PC wall clock이나 2 tick 늦은 render 보간 시계와 비교하지 않는다.
-   고정 step별 state와 미확정 intent history를 bounded하게 보관하고 render frame 횟수로 이동량을 늘리지 않는다.
-3. ACK의 appliedTick으로 해당 입력의 기준을 재정렬한다. snapshot tick S의 authoritative state로 돌아간 뒤
-   현재 prediction tick까지 활성 authoritative goal을 step하고, 그 사이의 미확정 intent만 원래 순서로 적용한다.
-   goal 명령 한 개를 ACK마다 새 출발 명령처럼 중복 실행하지 않는다.
-4. BUFFERED 입력은 승인된 cancel deadline 전에는 이동을 예측하지 않는다. 해당 action/epoch의 deadline이
-   지나면 예측 시작하고 Server 결과로 맞춘다. 필요한 deadline을 아직 모르면 현재 authoritative 상태를 따른다.
-5. 작은 보정은 렌더링 offset으로 짧게 완화하고 simulation state는 즉시 authoritative 기준에 맞춘다.
-   벽 관통·teleport·큰 오차는 보간으로 가리지 않고 즉시 reset한다.
-6. 죽음·경직·강제 이동·class/world 변경·disconnect·history overflow에서 관련 예측을 폐기한다.
-   snapshot이 오래 끊긴 상태에서 무한히 이동하지 않는다.
+이 범위는 정상 클릭 이동의 anticipation와 서버 경유점 기반 bounded prediction이다. 이전 확장 설계의 스킬 취소 deadline, 전역 inputOrder, BUFFERED/APPLIED action 결과, navigation revision을 공유하는 전체 고정 tick 재시뮬레이션은 이번 일반 이동 변경에 포함하지 않는다. 이를 구현 완료로 기록하지 않는다.
 
-prediction/correction 시간 한도는 이동 네트워크 설정으로 관리한다. 스킬별 `moveCancelMs`에 네트워크
-지연을 더하거나 빼지 않는다. 초기 검증은 지연 0/50/100/200ms, jitter·명령 중복·오래된 ACK·끊김을 사용한다.
-도구에는 input→첫 local 이동 시간, input→Server 적용 시간, correction 거리와 reset 이유를 별도로 표시한다.
+### 검증과 사용자 실행
 
-신규 파일은 `Client/Public/LocalPlayerPrediction.h`, `Client/Private/LocalPlayerPrediction.cpp`와
-`Shared/Public/Gameplay/PlayerMovementSimulation.h`, `Shared/Private/Gameplay/PlayerMovementSimulation.cpp`를
-제안한다. 각 프로젝트 ClInclude/ClCompile과 기존 물리 역할에 맞는 filters에 등록한다.
-`NetworkPlayerCommandSink`, `ClientReplication`, `Character`, Server navigation/GameRoom,
-Shared packet와 필요한 navigation publisher가 실제 호출자가 된다. 별도 Client 실행기나 테스트 앱은 만들지 않는다.
+기존 NetworkProtocolHarness에서 새 snapshot 필드 roundtrip/잘못된 값 거절을 확인한다. 기존 ClientPresentationPrimitiveContractTests에서 첫 프레임 위치 전진, ACK 이전 IDLE, 방향 재클릭, ACK·거절·속도·정지·timeout·stale·불연속 reset을 실행한다. 관련 Shared/Server/Client 최소 Debug 컴파일, project XML parse와 변경 diff를 확인한다. 다른 작업의 dirty diff와 실행 중인 Client/Server는 보존한다.
+
+Server+Client는 protocol 81로 함께 다시 빌드하고 재시작해야 한다. 사용자가 Server + Client profile → Ctrl+F5 → Lobby → Character Select/Bern/KoukuSaydon에서 직접 클릭·급회전·벽·스킬 직후를 확인한다. 에이전트는 Client/UI를 실행·조작·캡처하지 않으며 최종 체감과 화면 판정은 사용자 확인 대기다.
+
+### G05-01. 실행 후 보고된 경로·보정·회전·카메라 회귀 교정
+
+사용자 EXE 확인에서 반대 클릭의 우회·위아래 이동, 순간 위치 보정과 얼굴 급회전을 보고했다.
+현재 Server는 제한 yaw의 heading으로 위치도 회전시켜 이동하고, Client는 waypoint 직선으로
+예측한다. 일반 MOVE의 위치는 Server waypoint XZ로 전진시키고 최단 yaw 회전은 독립적으로
+유지한다. 스킬 이동·collision·도착 판정과 Server 권위는 그대로 사용한다.
+
+Engine의 segment walkability는 등간격 샘플이 서로 다른 cell 경계 통과를 한 대각선으로 합쳐
+지나지 않는 막힌 cell을 요구하는 사례가 있다. 기존 경로 검사에 정확한 grid-cross DDA를 적용해
+불필요한 꺾임을 제거하고 실제 막힌 모서리와 높이 제한은 유지한다. CNavPathFollower는 XZ 속도로
+전진한 현재 위치의 지면을 샘플링한다. 먼 waypoint의 Y를 향해 미리 오르거나 내리지 않는다.
+
+맵별 step 제한도 기존 publisher가 양쪽에 배포한 navpolicy로 맞춘다. 제품 Loader가 검증한
+정책 값을 CNavigation prototype/Clone에 보존하고 Character의 예측 경로 요청에 전달한다.
+명시적인 raw/editor factory는 기존 기본값을 유지하며 월드별 높이 상수를 새로 만들지 않는다.
+
+Character는 예측에서도 기존720도/초 최단 회전을 공통 함수로 소비한다. ACK 뒤 일반 이동의
+표시 방향은 실제 경유점 방향이며 helper에서 각도를 다시 보간하지 않는다. 작은 위치 보정의
+기본 80ms에 오차/이동속도 하한을 함께 적용해 보정 속도를 제한한다. 연속 Server 위치와
+10m 초과 큰 잘못된 표시·명시적 위치 불연속을 구분한다.
+예측의 높이는 현재 지면을 사용하고 먼 경유점 Y를 외삽하지 않는다.
+
+SPACE는 카메라 중심 키가 아니라 기존 typed skill 입력이다. 일반 예측에서 Server SKILL 보간으로
+넘어갈 때만 현재 표시 위치의 잔여 차이를 짧게 줄여 첫 승인에서 되감기지 않게 한다. 강제 이동·
+사망·잡힘과 실제 teleport의 즉시 권위 전환은 보존한다. ClientReplication의 두 snapshot 소비자가
+같은 action 정보를 전달하며 스킬 실행·속도·거리는 Server가 계속 결정한다.
+
+KoukuSaydon/CharacterSelect camera profile의 followResponse0을12로 바꾸고 기존 exponential
+추적을 활성화한다. Camera_Free는 실제 dt를 사용하고 cinematic override 동안 추적 상태를 섞지
+않는다. 일반 SPACE 이동은 감쇠 추적하고 target/world/free 전환·큰 warp는 별도로 초기화한다.
+
+기존 helper 검사만으로 완료 처리하지 않는다. 실제 Server 이동 블록, 설치 Client/Server navgrid,
+PathFollower·Character 회전 소비자와 카메라 메서드의 재현 검사를 사용한다. 변경 TU의 격리
+컴파일 후 제품 빌드를 진행하며 실행 중 Client/Server와 사용자 화면 검증 경계는 유지한다.
 
 ## G06. 캐릭터 외형은 기존 presentationScale로 1.7배를 적용한다
 
@@ -452,7 +456,7 @@ JSON parse와 세 row의 의미 diff가 최소 검증이며 C++ 변경·publishe
 
 먼저 G01의 조회·preview로 차원술사의 현재 연결과 시간차가 화면에 보이게 한다. 그 다음 G02에서
 영속 ID·저장 owner를 닫고, G03 후딜/입력 보관과 G04 anchor 정책을 함께 확인한다.
-G05 예측은 정확한 Server 취소/ACK 계약 위에 붙인다. 작은 G06 외형 변경은 그와 독립된 변경 단위다.
+09-12 G05 일반 클릭 이동은 기존 처리 sequence와 권위 이동 상태에 먼저 연결했다. 스킬 취소 예측은 G03 취소 계약을 구현한 뒤 별도로 연결한다. 작은 G06 외형 변경은 그와 독립된 변경 단위다.
 캐릭터 도구 첫 화면을 보기 위해 CSP 전체 구현을 기다리게 만들지 않는다.
 
 | 단계 | 필요한 자동 확인 | 사용자가 확인할 결과 |
@@ -461,7 +465,7 @@ G05 예측은 정확한 Server 취소/ACK 계약 위에 붙인다. 작은 G06 �
 | G02 | 기존 cue migration 의미 보존, stable ID reorder/duplicate, invalid save rollback, prewarm/runtime 동일 입력 | 저장·재열기 후 같은 연결과 시각; applied 상태 구분 |
 | G03 | 기존 Server contract에 cancel 이전/당일 tick/이후, ACTIVE 입력 보관, automatic BA 탈출, 불가 goal 실패 보존, 비용·projectile 보존 추가 | BA/ACTIVE 뒤 같은 지점 RMB를 누르고 있으면 정한 시점에 이동 |
 | G04 | 실제 bone·owner·birth transform과 start-delay snapshot, action 취소 tail 수명; 기존 focused Effect 검사 | 시전 뒤 이동해도 장판은 남고 의도한 무기 궤적은 부착됨 |
-| G05 | 기존 protocol/Server 검사에 ACK·epoch·replay, 동일 navigation/충돌, 지연과 끊김; 관련 Shared/Server/Client 빌드 | 자기 이동은 즉시 반응하고 벽·급회전·스킬 직후에 과도한 되감김이 없음 |
+| G05 | 기존 protocol/presentation 검사에 처리 sequence·재클릭·거절·속도·경유점·timeout·불연속 reset; 관련 Shared/Server/Client 빌드 | 자기 이동은 즉시 반응하고 벽·급회전·스킬 직후에 과도한 되감김이 없음 |
 | G06 | JSON parse, 세 class 배율만 변경, `git diff --check` | 차원술사·도화가·워로드의 몸·장비·무기 크기 |
 
 빌드는 각 단계에 필요한 최소 프로젝트만 수행한다. Engine API가 실제 바뀌면 Engine→Client와 SDK

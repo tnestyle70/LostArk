@@ -1,4 +1,6 @@
+#include <WinSock2.h>
 #include "imgui.h"
+#include "Engine_RenderTypes.h"
 #include "MainApp.h"
 #include "CompositionTimeline.h"
 
@@ -702,6 +704,8 @@ void Client::CMainApp::RenderSceneProfileDetail()
 		"Bloom Intensity Multiplier",
 		&m_SceneRenderingDraft.fBloomIntensityMultiplier,
 		0.005f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Scales scene bloom. Full Restore effects use Skill Bloom Intensity in Effect Detail.");
 	sceneChanged |= ImGui::Checkbox(
 		"Directional Shadow Enabled",
 		&m_SceneRenderingDraft.ShadowSettings.bEnabled);

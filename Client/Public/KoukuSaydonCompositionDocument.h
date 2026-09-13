@@ -145,6 +145,9 @@ namespace Client
 		double fTargetRadiusM = 0.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
+		std::uint32_t iCountPerPlayer = 0u;
+		double fPlayerEffectRadiusM = 0.0;
+		std::uint32_t iEffectLifetimeMs = 0u;
 		bool_t bRearmOnExit = false;
 		bool_t bRepeatAfterKnockback = false;
 		double fBossChargeDistanceM = 0.0;

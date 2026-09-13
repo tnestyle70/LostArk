@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "Engine_RenderTypes.h"
 
 NS_BEGIN(Engine)
 

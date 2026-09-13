@@ -9,6 +9,8 @@ import re
 import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from native_shader_dispatch import (expand_dispatch_includes, insert_grouped_cases,
+                                    write_partitioned_dispatch)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -61,11 +63,25 @@ def installed_kouku_programs(shaders):
     return programs
 
 
+def installed_kouku_cases(shaders):
+    text = expand_dispatch_includes(
+        (shaders / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8'), shaders)
+    match = re.search(r'// BEGIN KOUKU NATIVE CASES\n(.*?)// END KOUKU NATIVE CASES', text, re.S)
+    assert match, 'Installed Kouku native dispatch is missing'
+    return match[1]
+
+
+def route_scene_bloom_samples(text):
+    """Keep older generated bodies on the shared HDR/bloom snapshot sampler."""
+    return re.sub(r'\bg_EffectSceneColorTexture\.Sample(Level|Bias)?\s*\(',
+                  lambda match: 'Read_EffectSceneColor' + (match[1] or '') + '(', text)
+
+
 def install_partitioned_groups(shader_text, case_text):
     """Generate declarations, dispatch, runtime selection and project inputs together."""
     shaders = ROOT / 'Client/Bin/ShaderFiles'
     groups, functions = {}, set()
-    for block in conditional_blocks(shader_text):
+    for block in conditional_blocks(route_scene_bloom_samples(shader_text)):
         names = re.findall(r'float4 (ArtistNative(\d+)(?:Distortion)?)\(', block)
         assert len(names) == 1, 'A carrier block must contain one native function'
         name, number = names[0]
@@ -83,7 +99,16 @@ def install_partitioned_groups(shader_text, case_text):
         condition = f'!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {group}'
         return condition + ''.join(f' || defined(EFFECT_NATIVE_{carrier.upper()}_CARRIER)' for carrier in shared_carriers)
     cases, programs, carrier_groups = [], set(), {carrier: set() for carrier in ('Mesh', 'Particle', 'Decal', 'Trail')}
-    for block in conditional_blocks(case_text):
+    input_blocks = conditional_blocks(case_text)
+    incoming = {int(re.search(r'case (\d+)u:', block)[1]): block for block in input_blocks}
+    assert len(incoming) == len(input_blocks), 'Duplicate incoming Kouku native case'
+    previous = conditional_blocks(installed_kouku_cases(shaders))
+    installed_ids = [int(re.search(r'case (\d+)u:', block)[1]) for block in previous]
+    assert set(installed_ids) <= incoming.keys(), 'Supply every installed native case'
+    ordered = ''.join(incoming[identifier] for identifier in installed_ids)
+    additions = [block for identifier, block in incoming.items() if identifier not in installed_ids]
+    ordered = insert_grouped_cases(ordered, additions)
+    for block in conditional_blocks(ordered):
         ids = re.findall(r'case (\d+)u:', block)
         assert len(ids) == 1
         number = int(ids[0])
@@ -105,7 +130,8 @@ def install_partitioned_groups(shader_text, case_text):
     assert installed_kouku_programs(shaders) <= programs, 'Supply every installed Kouku native program'
     # The separately restored World markers retain their definitions and dispatch.
     # Their native2351..2359 profiles live in the first 64-profile carrier bucket.
-    artist = (shaders / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
+    artist = expand_dispatch_includes(
+        (shaders / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8'), shaders)
     world = re.search(r'// BEGIN WORLD NATIVE CASES\n(.*?)// END WORLD NATIVE CASES', artist, re.S)
     if world:
         for block in conditional_blocks(world[1]):
@@ -123,9 +149,10 @@ def install_partitioned_groups(shader_text, case_text):
         f"({group_condition(group, [carrier for carrier in ('Decal', 'Trail') if group in carrier_groups[carrier]])})\n"
         f'#include "Shader_EffectKoukuNativeGroup{group}.hlsli"\n#endif\n'
         for group in sorted(groups))
-    update(shaders / 'Shader_EffectArtistNative.hlsli', lambda text: section(
-        section(text, 'KOUKU NATIVE GROUP', includes, '#ifndef ARTIST_NATIVE_MODEL_ONLY\nEFFECT_PS_OUT Shade_EffectArtistNative'),
-        'KOUKU NATIVE CASES', ''.join(cases), '    default: clip(-1.f); return output;'))
+    updated_artist = section(
+        section(artist, 'KOUKU NATIVE GROUP', includes, '#ifndef ARTIST_NATIVE_MODEL_ONLY\nEFFECT_PS_OUT Shade_EffectArtistNative'),
+        'KOUKU NATIVE CASES', ''.join(cases), '    default: clip(-1.f); return output;')
+    dispatch_files = write_partitioned_dispatch(shaders / 'Shader_EffectArtistNative.hlsli', updated_artist)
     entries = [(carrier, group) for carrier, buckets in carrier_groups.items()
                if carrier in ('Mesh', 'Particle') for group in sorted(buckets)]
     for carrier, group in entries:
@@ -153,6 +180,10 @@ def install_partitioned_groups(shader_text, case_text):
                 name = f'..\\Bin\\ShaderFiles\\Shader_EffectKoukuNativeGroup{group}.hlsli'
                 if f'Include="{name}"' not in text:
                     additions.append(f'    <None Include="{name}"><Filter>97.ShaderFiles</Filter></None>' if suffix else f'    <None Include="{name}" />')
+            for filename in dispatch_files:
+                name = f'..\\Bin\\ShaderFiles\\{filename}'
+                if f'Include="{name}"' not in text:
+                    additions.append(f'    <None Include="{name}"><Filter>97.ShaderFiles</Filter></None>' if suffix else f'    <None Include="{name}" />')
             if additions:
                 prefix, marker, tail = text.rpartition('</Project>')
                 assert marker
@@ -174,10 +205,51 @@ def regroup_installed():
     """Migrate reviewed installed bodies without reconstructing or changing a formula."""
     shaders = ROOT / 'Client/Bin/ShaderFiles'
     source = '\n'.join(path.read_text(encoding='utf8') for path in sorted(shaders.glob('Shader_EffectKoukuNativeGroup*.hlsli')))
-    text = (shaders / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
-    cases = re.search(r'// BEGIN KOUKU NATIVE CASES\n(.*?)// END KOUKU NATIVE CASES', text, re.S)
-    assert cases
-    return install_partitioned_groups(source, cases[1])
+    return install_partitioned_groups(source, installed_kouku_cases(shaders))
+
+
+def append_reviewed(source_dir):
+    """Add a bounded reviewed cohort while preserving installed shader bodies."""
+    contract = json.loads((source_dir / 'native_runtime_contract.json').read_bytes())
+    rows = contract['programs']
+    assert rows and not contract.get('deferredPrograms')
+    owned = {row['program'] for row in rows}
+    assert len(owned) == len(rows) and owned <= set(range(2304, 3712))
+    assert all(not row.get('distortionPass') for row in rows), 'Use the full pass-aware installer for a new distortion cohort'
+    generated = route_scene_bloom_samples(
+        (source_dir / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8'))
+    additions = re.findall(r'(#ifndef ARTIST_NATIVE_MODEL_ONLY\n// [^\n]+\nfloat4 ArtistNative(\d+)\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\}\n#endif)', generated, re.S)
+    additions = {int(identifier): block for block, identifier in additions if int(identifier) in owned}
+    assert set(additions) == owned, 'Reviewed native function closure is incomplete'
+    shaders = ROOT / 'Client/Bin/ShaderFiles'
+    installed = '\n'.join(path.read_text(encoding='utf8') for path in sorted(shaders.glob('Shader_EffectKoukuNativeGroup*.hlsli')))
+    cases = installed_kouku_cases(shaders)
+    previous_blocks, case_blocks = [], []
+    for block in conditional_blocks(installed):
+        identifier = int(re.search(r'float4 ArtistNative(\d+)', block)[1])
+        if identifier in owned:
+            body = re.search(r'float4 ArtistNative\d+\(.*?\n\}', block, re.S)
+            expected = re.search(r'float4 ArtistNative\d+\(.*?\n\}', additions[identifier], re.S)
+            assert body and expected and body[0] == expected[0], ('Native ID already owns a different program', identifier)
+        else:
+            previous_blocks.append(block)
+    for block in conditional_blocks(cases):
+        if int(re.search(r'case (\d+)u:', block)[1]) not in owned:
+            case_blocks.append(block)
+    for row in rows:
+        carrier = {'mesh': 'MESH', 'decal': 'DECAL', 'ribbon': 'TRAIL', 'beam': 'TRAIL',
+                   'animationTrail': 'TRAIL', 'animTrail': 'TRAIL', 'screenPost': 'SCREEN_POST'}.get(row['rendererShape'], 'PARTICLE')
+        guard = ' && '.join(f'!defined(EFFECT_NATIVE_{kind}_CARRIER)' for kind in
+                           ('MESH', 'PARTICLE', 'DECAL', 'TRAIL', 'SCREEN_POST') if kind != carrier)
+        identifier = row['program']
+        previous_blocks.append('#if ' + guard + '\n' + additions[identifier] + '\n#endif\n')
+        opaque = 'true' if row['nativeBlend'] in ('blend_additive', 'blend_masked', 'blend_opaque') else 'false'
+        case_blocks.append(f'#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {identifier // 64 * 64}) && {guard}\n'
+                           f'    case {identifier}u: nativeColor=ArtistNative{identifier}(input); opaqueCoverage={opaque}; break;\n#endif\n')
+    # Material descriptors have the same reviewed IDs and preserve peer arrays.
+    import install_kouku_gate1_native_materials as materials
+    materials.install(source_dir / 'native_runtime_contract.json', source_dir, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
+    return install_partitioned_groups('\n'.join(previous_blocks), ''.join(case_blocks))
 
 
 def install(source_dir, append_source_dir=None):
@@ -313,9 +385,13 @@ if __name__ == "__main__":
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--source-dir", type=Path)
     source.add_argument("--regroup-installed", action="store_true")
+    source.add_argument('--append-reviewed-dir', type=Path)
     parser.add_argument("--append-source-dir", type=Path, action="append", default=[])
     args = parser.parse_args()
-    if args.regroup_installed:
+    if args.append_reviewed_dir:
+        assert not args.append_source_dir
+        print('Appended reviewed programs/groups/carriers:', append_reviewed(args.append_reviewed_dir.resolve()))
+    elif args.regroup_installed:
         assert not args.append_source_dir, "Regroup consumes installed shader bodies only"
         print("Regrouped programs/groups/carriers:", regroup_installed())
     else:

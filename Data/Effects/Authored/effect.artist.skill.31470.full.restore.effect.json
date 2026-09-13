@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.artist.skill.31470.full.restore",
   "displayName": "Artist F full restore",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,

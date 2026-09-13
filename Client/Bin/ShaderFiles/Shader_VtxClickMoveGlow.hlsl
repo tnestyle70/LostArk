@@ -34,7 +34,7 @@ VS_OUT VS_MAIN(VS_IN input)
     return output;
 }
 
-float4 PS_MAIN(VS_OUT input) : SV_TARGET0
+SCENE_COLOR_BLOOM_OUT PS_MAIN(VS_OUT input)
 {
     // Same grayscale-mask convention as Shader_VtxSkillGroundTargetPreview:
     // R is explicit coverage. BS_Additive is SrcAlpha/One, so the GPU blend
@@ -43,7 +43,7 @@ float4 PS_MAIN(VS_OUT input) : SV_TARGET0
     const float coverage = saturate(
         g_CoverageTexture.Sample(CoverageSampler, input.uv).r);
     clip(coverage - (1.f / 255.f));
-    return float4(g_TintLinear.rgb, g_TintLinear.a * coverage);
+    return Write_SceneColorAndBloom(float4(g_TintLinear.rgb, g_TintLinear.a * coverage));
 }
 
 technique11 DefaultTechnique

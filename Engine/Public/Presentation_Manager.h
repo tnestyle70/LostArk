@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PresentationProvider.h"
+#include "Engine_RenderTypes.h"
 
 NS_BEGIN(Engine)
 

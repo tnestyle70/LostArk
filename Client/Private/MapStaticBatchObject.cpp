@@ -1,14 +1,85 @@
 #include "MapStaticBatchObject.h"
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
+#include "Engine_VertexTypes.h"
 
 #include "GameInstance.h"
 #include "MapAssetRenderUtils.h"
 #include "Model.h"
+#include "MeshLod.h"
 #include "Profiler.h"
 #include "Shader.h"
 
 #include <algorithm>
 #include <cstring>
 #include <limits>
+#include <cmath>
+#include <cfloat>
+
+namespace
+{
+    // Conservative operator-norm bound for signed/nonuniform scale and shear.
+    float LinearScaleBound(const float4x4_t& matrix)
+    {
+        double maximum = 0.;
+        for (size_t i = 0u; i < 3u; ++i)
+        {
+            double row = 0.;
+            for (size_t j = 0u; j < 3u; ++j)
+            {
+                double dot = 0.;
+                for (size_t k = 0u; k < 3u; ++k) dot += double(matrix.m[i][k]) * matrix.m[j][k];
+                row += std::abs(dot);
+            }
+            if (!std::isfinite(row)) return 0.f;
+            maximum = (std::max)(maximum, row);
+        }
+        const double scale = std::sqrt(maximum);
+        if (!std::isfinite(scale) || scale <= 0. || scale >= (std::numeric_limits<float>::max)()) return 0.f;
+        return std::nextafter(static_cast<float>(scale), (std::numeric_limits<float>::infinity)());
+    }
+    struct INSTANCE_ENVELOPE final
+    {
+        double minimum[3] = { DBL_MAX, DBL_MAX, DBL_MAX };
+        double maximum[3] = { -DBL_MAX, -DBL_MAX, -DBL_MAX };
+        bool valid = true, any = false;
+        float maximumScale = 0.f;
+        void Add(const FMapStaticInstance& instance)
+        {
+            const float* center = &instance.WorldBoundsCenter.x;
+            if (!std::isfinite(instance.WorldBoundsRadius) || instance.WorldBoundsRadius <= 0.f) valid = false;
+            for (size_t axis = 0u; axis < 3u; ++axis)
+            {
+                if (!std::isfinite(center[axis])) valid = false;
+                minimum[axis] = (std::min)(minimum[axis], double(center[axis]) - instance.WorldBoundsRadius);
+                maximum[axis] = (std::max)(maximum[axis], double(center[axis]) + instance.WorldBoundsRadius);
+            }
+            const float scale = LinearScaleBound(instance.World);
+            if (scale <= 0.f) valid = false;
+            maximumScale = (std::max)(maximumScale, scale);
+            any = true;
+        }
+        bool Store(float4_t& sphere) const
+        {
+            if (!valid || !any) return false;
+            double radiusSquared = 0.;
+            for (size_t axis = 0u; axis < 3u; ++axis)
+            {
+                const double c = (minimum[axis] + maximum[axis]) * .5;
+                if (!std::isfinite(c) || std::abs(c) > (std::numeric_limits<float>::max)()) return false;
+                (&sphere.x)[axis] = static_cast<float>(c);
+                const double extent = (std::max)(maximum[axis] - (&sphere.x)[axis], double((&sphere.x)[axis]) - minimum[axis]);
+                radiusSquared += extent * extent;
+            }
+            const double radius = std::sqrt(radiusSquared);
+            if (!std::isfinite(radius) || radius <= 0. || radius >= (std::numeric_limits<float>::max)()) return false;
+            sphere.w = std::nextafter(static_cast<float>(radius), (std::numeric_limits<float>::infinity)());
+            return true;
+        }
+    };
+}
 
 CMapStaticBatchObject::CMapStaticBatchObject(
 	ComPtr<ID3D11Device> pDevice,
@@ -154,6 +225,9 @@ HRESULT CMapStaticBatchObject::Render()
 		static_cast<uint32_t>(
 			m_VisibleInstances.size());
 
+    Engine::MESH_SCREEN_LOD_DESC screenLod{};
+    const bool_t hasScreenLod = hasCameraSnapshot && m_RenderProfile.opacity >= 1.f &&
+        Build_ScreenLodView(cameraSnapshot, screenLod);
 	const bool_t useSourceMaterials =
 		CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
 	{
@@ -163,6 +237,14 @@ HRESULT CMapStaticBatchObject::Render()
 		++meshIndex)
 	{
 		const auto* surface = m_pModelCom->Get_MaterialSurface(meshIndex);
+        // Material variants share CMesh geometry: re-admit the current draw's
+        // material instead of inheriting the source model's LOD eligibility.
+        const bool_t useMeshLod = hasScreenLod && useSourceMaterials && surface &&
+            surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+            (surface->sourceBgFlags & 64u) == 0u &&
+            (surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::INHERIT ||
+             surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED) &&
+            !m_pModelCom->Has_MaterialTexture(meshIndex, aiTextureType_OPACITY);
 		const uint32_t meshPass = useSourceMaterials && surface &&
 			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ?
 			24u + passIndex : passIndex;
@@ -178,7 +260,7 @@ HRESULT CMapStaticBatchObject::Render()
 		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Mesh.Submit");
 			if (FAILED(m_pModelCom->Render_Instanced(meshIndex, m_pInstanceBuffer.Get(),
-				sizeof(VTXMESHINSTANCE), instanceCount))) return E_FAIL;
+				sizeof(VTXMESHINSTANCE), instanceCount, 0u, useMeshLod ? &screenLod : nullptr))) return E_FAIL;
 		}
 	}
 	}
@@ -286,6 +368,7 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 			--m_iAuthoredVisibleInstanceCount;
 	}
 	current = instance;
+    m_bBatchBoundsDirty = true;
 	m_bShadowInstancesDirty = true;
 	m_bVisibleInstancesDirty = true;
 	return S_OK;
@@ -310,6 +393,7 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 		else
 			--m_iAuthoredVisibleInstanceCount;
 		instance.Visible = visible;
+        m_bBatchBoundsDirty = true;
 		m_bShadowInstancesDirty = true;
 		m_bVisibleInstancesDirty = true;
 	}
@@ -478,10 +562,27 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 
 	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
+    INSTANCE_ENVELOPE visibleEnvelope;
+    if (m_bBatchBoundsDirty) Rebuild_BatchCullBounds();
+    bool_t rejectBatch = false;
+    if (hasCameraSnapshot && m_bHasBatchBounds && !m_FrustumCulling.bypass)
+    {
+        MAP_FRUSTUM_CULL_DECISION batchDecision{};
+        MAP_FRUSTUM_CULLING_POLICY broadPolicy = m_FrustumCulling;
+        broadPolicy.diagnostics = false;
+        const float3_t center(m_BatchBounds.x, m_BatchBounds.y, m_BatchBounds.z);
+        if (CMapAssetRenderUtils::Evaluate_FrustumVisibility(broadPolicy, *cameraSnapshot,
+            m_AssetId, m_AssetGroupId, 0u, center, m_BatchBounds.w, m_BatchFrustumState, batchDecision))
+        {
+            // Diagnostics retain real placement IDs and the precise loop.
+            rejectBatch = !batchDecision.shouldRender && !m_FrustumCulling.diagnostics;
+            requiresNextCameraTick = !batchDecision.wouldBeVisible && batchDecision.shouldRender;
+        }
+    }
 
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.CullAndPack");
-	for (FMapStaticInstance& instance :
+	if (!rejectBatch) for (FMapStaticInstance& instance :
 		m_Instances)
 	{
 		if (!instance.Visible)
@@ -509,6 +610,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 			continue;
 		}
 
+        visibleEnvelope.Add(instance);
 		VTXMESHINSTANCE gpuInstance{};
 		gpuInstance.World =
 			instance.World;
@@ -540,8 +642,12 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		(m_CandidateVisibleInstances.empty() || 0 == std::memcmp(
 			m_CandidateVisibleInstances.data(), m_VisibleInstances.data(),
 			m_CandidateVisibleInstances.size() * sizeof(VTXMESHINSTANCE)));
+    float4_t candidateLodBounds{};
+    const bool_t hasLodBounds = visibleEnvelope.Store(candidateLodBounds);
 	if (payloadUnchanged || m_CandidateVisibleInstances.empty())
 	{
+        m_VisibleLodBounds = hasLodBounds ? candidateLodBounds : float4_t{};
+        m_fVisibleLodScale = hasLodBounds ? visibleEnvelope.maximumScale : 0.f;
 		if (!payloadUnchanged)
 			m_VisibleInstances.swap(m_CandidateVisibleInstances);
 		m_bVisibleInstancesDirty = requiresNextCameraTick;
@@ -581,6 +687,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		m_pInstanceBuffer.Get(),
 		0);
 	}
+    m_VisibleLodBounds = hasLodBounds ? candidateLodBounds : float4_t{};
+    m_fVisibleLodScale = hasLodBounds ? visibleEnvelope.maximumScale : 0.f;
 	// Commit only after upload succeeds so a failed Map cannot replace the
 	// CPU payload associated with the previous successful GPU upload.
 	m_VisibleInstances.swap(m_CandidateVisibleInstances);
@@ -721,4 +829,52 @@ CMapStaticBatchObject::Clone(void* pArg)
 		return nullptr;
 
 	return instance;
+}
+
+void CMapStaticBatchObject::Rebuild_BatchCullBounds()
+{
+    INSTANCE_ENVELOPE envelope;
+    uint32_t grace = 0u;
+    for (const auto& instance : m_Instances)
+    {
+        if (!instance.Visible) continue;
+        envelope.Add(instance);
+        grace = (std::max)(grace, instance.FrustumState.rejectGraceFrames);
+    }
+    m_bHasBatchBounds = envelope.Store(m_BatchBounds);
+    m_BatchFrustumState = {};
+    m_BatchFrustumState.rejectGraceFrames = grace;
+    m_bBatchBoundsDirty = false;
+}
+
+bool_t CMapStaticBatchObject::Build_ScreenLodView(const MAP_CAMERA_CULL_SNAPSHOT& camera,
+    Engine::MESH_SCREEN_LOD_DESC& result) const
+{
+    const auto& p = camera.projection;
+    // Other projection conventions retain the original direct draw.
+    if (p._14 != 0.f || p._24 != 0.f || p._34 != 1.f || p._44 != 0.f ||
+        p._12 != 0.f || p._21 != 0.f || p._13 != 0.f || p._23 != 0.f ||
+        p._41 != 0.f || p._42 != 0.f || p._11 <= 0.f || p._22 <= 0.f ||
+        p._33 <= 1.f || p._43 >= 0.f || m_fVisibleLodScale <= 0.f || m_VisibleLodBounds.w <= 0.f)
+        return false;
+    const auto& v = camera.view;
+    if (v._14 != 0.f || v._24 != 0.f || v._34 != 0.f || v._44 != 1.f) return false;
+    const float viewScale = LinearScaleBound(v);
+    if (viewScale <= 0.f) return false;
+    const auto viewport = CGameInstance::Get().Get_ViewportSize();
+    if (viewport.x <= 0.f || viewport.y <= 0.f) return false;
+    const vector_t center = XMVectorSet(m_VisibleLodBounds.x, m_VisibleLodBounds.y, m_VisibleLodBounds.z, 1.f);
+    Engine::MESH_SCREEN_LOD_DESC candidate{};
+    XMStoreFloat4(&candidate.viewBounds, XMVector3TransformCoord(center, XMLoadFloat4x4(&v)));
+    candidate.viewBounds.w = m_VisibleLodBounds.w * viewScale;
+    candidate.projectionPixels = { p._11 * viewport.x * .5f, p._22 * viewport.y * .5f };
+    candidate.maximumScale = m_fVisibleLodScale * viewScale;
+    candidate.nearPlane = -p._43 / p._33;
+    const float values[] = { candidate.viewBounds.x, candidate.viewBounds.y, candidate.viewBounds.z,
+        candidate.viewBounds.w, candidate.projectionPixels.x, candidate.projectionPixels.y,
+        candidate.maximumScale, candidate.nearPlane };
+    for (const auto value : values) if (!std::isfinite(value)) return false;
+    if (candidate.nearPlane <= 0.f) return false;
+    result = candidate;
+    return true;
 }

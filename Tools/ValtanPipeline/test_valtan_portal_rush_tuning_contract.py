@@ -12,6 +12,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import valtan_tuning_pipeline as pipeline
 
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 PORTAL_DISTANCE_M = 16.0
@@ -448,9 +453,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             brain[configure_start:configure_end],
         )
 
-        game_room = (self.root / "Server/Private/GameRoom.cpp").read_text(
-            encoding="utf-8-sig"
-        )
+        game_room = read_source_text(self.root / "Server/Private/GameRoom.cpp", encoding="utf-8-sig")
         commit_start = game_room.index("Commit_BossPatternPlayerStageActions(")
         commit_end = game_room.index("Drain_BossCombatEvents", commit_start)
         commit = game_room[commit_start:commit_end]
@@ -500,7 +503,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
         self.assertIn("$patternStageMotionKindByKey", publisher)
         self.assertIn("-ceq 'PORTAL_TARGET_RUSH'", publisher)
 
-        animation_tool = (self.root / "Client/Private/Animation_Tool.cpp").read_text(
+        animation_tool = read_source_text(self.root / "Client/Private/Animation_Tool.cpp",
             encoding="utf-8-sig"
         )
         composition = (

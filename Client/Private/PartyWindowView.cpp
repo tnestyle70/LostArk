@@ -1,4 +1,8 @@
 #include "PartyWindowView.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
 
 #include "GameInstance.h"
 #include "ReplicatedPlayerHealth.h"

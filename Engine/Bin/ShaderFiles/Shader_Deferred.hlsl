@@ -28,6 +28,8 @@ texture2D   g_SceneHDRTexture;
 texture2D   g_PostProcessTexture;
 texture2D   g_PresentationOverlayTexture;
 texture2D   g_BloomTexture;
+texture2D   g_SceneBloomTexture;
+texture2D   g_PostBloomTexture;
 texture2D   g_DistortionTexture;
 texture2D   g_SSAOTexture;
 
@@ -48,7 +50,6 @@ float2      g_vInverseSceneSize;
 uint        g_iBloomEnabled;
 float       g_fBloomThreshold;
 float       g_fBloomSoftKnee;
-float       g_fBloomIntensity;
 float       g_fBloomScatter;
 float       g_fToneMapExposure;
 float       g_fToneMapWhitePoint;
@@ -141,6 +142,37 @@ vector      g_vLightDiffuse;
 vector      g_vLightAmbient;
 vector      g_vLightSpecular;
 
+struct DEFERRED_LIGHT_INPUT
+{
+    float4 direction;
+    float4 position;
+    float4 diffuse;
+    float4 ambient;
+    float4 specular;
+    float4 attenuation; // range, falloff exponent, spot inner/outer cosine
+    uint4 flags; // receiver, static-shadow channel, directional-shadow enable, source local bounds
+};
+
+cbuffer DeferredLightInstances
+{
+    DEFERRED_LIGHT_INPUT g_LightInstances[400];
+};
+uint g_LightInstanceOffset = 0u;
+
+DEFERRED_LIGHT_INPUT LegacyLightInput()
+{
+    DEFERRED_LIGHT_INPUT light;
+    light.direction = g_vLightDir;
+    light.position = g_vLightPos;
+    light.diffuse = g_vLightDiffuse;
+    light.ambient = g_vLightAmbient;
+    light.specular = g_vLightSpecular;
+    light.attenuation = float4(g_fLightRange, g_fLightFalloffExponent,
+        g_fSpotInnerCos, g_fSpotOuterCos);
+    light.flags = uint4(g_LightReceiver, g_ApplyStaticShadow, g_iApplyDirectionalShadow, 0u);
+    return light;
+}
+
 vector      g_vMtrlAmbient = 1.f;
 
 texture2D   g_NormalTexture;
@@ -184,6 +216,7 @@ struct PS_IN
 struct PS_OUT_BACKBUFFER
 {
     float4 vBackBuffer : SV_TARGET0;
+    float4 vBloomContribution : SV_TARGET2;
 };
 
 struct PS_OUT_LIGHT
@@ -203,10 +236,10 @@ float Resolve_AmbientOcclusion(float2 vTexcoord)
     return fAmbientOcclusion;
 }
 
-float Resolve_DirectionalShadow(float4 vWorldPos, float3 vNormal)
+float Resolve_DirectionalShadow(float4 vWorldPos, float3 vNormal, DEFERRED_LIGHT_INPUT light)
 {
     float fShadow = 1.f;
-    if (0u != g_iApplyDirectionalShadow)
+    if (0u != light.flags.z)
     {
         float4 vBiasedWorldPos = vWorldPos;
         vBiasedWorldPos.xyz += normalize(vNormal) * g_fShadowNormalBias;
@@ -258,7 +291,7 @@ float Resolve_DirectionalShadow(float4 vWorldPos, float3 vNormal)
 
 PS_OUT_BACKBUFFER PS_MAIN_DEBUG(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     
     Out.vBackBuffer = g_Texture.Sample(LinearSampler, In.vTexcoord);
     
@@ -329,7 +362,7 @@ void Evaluate_MapSourcePBRDirect(float3 normal, float3 geometricNormal,
 }
 
 PS_OUT_LIGHT Resolve_MapPBRLight(PS_IN input, float3 worldPosition,
-    float3 lightDirection, float attenuation, float directShadow)
+    float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
 {
     PS_OUT_LIGHT output;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
@@ -347,19 +380,19 @@ PS_OUT_LIGHT Resolve_MapPBRLight(PS_IN input, float3 worldPosition,
     const bool hasBakedLighting = (asuint(g_GeometricNormalTexture.Load(pixel).w) &
         0x00400000u) != 0u;
     const float ao = Resolve_AmbientOcclusion(input.vTexcoord) * materialAO;
-    const float3 ambient = g_vLightAmbient.rgb * g_vMtrlAmbient.rgb * ao *
+    const float3 ambient = light.ambient.rgb * g_vMtrlAmbient.rgb * ao *
         (1.f - saturate(material.a)) * (hasBakedLighting ? 0.f : 1.f);
-    output.vShade = float4(g_vLightDiffuse.rgb * attenuation *
+    output.vShade = float4(light.diffuse.rgb * attenuation *
         (diffuseWeight * directShadow + ambient), 0.f);
     // Native PBR uses one incoming light color for both BRDF lobes.
     // The legacy Phong specular control does not disable recovered PBR energy.
-    output.vSpecular = float4(g_vLightDiffuse.rgb * specularContribution *
+    output.vSpecular = float4(light.diffuse.rgb * specularContribution *
         attenuation * directShadow, 0.f);
     return output;
 }
 
 PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
-    float3 lightDirection, float attenuation, float directShadow)
+    float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
 {
     PS_OUT_LIGHT output;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
@@ -375,10 +408,10 @@ PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
     const bool hasBakedLighting = (asuint(g_GeometricNormalTexture.Load(pixel).w) &
         0x00400000u) != 0u;
     const float3 ambient = hasBakedLighting ? 0.f :
-        g_vLightAmbient.rgb * g_vMtrlAmbient.rgb * Resolve_AmbientOcclusion(input.vTexcoord);
+        light.ambient.rgb * g_vMtrlAmbient.rgb * Resolve_AmbientOcclusion(input.vTexcoord);
     // The free non-PBR RT5 alpha carries the albedo HDR normalization scale.
     // Source diffuse can exceed 1 while the product albedo target is UNORM8.
-    output.vShade = float4(g_vLightDiffuse.rgb * attenuation * material.a *
+    output.vShade = float4(light.diffuse.rgb * attenuation * material.a *
         (saturate(dot(n, l)) * directShadow + ambient), 0.f);
     // Native Blinn lobe has an RGB cap of 2 after shadow multiplication and
     // uses the same incoming color as diffuse. It has no extra NoL factor.
@@ -403,30 +436,30 @@ PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
             specular += g_CharacterSurfaceTexture.Load(pixel).rgb *
                 saturate(-dot(Decode_MapPBRGeometricNormal(pixel), l));
     }
-    output.vSpecular = float4(g_vLightDiffuse.rgb * attenuation * specular, 0.f);
+    output.vSpecular = float4(light.diffuse.rgb * attenuation * specular, 0.f);
     return output;
 }
 
 PS_OUT_LIGHT Resolve_MapSourceFoliageLight(PS_IN input, float3 worldPosition,
-    float3 lightDirection, float attenuation, float directShadow)
+    float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
 {
     PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
     const float4 depth = g_DepthTexture.Load(pixel);
     const bool grass = depth.w == 10.f;
     const float3 normal = SourceFoliageUnit(g_NormalTexture.Load(pixel).xyz * 2.f - 1.f);
-    const float3 light = SourceFoliageUnit(lightDirection);
+    const float3 unitLight = SourceFoliageUnit(lightDirection);
     const float3 transmission = g_CharacterSurfaceTexture.Load(pixel).rgb;
     const float4 material = g_MaterialSpecularTexture.Load(pixel);
-    const float3 weight = SourceFoliageDirectWeight(dot(normal, light), transmission, grass);
-    output.vShade = float4(g_vLightDiffuse.rgb * attenuation * material.a * weight * directShadow, 0.f);
-    output.vSpecular = float4(g_vLightDiffuse.rgb * attenuation * SourceFoliageDirectSpecular(
-        normal, g_vCamPosition.xyz - worldPosition, light, material.rgb, depth.z, directShadow.xxx, grass), 0.f);
+    const float3 weight = SourceFoliageDirectWeight(dot(normal, unitLight), transmission, grass);
+    output.vShade = float4(light.diffuse.rgb * attenuation * material.a * weight * directShadow, 0.f);
+    output.vSpecular = float4(light.diffuse.rgb * attenuation * SourceFoliageDirectSpecular(
+        normal, g_vCamPosition.xyz - worldPosition, unitLight, material.rgb, depth.z, directShadow.xxx, grass), 0.f);
     return output;
 }
 
 PS_OUT_LIGHT Resolve_MapSourceStoneLight(PS_IN input, float3 worldPosition,
-    float3 lightDirection, float attenuation, float directShadow)
+    float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
 {
     PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
@@ -436,7 +469,7 @@ PS_OUT_LIGHT Resolve_MapSourceStoneLight(PS_IN input, float3 worldPosition,
     const float3 specular = g_MaterialSpecularTexture.Load(pixel).rgb;
     const float3 radiance = EvaluateSourceStoneDirect(diffuse, specular,
         baseNormal, mixedNormal, g_vCamPosition.xyz - worldPosition,
-        lightDirection, g_DepthTexture.Load(pixel).z, g_vLightDiffuse.rgb,
+        lightDirection, g_DepthTexture.Load(pixel).z, light.diffuse.rgb,
         directShadow.xxx, float4(0.f, 0.f, 0.f, 1.f));
     // RT4 already holds source baked diffuse AND baked specular. Source scene
     // hemisphere/ambient remains explicitly unbound, not duplicated per light.
@@ -446,7 +479,7 @@ PS_OUT_LIGHT Resolve_MapSourceStoneLight(PS_IN input, float3 worldPosition,
 }
 
 PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
-    float attenuation, float directShadow)
+    float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
 {
     PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
@@ -465,7 +498,7 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
         g_MaterialSpecularTexture.Load(pixel), position, tangent, binormal, normal,
         g_vCamPosition.xyz, clipPosition,
         mul(g_SourceCharacterViewMatrix,g_SourceCharacterProjMatrix),
-        lightDirection, g_vLightDiffuse.rgb, directShadow, abs(geometry.w) < 1.5f);
+        lightDirection, light.diffuse.rgb, directShadow, abs(geometry.w) < 1.5f);
     SOURCE_CHARACTER_NATIVE_OUTPUT native = EvaluateSourceCharacterLight(nativeInput);
     if (native.discarded) return output;
     // Native direct output already contains albedo and both lighting lobes.
@@ -480,7 +513,7 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     const bool nativeMapBaked = g_SourceCharacterProgram >= 80u &&
         g_SourceCharacterProgram <= 83u && g_SourceMapMonsterBakedEnabled != 0u &&
         g_MaterialSpecularTexture.Load(pixel).w > .5f;
-    output.vShade = nativeMapBaked ? 0.f : g_vLightDiffuse * g_vLightAmbient * g_vMtrlAmbient *
+    output.vShade = nativeMapBaked ? 0.f : light.diffuse * light.ambient * g_vMtrlAmbient *
         (attenuation * Resolve_AmbientOcclusion(input.vTexcoord));
     output.vShade.a = 0.f;
     return output;
@@ -489,10 +522,10 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
 // Source static lights also illuminate moving scenery that has no RNM.
 // The packed baked flag belongs to recovered map families, not legacy pixels
 // or marker-5 native rows (those are checked in their material light pass).
-bool Reject_LightReceiver(PS_IN input)
+bool Reject_LightReceiver(PS_IN input, DEFERRED_LIGHT_INPUT light)
 {
-    if (g_LightReceiver == 1u) return g_SourceCharacterRow == 0u;
-    if (g_LightReceiver != 2u) return false;
+    if (light.flags.x == 1u) return g_SourceCharacterRow == 0u;
+    if (light.flags.x != 2u) return false;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
     const float marker = g_DepthTexture.Load(pixel).w;
     if (g_SourceCharacterRow != 0u)
@@ -504,9 +537,9 @@ bool Reject_LightReceiver(PS_IN input)
     return sourceMap && (asuint(g_GeometricNormalTexture.Load(pixel).w) & 0x00400000u) != 0u;
 }
 
-PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
+PS_OUT_LIGHT Resolve_DirectionalLight(PS_IN In, DEFERRED_LIGHT_INPUT light)
 {
-    if (Reject_LightReceiver(In)) return (PS_OUT_LIGHT)0;
+    if (Reject_LightReceiver(In, light)) return (PS_OUT_LIGHT)0;
     // Each source row owns only its marker-5 pixels; reject other rows before
     // reconstructing world position or sampling the directional shadow map.
     const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
@@ -524,7 +557,7 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     
 
     
-    vector vReflect = reflect(g_vLightDir, vNormal);
+    vector vReflect = reflect(light.direction, vNormal);
     
     
     vector      vDepthDesc = g_DepthTexture.Sample(LinearSampler, In.vTexcoord);
@@ -548,57 +581,57 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
 
     const float fDirectDiffuse = saturate(dot(
-        normalize(g_vLightDir) * -1.f, normalize(vNormal)));
+        normalize(light.direction) * -1.f, normalize(vNormal)));
     const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
-    const float staticShadow = g_ApplyStaticShadow != 0u && shadowChannel == g_ApplyStaticShadow ?
+    const float staticShadow = light.flags.y != 0u && shadowChannel == light.flags.y ?
         1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
     const float fDirectionalShadow = Resolve_DirectionalShadow(
-        vWorldPos, vNormal.xyz) * staticShadow;
+        vWorldPos, vNormal.xyz, light) * staticShadow;
     if (g_SourceCharacterRow != 0u)
-        return Resolve_SourceCharacterLight(In, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
+        return Resolve_SourceCharacterLight(In, -light.direction.xyz, 1.f, fDirectionalShadow, light);
     if (sourceDepth.w == 7.f)
-        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
-        return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
+        return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light);
     if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
-        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -g_vLightDir.xyz,
-            1.f, fDirectionalShadow);
+        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -light.direction.xyz,
+            1.f, fDirectionalShadow, light);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
-        return Resolve_MapPBRLight(In, vWorldPos.xyz, -g_vLightDir.xyz,
-            1.f, fDirectionalShadow);
+        return Resolve_MapPBRLight(In, vWorldPos.xyz, -light.direction.xyz,
+            1.f, fDirectionalShadow, light);
     const float fAmbientOcclusion =
         Resolve_AmbientOcclusion(In.vTexcoord);
-    Out.vShade = g_vLightDiffuse *
+    Out.vShade = light.diffuse *
         (fDirectDiffuse * fDirectionalShadow +
-        (g_vLightAmbient * g_vMtrlAmbient) * fAmbientOcclusion);
+        (light.ambient * g_vMtrlAmbient) * fAmbientOcclusion);
     
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
-    Out.vSpecular = g_vLightSpecular *
+    Out.vSpecular = light.specular *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
             specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fDirectionalShadow;
     
     return Out;
 }
 
-float Resolve_PointLightAttenuation(float fDistance)
+float Resolve_PointLightAttenuation(float fDistance, DEFERRED_LIGHT_INPUT light)
 {
     float fAttenuation = 0.f;
-    if (isfinite(g_fLightRange) && g_fLightRange > 0.f)
+    if (isfinite(light.attenuation.x) && light.attenuation.x > 0.f)
     {
         fAttenuation = saturate(
-            (g_fLightRange - fDistance) / g_fLightRange);
-        if (1.f != g_fLightFalloffExponent)
+            (light.attenuation.x - fDistance) / light.attenuation.x);
+        if (1.f != light.attenuation.y)
             fAttenuation = pow(
-                fAttenuation, g_fLightFalloffExponent);
+                fAttenuation, light.attenuation.y);
     }
     return fAttenuation;
 }
 
-PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
+PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot, DEFERRED_LIGHT_INPUT light)
 {
-    if (Reject_LightReceiver(In)) return (PS_OUT_LIGHT)0;
+    if (Reject_LightReceiver(In, light)) return (PS_OUT_LIGHT)0;
     // Each source row owns only its marker-5 pixels; reject other rows before
     // reconstructing world position or sampling the directional shadow map.
     const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
@@ -636,9 +669,9 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
     
     
-    vector vLightDir = vWorldPos - g_vLightPos;
+    vector vLightDir = vWorldPos - light.position;
     
-    float fAtt = Resolve_PointLightAttenuation(length(vLightDir));
+    float fAtt = Resolve_PointLightAttenuation(length(vLightDir), light);
     if (bSpot)
     {
         // The direction points from the light into the illuminated cone.
@@ -648,29 +681,29 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
             Out.vSpecular = 0.f;
             return Out;
         }
-        float fCosAngle = dot(normalize(vLightDir.xyz), normalize(g_vLightDir.xyz));
-        float fCone = saturate((fCosAngle - g_fSpotOuterCos) /
-            max(g_fSpotInnerCos - g_fSpotOuterCos, 0.0001f));
+        float fCosAngle = dot(normalize(vLightDir.xyz), normalize(light.direction.xyz));
+        float fCone = saturate((fCosAngle - light.attenuation.w) /
+            max(light.attenuation.z - light.attenuation.w, 0.0001f));
         fAtt *= fCone * fCone;
     }
     
     const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
-    const float staticShadow = g_ApplyStaticShadow != 0u && shadowChannel == g_ApplyStaticShadow ?
+    const float staticShadow = light.flags.y != 0u && shadowChannel == light.flags.y ?
         1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
 
     if (g_SourceCharacterRow != 0u)
-        return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, staticShadow);
+        return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, staticShadow, light);
     if (sourceDepth.w == 7.f)
-        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
-        return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
+        return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
     if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
-        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
+        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
-        return Resolve_MapPBRLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow);
+        return Resolve_MapPBRLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
     float fAmbientOcclusion = Resolve_AmbientOcclusion(In.vTexcoord);
-    Out.vShade = (g_vLightDiffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))
-    + (g_vLightAmbient * g_vMtrlAmbient) * fAmbientOcclusion)) * fAtt;
+    Out.vShade = (light.diffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))
+    + (light.ambient * g_vMtrlAmbient) * fAmbientOcclusion)) * fAtt;
     
     
     vector vReflect = reflect(vLightDir, vNormal);
@@ -679,7 +712,7 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
-    Out.vSpecular = g_vLightSpecular *
+    Out.vSpecular = light.specular *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
             specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fAtt;
     
@@ -688,14 +721,19 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
 
 
 
+PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
+{
+    return Resolve_DirectionalLight(In, LegacyLightInput());
+}
+
 PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
 {
-    return Resolve_LocalLight(In, false);
+    return Resolve_LocalLight(In, false, LegacyLightInput());
 }
 
 PS_OUT_LIGHT PS_MAIN_SPOT(PS_IN In)
 {
-    return Resolve_LocalLight(In, true);
+    return Resolve_LocalLight(In, true, LegacyLightInput());
 }
 
 bool Is_SSAOBackground(float4 vDepthDesc)
@@ -745,7 +783,7 @@ float SSAO_Hash(float2 vPosition)
 
 PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float4 vCenterDepthDesc = g_DepthTexture.Sample(
         PostProcessSampler, In.vTexcoord);
     if (Is_SSAOBackground(vCenterDepthDesc))
@@ -827,7 +865,7 @@ PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
 
 PS_OUT_BACKBUFFER PS_MAIN_SSAO_BLUR(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float4 vCenterDepthDesc = g_DepthTexture.Sample(
         PostProcessSampler, In.vTexcoord);
     if (Is_SSAOBackground(vCenterDepthDesc))
@@ -915,7 +953,7 @@ float3 Resolve_HeightFog(float3 vLitColor, float2 vTexcoord)
 
 PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     
     vector vDiffuse = g_DiffuseTexture.Sample(LinearSampler, In.vTexcoord);
     if (0.f == vDiffuse.a)
@@ -932,6 +970,17 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     /* Emissive and Effect HDR energy are light sources, not receivers.  They
        must remain available to bloom even when the carrier is in shadow. */
     Out.vBackBuffer = vLitColor + vEmissive;
+    // Source-character GBuffer normal.a is otherwise unused by its typed lighting.
+    // Preserve the document multiplier through the deferred model-cue path.
+    const int3 pixel = int3(int2(In.vPosition.xy), 0);
+    const float bloomMarker = g_NormalTexture.Load(pixel).a;
+    const bool hasBloomOverride = g_DepthTexture.Load(pixel).w == 5.f && bloomMarker > 0.f;
+    // UNORM16 alpha0 means scene fallback. Explicit intensity0 has exact code3855.
+    const float authoredBloom = bloomMarker <= 1.f / 17.f + 0.5f / 65535.f ?
+        0.f : clamp(bloomMarker * 17.f - 1.f, 0.f, 16.f);
+    const float bloomIntensity = hasBloomOverride ? authoredBloom : g_fSceneBloomIntensity;
+    Out.vBloomContribution = float4(min(Extract_SceneBloom(Out.vBackBuffer.rgb) *
+        bloomIntensity, 60000.f), Out.vBackBuffer.a);
     return Out;
 }
 
@@ -961,10 +1010,11 @@ float3 Extract_Bloom(float3 vColor)
 
 PS_OUT_BACKBUFFER PS_MAIN_BLOOM_EXTRACT(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float3 vScene = Sanitize_HDR(g_PostProcessTexture.Sample(
         PostProcessSampler, In.vTexcoord).rgb);
-    Out.vBackBuffer = float4(Extract_Bloom(vScene), 1.f);
+    // This input already contains each contributor's bright-pass and intensity.
+    Out.vBackBuffer = float4(vScene, 1.f);
     return Out;
 }
 
@@ -996,7 +1046,7 @@ float3 Blur_Bloom(float2 vTexcoord, float2 vDirection)
 
 PS_OUT_BACKBUFFER PS_MAIN_BLOOM_BLUR_H(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     Out.vBackBuffer = float4(
         Blur_Bloom(In.vTexcoord, float2(1.f, 0.f)), 1.f);
     return Out;
@@ -1004,7 +1054,7 @@ PS_OUT_BACKBUFFER PS_MAIN_BLOOM_BLUR_H(PS_IN In)
 
 PS_OUT_BACKBUFFER PS_MAIN_BLOOM_BLUR_V(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     Out.vBackBuffer = float4(
         Blur_Bloom(In.vTexcoord, float2(0.f, 1.f)), 1.f);
     return Out;
@@ -1019,18 +1069,20 @@ float Presentation_Hash(float2 vPosition, uint iSeed)
 
 PS_OUT_BACKBUFFER PS_MAIN_SCENE_RESOLVE(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float2 vDistortion = clamp(g_DistortionTexture.Sample(
         PostProcessSampler, In.vTexcoord).rg, -0.05f, 0.05f);
     float3 vScene = Sanitize_HDR(g_SceneHDRTexture.Sample(
         PostProcessSampler, In.vTexcoord + vDistortion).rgb);
     Out.vBackBuffer = float4(vScene, 1.f);
+    Out.vBloomContribution = float4(Sanitize_HDR(g_SceneBloomTexture.Sample(
+        PostProcessSampler, In.vTexcoord + vDistortion).rgb), 1.f);
     return Out;
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_RGB_NOISE(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float fTick = floor(g_fPresentationTime *
         max(g_fPresentationFrequency, 0.0001f) * 60.f);
     float fNoise = Presentation_Hash(
@@ -1048,15 +1100,24 @@ PS_OUT_BACKBUFFER PS_MAIN_RGB_NOISE(PS_IN In)
     vColor += fNoise * clamp(g_fPresentationSecondaryIntensity,
         0.f, 8.f) * g_vPresentationTint.rgb;
     Out.vBackBuffer = float4(Sanitize_HDR(vColor), 1.f);
+    float3 vBloom;
+    vBloom.r = g_PostBloomTexture.Sample(PostProcessSampler,
+        clamp(In.vTexcoord + float2(fOffset, 0.f), 0.f, 1.f)).r;
+    vBloom.g = g_PostBloomTexture.Sample(PostProcessSampler,
+        In.vTexcoord).g;
+    vBloom.b = g_PostBloomTexture.Sample(PostProcessSampler,
+        clamp(In.vTexcoord - float2(fOffset, 0.f), 0.f, 1.f)).b;
+    Out.vBloomContribution = float4(Sanitize_HDR(vBloom), 1.f);
     return Out;
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_ZOOM_BLUR(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float2 vFromCenter = In.vTexcoord - float2(0.5f, 0.5f);
     float fStrength = clamp(g_fPresentationIntensity, 0.f, 8.f) * 0.025f;
     float3 vColor = 0.f;
+    float3 vBloom = 0.f;
     [unroll]
     for (int iSample = 0; iSample < 8; ++iSample)
     {
@@ -1065,6 +1126,7 @@ PS_OUT_BACKBUFFER PS_MAIN_ZOOM_BLUR(PS_IN In)
             fStrength * fSample, 0.f, 1.f);
         vColor += g_PostProcessTexture.Sample(
             PostProcessSampler, vUV).rgb;
+        vBloom += g_PostBloomTexture.Sample(PostProcessSampler, vUV).rgb;
     }
     vColor *= 0.125f;
     float3 vSource = g_PostProcessTexture.Sample(
@@ -1073,12 +1135,15 @@ PS_OUT_BACKBUFFER PS_MAIN_ZOOM_BLUR(PS_IN In)
         g_fPresentationSecondaryIntensity : g_fPresentationIntensity);
     Out.vBackBuffer = float4(Sanitize_HDR(
         lerp(vSource, vColor * g_vPresentationTint.rgb, fMix)), 1.f);
+    Out.vBloomContribution = float4(Sanitize_HDR(lerp(
+        g_PostBloomTexture.Sample(PostProcessSampler, In.vTexcoord).rgb,
+        vBloom * 0.125f * g_vPresentationTint.rgb, fMix)), 1.f);
     return Out;
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_CHROMATIC_ABERRATION(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float2 vFromCenter = In.vTexcoord - float2(0.5f, 0.5f);
     float fExponent = g_fPresentationSecondaryIntensity > 0.f ?
         clamp(g_fPresentationSecondaryIntensity, 0.5f, 8.f) : 2.f;
@@ -1094,12 +1159,20 @@ PS_OUT_BACKBUFFER PS_MAIN_CHROMATIC_ABERRATION(PS_IN In)
         clamp(In.vTexcoord - vShift, 0.f, 1.f)).b;
     Out.vBackBuffer = float4(Sanitize_HDR(
         vColor * g_vPresentationTint.rgb), 1.f);
+    float3 vBloom;
+    vBloom.r = g_PostBloomTexture.Sample(PostProcessSampler,
+        clamp(In.vTexcoord + vShift, 0.f, 1.f)).r;
+    vBloom.g = g_PostBloomTexture.Sample(PostProcessSampler,
+        In.vTexcoord).g;
+    vBloom.b = g_PostBloomTexture.Sample(PostProcessSampler,
+        clamp(In.vTexcoord - vShift, 0.f, 1.f)).b;
+    Out.vBloomContribution = float4(Sanitize_HDR(vBloom * g_vPresentationTint.rgb), 1.f);
     return Out;
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_FILM_NOISE(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float fTick = floor(g_fPresentationTime *
         max(g_fPresentationFrequency, 0.0001f) * 60.f);
     float fNoise = Presentation_Hash(
@@ -1113,6 +1186,9 @@ PS_OUT_BACKBUFFER PS_MAIN_FILM_NOISE(PS_IN In)
         fScan * clamp(g_fPresentationSecondaryIntensity, 0.f, 8.f)) *
         g_vPresentationTint.rgb;
     Out.vBackBuffer = float4(Sanitize_HDR(vSource + vNoise), 1.f);
+    // Film/noise is a screen color operation, not a new emitting skill.
+    Out.vBloomContribution = float4(g_PostBloomTexture.Sample(
+        PostProcessSampler, In.vTexcoord).rgb, 1.f);
     return Out;
 }
 
@@ -1183,17 +1259,21 @@ float4 Resolve_PresentationOverlay(float2 texcoord)
 
 PS_OUT_BACKBUFFER PS_MAIN_TEXTURED_OVERLAY(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float3 source = Sanitize_HDR(g_PostProcessTexture.Sample(
         PostProcessSampler, In.vTexcoord).rgb);
     float4 overlay = Resolve_PresentationOverlay(In.vTexcoord);
     Out.vBackBuffer = float4(Sanitize_HDR(lerp(source, overlay.rgb, overlay.a)), 1.f);
+    const float3 sourceBloom = g_PostBloomTexture.Sample(
+        PostProcessSampler, In.vTexcoord).rgb;
+    Out.vBloomContribution = float4(lerp(sourceBloom,
+        Write_SceneBloom(overlay).rgb, overlay.a), 1.f);
     return Out;
 }
 
 PS_OUT_BACKBUFFER PS_MAIN_DISPLAY_OVERLAY(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     float4 overlay = Resolve_PresentationOverlay(In.vTexcoord);
     // SRGB texture views already decode into linear values. Encode the display
     // image once, without the scene's exposure, film curve, bloom or gamma setting.
@@ -1233,7 +1313,7 @@ float3 Resolve_FinalLDR(float2 vTexcoord)
             PostProcessSampler, clamp(vTexcoord, 0.f, 1.f)).rgb);
     }
 
-    float3 vSceneWithBloom = vScene + vBloom * g_fBloomIntensity;
+    float3 vSceneWithBloom = vScene + vBloom;
     float3 vWhiteScale = max(Tonemap_Hable(
         max(g_fToneMapWhitePoint, 1.f).xxx), 0.00001f);
     float3 vMapped = Tonemap_Hable(vSceneWithBloom *
@@ -1301,7 +1381,7 @@ float3 Resolve_FinalFXAA(float2 vTexcoord)
 /* SceneHDR을 백버퍼로 옮기는 유일한 지점. 톤매핑, 감마, FXAA는 UI 전에 여기서 처리한다. */
 PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
 {
-    PS_OUT_BACKBUFFER Out;
+    PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
     if (g_MaterialDebugView != 0u)
     {
         const int3 pixel = int3(int2(In.vPosition.xy), 0);
@@ -1411,6 +1491,109 @@ PS_OUT_LIGHT PS_MAIN_SOURCE_DIRECTIONAL(PS_IN input) { return PS_MAIN_DIRECTIONA
 PS_OUT_LIGHT PS_MAIN_SOURCE_POINT(PS_IN input) { return PS_MAIN_POINT(input); }
 [earlydepthstencil]
 PS_OUT_LIGHT PS_MAIN_SOURCE_SPOT(PS_IN input) { return PS_MAIN_SPOT(input); }
+
+// A positive source local-light contribution must lie inside its range sphere.
+// Project the enclosing world AABB, keeping the original fullscreen triangle
+// positions and UV plane. Hardware clip distances remove only its exterior.
+bool SourceLocalLightClipBounds(DEFERRED_LIGHT_INPUT light, out float4 bounds)
+{
+    bounds = float4(-1.f, -1.f, 1.f, 1.f);
+    if (light.flags.w == 0u || !all(isfinite(light.position)) ||
+        !isfinite(light.attenuation.x) || light.attenuation.x <= 0.f)
+        return false;
+
+    // The existing light quad uses an orthographic projection of the viewport
+    // width/height. Its diagonal is 2/size, so this expands by two pixels without
+    // adding a VS texture binding or depending on the later Final-pass uniforms.
+    const float2 margin = 2.f * float2(g_ProjMatrix[0][0], g_ProjMatrix[1][1]);
+    if (!all(isfinite(margin)) || any(margin <= 0.f) ||
+        g_ProjMatrix[0][3] != 0.f || g_ProjMatrix[1][3] != 0.f ||
+        g_ProjMatrix[2][3] != 0.f || g_ProjMatrix[3][3] != 1.f)
+        return false;
+
+    float2 minimum = float2(3.402823466e+38f, 3.402823466e+38f);
+    float2 maximum = -minimum;
+    [unroll]
+    for (uint corner = 0u; corner < 8u; ++corner)
+    {
+        const float3 side = float3((corner & 1u) != 0u ? 1.f : -1.f,
+            (corner & 2u) != 0u ? 1.f : -1.f,
+            (corner & 4u) != 0u ? 1.f : -1.f);
+        const float3 position = light.position.xyz + side * light.attenuation.x;
+        const float4 clip = mul(mul(float4(position, 1.f),
+            g_SourceCharacterViewMatrix), g_SourceCharacterProjMatrix);
+        // Positive homogeneous w and near-plane distance throughout the AABB
+        // make its projected extrema occur at corners. Otherwise keep full quad.
+        if (!all(isfinite(clip)) || clip.w <= 0.00001f || clip.z <= 0.00001f)
+            return false;
+        const float2 projected = clip.xy / clip.w;
+        if (!all(isfinite(projected))) return false;
+        minimum = min(minimum, projected);
+        maximum = max(maximum, projected);
+    }
+    bounds = float4(max(minimum - margin, -1.f), min(maximum + margin, 1.f));
+    return all(isfinite(bounds));
+}
+
+struct LIGHT_VS_IN
+{
+    float3 vPosition : POSITION;
+    float2 vTexcoord : TEXCOORD0;
+    uint instanceId : SV_InstanceID;
+};
+struct LIGHT_PS_IN
+{
+    float4 vPosition : SV_POSITION;
+    float2 vTexcoord : TEXCOORD0;
+    nointerpolation uint lightIndex : TEXCOORD1;
+    float4 clipDistance : SV_ClipDistance0;
+};
+LIGHT_PS_IN VS_LIGHT_INSTANCE(LIGHT_VS_IN input)
+{
+    VS_IN vertex;
+    vertex.vPosition = input.vPosition;
+    vertex.vTexcoord = input.vTexcoord;
+    const VS_OUT transformed = VS_MAIN(vertex);
+    LIGHT_PS_IN output;
+    output.vPosition = transformed.vPosition;
+    output.vTexcoord = transformed.vTexcoord;
+    output.lightIndex = g_LightInstanceOffset + input.instanceId;
+    output.clipDistance = 1.f;
+    float4 bounds;
+    if (SourceLocalLightClipBounds(g_LightInstances[output.lightIndex], bounds))
+    {
+        output.clipDistance = float4(output.vPosition.x - bounds.x * output.vPosition.w,
+            bounds.z * output.vPosition.w - output.vPosition.x,
+            output.vPosition.y - bounds.y * output.vPosition.w,
+            bounds.w * output.vPosition.w - output.vPosition.y);
+    }
+    return output;
+}
+PS_IN LightPixelInput(LIGHT_PS_IN input)
+{
+    PS_IN result;
+    result.vPosition = input.vPosition;
+    result.vTexcoord = input.vTexcoord;
+    return result;
+}
+PS_OUT_LIGHT PS_LIGHT_INSTANCE_DIRECTIONAL(LIGHT_PS_IN input)
+{
+    return Resolve_DirectionalLight(LightPixelInput(input), g_LightInstances[input.lightIndex]);
+}
+PS_OUT_LIGHT PS_LIGHT_INSTANCE_POINT(LIGHT_PS_IN input)
+{
+    return Resolve_LocalLight(LightPixelInput(input), false, g_LightInstances[input.lightIndex]);
+}
+PS_OUT_LIGHT PS_LIGHT_INSTANCE_SPOT(LIGHT_PS_IN input)
+{
+    return Resolve_LocalLight(LightPixelInput(input), true, g_LightInstances[input.lightIndex]);
+}
+[earlydepthstencil]
+PS_OUT_LIGHT PS_SOURCE_LIGHT_INSTANCE_DIRECTIONAL(LIGHT_PS_IN input) { return PS_LIGHT_INSTANCE_DIRECTIONAL(input); }
+[earlydepthstencil]
+PS_OUT_LIGHT PS_SOURCE_LIGHT_INSTANCE_POINT(LIGHT_PS_IN input) { return PS_LIGHT_INSTANCE_POINT(input); }
+[earlydepthstencil]
+PS_OUT_LIGHT PS_SOURCE_LIGHT_INSTANCE_SPOT(LIGHT_PS_IN input) { return PS_LIGHT_INSTANCE_SPOT(input); }
 
 technique11 DefaultTechnique
 {
@@ -1635,6 +1818,67 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_SPOT();
+    }
+
+    // Appended22–27: ordered instanced light submissions.
+    pass InstancedDirectional
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_LIGHT_INSTANCE_DIRECTIONAL();
+    }
+
+    pass InstancedPoint
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_LIGHT_INSTANCE_POINT();
+    }
+
+    pass InstancedSpot
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_LIGHT_INSTANCE_SPOT();
+    }
+
+    pass SourceInstancedDirectional
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskRead, 1);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_DIRECTIONAL();
+    }
+
+    pass SourceInstancedPoint
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskRead, 1);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_POINT();
+    }
+
+    pass SourceInstancedSpot
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_SourceLightMaskRead, 1);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_SPOT();
     }
 
 }

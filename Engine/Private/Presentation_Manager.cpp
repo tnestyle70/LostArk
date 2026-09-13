@@ -1,4 +1,5 @@
 #include "Presentation_Manager.h"
+#include "Engine_RenderTypes.h"
 
 #include <cmath>
 
@@ -138,7 +139,8 @@ namespace
 			!std::isfinite(Desc.fAngularVelocityDegreesPerSecond) ||
 			!IsFinite2(Desc.vUvDriftPerSecond) ||
 			!IsFinite4(Desc.vTint) || !std::isfinite(Desc.fAlpha) ||
-			Desc.fAlpha < 0.f || Desc.fAlpha > 1.f)
+			Desc.fAlpha < 0.f || Desc.fAlpha > 1.f ||
+			!std::isfinite(Desc.fBloomIntensity) || (Desc.fBloomIntensity != -1.f && Desc.fBloomIntensity < 0.f) || Desc.fBloomIntensity > 16.f)
 		{
 			return false;
 		}

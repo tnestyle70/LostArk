@@ -47,6 +47,21 @@
 
 namespace
 {
+	Client::CLocalMovePrediction::Snapshot LocalMoveSnapshot(
+		const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick)
+	{
+		Client::CLocalMovePrediction::Snapshot snapshot{};
+		snapshot.serverTick = serverTick;
+		snapshot.processedMoveSequence = player.iLastProcessedMoveSequence;
+		snapshot.position = { player.fPositionX, player.fPositionY, player.fPositionZ };
+		snapshot.yawDegrees = player.fYawDegrees;
+		snapshot.moveSpeed = player.fMoveSpeed;
+		snapshot.canPredictMove = player.canPredictMove;
+		snapshot.hasMoveGoal = player.hasMoveGoal;
+		snapshot.nextWaypoint = { player.fMoveWaypointX, player.fMoveWaypointY, player.fMoveWaypointZ };
+		return snapshot;
+	}
+
 	using Client::CValtan;
 	constexpr std::string_view KOUKU_SAYDON_BOSS_ARCHETYPE =
 		"BOSS_KAKULSAYDON_G1_KOUKU";
@@ -1544,6 +1559,9 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 		Pending.Snapshot.fPositionZ);
 	const bool_t isMoving = Pending.Snapshot.eLocomotionState ==
 		PLAYER_LOCOMOTION_STATE::MOVING;
+	if (pCharacter)
+		pCharacter->Apply_LocalMoveSnapshot(LocalMoveSnapshot(Pending.Snapshot, Pending.iServerTick),
+			Pending.Snapshot.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL);
 	if (nullptr == pCharacter || !pCharacter->Apply_NetworkState(
 			Position,
 			Pending.Snapshot.fYawDegrees,
@@ -2978,7 +2996,8 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
 	if (source == m_WorldEntities.end() ||
 		WORLD_ENTITY_KIND::BOSS != source->second.eKind ||
-		source->second.pValtan.expired())
+		(source->second.pValtan.expired() &&
+		 !(source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") && !source->second.pNpc.expired())))
 	{
 		return false;
 	}
@@ -2990,8 +3009,8 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	{
 		return false;
 	}
-	if (source->second.PinnedDefinitionRevision !=
-		spawned.PinnedDefinitionRevision)
+	if (!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+		source->second.PinnedDefinitionRevision != spawned.PinnedDefinitionRevision)
 	{
 		m_strPendingPresentationFailure =
 			"Combat-object spawn revision does not match its boss occurrence.";
@@ -3026,12 +3045,26 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	}
 	if (source->second.bPresentationIsolated)
 		return true;
-	if (source->second.PinnedDefinitionRevision !=
-		event.PinnedDefinitionRevision)
+	if (!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+		source->second.PinnedDefinitionRevision != event.PinnedDefinitionRevision)
 	{
 		m_strPendingPresentationFailure =
 			"Combat-object presentation event revision does not match its boss occurrence.";
 		return false;
+	}
+	if (source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_"))
+	{
+		const auto* record = m_CombatObjectProjectionRuntime.Find(event.iCombatObjectId);
+		if (source->second.pNpc.expired() || !record || record->iSourceNetEntityId != event.iSourceNetEntityId ||
+			record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision ||
+			record->strCombatObjectArchetypeId != "combatobject.kouku.albion.bluecircle" ||
+			event.strCombatObjectArchetypeId != record->strCombatObjectArchetypeId ||
+			record->strClientVisualId != "combatvisual.kouku.albion.bluecircle" ||
+			event.eKind != LostArk::Shared::COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE ||
+			event.iRepeatIndex != 0u || event.strHitId != "combatpresentation.kouku.albion.started")
+		{ m_strPendingPresentationFailure = "Kouku combat-object lifecycle marker has no matching live occurrence."; return false; }
+		// The runtime group already owns its warning and impact; do not replay it at this marker.
+		return true;
 	}
 	const std::shared_ptr<CValtan> boss = source->second.pValtan.lock();
 	if (nullptr == boss)
@@ -3079,8 +3112,8 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 			"Combat-object visual is isolated with its rejected boss presentation revision.";
 		return true;
 	}
-	if (source->second.PinnedDefinitionRevision !=
-		spawned.PinnedDefinitionRevision)
+	if (!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+		source->second.PinnedDefinitionRevision != spawned.PinnedDefinitionRevision)
 	{
 		outStatus =
 			"Combat-object visual revision does not match its boss occurrence.";
@@ -3092,7 +3125,8 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 			source->second.strArchetypeId,
 			spawned.strCombatObjectArchetypeId,
 			spawned.strClientVisualId);
-	if (nullptr == boss || nullptr == visual)
+	const bool koukuOwner = source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") && !source->second.pNpc.expired();
+	if ((!boss && !koukuOwner) || nullptr == visual)
 	{
 		outStatus = "Combat-object visual join is missing.";
 		return false;
@@ -3151,6 +3185,22 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 		return true;
 	}
 
+	if (koukuOwner)
+	{
+		EFFECT_LEVEL_PLACEMENT_SPAWN_DESC placement;
+		placement.iLevelIndex = m_Desc.iLayerLevelIndex;
+		placement.strPlacementId = "combatobject.instance." + std::to_string(spawned.iCombatObjectId);
+		placement.strEffectAssetId = visual->effectAssetId;
+		placement.RootWorld = rootWorld;
+		placement.iSpawnTick = spawned.iSpawnTick;
+		placement.fInitialSampleTimeSeconds = actionAgeSeconds;
+		EFFECT_WORLD_ROOT_HANDLE handle;
+		if (!CEffectPresentationService::Spawn_LevelPlacement(placement, handle, outStatus))
+			return false;
+		outHandle.eKind = COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_LEVEL_ROOT;
+		outHandle.iValue = handle.iValue;
+		return true;
+	}
 	desc.strEffectAssetId = visual->effectAssetId;
 	desc.pBossBudgetAndLifetimeOwner = boss;
 	desc.RootWorld = rootWorld;
@@ -3184,8 +3234,9 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 	}
 	if (source->second.bPresentationIsolated)
 		return true;
-	if (source->second.PinnedDefinitionRevision !=
-		snapshot.PinnedDefinitionRevision)
+	if (record->Snapshot.PinnedDefinitionRevision != snapshot.PinnedDefinitionRevision ||
+		(!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+		 source->second.PinnedDefinitionRevision != snapshot.PinnedDefinitionRevision))
 	{
 		return false;
 	}
@@ -3222,7 +3273,8 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 			static_cast<uint32_t>(handle.iValue), rootWorld);
 		return true;
 	}
-	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_WORLD_ROOT != handle.eKind ||
+	if ((COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_WORLD_ROOT != handle.eKind &&
+		 COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_LEVEL_ROOT != handle.eKind) ||
 		BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 !=
 			visual->activeEffectKind)
 	{
@@ -3249,6 +3301,13 @@ void Client::CClientReplication::Stop_CombatObjectPresentation(
 void Client::CClientReplication::Release_CombatObjectPresentation(
 	const COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 {
+	// Level-owned groups have no weak boss owner. Their Server lifetime includes the
+	// full visual tail, so any despawn can stop both active and pending elements.
+	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_LEVEL_ROOT == handle.eKind)
+	{
+		Stop_CombatObjectPresentation(handle);
+		return;
+	}
 	/* Server despawn (lifetimeMs) releases the root pose without cutting the
 	   visual. A V2 group owns a bounded clock and stops here. A V1 world root
 	   was spawned with EFFECT_STOP_POLICY::NATURAL, so its elements finish on
@@ -4082,6 +4141,8 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		player.eLocomotionState ==
 		PLAYER_LOCOMOTION_STATE::MOVING;
 
+	character->Apply_LocalMoveSnapshot(LocalMoveSnapshot(player, serverTick),
+		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL);
 	if (!character->Apply_NetworkState(
 		position,
 		player.fYawDegrees,

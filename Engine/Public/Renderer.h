@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject.h"
+#include "Engine_RenderTypes.h"
 
 /* 화면에 그려져야할 객체들을 그리는 순서에 따른 그룹별로 모아둔다. */
 /* 모아둔 순서대로 객체들의 드로우콜을 수행해준다.*/
@@ -74,6 +75,8 @@ private:
 	ComPtr<ID3D11Texture2D>				m_pScenePostTextures[2];
 	ComPtr<ID3D11RenderTargetView>		m_pScenePostRTVs[2];
 	ComPtr<ID3D11ShaderResourceView>	m_pScenePostSRVs[2];
+	ComPtr<ID3D11RenderTargetView> m_pSceneBloomPostRTVs[2];
+	ComPtr<ID3D11ShaderResourceView> m_pSceneBloomPostSRVs[2];
 	uint32_t								m_iScenePostWidth = {};
 	uint32_t								m_iScenePostHeight = {};
 	uint32_t								m_iScenePostFinalTarget = {};
@@ -107,6 +110,8 @@ private:
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV,
 		ComPtr<ID3D11RenderTargetView> pDestinationRTV,
 		uint32_t iPassIndex,
+		ComPtr<ID3D11ShaderResourceView> pBloomSourceSRV,
+		ComPtr<ID3D11RenderTargetView> pBloomDestinationRTV,
 		const PRESENTATION_SCREEN_POST_DESC* pPostDesc = nullptr);
 	HRESULT Render_Bloom();
 	HRESULT Render_BloomPass(const wstring_t& strMRTTag,

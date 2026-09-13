@@ -1,4 +1,8 @@
 #include "Character.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/DDSTextureLoader.h"
+#pragma pop_macro("new")
 #include "PlayableCharacterAssetService.h"
 #include "Profiler.h"
 
@@ -28,12 +32,19 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
 
 namespace
 {
+	double LocalMoveClockSeconds()
+	{
+		return std::chrono::duration<double>(
+			std::chrono::steady_clock::now().time_since_epoch()).count();
+	}
+
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
 	/* The move-goal dead zone makes a held right-click arrive, idle for one
 	resend interval, then run again at ~2Hz, so the server honestly reports
@@ -44,6 +55,7 @@ namespace
 	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
 	quarter second, slow enough to swallow the per-cell steps of a grid path. */
 	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+	constexpr f32_t NETWORK_MOVE_HANDOFF_SECONDS = 0.12f;
 	/* On since the 08-10 solver rewrite. The old off-by-default spawn-frame
 	crash never reproduced after the solve moved to Late_Update; if it returns,
 	WER LocalDumps for Client.exe writes to C:\Users\95jus\CrashDumps. See
@@ -1121,8 +1133,146 @@ void CCharacter::Update_KnockdownPresentation()
 	}
 }
 
+CLocalMovePrediction::Pose CCharacter::Get_LocalMovePose() const
+{
+	CLocalMovePrediction::Pose pose{};
+	if (nullptr == m_pTransformCom)
+		return pose;
+	const vector_t position = m_pTransformCom->Get_State(STATE::POSITION);
+	pose.position = { XMVectorGetX(position), XMVectorGetY(position), XMVectorGetZ(position) };
+	pose.yawDegrees = m_fPresentationYawDegrees;
+	pose.isMoving = m_isMoving;
+	return pose;
+}
+
+void CCharacter::Apply_LocalMovePose(const CLocalMovePrediction::Pose& pose,
+	const f32_t fTimeDelta, const bool_t snapRotation)
+{
+	m_pTransformCom->Set_State(STATE::POSITION,
+		XMVectorSet(pose.position.x, pose.position.y, pose.position.z, 1.f));
+	if (snapRotation)
+		m_fPresentationYawDegrees = pose.yawDegrees;
+	Update_PresentationYaw(pose.yawDegrees, fTimeDelta);
+	// A predicted arrival/rejection has no intermittent snapshot idle gap to hide.
+	m_fPendingIdleSeconds = -1.f;
+	if (m_isMoving != pose.isMoving)
+		Commit_Locomotion(pose.isMoving);
+}
+
+void CCharacter::Update_PresentationYaw(const f32_t targetYawDegrees, const f32_t fTimeDelta)
+{
+	if (nullptr == m_pTransformCom || !std::isfinite(targetYawDegrees) ||
+		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+		return;
+	const f32_t difference = std::remainder(targetYawDegrees - m_fPresentationYawDegrees, 360.f);
+	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
+	m_fPresentationYawDegrees = std::remainder(m_fPresentationYawDegrees +
+		(std::max)(-step, (std::min)(step, difference)), 360.f);
+	m_pTransformCom->Rotation(0.f,
+		m_fPresentationYawDegrees + m_fCreationPreviewYawOffsetDegrees, 0.f);
+}
+
+void CCharacter::Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& snapshot,
+	const bool_t isSkillAction)
+{
+	if (!m_isLocallyControlled || nullptr == m_pTransformCom)
+		return;
+	const double now = LocalMoveClockSeconds();
+	const bool_t wasEnabled = m_isLocalMovePredictionEnabled;
+	const auto disposition = m_LocalMovePrediction.ApplySnapshot(snapshot, now, Get_LocalMovePose());
+	if (disposition == CLocalMovePrediction::SnapshotDisposition::IGNORED)
+		return;
+	m_isLocalMovePredictionEnabled = snapshot.canPredictMove;
+	const bool_t preserveSkillHandoff = wasEnabled && !snapshot.canPredictMove &&
+		isSkillAction && m_hasNetworkState;
+	if (m_isLocalMovePredictionEnabled || !isSkillAction)
+	{
+		m_isNetworkMoveHandoffPending = false;
+		m_fNetworkMoveHandoffRemaining = 0.f;
+	}
+	if (preserveSkillHandoff)
+		m_isNetworkMoveHandoffPending = true;
+	if (disposition != CLocalMovePrediction::SnapshotDisposition::PRESERVE_LOCAL_PATH)
+		m_PathFollower.Cancel();
+	if (disposition == CLocalMovePrediction::SnapshotDisposition::RESET &&
+		!preserveSkillHandoff &&
+		(snapshot.canPredictMove || wasEnabled || !m_hasNetworkState))
+	{
+		m_iNetworkSampleCount = 0u;
+		m_fPlaybackServerTick = static_cast<f32_t>(snapshot.serverTick) - INTERPOLATION_DELAY_TICKS;
+		Apply_LocalMovePose({ snapshot.position, snapshot.yawDegrees,
+			snapshot.canPredictMove && snapshot.hasMoveGoal }, 0.f, true);
+	}
+}
+
+bool_t CCharacter::Predict_NetworkMoveGoal(const std::uint32_t sequence, const float3_t& goal)
+{
+	const double now = LocalMoveClockSeconds();
+	if (!m_isLocallyControlled || !m_hasNetworkState ||
+		!m_isLocalMovePredictionEnabled || !m_LocalMovePrediction.Can_SubmitMove(now) ||
+		nullptr == m_pTransformCom || nullptr == m_pNavigationCom ||
+		!std::isfinite(goal.x) || !std::isfinite(goal.y) || !std::isfinite(goal.z))
+		return false;
+
+	// Stage independently: a failed new click must not erase the old prediction.
+	CNavPathFollower stagedPath;
+	if (PATH_RESULT_CODE::SUCCESS != stagedPath.Request_Path(m_pNavigationCom,
+		m_pTransformCom->Get_State(STATE::POSITION), XMLoadFloat3(&goal),
+		m_pNavigationCom->Get_MaxStepHeight()) ||
+		!m_LocalMovePrediction.SubmitMove(sequence, now, Get_LocalMovePose()))
+		return false;
+	m_PathFollower = std::move(stagedPath);
+	Set_Locomotion(m_PathFollower.Has_Path());
+	return true;
+}
+
+void CCharacter::Cancel_NetworkMovePrediction()
+{
+	if (!m_isLocallyControlled)
+		return;
+	m_LocalMovePrediction.Reset();
+	m_isLocalMovePredictionEnabled = false;
+	m_isNetworkMoveHandoffPending = false;
+	m_fNetworkMoveHandoffRemaining = 0.f;
+	m_PathFollower.Cancel();
+}
+
+bool_t CCharacter::Update_LocalMovePrediction(const f32_t fTimeDelta)
+{
+	if (!m_isLocalMovePredictionEnabled || !m_isLocallyControlled ||
+		nullptr == m_pTransformCom)
+		return false;
+	const double now = LocalMoveClockSeconds();
+	auto frame = m_LocalMovePrediction.Update(now, fTimeDelta, Get_LocalMovePose());
+	if (!frame.active)
+		return false;
+	if (frame.useLocalPath)
+	{
+		// Bound a frame stall without changing the normal frame's elapsed time.
+		m_PathFollower.Update(m_pTransformCom, m_LocalMovePrediction.Get_MoveSpeed(),
+			(std::min)(fTimeDelta, 0.1f));
+		auto predicted = Get_LocalMovePose();
+		const vector_t look = m_pTransformCom->Get_State(STATE::LOOK);
+		predicted.yawDegrees = XMConvertToDegrees(atan2f(XMVectorGetX(look), XMVectorGetZ(look)));
+		predicted.isMoving = m_PathFollower.Has_Path();
+		frame = m_LocalMovePrediction.Update(now, fTimeDelta, predicted);
+	}
+	if (frame.stopLocalPath)
+		m_PathFollower.Cancel();
+	float3_t ground{};
+	if (nullptr != m_pNavigationCom && m_pNavigationCom->Try_SampleWalkablePoint(
+		XMVectorSet(frame.pose.position.x, frame.pose.position.y, frame.pose.position.z, 1.f), ground))
+	{
+		frame.pose.position.y = ground.y;
+	}
+	Apply_LocalMovePose(frame.pose, fTimeDelta);
+	return true;
+}
+
 void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 {
+	if (Update_LocalMovePrediction(fTimeDelta))
+		return;
 	if (!m_hasNetworkState ||
 		nullptr == m_pTransformCom ||
 		0 == m_iNetworkSampleCount)
@@ -1196,33 +1346,27 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 		targetYawDegrees = from.fYawDegrees + yawSpan * ratio;
 	}
 
+	// A SPACE/skill acknowledgement hands off to the existing snapshot
+	// interpolator without rewinding an already presented predicted position.
+	if (m_isNetworkMoveHandoffPending)
+	{
+		XMStoreFloat3(&m_NetworkMoveHandoffOffset,
+			m_pTransformCom->Get_State(STATE::POSITION) - next);
+		m_fNetworkMoveHandoffRemaining = NETWORK_MOVE_HANDOFF_SECONDS;
+		m_isNetworkMoveHandoffPending = false;
+	}
+	if (m_fNetworkMoveHandoffRemaining > 0.f)
+	{
+		next += XMLoadFloat3(&m_NetworkMoveHandoffOffset) *
+			(m_fNetworkMoveHandoffRemaining / NETWORK_MOVE_HANDOFF_SECONDS);
+		m_fNetworkMoveHandoffRemaining = (std::max)(0.f,
+			m_fNetworkMoveHandoffRemaining - (std::max)(0.f, fTimeDelta));
+	}
 	m_pTransformCom->Set_State(
 		STATE::POSITION,
 		XMVectorSetW(next, 1.f));
 
-	/* The server recomputes yaw per path segment, and a grid path changes
-	direction at every cell, so copying the latest value straight in reads as a
-	series of snaps. Turning toward it at a fixed rate keeps the server's yaw
-	authoritative and only spreads the change over a few frames. */
-	f32_t difference = targetYawDegrees - m_fPresentationYawDegrees;
-	while (difference > 180.f)
-		difference -= 360.f;
-	while (difference < -180.f)
-		difference += 360.f;
-
-	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
-	if (fabsf(difference) <= step)
-		m_fPresentationYawDegrees = targetYawDegrees;
-	else
-		m_fPresentationYawDegrees += difference > 0.f ? step : -step;
-
-	/* The creation screen turns the model rather than orbiting the camera, which is what
-	makes a cape or a skirt swing when the player spins it. The offset rides on top of the
-	server's yaw instead of replacing it, so replication stays authoritative. */
-	m_pTransformCom->Rotation(
-		0.f,
-		m_fPresentationYawDegrees + m_fCreationPreviewYawOffsetDegrees,
-		0.f);
+	Update_PresentationYaw(targetYawDegrees, fTimeDelta);
 }
 
 void CCharacter::Set_CreationPreviewYawOffset(const f32_t fDegrees)
@@ -1388,6 +1532,8 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 
 	if (reset)
 	{
+		m_isNetworkMoveHandoffPending = false;
+		m_fNetworkMoveHandoffRemaining = 0.f;
 		m_iNetworkSampleCount = 0;
 		m_fPresentationYawDegrees = yawDegrees;
 		m_fPlaybackServerTick =
@@ -1419,7 +1565,8 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 	}
 	m_hasNetworkState = true;
 
-	Set_Locomotion(isMoving);
+	if (!m_isLocalMovePredictionEnabled)
+		Set_Locomotion(isMoving);
 	return true;
 }
 

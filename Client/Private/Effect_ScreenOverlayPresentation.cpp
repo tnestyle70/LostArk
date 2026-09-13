@@ -731,6 +731,7 @@ HRESULT Client::CEffectScreenOverlayPresentation::Submit_Presentation()
 			continue;
 		}
 		PRESENTATION_SCREEN_OVERLAY_DESC Desc = Overlay.Desc;
+		Desc.fBloomIntensity = m_fBloomIntensity;
 		Desc.fSampleTimeSeconds =
 			m_fElapsedSeconds - Overlay.fStartSeconds;
 		const f32_t fNormalizedLife = std::clamp(

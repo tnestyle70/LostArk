@@ -3,6 +3,9 @@
 #include "Engine_Defines.h"
 
 #include <span>
+#include <array>
+
+struct aiAnimation;
 
 NS_BEGIN(Engine)
 
@@ -46,6 +49,8 @@ private:
 	uint32_t							m_iNumChannels = {};
 	vector<shared_ptr<class CChannel>>	m_Channels;
 	vector<uint32_t>					m_iLeftKeyFrameIndices;
+	// Allocate only for clips that are sampled; clone-local cursors never mutate shared tracks.
+	vector<std::array<uint32_t, 3>> m_SeparateTrackIndices;
 
 
 public:

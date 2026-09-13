@@ -195,7 +195,9 @@ static void ImGui_ImplWin32_PlatformSetImeData(ImGuiContext*, ImGuiViewport* vie
     if (hwnd == nullptr)
         return;
 
-    ::ImmAssociateContextEx(hwnd, nullptr, data->WantVisible ? IACE_DEFAULT : 0);
+    // Keep Windows' input context and the user's Hangul/Latin mode attached.
+    // InputText focus only moves the caret; it must not disable IME for this HWND
+    // (including detached tool windows and the runtime's own text fields).
 
     if (HIMC himc = ::ImmGetContext(hwnd))
     {
@@ -956,14 +958,25 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hwnd, UINT msg, WPA
         }
         return 0;
     case WM_IME_SETCONTEXT:
-        // Suppress the OS's own floating composition/candidate window -- ImGui_ImplWin32_PlatformSetImeData
-        // already repositions it correctly, but for a simple Hangul-style composition (no candidate list
-        // needed) the default box still renders as an oversized, out-of-place popup. Clearing these two
-        // "show UI" bits before forwarding to DefWindowProc keeps the IME context (and WM_IME_CHAR/
-        // WM_IME_COMPOSITION composing/committing text) fully working, just without the OS drawing its
-        // own box; ImGui's InputText already shows what's been typed so far via the widget itself.
-        lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW | ISC_SHOWUIALLCANDIDATEWINDOW);
-        return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+        // Runtime chat/nickname draw the captured composition inline. Ordinary
+        // ImGui InputText (Rename, filters, etc.) only renders committed WM_CHAR
+        // text, so it needs the OS composition window at the authored caret.
+        if (!io.WantTextInput)
+            lParam &= ~ISC_SHOWUICOMPOSITIONWINDOW;
+        ::DefWindowProcW(hwnd, msg, wParam, lParam);
+        return 1; // Already forwarded: the application must not forward it again.
+    case WM_IME_STARTCOMPOSITION:
+    {
+        // Switching between runtime UI and InputText need not change HWND focus.
+        // Refresh only the IME UI policy when composing starts, never its context
+        // association or conversion mode. Candidate lists remain available.
+        LPARAM ui_flags = ISC_SHOWUIALL;
+        if (!io.WantTextInput)
+            ui_flags &= ~ISC_SHOWUICOMPOSITIONWINDOW;
+        ::DefWindowProcW(hwnd, WM_IME_SETCONTEXT, TRUE, ui_flags);
+        g_ImeCompositionBuffer[0] = L'\0';
+        return io.WantTextInput ? 0 : 1;
+    }
     case WM_IME_COMPOSITION:
     {
         // Capture the live (not-yet-committed) composition string ourselves, so the app can draw
@@ -991,17 +1004,15 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hwnd, UINT msg, WPA
         }
         // Handling WM_IME_COMPOSITION ensure that WM_IME_CHAR value is correct even for MBCS apps.
         // (see #9099, #3653 and https://stackoverflow.com/questions/77450354 topics)
-        LRESULT result = ::DefWindowProcW(hwnd, msg, wParam, lParam);
+        ::DefWindowProcW(hwnd, msg, wParam, lParam);
         if (lParam & GCS_RESULTSTR)
-        {
             g_ImeCompositionBuffer[0] = L'\0'; // Composed characters were just committed via WM_IME_CHAR.
-            return 1;
-        }
-        return result;
+        return 1; // Default handling has already produced the committed WM_CHAR stream.
     }
     case WM_IME_ENDCOMPOSITION:
         g_ImeCompositionBuffer[0] = L'\0'; // Composition cancelled (e.g. Esc, focus lost) with nothing committed.
-        return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+        ::DefWindowProcW(hwnd, msg, wParam, lParam);
+        return 1;
     case WM_IME_CHAR:
         if (::IsWindowUnicode(hwnd) == FALSE)
         {

@@ -1,5 +1,45 @@
 # 쿠크 원본 시퀀스 저작 연결 결과
 
+## G08. 정상 피날레·팝업북 결합 적용
+
+2026-09-12 사용자의 `전부 반영하자` 승인 뒤 PLAN G06의 코드·정본·게시·최종 Debug 빌드를 완료했다. 사용자 화면 판정은 남아 있다. 시작 HEAD는 `5168899d`, 브랜치는 `codex/kouku-authored-finale-popup`이다. 같은 작업공간의 Character/Map 성능 개선, 관문 Effect 그룹·ALBION 작업은 이 G08의 변경으로 집계하지 않는다. 자동 stage/commit/push는 하지 않았다.
+
+### G08-01. 코드와 정본에 적용한 범위
+
+- P4 `KAKULSAYDON_G1_PATTERN_4`: 정상 피날레 23 MAP track → 포탈·흡입 → 정상 팝업북 136 MAP 배치·배우·책·카메라를 58,810ms로 연결했다. WORLD 8개, CAMERA 7개, EFFECT 4개이며 `enterCombatOnFinish`와 원래 target boss 계약은 보존했다.
+- P1의 MAP occurrence 수명을 37,800ms로 늘리고, 원래 4,507ms 모션 키는 유지했다. 책은 기존 `evt2_book02` template을 참조하는 전용 HOLD instance다. 기존 196 template·251 instance·83 camera 및 다른 5개 Pattern은 보존했다. revision은 Sequence 7 / World 676 / Camera 81이다.
+- 신규 V1 3개·V2 1개를 추가했다. 기존 효과 원점·회전·크기·source track·내부 event·particle lifetime을 보존하면서 254개 V1 요소의 28 activation 그룹과 V2 fade 47키만 새 시각에 맞췄다. 원본 4개 문서는 변경하지 않았다. V1 3개는 EffectCatalog의 DIRECT_AUTHORED_DOCUMENT까지 연결하고 프로젝트 96.DataFiles에 4개 파일을 등록했다.
+- placement 43/44, 45/46, 114/115의 assetId만 동일 mesh의 F1 material variant로 교체했다. 이 G08에서 Resources 물리 파일과 shader를 추가하거나 수정하지 않았다.
+- RenderingProfiles revision 30에 `scene.kakulsaydon.g1.popup.v1`을 추가했다. F1 region 48의 환경 입력을 전용 profile로 옮기고 optional `environmentRegions`는 생략했다. 현재 parser는 명시적 빈 배열을 거부하므로 PLAN의 초기 빈 배열 표현을 교정했다.
+- Level은 기존 MapLight 문서/provider를 재사용하여 32개 F1 광원을 Z -204.8m로 복사하고 14개 책 공간 광원을 해당 연출 동안 비활성화한다. 실제 HOLD occurrence 수명으로 provider를 선택하고 MainApp WORLD 샘플 뒤 한 번 제출한다. source provider는 보존하며 Stop은 이미 등록된 provider를 Clear하지 않는다. 같은 포인터의 authoring 문서 변경도 감지해 preview 실패 소비자까지 전달한다.
+- 기존 Deploy 5·7을 초기 숨김 상태로 두고 정상 연출의 대여·복구 경로를 사용한다. P4에서 별도 source Saydon 배우 참조를 제거했다.
+- RenderingProfiles publisher를 C++ float32 변환·범위와 맞췄다. 9자리 저장값을 다시 정밀 문자열로 고치는 우회 없이 통과시키며 원문 벡터 범위·유한성·near/far와 실패 시 기존 출력 보존을 유지한다.
+
+### G08-02. 실행한 검증과 게시
+
+| 확인 | 실제 결과 |
+|---|---|
+| Rendering profile 공식 Validate / Publish | PASS, runtime revision 30 |
+| Map Area 공식 Validate / Publish / Check | PASS, placement 3,368개·출력 8개. 변경 출력은 mapplacements/worldsequences/camerashots |
+| Rendering publisher 기존·추가 unittest | 13개 PASS, 28.488초. 0.1/0.0001/0.0312의 9자리 왕복, 범위 밖 float32·overflow·NaN·Inf·타입·벡터 원문 범위·near/far·실패 출력 보존 포함 |
+| 실제 CModel/CMaterial 준비·Clone·clip 샘플 | P1/P4 모델 57개 PASS, WORLD 바인딩 299개 확인 |
+| 실제 WorldSequenceDocument reader | source/runtime 모두 196 template·252 instance 수락 |
+| 실제 CKoukuSaydonCompositionDocument reader | Sequence revision 7, Pattern 7개, quarantine 0 |
+| 실제 MapLightDocument/MapLightPresentationRuntime 및 Level helper CPU 실행 | 119→151개, 29 POINT+3 SPOT 복사, 14 disable. 원본 불변·누락/충돌/nonfinite/unready 거절·same-pointer 변경 감지·owner 해제 후 retained provider ready 확인 |
+| 시간/소유권 자료 검사 | P1 [0,37800), P4 [21010,58810), 종료와 역방향 재진입, Deploy 5/7 초기 숨김 확인 |
+| 현재 Product V1 codec | 새 V1 3개 Load → Serialize → Parse → 재직렬화 일치, source matrix 28표본 유한값, failures 0 |
+| 효과 시간 검사 | source clock의 float32 최대 차이 3.8147μs, V2 키 엄격 증가·수명 범위, 신규 ID 유일성 확인 |
+
+자료는 `out/KoukuPopupFinale20260912/implementation/`의 `map-*.log`, `rendering-tests-final.log`, `authored-effect-retime-result.json`, `effect-parser-contract-result.json`, `actor-cpu/VERIFICATION.md`와 관련 JSON이다. Sequence 보존 검사는 상위 `sequence-implementation-validation.json`에 있다. 광원 helper와 모델 probe는 현재 소스를 out에서 새로 컴파일했으며 제품 파일을 변경하지 않았다. 이전 probe의 DLL ABI 불일치는 새 컴파일·현재 Debug DLL 경로로 해소한 검사와 구분했다. V1 codec 구형 probe의 최초 DLL 진입 실패도 현재 Product object·헤더로 새 console probe를 링크하고 신규 Engine DLL과 명시적 Resources root를 사용해 해소했다. 최종 실제 검사 결과는 `current-effect-probe/result.json`이다.
+
+### G08-03. 실행 파일과 사용자 확인 경계
+
+추가 요청인 Parent 편집 진입과 Rename IME 수정은 각 RESULT에서 기록한다. `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`가 18:00:06에 367,010ms로 완료됐으며 Engine·Shared·Server·Client 모두 PASS다. 새 Client는 18:00:05에 링크됐고 Engine 원본/Client 배포 DLL의 SHA가 동일하다. EXE/DLL PE 형식, 수정 CPP보다 최신인 object, 새 Parent 진입 버튼 문자열 포함도 확인했다. 산출물 확인은 `implementation/final-build-verification.json`, 공식 기록은 `out/BuildPipeline/runs/20260912T090006253Z-debug-product.json`이다. 기존 외부 PDB 누락·인코딩·FX 초기화 경고는 있었지만 빌드 오류는 없었다. 이 후속 작업에서는 배포 ZIP을 갱신하지 않았으며 새 실행본은 원래 Bin/Debug 경로에 있다. 현재 켜진 out 복사본은 이전 빌드로 계속 실행되고 있다.
+
+자동 검증은 Client/UI 실행·조작·화면 캡처·visual PASS가 아니다. WorldSequencePlayer 인스턴스 전체 Stop/Seek와 Level의 실제 렌더 제출은 실행하지 않았다. 사용자가 직접 `KoukuSaydon → F1 Developer Tools → Sequencer Benchmark / Composition Sequencer → 1관문_통합_시퀀스`에서 문 열림, 포탈·흡입, 암전, 책 펼침 유지, 커튼/배경, 세이튼 한 명과 종료 후 F1 전환을 확인한다. 독립 `연출_팝업북`과 `연출_1관문 피날레`도 비교한다. F1의 구운 RNM을 움직이는 책 부품에 복사하지 않았으므로 최종 간접광·시각 일치는 사용자 관찰로 판정한다.
+
+사용자의 명시적인 후속 요청에 따라 빌드 잠금 분리를 위한 기존 실행본을 `out/InteractiveRuntime/20260912_174839`에 준비했다. 363개 EXE/DLL/CSO/DataFiles의 복사 전후 SHA가 일치하며 새 코드의 빌드본이 아니다. 저작 Data와 Resources는 정본 경로를 연결하고 Bin/DataFiles는 복사 시점의 게시 결과를 사용한다. `Prepare-Snapshot.ps1`은 다음 복사본 준비, `Start-Snapshot.ps1`은 기존 앱 종료 후 명시적 실행을 맡는다. `-VerifyOnly`를 통과했다. 사용자가 직접 기존 앱을 종료하고 실행을 요청한 뒤 17:53:46에 복사본 Server PID28752와 Client PID85052를 시작했고 0.0.0.0:7777의 listener owner가 Server PID임을 확인했다. 최초 서버 실행은 redirected stdin EOF 때문에 정상 시작 직후 종료되어, 자체 숨김 콘솔을 주는 실행으로 교정했다. 앱 UI를 조작하거나 화면을 캡처하지 않았으며 복사본 실행은 새 기능 검증이 아니다. 이 편의 산출물은 out에만 두고 제품 runtime에 두 번째 Level/모델 경로를 추가하지 않는다.
+
 ## G07. 팝업북·피날레 사용자 이미지 후속 조사 — 구현 미실행
 
 2026-09-12 후속 요청에서 사용자가 코드 수정 대신 원인 조사와 수정 계획만 요청했다. 이 후속 작업은 PLAN의 G06을 갱신했고, 제품 코드·Data·Resources·runtime·ZIP을 변경하지 않았다. 다른 작업이 같은 작업공간에서 수정한 렌더링 성능 파일은 이 조사 변경이 아니다. 아래 G00~G06의 과거 생성·설치·검증 기록과 이번 미적용 계획을 구분한다.
@@ -238,3 +278,46 @@ CardEruption SHA는 `3865b1110911be80fd7de96b97ddb69095923ec4905194f65b06a8af69e
 기존 admission 조건·시점과 rollback을 유지하며, 실패한 occurrence/instance/revision과
 현재 mesh에 해당하는 decoder 원인을 구분한다. 설치·CPU 준비 성공 이후의 제품 빌드와
 사용자 화면 재생 결과는 별도이며 G06-2의 시각 검증 경계를 유지한다.
+
+
+## G09. Bloom 1.3 게시와 Rendering Benchmark 경계 조사
+
+쿠크 레벨의 scene.kakulsaydon.g1.base.v1 qualityOverride.bloomIntensity를 1.3으로 저장하고
+공식 RenderingProfiles Validate/Publish를 완료했다. authored/runtime 모두 revision 31이며
+두 JSON의 전체 의미가 같다. 전역 quality와 다른 Level은 보존했다. g1.popup의 18개 quality
+값은 변경 전 g1.base와 전부 같았으므로 중복 qualityOverride를 제거했다. 기존 popup의
+light/fog/environment와 multiplier는 그대로이며 활성 쿠크 Level의 Bloom 1.3을 상속한다.
+
+현재 저장본 revision 30은 변경 전에도 공식 Validate를 통과했다. 현재 Client70972는 정상
+Client/Bin/Debug에서 실행하므로 과거 out 복사본 경로 혼선을 이번 원인으로 단정할 수 없다.
+Save는 메모리 catalog를 Authored에 저장하고, Publish는 디스크 Authored를 검증·게시하며,
+Reload Runtime은 실행 파일의 DataFiles를 다시 읽어 메모리에 commit한다. 게시 성공만으로
+이미 실행 중인 Client의 catalog가 교체되지는 않는다. 사용자가 Reload Runtime을 누르면
+이번 revision 31이 적용된다. Client/UI 조작, 프로세스 종료·재시작은 수행하지 않았다.
+
+구조상 확인한 결함은 RenderingProfileService::Publish_Runtime이 CREATE_NO_WINDOW로
+publisher를 실행하면서 stdout/stderr를 수집하지 않아 종료 코드만 보여 주는 점과, UI 호출
+안에서 최대 120초 동안 WaitForSingleObject로 동기 대기하는 점이다. 게시기는 strict JSON
+검사용 Python을 PATH에서 찾으므로 환경 의존성도 있으나 실제 실패 문구가 없어 이번 실패
+원인으로 확정하지 않았다. 기존 float32 왕복 수정은 이미 적용돼 있다. 이 후속은 요청한 값의
+게시와 조사이며 C++ 비동기 job·오류 출력 수집 기능의 구현 완료를 의미하지 않는다.
+
+검증: 공식 Validate/Publish PASS, 기존 publisher의 runtime 왕복·Workbench float32 경계·
+qualityOverride 왕복/실패 출력 보존 3개 테스트 PASS(3.168초), 원본 변경 필드 제한과
+source/runtime 동등성 확인. 증거는 out/RenderingBloom20260912/result.json과 변경 전
+RenderingProfiles.before.json이다. 데이터만 바꿨으므로 새 EXE 빌드는 필요하지 않다.
+
+
+사용자가 제공한 실제 상태 문구는 `Rendering runtime profile published`였으며 성공 분기다.
+이번 증상은 publisher 실패로 분류하지 않는다. 후속 19:37 Save/Publish에서 authored/runtime이
+다시 revision31로 저장된 것을 확인했다. base의1.29999995는 C++ float32의1.3과 동일하다.
+반면 메모리의 이전 popup qualityOverride가 다시 저장됐다. Save_Authored는 현재 디스크
+revision과 비교하지 않고 메모리 catalog 전체를 저장하므로, 외부 편집과 같은 revision을
+충돌 없이 덮어쓸 수 있는 구조다. 실제 이번 데이터에서도 이 덮어쓰기를 확인했다.
+
+사용자의 최신 저장값을 유지하고 popup의 나머지17개 quality값이 base와 같음을 확인한 뒤
+그 중복 override만 다시 제거했다. 최종 게시 revision은32이며 source/runtime 의미가 같고
+쿠크 base와 popup이float32 Bloom1.3을 사용한다. 사용자는 다음 Save 전에 Reload Runtime으로
+최신 catalog를 받아야 이 외부 정리를 유지한다. 이전 저장본은
+out/RenderingBloom20260912/RenderingProfiles.user-saved-31.json에 보존했다.
+C++ stale-save 검출·비동기 publisher·상세 로그 개선은 조사 결과이며 구현한 것으로 기록하지 않는다.

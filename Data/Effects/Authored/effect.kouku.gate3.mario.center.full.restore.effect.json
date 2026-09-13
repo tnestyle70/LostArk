@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.mario.center.full.restore",
   "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

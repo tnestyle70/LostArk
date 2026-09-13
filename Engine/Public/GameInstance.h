@@ -3,6 +3,11 @@
 /* ���̺귯���� ����� �ܺ� ����ڿ��� �����ִ� ��Ȱ. */
 /* ���̺귯�� ���� ���Ϲ����� �̱��ϰ�ü. */
 #include "Prototype_Manager.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
+#include "Engine_RenderFwd.h"
 
 NS_BEGIN(Engine)
 

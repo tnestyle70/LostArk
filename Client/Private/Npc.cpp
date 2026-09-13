@@ -631,7 +631,8 @@ HRESULT CNpc::Render()
 	for (uint32_t i = 0; i < iNumMeshes; ++i)
 	{
 		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i, {}, &m_HitFlash)) ||
+				*m_pModelCom, m_pShaderCom, i, {}, &m_HitFlash,
+				nullptr, m_bNativeBinaryBasePass)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||
@@ -648,7 +649,8 @@ HRESULT CNpc::Render()
 		for (uint32_t i = 0; i < iNumWeaponMeshes; ++i)
 		{
 			if (FAILED(Bind_DeferredMaterialInputs(
-					*m_pWeaponModelCom, m_pShaderCom, i, {}, &m_HitFlash)) ||
+					*m_pWeaponModelCom, m_pShaderCom, i, {}, &m_HitFlash,
+					nullptr, m_bNativeBinaryBasePass)) ||
 				FAILED(m_pWeaponModelCom->Bind_BoneMatrices(
 					m_pShaderCom, "g_BoneMatrices", i)) ||
 				FAILED(m_pShaderCom->Begin(0)) ||
@@ -689,6 +691,8 @@ HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
 		TEXT("Com_Shader"),
 		m_pShaderCom)))
 		return E_FAIL;
+	m_bNativeBinaryBasePass =
+		pDesc->strShaderTag == TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 
 	if (FAILED(__super::Add_Component(
 		pDesc->iPrototypeLevelIndex,

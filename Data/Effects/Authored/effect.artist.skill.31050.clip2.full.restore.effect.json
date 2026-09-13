@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.artist.skill.31050.clip2.full.restore",
   "displayName": "Artist Z full restore 2",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,

@@ -688,6 +688,8 @@ private:
 	float3_t m_vPreviousRootPosition{};
 	float3_t m_vParentVelocity{};
 	EFFECT_EVALUATED_FRAME m_Frame;
+	// State/anchor writers invalidate CPU rows; render camera work stays separate.
+	bool_t m_bFrameInputsDirty = true;
 	f32_t m_fSampleTimeSeconds = 0.f;
 	f64_t m_fAccumulatorSeconds = 0.0;
 	f32_t m_fDurationSeconds = 0.f;

@@ -1,4 +1,6 @@
+#include <WinSock2.h>
 #include "imgui.h"
+#include "Engine_RenderTypes.h"
 #include "KoukuSaydonPresentationPlayer.h"
 
 #include "ActionPresentationTimeline.h"
@@ -40,6 +42,61 @@ using RESOURCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE;
 using OCCURRENCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE;
 using KIND = KOUKU_SAYDON_PRESENTATION_KIND;
 constexpr std::uint32_t MAX_TIMELINE_MS = 600000u;
+
+bool Validate_EffectAnchor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const OCCURRENCE& box, std::string& status)
+{
+    const auto reject = [&](const char* reason) {
+        status = std::string(reason) + ": " + box.strOccurrenceId;
+        return false;
+    };
+    const auto stableId = [](const std::string& value) {
+        return !value.empty() && value.size() <= 128u && value != "." && value != ".." &&
+            std::all_of(value.begin(), value.end(), [](const unsigned char c) {
+                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                    (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
+            });
+    };
+    if ((box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" && box.strAnchorKind != "MAP") ||
+        (box.strBoneTarget != "BODY" && box.strBoneTarget != "WEAPON") ||
+        (!box.strBone.empty() && !stableId(box.strBone)) || box.iWorldEmissionIndex > 127u)
+        return reject("Invalid Effect anchor, bone or World emission index");
+    if (box.strAnchorKind == "MAP" && (box.bFollowBoss || !box.strBone.empty() ||
+        box.strBoneTarget != "BODY" || !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty()))
+        return reject("MAP Effect requires a fixed position without a bone or World dependency");
+    if (box.strAnchorKind == "WORLD")
+    {
+        if (box.strWorldId.empty() || std::none_of(document.Worlds.begin(), document.Worlds.end(),
+            [&](const auto& world) { return world.strWorldId == box.strWorldId; }))
+            return reject("Effect needs an existing World anchor");
+    }
+    else if (!box.strWorldId.empty())
+        return reject("Only a WORLD Effect can name a World anchor");
+    if (box.strBoneTarget == "WEAPON" && (box.strAnchorKind != "BOSS" || box.strBone.empty()))
+        return reject("WEAPON Effect requires a boss anchor and an explicit weapon bone");
+    if (!box.strWorldOccurrenceId.empty())
+    {
+        const auto owner = std::find_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
+            [&](const auto& world) { return world.strOccurrenceId == box.strWorldOccurrenceId; });
+        const auto world = owner == pattern.WorldOccurrences.end() ? document.Worlds.end() :
+            std::find_if(document.Worlds.begin(), document.Worlds.end(),
+                [&](const auto& value) { return value.strWorldId == owner->strWorldId; });
+        if (!stableId(box.strWorldOccurrenceId) || world == document.Worlds.end())
+            return reject("Effect needs an existing World occurrence in the same Pattern");
+        if (world->strCompanionEffectResourceId != box.strResourceId ||
+            std::any_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                [&](const auto& other) {
+                    if (other.strOccurrenceId == box.strOccurrenceId ||
+                        other.strWorldOccurrenceId != box.strWorldOccurrenceId) return false;
+                    return std::any_of(document.PresentationResources.begin(), document.PresentationResources.end(),
+                        [&](const auto& resource) {
+                            return resource.strResourceId == other.strResourceId && resource.eKind == KIND::EFFECT;
+                        });
+                }))
+            return reject("Effect companion needs one matching World box/resource in the same Pattern");
+    }
+    return true;
+}
 
 std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> WorldPlacementFromOccurrence(
     const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE& box)
@@ -327,7 +384,7 @@ CEffectV2Object::PIVOT_SAMPLER Effect_PivotSampler(const OCCURRENCE& box,
     const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
     const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory)
 {
-    if (!box.bFollowBoss) return {};
+    if (box.strAnchorKind == "MAP" || !box.bFollowBoss) return {};
     const bool resolved = box.strAnchorKind == "WORLD" || !box.strBone.empty();
     return [box, history = resolved ? anchorHistory : rootHistory, resolved]
         (float seconds, float4x4_t& output, std::string& error)
@@ -539,7 +596,8 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
     // Product/Pattern timelines still require their authored animation history.
     SOURCE_BONES frozenBones;
     std::string frozenError;
-    const bool freezeResourcePose = animations.empty() && pattern.strPatternId == "preview.kouku.resource";
+    const bool freezeResourcePose = animations.empty() && (pattern.strPatternId == "preview.kouku.resource" ||
+        pattern.strPatternId == "preview.kouku.resource.actor");
     if (freezeResourcePose)
         for (const auto& name : names)
         {
@@ -1996,12 +2054,16 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
         return false;
     }
     for (const auto& box : pattern.PresentationOccurrences)
-        if (std::none_of(document.PresentationResources.begin(), document.PresentationResources.end(),
-            [&box](const auto& resource) { return resource.strResourceId == box.strResourceId; }))
+    {
+        const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+            [&box](const auto& value) { return value.strResourceId == box.strResourceId; });
+        if (resource == document.PresentationResources.end())
         {
             status = "Preview names an unknown presentation resource: " + box.strResourceId;
             return false;
         }
+        if (resource->eKind == KIND::EFFECT && !Validate_EffectAnchor(document, pattern, box, status)) return false;
+    }
     if (pattern.strPatternId == "preview.kouku.resource" && pattern.WorldOccurrences.empty() &&
         pattern.PresentationOccurrences.size() == 1u)
     {
@@ -2045,6 +2107,25 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
                 status = m_strStatus = "Effect Resource source model and animation ready: " + resource->strAssetId;
                 return true;
             }
+        }
+        if (resource->eKind == KIND::EFFECT && !pattern.strActorProfileId.empty() &&
+            !pattern.strGateId.empty() && !pattern.strTargetBossPlacementId.empty())
+        {
+            // Reuse the selected boss actor owner for a Resource without source
+            // animation metadata. Its existing idle pose needs no invented clip.
+            auto stagedDocument = document;
+            auto sourcePattern = pattern;
+            sourcePattern.strPatternId = pattern.strPatternId + ".actor";
+            sourcePattern.iDurationMs = duration;
+            const auto sourceId = sourcePattern.strPatternId;
+            stagedDocument.Patterns.push_back(std::move(sourcePattern));
+            KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
+            bundle.strBundleId = pattern.strPatternId; bundle.strGateId = pattern.strGateId;
+            bundle.Members.push_back({pattern.strPatternId + ".member", sourceId, 0u});
+            stagedDocument.Bundles.push_back(std::move(bundle));
+            if (!Begin_BundlePreview(stagedDocument, pattern.strPatternId, clockMs, paused, status)) return false;
+            status = m_strStatus = "Effect Resource selected boss ready: " + resource->strAssetId;
+            return true;
         }
     }
     // Stage first. A rejected preview request preserves the active session.
@@ -2148,6 +2229,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
             const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
                 [&](const auto& value) { return value.strResourceId == box.strResourceId; });
             if (resource == document.PresentationResources.end()) return fail("Unknown child presentation resource.");
+            if (resource->eKind == KIND::EFFECT && !Validate_EffectAnchor(document, *source, box, status))
+                return fail(status);
             if ((resource->eKind == KIND::CAMERA || resource->eKind == KIND::SCENE_PROFILE) &&
                 !Admit_PresentationWindow(globalWindows, resource->eKind, offset + box.iStartMs,
                     offset + box.iStartMs + box.iDurationMs + Camera_ReturnMs(*resource, true), sourceMember.strMemberId))
@@ -2163,15 +2246,6 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         duration = (std::max)(duration, (std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u + member.durationMs);
         if (duration > MAX_TIMELINE_MS) return fail("Bundle preview exceeds the timeline duration limit.");
         if (!level->Create_CompositionPreviewActor(*source, member.actor, status)) return fail(status);
-        if (bundleId == "preview.kouku.resource")
-        {
-            const auto player = level->Get_LocalCharacter();
-            if (!player || !player->Get_Transform()) return fail("Effect Resource Preview needs an arena player anchor.");
-            const auto& root = *player->Get_Transform()->Get_WorldMatrixPtr();
-            const float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
-            if (!member.actor->Apply_NetworkState({root._41, root._42, root._43}, yaw))
-                return fail("Effect Resource Preview player anchor is invalid.");
-        }
         const auto model = member.actor->Get_Model();
         member.initialAnimation = model->Get_CurrentAnimIndex();
         const auto& initialRoot = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
@@ -3012,7 +3086,37 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
         edited.PositionOffset = occurrence.PositionOffset;
         edited.RotationDegrees = occurrence.RotationDegrees;
         edited.Scale = occurrence.Scale;
+        bool anchorChanged = false;
+        if (resource->eKind == KIND::EFFECT)
+        {
+            edited.strAnchorKind = occurrence.strAnchorKind;
+            edited.bFollowBoss = occurrence.bFollowBoss;
+            edited.strBone = occurrence.strBone;
+            edited.strBoneTarget = occurrence.strBoneTarget;
+            edited.strWorldId = occurrence.strWorldId;
+            edited.strWorldOccurrenceId = occurrence.strWorldOccurrenceId;
+            edited.iWorldEmissionIndex = occurrence.iWorldEmissionIndex;
+            if (!Validate_EffectAnchor(m_PreviewDocument, pattern, edited, m_strStatus)) return false;
+            anchorChanged = edited.strAnchorKind != box->strAnchorKind || edited.bFollowBoss != box->bFollowBoss ||
+                edited.strBone != box->strBone || edited.strBoneTarget != box->strBoneTarget ||
+                edited.strWorldId != box->strWorldId || edited.strWorldOccurrenceId != box->strWorldOccurrenceId ||
+                edited.iWorldEmissionIndex != box->iWorldEmissionIndex;
+        }
         const auto active = session.rows.find(box->strOccurrenceId);
+        if (anchorChanged)
+        {
+            // A new anchor owns a new occurrence playback. Other rows and the
+            // session's observed boss history retain their current clock/state.
+            if (active != session.rows.end())
+            {
+                if (active->second.effectHandle) CEffectV2Runtime::Stop_Group(active->second.effectHandle);
+                if (active->second.v1EffectHandle) CEffectPresentationService::Stop_WorldRoot({active->second.v1EffectHandle});
+                session.rows.erase(active);
+            }
+            session.effectAnchorHistories.erase(box->strOccurrenceId);
+            *box = std::move(edited);
+            return true;
+        }
         if (active != session.rows.end() && active->second.hasPlacementAnchor &&
             !active->second.failed && !active->second.waitingForAnchor)
         {

@@ -352,6 +352,7 @@ public:
 
 private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
+	bool_t m_bNativeBinaryBasePass = false;
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	wstring_t m_strModelTag;
 	std::string m_strEffectV2BindingOwner;

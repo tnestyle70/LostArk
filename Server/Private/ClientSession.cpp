@@ -177,7 +177,7 @@ bool LostArk::Server::CClientSession::Start()
 			"invalid session start state");
 		return false;
 	}
-	if (!Configure_SendTimeout())
+	if (!Configure_TransportOptions())
 	{
 		return false;
 	}
@@ -573,11 +573,24 @@ LostArk::Server::CClientSession::Queue_OutboundFrame(
 	return result;
 }
 
-bool LostArk::Server::CClientSession::Configure_SendTimeout()
+bool LostArk::Server::CClientSession::Configure_TransportOptions()
 {
 	const SOCKET clientSocket = m_hClientSocket.load();
 	if (INVALID_SOCKET == clientSocket)
 		return false;
+	/* Small input and snapshot frames must leave immediately instead of
+	waiting for Nagle's batching and the peer's delayed acknowledgement. */
+	const BOOL noDelay = TRUE;
+	if (SOCKET_ERROR == ::setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY,
+		reinterpret_cast<const char*>(&noDelay), static_cast<int>(sizeof(noDelay))))
+	{
+		const int errorCode = ::WSAGetLastError();
+		m_iLastErrorCode.store(errorCode);
+		Record_TerminalDiagnostic(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_START_FAILED,
+			errorCode, "failed to disable TCP movement batching");
+		return false;
+	}
 	const DWORD timeoutMilliseconds = SEND_TIMEOUT_MILLISECONDS;
 	if (SOCKET_ERROR == ::setsockopt(
 		clientSocket,

@@ -350,7 +350,10 @@ namespace
 			((logic.fPushRangeM != 0.0 || logic.iPushMs != 0u) &&
 			 (logic.strLogicType != "RESULT" || logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE")))
 		{ outStatus = "Damage knockback needs both a distance of 0..20 m and time of 0..600000 ms; zero disables both."; return false; }
-		const bool_t hasTriggerValues = logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
+		const bool_t hasPlayerEffectValues = logic.iCountPerPlayer != 0u || logic.fPlayerEffectRadiusM != 0.0 || logic.iEffectLifetimeMs != 0u;
+		if (hasPlayerEffectValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
+		{ outStatus = "Player effect layout belongs to ALBION_BLUE_CIRCLE."; return false; }
+		const bool_t hasTriggerValues = hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
 			!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 			std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; });
 		if (!std::isfinite(logic.fNormalYawOffsetDegrees) || std::abs(logic.fNormalYawOffsetDegrees) > 360.0 ||
@@ -525,6 +528,16 @@ namespace
 		if (logic.strTriggerKind.empty())
 		{
 			if (hasTriggerValues) { outStatus = "Trigger values need a triggerKind."; return false; }
+		}
+		else if (logic.strTriggerKind == "ALBION_BLUE_CIRCLE")
+		{
+			if (logic.iCountPerPlayer < 1u || logic.iCountPerPlayer > 8u ||
+				!std::isfinite(logic.fPlayerEffectRadiusM) || logic.fPlayerEffectRadiusM < 0.0 || logic.fPlayerEffectRadiusM > 20.0 ||
+				((logic.iCountPerPlayer == 1u) != (logic.fPlayerEffectRadiusM == 0.0)) ||
+				logic.iEffectLifetimeMs < 1u || logic.iEffectLifetimeMs > MAX_TIME_MS ||
+				!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
+				logic.fFaceCenterYawOffsetDegrees != 0.0 || logic.TeleportPosition != std::array<double, 3>{})
+			{ outStatus = "Albion needs 1..8 per player, radius 0 for one or (0,20] for a ring, and effect lifetime 1..600000 ms."; return false; }
 		}
 		else if (logic.strTriggerKind == "OBJECT_CONTACT")
 		{
@@ -2148,7 +2161,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "followupPatternId", "triggerKind", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -2227,6 +2240,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("attachmentSlot", stagedLogic.strAttachmentSlot) ||
 				!optionalUnsigned("effectDelayMs", MAX_TIME_MS, stagedLogic.iEffectDelayMs) ||
 				!optionalText("triggerKind", stagedLogic.strTriggerKind) ||
+				!optionalUnsigned("countPerPlayer", 8u, stagedLogic.iCountPerPlayer) ||
+				!optionalFinite("radiusM", 0.0, 20.0, stagedLogic.fPlayerEffectRadiusM) ||
+				!optionalUnsigned("effectLifetimeMs", MAX_TIME_MS, stagedLogic.iEffectLifetimeMs) ||
 				!optionalFinite("bossChargeDistanceM", 0.0, 1000.0, stagedLogic.fBossChargeDistanceM) ||
                 !optionalFinite("chargeYawOffsetDegrees", -360.0, 360.0, stagedLogic.fChargeYawOffsetDegrees) ||
 				!optionalText("hudMode", stagedLogic.strHudMode) ||
@@ -3377,7 +3393,11 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 output << ",\n      \"bossChargeDistanceM\": " << logic.fBossChargeDistanceM;
             if (logic.strTriggerKind == "ENTER_AREA" && logic.fChargeYawOffsetDegrees != 0.0)
                 output << ",\n      \"chargeYawOffsetDegrees\": " << logic.fChargeYawOffsetDegrees;
-			if (logic.strTriggerKind == "OBJECT_CONTACT")
+			if (logic.strTriggerKind == "ALBION_BLUE_CIRCLE")
+				output << ",\n      \"countPerPlayer\": " << logic.iCountPerPlayer
+					<< ",\n      \"radiusM\": " << logic.fPlayerEffectRadiusM
+					<< ",\n      \"effectLifetimeMs\": " << logic.iEffectLifetimeMs;
+			else if (logic.strTriggerKind == "OBJECT_CONTACT")
 			{
 				output << ",\n";
 				textList("targetWorldOccurrenceIds", logic.TargetWorldOccurrenceIds, "      ", true);
@@ -3780,9 +3800,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 	const KOUKU_SAYDON_COMPOSITION_DOCUMENT& candidate,
 	std::string& outStatus)
 {
-	if (!m_bHasLastGood || !m_bFresh || m_Path.empty())
+	if (!m_bHasLastGood || m_Path.empty())
 	{
-		outStatus = "KoukuSaydon composition Save requires a fresh last-good baseline.";
+		outStatus = "KoukuSaydon composition Save requires a last-good baseline.";
 		m_strStatus = outStatus;
 		return false;
 	}
@@ -3810,18 +3830,51 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT staged = candidate;
 	std::string currentBytes;
 	if (!Read_Text(m_Path, MAX_COMPOSITION_BYTES, currentBytes, status,
-			"Current KoukuSaydon composition") ||
-		currentBytes != m_strBaselineSourceBytes)
+			"Current KoukuSaydon composition"))
 	{
-		outStatus = "KoukuSaydon composition changed before Save; reload required. " + status;
-		m_strStatus = outStatus;
+		outStatus = m_strStatus = "Could not read the current Composition before Save. Draft preserved. " + status;
 		m_bFresh = false;
 		return false;
 	}
-
-	KOUKU_SAYDON_COMPOSITION_DOCUMENT staged = candidate;
+	if (currentBytes != m_strBaselineSourceBytes)
+	{
+		// Library installation may append independent resources while the user
+		// authors a Pattern. Rebase only that proven change; never merge edited
+		// Patterns, reordered resources, or two different values for one ID.
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT current;
+		const auto reject = [&](const std::string& reason) {
+			outStatus = m_strStatus = "Composition changed before Save: " + reason +
+				" Current file and unsaved draft are preserved.";
+			m_bFresh = false;
+			return false;
+		};
+		if (!Parse_Text(currentBytes, current, status) || !Validate(current, m_References, status))
+			return reject(status);
+		if (current.iRevision <= m_LastGood.iRevision || current.iRevision >= MAX_REVISION ||
+			current.PresentationResources.size() <= m_LastGood.PresentationResources.size() ||
+			!std::equal(m_LastGood.PresentationResources.begin(), m_LastGood.PresentationResources.end(),
+				current.PresentationResources.begin()))
+			return reject("external changes are not compatible resource additions");
+		auto unchanged = current;
+		unchanged.iRevision = m_LastGood.iRevision;
+		unchanged.PresentationResources = m_LastGood.PresentationResources;
+		if (unchanged != m_LastGood)
+			return reject("external Pattern or other authored values also changed");
+		for (std::size_t index = m_LastGood.PresentationResources.size();
+			index < current.PresentationResources.size(); ++index)
+		{
+			const auto& added = current.PresentationResources[index];
+			const auto existing = std::find_if(staged.PresentationResources.begin(), staged.PresentationResources.end(),
+				[&](const auto& row) { return row.strResourceId == added.strResourceId; });
+			if (existing == staged.PresentationResources.end()) staged.PresentationResources.push_back(added);
+			else if (*existing != added) return reject("resource ID conflicts: " + added.strResourceId);
+		}
+		staged.iRevision = current.iRevision;
+		if (!Validate(staged, m_References, status)) return reject(status);
+	}
 	++staged.iRevision;
 	const std::string serialized = Serialize(staged);
 	std::filesystem::path temporary = m_Path;

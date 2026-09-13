@@ -1,4 +1,5 @@
 #include "MapLightDocument.h"
+#include "Engine_RenderTypes.h"
 
 #include "DataJson.h"
 

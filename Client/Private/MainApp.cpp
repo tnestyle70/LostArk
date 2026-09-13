@@ -1,4 +1,12 @@
+#include <WinSock2.h>
 #include "imgui.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
+#include "Engine_InitTypes.h"
+#include "Engine_RenderTypes.h"
+#include "Engine_VertexTypes.h"
 
 #include "MainApp.h"
 #include "PlayableCharacterAssetService.h"
@@ -1200,6 +1208,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Engine.Update");
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	}
+#ifdef _DEBUG
+	// Consume the Server reset before a finished entry preview can queue its next gate.
+	if (auto* startArena = CLevel_KakulSaydonArena::Get_Active(); startArena && startArena->Consume_DebugReturnToStartSucceeded())
+	{
+		CancelKoukuGateCompletePlay("Returned to arena start after Server reset.");
+		StopCompositionPreview(DEBUG_TOOL::SEQUENCER);
+	}
+#endif
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Presentation.Prepare");
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
@@ -1789,6 +1805,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
     auto document = workbench->Get_Composition();
     KOUKU_SAYDON_COMPOSITION_PATTERN resourcePattern;
     resourcePattern.strPatternId = "preview.kouku.resource";
+    // Resource audition uses the selected boss context; its temporary placement
+    // never replaces the anchor authored in a Timeline occurrence.
+    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+    {
+     const auto selected = std::find_if(document.Patterns.begin(), document.Patterns.end(),
+      [&](const auto& item) { return item.strPatternId == workbench->Get_SelectedPatternId(); });
+     if (selected != document.Patterns.end() && selected->strLoadError.empty())
+     {
+      resourcePattern.strActorProfileId = selected->strActorProfileId;
+      resourcePattern.strGateId = selected->strGateId;
+      resourcePattern.strTargetBossPlacementId = selected->strTargetBossPlacementId;
+     }
+    }
     KOUKU_SAYDON_COMPOSITION_STAGE stage;
     stage.strStageId = "preview.resource.stage"; stage.iDurationMs = resourcePreview.Occurrence.iDurationMs;
     resourcePattern.Stages.push_back(stage);
@@ -2166,6 +2195,10 @@ HRESULT CMainApp::Render()
 		(void)m_pAvatarBookView->Render_Portrait();
 	}
 
+	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		arena->Submit_MapLightFrame();
 	HRESULT hWorldResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");
@@ -8112,6 +8145,15 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	   the player on the old gate. The raised gate cannot be re-pressed. */
 	const bool_t placementPending = pArena->Is_DebugGatePending() ||
 		pArena->Get_DebugPlayerController().Is_DebugPlayerPlacementPending();
+	ImGui::BeginDisabled(placementPending);
+	if (ImGui::Button("\xEC\x8B\x9C\xEC\x9E\x91\xEC\xA7\x80\xEC\xA0\x90", ImVec2(260.f, 0.f)))
+	{
+		std::string status;
+		(void)pArena->Debug_ReturnToStart(status);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled("Reset this arena's bosses and entry triggers; return your player to start.");
 	for (size_t iGate = 0u; iGate < gates.size(); ++iGate)
 	{
 		const CLevel_KakulSaydonArena::KAKUL_DEBUG_GATE& gate = gates[iGate];
@@ -8388,8 +8430,8 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const std::string gate = gates[m_iKoukuCompletePlayGate];
 	if (ImGui::Combo("Category##KoukuCompletePlay", &m_iKoukuCompletePlayCategory, "Saved Pattern Flow\0All Patterns\0"))
 	{ m_iKoukuCompletePlaySelection = 0; m_strKoukuCompletePlayPatternId.clear(); }
-	const auto patterns = m_pKoukuSaydonBossTool->Get_ProductPatterns();
-	const auto bundles = m_pKoukuSaydonBossTool->Get_ProductBundles();
+	const auto& patterns = m_pKoukuSaydonBossTool->Get_ProductPatterns();
+	const auto& bundles = m_pKoukuSaydonBossTool->Get_ProductBundles();
 	const auto findPattern = [&](const std::string& id) -> const CKoukuSaydonBossTool::PRODUCT_PATTERN* {
 		auto it=std::find_if(patterns.begin(),patterns.end(),[&](const auto& p){return p.strPatternId==id;}); return it==patterns.end()?nullptr:&*it; };
 	if (ImGui::BeginChild("KoukuCompletePlayInventory", ImVec2(0,240), true))
@@ -9620,6 +9662,8 @@ void CMainApp::RenderRenderingWorkbench()
 	globalChanged |= ImGui::DragFloat(
 		"Base Bloom Intensity", &m_RenderQualityDraft.fBloomIntensity,
 		0.01f, 0.f, 16.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Scene bloom strength. Full Restore effects use Skill Bloom Intensity in Effect Detail.");
 	globalChanged |= ImGui::DragFloat(
 		"Scatter", &m_RenderQualityDraft.fBloomScatter,
 		0.01f, 0.25f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);

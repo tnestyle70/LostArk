@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.lancemaster.skill.34120.clip2.full.restore",
   "displayName": "창술사 34120 flm_sk_threetalonstrike_02 전체 복원",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,

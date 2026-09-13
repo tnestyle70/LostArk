@@ -14,13 +14,45 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 $valtanRaidPlayerCapacity = 8
 
+# Parsed inputs are read-only and belong to this invocation, including repeated
+# sequence references from different triggers. A new invocation always starts cold.
+$script:projectJsonSnapshots = @{}
+
+function Get-ProjectJsonVersion([string]$Path) {
+    $file = [IO.FileInfo]::new($Path)
+    if (-not $file.Exists) { throw "Required JSON document is missing: $Path" }
+    return "$($file.Length):$($file.LastWriteTimeUtc.Ticks):$($file.CreationTimeUtc.Ticks)"
+}
+
+function Assert-ProjectJsonInputsUnchanged {
+    foreach ($path in $script:projectJsonSnapshots.Keys) {
+        $snapshot = $script:projectJsonSnapshots[$path]
+        if ((Get-ProjectJsonVersion $path) -cne $snapshot.Version -or
+            -not [string]::Equals([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8),
+                $snapshot.Text, [StringComparison]::Ordinal)) {
+            throw "World publish source changed during validation: $path"
+        }
+    }
+}
+
 function Read-ProjectJson {
     param([string]$RelativePath)
     $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
-    if (-not [IO.File]::Exists($path)) {
-        throw "Required JSON document is missing: $RelativePath"
+    $version = Get-ProjectJsonVersion $path
+    if ($script:projectJsonSnapshots.ContainsKey($path)) {
+        $snapshot = $script:projectJsonSnapshots[$path]
+        if ($version -cne $snapshot.Version) {
+            throw "World publish source changed during validation: $path"
+        }
+        return $snapshot.Value
     }
-	return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+    $value = $text | ConvertFrom-Json
+    if ((Get-ProjectJsonVersion $path) -cne $version) {
+        throw "World publish source changed while reading: $path"
+    }
+    $script:projectJsonSnapshots[$path] = @{ Version = $version; Text = $text; Value = $value }
+    return $value
 }
 
 function Assert-ExactProperties {
@@ -1389,6 +1421,7 @@ $worlds = @(
 )
 }
 
+Assert-ProjectJsonInputsUnchanged
 if ($Mode -eq 'Publish') {
     $resolvedOutputRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
     [IO.Directory]::CreateDirectory($resolvedOutputRoot) | Out-Null
@@ -1555,6 +1588,7 @@ if ($Mode -eq 'Publish') {
 			})
 		}
 		$promotedCount = 0
+		Assert-ProjectJsonInputsUnchanged
 		foreach ($promotion in $promotions) {
 			if ([IO.File]::Exists($promotion.Destination)) {
 				[IO.File]::Move($promotion.Destination, $promotion.Rollback)
@@ -1568,6 +1602,7 @@ if ($Mode -eq 'Publish') {
 			}
 		}
 
+		Assert-ProjectJsonInputsUnchanged
 		foreach ($promotion in $promotions) {
 			Write-Output "Published $($promotion.World.WorldId): $($promotion.World.Count) placements -> $($promotion.Destination)"
 		}

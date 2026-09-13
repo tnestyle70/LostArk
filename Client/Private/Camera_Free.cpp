@@ -1,3 +1,5 @@
+#include <WinSock2.h>
+#include <dinput.h>
 #include "imgui.h"
 
 #include "Camera_Free.h"
@@ -15,6 +17,7 @@ namespace
 	constexpr f32_t SHAKE_TRANSLATION_METERS_PER_UNIT = 0.01f;
 	constexpr f32_t MIN_SHAKE_FOVY = 10.f;
 	constexpr f32_t MAX_SHAKE_FOVY = 170.f;
+	constexpr f32_t FOLLOW_TARGET_DISCONTINUITY_METERS = 12.f;
 }
 
 CCamera_Free::CCamera_Free(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -39,7 +42,8 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 
 	auto pDesc = static_cast<CAMERA_FREE_DESC*>(pArg);
 	if (!std::isfinite(pDesc->fSpeedPerSec) || pDesc->fSpeedPerSec <= 0.f ||
-		!std::isfinite(pDesc->fFollowRollDegrees))
+		!std::isfinite(pDesc->fFollowRollDegrees) ||
+		!std::isfinite(pDesc->fFollowResponse) || pDesc->fFollowResponse < 0.f)
 		return E_INVALIDARG;
 	m_fInitialMoveSpeed = pDesc->fSpeedPerSec;
 	m_fFreeMoveSpeed = pDesc->fSpeedPerSec;
@@ -76,7 +80,7 @@ void CCamera_Free::Priority_Update(f32_t fTimeDelta)
 {
 	Update_Shortcuts();
 
-	if (!m_bFollowEnabled)
+	if (!m_bFollowEnabled && !Is_PresentationOverrideActive())
 	{
 		Update_FreeCamera(fTimeDelta);
 		__super::Update_PipeLine();
@@ -90,6 +94,15 @@ void CCamera_Free::Update(f32_t fTimeDelta)
 void CCamera_Free::Late_Update(f32_t fTimeDelta)
 {
 	CEffectPresentationService::Set_FrameCamera(static_pointer_cast<CCamera_Free>(shared_from_this()));
+	if (Is_PresentationOverrideActive())
+	{
+		// The cinematic owns the visible pose; do not feed it into follow smoothing.
+		m_bFollowInitialized = false;
+		m_vAppliedShakeOffset = {};
+		CAMERA_SHAKE_SAMPLE Unused;
+		CCameraShakeService::Sample(fTimeDelta, Unused);
+		return;
+	}
 	Remove_AppliedCameraShake();
 	if (!m_bFollowEnabled)
 	{
@@ -119,7 +132,7 @@ void CCamera_Free::Set_FollowTarget(const shared_ptr<CTransform>& pFollowTarget)
 	m_pFollowTarget = pFollowTarget;
 	m_bFollowEnabled =
 		m_bFollowRequested && nullptr != pFollowTarget;
-	if (targetChanged && m_bFollowEnabled)
+	if (targetChanged && m_bFollowEnabled && !Is_PresentationOverrideActive())
 	{
 		Update_FollowCamera(0.f);
 		__super::Update_PipeLine();
@@ -135,7 +148,7 @@ void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
 		m_bFollowInitialized = false;
 
 	m_bFollowEnabled = nextEnabled;
-	if (m_bFollowEnabled && !m_bFollowInitialized)
+	if (m_bFollowEnabled && !m_bFollowInitialized && !Is_PresentationOverrideActive())
 	{
 		Update_FollowCamera(0.f);
 		__super::Update_PipeLine();
@@ -283,6 +296,12 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 
 	const vector_t vTargetPosition =
 		pFollowTarget->Get_State(STATE::POSITION);
+	if (XMVector3IsNaN(vTargetPosition) || XMVector3IsInfinite(vTargetPosition))
+		return;
+	const vector_t targetDelta = vTargetPosition - XMLoadFloat3(&m_vPreviousFollowTarget);
+	const bool_t targetDiscontinuity = m_bFollowInitialized &&
+		XMVectorGetX(XMVector3LengthSq(targetDelta)) >
+			FOLLOW_TARGET_DISCONTINUITY_METERS * FOLLOW_TARGET_DISCONTINUITY_METERS;
 	const vector_t vDesiredEye = XMVectorSetW(
 		vTargetPosition + XMLoadFloat3(&m_vPositionOffset),
 		1.f);
@@ -290,8 +309,7 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 		vTargetPosition + XMLoadFloat3(&m_vLookOffset),
 		1.f);
 
-	if (!m_bFollowInitialized ||
-		fTimeDelta <= 0.f ||
+	if (!m_bFollowInitialized || targetDiscontinuity ||
 		m_fFollowResponse <= 0.f)
 	{
 		m_pTransformCom->Set_State(STATE::POSITION, vDesiredEye);
@@ -299,12 +317,10 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 		m_vAppliedShakeOffset = {};
 		m_bFollowInitialized = true;
 	}
-	else
+	else if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 	{
-		const f32_t clampedDelta =
-			(std::min)(fTimeDelta, 0.05f);
-		const f32_t alpha =
-			1.f - std::exp(-m_fFollowResponse * clampedDelta);
+		// Exponential decay is stable across frame rates and does not delay input.
+		const f32_t alpha = -std::expm1(-m_fFollowResponse * fTimeDelta);
 		const vector_t vNextEye = XMVectorLerp(
 			m_pTransformCom->Get_State(STATE::POSITION),
 			vDesiredEye,
@@ -320,6 +336,7 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 		XMStoreFloat3(&m_vCurrentLookAt, vNextAt);
 	}
 
+	XMStoreFloat3(&m_vPreviousFollowTarget, vTargetPosition);
 	m_pTransformCom->LookAt(
 		XMLoadFloat3(&m_vCurrentLookAt));
 	if (0.f != m_fFollowRollDegrees)

@@ -400,6 +400,7 @@ PS_OUT PS_MAIN(VS_OUT input)
 struct PS_OUT_FORWARD
 {
     float4 vColor : SV_TARGET0;
+    float4 vBloomContribution : SV_TARGET2;
 };
 
 float PresentationVortexRadial(float2 rawTexcoord)
@@ -423,7 +424,8 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
         output.vColor = EvaluateSourceMapForward(input.vRawTexcoord, input.vWorldPos.xyz,
             input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, input.vProjPos, input.vColor, input.vSourceExtraUV, input.vLightmapUV);
         output.vColor.a *= g_Opacity;
-        return output;
+        output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
     }
     const float4 textureColor =
         g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
@@ -533,6 +535,7 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
     if (color.a < 0.001f)
         discard;
     output.vColor = color;
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
 }
 
@@ -542,6 +545,7 @@ struct PS_OUT_WATER
 {
     float4 vColor : SV_TARGET0;
     float4 vDistortion : SV_TARGET1;
+    float4 vBloomContribution : SV_TARGET2;
 };
 
 float2 Water_PannedUV(float2 baseUV, float4 tilingPanning)
@@ -629,6 +633,7 @@ PS_OUT_WATER PS_MAIN_WATER(VS_OUT input)
             g_WaterScreenDistortionIntensity * 0.05f,
         0.f,
         alpha);
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
 }
 
@@ -640,10 +645,12 @@ PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
         output.vColor = EvaluateSourceMapForward(input.vRawTexcoord, input.vWorldPos.xyz,
             input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, input.vProjPos, input.vColor, input.vSourceExtraUV, input.vLightmapUV);
         output.vColor.a *= g_Opacity;
-        return output;
+        output.vBloomContribution = Write_SceneBloom(output.vColor);
+    return output;
     }
     float4 color = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
     output.vColor = float4(color.rgb * g_ColorTint.rgb, 1.f);
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
 }
 

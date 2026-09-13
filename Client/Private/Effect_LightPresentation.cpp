@@ -1,4 +1,5 @@
 #include "Effect_LightPresentation.h"
+#include "Engine_RenderTypes.h"
 
 #include <cmath>
 

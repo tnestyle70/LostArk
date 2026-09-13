@@ -10,6 +10,7 @@ NS_BEGIN(Engine)
 enum class RENDER_OUTPUT_CONTRACT : uint8_t
 {
 	NONE,
+	// RT2 is the bloom contribution; RT0/RT1 retain their established meaning.
 	SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION,
 	END
 };
@@ -45,6 +46,7 @@ private:
 	ID3D11DeviceContext* m_pPreviousContext = nullptr;
 	ID3D11RenderTargetView* m_pPreviousSceneColor = nullptr;
 	ID3D11RenderTargetView* m_pPreviousDistortion = nullptr;
+	ID3D11RenderTargetView* m_pPreviousBloom = nullptr;
 	ID3D11DepthStencilView* m_pPreviousDepthStencil = nullptr;
 };
 

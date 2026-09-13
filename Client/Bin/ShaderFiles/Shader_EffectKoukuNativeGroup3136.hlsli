@@ -7169,7 +7169,7 @@ float4 ArtistNative3181(ARTIST_NATIVE_INPUT input)
     // 15: mad r2.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
     r2.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
     // 16: sample_indexable(texture2d)(float,float,float,float) r1.xyw, r2.xyxx, t1.xywz, s0 (project resolved HDR SceneColor snapshot adapter)
-    r1.xyw = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r2.xyxx).xy).xywz).xyw;
+    r1.xyw = (Read_EffectSceneColor(LinearClampUVSampler, (r2.xyxx).xy).xywz).xyw;
     // 17: mul r3.y, v4.y, cb0[2].x
     r3.y = ((v4.yyyy)*(source[2].xxxx)).y;
     // 18: mov r3.x, l(0)
@@ -7185,7 +7185,7 @@ float4 ArtistNative3181(ARTIST_NATIVE_INPUT input)
     // 23: mul r2.w, r2.w, l(0.025000)
     r2.w = ((r2.wwww)*(float4(0.025000,0.025000,0.025000,0.025000))).w;
     // 24: sample_b_indexable(texture2d)(float,float,float,float) r3.xyz, r2.xyxx, t1.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r3.xyz = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    r3.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
     // 25: mov r4.xyz, r3.xyzx
     r4.xyz = (r3.xyzx).xyz;
     // 26: mov r3.w, l(0)
@@ -7203,7 +7203,7 @@ float4 ArtistNative3181(ARTIST_NATIVE_INPUT input)
     // 32: mad r2.z, r4.w, cb0[3].x, r2.y
     r2.z = ((r4.wwww)*(source[3].xxxx)+(r2.yyyy)).z;
     // 33: sample_b_indexable(texture2d)(float,float,float,float) r5.yzw, r2.xzxx, t1.wxyz, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r5.yzw = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).wxyz).yzw;
+    r5.yzw = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.xzxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).wxyz).yzw;
     // 34: add r4.xyz, r4.xyzx, r5.yzwy
     r4.xyz = ((r4.xyzx)+(r5.yzwy)).xyz;
     // 35: mul r2.z, r2.w, r5.x

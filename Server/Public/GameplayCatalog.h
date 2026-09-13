@@ -740,7 +740,8 @@ namespace LostArk::Server
 		HUD_ENTER,
 		REAL_GAZE_TELEPORT,
 		CARD_MAZE_HIDE_NEXT,
-		CARD_MAZE_ENTER
+		CARD_MAZE_ENTER,
+		ALBION_BLUE_CIRCLE
 	};
 
 	struct BOSS_PATTERN_MECHANIC_TRIGGER final
@@ -756,6 +757,9 @@ namespace LostArk::Server
 		std::string strClonePatternId;
 		std::vector<std::uint32_t> ClockHours;
 		float fFaceCenterYawOffsetDegrees = 0.f;
+		std::uint32_t iCountPerPlayer = 0u;
+		float fPlayerEffectRadiusM = 0.f;
+		std::uint32_t iEffectLifetimeMs = 0u;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

@@ -336,6 +336,8 @@ namespace
         "ImGui buffer Map failures",
         "Picking readbacks",
         "Picking readback bytes",
+        "Indirect draw calls",
+        "Indirect indices (LOD0 upper bound)",
     };
 
     bool Contains_CaseInsensitive(std::string_view text, const char* query)

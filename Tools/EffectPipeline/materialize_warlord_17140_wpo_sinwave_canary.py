@@ -9,6 +9,11 @@ defaults, native DXBC/register wires, and vertex WPO remain pending evidence.
 """
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_domain_paths, cpp_domain_header_paths
+
 
 import argparse
 import copy
@@ -431,8 +436,9 @@ def build_receipt(candidate: dict[str, Any], catalog: dict[str, Any],
                    "class-neutral opcode 22 two-proven-lane RT0 equation"),
         descriptor(ROOT / "Client/Bin/ShaderFiles/Shader_VtxEffectMeshPreview.hlsl",
                    "typed mesh carrier dispatch"),
-        descriptor(ROOT / "Client/Private/Effect_DocumentRenderer.cpp",
-                   "exact child/parent/carrier/occurrence admission and fail-close"),
+        *(descriptor(path, "exact child/parent/carrier/occurrence admission and fail-close")
+          for path in (cpp_domain_paths(ROOT / "Client", "Effect_DocumentRenderer") +
+                       cpp_domain_header_paths(ROOT / "Client", "Effect_DocumentRenderer"))),
     ]
     receipt: dict[str, Any] = {
         "schema": "lostark.effect-warlord-wpo-sinwave-v1-tool-canary-receipt",

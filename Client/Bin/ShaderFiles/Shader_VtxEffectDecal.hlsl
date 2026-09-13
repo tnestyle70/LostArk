@@ -71,7 +71,7 @@ float3 Resolve_DecalReceiverNormalV1(
     return geometricNormal;
 }
 
-EFFECT_PS_OUT PS_MAIN(VS_OUT input)
+EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
 {
     const float4 depth = g_DepthTexture.Sample(PointSampler, input.uv);
     clip(0.99999f - depth.x);
@@ -172,6 +172,23 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         output.SceneColor.a *= fade;
         output.Distortion *= fade;
     }
+    return output;
+}
+
+EFFECT_PS_OUT PS_MAIN(VS_OUT input)
+{
+    g_EffectSceneReadMode = 0u;
+    g_EffectSceneSampleUsed = false;
+    EFFECT_PS_OUT output = PS_MATERIAL(input);
+    if (!g_EffectSceneSampleUsed)
+        return Write_EffectBloom(output);
+    g_EffectSceneReadMode = 1u;
+    const EFFECT_PS_OUT transported = PS_MATERIAL(input);
+    g_EffectSceneReadMode = 2u;
+    const EFFECT_PS_OUT emission = PS_MATERIAL(input);
+    g_EffectSceneReadMode = 0u;
+    output.BloomContribution = float4(transported.SceneColor.rgb - emission.SceneColor.rgb +
+        Write_SceneBloom(emission.SceneColor).rgb, output.SceneColor.a);
     return output;
 }
 

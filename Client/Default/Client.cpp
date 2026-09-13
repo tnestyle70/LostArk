@@ -2,6 +2,7 @@
 //
 
 #include "framework.h"
+#include <objbase.h>
 #include "Client.h"
 
 #include "Client_Defines.h"

@@ -190,6 +190,8 @@ UModel glTF는 좌표가 meter입니다. 현재 맵 Loader가 기존 centimeter 
 
 section 수, skeleton 유무, animation 수, 재질 버전과 첫 재질의 텍스처 슬롯을 출력합니다. 정적 모델은 보통 `sections=2`, 애니메이션 모델은 mesh/material/skeleton과 animation 수만큼 section이 나옵니다.
 
+Python 게시 도구가 사용하는 `verify_dimensionmaster_summon_bind_pose.py::read_wmodel(path)`는 기본적으로 모든 vertex와 animation key를 읽습니다. `include_geometry=False`는 vertex decode를 생략해 `vertices=None`을 반환하고, `animation_names=()`는 모든 clip의 시간 metadata만 읽어 `channels=None`을 반환합니다. clip 이름 집합을 전달하면 해당 clip의 key만 읽습니다. 생략한 payload도 section/span과 bone 참조 검사를 거치며, geometry 또는 channel이 필요한 검증에는 생략된 값을 사용하지 않습니다. 이 옵션은 게시 도구의 읽기 비용을 줄이며 `CModel` 런타임과 WModel 저장 형식을 변경하지 않습니다.
+
 맵 에셋은 header 검사만으로 배포하지 않습니다. 사용 재질이 요구하는 실제 texture와 native 입력이 runtime root에 존재하는지, material slot과 descriptor가 일치하는지, 추가 UV가 보존됐는지 검사합니다. UModel glTF 입력의 bounds는 약 100배로 cook하고 runtime preScale과 합쳐 월드 미터가 되는지 확인합니다. 의도적으로 diffuse를 쓰지 않는 원본 재질에 임의 diffuse를 넣어 검사를 우회하지 않습니다.
 
 ## 게임에 Prototype 등록

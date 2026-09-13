@@ -59,6 +59,8 @@ namespace
 			"imGuiBufferMapFailures",
 			"pickingReadbacks",
 			"pickingReadbackBytes",
+            "indirectDrawCalls",
+            "indirectIndexUpperBound",
 	};
 
 	const char* GpuStatusName(const Engine::EProfilerGpuFrameStatus Status)

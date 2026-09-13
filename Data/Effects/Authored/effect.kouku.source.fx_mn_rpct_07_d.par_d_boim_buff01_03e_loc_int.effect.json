@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_boim_buff01_03e_loc_int",
-  "displayName": "par_d_boim_buff01_03e_loc_int",
+  "displayName": "마리오_아이언메이든_파괴이펙트",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

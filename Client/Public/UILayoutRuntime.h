@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "Engine_AnimationTypes.h"
 #include "Engine_Defines.h"
 
 #include <map>

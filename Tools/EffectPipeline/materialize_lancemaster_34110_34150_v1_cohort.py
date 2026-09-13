@@ -2,6 +2,11 @@
 """Seal Lance D as a control and promote one Lance F MakeFlow occurrence."""
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import argparse
 import codecs
@@ -210,7 +215,7 @@ def validate_profile36_runtime(root: Path) -> dict[str, str]:
     require(f'"{CANONICAL_PARENT}"' in profile_block,
             "MakeFlow02 strict parent admission changed")
 
-    renderer = (root / DOCUMENT_RENDERER).read_text(encoding="utf-8-sig")
+    renderer = read_source_text(root / DOCUMENT_RENDERER, encoding="utf-8-sig")
     selector_start = renderer.find(
         "case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_02:")
     selector_end = renderer.find(

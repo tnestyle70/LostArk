@@ -7,6 +7,11 @@
 
 
 #include "DebugDraw.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/PrimitiveBatch.h"
+#include "DirectXTK/VertexTypes.h"
+#pragma pop_macro("new")
 
 namespace
 {

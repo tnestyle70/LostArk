@@ -1,4 +1,10 @@
+#include <WinSock2.h>
+#include <dinput.h>
 #include "imgui.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
 
 #include "Level_Bern.h"
 

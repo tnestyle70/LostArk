@@ -1,4 +1,5 @@
 #include "Effect_MaterialProgramRegistry.h"
+#include "Engine_VertexTypes.h"
 
 #include <algorithm>
 #include <array>

@@ -111,4 +111,67 @@
 	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp"><Filter>Private</Filter></ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Server_Pch.cpp" />
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\GameRoom_Internal.h" />
+    <ClCompile Include="..\Private\GameRoom_CatalogGenerations.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Admission.cpp" />
+    <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
+    <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp" />
+    <ClCompile Include="..\Private\GameRoom_ValtanAudition.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Replication.cpp" />
+    <ClCompile Include="..\Private\GameRoom_WorldEntities.cpp" />
+    <ClCompile Include="..\Private\GameRoom_BossStageActions.cpp" />
+    <ClCompile Include="..\Private\GameRoom_WorldDestruction.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuMiniGames.cpp" />
+    <ClCompile Include="..\Private\GameRoom_PlayerSimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Helpers.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_Internal.h"><Filter>Private</Filter></ClInclude>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_PinnedGenerationFixture.h"><Filter>Private</Filter></ClInclude>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Helpers.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuLogic.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldPlayback.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_DebugTeleport.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuBundles.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuProduct.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanLifecycle.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanPinnedGeneration.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanRevision.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_RevisionProtocol.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_GenerationRetention.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SessionTransport.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_RoomIngress.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_CharacterAdmission.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_GroundTarget.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerCombos.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_PlayerActions.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanMechanicLedger.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanSkyAxe.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanTimelines.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldTriggers.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SkillStages.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_SpawnGroups.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanDash.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanAudition.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanResetlessNext.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_ValtanReleaseControl.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_WorldDestruction.cpp"><Filter>Private</Filter></ClCompile>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_Runner.h"><Filter>Private</Filter></ClInclude>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Runner.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuOverlap.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_CardMaze.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Bingo.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuSupportSurface.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Navigation.cpp"><Filter>Private</Filter></ClCompile>
+    <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h"><Filter>Private</Filter></ClInclude>
+  </ItemGroup>
 </Project>

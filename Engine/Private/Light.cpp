@@ -1,4 +1,5 @@
 #include "Light.h"
+#include "Engine_RenderTypes.h"
 
 #include "GameInstance.h"
 
@@ -68,6 +69,11 @@ HRESULT CLight::Render(shared_ptr<class CShader> pShader, shared_ptr<class CVIBu
 {
 	return Render_Desc(
 		m_LightDesc, std::move(pShader), std::move(pVIBuffer), false);
+}
+
+bool_t CLight::Is_ValidDesc(const LIGHT_DESC& LightDesc)
+{
+	return IsValidLightAttenuation(LightDesc);
 }
 
 HRESULT CLight::Render_Desc(

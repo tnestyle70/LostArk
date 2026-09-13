@@ -62,6 +62,7 @@
 	<ClInclude Include="..\Public\CompositionTimeline.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
+    <ClInclude Include="..\Public\LocalMovePrediction.h" />
     <ClInclude Include="..\Public\HitAreaWire.h" />
     <ClInclude Include="..\Public\CharacterCatalog.h" />
     <ClInclude Include="..\Public\ActorCatalog.h" />
@@ -328,6 +329,8 @@
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
       <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
     </ClCompile>
     <ClCompile Include="..\Private\Effect_ParticleUpdatePool.cpp" />
     <ClCompile Include="..\Private\Effect_Playback.cpp">
@@ -335,6 +338,8 @@
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
       <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
     </ClCompile>
     <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp">
@@ -425,6 +430,8 @@
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
       <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
     </ClCompile>
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
@@ -460,6 +467,9 @@
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\MainApp_SequenceViewer.cpp">
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
     </ClCompile>
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
@@ -492,11 +502,17 @@
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp">
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
     </ClCompile>
 	<ClCompile Include="..\Private\WorldSequenceDocument.cpp" />
 	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
 	  <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-	</ClCompile>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp" />
     <ClCompile Include="..\Private\EncounterPatternReference.cpp" />
     <ClCompile Include="..\Private\WorldDestructionDocument.cpp" />
@@ -1042,6 +1058,14 @@
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="..\..\Tools\Build\CppCompilation.props" />
+  <ItemGroup>
+    <ClCompile Include="..\Private\Client_Pch.cpp">
+      <PrecompiledHeader Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">Create</PrecompiledHeader>
+      <ExcludedFromBuild Condition="'$(LostArkUsePch)'!='true' or '$(Platform)'!='x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <PropertyGroup>
     <EngineRoot>$(ProjectDir)..\..\Engine\</EngineRoot>
@@ -1054,6 +1078,7 @@
     <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
     <EngineCellShaderSource>$(EngineBinaryRoot)Shader_Cell.cso</EngineCellShaderSource>
     <EngineDeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</EngineDeferredShaderSource>
+    <EngineMeshLodShaderSource>$(EngineBinaryRoot)Shader_MeshLod.cso</EngineMeshLodShaderSource>
   </PropertyGroup>
   <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Client -ResourceRoot &quot;$(ProjectDir)..\Bin\Resources&quot;" />
@@ -1077,9 +1102,11 @@
   <Target Name="DeployClientCompiledShaders" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
     <Error Condition="!Exists('$(EngineCellShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineCellShaderSource)" />
     <Error Condition="!Exists('$(EngineDeferredShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineDeferredShaderSource)" />
+    <Error Condition="!Exists('$(EngineMeshLodShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineMeshLodShaderSource)" />
     <ItemGroup>
       <ClientEngineCompiledShaders Include="$(EngineCellShaderSource)" />
       <ClientEngineCompiledShaders Include="$(EngineDeferredShaderSource)" />
+      <ClientEngineCompiledShaders Include="$(EngineMeshLodShaderSource)" />
     </ItemGroup>
     <MakeDir Directories="$(TargetDir)" />
     <Copy SourceFiles="@(ClientEngineCompiledShaders)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
@@ -1602,6 +1629,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.festival.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.festival.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.fireworks.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.grid.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.wave.full.restore.effect.json" />
@@ -1648,11 +1676,13 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene02a.efseqact_matinee_10_arrival.2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2.effect.json" />
-    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.gold-trails.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.full.fade.black.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.authored.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.clear.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.maze.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate3.intro.fade.black.effectv2.json" />
@@ -1793,5 +1823,318 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3264.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3328.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3584.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.dance.aura.root.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.dance.light.root.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.dance.full.root.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.a.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.a.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.b.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.b.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.c.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.c.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.line.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.line.impact.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.innerdonut.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.innerdonut.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.outerdonut.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.outerdonut.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.circle.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.circle.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.innerdonut.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.innerdonut.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.outerdonut.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.outerdonut.impact.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.bluecircle.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.thunderstorm.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.bluecircle.warning.impact.runtime.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.fourfan.warning.single.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.fourfan.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.fourfan.impact.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.warning.line.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.line.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.light.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.full.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.wand.spin.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.wand.decal.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_d.par_d_boim_buff01_02l.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_d.par_d_boim_buff01_03e_loc_int.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_pjt_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_pjt_02_loc_int.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.flame.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ground.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.full.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ring.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ring.flame.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ring.end.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.clone.breath.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.threeway.breath.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Effect_Tool_Internal.h" />
+    <ClCompile Include="..\Private\Effect_Tool_ResourceBrowser.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Detail.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_MaterialDetail.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_CatalogPreview.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Valtan.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_ValtanWorld.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Editing.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_DocumentIo.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Playback.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_OccurrenceAuthoring.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_TransformHistory.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Helpers.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Effect_DocumentRenderer_Internal.h" />
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_ResourceStaging.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_PreparedDocument.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Catalog.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Staging.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_MaterialBinding.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Geometry.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Particles.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Rendering.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_MaterialHelpers.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_GeometryHelpers.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_CacheHelpers.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase448.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase512.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase768.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase832.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchAdditionalArtistCases1600.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchAdditionalArtistCases1664.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchWorldNativeCases2304.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2304.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2368.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2432.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2560.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3584.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2688.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2752.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2816.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2880.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2944.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3008.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3072.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3136.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3200.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3264.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3328.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3584Part2.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeDispatchBase64.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeDispatchBase128.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeDispatchBase192.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase512.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase576.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase640.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase704.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase768.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1152.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1216.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1280.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1344.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase0.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase960.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1024.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1088.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1152.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1984.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBasePrograms.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightPrograms.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\MapTool_Internal.h" />
+    <ClInclude Include="..\Private\MapTool_NavigationResources.h" />
+    <ClCompile Include="..\Private\MapTool_DestructionAuthoring.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_WorldGameplay.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Cutscenes.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_WorldGameplayPanels.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Navigation.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Area.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_NavigationPanels.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Placements.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_DestructionPanels.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_CameraShots.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_NavigationBake.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Helpers.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles />
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Animation_Tool_Internal.h" />
+    <ClCompile Include="..\Private\Animation_Tool_ValtanPlayback.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_KoukuPlayback.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_ValtanComposition.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_PatternAuthoring.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_CompositionSounds.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_DocumentIo.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_ValtanInspector.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_ValtanPanels.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_KoukuAuthoring.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_SkillBindings.cpp" />
+    <ClCompile Include="..\Private\Animation_Tool_Helpers.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Effect_ArtistMaterial.cpp" />
+    <None Include="..\Private\Effect_ArtistMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_LanceMasterVAMaterial.cpp" />
+    <None Include="..\Private\Effect_LanceMasterVAMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_WarlordNativeMaterial.cpp" />
+    <None Include="..\Private\Effect_WarlordNativeMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_DimensionMasterALTVMaterial.cpp" />
+    <None Include="..\Private\Effect_DimensionMasterALTVMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_DimensionMasterQMaterial.cpp" />
+    <None Include="..\Private\Effect_DimensionMasterQMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_DimensionMasterVMaterial.cpp" />
+    <None Include="..\Private\Effect_DimensionMasterVMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_DimensionMasterWRMaterial.cpp" />
+    <None Include="..\Private\Effect_DimensionMasterWRMaterial_Tables.inl" />
+    <ClCompile Include="..\Private\Effect_DimensionMasterSDMaterial.cpp" />
+    <None Include="..\Private\Effect_DimensionMasterSDMaterial_Tables.inl" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup000.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_Artist31470.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_AuthoredElements.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_AuthoringOverrides.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_DetailIo.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_JsonPrimitives.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_MaterialIo.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_MaterialValidation.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_PortableRuntime.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_RuntimeValidation.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_SourceRecipeIo.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_SourceValidation.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentCodec_Validation.cpp" />
+    <ClInclude Include="..\Private\Effect_DocumentCodec_Internal.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.gold-trails.full.restore.effect.json"></None>
   </ItemGroup>
 </Project>

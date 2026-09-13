@@ -64,7 +64,7 @@ VS_OUT VS_MAIN(VS_IN input)
 	return output;
 }
 
-float4 PS_MAIN(VS_OUT input) : SV_TARGET0
+SCENE_COLOR_BLOOM_OUT PS_MAIN(VS_OUT input)
 {
 	const float4 albedo =
 		g_DiffuseTexture.Sample(
@@ -110,7 +110,7 @@ float4 PS_MAIN(VS_OUT input) : SV_TARGET0
 		albedo.rgb *
 		(hemisphere + diffuseLight * 0.72f) +
 		rim;
-	return float4(color, albedo.a);
+	return Write_SceneColorAndBloom(float4(color, albedo.a));
 }
 
 technique11 DefaultTechnique

@@ -3,10 +3,8 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Engine_VertexTypes.h"
 #include "Effect_AuthoringDocument.h"
-#include "Effect_MaterialProgramRegistry.h"
-#include "Effect_VisualProgramCorpus.h"
-#include "Effect_MaterialTemplate.h"
 #include "Effect_Playback.h"
 
 #include <algorithm>
@@ -35,6 +33,10 @@ struct VTXEFFECT_TRAIL;
 NS_END
 
 NS_BEGIN(Client)
+
+class CEffectMaterialProgramRegistry;
+struct EFFECT_VISUAL_PROGRAM_ROW;
+struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
 
 // Slot 1 payload for native mesh particles; vertex geometry remains CModel VTXMESH.
 struct EFFECT_NATIVE_MESH_INSTANCE final
@@ -241,110 +243,7 @@ public:
 
 private:
 	struct ELEMENT_RESOURCE;
-	struct SOURCE_MATERIAL_SLOT_RESOURCE final
-	{
-		uint32_t iSourceMaterialIndex = 0u;
-		std::shared_ptr<const ELEMENT_RESOURCE> pResource;
-	};
-	struct ELEMENT_RESOURCE final
-	{
-		std::vector<SOURCE_MATERIAL_SLOT_RESOURCE> SourceMaterialSlots;
-		shared_ptr<Engine::CModel> pModel;
-		/* One lane per EFFECT_RESOURCE_SLOT texture slot, indexed by
-		   slot - BASE_TEXTURE. Grew from 5 to 8 with base2/mask2/noise2. */
-		std::array<ComPtr<ID3D11ShaderResourceView>, 8> Textures;
-		std::array<ComPtr<ID3D11ShaderResourceView>, 10> SourceTextures;
-		uint32_t iSourceTextureMask = 0u;
-		uint32_t iSourceMaterialProfile = 0u;
-		uint32_t iShaderProgramIndex = UINT32_MAX;
-		float4_t vSourceScalars0{};
-		float4_t vSourceScalars1{};
-		float4_t vSourceVector0{};
-		float4_t vSourceVector1{};
-		std::array<float4_t, 8u> TypedTrailParameters{};
-		std::array<float4_t, 32u> QSourceMaterialParameters{};
-		std::array<float4_t, 32u> VSourceMaterialParameters{};
-		std::array<float4_t, 32u> ALTVSourceMaterialParameters{};
-		std::array<float4_t, 32u> ArtistSourceMaterialParameters{};
-		std::array<float4_t, 32u> LanceVASourceMaterialParameters{};
-		bool_t bSourceRequiresSceneColor = false;
-		bool_t bSourceRequiresSceneDepth = false;
-		ComPtr<ID3D11BlendState> pNativeOneLayerBlend;
-		uint32_t iSourceMeshHasUV1 = 0u;
-		std::array<float4_t, 16u> LinearFlowParameters{};
-		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
-		float4_t vLinearFlowMaskBColor{ 1.f, 1.f, 1.f, 1.f };
-		std::array<float4_t, 16u> BlacklineParameters{};
-		float4_t vBlacklineDiffuseColor{ 1.f, 1.f, 1.f, 1.f };
-		float4_t vBlacklineMaskColor{ 1.f, 1.f, 1.f, 1.f };
-		std::array<float4_t, 5u> LocalCrackParameters{};
-		float4_t vLocalCrackOutColor{ 0.1f, 0.1f, 0.1f, 1.f };
-		float4_t vLocalCrackInColor{ 1.f, 1.f, 1.f, 1.f };
-		float4_t vLocalCrackReflectionColor{ 1.f, 1.f, 1.f, 1.f };
-		uint32_t iReconstructedMaterialEvaluatorEnabled = 0u;
-		uint32_t iReconstructedMaterialFeatureMask = 0u;
-		uint32_t iRuntimeMaterialV2Enabled = 0u;
-		uint32_t iRuntimeMaterialV2Opcode = 0u;
-		uint32_t iRuntimeMaterialV2TextureLaneCount = 0u;
-		uint32_t iRuntimeMaterialV2TextureMask = 0u;
-		uint32_t iRuntimeMaterialV2DynamicConsumedMask = 0u;
-		uint32_t iRuntimeMaterialV2DynamicSuppressedMask = 0u;
-		uint32_t iRuntimeMaterialV2ParticleColorPolicy = 0u;
-		uint32_t iRuntimeMaterialV2ParticleColorConsumedMask = 0u;
-		uint32_t iRuntimeMaterialV2ParticleColorSuppressedMask = 0u;
-		uint32_t iRuntimeMaterialV2ScalarCount = 0u;
-		uint32_t iRuntimeMaterialV2VectorCount = 0u;
-		uint32_t iRuntimeMaterialV2InputCount = 0u;
-		std::array<uint32_t, 2u> RuntimeMaterialV2InputConsumedMask{};
-		std::array<uint32_t, 2u> RuntimeMaterialV2InputSuppressedMask{};
-		uint32_t iRuntimeMaterialV2StaticInputCount = 0u;
-		uint32_t iRuntimeMaterialV2StaticSelectedMask = 0u;
-		uint32_t iRuntimeMaterialV2StaticConsumedMask = 0u;
-		uint32_t iRuntimeMaterialV2StaticSuppressedMask = 0u;
-		uint32_t iRuntimeMaterialV2RenderInputCount = 0u;
-		uint32_t iRuntimeMaterialV2RenderConsumedMask = 0u;
-		uint32_t iRuntimeMaterialV2RenderSuppressedMask = 0u;
-		uint32_t iStandardColorV1Enabled = 0u;
-		std::array<uint32_t, 4u> StandardColorV1Header{};
-		std::array<uint32_t, 4u> StandardColorV1BaseCoverage{};
-		std::array<uint32_t, 4u> StandardColorV1Dissolve{};
-		std::array<uint32_t, 4u> StandardColorV1Policies{};
-		float4_t vStandardColorV1Scalars{};
-		EFFECT_STANDARD_COLOR_V1_DESC StandardColorV1;
-		/* Artist F V4 is a finite, occurrence-admitted visual program.  It
-		   deliberately owns a separate opcode namespace from RuntimeMaterialV2;
-		   SourceTextures remain the shared typed SRV carrier. */
-		uint32_t iArtistVisualV4Opcode = 0u;
-		uint32_t iArtistVisualV4TextureMask = 0u;
-		std::array<float4_t, 8u> ArtistVisualV4Params{};
-		std::array<float4_t, 2u> ArtistVisualV4Colors{};
-		std::array<float4_t, 13u> RuntimeMaterialV2ScalarBlocks{};
-		std::array<float4_t, 3u> RuntimeMaterialV2Vectors{};
-		std::array<uint32_t, 3u>
-			RuntimeMaterialV2VectorComponentConsumedMask{};
-		std::array<uint32_t, 3u>
-			RuntimeMaterialV2VectorComponentSuppressedMask{};
-		std::array<ComPtr<ID3D11SamplerState>, 6u>
-			RuntimeMaterialV2Samplers{};
-		/* Import-time capture only.  The ordinary authored stage reconstructs
-		   the same GPU resources from Material.Execution and never consults the
-		   reconstructed source sidecars. */
-		std::array<std::optional<EFFECT_MATERIAL_TEXTURE_LANE_DESC>, 6u>
-			MaterialExecutionLanes{};
-		float2_t vReconstructedUVScale{ 1.f, 1.f };
-		float4_t vReconstructedPanRotationAux{};
-		float4_t vReconstructedColor{ 1.f, 1.f, 1.f, 1.f };
-		float4_t vReconstructedParams0{};
-		float4_t vReconstructedParams1{};
-		uint32_t iSourceTextureClampUMask = 0u;
-		uint32_t iSourceTextureClampVMask = 0u;
-		std::array<uint32_t, 4u> DynamicParameterSemantics{};
-		EFFECT_GROUPED_TRANSLUCENT_CONSTANTS GroupedConstants;
-		bool_t bSourceMaterialFallbackBlocked = false;
-		bool_t bOccurrenceVisualSuppressed = false;
-		std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
-			pMaterialProgramBinding;
-	};
+	struct SOURCE_MATERIAL_SLOT_RESOURCE;
 	struct MODEL_CUE_RESOURCE final
 	{
 		shared_ptr<Engine::CModel> pModel;
@@ -352,6 +251,10 @@ private:
 		uint32_t iAnimationIndex = 0u;
 		f32_t fTicksPerSecond = 0.f;
 		f32_t fDurationSeconds = 0.f;
+		// Instance-local pose reuse; prepared/clone construction starts invalid.
+		uint32_t iSampledAnimationIndex = UINT32_MAX;
+		f32_t fSampledTrackRequest = 0.f;
+		bool_t bHasSampledPose = false;
 	};
 
 public:
@@ -709,6 +612,8 @@ public:
 	{
 		return m_PreviewSubmissionIsolation;
 	}
+	bool_t Set_BloomIntensity(f32_t value, std::string& error);
+	f32_t Get_BloomIntensity() const;
 	void Clear();
 	const std::string& Get_Status() const { return m_strStatus; }
 	bool_t Is_LastRenderFailureObjectLocal() const
@@ -740,7 +645,7 @@ private:
 	struct PREWARM_ASSET_CACHE;
 	struct RECONSTRUCTED_DIAGNOSTIC_COMPOSITE;
 
-	bool_t Capture_StartingSceneColor(
+	bool_t Capture_StartingSceneTarget(const wchar_t* targetTag,
 		ComPtr<ID3D11ShaderResourceView>& OutCapture, std::string& strOutError) const;
 	bool_t Stage_PreparedInternal(
 		const EFFECT_DOCUMENT_DESC& Document,
@@ -920,11 +825,13 @@ private:
 	bool_t Should_SubmitPreviewOccurrence(
 		const EFFECT_ELEMENT_DESC& Element,
 		EFFECT_GPU_RENDER_FAMILY eFamily) const;
+	HRESULT Bind_BloomInputs(const std::shared_ptr<Engine::CShader>& shader);
 	const EFFECT_DOCUMENT_DESC& Get_StagedDocument() const;
 
 private:
 	ComPtr<ID3D11Device> m_pDevice;
 	ComPtr<ID3D11DeviceContext> m_pContext;
+	std::optional<f32_t> m_BloomIntensityOverride;
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::shared_ptr<const PREPARED_DOCUMENT> m_pPreparedDocument;
 	std::unique_ptr<RECONSTRUCTED_DIAGNOSTIC_COMPOSITE>
@@ -956,6 +863,7 @@ private:
 	std::vector<uint32_t> m_TrailIndexScratch;
 	// Per playback occurrence; never retained by the shared prepared-resource cache.
 	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneCapture;
+	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneBloomCapture;
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;
 	ComPtr<ID3D11ShaderResourceView> m_pBlackTexture;
 	bool_t m_bReconstructedSourceRuntimeActive = false;

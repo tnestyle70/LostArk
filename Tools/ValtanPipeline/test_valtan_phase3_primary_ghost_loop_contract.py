@@ -7,6 +7,9 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPOSITORY_ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain, read_source_text
+
 sys.path.insert(0, str(REPOSITORY_ROOT / "Tools/ValtanPipeline"))
 import valtan_tuning_pipeline as pipeline
 
@@ -355,7 +358,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             )
 
     def test_server_uses_primary_identity_loop_and_independent_portal_clock(self) -> None:
-        room = GAME_ROOM_PATH.read_text(encoding="utf-8")
+        room = read_source_text(GAME_ROOM_PATH, encoding="utf-8")
         runtime = COMBAT_RUNTIME_PATH.read_text(encoding="utf-8")
         self.assertIn("Activate_ValtanGhostPhaseLoop", room)
         self.assertIn("boss.GhostPhasePatternSequence", room)
@@ -404,7 +407,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         )
 
     def test_primary_relocation_is_nav_admitted_atomic_and_one_tick(self) -> None:
-        room = GAME_ROOM_PATH.read_text(encoding="utf-8")
+        room = read_source_text(GAME_ROOM_PATH, encoding="utf-8")
         world_entity = SERVER_WORLD_ENTITY_PATH.read_text(encoding="utf-8")
 
         self.assertIn("Begin_ValtanGhostRelocation(", room)
@@ -423,7 +426,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         self.assertIn("std::uint32_t iGhostReappearTick = 0u;", world_entity)
 
     def test_portal_triangle_is_atomically_staged_without_navigation(self) -> None:
-        room = GAME_ROOM_PATH.read_text(encoding="utf-8")
+        room = read_source_text(GAME_ROOM_PATH, encoding="utf-8")
         scheduler = room.split(
             "bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(",
             1,
@@ -451,9 +454,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             dependent_runtime,
         )
 
-        server_contract = (
-            REPOSITORY_ROOT / "Server/Private/ServerGameplayContractTests.cpp"
-        ).read_text(encoding="utf-8")
+        server_contract = read_cpp_domain(REPOSITORY_ROOT / "Server", "ServerGameplayContractTests")
         self.assertIn("runnersReachExactEndpoint", server_contract)
         self.assertIn("Update_DependentBosses(2148u)", server_contract)
         self.assertIn("runnersDespawnAfterEndpointSnapshot", server_contract)

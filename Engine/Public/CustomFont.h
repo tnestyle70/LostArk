@@ -1,7 +1,13 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
 
+
+namespace DirectX { inline namespace DX11 { class SpriteBatch; class SpriteFont; } }
 
 NS_BEGIN(Engine)
 

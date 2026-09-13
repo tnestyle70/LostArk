@@ -1,3 +1,5 @@
+#include <WinSock2.h>
+#include <dinput.h>
 #include "imgui.h"
 
 #include "PlayerController.h"
@@ -943,6 +945,29 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	return true;
 }
 
+bool_t Client::CPlayerController::Request_DebugReturnToKoukuStart()
+{
+	if (Is_DebugPlayerPlacementPending() || m_pLocalCharacter.expired() || nullptr == m_pCommandSink)
+	{
+		if (!Is_DebugPlayerPlacementPending()) m_debugPlacementStatus = "Arena start requires a live player connection.";
+		return false;
+	}
+	Cancel_DebugPlayerPlacement();
+	m_debugPlacementWorld = LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+	m_debugPlacementSucceeded = false;
+	if (!m_pCommandSink->Request_DebugReturnToKoukuStart(m_nextDebugPlacementSequence))
+	{
+		m_debugPlacementStatus = "Could not send the authored arena start request.";
+		return false;
+	}
+	m_pendingDebugPlacementSequence = m_nextDebugPlacementSequence;
+	if (0u == ++m_nextDebugPlacementSequence) m_nextDebugPlacementSequence = 1u;
+	m_debugPlacementSentAt = std::chrono::steady_clock::now();
+	m_debugPlacementReplyDelayed = false;
+	m_debugPlacementStatus = "Waiting for Server arena start reset approval...";
+	return true;
+}
+
 bool_t Client::CPlayerController::Request_DebugBingoFill(
  const std::uint32_t cellMask, const bool_t reset)
 {
@@ -1116,6 +1141,8 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 			{
 			case DEBUG_TELEPORT_RESULT::ACCEPTED:
 			{
+				if (const auto character = m_pLocalCharacter.lock())
+					character->Cancel_NetworkMovePrediction();
 				char status[160]{};
 				sprintf_s(status, "Server moved player to (%.2f, %.2f, %.2f).",
 					result.fPositionX, result.fPositionY, result.fPositionZ);
@@ -1457,6 +1484,11 @@ bool_t Client::CPlayerController::Request_MoveToPoint(const float3_t& goal)
 		return false;
 	if (!commandSink->Request_MoveGoal(m_iNextMoveSequence, goal.x, goal.z))
 		return false;
+
+	// This is a local presentation prediction after a successful typed send.
+	// The Server still validates the goal; its processed sequence ends prediction.
+	if (const auto character = m_pLocalCharacter.lock())
+		(void)character->Predict_NetworkMoveGoal(m_iNextMoveSequence, goal);
 
 	m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
 	m_LastSentMoveGoal = goal;

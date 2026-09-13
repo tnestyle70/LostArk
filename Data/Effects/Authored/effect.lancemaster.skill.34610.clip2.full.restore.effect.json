@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.lancemaster.skill.34610.clip2.full.restore",
   "displayName": "창술사 V 2 원본 전체",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,

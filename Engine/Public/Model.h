@@ -1,9 +1,17 @@
 #pragma once
 
 #include "Component.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/material.h"
+#pragma pop_macro("new")
 
 #include <array>
 #include <span>
+
+struct aiScene;
+struct aiNode;
+namespace Assimp { class Importer; }
 
 NS_BEGIN(Engine)
 
@@ -13,6 +21,7 @@ struct MODEL_MESH_DATA;
 struct MODEL_ASSET_LOAD_DESC;
 struct MODEL_COLOR_TINT;
 struct MODEL_SURFACE_PARAMETERS;
+struct MESH_SCREEN_LOD_DESC;
 struct MODEL_SOURCE_CHARACTER_PARAMETERS;
 
 class ENGINE_DLL CModel final : public CComponent
@@ -201,7 +210,8 @@ public:
 	HRESULT Render_Instanced(
 		uint32_t iMeshIndex, ID3D11Buffer* pInstanceBuffer,
 		uint32_t iInstanceStride, uint32_t iNumInstances,
-		uint32_t iInstanceByteOffset = 0u);
+		uint32_t iInstanceByteOffset = 0u,
+        const MESH_SCREEN_LOD_DESC* screenLod = nullptr);
 	/* Preparation is explicit: the caller owns the proof that every source
 	   submesh in this contiguous range uses the same effective draw state.
 	   Original meshes/material slots remain intact. S_FALSE means this model

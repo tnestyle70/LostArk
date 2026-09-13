@@ -14,6 +14,9 @@ import valtan_tuning_pipeline as pipeline
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain
+
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 PATTERN_TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
@@ -439,7 +442,7 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
         pattern_tree = PATTERN_TREE_CPP.read_text(encoding="utf-8")
         self.assertIn("Validate_SplitCounterBranchContract", pattern_tree)
         self.assertIn("ProductCounterProxy", pattern_tree)
-        server = SERVER_TESTS.read_text(encoding="utf-8")
+        server = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")
         self.assertIn("Trash counter window fixed-tick admission", server)
         self.assertIn("outsideProxyRejected", server)
         self.assertIn("valtan.sequence.center-trash-rush-if.groggy", server)

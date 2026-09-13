@@ -1,4 +1,9 @@
 #include "Texture.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/DDSTextureLoader.h"
+#include "DirectXTK/WICTextureLoader.h"
+#pragma pop_macro("new")
 
 #include "GameInstance.h"
 

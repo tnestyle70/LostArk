@@ -34,7 +34,7 @@ VS_OUT VS_MAIN(VS_IN input)
     return output;
 }
 
-float4 PS_MAIN(VS_OUT input) : SV_TARGET0
+SCENE_COLOR_BLOOM_OUT PS_MAIN(VS_OUT input)
 {
     // These source DDS files are grayscale masks. R is explicit coverage;
     // base.a and RGB never silently decide visibility or hue.
@@ -43,7 +43,7 @@ float4 PS_MAIN(VS_OUT input) : SV_TARGET0
     clip(coverage - (1.f / 255.f));
     // BS_AlphaBlend is straight alpha. Coverage belongs only in alpha here;
     // multiplying RGB too would apply the grayscale mask twice at soft edges.
-    return float4(g_TintLinear.rgb, g_TintLinear.a * coverage);
+    return Write_SceneColorAndBloom(float4(g_TintLinear.rgb, g_TintLinear.a * coverage));
 }
 
 technique11 DefaultTechnique

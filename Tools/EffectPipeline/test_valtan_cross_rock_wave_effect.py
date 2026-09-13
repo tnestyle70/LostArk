@@ -1,4 +1,9 @@
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import json
 import math
@@ -376,9 +381,9 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
 
     def test_fixed_spacing_is_persisted_and_consumed_by_cpu_playback(self) -> None:
         header = AUTHORING_HEADER_PATH.read_text(encoding="utf-8")
-        codec = CODEC_PATH.read_text(encoding="utf-8")
+        codec = read_source_text(CODEC_PATH, encoding="utf-8")
         playback = PLAYBACK_PATH.read_text(encoding="utf-8")
-        tool = TOOL_PATH.read_text(encoding="utf-8")
+        tool = read_source_text(TOOL_PATH, encoding="utf-8")
 
         self.assertIn("fFixedCenterSpacingWorldUnits", header)
         self.assertIn('"fixedCenterSpacingWorldUnits"', codec)

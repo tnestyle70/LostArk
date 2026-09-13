@@ -1,4 +1,5 @@
 #include "UILayoutRuntime.h"
+#include "Engine_AnimationTypes.h"
 
 #include "GameInstance.h"
 #include "DataJson.h"

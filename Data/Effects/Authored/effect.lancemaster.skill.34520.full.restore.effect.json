@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.lancemaster.skill.34520.full.restore",
   "displayName": "창술사 34520 flm_sk_moving_normal_2 전체 복원",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,

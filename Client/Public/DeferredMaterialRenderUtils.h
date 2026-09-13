@@ -43,6 +43,8 @@ HRESULT Bind_DeferredMaterialInputs(
 	uint32_t iMeshIndex,
 	const DEFERRED_MATERIAL_PROFILE& Profile = {},
 	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = nullptr,
-	const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr);
+	const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr,
+	// Only callers that selected a binary character base pass may omit legacy inputs.
+	bool_t nativeBinaryBasePass = false);
 
 NS_END

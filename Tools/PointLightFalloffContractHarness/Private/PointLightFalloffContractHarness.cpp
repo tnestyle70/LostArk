@@ -1,4 +1,6 @@
 #include "Effect_LightPresentation.h"
+#include "Engine_RenderTypes.h"
+#include "Engine_VertexTypes.h"
 #include "Light.h"
 #include "Light_Manager.h"
 #include "MapLightDocument.h"

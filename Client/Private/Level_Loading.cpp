@@ -1,4 +1,8 @@
 #include "imgui.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
 
 #include "Level_Loading.h"
 
@@ -759,6 +763,56 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				m_EffectPreparationTargets.end());
 		}
 
+		if (bKoukuArena)
+		{
+			if (!CActorCatalog::Initialize())
+				return IsolateFailure(CActorCatalog::Get_Status());
+			std::vector<std::string> EffectAssetIds;
+			/* Server combat-object pulses have no animation Effect cue. Prepare
+			   their catalog visuals for every supported arena body before entry,
+			   through the same Loader worker and target activation probe. */
+			for (const BOSS_ACTOR_ENTRY& Boss : CActorCatalog::Get_Bosses())
+			{
+				if (!Boss.archetypeId.starts_with("BOSS_KAKULSAYDON_") ||
+					!Boss.clientPresentationId.starts_with("boss.kakulsaydon.") ||
+					!Boss.clientPresentationId.ends_with(".client.v1"))
+				{
+					continue;
+				}
+				for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+					Boss.combatObjectVisuals)
+				{
+					if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 ==
+						Visual.activeEffectKind)
+					{
+						EffectAssetIds.push_back(Visual.effectAssetId);
+					}
+					if (!Visual.hitEffectAssetId.empty())
+						EffectAssetIds.push_back(Visual.hitEffectAssetId);
+				}
+			}
+			std::sort(EffectAssetIds.begin(), EffectAssetIds.end());
+			EffectAssetIds.erase(std::unique(EffectAssetIds.begin(),
+				EffectAssetIds.end()), EffectAssetIds.end());
+			if (!EffectAssetIds.empty())
+			{
+				std::vector<std::string> BossEffectAssetIds;
+				if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+						EffectAssetIds, BossEffectAssetIds, Status))
+				{
+					return IsolateFailure(Status);
+				}
+				m_EffectPreparationTargets.insert(
+					m_EffectPreparationTargets.end(),
+					BossEffectAssetIds.begin(), BossEffectAssetIds.end());
+			}
+			std::sort(m_EffectPreparationTargets.begin(),
+				m_EffectPreparationTargets.end());
+			m_EffectPreparationTargets.erase(std::unique(
+				m_EffectPreparationTargets.begin(),
+				m_EffectPreparationTargets.end()),
+				m_EffectPreparationTargets.end());
+		}
 		}
 		m_isEffectPreparationRegistered = true;
 		m_iEffectPreparationTargetCount = static_cast<uint32_t>(

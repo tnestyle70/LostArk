@@ -7,6 +7,8 @@
 /* aiBone : 이 뼈가 어떤 정점에게, 얼마나 영향을 주는지? */
 /* aiNodeAnim : 채널, 이 뼈가 특정 애니메이션 내에서 재생위치에 따라 어떤 상태들을 취해야하는가 */
 
+struct aiNode;
+
 NS_BEGIN(Engine)
 
 struct MODEL_BONE_DATA;

@@ -1,4 +1,5 @@
 #include "BinaryAsset/WModelDecoder.h"
+#include "Engine_VertexTypes.h"
 
 #include "BinaryAsset/BinaryReader.h"
 

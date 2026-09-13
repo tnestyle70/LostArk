@@ -1,4 +1,8 @@
 #include "Bone.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/scene.h"
+#pragma pop_macro("new")
 
 #include "BinaryAsset/ModelAssetData.h"
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "Engine_VertexTypes.h"
 
 #include <array>
 #include <filesystem>

@@ -554,7 +554,7 @@ for ordinal, selection in enumerate(selections):
                         skip.update(range(i+1,i+6));adapt.append({'sourceInstructionStart':i+1,'sourceInstructionEnd':i+6,'kind':'runtime-depth-y-times-100000-to-source-centimetres'});continue
                     swizzle=re.search(r't\d+\.([xyzw]+)',a[2])[1]
                     mode='SampleLevel' if 'sample_l' in op else ('SampleBias' if 'sample_b' in op else 'Sample')
-                    sample='g_EffectSceneColorTexture.'+mode+'(LinearClampUVSampler, ('+operand(a[1])+').xy'+(', ('+operand(a[4])+').x' if len(a)>4 else '')+')'
+                    sample='Read_EffectSceneColor'+mode.removeprefix('Sample')+'(LinearClampUVSampler, ('+operand(a[1])+').xy'+(', ('+operand(a[4])+').x' if len(a)>4 else '')+')'
                     lines += [f'    // {i+1}: {ins} (project resolved HDR SceneColor snapshot adapter)', '    '+result_mask(a[0],sample+'.'+swizzle)]
                     adapt.append({'sourceInstructionStart':i+1,'kind':'resolved-HDR-SceneColor-snapshot-project-adapter'});continue
                 index=texture_map[reg];swizzle=re.search(r't\d+\.([xyzw]+)',a[2])[1]
@@ -604,6 +604,8 @@ assert not arguments.install_additional_groups or output_dir == OUT
 target=output_dir/'Shader_EffectArtistNative.hlsli'
 target.write_text(prefix+'\n'+'\n'.join(program_code)+tail,encoding='utf-8')
 if arguments.install_additional_groups:
+    from native_shader_dispatch import (expand_dispatch_includes, write_if_changed,
+                                        write_partitioned_dispatch)
     assert arguments.program_start is not None and arguments.program_start >= 1600
     generated='\n'.join(program_code)
     blocks=re.findall(r'(#ifndef ARTIST_NATIVE_MODEL_ONLY\n// [^\n]+\nfloat4 ArtistNative(\d+)\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\}\n#endif)',generated,re.S)
@@ -613,10 +615,10 @@ if arguments.install_additional_groups:
         groups.setdefault(int(identifier)//64*64,[]).append(block)
     shader_root=ROOT/'Client/Bin/ShaderFiles'
     for group,group_blocks in groups.items():
-        (shader_root/f'Shader_EffectArtistNativeGroup{group}.hlsli').write_text(
-            f'// Single source owner for ArtistNative profiles {group}..{group+63}.\n'+'\n\n'.join(group_blocks)+'\n',encoding='utf8')
+        write_if_changed(shader_root/f'Shader_EffectArtistNativeGroup{group}.hlsli',
+            f'// Single source owner for ArtistNative profiles {group}..{group+63}.\n'+'\n\n'.join(group_blocks)+'\n')
     main_path=shader_root/'Shader_EffectArtistNative.hlsli'
-    main=main_path.read_text(encoding='utf8')
+    main=expand_dispatch_includes(main_path.read_text(encoding='utf8'), shader_root)
     begin='// BEGIN ADDITIONAL ARTIST GROUPS\n'; end='// END ADDITIONAL ARTIST GROUPS\n'
     main=re.sub(re.escape(begin)+r'.*?'+re.escape(end),'',main,flags=re.S)
     includes=begin+''.join(f'#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {group}\n#include "Shader_EffectArtistNativeGroup{group}.hlsli"\n#endif\n' for group in sorted(groups))+end
@@ -635,6 +637,6 @@ if arguments.install_additional_groups:
     cases+=end
     marker='    default: clip(-1.f); return output;'
     assert main.count(marker)==1
-    main_path.write_text(main.replace(marker,cases+marker,1),encoding='utf8')
+    write_partitioned_dispatch(main_path, main.replace(marker,cases+marker,1))
 (output_dir/'native_runtime_contract.json').write_text(json.dumps({'programs':rows,'deferredPrograms':errors,'hlsli':str(target)},indent=2),encoding='utf-8')
 print('Generated',len(rows),'native material programs, deferred',errors,'lines',len(target.read_text().splitlines()))

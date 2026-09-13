@@ -65,6 +65,8 @@ public:
 	}
 	virtual void Finalize_PresentationSubmission(bool_t bCommitted) override;
 
+	bool_t Set_BloomIntensity(f32_t value, std::string& error);
+	f32_t Get_BloomIntensity() const;
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);

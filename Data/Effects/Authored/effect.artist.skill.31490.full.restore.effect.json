@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.artist.skill.31490.full.restore",
   "displayName": "Artist D full restore",
+  "bloomIntensity": 1.3,
   "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
   "modelCues": [
     { "cueId": "artist_31490_tig_source_projectile", "modelAssetId": "Effect/Artist/Models/SK_SDM_TIG_00/sk_sdm_tig_00_sk.wmodel", "clipName": "sk_cloudtiger", "suppressHorizontalRootMotionBone": "b_root", "startDelaySeconds": 1.14660001, "durationSeconds": 1.69230771, "opacity": 1, "colorMultiply": [1, 1, 1, 1], "holdLastFrame": false, "loop": true, "alphaMode": "TRANSLUCENT", "visible": true,

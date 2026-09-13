@@ -23,6 +23,7 @@ public:
 
 	bool Request_DebugTeleportToPosition(
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) override;
+	bool Request_DebugReturnToKoukuStart(std::uint32_t requestSequence) override;
 	bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) override;
 	bool Request_DebugMarioJump(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction) override;

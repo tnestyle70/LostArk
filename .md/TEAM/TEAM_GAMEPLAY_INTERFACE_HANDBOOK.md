@@ -27,7 +27,7 @@ Input/UI intent
 -> Character/Valtan presentation 또는 CombatHUDViewModel
 ```
 
-Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
+Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot이 권위 상태다. 일반 클릭 이동의 자기 캐릭터 표시는 입력 직후 예측할 수 있으며 Server snapshot으로 보정한다.
 
 Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern` 다섯 명령만 제공한다. Character Select는 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 여는 Server 전용 Level이다. offline Preview와 `Preview / Server Play` mode 선택은 없다. Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. class thumbnail 선택은 target asset admission 뒤 즉시 typed class-change command를 제출하며, Server 승인 snapshot이 같은 entity presentation과 skill catalog class를 교체한다. 살아 있는 위치와 identity는 유지하고 전투 상태는 새 profile로 초기화하며, 사망 중 변경은 원래 projected spawn에서 부활한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 선택은 `IWorldEntityCommandSink`를 통해 stable SpawnGroup/placement ID만 제출한다. Server는 Character Select Area 문서, navigation, profile을 검증해 실제 entity 생성이 성공한 뒤 활성화 결과를 회신하고 기존 monster brain 또는 Valtan brain으로 broadcast하며 Client local spawn은 없다. 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화해 다음 입장을 새 세대로 시작한다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
@@ -105,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v80 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v81 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -270,7 +270,11 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 | V | `34600` | 은하유성탄 사용 의도 제출 |
 | Alt+V | `34620` | 은하비섬창 사용 의도 제출 |
 
-`CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Character를 직접 이동하거나 `Play_Skill`을 호출하지 않는다.
+`CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Controller는 Transform을 직접 변경하거나 `Play_Skill`을 호출하지 않는다. 일반 이동 명령의 typed sink 송신이 성공하면 `CCharacter::Predict_NetworkMoveGoal(sequence, goal)`로 자기 캐릭터의 표시 예측을 요청한다.
+
+일반 클릭 이동 예측은 `CCharacter`의 기존 `CNavigation/CNavPathFollower`와 `CLocalMovePrediction`이 소유한다. 송신 직후 RUN을 요청하고 다음 ObjectUpdate부터 위치를 전진시킨다. `ClientReplication`은 protocol 81 `PLAYER_SNAPSHOT`의 `iLastProcessedMoveSequence`, `fMoveSpeed`(태세 배율 포함), `canPredictMove`, `hasMoveGoal`, `fMoveWaypointX/Y/Z`를 전달한다. 처리 sequence는 이동 승인이 아니며, 최신 미처리 클릭은 이전 IDLE 응답으로 취소하지 않는다. 처리된 입력은 Server 위치와 다음 경유점으로 보정한다. 외삽은 150ms와 다음 경유점으로, 무응답 예측은 350ms로 제한한다. 연속 위치 오차는 최소 80ms와 오차/이동속도에 따른 기간으로 줄이며, 큰 불연속·피격·사망·패턴 구속·마리오는 예측을 해제한다. 일반 예측에서 SKILL 보간으로 넘어갈 때만 표시 잔여 offset을 120ms에 줄인다. 두 replication 소비자는 같은 SKILL 상태를 전달한다. 다른 플레이어는 기존 2 tick 보간을 사용하고 스킬·피해·충돌 권위는 Server에 남는다. Client 경로를 Server 정답으로 전송하지 않는다. Client/Server gameplay socket은 TCP_NODELAY를 사용한다.
+
+제품 Loader는 양쪽에 배포된 맵 `.navpolicy`의 최대 인접 높이 차이를 검증해 `CNavigation::Create_NavGrid`의 네 번째 인자로 전달한다. prototype/Clone이 값을 보존하고 Character 예측은 `Get_MaxStepHeight()`로 경로를 요청한다. 기존 명시적 raw/editor 호출은 기본값 0.6을 유지한다. 일반 MOVE 위치는 목표 XZ로 전진하고 얼굴 회전과 분리한다. Client는 현재 발밑 지면을 읽으며 먼 경유점 Y를 미리 보간하지 않는다. `CCharacter::Update_PresentationYaw`가 최단 회전을 소유하고 ACK helper는 각도를 다시 보간하지 않는다.
 
 two-step ground target의 optional 정본은 `Data/Balance/PlayerSkillTargeting.json`이다. T/2050500은 첫 키 입력에서 packet·sequence·resource·cooldown을 소비하지 않고 class-neutral targeting state와 두 preview만 연다. valid navigation sample의 LMB confirm만 기존 `C2S_USE_SKILL`에 typed `GROUND_POINT` intent를 실으며 RMB cancel은 packet을 만들지 않는다. 성공한 confirm LMB는 물리 release 전까지 BA로 다시 해석하지 않는다. Client의 11m clamp와 red invalid 표시는 preview이고, Server가 finite/range/current navigation을 다시 검증해 승인한 target XYZ만 `PLAYER_SNAPSHOT`으로 복제한다. Character의 `skill_target` pseudo anchor와 Server damage shape는 이 승인 XYZ를 함께 사용한다. 사거리 링 asset identity는 `SOURCE_EXTRACTED`, cursor marker identity는 `RUNTIME_RESOURCE`지만 두 texture의 preview scale/tint/usage는 모두 `PROJECT_TUNED`다.
 
@@ -320,7 +324,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 80의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 81의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -423,7 +427,7 @@ Client는 기존 IDLE/CHASE/ATTACK/DEAD snapshot으로 catalog의 원본 clip을
 피해/사망은 ServerCombatHitRuntime에서 확정하고 W는 Q 피해를 공유하지 않는다.
 Mario modelYawDegrees=-90은 모델 +X 앞축을 Server yaw의 +Z 앞축으로 정렬한다.
 이는 원본 AI·표적 집계·폭탄 피해의 복원 완료를 의미하지 않는다.
-Server와 Client를 protocol 80으로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
+Server와 Client를 protocol 81으로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
 
 ## 5. Character와 Animation
 
@@ -788,7 +792,7 @@ Composition v3는 `GATE1/GATE2/GATE3/BINGO`, 부모 폴더, 재생 묶음, 대�
 `teleportPosition`은 서버 navigation과 collision으로 검증하는 미로 중앙 목적지다. 참가자 전원
 검증 뒤 같은 tick에 이동·표시 복구·MAZE HUD를 적용하고 기존 중앙 Q 망원경 진행을 사용한다.
 입장 실패나 패턴 Stop은 이 연출이 숨긴 참가자를 다시 표시하며, 실패하면 전원 원래 위치를 유지한다.
-Shared protocol 80의 `CARD_MAZE_PRESENTATION.flags` bit16이 표시 상태를 복제한다.
+Shared protocol 81의 `CARD_MAZE_PRESENTATION.flags` bit16이 표시 상태를 복제한다.
 Server/Client를 함께 다시 빌드하고 publish 뒤 Server를 재시작한다.
 Effect occurrence의 dissolve 시작·끝은 lifetime 정규화 시간이다. 같은 값은 기존 runtime의 즉시
 전환 규칙을 사용하며 1/1은 lifetime 끝까지 dissolve-out을 하지 않는다. 역전된 구간은 거부한다.
@@ -861,7 +865,7 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 80으로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol 81으로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
 `iMarioCurseReleasedMask`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다. 두 기능이 별도 branch에서
 각각 79를 사용했으므로 두 종류의 v79 및 이전73/77/78 실행 파일과 혼용하지 않는다.
@@ -912,6 +916,10 @@ MAP을 선택하면 고정 월드 위치·회전·크기를 사용한다. MAP은
 않으며 `Use Player Position`은 현재 플레이어 위치를 occurrence에 복사한다. 같은 규칙은 독립
 Sequencer Benchmark에도 적용된다. Effect Tool의 Kouku `Play All`은 현재 플레이어의 위치·방향을
 임시 기준으로 사용한다. Append한 occurrence의 앵커와 저장된 Sequence는 이 임시 재생으로 바뀌지 않는다.
+이 scene player 등록은 `CClientReplication`이 local spawn/class 교체를 commit한 뒤
+`CAnimationTargetService`에 Bind하고 local despawn/reset/destructor에서 자기 캐릭터만 Unbind한다.
+원격 player나 실패한 교체는 기존 target을 보존하며, 카메라·입력 연결로 이 등록을 대신하지 않는다.
+destructor가 이미 제거된 Layer를 다시 조작하지 않는 종료 계약도 유지한다.
 관측한 anchor 기록으로 외부 시계 재생·seek를 처리하며 과거 기록이 없는 구간을 임의 포즈로 보충하지 않는다.
 
 Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effectResourceId/effectDelayMs를
@@ -925,6 +933,20 @@ endsPatternOnSuccess로 그로기 후속 재생을 연결한다.
 ENTER_AREA의 optional bossChargeDistanceM은 Trigger 시작 시 살아 있는 target의 방향을 한 번 확정해
 해당 occurrence duration 동안 지정 거리를 이동한다. navigation/collision이 막으면 경계에서 멈추고,
 이동한 Server pose로 같은 tick의 접촉을 검사한다. 절대 bossMotion과의 중복 소유는 거부한다.
+
+Kouku의 `ALBION_BLUE_CIRCLE` Trigger는 시작 시 살아 있는 플레이어마다 고정 장판을 만든다.
+Logic의 `countPerPlayer`는 1..8, `radiusM`은 1개일 때 0, 여러 개일 때 (0,20]m이며,
+`effectLifetimeMs`는 1..600000ms다. 등록된 `알비온_플레이어장판`은 1개·0m·7000ms를 사용한다.
+여러 개는 플레이어 주변 원주에 등간격으로 놓고 Server가 모든 생성점의 navigation을 검사한 뒤
+기존 CombatObjectRuntime transaction으로 함께 생성한다. 하나라도 실패하면 기존 객체를 보존한다.
+`combatobject.kouku.albion.bluecircle` / `combatvisual.kouku.albion.bluecircle`을 BossCatalog의
+`effect.kouku.albion.bluecircle.warning.impact.runtime`에 연결한다. 이 문서가 예고 2초 뒤 폭발과
+잔상을 소유하며 Trigger는 피해를 추가하지 않는다. Logic은 원하는 Pattern 시점에 Append하고
+Save → Publish All Patterns를 거친다. 단순 Effect/독립 Sequencer 재생은 플레이어별 Server 생성을 실행하지 않는다.
+Kouku Arena Loader는 BossCatalog의 해당 family V1 combat-object visuals를 중복 제거해 기존
+Product 준비 큐와 level activation probe에 넣는다. 첫 spawn이 prewarm을 생략하거나 Effect
+문서를 동기 로드하지 않는다. Client는 자연 완료의 잔상을 유지하고 Server의 Stop/사망/despawn은
+level-owned Effect handle까지 정리한다.
 
 단순 피해 영역은 Collider의 Box Detail에서 데미지 모드를 선택하고 최대 HP 대비 피해율,
 반복 접촉 정책, 밀림 거리/시간/방향을 직접 편집한다. 내부적으로 기존 ENTER_AREA와
@@ -958,6 +980,8 @@ Grip/animation 재로드 실패는 이전 캐시를 보존하며 owner·bone·gr
 
 F1 `Effect Tool V1`과 `Effect Tool V2`는 별도 버튼·창·입력 focus·visibility로 연다. V1은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를, V2는 자기 CPU draft·Resources·Sequencer와 기존 target attachment 도구를 소유한다. 한 도구를 닫아도 다른 도구의 창과 draft를 닫지 않으며 각 Sequencer의 창 ID와 기본 저장 ID를 구분한다. 이전 Effect Composition Workbench enum은 V1 호환 진입점이다. 각 Resource 트리는 자기 V1 또는 V2 root만 표시하고 typed resource open은 해당 도구로 전달한다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
 
+V1 Full Restore의 `Effect Detail → Skill Bloom Intensity`는 선택한 문서 전체의 bloom 강도를 즉시 조절한다. optional JSON root `bloomIntensity`의 기본값은1.3, 범위는유한한0~16이며 `Save Changes`로 저장한다. 같은 스킬의 단계별·clip별·통합 문서도 각각 독립 값이다. 원본 HDR 색과 다른 문서 값은 유지하고 전역 intensity를 추가로 곱하지 않는다. 상세 출력·후처리 경계는 [Effect 문서별 bloom 계약](EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md#문서별-bloom-기여)을 따른다.
+
 Current Effect의 Play All/Family/Element는 미리보기이며 Append만 별도 Effect Sequencer에 occurrence를 추가한다. 캐릭터 skillbinding·Valtan Product·Kouku Pattern/Bundle의 실제 clip sequence는 읽기 전용 모델 참고이며 저장 단위는 `Data/Effects/Sequences/<id>.effectsequence.json`의 stable source reference와 occurrence 시간이다. 해당 Save는 boss Composition이나 skillbinding을 변경하지 않는다. Native V2 leaf Open/Save는 원래 leaf ID/파일을 유지하며 group으로 확장하는 것은 명시적 생성 명령이다. Effect CPU draft 저장에 GPU preview나 타 보스 전체 admission을 선행조건으로 붙이지 않는다.
 
 Kouku의 독립 V1 Effect/Element Resource에 `sourceModelPreview`가 있으면 그 원본 actor·clip·Source In을
@@ -965,15 +989,12 @@ Kouku의 독립 V1 Effect/Element Resource에 `sourceModelPreview`가 있으면 
 빈 Resource용 Stage에서 본 애니메이션을 조회하지 않는다. 이 독립 Preview 정책은 제품 Pattern의
 저장된 animation/history 계약을 변경하지 않는다.
 
-Effect Tool의 scene player는 local player의 실제 commit을 소유한 `CClientReplication`이
-`CAnimationTargetService`에 Bind한다. local spawn·class replacement 성공 뒤 갱신하고,
-despawn·Reset_World·종료는 exact character만 Unbind한다. 실패 rollback과 remote player는
-기존 target을 유지한다. 카메라·입력에 연결된 player와 scene target 등록을 혼동하지 않는다.
-
 쿠크 금빛 이동 축포 `effect.kouku.gate1.intro.gold-trails.full.restore`는 기존 V1 문서의
 4경로·24행, tail 포함 9413ms resource다. Effect Tool의 독립 Play All과 Composition의 명시적
-Append에서 사용하며, 기존 P4는 교정된 `.matinee_0.1/.2` source 참조를 유지한다. Matinee Move는
-SourceTransformTrack, 거리 방출은 SpawnPerUnit, 잔광은 기존 world particle·cascadeRibbonV1가
+Append에서 사용한다. 원본 `.matinee_0.1/.2` source와 사용자 `authored.portal-arrival.1/.2`는
+같은 Move·loop 교정을 소비하며, 현재 P4 `.presentation.20/.21`은 authored 문서를 저장된
+시각·MAP 위치로 참조한다. 독립 문서의 0초 시작과 floor 기준을 기존 P4에 덮지 않는다.
+Matinee Move는 SourceTransformTrack, 거리 방출은 SpawnPerUnit, 잔광은 기존 world particle·cascadeRibbonV1가
 소유한다. 새 gameplay 이동 권위나 별도 렌더 경로를 만들지 않는다. 원본 camera cut 시점의
 위치 도약과 사용자 화면 미확인 범위는
 [금빛 이동 축포 결과 G07](../GB/09-11/2026-09-11_KOUKU_PLAYER_ANCHOR_RAINBOW_FIREWORKS_IMPLEMENTATION_RESULT.md)을 따른다.
@@ -1377,7 +1398,7 @@ WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }
 
 ### 카드미로 진행·관전 계약
 
-MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 80의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
+MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 81의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
 
 카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
 
@@ -1393,3 +1414,13 @@ MainApp은 입장 중 gameplay 입력과 보스 HUD를 보류하고, 종료 뒤 
 Object Tool의 Group Layout은 motion emission의 count·spacing·Delay를 소유한다. Box Detail의 Object/Motion 열기는 stable object ID와 instance ID를 전달하며 자동 preview·저장을 하지 않는다. WORLD Collider/전용 Logic 참조를 함께 바꾸는 저장은 source 변경을 재확인한 뒤 교체하며, 공유 또는 모호한 참조와 미저장 Composition은 이유를 표시하고 기존 문서를 보존한다.
 
 Kouku Animation occurrence의 `sourceStartMs`와 optional `sourceEndMs`는 원본 클립의 선택 구간이며, `sourceEndMs=0` 또는 생략은 원본 끝이다. `startOffsetMs`와 `playMs`는 stage 안의 재생 위치와 길이를 소유한다. `LOOP_TO_WINDOW`는 선택한 source 구간만 반복하며 stage 길이는 별도로 편집한다. Source In/Out은 원본 구간만 바꾸고, 일반 clip 앞 edge는 timeline/source 시작을 함께 자른다. 반복을 켠 뒤 edge 편집은 반복 구간을 유지하며 timeline 길이만 바꾼다. 인접 clip의 Blend In은 이전 clip의 실제 HOLD/LOOP 종료 sample과 보간한다. Preview, 제품 NPC, Server용 bone collider bake는 같은 source 시간 계약을 사용한다. Product는 기존 stage당 animation 하나와 Server action clock을 유지하며 저장 후 기존 publisher를 거쳐 적용한다.
+
+
+## C++ 공용 선언을 소비할 때의 include 경계
+
+`Engine_Defines.h`에 기능별 헤더를 추가해 모든 담당자에게 전파하지 않는다. 렌더 설정은
+`Engine_RenderTypes.h`, 정점은 `Engine_VertexTypes.h`, keyframe은
+`Engine_AnimationTypes.h`, 초기화는 `Engine_InitTypes.h`를 실제 소비 파일에서 포함한다.
+`GameInstance.h`는 렌더 API의 전방 선언만 제공하므로 반환값을 사용하는 CPP는 해당 정의를
+직접 포함한다. Assimp·DirectXTK·FX11·DirectInput도 실제 구현의 의존성으로 선언한다.
+표준 라이브러리 PCH·대형 CPP 분리·병합 후 Build 확인은 `../../Tools/Build/README.md`를 따른다.

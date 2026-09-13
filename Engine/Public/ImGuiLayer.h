@@ -25,12 +25,10 @@ public:
 
 	static bool_t HandleWindowMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-	/* Live (uncommitted) IME composition text for whichever InputText currently has focus.
-	The OS's own floating composition window is suppressed (see imgui_impl_win32.cpp's
-	WM_IME_SETCONTEXT handling), so callers draw this themselves -- typically appended after the
-	committed text, right at the caret, with an underline -- to get the same inline-composition
-	look every other real application already has instead of Windows' floating box. Empty when
-	nothing is being composed. */
+	/* Live (uncommitted) IME text for custom runtime chat/nickname fields to draw inline.
+	The Win32 backend suppresses the OS composition window only for those fields;
+	ordinary ImGui InputText uses the OS composition/candidate UI at its caret.
+	Empty when nothing is being composed. */
 	static const wchar_t* Get_ImeCompositionString();
 
 private:

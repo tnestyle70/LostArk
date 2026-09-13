@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate1.4219801.full.restore",
   "displayName": "쿠크 1관문 불뿜기 전체 복원",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

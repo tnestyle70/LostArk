@@ -1,4 +1,9 @@
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import re
 import copy
@@ -14,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def read(relative: str) -> str:
-    return (ROOT / relative).read_text(encoding="utf-8")
+    return read_source_text(ROOT / relative, encoding="utf-8")
 
 
 class WorldSequenceAuthoringContractTests(unittest.TestCase):

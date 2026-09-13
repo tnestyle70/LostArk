@@ -67,6 +67,7 @@ public:
     void Preserve_ClockDuringAuthoring() { if (m_Active) m_SkipNextPlaybackDelta = true; }
     bool Uses_Resource(const EFFECT_RESOURCE_KEY& key) const;
     bool Refresh_Effects(const EFFECT_RESOURCE_KEY* key = nullptr);
+    bool Set_BloomIntensity(const EFFECT_RESOURCE_KEY& key, float value, std::string& error);
     bool Seek(std::uint32_t clockMs);
     void Pause(bool paused);
     void Stop();
@@ -117,6 +118,8 @@ private:
         bool screenPost = false;
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
         std::shared_ptr<CEffectObject> v1;
+        // Unsaved document scalar survives delayed starts and Play/Stop restaging.
+        std::optional<float> bloomIntensityOverride;
         std::uint32_t v2 = 0u;
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> history;
         std::shared_ptr<V1_ANCHOR_HISTORY> anchorHistory;

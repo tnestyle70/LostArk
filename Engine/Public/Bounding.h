@@ -2,6 +2,8 @@
 
 #include "Engine_Defines.h"
 
+namespace DirectX { inline namespace DX11 { template<typename TVertex> class PrimitiveBatch; struct VertexPositionColor; class BasicEffect; } }
+
 NS_BEGIN(Engine)
 
 class CBounding abstract 

@@ -16,6 +16,7 @@
 
 #include <array>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -42,7 +43,9 @@ class CMvpResultView;
 class CLevel_KakulSaydonArena final : public CLevel
 {
 public:
-	void Set_MapLightAuthoringOverride(std::shared_ptr<CMapLightPresentationRuntime> lights) { m_pMapLightAuthoringOverride = std::move(lights); }
+	void Set_MapLightAuthoringOverride(std::shared_ptr<CMapLightPresentationRuntime> lights);
+	// Called once after Composition Seek/Stop, immediately before world rendering.
+	void Submit_MapLightFrame();
 	bool_t Reload_MapLights();
 	struct KAKUL_STAGE_MARKER final
 	{
@@ -186,11 +189,13 @@ public:
 	   spawned or moved. */
 	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus);
 	bool_t Debug_DespawnArenaBosses(std::string& outStatus);
+	bool_t Debug_ReturnToStart(std::string& outStatus);
+	bool_t Consume_DebugReturnToStartSucceeded() { return std::exchange(m_bDebugStartSucceeded, false); }
 	void Debug_SetSequenceCombatPending(bool_t pending);
 	void Debug_HoldSequenceCombatFade();
 	void Debug_RetireGateActivation(const std::string& reason);
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
-	bool_t Is_DebugGatePending() const { return NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
+	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
 	/* Debug tuning only: the live body of one arena boss archetype. */
 	std::shared_ptr<CNpc> Debug_FindArenaBossNpc(std::string_view archetypeId) const
@@ -378,6 +383,14 @@ private:
 	CDeployPropRuntime m_DeployRuntime;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
+#ifdef _DEBUG
+	std::shared_ptr<CMapLightPresentationRuntime> m_pCompositionMapLightPreview;
+	std::optional<CMapLightDocument> m_CompositionMapLightSource;
+	bool_t m_bCompositionMapLightPreviewActive = false;
+	std::string m_strCompositionWorldPreviewFailurePattern;
+	std::string m_strCompositionWorldPreviewFailure;
+	void Debug_InvalidateCompositionMapLights();
+#endif
 	CWorldSequencePlayer m_SequencePlayer;
 	bool_t m_bWorldObjectReloadPending = false;
 	struct OWNED_WORLD_CUE final
@@ -485,6 +498,8 @@ private:
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
 	bool_t m_bDebugGateFailed = false;
+	bool_t m_bDebugStartPending = false;
+	bool_t m_bDebugStartSucceeded = false;
 	f32_t m_fDebugGatePendingSeconds = 0.f;
 	bool_t m_bSequenceCombatPending = false;
 	bool_t m_bSequenceCombatFadeHeld = false;

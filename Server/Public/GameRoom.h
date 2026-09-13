@@ -43,6 +43,8 @@
 
 namespace LostArk::Server
 {
+	class CServerGameplayContractRunner;
+
 	class CClientSession;
 
 	/* A room never mutates an admitted gameplay catalog. The facade preserves
@@ -187,7 +189,7 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
-		friend int Run_ServerGameplayContractTests(bool, bool, bool, bool);
+		friend class CServerGameplayContractRunner;
 		friend int Run_ServerKoukuSupportSurfaceContractTests();
 		friend int Run_ServerCardMazeContractTests();
         friend int Run_ServerKoukuObjectOverlapContractTests();
@@ -348,6 +350,8 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT Apply_DebugTeleportToPosition(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT Apply_DebugReturnToKoukuStart(
+			SERVER_PLAYER& player, std::uint32_t requestSequence);
 		void Reset_PlayerForDebugTeleport(SERVER_PLAYER& player);
 		void Handle_DebugMarioJump(
 			SESSION_ID sessionId,
@@ -845,7 +849,7 @@ namespace LostArk::Server
 		/* KoukuSaydon arena form of the Debug revert: removes only the entities
 		raised from disabled bootstrap placements (the F1 gate buttons) and
 		their dependents, keeping the statically enabled Gate 1 Kouku. */
-		bool Despawn_KoukuSaydonArenaDebugEntities();
+		bool Despawn_KoukuSaydonArenaDebugEntities(bool allArenaBosses = false);
 		// Bern's Valtan-entry confirm window (right-click a guide NPC). Replaces the
 		// old automatic changeLevel triggerBox OBB fire: validates the requesting
 		// player is still near the named guide NPC world entity, alive, and idle,

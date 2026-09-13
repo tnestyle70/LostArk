@@ -681,6 +681,9 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
         if (!m_V1Factory || !m_V1Release) { m_Status = "Effect document playback owner is unavailable."; return false; }
         if (!m_V1Factory(row.key, row.previewElementIds, root, row.v1, row.previewStartMs, row.durationMs, m_Status) || !row.v1)
         { Release_Row(row); return false; }
+        if (row.bloomIntensityOverride &&
+            !row.v1->Set_BloomIntensity(*row.bloomIntensityOverride, m_Status))
+        { Release_Row(row); return false; }
         // The factory recomputes selected-element tails on Play/Refresh too.
         // Reapply only this temporary target's bounded source cycle afterward.
         if (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == row.key.strStableId &&
@@ -1295,6 +1298,26 @@ bool CEffectAuthoringSequencer::Uses_Resource(const EFFECT_RESOURCE_KEY& key) co
         [&](const EFFECT_ROW& row) { return row.key == key; });
 }
 
+bool CEffectAuthoringSequencer::Set_BloomIntensity(
+    const EFFECT_RESOURCE_KEY& key, const float value, std::string& error)
+{
+    if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ||
+        !key.Is_Valid() || !Is_ValidEffectBloomIntensity(value))
+    { error = "Effect bloomIntensity requires a V1 document and a finite value from 0 to 16."; return false; }
+    // The scalar changes existing draw state only: no stage, seek or clock reset.
+    const auto apply = [&](EFFECT_ROW& row)
+    {
+        if (!(row.key == key)) return true;
+        if (row.v1 && !row.v1->Set_BloomIntensity(value, error)) return false;
+        row.bloomIntensityOverride = value;
+        return true;
+    };
+    if (m_Transient && !apply(*m_Transient)) return false;
+    for (auto& row : m_Effects) if (!apply(row)) return false;
+    error.clear();
+    return true;
+}
+
 bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key)
 {
     Preserve_ClockDuringAuthoring();
@@ -1304,6 +1327,7 @@ bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key)
     if (m_Transient)
     {
         auto staged = *m_Transient; staged.v1.reset(); staged.v2 = 0u; staged.sampledAge = -1.f; staged.snapshot.reset(); staged.anchorHistory.reset();
+        staged.bloomIntensityOverride.reset(); // Reload/Revert use the newly staged document value.
         if (staged.history) staged.history = std::make_shared<EFFECT_V2_PIVOT_HISTORY>(*staged.history);
         if (!Stage_Row(staged, root)) { Release_Row(staged); return false; }
         if (staged.v1 && m_Transient->v1) staged.v1->Preserve_StartingSceneCapture(*m_Transient->v1);
@@ -1317,6 +1341,7 @@ bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key)
         if (key && !(m_Effects[index].key == *key)) continue;
         auto row = m_Effects[index];
         row.v1.reset(); row.v2 = 0u; row.sampledAge = -1.f; row.snapshot.reset(); row.anchorHistory.reset();
+        row.bloomIntensityOverride.reset();
         if (row.history) row.history = std::make_shared<EFFECT_V2_PIVOT_HISTORY>(*row.history);
         staged.emplace_back(index, std::move(row));
     }

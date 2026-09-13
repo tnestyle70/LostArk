@@ -1,4 +1,5 @@
 #include "BinaryAsset/ModelAssetData.h"
+#include "Engine_VertexTypes.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 
 #include <bcrypt.h>

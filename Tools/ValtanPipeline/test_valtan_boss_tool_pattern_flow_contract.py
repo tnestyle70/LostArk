@@ -12,6 +12,10 @@ import xml.etree.ElementTree as ET
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+import sys
+sys.path.insert(0, str(ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain, read_source_text
+
 DOCUMENT_H = ROOT / "Client/Public/ValtanPatternFlowDocument.h"
 DOCUMENT_CPP = ROOT / "Client/Private/ValtanPatternFlowDocument.cpp"
 SERVICE_H = ROOT / "Client/Public/ValtanPatternFlowService.h"
@@ -278,7 +282,7 @@ class ValtanValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         cls.tuning_pipeline = TUNING_PIPELINE_PY.read_text(encoding="utf-8")
         cls.gameplay_publisher = GAMEPLAY_PUBLISHER_PS.read_text(encoding="utf-8")
         cls.server_room_header = SERVER_ROOM_H.read_text(encoding="utf-8")
-        cls.server_room = SERVER_ROOM_CPP.read_text(encoding="utf-8")
+        cls.server_room = read_source_text(SERVER_ROOM_CPP, encoding="utf-8")
         cls.server_gameplay_catalog = SERVER_GAMEPLAY_CATALOG_CPP.read_text(
             encoding="utf-8"
         )
@@ -287,7 +291,7 @@ class ValtanValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             + SERVER_BRAIN_CPP.read_text(encoding="utf-8")
         )
         cls.server_app = SERVER_APP_CPP.read_text(encoding="utf-8")
-        cls.server_tests = SERVER_TESTS_CPP.read_text(encoding="utf-8")
+        cls.server_tests = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")
         cls.inventory = [row["patternId"] for row in cls.gameplay["patterns"]]
         cls.sample_pattern_ids = [
             "VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_FLOOR_WIPE_130",

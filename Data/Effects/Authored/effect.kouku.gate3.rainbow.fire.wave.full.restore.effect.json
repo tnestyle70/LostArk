@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.rainbow.fire.wave.full.restore",
   "displayName": "Kouku Gate3 Rainbow Fire Wave Full Restore",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

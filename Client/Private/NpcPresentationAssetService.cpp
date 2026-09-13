@@ -25,6 +25,17 @@ namespace
 	std::map<uint32_t, std::set<std::string, std::less<>>> g_ReadyAnimSets;
 	std::unordered_set<uint32_t> g_NpcObjectReadyLevels;
 
+    std::string Resolve_SaydonWeaponClip(const std::string_view bodyClip)
+    {
+        if (bodyClip == "rpct00_att_battle_17_01")
+            return "wp_mn_rpct_05_sk.ao_att_battle_17_01";
+        constexpr std::string_view giantPrefix = "mn_rpct_06_sk.ao_";
+        if (!bodyClip.starts_with(giantPrefix)) return {};
+        std::string suffix(bodyClip.substr(giantPrefix.size()));
+        if (suffix.starts_with("att_battle_1_") || suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
+        return "wprpct06_" + suffix;
+    }
+
 	Engine::wstring_t Derive_ModelTag(const std::string& modelAssetId)
 	{
 		const std::filesystem::path assetPath(modelAssetId);
@@ -56,11 +67,9 @@ void Client::CNpcPresentationAssetService::Synchronize_SaydonHammerPose(
         {
             weaponIndex = UINT32_MAX; weaponTicks = 0.f;
             const char* bodyName = body->Get_AnimationName(bodyIndex);
-            constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";
-            if (!bodyName || !std::string_view(bodyName).starts_with(prefix)) return;
-            std::string suffix(std::string_view(bodyName).substr(prefix.size()));
-            if (suffix.starts_with("att_battle_1_") || suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
-            const std::string clip = "wprpct06_" + suffix;
+            if (!bodyName) return;
+            const std::string clip = Resolve_SaydonWeaponClip(bodyName);
+            if (clip.empty()) return;
             for (uint32_t i = 0; i < weapon->Get_NumAnimations(); ++i)
             {
                 if (clip != weapon->Get_AnimationName(i)) continue;
@@ -82,14 +91,7 @@ void Client::CNpcPresentationAssetService::Synchronize_SaydonHammerPose(
     weapon->Clear_AnimationTransitionPose();
 	const auto bodyIndex = body->Get_CurrentAnimIndex();
 	const char* bodyName = body->Get_AnimationName(bodyIndex);
-	constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";
-	std::string weaponClip;
-	if (bodyName && std::string_view(bodyName).starts_with(prefix))
-	{
-		std::string suffix(std::string_view(bodyName).substr(prefix.size()));
-		if (suffix.starts_with("att_battle_1_") || suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
-		weaponClip = "wprpct06_" + suffix;
-	}
+	const std::string weaponClip = bodyName ? Resolve_SaydonWeaponClip(bodyName) : std::string{};
 	uint32_t weaponIndex = 0u;
 	for (; weaponIndex < weapon->Get_NumAnimations(); ++weaponIndex)
 		if (const char* name = weapon->Get_AnimationName(weaponIndex); name && weaponClip == name) break;

@@ -1,4 +1,8 @@
 #include "Animation.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/scene.h"
+#pragma pop_macro("new")
 #include "Profiler.h"
 #include "GameInstance.h"
 #include "BinaryAsset/ModelAssetData.h"
@@ -98,10 +102,13 @@ bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<sh
 			leftKeyFrameIndex = 0;
 	}
 
+	if (m_SeparateTrackIndices.size() != m_iNumChannels)
+		m_SeparateTrackIndices.resize(m_iNumChannels);
+
 	/* 현재 재생위치에 맞게 뼈들의 상태행렬을 갱신해준다. */
 	for (uint32_t i = 0; i < m_iNumChannels; i++)
 	{
-		m_Channels[i]->Update_TransformationMatrix(m_fCurrentTrackPosition, Bones, &m_iLeftKeyFrameIndices[i]);
+		m_Channels[i]->Update_TransformationMatrix(m_fCurrentTrackPosition, Bones, &m_iLeftKeyFrameIndices[i], &m_SeparateTrackIndices[i]);
 	}
 
 	return isFinished;

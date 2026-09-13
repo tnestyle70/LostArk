@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 352,
+  "sourceRevision": 382,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -656,7 +656,10 @@
             7,
             10
           ],
-          "faceCenterYawOffsetDegrees": -90.0
+          "faceCenterYawOffsetDegrees": -90.0,
+          "countPerPlayer": 0,
+          "radiusM": 0.0,
+          "effectLifetimeMs": 0
         }
       ],
       "worldSequences": [],
@@ -2915,7 +2918,7 @@
           "stageId": "STAGE_1",
           "actionId": "KAKULSAYDON_G1_PATTERN_9.stage.1",
           "stageKind": "ACTIVE",
-          "durationMs": 2000,
+          "durationMs": 2647,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -22662,7 +22665,10 @@
           ],
           "clonePatternId": "",
           "clockHours": [],
-          "faceCenterYawOffsetDegrees": 0.0
+          "faceCenterYawOffsetDegrees": 0.0,
+          "countPerPlayer": 0,
+          "radiusM": 0.0,
+          "effectLifetimeMs": 0
         },
         {
           "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.2",
@@ -22677,7 +22683,10 @@
           ],
           "clonePatternId": "",
           "clockHours": [],
-          "faceCenterYawOffsetDegrees": 0.0
+          "faceCenterYawOffsetDegrees": 0.0,
+          "countPerPlayer": 0,
+          "radiusM": 0.0,
+          "effectLifetimeMs": 0
         },
         {
           "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.3",
@@ -22692,7 +22701,10 @@
           ],
           "clonePatternId": "",
           "clockHours": [],
-          "faceCenterYawOffsetDegrees": 0.0
+          "faceCenterYawOffsetDegrees": 0.0,
+          "countPerPlayer": 0,
+          "radiusM": 0.0,
+          "effectLifetimeMs": 0
         },
         {
           "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.4",
@@ -22707,7 +22719,10 @@
           ],
           "clonePatternId": "",
           "clockHours": [],
-          "faceCenterYawOffsetDegrees": 0.0
+          "faceCenterYawOffsetDegrees": 0.0,
+          "countPerPlayer": 0,
+          "radiusM": 0.0,
+          "effectLifetimeMs": 0
         },
         {
           "triggerId": "KAKULSAYDON_G1_PATTERN_28.logic.5",
@@ -22722,7 +22737,10 @@
           ],
           "clonePatternId": "",
           "clockHours": [],
-          "faceCenterYawOffsetDegrees": 0.0
+          "faceCenterYawOffsetDegrees": 0.0,
+          "countPerPlayer": 0,
+          "radiusM": 0.0,
+          "effectLifetimeMs": 0
         }
       ],
       "worldSequences": [],
@@ -23602,7 +23620,8 @@
       "displayName": "세이튼_쇼타임",
       "actionId": "kakulsaydon.g1.pattern.35",
       "sourceActionIds": [
-        4219985
+        4219985,
+        4219939
       ],
       "bossArchetypeIds": [
         "BOSS_KAKULSAYDON_BINGO_SAYDON",
@@ -23663,10 +23682,70 @@
           "downMs": 0
         },
         {
+          "stageId": "STAGE_13",
+          "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.13",
+          "stageKind": "ACTIVE",
+          "durationMs": 1400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_22",
+          "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.22",
+          "stageKind": "ACTIVE",
+          "durationMs": 3809,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
           "stageId": "STAGE_4",
           "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.4",
           "stageKind": "ACTIVE",
-          "durationMs": 9733,
+          "durationMs": 8722,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_16",
+          "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.16",
+          "stageKind": "ACTIVE",
+          "durationMs": 933,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -23687,26 +23766,6 @@
           "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.5",
           "stageKind": "ACTIVE",
           "durationMs": 9733,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_6",
-          "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.6",
-          "stageKind": "ACTIVE",
-          "durationMs": 4833,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -23863,26 +23922,6 @@
           "downMs": 0
         },
         {
-          "stageId": "STAGE_13",
-          "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.13",
-          "stageKind": "ACTIVE",
-          "durationMs": 1400,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
           "stageId": "STAGE_14",
           "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.14",
           "stageKind": "ACTIVE",
@@ -23911,7 +23950,7 @@
           "sequenceInstanceId": "world.object.instance.kouku.saydon_showtime_gun_left",
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.world.1",
           "startMs": 0,
-          "durationMs": 50231,
+          "durationMs": 49359,
           "playbackSpeed": 1.0,
           "positionOffset": [
             0.0,
@@ -23946,7 +23985,7 @@
           "sequenceInstanceId": "world.object.instance.kouku.saydon_showtime_gun_right",
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.world.2",
           "startMs": 0,
-          "durationMs": 50231,
+          "durationMs": 49360,
           "playbackSpeed": 1.0,
           "positionOffset": [
             0.0,
@@ -24347,7 +24386,7 @@
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.1",
       "displayName": "세이튼등장_동시",
-      "durationMs": 7400,
+      "durationMs": 7981,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.1.member.1",

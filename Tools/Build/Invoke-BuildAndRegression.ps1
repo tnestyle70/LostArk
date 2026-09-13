@@ -6,6 +6,8 @@ param(
     [string]$Profile = 'Product',
     [string]$MSBuildPath = '',
     [string]$BuildLogDirectory = '',
+    [ValidateRange(0, 64)]
+    [int]$MaxCompilerProcesses = 0,
     [switch]$SkipBuild,
     [string]$ResourceRoot = '',
     [switch]$AllowLocalEffectResources,
@@ -49,6 +51,7 @@ $valtanPipeline = Join-Path $repoRoot `
     'Tools\ValtanPipeline\valtan_tuning_pipeline.py'
 Import-Module $domainPipelinePath -Force
 Import-Module $productOutputGuardPath -Force
+Import-Module (Join-Path $PSScriptRoot 'BuildIncrementalDiagnostics.psm1') -Force
 $buildDomainManifest = if ($includeCore) { Read-BuildDomainManifest $domainManifestPath } else { $null }
 $script:buildStepRecords = [Collections.Generic.List[object]]::new()
 $script:buildDomainResults = [Collections.Generic.List[object]]::new()
@@ -57,6 +60,8 @@ $script:buildRunTimer = [Diagnostics.Stopwatch]::StartNew()
 $script:buildStartGitIdentity = $null
 $script:buildStartProductSourceInputSha256 = ''
 $script:buildToolchain = $null
+$script:productCompileEvidencePath = ''
+$script:buildFailure = ''
 
 function Get-ValtanRepositorySourceRevision {
     $manifestText = (& python $valtanPipeline --repository-root $repoRoot `
@@ -102,6 +107,33 @@ function Add-BuildStepRecord {
     }
     if ($null -ne $Details) { $record.details = $Details }
     $script:buildStepRecords.Add([pscustomobject]$record) | Out-Null
+}
+
+function Write-ProductCompileEvidence {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('PASS', 'FAIL')][string]$Result,
+        [string[]]$MissingRuntimeInputs = @()
+    )
+
+    $compileResult = [ordered]@{
+        schema = 'lostark.compile-result'
+        formatVersion = 1
+        configuration = $Configuration
+        profile = $Profile
+        result = $Result
+        failure = $script:buildFailure
+        skippedBuild = [bool]$SkipBuild
+        startedUtc = $script:buildStartedUtc
+        elapsedMs = $script:buildRunTimer.ElapsedMilliseconds
+        toolchain = $script:buildToolchain
+        steps = @($script:buildStepRecords)
+        missingRuntimeInputs = @($MissingRuntimeInputs)
+    }
+    $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+    $path = Join-Path $buildEvidenceRoot "$stamp-$($Configuration.ToLowerInvariant())-product.json"
+    Write-BuildAtomicJson $path $compileResult
+    $script:productCompileEvidencePath = $path
+    Write-Host "Compile result: $path"
 }
 
 function Get-InstallationMSBuild {
@@ -228,14 +260,24 @@ function Invoke-MSBuildProject {
             "/flp:LogFile=$($buildLogs.diagnosticLog);Verbosity=diagnostic;Encoding=UTF-8")
     }
     $before = @(Get-MSBuildProjectState $Project)
+    $projectPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $Project))
+    $beforeOutputs = $null
+    try { $beforeOutputs = Get-BuildOutputSnapshot $projectPath $Configuration }
+    catch { Write-Warning "Output metadata could not be read for ${Project}: $($_.Exception.Message)" }
+    $compilerArguments = @()
+    if ($MaxCompilerProcesses -gt 0) {
+        $compilerArguments = @("/p:CL_MPCount=$MaxCompilerProcesses")
+    }
     $timer = [Diagnostics.Stopwatch]::StartNew()
     $startedUtc = [DateTime]::UtcNow.ToString('o')
     $result = 'FAIL'
     try {
-        & $MSBuild $Project /m /nodeReuse:false /t:Build `
+        # Projects are already ordered here with references disabled. Keep one
+        # project node and let the shared /MP budget parallelize source files.
+        & $MSBuild $Project /m:1 /nodeReuse:false /t:Build `
             "/p:Configuration=$Configuration" /p:Platform=x64 `
             /p:PreferredToolArchitecture=x64 /p:WindowsSDKToolArchitecture=Native64Bit `
-            /p:BuildProjectReferences=false /v:minimal @loggingArguments
+            /p:BuildProjectReferences=false /v:minimal @compilerArguments @loggingArguments
         if ($global:LASTEXITCODE -ne 0) {
             throw "Build failed: $Project"
         }
@@ -243,16 +285,48 @@ function Invoke-MSBuildProject {
     }
     finally {
         $timer.Stop()
+        $after = @(Get-MSBuildProjectState $Project)
+        $outputChanges = $null
+        $rebuildReasons = @()
+        $diagnosticError = ''
+        try {
+            if ($null -ne $beforeOutputs) {
+                $afterOutputs = Get-BuildOutputSnapshot $projectPath $Configuration
+                $outputChanges = Compare-BuildOutputSnapshot $beforeOutputs $afterOutputs
+            }
+            if ($null -ne $buildLogs) {
+                $rebuildReasons = @(Get-MSBuildIncrementalReasons $buildLogs.diagnosticLog)
+            }
+        }
+        catch { $diagnosticError = $_.Exception.Message }
+        $beforeIdentity = @($before | ForEach-Object { $_.path; $_.state }) -join "`n"
+        $afterIdentity = @($after | ForEach-Object { $_.path; $_.state }) -join "`n"
+        $trackingStateChanged = $beforeIdentity -cne $afterIdentity
         Add-BuildStepRecord "msbuild:$Project" $result $timer.ElapsedMilliseconds `
             ([pscustomobject][ordered]@{
                 startedUtc = $startedUtc
                 completedUtc = [DateTime]::UtcNow.ToString('o')
                 toolchain = $script:buildToolchain
                 logs = $buildLogs
+                maxProjectNodes = 1
+                compilerProcessOverride = $MaxCompilerProcesses
                 projectStateBefore = $before
-                projectStateAfter = @(Get-MSBuildProjectState $Project)
+                projectStateAfter = $after
+                trackingStateChanged = $trackingStateChanged
+                outputChanges = $outputChanges
+                rebuildReasonSamples = $rebuildReasons
+                diagnosticError = $diagnosticError
             })
         Write-Host "Build phase ${Project}: $result in $($timer.ElapsedMilliseconds) ms."
+        if ($null -ne $outputChanges) {
+            Write-Host ("Outputs written: OBJ={0}, PCH={1}, CSO={2}, binaries={3}; tracking identity changed={4}." -f `
+                $outputChanges.objectWrites, $outputChanges.precompiledHeaderWrites, `
+                $outputChanges.shaderWrites, $outputChanges.binaryWrites, $trackingStateChanged)
+        }
+        if ($trackingStateChanged -and $before.Count -gt 0) {
+            Write-Host 'MSBuild tracking identity changed. Compare projectStateBefore/After for toolset, SDK and configuration changes.'
+        }
+        if ($diagnosticError) { Write-Warning "Build diagnostics unavailable: $diagnosticError" }
     }
 }
 
@@ -435,23 +509,8 @@ try {
             Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client'
         }
         $script:buildRunTimer.Stop()
-        $compileResult = [ordered]@{
-            schema = 'lostark.compile-result'
-            formatVersion = 1
-            configuration = $Configuration
-            profile = $Profile
-            skippedBuild = [bool]$SkipBuild
-            startedUtc = $script:buildStartedUtc
-            elapsedMs = $script:buildRunTimer.ElapsedMilliseconds
-            toolchain = $script:buildToolchain
-            steps = @($script:buildStepRecords)
-            missingRuntimeInputs = @($missingRuntimeInputs)
-        }
-        $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
-        $compileResultPath = Join-Path $buildEvidenceRoot "$stamp-$($Configuration.ToLowerInvariant())-product.json"
-        Write-BuildAtomicJson $compileResultPath $compileResult
+        Write-ProductCompileEvidence 'PASS' @($missingRuntimeInputs)
         Write-Host "Product compile/deploy completed: $Configuration (SkipBuild=$([bool]$SkipBuild))"
-        Write-Host "Compile result: $compileResultPath"
         Write-Host 'Data publishing and runtime diagnostics were not run. Visual/audio review remains user-operated.'
         return
     }
@@ -675,10 +734,18 @@ try {
 	Write-Host "Build and regression completed: $Configuration / $Profile"
     Write-Host 'Runtime level validation uses Framework.slnLaunch (Server + Client).'
 }
+catch {
+    $script:buildFailure = $_.Exception.Message
+    throw
+}
 finally {
     [Environment]::SetEnvironmentVariable(
         'LOSTARK_RESOURCE_ROOT', $previousResourceRoot, 'Process')
     Pop-Location
     $script:buildRunTimer.Stop()
+    if (-not $includeCore -and -not $script:productCompileEvidencePath) {
+        try { Write-ProductCompileEvidence 'FAIL' }
+        catch { Write-Warning "Could not write failed build evidence: $($_.Exception.Message)" }
+    }
     $productRunLock.Dispose()
 }

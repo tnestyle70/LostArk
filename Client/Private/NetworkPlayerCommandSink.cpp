@@ -41,6 +41,11 @@ bool Client::CNetworkPlayerCommandSink::Request_DebugTeleportToPosition(
 		requestSequence, pickedX, pickedY, pickedZ);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugReturnToKoukuStart(const std::uint32_t requestSequence)
+{
+	return CNetworkManager::Get().Send_DebugTeleportToPlacement(requestSequence, "player.spawn.kakul.party01");
+}
+
 bool Client::CNetworkPlayerCommandSink::Consume_DebugTeleportResult(
 	LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result)
 {

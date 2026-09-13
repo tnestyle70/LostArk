@@ -10,6 +10,11 @@ changed.
 """
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text, cpp_domain_paths, cpp_domain_header_paths
+
 
 import argparse
 from collections import Counter
@@ -147,7 +152,7 @@ def require(condition: bool, message: str) -> None:
 
 def load_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8-sig"))
+        value = json.loads(read_source_text(path, encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError) as error:
         raise InventoryError(f"cannot read JSON: {path}: {error}") from error
     require(isinstance(value, dict), f"JSON root is not an object: {path}")
@@ -480,7 +485,9 @@ def source_wave_cues(cues: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def verify_code_witnesses() -> list[dict[str, Any]]:
-    paths = (MATERIAL_TEMPLATE, DOCUMENT_RENDERER, FAMILY_SHADER)
+    paths = ((MATERIAL_TEMPLATE, FAMILY_SHADER) +
+             cpp_domain_paths(ROOT / "Client", "Effect_DocumentRenderer") +
+             cpp_domain_header_paths(ROOT / "Client", "Effect_DocumentRenderer"))
     text_by_path = {
         path: path.read_text(encoding="utf-8-sig", errors="strict") for path in paths
     }
