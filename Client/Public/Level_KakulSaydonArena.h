@@ -561,10 +561,17 @@ public:
 	/* F1 Developer Tools only -- the award page has no gameplay trigger yet. */
 	/* Plays the dungeon-clear overlay and hands off to the award page when it ends,
 	   the order retail runs them in. */
+	/* Starts the dungeon-clear screen and plays its cue. One owner for "the clear
+	begins", the way CLevel_ValtanArena::Trigger_RaidClear already is, so the cue
+	cannot go missing again when the product path starts calling it. */
+	void Trigger_RaidClear();
 	void Debug_Play_ClearThenMvp();
 	void Debug_Show_MvpResult();
 	void Debug_Hide_MvpResult();
 	bool_t Debug_Is_MvpResultVisible() const;
+	/* The award page's character panels are off-screen draws, so they run in
+	   CMainApp's portrait phase rather than with the rest of this level. */
+	void Render_MvpPortraits();
 
 public:
 	static unique_ptr<CLevel_KakulSaydonArena> Create(

@@ -1,0 +1,465 @@
+{
+  "formatVersion": 1,
+  "source": "componentsv2 Shared_MvpClassBigSymbol frame labels class_N; shareiconimage goldClassIcon_<CODE>",
+  "note": "classKey is the frame label number the host gotoAndStop()s, not a CHARACTER_CLASS_ID. Offsets are the icon's own placement inside the symbol, in stage pixels.",
+  "bigSymbols": [
+    {
+      "label": "class_1",
+      "classKey": 1,
+      "icon": "MvpClassIcon_01",
+      "offsetX": -33.0,
+      "offsetY": 3.0
+    },
+    {
+      "label": "class_2",
+      "classKey": 2,
+      "icon": "MvpClassIcon_02",
+      "offsetX": 0.0,
+      "offsetY": 2.0
+    },
+    {
+      "label": "class_3",
+      "classKey": 3,
+      "icon": "MvpClassIcon_03",
+      "offsetX": 4.0,
+      "offsetY": 7.0
+    },
+    {
+      "label": "class_4",
+      "classKey": 4,
+      "icon": "MvpClassIcon_04",
+      "offsetX": -9.0,
+      "offsetY": 2.0
+    },
+    {
+      "label": "class_5",
+      "classKey": 5,
+      "icon": "MvpClassIcon_05",
+      "offsetX": -6.0,
+      "offsetY": 6.0
+    },
+    {
+      "label": "class_6",
+      "classKey": 6,
+      "icon": "MvpClassIcon_06",
+      "offsetX": -3.0,
+      "offsetY": -2.0
+    },
+    {
+      "label": "class_7",
+      "classKey": 7,
+      "icon": "MvpClassIcon_07",
+      "offsetX": 8.0,
+      "offsetY": -6.0
+    },
+    {
+      "label": "class_8",
+      "classKey": 8,
+      "icon": "MvpClassIcon_08",
+      "offsetX": -7.0,
+      "offsetY": 5.0
+    },
+    {
+      "label": "class_9",
+      "classKey": 9,
+      "icon": "MvpClassIcon_09",
+      "offsetX": -5.0,
+      "offsetY": 7.0
+    },
+    {
+      "label": "class_10",
+      "classKey": 10,
+      "icon": "MvpClassIcon_10",
+      "offsetX": 2.0,
+      "offsetY": -5.0
+    },
+    {
+      "label": "class_11",
+      "classKey": 11,
+      "icon": "MvpClassIcon_11",
+      "offsetX": -5.0,
+      "offsetY": 1.0
+    },
+    {
+      "label": "class_12",
+      "classKey": 12,
+      "icon": "MvpClassIcon_12",
+      "offsetX": 13.0,
+      "offsetY": 4.0
+    },
+    {
+      "label": "class_13",
+      "classKey": 13,
+      "icon": "MvpClassIcon_13",
+      "offsetX": -6.0,
+      "offsetY": -1.0
+    },
+    {
+      "label": "class_14",
+      "classKey": 14,
+      "icon": "MvpClassIcon_14",
+      "offsetX": -9.0,
+      "offsetY": -2.0
+    },
+    {
+      "label": "class_15",
+      "classKey": 15,
+      "icon": "MvpClassIcon_15",
+      "offsetX": 7.0,
+      "offsetY": 0.0
+    },
+    {
+      "label": "class_16",
+      "classKey": 16,
+      "icon": "MvpClassIcon_16",
+      "offsetX": -14.0,
+      "offsetY": 2.0
+    },
+    {
+      "label": "class_17",
+      "classKey": 17,
+      "icon": "MvpClassIcon_17",
+      "offsetX": -10.0,
+      "offsetY": -2.0
+    },
+    {
+      "label": "class_18",
+      "classKey": 18,
+      "icon": "MvpClassIcon_18",
+      "offsetX": -5.0,
+      "offsetY": -9.0
+    },
+    {
+      "label": "class_19",
+      "classKey": 19,
+      "icon": "MvpClassIcon_19",
+      "offsetX": -16.0,
+      "offsetY": 14.0
+    },
+    {
+      "label": "class_20",
+      "classKey": 20,
+      "icon": "MvpClassIcon_20",
+      "offsetX": -2.0,
+      "offsetY": -9.0
+    },
+    {
+      "label": "class_21",
+      "classKey": 21,
+      "icon": "MvpClassIcon_21",
+      "offsetX": -10.0,
+      "offsetY": 6.0
+    },
+    {
+      "label": "class_22",
+      "classKey": 22,
+      "icon": "MvpClassIcon_22",
+      "offsetX": 0.0,
+      "offsetY": 0.0
+    },
+    {
+      "label": "class_23",
+      "classKey": 23,
+      "icon": "MvpClassIcon_23",
+      "offsetX": 3.0,
+      "offsetY": 8.0
+    },
+    {
+      "label": "class_24",
+      "classKey": 24,
+      "icon": "MvpClassIcon_24",
+      "offsetX": 5.0,
+      "offsetY": 0.0
+    },
+    {
+      "label": "class_25",
+      "classKey": 25,
+      "icon": "MvpClassIcon_25",
+      "offsetX": 4.0,
+      "offsetY": -7.0
+    },
+    {
+      "label": "class_26",
+      "classKey": 26,
+      "icon": "MvpClassIcon_26",
+      "offsetX": -1.0,
+      "offsetY": -1.0
+    },
+    {
+      "label": "class_27",
+      "classKey": 27,
+      "icon": "MvpClassIcon_27",
+      "offsetX": -18.0,
+      "offsetY": -8.0
+    },
+    {
+      "label": "class_28",
+      "classKey": 28,
+      "icon": "MvpClassIcon_28",
+      "offsetX": 3.0,
+      "offsetY": 6.0
+    },
+    {
+      "label": "class_29",
+      "classKey": 29,
+      "icon": "MvpClassIcon_29",
+      "offsetX": -1.0,
+      "offsetY": 2.0
+    },
+    {
+      "label": "class_30",
+      "classKey": 30,
+      "icon": "MvpClassIcon_30",
+      "offsetX": -4.0,
+      "offsetY": 1.0
+    },
+    {
+      "label": "class_31",
+      "classKey": 31,
+      "icon": "MvpClassIcon_31",
+      "offsetX": -4.0,
+      "offsetY": 1.0
+    },
+    {
+      "label": "class_32",
+      "classKey": 32,
+      "icon": "MvpClassIcon_32",
+      "offsetX": 2.0,
+      "offsetY": -7.0
+    },
+    {
+      "label": "class_33",
+      "classKey": 33,
+      "icon": "MvpClassIcon_33",
+      "offsetX": 7.0,
+      "offsetY": -4.0
+    },
+    {
+      "label": "class_34",
+      "classKey": 34,
+      "icon": "MvpClassIcon_34",
+      "offsetX": 14.0,
+      "offsetY": -12.0
+    },
+    {
+      "label": "class_35",
+      "classKey": 35,
+      "icon": "MvpClassIcon_35",
+      "offsetX": -13.0,
+      "offsetY": 6.0
+    },
+    {
+      "label": "class_36",
+      "classKey": 36,
+      "icon": "MvpClassIcon_36",
+      "offsetX": -3.0,
+      "offsetY": 0.0
+    },
+    {
+      "label": "class_37",
+      "classKey": 37,
+      "icon": "MvpClassIcon_37",
+      "offsetX": -6.0,
+      "offsetY": -8.0
+    },
+    {
+      "label": "class_38",
+      "classKey": 38,
+      "icon": "MvpClassIcon_38",
+      "offsetX": 1.0,
+      "offsetY": 2.0
+    },
+    {
+      "label": "class_40",
+      "classKey": 40,
+      "icon": "MvpClassIcon_40",
+      "offsetX": -3.0,
+      "offsetY": -9.0
+    },
+    {
+      "label": "class_41",
+      "classKey": 41,
+      "icon": "MvpClassIcon_41",
+      "offsetX": 0.0,
+      "offsetY": -7.0
+    }
+  ],
+  "goldIcons": [
+    {
+      "characterId": 77,
+      "symbol": "goldClassIcon_BLADE"
+    },
+    {
+      "characterId": 75,
+      "symbol": "goldClassIcon_BSW"
+    },
+    {
+      "characterId": 76,
+      "symbol": "goldClassIcon_Breaker"
+    },
+    {
+      "characterId": 74,
+      "symbol": "goldClassIcon_DELAIN"
+    },
+    {
+      "characterId": 73,
+      "symbol": "goldClassIcon_DEMONIC"
+    },
+    {
+      "characterId": 72,
+      "symbol": "goldClassIcon_DK"
+    },
+    {
+      "characterId": 71,
+      "symbol": "goldClassIcon_Druid"
+    },
+    {
+      "characterId": 70,
+      "symbol": "goldClassIcon_Fighter"
+    },
+    {
+      "characterId": 69,
+      "symbol": "goldClassIcon_FighterM"
+    },
+    {
+      "characterId": 68,
+      "symbol": "goldClassIcon_Gunner"
+    },
+    {
+      "characterId": 67,
+      "symbol": "goldClassIcon_Gunslinger"
+    },
+    {
+      "characterId": 66,
+      "symbol": "goldClassIcon_HKW"
+    },
+    {
+      "characterId": 65,
+      "symbol": "goldClassIcon_HolyKnight"
+    },
+    {
+      "characterId": 64,
+      "symbol": "goldClassIcon_Hunter"
+    },
+    {
+      "characterId": 63,
+      "symbol": "goldClassIcon_Reaper"
+    },
+    {
+      "characterId": 59,
+      "symbol": "goldClassIcon_SP_M"
+    },
+    {
+      "characterId": 62,
+      "symbol": "goldClassIcon_Scouter"
+    },
+    {
+      "characterId": 61,
+      "symbol": "goldClassIcon_Sorceress"
+    },
+    {
+      "characterId": 60,
+      "symbol": "goldClassIcon_SoulEater"
+    },
+    {
+      "characterId": 58,
+      "symbol": "goldClassIcon_Specialist"
+    },
+    {
+      "characterId": 57,
+      "symbol": "goldClassIcon_Striker"
+    },
+    {
+      "characterId": 53,
+      "symbol": "goldClassIcon_WM_M"
+    },
+    {
+      "characterId": 52,
+      "symbol": "goldClassIcon_WW"
+    },
+    {
+      "characterId": 56,
+      "symbol": "goldClassIcon_Warrior"
+    },
+    {
+      "characterId": 54,
+      "symbol": "goldClassIcon_Wizard"
+    },
+    {
+      "characterId": 51,
+      "symbol": "goldClassIcon_YinyangMaster"
+    },
+    {
+      "characterId": 55,
+      "symbol": "goldClassIcon_weatherMaster"
+    }
+  ],
+  "classes": [
+    {
+      "networkClassId": "WARLORD",
+      "classKey": 9,
+      "label": "class_9",
+      "icon": "MvpClassIcon_09",
+      "offsetX": -5.0,
+      "offsetY": 7.0,
+      "sourceCode": "GL",
+      "width": 193,
+      "height": 181,
+      "bigAsset": "UI/MVP/ClassIcons/MvpClassIcon_09.png",
+      "smallAsset": "UI/MVP/ClassIcons/MvpClassIconSmall_09.png"
+    },
+    {
+      "networkClassId": "ARTIST",
+      "classKey": 23,
+      "label": "class_23",
+      "icon": "MvpClassIcon_23",
+      "offsetX": 3.0,
+      "offsetY": 8.0,
+      "sourceCode": "YS",
+      "width": 178,
+      "height": 179,
+      "bigAsset": "UI/MVP/ClassIcons/MvpClassIcon_23.png",
+      "smallAsset": "UI/MVP/ClassIcons/MvpClassIconSmall_23.png"
+    },
+    {
+      "networkClassId": "LANCE_MASTER",
+      "classKey": 25,
+      "label": "class_25",
+      "icon": "MvpClassIcon_25",
+      "offsetX": 4.0,
+      "offsetY": -7.0,
+      "sourceCode": "LM",
+      "width": 180,
+      "height": 209,
+      "bigAsset": "UI/MVP/ClassIcons/MvpClassIcon_25.png",
+      "smallAsset": "UI/MVP/ClassIcons/MvpClassIconSmall_25.png"
+    },
+    {
+      "networkClassId": "DIMENSIONMASTER",
+      "classKey": 41,
+      "label": "class_41",
+      "icon": "MvpClassIcon_41",
+      "offsetX": 0.0,
+      "offsetY": -7.0,
+      "sourceCode": null,
+      "width": 184,
+      "height": 206,
+      "bigAsset": "UI/MVP/ClassIcons/MvpClassIcon_41.png",
+      "smallAsset": "UI/MVP/ClassIcons/MvpClassIconSmall_41.png"
+    }
+  ],
+  "placement": {
+    "bigSymbol": {
+      "stageX": 485.0,
+      "stageY": 616.0,
+      "fadeInStartFrame": 100,
+      "fadeInEndFrame": 115,
+      "holdAlpha": 1.0
+    },
+    "partyColumnIcon": {
+      "localX": 135.0,
+      "localY": 673.0,
+      "scale": 0.73526
+    }
+  }
+}

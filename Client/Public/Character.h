@@ -212,6 +212,11 @@ public:
 
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
+	/* Shows or hides every weapon part this class carries. Weapons are their own part
+	list, outside the equipment visibility rule, so this is what the character-creation
+	preview already used to strip them; the MVP award page needs the same thing without
+	the rest of that preview (retail poses all four winners unarmed but in their gear). */
+	void Set_WeaponPartsVisible(bool_t isVisible);
 	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
 	bool_t Try_SampleTargetGround(
 		f32_t x,

@@ -274,6 +274,10 @@ private:
 	since that edge -- negative means the overlay is not currently showing. */
 	bool_t m_bRaidClearWasBossDead = false;
 	f32_t m_fRaidClearElapsedSeconds = -1.f;
+	/* The clear cue fires once the overlay's empty lead-in is over, not when the
+	clock starts, so this latches instead of testing a frame crossing the test-mode
+	jump to RAIDCLEAR_TOTAL_SECONDS would trip. */
+	bool_t m_bRaidClearCuePlayed = false;
 	// RaidClear_ReturnButton's own request sequence, same one-writer pattern as
 	// CLevel_Bern::m_iNextNpcEntryConfirmSequence.
 	uint32_t m_iNextReturnToBernSequence = 1u;

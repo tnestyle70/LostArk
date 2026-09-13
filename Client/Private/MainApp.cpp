@@ -2198,6 +2198,10 @@ HRESULT CMainApp::Render()
 		(void)m_pCharacterInfoView->Render_Portrait();
 	if (nullptr != m_pAvatarBookView)
 		(void)m_pAvatarBookView->Render_Portrait();
+	if (auto* pArena = CLevel_KakulSaydonArena::Get_Active();
+		nullptr != pArena &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		pArena->Render_MvpPortraits();
 	}
 
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
@@ -6273,10 +6277,15 @@ HRESULT CMainApp::Ready_Fonts()
 		bar-count text, which are both pure digits/ASCII. User picked this one from the same 8-font
 		comparison gallery that settled Font_EventDamage. */
 		{ TEXT("Font_159"), L"159.spritefont" },
-		/* Back to the retail mapping: font.lpk's Korean Binaries/Fonts/FontMap.xml binds
-		$eventDamageFont to BMKkubulimTTF.ttf. This tag was on YoonGasiIIM after a side-by-side
-		of all 8 Resources/Fonts candidates, before that map was recovered. */
-		{ TEXT("Font_EventDamage"), L"BMKkubulim.spritefont" },
+		/* The floating damage number is damagetext.gfx's DamageTextCBT2, whose own
+		text field (character 231) is fontClass $YoonGasiIIM at 32pt. font.lpk's
+		Korean FontMap.xml does bind $eventDamageFont to BMKkubulimTTF.ttf, but the
+		three fields that ask for that token belong to DamageTextFoolsDay0, the
+		April Fools' variant -- not to the damage number. Reading the token name as
+		"the damage font" put BMKkubulim on every hit for a while; the gfx's own 43
+		text fields settle it ($YG760 x38, $eventDamageFont x3, $YoonGasiIIM x1 at
+		32pt, $YG330 x1). The tag name is kept so its consumers stay untouched. */
+		{ TEXT("Font_EventDamage"), L"YoonGasiIIM.spritefont" },
 	};
 
 	for (const SOURCE_FONT& sourceFont : sourceFonts)
@@ -8083,7 +8092,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextDisabled(
 		"Sample page: three contribution rows, three party columns, the default background.");
 	ImGui::TextDisabled(
-		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 2.7s.");
+		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 3.5s (mvp.gfx's own Setting component).");
 	{
 		const bool_t bMvpVisible = pArena->Debug_Is_MvpResultVisible();
 		if (ImGui::Button("Play Dungeon Clear -> MVP"))

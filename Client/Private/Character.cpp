@@ -2051,6 +2051,14 @@ void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID sta
 	}
 }
 
+void CCharacter::Set_WeaponPartsVisible(const bool_t isVisible)
+{
+	if (nullptr == m_pSpec)
+		return;
+	for (uint32_t index = 0u; index < m_pSpec->iNumWeapons; ++index)
+		Set_PartVisible(m_pSpec->pWeapons[index].pPartTag, isVisible);
+}
+
 void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible)
 {
 	const auto pPart = dynamic_cast<CPart_Equipment*>(
@@ -2311,8 +2319,7 @@ void CCharacter::Set_CreationPreviewActive(const bool_t isActive)
 
 	/* Weapons are their own part list, so restoring them is an explicit show rather than
 	part of the equipment visibility rule. */
-	for (uint32_t index = 0u; index < m_pSpec->iNumWeapons; ++index)
-		Set_PartVisible(m_pSpec->pWeapons[index].pPartTag, !isActive);
+	Set_WeaponPartsVisible(!isActive);
 
 	if (!isActive)
 	{
