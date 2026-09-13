@@ -122,6 +122,7 @@
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
 	<ClInclude Include="..\Public\NpcPlacementPresentationService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
+	<ClInclude Include="..\Public\VehiclePresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
 	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h" />
 	<ClInclude Include="..\Public\KoukuSaydonPresentationPlayer.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="..\Public\NetworkManager.h" />
     <ClInclude Include="..\Public\ClientSessionDiagnostic.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
+    <ClInclude Include="..\Public\Part_Vehicle.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
 	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h" />
     <ClInclude Include="..\Public\SourceCharacterMaterialParameters.h" />
@@ -373,6 +375,7 @@
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\NpcPlacementPresentationService.cpp" />
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\VehiclePresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp" />
@@ -433,6 +436,7 @@
     <ClCompile Include="..\Private\NetworkManager.cpp" />
     <ClCompile Include="..\Private\ClientSessionDiagnostic.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
+    <ClCompile Include="..\Private\Part_Vehicle.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
 	<ClCompile Include="..\Private\DeferredMaterialRenderUtils.cpp" />
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp">
@@ -558,6 +562,7 @@
     <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
+    <None Include="..\..\Data\Actors\VehicleCatalog.json" />
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
 	<None Include="..\..\Data\Sound\EstherActionSoundCues.json" />
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />

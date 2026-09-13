@@ -1,0 +1,10 @@
+{
+  "mn_pmsmk_00_n": "Character/Vehicle/RainbowMokoboard/SourceMaterials/mn_pmsmk_00_n.tga",
+  "mn_pmsmk_00_cm": "Character/Vehicle/RainbowMokoboard/SourceMaterials/mn_pmsmk_00_cm.tga",
+  "mn_pmsmk_00-4_d": "Character/Vehicle/RainbowMokoboard/SourceMaterials/mn_pmsmk_00-4_d.tga",
+  "mn_pmsmk_00-3_vfx": "Character/Vehicle/RainbowMokoboard/SourceMaterials/mn_pmsmk_00-3_vfx.tga",
+  "mn_pmsmk_00_s": "Character/Vehicle/RainbowMokoboard/SourceMaterials/mn_pmsmk_00_s.tga",
+  "hdr07_1": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+  "statefx_default": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+  "brdf_beckmann_spec": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds"
+}

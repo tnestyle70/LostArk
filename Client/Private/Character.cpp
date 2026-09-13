@@ -24,6 +24,8 @@
 #include "Navigation.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
+#include "Part_Vehicle.h"
+#include "VehiclePresentationAssetService.h"
 #include "PlayerSkillCatalog.h"
 #include "RuntimeAssetRoot.h"
 #include "SourceCharacterMaterialParameters.h"
@@ -1468,12 +1470,26 @@ bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 		return false;
 	XMStoreFloat4x4(pOut,
 		XMMatrixScaling(m_fPresentationScale, m_fPresentationScale, m_fPresentationScale) *
-		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
+		XMMatrixTranslation(m_vVehicleSeatOffset.x, m_vVehicleSeatOffset.y, m_vVehicleSeatOffset.z));
 	return true;
 }
 
 void CCharacter::Update_PresentationRootMatrix()
 {
+	m_vVehicleSeatOffset = {};
+	if (nullptr != m_pTransformCom)
+	{
+		m_VehicleRootMatrix = *m_pTransformCom->Get_WorldMatrixPtr();
+		float3_t seat{};
+		if (nullptr != m_pVehiclePart && m_pVehiclePart->Try_Get_SeatWorldPosition(seat))
+		{
+			m_vVehicleSeatOffset = float3_t(
+				seat.x - m_VehicleRootMatrix._41,
+				seat.y - m_VehicleRootMatrix._42,
+				seat.z - m_VehicleRootMatrix._43);
+		}
+	}
 	Try_Get_PresentationRootMatrix(&m_PresentationRootMatrix);
 }
 
@@ -2034,7 +2050,7 @@ void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID sta
 			const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
 			Set_PartVisible(
 				weapon.pPartTag,
-				!isDefaultWeaponReplaced &&
+				!isDefaultWeaponReplaced && 0u == m_iVehicleId &&
 					(LostArk::Shared::PLAYER_STANCE_ID::NONE ==
 						weapon.eRequiredStance ||
 						weapon.eRequiredStance == stance));
@@ -2046,9 +2062,18 @@ void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID sta
 		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
 		Set_PartVisible(
 			weapon.pPartTag,
-			LostArk::Shared::PLAYER_STANCE_ID::NONE == weapon.eRequiredStance ||
-				weapon.eRequiredStance == stance);
+			0u == m_iVehicleId &&
+				(LostArk::Shared::PLAYER_STANCE_ID::NONE == weapon.eRequiredStance ||
+				weapon.eRequiredStance == stance));
 	}
+}
+
+void CCharacter::Set_WeaponPartsVisible(const bool_t isVisible)
+{
+	if (nullptr == m_pSpec)
+		return;
+	for (uint32_t index = 0u; index < m_pSpec->iNumWeapons; ++index)
+		Set_PartVisible(m_pSpec->pWeapons[index].pPartTag, isVisible);
 }
 
 void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible)
@@ -2262,7 +2287,7 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[index];
 		Set_PartVisible(
 			weapon.pPartTag,
-			!isDefaultWeaponReplaced &&
+			!isDefaultWeaponReplaced && 0u == m_iVehicleId &&
 				(LostArk::Shared::PLAYER_STANCE_ID::NONE ==
 					weapon.eRequiredStance ||
 					weapon.eRequiredStance == m_eStance));
@@ -2311,8 +2336,7 @@ void CCharacter::Set_CreationPreviewActive(const bool_t isActive)
 
 	/* Weapons are their own part list, so restoring them is an explicit show rather than
 	part of the equipment visibility rule. */
-	for (uint32_t index = 0u; index < m_pSpec->iNumWeapons; ++index)
-		Set_PartVisible(m_pSpec->pWeapons[index].pPartTag, !isActive);
+	Set_WeaponPartsVisible(!isActive);
 
 	if (!isActive)
 	{
@@ -2408,6 +2432,11 @@ void CCharacter::Sync_EquipmentPreviewStanceVisibility()
 
 const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) const
 {
+	if (CHARACTER_ANIM::IDLE == eAnim || CHARACTER_ANIM::RUN == eAnim)
+	{
+		if (const VEHICLE_RIDER_ENTRY* pRider = Find_VehicleRider())
+			return (CHARACTER_ANIM::IDLE == eAnim ? pRider->idleClip : pRider->runClip).c_str();
+	}
 	const char_t* pClipName = m_pSpec->AnimationClips[ETOUI(eAnim)];
 	if (CHARACTER_ANIM::IDLE != eAnim && CHARACTER_ANIM::RUN != eAnim)
 		return pClipName;
@@ -2422,6 +2451,66 @@ const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) con
 			return pOverride;
 	}
 	return pClipName;
+}
+
+const VEHICLE_RIDER_ENTRY* CCharacter::Find_VehicleRider() const
+{
+	if (0u == m_iVehicleId || nullptr == m_pVehiclePart)
+		return nullptr;
+	const VEHICLE_ACTOR_ENTRY* pVehicle = CActorCatalog::Find_Vehicle(m_iVehicleId);
+	return nullptr != pVehicle ? pVehicle->Find_Rider(m_eCharacterClass) : nullptr;
+}
+
+void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
+{
+	static const wstring_t VEHICLE_PART_TAG = TEXT("Part_Vehicle");
+	if (vehicleId == m_iVehicleId || (0u != vehicleId && vehicleId == m_iRejectedVehicleId))
+		return;
+	const auto reject = [this, vehicleId](const std::string& reason)
+	{
+		m_iRejectedVehicleId = vehicleId;
+		OutputDebugStringA(("[Client][Character] Vehicle " + std::to_string(vehicleId) +
+			" presentation isolated: " + reason + "\n").c_str());
+	};
+
+	PART_OBJECT_MAP candidates;
+	shared_ptr<CPart_Vehicle> pPart;
+	if (0u != vehicleId)
+	{
+		const VEHICLE_ACTOR_ENTRY* pVehicle = CActorCatalog::Find_Vehicle(vehicleId);
+		if (nullptr == pVehicle || nullptr == pVehicle->Find_Rider(m_eCharacterClass))
+			return reject("no rider pose for this class");
+		if (!CVehiclePresentationAssetService::Is_Ready(m_iPrototypeLevelIndex, vehicleId))
+			return reject("vehicle prototypes are not admitted in this level");
+		CPart_Vehicle::PART_VEHICLE_DESC desc{};
+		desc.pParentMatrix = &m_VehicleRootMatrix;
+		desc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+		desc.strModelTag = CVehiclePresentationAssetService::Get_ModelPrototypeTag(vehicleId);
+		desc.strShaderTag = m_pSpec->pShaderTag;
+		desc.strIdleClip = pVehicle->vehicleIdleClip;
+		desc.strRunClip = pVehicle->vehicleRunClip;
+		desc.strSeatBone = pVehicle->seatBone;
+		shared_ptr<CPartObject> pObject;
+		if (FAILED(__super::Clone_PartObject(m_iPrototypeLevelIndex,
+				TEXT("Prototype_GameObject_Part_Vehicle"), &desc, pObject)) ||
+			nullptr == (pPart = dynamic_pointer_cast<CPart_Vehicle>(pObject)))
+		{
+			return reject("vehicle part clone failed");
+		}
+		candidates.emplace(VEHICLE_PART_TAG, pObject);
+	}
+	if (FAILED(__super::Replace_PartObjectGroup(VEHICLE_PART_TAG, std::move(candidates))))
+		return reject("vehicle part group replacement failed");
+
+	m_iVehicleId = vehicleId;
+	m_iRejectedVehicleId = 0u;
+	m_pVehiclePart = pPart;
+	if (nullptr != m_pVehiclePart)
+		(void)m_pVehiclePart->Set_Moving(m_isMoving);
+	Apply_NetworkStance(m_eStance);
+	Update_PresentationRootMatrix();
+	if (!Is_PlayingSkill())
+		Set_Animation(m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE, true);
 }
 
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
@@ -3379,6 +3468,8 @@ void CCharacter::Set_Locomotion(bool_t isMoving)
 void CCharacter::Commit_Locomotion(bool_t isMoving)
 {
 	m_isMoving = isMoving;
+	if (nullptr != m_pVehiclePart)
+		(void)m_pVehiclePart->Set_Moving(isMoving);
 	/* The Esther call plays without a chain, so a run-to-idle edge from just
 	before the cast must not stomp its clip; the action edge restores
 	locomotion when the Server releases ESTHER_CAST. */

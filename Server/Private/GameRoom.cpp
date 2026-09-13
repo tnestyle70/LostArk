@@ -52,6 +52,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_ItemCatalog.Get_Status();
 		return;
 	}
+	if (!m_VehicleCatalog.Load())
+	{
+		m_strStatus = m_VehicleCatalog.Get_Status();
+		return;
+	}
 	if (!m_ValtanClearRewards.Load())
 	{
 		m_strStatus = m_ValtanClearRewards.Get_Status();
@@ -765,6 +770,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_DebugSetMadnessForm(
 				command.iSessionId, command.DebugSetMadnessForm);
 			break;
+		case ROOM_COMMAND_TYPE::SET_VEHICLE_RIDING:
+			Handle_SetVehicleRiding(command.iSessionId, command.SetVehicleRiding);
+			break;
 		case ROOM_COMMAND_TYPE::INTERACTION_SLOT:
 			Handle_InteractionSlot(command.iSessionId, command.InteractionSlot);
 			break;
@@ -1029,6 +1037,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		recordTickDuration();
 		return;
 	}
+	Enforce_VehicleRidingState();
 	m_iServerTick = updateTick;
 	Expire_RaidEntryProposals();
 	if (!m_Players.empty())

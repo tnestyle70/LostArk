@@ -35,6 +35,11 @@ public:
 		LostArk::Shared::PLAYER_MADNESS_FORM form) override;
 	bool Consume_DebugMadnessFormResult(
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result) override;
+	bool Request_SetVehicleRiding(
+		std::uint32_t requestSequence,
+		LostArk::Shared::VEHICLE_ID vehicleId) override;
+	bool Consume_VehicleRidingResult(
+		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result) override;
 
 	bool Request_InteractionSlot(std::uint32_t sequence,
 		LostArk::Shared::INTERACTION_SLOT slot) override;

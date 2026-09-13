@@ -120,12 +120,15 @@ def build_backdrops(rows, imports, pose_sampler):
             source_material = imports[str(material_index)]
             assert any(m["materialName"].startswith(slot_prefix) and m.get("sourceMaterial") == source_material
                        for m in map_rows), (actor, "unresolved component material override", source_material)
-        object_id = f"world.object.{PREFIX}.{asset.lower()}"
-        resources.setdefault(asset, dict(objectId=object_id, displayName=source_mesh.rsplit(".", 1)[-1],
+        # One Object Resource per source piece: a runtime instance may bind each
+        # resource only once (WorldSequenceDocument Validate / publisher boundTargets),
+        # and one parent set holds several pieces of the same mesh.
+        object_id = f"world.object.{PREFIX}.{asset.lower()}.actor{actor}"
+        resources[actor] = dict(objectId=object_id, displayName=f"{source_mesh.rsplit('.', 1)[-1]} / {row['name'].rsplit('.', 1)[-1]}",
             modelAssetId=model, anchorKind="WORLD", diffuseTextureAssetId="", modelPreScale=.01,
             animated=False, scale=[1, 1, 1], sequenceInstanceId="", defaultMotionInstanceId="",
             mapMaterialBindings=[dict(materialName=m["materialName"], sourceAssetId=asset,
-                                     sourceMaterialName=m["materialName"]) for m in map_rows]))
+                                     sourceMaterialName=m["materialName"]) for m in map_rows])
         if parent not in parent_samples:
             parent_samples[parent] = [pose_sampler(parent, int(ms) / 1000.) for ms in times]
         relative = BASIS @ vec(p.get("relativelocation")) * .01
@@ -156,7 +159,7 @@ def build_backdrops(rows, imports, pose_sampler):
         keep = reduced_indices(times, positions, quaternions)
         scale = vec(p.get("drawscale3d"), (1., 1., 1.))[[0, 2, 1]] * p.get("drawscale", 1.)
         sampled[actor] = (object_id, positions, quaternions, scale, keep)
-        source_receipt.append(dict(actorIndex=actor, sourceName=row["name"], parentIndex=parent,
+        source_receipt.append(dict(actorIndex=actor, sourceName=row["name"], parentIndex=parent, objectId=object_id,
             sourceMesh=source_mesh, modelAssetId=model, sourceAssetId=asset, sampleCount=len(times),
             reducedKeyCount=len(keep), motionPrograms=motions,
             waveform="RECONSTRUCTED_ZERO_PHASE_SINE" if motions else "SOURCE_PARENT_TRANSFORM"))

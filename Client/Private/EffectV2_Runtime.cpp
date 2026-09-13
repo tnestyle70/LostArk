@@ -7,6 +7,7 @@
 #include "Model.h"
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
+#include "VehiclePresentationAssetService.h"
 
 #include <algorithm>
 #include <cmath>
@@ -160,6 +161,13 @@ namespace
 				const wstring_t strTag =
 					Client::CNpcPresentationAssetService::Get_ModelPrototypeTag(Entry.archetypeId);
 				if (!strTag.empty() && !g_ModelTagToArchetype.contains(strTag))
+					g_ModelTagToArchetype.emplace(strTag, Entry.archetypeId);
+			}
+			for (const Client::VEHICLE_ACTOR_ENTRY& Entry : Client::CActorCatalog::Get_Vehicles())
+			{
+				const wstring_t strTag =
+					Client::CVehiclePresentationAssetService::Get_ModelPrototypeTag(Entry.vehicleId);
+				if (!g_ModelTagToArchetype.contains(strTag))
 					g_ModelTagToArchetype.emplace(strTag, Entry.archetypeId);
 			}
 		}

@@ -137,6 +137,8 @@ public:
 		const std::filesystem::path& materialsPath = {});
 	bool_t Load(const std::filesystem::path& path,
 		const std::string& expectedAreaId = {});
+	// Keep source documents/metadata, but use the models owned by this live Area.
+	bool_t Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeCatalog);
 
 	const MAP_PLACEMENT_LIGHTING* Find_PlacementLighting(const std::string& sourcePlacementId) const;
 	const MAP_ASSET_ENTRY* Find(const std::string& assetId) const;

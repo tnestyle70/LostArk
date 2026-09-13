@@ -190,6 +190,40 @@ struct NPC_ACTOR_ENTRY final
 	std::string shaderProfile;
 };
 
+/* One rider pose set on a vehicle: the body clips the class plays while seated.
+The clip names are the cooked "<armature>_ride_<mode>_*" names on the class body. */
+struct VEHICLE_RIDER_ENTRY final
+{
+	LostArk::Shared::CHARACTER_CLASS_ID characterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string idleClip;
+	std::string runClip;
+};
+
+/* A rideable vehicle's presentation. vehicleId is the EFTable_Vehicle key the
+Server replicates; everything else stays on the Client. */
+struct VEHICLE_ACTOR_ENTRY final
+{
+	std::uint32_t vehicleId = 0u;
+	std::string archetypeId;
+	std::string modelAssetId;
+	f32_t modelPreScale = 0.f;
+	std::string seatBone;
+	std::string vehicleIdleClip;
+	std::string vehicleRunClip;
+	std::vector<VEHICLE_RIDER_ENTRY> riders;
+	std::string runtimeStatus;
+
+	const VEHICLE_RIDER_ENTRY* Find_Rider(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const
+	{
+		for (const VEHICLE_RIDER_ENTRY& rider : riders)
+			if (rider.characterClass == characterClass)
+				return &rider;
+		return nullptr;
+	}
+};
+
 struct MONSTER_ACTOR_ENTRY final
 {
 	struct ATTACK_PRESENTATION final
@@ -244,6 +278,9 @@ public:
 			std::string_view clientVisualId);
 	static const NPC_ACTOR_ENTRY* Find_Npc(std::string_view archetypeId);
 	static const std::vector<NPC_ACTOR_ENTRY>& Get_Npcs();
+	static const VEHICLE_ACTOR_ENTRY* Find_Vehicle(std::uint32_t vehicleId);
+	static const VEHICLE_ACTOR_ENTRY* Find_VehicleByArchetype(std::string_view archetypeId);
+	static const std::vector<VEHICLE_ACTOR_ENTRY>& Get_Vehicles();
 	static const MONSTER_ACTOR_ENTRY* Find_Monster(
 		std::string_view archetypeId);
 	static const std::vector<MONSTER_ACTOR_ENTRY>& Get_Monsters();

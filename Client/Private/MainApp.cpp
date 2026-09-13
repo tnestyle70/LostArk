@@ -2285,6 +2285,10 @@ HRESULT CMainApp::Render()
 		(void)m_pCharacterInfoView->Render_Portrait();
 	if (nullptr != m_pAvatarBookView)
 		(void)m_pAvatarBookView->Render_Portrait();
+	if (auto* pArena = CLevel_KakulSaydonArena::Get_Active();
+		nullptr != pArena &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		pArena->Render_MvpPortraits();
 	}
 
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
@@ -6346,10 +6350,15 @@ HRESULT CMainApp::Ready_Fonts()
 		bar-count text, which are both pure digits/ASCII. User picked this one from the same 8-font
 		comparison gallery that settled Font_EventDamage. */
 		{ TEXT("Font_159"), L"159.spritefont" },
-		/* Back to the retail mapping: font.lpk's Korean Binaries/Fonts/FontMap.xml binds
-		$eventDamageFont to BMKkubulimTTF.ttf. This tag was on YoonGasiIIM after a side-by-side
-		of all 8 Resources/Fonts candidates, before that map was recovered. */
-		{ TEXT("Font_EventDamage"), L"BMKkubulim.spritefont" },
+		/* The floating damage number is damagetext.gfx's DamageTextCBT2, whose own
+		text field (character 231) is fontClass $YoonGasiIIM at 32pt. font.lpk's
+		Korean FontMap.xml does bind $eventDamageFont to BMKkubulimTTF.ttf, but the
+		three fields that ask for that token belong to DamageTextFoolsDay0, the
+		April Fools' variant -- not to the damage number. Reading the token name as
+		"the damage font" put BMKkubulim on every hit for a while; the gfx's own 43
+		text fields settle it ($YG760 x38, $eventDamageFont x3, $YoonGasiIIM x1 at
+		32pt, $YG330 x1). The tag name is kept so its consumers stay untouched. */
+		{ TEXT("Font_EventDamage"), L"YoonGasiIIM.spritefont" },
 	};
 
 	for (const SOURCE_FONT& sourceFont : sourceFonts)
@@ -8209,7 +8218,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextDisabled(
 		"Sample page: three contribution rows, three party columns, the default background.");
 	ImGui::TextDisabled(
-		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 2.7s.");
+		"Intro runs 135 frames at the source movie's 40fps (3.375s); the medal strip waits 3.5s (mvp.gfx's own Setting component).");
 	{
 		const bool_t bMvpVisible = pArena->Debug_Is_MvpResultVisible();
 		if (ImGui::Button("Play Dungeon Clear -> MVP"))
@@ -9175,7 +9184,9 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::Text("Current level id: %u", currentLevelId);
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
-		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
+		(currentLevelId == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
+			"Kouku runtime supports Map, Object, Camera and Sequence authoring through F1." :
+			"F1 opens tools. Map authoring is available in Lobby Test or the Kouku runtime."));
 	RenderSequenceViewer();
 	ImGui::SeparatorText("Tools");
 
@@ -9286,7 +9297,8 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::EndCombo();
 	}
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
-	if (!isMapEditorWorkspace && IsDebugToolVisible(DEBUG_TOOL::MAP))
+	if (!isMapEditorWorkspace && currentLevelId != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		IsDebugToolVisible(DEBUG_TOOL::MAP))
 	{
 		ImGui::TextDisabled(
 			"Map Tool is open in inspect-only mode. Enter Lobby > Test > Map Editor to save map placement/navigation.");
@@ -9448,6 +9460,27 @@ void CMainApp::RenderDeveloperTools()
 					definition->strDisplayName.c_str() : item.strItemId.c_str(),
 				item.iQuantity);
 		}
+	}
+
+	if (ImGui::CollapsingHeader("Vehicle Riding (Debug)"))
+	{
+		ImGui::TextDisabled(
+			"H mounts the selected vehicle. A class without its rider pose uses the first catalog vehicle.");
+		const HUD_PLAYER_STATE& ridingPlayer = CCombatHUDViewModel::Get().Get_Player();
+		const std::uint32_t preferredVehicleId = CPlayerController::Get_PreferredVehicleId();
+		if (ImGui::RadioButton("First available##VehicleRiding", 0u == preferredVehicleId))
+			CPlayerController::Set_PreferredVehicleId(0u);
+		for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
+		{
+			const bool_t hasRider = ridingPlayer.isValid &&
+				nullptr != vehicle.Find_Rider(ridingPlayer.eCharacterClass);
+			const std::string label = vehicle.archetypeId + "  (" +
+				std::to_string(vehicle.vehicleId) + ")" + (hasRider ? "" : "  - no rider pose") +
+				"##VehicleRiding" + std::to_string(vehicle.vehicleId);
+			if (ImGui::RadioButton(label.c_str(), vehicle.vehicleId == preferredVehicleId))
+				CPlayerController::Set_PreferredVehicleId(vehicle.vehicleId);
+		}
+		ImGui::TextDisabled("Riding now: %u", ridingPlayer.iVehicleId);
 	}
 
 	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))

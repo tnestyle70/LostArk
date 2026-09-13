@@ -339,7 +339,7 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 		{
 			if (!Validate_DestructionExternalReferences(
 				m_DestructionDocument,
-				m_DeployRuntime,
+				Authoring_Deploy(),
 				stagedBlockers,
 				m_WorldGameplayDocument,
 				m_EncounterReference,
@@ -434,7 +434,7 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 	if (m_DestructionDocument.Is_Ready() &&
 		!Validate_DestructionExternalReferences(
 			m_DestructionDocument,
-			m_DeployRuntime,
+			Authoring_Deploy(),
 			stagedBlockerDocument,
 			m_WorldGameplayDocument,
 			m_EncounterReference,

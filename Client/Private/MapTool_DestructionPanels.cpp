@@ -82,7 +82,7 @@ void Client::CMapTool::Render_DestructionSimpleWallList()
 		&m_bDestructionOnlyUnassigned);
 
 	const std::vector<DEPLOY_RUNTIME_ENTRY>& entries =
-		m_DeployRuntime.Get_Entries();
+		Authoring_Deploy().Get_Entries();
 	const size_t destructibleCount = static_cast<size_t>(std::count_if(
 		entries.begin(), entries.end(), [](const DEPLOY_RUNTIME_ENTRY& entry)
 		{
@@ -133,14 +133,14 @@ void Client::CMapTool::Render_DestructionSimpleInspector()
 {
 	ImGui::TextUnformatted("2. Set when this wall breaks");
 	const auto entry = std::find_if(
-		m_DeployRuntime.Get_Entries().begin(),
-		m_DeployRuntime.Get_Entries().end(),
+		Authoring_Deploy().Get_Entries().begin(),
+		Authoring_Deploy().Get_Entries().end(),
 		[this](const DEPLOY_RUNTIME_ENTRY& value)
 		{
 			return value.placement.runtimePlacementId ==
 				m_iSelectedDeployPlacementId;
 		});
-	if (m_DeployRuntime.Get_Entries().end() == entry)
+	if (Authoring_Deploy().Get_Entries().end() == entry)
 	{
 		ImGui::TextWrapped(
 			"Select a wall from the list or press Pick Wall In Viewport.");
@@ -148,7 +148,7 @@ void Client::CMapTool::Render_DestructionSimpleInspector()
 	}
 
 	const DEPLOY_PROP_ASSET_ENTRY* asset =
-		m_DeployRuntime.Get_Catalog().Find(entry->placement.assetId);
+		Authoring_Deploy().Get_Catalog().Find(entry->placement.assetId);
 	const DESTRUCTION_GROUP* owner =
 		m_DestructionDocument.Find_GroupOfMember(
 			entry->placement.runtimePlacementId);
@@ -685,7 +685,7 @@ void Client::CMapTool::Render_DestructionGroupEditor()
 				static_cast<unsigned long long>(placementId));
 			ImGui::TableSetColumnIndex(1);
 			const shared_ptr<CDeployPropObject> prop =
-				m_DeployRuntime.Find(placementId);
+				Authoring_Deploy().Find(placementId);
 			ImGui::TextUnformatted(nullptr != prop ? "loaded" : "missing");
 			ImGui::TableSetColumnIndex(2);
 			if (ImGui::SmallButton("Remove"))
@@ -2084,10 +2084,10 @@ void Client::CMapTool::Render_DestructionDeployList()
 	}
 
 	const std::vector<DEPLOY_RUNTIME_ENTRY>& entries =
-		m_DeployRuntime.Get_Entries();
+		Authoring_Deploy().Get_Entries();
 	ImGui::Text("Loaded placements: %zu | Runtime: %s",
 		entries.size(),
-		m_DeployRuntime.Is_Loaded() ? "READY" : "NOT LOADED");
+		Authoring_Deploy().Is_Loaded() ? "READY" : "NOT LOADED");
 	ImGui::SetNextItemWidth(220.f);
 	ImGui::InputText("Asset filter", m_DestructionDeployFilter,
 		IM_ARRAYSIZE(m_DestructionDeployFilter));

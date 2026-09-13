@@ -453,6 +453,10 @@ namespace Client
 		/* Death-screen revive button. Not polled input, so it is a direct call
 		instead of something Update() discovers each frame. */
 		bool_t Request_Revive();
+		/* Debug F1 choice of the vehicle H mounts. Zero, or a vehicle without a
+		rider pose for the class, falls back to the first catalog vehicle that has one. */
+		static void Set_PreferredVehicleId(std::uint32_t vehicleId) { s_iPreferredVehicleId = vehicleId; }
+		static std::uint32_t Get_PreferredVehicleId() { return s_iPreferredVehicleId; }
 #ifdef _DEBUG
 		// O key test aid -- see PACKET_TYPE::C2S_DEBUG_KILL_SELF.
 		bool_t Request_DebugKillSelf();
@@ -556,6 +560,9 @@ namespace Client
 		std::uint8_t Poll_EstherSlot(
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
+		/* Consumes riding verdicts and turns an H press into a mount or dismount
+		intent. The first catalog vehicle with a rider pose for the class mounts. */
+		void Update_VehicleRiding(bool_t inputAllowed, bool_t useRawKeyboard);
 		/* True on the frame G goes down. The controller does not know whether
 		   an offer is standing -- Update checks that before submitting. */
 		bool_t Poll_InteractKey(
@@ -581,6 +588,11 @@ namespace Client
 		std::chrono::steady_clock::time_point m_MarioMoveSentAt{};
 
 		bool_t m_wasInteractKeyDown = false;
+		inline static std::uint32_t s_iPreferredVehicleId = 0u;
+		bool_t m_wasVehicleKeyDown = false;
+		std::uint32_t m_nextVehicleRidingSequence = 1u;
+		std::uint32_t m_pendingVehicleRidingSequence = 0u;
+		std::chrono::steady_clock::time_point m_vehicleRidingSentAt{};
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;

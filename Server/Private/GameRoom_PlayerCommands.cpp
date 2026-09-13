@@ -233,7 +233,8 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	}
 	/* While a KoukuSaydon interaction HUD is up only that HUD's slots act; the
 	class skills the Client no longer shows are refused here as well. */
-	if (0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
+	if (LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId ||
+		0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
 		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
 		LostArk::Shared::KOUKU_HUD_MODE::NONE != playerIter->second.eKoukuHudMode ||
 		(0u != playerIter->second.iSilenceEndTick &&
@@ -580,7 +581,8 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 			sessionId, "C2S_USE_ESTHER_SKILL", "missing-player-state");
 		return;
 	}
-	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
+	if (playerIter->second.fKnockbackRemainingSeconds > 0.f ||
+		LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId)
 		return;
 	/* The call locks the caster into ESTHER_CAST, so only an idle caster may
 	start one: a running skill, knockdown, fall or death keeps the gauge full. */
@@ -803,6 +805,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	staged.Clear_MarioControl();
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+	staged.iVehicleId = INVALID_VEHICLE_ID;
 	staged.Clear_KoukuInteractionState();
 	staged.eAction = PLAYER_ACTION_STATE::NONE;
 	staged.eStance = profile->eDefaultStance;

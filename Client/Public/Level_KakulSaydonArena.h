@@ -134,6 +134,18 @@ public:
 	}
 
 #ifdef _DEBUG
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches()
+	{ return m_MapRuntime.Get_AuthoringBatches(); }
+	void Set_MapAuthoringActive(bool_t active) { m_bMapAuthoringActive = active; }
+	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records)
+	{ m_MapRuntime.Rebase_AuthoringSelfMotions(records); }
+	bool_t Can_ReplaceMapAuthoringTargets() const
+	{
+		return !m_SequencePlayer.Has_ActiveInstances() &&
+			m_CompositionWorldPreviewCues.empty() && m_OwnedWorldCues.empty() &&
+			(!m_pWorldObjectPreview || !m_pWorldObjectPreview->Has_ActiveInstances()) &&
+			(!m_pMarioBombPlayer || !m_pMarioBombPlayer->Has_ActiveInstances());
+	}
 	void Set_DebugGazeView(bool visible, float halfAngleDegrees, float distanceM)
 	{ m_bDebugGazeView = visible; m_fDebugGazeHalfAngle = halfAngleDegrees; m_fDebugGazeDistance = distanceM; }
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
@@ -378,6 +390,9 @@ private:
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	bool_t m_bMapAuthoringActive = false;
+#endif
 	/* The authored deploy catalog carries both paper levers and both paper
 	   stage bridges. A bridge stays DESPAWNED until its lever is pulled, so
 	   suppress the bridges before the first rendered frame instead of letting
@@ -598,10 +613,17 @@ public:
 	/* F1 Developer Tools only -- the award page has no gameplay trigger yet. */
 	/* Plays the dungeon-clear overlay and hands off to the award page when it ends,
 	   the order retail runs them in. */
+	/* Starts the dungeon-clear screen and plays its cue. One owner for "the clear
+	begins", the way CLevel_ValtanArena::Trigger_RaidClear already is, so the cue
+	cannot go missing again when the product path starts calling it. */
+	void Trigger_RaidClear();
 	void Debug_Play_ClearThenMvp();
 	void Debug_Show_MvpResult();
 	void Debug_Hide_MvpResult();
 	bool_t Debug_Is_MvpResultVisible() const;
+	/* The award page's character panels are off-screen draws, so they run in
+	   CMainApp's portrait phase rather than with the rest of this level. */
+	void Render_MvpPortraits();
 
 public:
 	static unique_ptr<CLevel_KakulSaydonArena> Create(

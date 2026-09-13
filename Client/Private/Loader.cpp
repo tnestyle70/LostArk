@@ -34,6 +34,8 @@
 #include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
+#include "Part_Vehicle.h"
+#include "VehiclePresentationAssetService.h"
 #include "PlayableCharacterAssetService.h"
 #include "RuntimeAssetRoot.h"
 #include "Trigger_Box.h"
@@ -418,6 +420,17 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 					"); the arena loads without it.\n").c_str());
 		}
 	}
+	Set_Status(TEXT("CHARACTER SELECT: vehicle presentation"));
+	CVehiclePresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::CHARACTER_SELECT));
+	for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
+	{
+		if (FAILED(CVehiclePresentationAssetService::Ensure_Prototypes(
+			m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), vehicle.vehicleId)))
+		{
+			OutputDebugStringA(("[Loader][VehiclePresentation] CHARACTER SELECT vehicle " +
+				std::to_string(vehicle.vehicleId) + " is unavailable; the level loads on foot.\n").c_str());
+		}
+	}
 	Set_Status(TEXT("Character Select loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -457,6 +470,17 @@ HRESULT CLoader::Ready_For_Bern()
 		selectedClass)))
 		return E_FAIL;
 
+	Set_Status(TEXT("BERN: vehicle presentation"));
+	CVehiclePresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::BERN));
+	for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
+	{
+		if (FAILED(CVehiclePresentationAssetService::Ensure_Prototypes(
+			m_pDevice, m_pContext, ETOUI(LEVEL::BERN), vehicle.vehicleId)))
+		{
+			OutputDebugStringA(("[Loader][VehiclePresentation] BERN vehicle " +
+				std::to_string(vehicle.vehicleId) + " is unavailable; the level loads on foot.\n").c_str());
+		}
+	}
 	Set_Status(TEXT("Bern loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -1123,6 +1147,10 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(
 			iLevelIndex,
 			TEXT("Prototype_GameObject_Part_Body"),
 			CPart_Body::Create(m_pDevice, m_pContext))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+			iLevelIndex,
+			TEXT("Prototype_GameObject_Part_Vehicle"),
+			CPart_Vehicle::Create(m_pDevice, m_pContext))) ||
 		FAILED(CGameInstance::Get().Add_Prototype(
 		iLevelIndex,
 		TEXT("Prototype_GameObject_Character"),

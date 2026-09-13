@@ -29,6 +29,8 @@ public:
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> pShader);
     HRESULT Bind_StaticShadow(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader);
+    // Light constants and textures for a forward pass that also runs the base program.
+    HRESULT Bind_SourceCharacterForwardLight(shared_ptr<class CShader> shader);
     static void Reset_SourceCharacterFrame(float presentationTime = 0.f);
     static uint32_t Get_SourceCharacterFrameCount();
     static HRESULT Bind_SourceCharacterLight(shared_ptr<class CShader> shader, uint32_t index);

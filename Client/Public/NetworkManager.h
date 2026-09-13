@@ -222,6 +222,11 @@ public:
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result);
 	bool Try_Consume_DebugMadnessFormResult(
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result);
+	/* H key riding toggle. The snapshot is the only presentation result. */
+	bool Send_SetVehicleRiding(
+		std::uint32_t requestSequence, LostArk::Shared::VEHICLE_ID vehicleId);
+	bool Try_Consume_VehicleRidingResult(
+		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result);
 	bool Send_DebugTeleportToPlacement(
 		std::uint32_t requestSequence,
 		std::string_view placementId);
@@ -520,6 +525,7 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
+	std::deque<LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT> m_VehicleRidingResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{

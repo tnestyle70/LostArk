@@ -49,6 +49,7 @@
 	<ClInclude Include="..\Public\ServerCombatGeometry.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerCombatHitRuntime.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ItemCatalog.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\VehicleCatalog.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ValtanClearRewards.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
@@ -96,6 +97,7 @@
 	<ClCompile Include="..\Private\ServerCombatGeometry.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerCombatHitRuntime.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ItemCatalog.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\VehicleCatalog.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ValtanClearRewards.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerNavigation.cpp"><Filter>Private</Filter></ClCompile>
@@ -121,6 +123,7 @@
     <ClCompile Include="..\Private\GameRoom_Admission.cpp" />
     <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
+    <ClCompile Include="..\Private\GameRoom_VehicleRiding.cpp" />
     <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
     <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp" />
@@ -170,6 +173,7 @@
     <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuOverlap.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_CardMaze.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_Bingo.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_VehicleRiding.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuSupportSurface.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\ServerGameplayContractTests_Navigation.cpp"><Filter>Private</Filter></ClCompile>
     <ClInclude Include="..\Private\ServerGameplayContractTests_PlayerSkillFixtures.h"><Filter>Private</Filter></ClInclude>

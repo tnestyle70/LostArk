@@ -7,6 +7,7 @@
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "MapEditorWorkspaceService.h"
+#include "Level_KakulSaydonArena.h"
 #include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
 #include "MapAssetObject.h"
@@ -90,6 +91,8 @@ void Client::CMapTool::Toggle()
 
 void Client::CMapTool::SetOpen(const bool_t isOpen)
 {
+	if (isOpen && !m_bOpen && !m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
+		m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
 	if (m_bOpen && !isOpen)
 	{
 		Restore_DestructionPreview();
@@ -100,8 +103,8 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 		if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 		{
 			m_pWorldSequenceToolPanel->Stop_AndRestore(
-				m_iAuthoringLevelIndex, m_Catalog, m_Placements,
-				m_DeployRuntime);
+				m_iAuthoringLevelIndex, m_Catalog, Authoring_Placements(),
+				Authoring_Deploy());
 			if (m_pWorldSequenceToolPanel->Is_PreviewActive())
 			{
 				m_Status = m_pWorldSequenceToolPanel->Get_Status();
@@ -110,6 +113,14 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 		}
 	}
 	m_bOpen = isOpen;
+#ifdef _DEBUG
+	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
+	{
+		auto* arena = CLevel_KakulSaydonArena::Get_Active();
+		arena->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
+		arena->Set_MapAuthoringActive(m_bOpen);
+	}
+#endif
 	if (!m_bOpen)
 		m_bDestructionSimulationClearRequested = true;
 }
@@ -120,15 +131,17 @@ void Client::CMapTool::Update(
 {
 	const uint32_t currentLevelIndex =
 		CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t isMapAuthoringLevel =
-		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
-		CMapEditorWorkspaceService::Is_Active();
+	const bool_t isMapAuthoringLevel = Is_MapAuthoringLevel();
 	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
+#ifdef _DEBUG
+	if (Runtime_AuthoringTargets().pPlacements)
+		CLevel_KakulSaydonArena::Get_Active()->Set_MapAuthoringActive(m_bOpen && m_bRuntimeAuthoring && bAllowWorldInput);
+#endif
 	Update_EditorAreaPreload();
 	/* The editor is where this content is checked, so the same idle motion
 	   the arena level plays runs here as well. Rebinding is keyed on the
 	   area id, which is what changes when the workspace switches maps. */
-	if (isMapAuthoringLevel)
+	if (isMapAuthoringLevel && !m_bRuntimeAuthoring)
 	{
 		const EDITOR_AREA_DESCRIPTOR* motionArea = Get_ActiveEditorArea();
 		const std::string motionAreaId = nullptr != motionArea ?
@@ -139,7 +152,7 @@ void Client::CMapTool::Update(
 			m_fSelfMotionElapsedSeconds = 0.f;
 			m_SelfMotionModels.clear();
 			(void)CMapPlacementRuntime::Read_SelfMotions(
-				motionAreaId, m_Placements, m_SelfMotions);
+				motionAreaId, Authoring_Placements(), m_SelfMotions);
 		}
 		if (!m_SelfMotions.empty() && std::isfinite(fTimeDelta))
 		{
@@ -153,7 +166,7 @@ void Client::CMapTool::Update(
 			CMapPlacementRuntime::Sample_SelfMotions(
 				m_SelfMotions, m_fSelfMotionElapsedSeconds,
 				m_iAuthoringLevelIndex, m_Catalog, m_SelfMotionModels,
-				m_Placements);
+				Authoring_Placements());
 		}
 	}
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
@@ -164,10 +177,10 @@ void Client::CMapTool::Update(
 				TOOL_MODE::WORLD_SEQUENCE == m_eToolMode,
 			m_iAuthoringLevelIndex,
 			m_Catalog,
-			m_Placements,
-			m_DeployRuntime);
+			Authoring_Placements(),
+			Authoring_Deploy());
 	}
-	if (isMapAuthoringLevel && nullptr != m_pMapLightPresentation &&
+	if (isMapAuthoringLevel && !m_bRuntimeAuthoring && nullptr != m_pMapLightPresentation &&
 		!m_pMapLightPresentation->Submit_Frame() &&
 		!m_bMapLightSubmissionFailureReported)
 	{
@@ -176,11 +189,12 @@ void Client::CMapTool::Update(
 			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
 	Update_CutsceneArenaRise(fTimeDelta, isMapAuthoringLevel);
-	if (isMapAuthoringLevel)
+	if (isMapAuthoringLevel && !m_bRuntimeAuthoring)
 		Update_MarioIntro();
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(
 		bAllowWorldInput && isMapAuthoringLevel &&
+		(!Runtime_AuthoringTargets().pPlacements || m_bRuntimeAuthoring) &&
 		!m_EditorAreaPreload.Is_Active());
 
 	if (m_bOpen && TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode &&
@@ -328,9 +342,7 @@ void Client::CMapTool::Render()
 
 	const uint32_t currentLevelIndex =
 		CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t isMapAuthoringLevel =
-		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
-		CMapEditorWorkspaceService::Is_Active();
+	const bool_t isMapAuthoringLevel = Is_MapAuthoringLevel();
 	Render_WorldOverlay(isMapAuthoringLevel);
 
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 900.f), ImGuiCond_FirstUseEver);
@@ -352,7 +364,8 @@ void Client::CMapTool::Render()
 		ImGui::Separator();
 		Render_ModeBar();
 		ImGui::Separator();
-		ImGui::BeginDisabled(m_EditorAreaPreload.Is_Active());
+		ImGui::BeginDisabled(m_EditorAreaPreload.Is_Active() ||
+			(Runtime_AuthoringTargets().pPlacements && !m_bRuntimeAuthoring));
 		Render_ActiveMode(isMapAuthoringLevel);
 		ImGui::EndDisabled();
 	}
@@ -398,6 +411,12 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 	ImGui::SameLine();
 	ImGui::TextDisabled(
 		"Data authoring only; Client/Server runtime publish is separate");
+	if (Runtime_AuthoringTargets().pPlacements)
+	{
+		ImGui::TextWrapped("Editing the current Kouku runtime map. Save changes authoring files, not Server collision or gameplay.");
+		if (!m_bRuntimeAuthoring && ImGui::Button("Retry runtime map binding"))
+			m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
+	}
 	if (!isAssetTest)
 	{
 		ImGui::TextWrapped(
@@ -410,7 +429,7 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 		active->label.c_str() : "<select Area>";
 	const bool_t isAreaAdmissionBusy = m_EditorAreaPreload.Is_Active();
 	ImGui::SetNextItemWidth(320.f);
-	ImGui::BeginDisabled(isAreaAdmissionBusy);
+	ImGui::BeginDisabled(isAreaAdmissionBusy || Runtime_AuthoringTargets().pPlacements != nullptr);
 	if (ImGui::BeginCombo("Area", preview))
 	{
 		for (size_t index = 0; index < m_EditorAreas.size(); ++index)
@@ -450,7 +469,7 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 	/* Sublevel jumps. The shortcut poll lives here so the keys exist only
 	   while this bar is on screen, which is only inside the isolated
 	   Development editor shell. */
-	Update_EditorSublevelJumpShortcuts();
+	if (!m_bRuntimeAuthoring) Update_EditorSublevelJumpShortcuts();
 	if (!m_EditorSublevelJumps.empty())
 	{
 		ImGui::TextDisabled(
@@ -576,7 +595,7 @@ bool_t Client::CMapTool::Save_AllAuthoring()
 	{
 		std::string sequenceStatus;
 		if (!m_pWorldSequenceToolPanel->Validate(
-			m_Catalog, m_Placements, m_DeployRuntime, sequenceStatus))
+			m_Catalog, Authoring_Placements(), Authoring_Deploy(), sequenceStatus))
 		{
 			m_Status = sequenceStatus;
 			return false;
@@ -657,7 +676,7 @@ bool_t Client::CMapTool::Save_AllAuthoring()
 	{
 		std::string sequenceStatus;
 		if (!m_pWorldSequenceToolPanel->Save(
-			m_Catalog, m_Placements, m_DeployRuntime, sequenceStatus))
+			m_Catalog, Authoring_Placements(), Authoring_Deploy(), sequenceStatus))
 		{
 			m_Status = sequenceStatus;
 			return false;
@@ -762,9 +781,9 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 		isAssetTest,
 		m_iAuthoringLevelIndex,
 		m_Catalog,
-		m_Placements,
+		Authoring_Placements(),
 		m_iSelectedPlacementId,
-		m_DeployRuntime);
+		Authoring_Deploy());
 	if (m_pWorldSequenceToolPanel->Consume_ReloadAllRequest())
 	{
 		const bool_t reloaded = Load_Placements();
@@ -915,8 +934,8 @@ int Client::CMapTool::Debug_SequenceViewer(const std::string& areaId,
 	if (!play && !stop) { status = "Map Tool에서 선택했습니다. 변경은 Save 후 Publish가 필요합니다."; return 1; }
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;
-	targets.pCatalog = &m_Catalog; targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.pCatalog = &m_Catalog; targets.pPlacements = &Authoring_Placements();
+	targets.pDeployRuntime = &Authoring_Deploy();
 	targets.device = m_pDevice; targets.context = m_pContext;
 	if (stop)
 	{
@@ -1105,8 +1124,8 @@ void Client::CMapTool::Render_ModeBar()
 		nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
-			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
-			m_DeployRuntime);
+			m_iAuthoringLevelIndex, m_Catalog, Authoring_Placements(),
+			Authoring_Deploy());
 		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
 		{
 			m_eToolMode = previousMode;
@@ -1143,7 +1162,7 @@ void Client::CMapTool::Render_Toolbar()
 		Arm_SelectedAsset();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::Text("Objects: %zu%s", m_Placements.size(),
+	ImGui::Text("Objects: %zu%s", Authoring_Placements().size(),
 		m_bDirty ? "  *unsaved" : "");
 	ImGui::TextDisabled(
 		"DeployProp authoring is excluded until its source/stage contract is complete.");
@@ -1301,12 +1320,12 @@ void Client::CMapTool::Render_Hierarchy(f32_t childHeight)
 		ImGui::GetTextLineHeightWithSpacing());
 	ImGui::BeginChild("PlacementHierarchy", ImVec2(0.f, listHeight), true);
 	ImGuiListClipper clipper;
-	clipper.Begin(static_cast<int>(m_Placements.size()));
+	clipper.Begin(static_cast<int>(Authoring_Placements().size()));
 	while (clipper.Step())
 	{
 		for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
 		{
-			const PLACED_ENTRY& entry = m_Placements[index];
+			const PLACED_ENTRY& entry = Authoring_Placements()[index];
 			const MAP_ASSET_ENTRY* pAsset =
 				m_Catalog.Find(entry.record.assetId);
 			const std::string assetLabel = nullptr == pAsset ?
@@ -1349,10 +1368,12 @@ void Client::CMapTool::Render_Inspector()
 	ImGui::TextWrapped("Asset: %s", pEntry->record.assetId.c_str());
 	ImGui::Text("Runtime: %s",
 		nullptr != pEntry->batch ? "Static Batch" : "Standalone Fallback");
-	float3_t position = pEntry->record.position;
-	float4_t quaternion = pEntry->record.rotationQuaternion;
-	float3_t scale = pEntry->record.signedScale;
-	bool_t visible = pEntry->record.visible;
+	ImGui::BeginDisabled(m_bRuntimeAuthoring && !Can_ChangeRuntimeStructure());
+	const auto& authored = Authored_Placement(*pEntry);
+	float3_t position = authored.position;
+	float4_t quaternion = authored.rotationQuaternion;
+	float3_t scale = authored.signedScale;
+	bool_t visible = authored.visible;
 	const bool_t positionChanged =
 		ImGui::DragFloat3("Position", &position.x, 0.1f);
 	const bool_t rotationChanged =
@@ -1381,7 +1402,7 @@ void Client::CMapTool::Render_Inspector()
 				normalized = XMVectorNegate(normalized);
 			XMStoreFloat4(&quaternion, normalized);
 
-			MAP_PLACEMENT_RECORD staged = pEntry->record;
+			MAP_PLACEMENT_RECORD staged = authored;
 			staged.position = position;
 			staged.rotationQuaternion = quaternion;
 			staged.signedScale = scale;
@@ -1456,6 +1477,7 @@ void Client::CMapTool::Render_Inspector()
 			if (applied)
 			{
 				pEntry->record = std::move(staged);
+				Remember_RuntimePlacement(pEntry->record);
 				m_bDirty = true;
 			}
 			else if (isValidPlacement)
@@ -1470,8 +1492,11 @@ void Client::CMapTool::Render_Inspector()
 		if (Set_RuntimeVisible(*pEntry, visible))
 		{
 			pEntry->record.visible = visible;
+			auto saved = authored;
+			saved.visible = visible;
+			Remember_RuntimePlacement(saved);
 			m_bDirty = true;
-			Set_EnvironmentPhase(m_EnvironmentPhase);
+			if (!m_bRuntimeAuthoring) Set_EnvironmentPhase(m_EnvironmentPhase);
 		}
 		else
 			m_Status = "Visibility edit failed";
@@ -1488,6 +1513,7 @@ void Client::CMapTool::Render_Inspector()
 			m_Status = "Deleted placement #" +
 				std::to_string(deletedId);
 	}
+	ImGui::EndDisabled();
 }
 
 void Client::CMapTool::Select_Asset(const MAP_ASSET_ENTRY& asset)

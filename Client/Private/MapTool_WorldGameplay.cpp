@@ -182,7 +182,7 @@ bool_t Client::CMapTool::Load_EncounterReference()
 	if (m_DestructionDocument.Is_Ready() &&
 		!Validate_DestructionExternalReferences(
 			m_DestructionDocument,
-			m_DeployRuntime,
+			Authoring_Deploy(),
 			m_RuntimeBlockerDocument,
 			m_WorldGameplayDocument,
 			staged,
@@ -233,7 +233,7 @@ bool_t Client::CMapTool::Load_WorldGameplay()
 		std::string status;
 		if (!Validate_DestructionExternalReferences(
 			m_DestructionDocument,
-			m_DeployRuntime,
+			Authoring_Deploy(),
 			m_RuntimeBlockerDocument,
 			stagedDocument,
 			m_EncounterReference,

@@ -251,6 +251,26 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 	return S_OK;
 }
 
+HRESULT Client::CNpcPresentationAssetService::Ensure_ObjectPrototype(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint32_t iLevelIndex)
+{
+	if (nullptr == pDevice || nullptr == pContext || iLevelIndex >= ETOUI(LEVEL::END))
+		return E_INVALIDARG;
+	std::scoped_lock lock{ g_NpcAssetMutex };
+	if (g_NpcObjectReadyLevels.contains(iLevelIndex))
+		return S_FALSE;
+	auto prototype = CNpc::Create(pDevice, pContext);
+	if (nullptr == prototype || FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex, TEXT("Prototype_GameObject_Npc"), std::move(prototype))))
+	{
+		return E_FAIL;
+	}
+	g_NpcObjectReadyLevels.insert(iLevelIndex);
+	return S_OK;
+}
+
 bool_t Client::CNpcPresentationAssetService::Is_Ready(
 	const uint32_t iLevelIndex,
 	const std::string_view archetypeId)

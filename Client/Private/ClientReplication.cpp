@@ -4180,6 +4180,7 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		allSucceeded = false;
 	}
 	character->Apply_NetworkStance(player.eStance);
+	character->Apply_NetworkVehicle(player.iVehicleId);
 	character->Apply_NetworkPresentationHidden((player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
 	if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
 	{

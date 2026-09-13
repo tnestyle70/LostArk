@@ -434,3 +434,10 @@ G14 마감 추가 검증: 실제 `CEffectNativeScreenPostMaterial::Bind`, `CShad
 4. 알비온 감전 장판의 STAGE_6 상승과 STAGE_7/8 착지, 쇼타임 발사 섬광의 연속 Play 표시, 외곽불 D/E/F의 주황색을 확인한다.
 
 에이전트는 Client/UI 실행·조작·화면 캡처를 하지 않았다. 실제 개선 FPS, GPU에서의 섬광·불 색상, 포탈 교대 현상 소멸의 최종 판정은 사용자의 새 실행 확인으로 남는다. 구현·설치·전체 빌드는 완료 상태다.
+
+
+## G19. PR380 main 충돌 병합
+
+사용자가 JSON은 우리 작업을 정본으로 유지하도록 지시했다. clean 작업 트리160b7a2a에 origin/main de223741을 병합하고 충돌6개를 해결했다. runtime/authoring WorldSequences와 Sequence Composition 세 JSON은 병합 전 우리 HEAD의 Git blob과 바이트 단위로 같게 유지했다. 세 Markdown은 양쪽 독립 추가 내용을 보존하고 중복·충돌 표시를 정리했으며, 상충한 Object Tool 사용법은 현재 Action Workbench 통합 계약을 유지했다.
+
+JSON3개 parse와 원본 blob 일치, 프로젝트 XML4개 parse, Sequence camera62개·WORLD instance49개 참조 존재, 미해결 index0 및 staged diff --check를 확인했다. 자동 병합된 Albion root query·포탈 capture boundary·불 unlit binder/shader는 우리 기존 구현과 동일함을 읽기 전용으로 대조했다. 이번 충돌 해결에서 제품 소스나 JSON의 추가 구현은 하지 않았으며, 전체 빌드/실행은 재실행하지 않았다. G18의 빌드는 병합 전 수정본의 검증 기록이다.

@@ -1,0 +1,16 @@
+{
+  "mn_isrx_00_n": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_n.tga",
+  "mn_isrx_00_cm": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_cm.tga",
+  "mn_isrx_00_d": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_d.tga",
+  "mn_isrx_00_s": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_s.tga",
+  "mn_isrx_00_m": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_m.tga",
+  "mn_isrx_02_n": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_n.tga",
+  "mn_isrx_02_s_cm": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_s_cm.tga",
+  "mn_isrx_02_d": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_d.tga",
+  "mn_isrx_02_s": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_s.tga",
+  "mn_isrx_02_em": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_em.tga",
+  "mn_isrx_02_m": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_m.tga",
+  "hdr07_1": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+  "statefx_default": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+  "brdf_beckmann_spec": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds"
+}

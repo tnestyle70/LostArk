@@ -19,10 +19,11 @@
 
 namespace
 {
-    HRESULT BindForwardSceneLights(const std::shared_ptr<Engine::CShader>& shader, bool bakedReceiver, const float4_t* worldCullSphere)
+    HRESULT BindForwardSceneLights(const std::shared_ptr<Engine::CShader>& shader, bool bakedReceiver, const float4_t* worldCullSphere,
+        bool withAmbient = false)
     {
         constexpr size_t capacity = 400u; // Scene 16 + existing transient budget 384.
-        std::array<float4_t, capacity> positions{}, directions{}, colors{}, cones{};
+        std::array<float4_t, capacity> positions{}, directions{}, colors{}, cones{}, ambients{};
         uint32_t count = 0u;
         bool mainDirectionalConsumed = false;
         const auto append = [&](const Engine::LIGHT_DESC& light, bool scene) -> HRESULT
@@ -53,6 +54,7 @@ namespace
             directions[count] = float4_t(light.vDirection.x, light.vDirection.y, light.vDirection.z, type);
             colors[count] = float4_t(light.vDiffuse.x, light.vDiffuse.y, light.vDiffuse.z, light.fFalloffExponent);
             cones[count] = float4_t(light.fSpotInnerCos, light.fSpotOuterCos, 0.f, light.staticShadowChannel != 0u ? float(light.staticShadowChannel) : mainDirectional ? 1.f : 0.f);
+            ambients[count] = light.vAmbient;
             ++count;
             return S_OK;
         };
@@ -64,7 +66,8 @@ namespace
             FAILED(shader->Bind_RawValue("g_SourceMapForwardLightPositionRange", positions.data(), sizeof(positions))) ||
             FAILED(shader->Bind_RawValue("g_SourceMapForwardLightDirectionType", directions.data(), sizeof(directions))) ||
             FAILED(shader->Bind_RawValue("g_SourceMapForwardLightColorExponent", colors.data(), sizeof(colors))) ||
-            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightConeShadow", cones.data(), sizeof(cones)))) return E_FAIL;
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightConeShadow", cones.data(), sizeof(cones))) ||
+            (withAmbient && FAILED(shader->Bind_RawValue("g_SourceMapForwardLightAmbient", ambients.data(), sizeof(ambients))))) return E_FAIL;
         return S_OK;
     }
 
@@ -677,6 +680,16 @@ uint32_t CMapAssetRenderUtils::Select_Pass(const MAP_ASSET_RENDER_PROFILE& profi
 		MAP_ASSET_RENDER_MODE::WATER == profile.renderMode ? 15u : 9u;
 	
 	return modeOffset + cullOfset;
+}
+
+HRESULT Client::CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(
+	const shared_ptr<Engine::CShader>& shader)
+{
+	if (nullptr == shader)
+		return E_INVALIDARG;
+	if (FAILED(BindForwardSceneLights(shader, false, nullptr, true)))
+		return E_FAIL;
+	return CGameInstance::Get().Bind_HeightFog(shader.get());
 }
 
 std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_RecentSurfaceBindings()

@@ -684,6 +684,9 @@
     <ClCompile Include="..\Private\Part_Body.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Part_Vehicle.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Part_Equipment.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -878,6 +881,9 @@
 	  <Filter>04. Network</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\VehiclePresentationAssetService.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp">
@@ -1285,6 +1291,9 @@
     <ClInclude Include="..\Public\Part_Body.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Part_Vehicle.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Part_Equipment.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
@@ -1556,6 +1565,9 @@
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\VehiclePresentationAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
@@ -1682,6 +1694,9 @@
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Actors\MonsterCatalog.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
+	<None Include="..\..\Data\Actors\VehicleCatalog.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json">

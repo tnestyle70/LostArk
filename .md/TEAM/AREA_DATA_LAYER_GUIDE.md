@@ -131,6 +131,15 @@ Area selector는 `Data/Maps/MapCatalog.json`의 exact `sourceCatalog`와
 visual/gameplay/navigation dirty를 검사하고 `Save and Continue / Discard and Continue /
 Cancel` 중 하나를 요구한다. 전환 stage가 실패하면 기존 Area 객체와 문서를 유지한다.
 
+Debug 제품 경로 `Lobby → KoukuSaydon → F1 → Map Tool`도 현재 쿠크 Area를
+편집한다. Test와 달리 Area를 바꾸거나 맵을 중복 생성하지 않고 arena 소유의
+placement/batch/Deploy를 기존 편집기에 연결한다. runtime/source의 전체 placement
+ID·asset 집합이 일치하지 않으면 연결하지 않고 오류를 표시한다. World/Composition
+재생 중 배치 변경·재로드는 먼저 Stop/Restore해야 한다. Save는 원본 배치값을
+저장하며 재생 중 샘플링된 좌표는 저장하지 않는다. 재로드는 현재 런타임의 숨김·Deploy
+표현 상태를 보존한다. 이는 Debug 로컬 저작 기능이며 Server collision/navigation/전투
+상태를 바꾸지 않는다. 다른 제품 Level과 Release에는 이 편집 경로를 열지 않는다.
+
 MapTool의 저장 대상은 Data 원본뿐이다.
 
 - visual: active descriptor의 `Data/Maps/Authoring/...mapplacements`

@@ -197,6 +197,7 @@ private:
 	void Render_AttachWindow();
 	bool_t Spawn_Target(const std::string& strArchetypeId);
 	bool_t Spawn_NpcTarget(const std::string& strArchetypeId, const float3_t& vPosition);
+	bool_t Spawn_VehicleTarget(const std::string& strArchetypeId, const float3_t& vPosition);
 	bool_t Spawn_ValtanTarget(const float3_t& vPosition);
 	bool_t Attach_ArenaBossTarget(const std::string& strArchetypeId, float3_t& OutPosition);
 	bool_t Spawn_PreviewBodyTarget(

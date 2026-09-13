@@ -56,7 +56,7 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 		m_NavigationBakeDesc.position.z + halfExtents.z);
 
 	std::unordered_map<std::string, shared_ptr<CModel>> modelCache;
-	for (const PLACED_ENTRY& entry : m_Placements)
+	for (const PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		bool_t visible = entry.record.visible;
 		if (entry.record.sourceLevel == "VALTAN_PHASE_SPACEHOLE")
