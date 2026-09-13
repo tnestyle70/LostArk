@@ -2345,11 +2345,20 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
             ImGui::EndDisabled();
         }
     }
-    if (ImGui::CollapsingHeader("Animation Clips"))
+    if (ImGui::CollapsingHeader("Animation Clips", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        ImGui::Text("%zu clips on this Motion", sequence.animationTracks.size());
+        const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+        if (resource && !resource->sequenceInstanceId.empty())
+            ImGui::TextWrapped("These clips drive the existing placed actor. Save applies edits to every Sequence using this Motion. Removing a clip extends the previous clip; removing the first starts the next at 0 ms.");
         for (size_t index = 0; index < sequence.animationTracks.size(); ++index)
         {
             auto& clip = sequence.animationTracks[index]; ImGui::PushID(static_cast<int>(index));
+            uint32_t endMs = sequence.durationMs;
+            for (const auto& next : sequence.animationTracks)
+                if (next.slotId == clip.slotId && next.startMs > clip.startMs) endMs = (std::min)(endMs, next.startMs);
+            ImGui::Separator();
+            ImGui::Text("%zu. %u - %u ms", index + 1u, clip.startMs, endMs);
             ImGui::Text("Slot: %s", clip.slotId.c_str());
             bool changed = EditText("Clip display name", clip.displayName);
             ImGui::TextWrapped("Native clip: %s", clip.clipName.c_str());
@@ -2374,7 +2383,8 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
             }
             ImGui::PopID();
         }
-        ImGui::TextWrapped("Select a native clip in Object Resources, then Append Clip to this Motion.");
+        if (!resource || resource->sequenceInstanceId.empty())
+            ImGui::TextWrapped("Select a native clip in Object Resources, then Append Clip to this Motion.");
     }
 }
 

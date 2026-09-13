@@ -3556,7 +3556,7 @@ def _resolve_collider_world_occurrence(pattern, collider):
     if identity:
         candidates = [row for row in candidates if row["occurrenceId"] == identity]
     if len(candidates) != 1:
-        raise CompositionError("WORLD Collider needs one exact same-pattern WORLD occurrence; select its occurrenceId when the World definition is reused")
+        raise CompositionError("WORLD Collider/Light needs one exact same-pattern WORLD occurrence; select its occurrenceId when the World definition is reused")
     return candidates[0]
 
 
@@ -3581,8 +3581,8 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
             _stable_id(world_occurrence_id, "presentation worldOccurrenceId")
             owner = next((row for row in pattern.get("worldOccurrences", []) if row["occurrenceId"] == world_occurrence_id), None)
             kind = resources[box["resourceId"]]["kind"]
-            if owner is None or kind not in {"EFFECT", "COLLIDER"}:
-                raise CompositionError("worldOccurrenceId requires an EFFECT/COLLIDER and a same-pattern World box")
+            if owner is None or kind not in {"EFFECT", "COLLIDER", "LIGHT"}:
+                raise CompositionError("worldOccurrenceId requires an EFFECT/COLLIDER/LIGHT and a same-pattern World box")
             if kind == "EFFECT":
                 if worlds[owner["worldId"]].get("companionEffectResourceId", "") != box["resourceId"]:
                     raise CompositionError("linked Effect must match its World companionEffectResourceId")
@@ -3590,24 +3590,25 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
                     raise CompositionError("a World box can have at most one linked companion Effect")
                 linked_world_ids.add(world_occurrence_id)
             elif normalized["anchorKind"] != "WORLD" or normalized["worldId"] != owner["worldId"]:
-                raise CompositionError("WORLD Collider occurrenceId must match its World definition and anchor")
-        if resources[box["resourceId"]]["kind"] == "COLLIDER" and normalized["anchorKind"] == "WORLD":
+                raise CompositionError("WORLD Collider/Light occurrenceId must match its World definition and anchor")
+        if resources[box["resourceId"]]["kind"] in {"COLLIDER", "LIGHT"} and normalized["anchorKind"] == "WORLD":
             _resolve_collider_world_occurrence(pattern, normalized)
         emission_index = _integer(normalized["worldEmissionIndex"], "presentation worldEmissionIndex", 0, 127)
-        if emission_index and not (resources[box["resourceId"]]["kind"] == "COLLIDER" and normalized["anchorKind"] == "WORLD"):
-            raise CompositionError("worldEmissionIndex belongs only to a WORLD-anchored Collider")
+        if emission_index and not (resources[box["resourceId"]]["kind"] in {"COLLIDER", "LIGHT"} and normalized["anchorKind"] == "WORLD"):
+            raise CompositionError("worldEmissionIndex belongs only to a WORLD-anchored Collider/Light")
         if normalized["cardSymbol"] not in {"NONE", *CARD_SYMBOLS} or normalized["cardColor"] not in {"NONE", "RED", "BLACK"}:
             raise CompositionError("collider card mapping is invalid")
         light = resources[box["resourceId"]]["kind"] == "LIGHT"
         effect = resources[box["resourceId"]]["kind"] == "EFFECT"
-        allowed_anchors = {"BOSS", "PLAYER", "MAP"} if light else ({"BOSS", "WORLD", "MAP"} if effect else {"BOSS", "WORLD"})
+        allowed_anchors = {"BOSS", "PLAYER", "MAP", "WORLD"} if light else ({"BOSS", "WORLD", "MAP"} if effect else {"BOSS", "WORLD"})
         if normalized["anchorKind"] not in allowed_anchors:
             raise CompositionError("presentation anchorKind is invalid")
-        if light and (normalized["scale"] != [1.0, 1.0, 1.0] or normalized["worldId"] or
+        if light and (normalized["scale"] != [1.0, 1.0, 1.0] or
+                      (normalized["anchorKind"] != "WORLD" and normalized["worldId"]) or
                       normalized["logicOccurrenceId"] or
                       (normalized["anchorKind"] != "BOSS" and normalized["bone"]) or
                       (normalized["anchorKind"] == "PLAYER" and not normalized["followBoss"])):
-            raise CompositionError("LIGHT requires unit scale, a direct anchor and Character follow without a bone")
+            raise CompositionError("LIGHT requires unit scale, a valid anchor and Character follow without a bone")
         if effect and normalized["anchorKind"] == "MAP" and (normalized["followBoss"] or
                 normalized["bone"] or normalized["boneTarget"] != "BODY" or normalized["worldId"] or normalized["worldOccurrenceId"]):
             raise CompositionError("MAP Effect requires a fixed position without a bone or World occurrence")
@@ -3660,7 +3661,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
             **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
             "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
             **({"worldOccurrenceId": _resolve_collider_world_occurrence(pattern, box)["occurrenceId"]}
-               if resource["kind"] == "COLLIDER" and box.get("anchorKind", "BOSS") == "WORLD" else {}),
+               if resource["kind"] in {"COLLIDER", "LIGHT"} and box.get("anchorKind", "BOSS") == "WORLD" else {}),
         })
     profiles = {profile["sceneProfileId"]: profile for profile in document.get("sceneProfiles", [])}
     for box in pattern.get("sceneProfileOccurrences", []):

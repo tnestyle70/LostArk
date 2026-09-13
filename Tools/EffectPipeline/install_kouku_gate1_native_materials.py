@@ -27,8 +27,14 @@ def install(contract_path,evidence,header_path):
     for p in programs:
         i=p['program'];parent=p['parentMaterial'];pid=profile_id(parent);runtime=f'effect.ue3.kouku-{i}-native.v1'
         assert p['nativeBlend'] in ('blend_additive','blend_translucent','blend_opaque','blend_masked'),p['nativeBlend']
+        source_transform_mesh = bool(p.get('sourceTransformMesh', False))
         render=('ADDITIVE' if p['nativeBlend']=='blend_additive' else 'ALPHA')+('_TWO_SIDED_DEPTH_READ' if p['nativeTwoSided'] else '_ONE_SIDED_DEPTH_READ')
-        if p['nativeBlend']=='blend_opaque' and not p['nativeTwoSided']:render='OPAQUE_BACK_DEPTH_WRITE'
+        # Static masked surfaces retain their native PS discard and write
+        # depth through the existing opaque pass. Particle masks keep their
+        # authored translucent ordering/depth-read contract.
+        if not p['nativeTwoSided'] and (p['nativeBlend']=='blend_opaque' or
+                source_transform_mesh and p['nativeBlend']=='blend_masked'):
+            render='OPAQUE_BACK_DEPTH_WRITE'
         textures=p['textures'];parameters=p['parameters'];switches=p['staticSwitches']
         for texture in textures:
             assert (ROOT/'Client/Bin/Resources'/texture['assetId']).is_file(),texture
@@ -37,7 +43,9 @@ def install(contract_path,evidence,header_path):
         arrays.append(f'inline constexpr std::array<ARTIST_PARAMETER_DESC,{len(parameters)}> ARTIST_PARAMETERS_{i} = {{{{\n'+''.join('    {'+quote(v['name'])+f', {v["row"]}u, {v["lane"] or 0}u, '+str(v['kind']=='vector').lower()+'},\n' for v in parameters)+'}};\n')
         arrays.append(f'inline constexpr std::array<ARTIST_SWITCH_DESC,{len(switches)}> ARTIST_SWITCHES_{i} = {{{{\n'+''.join('    {'+quote(v['parameterName'])+', '+str(v['value']).lower()+'},\n' for v in switches)+'}};\n')
         shape=p['rendererShape']
-        entries.append('    {'+f'{i}u,'+','.join(quote(x) for x in [runtime,p['sourceMaterial'],parent,pid])+','+str(shape in ('mesh','staticMesh')).lower()+','+str(p['modelCue']).lower()+','+quote(shape)+','+','.join(str(v).lower() for v in [p['requiresSceneColor'],p['requiresDepthSample'],p['requiresTangentView'],'dynamicparameter' in p['sourceVF']])+',EFFECT_RENDER_PROFILE::'+render+f',ARTIST_TEXTURES_{i},ARTIST_PARAMETERS_{i},ARTIST_SWITCHES_{i}'+'},\n')
+        if source_transform_mesh:
+            assert shape == 'mesh' and not p['modelCue'] and p.get('sourceStaticMeshComponents')
+        entries.append('    {'+f'{i}u,'+','.join(quote(x) for x in [runtime,p['sourceMaterial'],parent,pid])+','+str(shape in ('mesh','staticMesh')).lower()+','+str(p['modelCue']).lower()+','+quote(shape)+','+','.join(str(v).lower() for v in [p['requiresSceneColor'],p['requiresDepthSample'],p['requiresTangentView'],'dynamicparameter' in p['sourceVF']])+',EFFECT_RENDER_PROFILE::'+render+f',ARTIST_TEXTURES_{i},ARTIST_PARAMETERS_{i},ARTIST_SWITCHES_{i}'+(',true' if source_transform_mesh else '')+'},\n')
         source=dict(enabled=True,profileId=pid,runtimeShaderProfileId=runtime,parentMaterialPath=parent,semanticStatus='reconstructed_profile',
             textures=[{k:t[k] for k in ('name','sourceObjectPath','assetId','addressU','addressV','colorSpace','samplingEvidence')} for t in textures],
             scalars=[dict(name=v['name'],group='None',value=v['effective']) for v in parameters if v['kind']=='scalar'],

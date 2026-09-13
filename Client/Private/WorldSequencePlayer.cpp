@@ -1066,6 +1066,7 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 	ACTIVE_INSTANCE& active,
 	const TARGET_SET& targets)
 {
+	active.sampledDeployPivots.clear();
 	const WORLD_SEQUENCE_INSTANCE* instance =
 		m_Document.Find_Instance(active.instanceId);
 	const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr == instance ? nullptr :
@@ -1240,6 +1241,9 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 					return APPLY_RESULT::FAILED;
 				}
 			}
+			float4x4_t sampledPivot;
+			if (!object->Try_GetAnimationAuthoringPivot(sampledPivot)) return APPLY_RESULT::FAILED;
+			active.sampledDeployPivots.emplace(targetId, sampledPivot);
 			continue;
 		}
 		const WORLD_SEQUENCE_TRACK* track = Find_Track(*sequence, binding.slotId);

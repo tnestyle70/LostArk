@@ -91,6 +91,7 @@
 #include "RenderingBenchmark.h"
 #include "SequencerTool.h"
 #include "WorldObjectTool.h"
+#include "WorldLevelTool.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
@@ -1163,9 +1164,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		nullptr != foregroundWindow &&
 		foregroundWindow != g_hWnd &&
 		IsWindowOwnedByCurrentProcess(foregroundWindow);
-	const bool_t worldLeftMouseConsumed =
-		nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse();
+	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput();
+	const bool_t worldLeftMouseConsumed = mapEffectPlacementConsumed ||
+		(nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
 #else
+	constexpr bool_t mapEffectPlacementConsumed = false;
 	constexpr bool_t externalToolFocused = false;
 	constexpr bool_t worldLeftMouseConsumed = false;
 #endif
@@ -1188,7 +1191,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CGameInstance::Get().SetMouseButtonBlocked(
 		DIM::LB,
 		worldLeftMouseConsumed);
-	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, false);
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, mapEffectPlacementConsumed);
 
 	}
 	{
@@ -1283,6 +1286,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 	}
 	UpdateSequenceViewer();
+	UpdateWorldLevelTool();
 	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
 	   authority. Consume it before Animation_Tool::Update so reclaiming after a
 	   domain deep-link does not stop the active preview for one extra frame. */
@@ -1807,7 +1811,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
     resourcePattern.strPatternId = "preview.kouku.resource";
     // Resource audition uses the selected boss context; its temporary placement
     // never replaces the anchor authored in a Timeline occurrence.
-    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+     (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && resourcePreview.Occurrence.strAnchorKind == "BOSS"))
     {
      const auto selected = std::find_if(document.Patterns.begin(), document.Patterns.end(),
       [&](const auto& item) { return item.strPatternId == workbench->Get_SelectedPatternId(); });
@@ -2338,6 +2343,7 @@ HRESULT CMainApp::Render()
 			Engine::CProfilerScope developerToolsScope(
 				CGameInstance::Get().Get_Profiler(), "ImGui.DeveloperTools");
 			RenderDeveloperTools();
+			RenderWorldLevelTool();
 			/* The Workbench shell renders one selected boss session. Other domain
 			   tools remain independent windows; every owner retains its own draft. */
 			const auto focusNextWindow = [this](const DEBUG_TOOL eTool)
@@ -2396,6 +2402,7 @@ HRESULT CMainApp::Render()
 				if (!m_pSequenceBenchmarkTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK, false);
 			}
+			RenderMapEffectPlacementMarker();
 			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 				nullptr != m_pAnimationTool)
 			{
@@ -6929,6 +6936,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 
 	switch (eTool)
 	{
+	case DEBUG_TOOL::WORLD_LEVEL:
+		if (!m_pWorldLevelTool) m_pWorldLevelTool = make_unique<CWorldLevelTool>();
+		m_pWorldLevelTool->Open(GetWorldLevelAreaId());
+		break;
 	case DEBUG_TOOL::MAP:
 		if (nullptr == m_pMapTool)
 		{
@@ -9094,6 +9105,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
 		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
+		toolCell("Open World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("World Object Tool", DEBUG_TOOL::WORLD_OBJECT);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
@@ -9105,10 +9117,11 @@ void CMainApp::RenderDeveloperTools()
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 15>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 16>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "World Object Tool" },
+			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Sequencer Benchmark" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
@@ -9880,6 +9893,9 @@ void CMainApp::Free()
 	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
     if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
+	m_pWorldLevelPendingMapRequest.reset();
+	m_pMapEffectPlacementRequest.reset();
+	m_pWorldLevelTool.reset();
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG

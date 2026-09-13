@@ -1003,6 +1003,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_CompositionPhase(
 	const uint64_t iSubmissionSerial)
 {
 	m_vSourceActorPosition = { Frame.RootWorld._41 * 100.f, -Frame.RootWorld._43 * 100.f, Frame.RootWorld._42 * 100.f, 1.f };
+	m_fSourceTrackSampleSeconds = Frame.fSampleTimeSeconds;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	if (ePhase >= EFFECT_COMPOSITION_LAYER::END ||
 		bFinalizeSubmission !=

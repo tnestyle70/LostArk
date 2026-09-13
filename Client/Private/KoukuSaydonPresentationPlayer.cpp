@@ -276,7 +276,7 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
         !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
         !(kind == KIND::EFFECT && box.strAnchorKind == "MAP"))
         throw std::runtime_error("Presentation anchorKind is unsupported.");
-    if (kind == KIND::LIGHT && (box.strAnchorKind == "WORLD" || !box.strWorldId.empty() ||
+    if (kind == KIND::LIGHT && ((box.strAnchorKind != "WORLD" && !box.strWorldId.empty()) ||
         box.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
         (box.strAnchorKind != "BOSS" && !box.strBone.empty()) ||
         (box.strAnchorKind == "PLAYER" && !box.bFollowBoss)))
@@ -788,11 +788,12 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
                 m_strStatus = "Light resource unavailable: " + row.assetId + "; other rows preserved.";
                 continue;
             }
-            const auto append = [&](const float4x4_t& pivot)
+            const auto append = [&](const float4x4_t& pivot, const float anchorHeight)
             {
                 LIGHT_DESC desc{};
                 std::string status;
-                if (!CLightResourceCatalog::Try_BuildLightDesc(*resource, pivot, row.lightWeight, desc, status))
+                if (!CLightResourceCatalog::Try_BuildAnchoredLightDesc(*resource, row.lightBox.strAnchorKind,
+                    pivot, anchorHeight, row.lightWeight, desc, status))
                 { m_strStatus = "Light occurrence isolated: " + id + "; " + status; return; }
                 m_LightProvider->lights.push_back({desc, row.debugRender});
             };
@@ -802,12 +803,12 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
                 for (const auto& root : m_LightPlayerPivots)
                 {
                     float4x4_t pivot;
-                    if (Make_Pivot(row.lightBox, root, nullptr, pivot)) append(pivot);
+                    if (Make_Pivot(row.lightBox, root, nullptr, pivot)) append(pivot, root._42);
                 }
             }
             else
             {
-                append(row.pivot);
+                append(row.pivot, row.placementAnchor._42);
                 // A Server-owned same-body actor shares its owner's following
                 // spotlight. Gaze clones retain their own transform and animation;
                 // the original occurrence still owns timing, fade and brightness.
@@ -831,7 +832,8 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
                     const auto npc = follower.npc.lock();
                     float4x4_t pivot;
                     if (npc && npc->Get_Transform() && Make_Pivot(row.lightBox,
-                        *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), pivot)) append(pivot);
+                        *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), pivot))
+                        append(pivot, npc->Get_Transform()->Get_WorldMatrixPtr()->_42);
                 }
             }
         }
@@ -1454,14 +1456,15 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 if (!resolveWorldPivot(box, anchor))
                 {
                     // A WORLD may not have its first sampled pose yet. Retry
-                    // Collider anchors next frame instead of hiding this box forever.
-                    row.waitingForAnchor = resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT;
+                    // presentation anchors next frame instead of hiding this box forever.
+                    row.waitingForAnchor = resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT;
                     row.failed = !row.waitingForAnchor;
                     m_strStatus = "WORLD presentation anchor unavailable: " + box.strWorldId;
                     return;
                 }
                 const matrix_t worldMatrix = XMLoadFloat4x4(&anchor);
-                for (size_t axis = 0; axis < 3u; ++axis)
+                // Lights use metre offsets and retain their source shape, independent of model scale.
+                for (size_t axis = 0; resource.eKind != KIND::LIGHT && axis < 3u; ++axis)
                 {
                     const float scale = XMVectorGetX(XMVector3Length(worldMatrix.r[axis]));
                     placedBox.Scale[axis] *= scale;
@@ -1471,7 +1474,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 anchorModel.reset();
             }
             if (!Make_Pivot(placedBox, anchor, anchorModel, row.pivot, weaponView,
-                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT) ? &row.placementAnchor : nullptr))
+                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT) ? &row.placementAnchor : nullptr))
             {
                 row.waitingForAnchor = resource.eKind == KIND::LIGHT;
                 row.failed = !row.waitingForAnchor;
@@ -1479,7 +1482,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 return;
             }
             if (row.waitingForAnchor)
-                m_strStatus = "Collider WORLD anchor ready: " + box.strWorldId;
+                m_strStatus = "Presentation WORLD anchor ready: " + box.strWorldId;
             row.waitingForAnchor = false;
             if (resource.eKind == KIND::COLLIDER)
                 row.wire = Collider_Wire(resource, placedBox);
@@ -1528,7 +1531,11 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     spawn.fInitialSampleTimeSeconds = age;
                     spawn.bExternallySampled = true;
                     EFFECT_WORLD_ROOT_HANDLE handle;
-                    if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_strStatus)) row.failed = true;
+                    if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_strStatus))
+                    {
+                        m_strStatus = "V1 Effect spawn rejected: " + resource.strAssetId + " | " + box.strOccurrenceId + "; " + m_strStatus;
+                        row.failed = true;
+                    }
                     else row.v1EffectHandle = handle.iValue;
                     break;
                 }
@@ -2108,7 +2115,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
                 return true;
             }
         }
-        if (resource->eKind == KIND::EFFECT && !pattern.strActorProfileId.empty() &&
+        const bool bossLight = resource->eKind == KIND::LIGHT && box.strAnchorKind == "BOSS";
+        if (bossLight && (pattern.strActorProfileId.empty() || pattern.strGateId.empty() || pattern.strTargetBossPlacementId.empty()))
+        { status = "Boss Light Preview requires a selected Pattern with an exact Gate and boss target."; return false; }
+        if ((resource->eKind == KIND::EFFECT || bossLight) && !pattern.strActorProfileId.empty() &&
             !pattern.strGateId.empty() && !pattern.strTargetBossPlacementId.empty())
         {
             // Reuse the selected boss actor owner for a Resource without source
@@ -2124,7 +2134,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
             bundle.Members.push_back({pattern.strPatternId + ".member", sourceId, 0u});
             stagedDocument.Bundles.push_back(std::move(bundle));
             if (!Begin_BundlePreview(stagedDocument, pattern.strPatternId, clockMs, paused, status)) return false;
-            status = m_strStatus = "Effect Resource selected boss ready: " + resource->strAssetId;
+            status = m_strStatus = "Resource selected boss ready: " + resource->strAssetId +
+                " | " + pattern.strGateId + " | " + pattern.strTargetBossPlacementId;
             return true;
         }
     }

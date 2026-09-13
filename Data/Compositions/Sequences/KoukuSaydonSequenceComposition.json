@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 14,
+  "revision": 22,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -14,7 +14,7 @@
   "nextLogicOrdinal": 36,
   "nextSummonOrdinal": 2,
   "nextWorldOrdinal": 34,
-  "nextSceneProfileOrdinal": 4,
+  "nextSceneProfileOrdinal": 5,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -618,7 +618,7 @@
     },
     {
       "worldId": "kakulsaydon.g1.world.13",
-      "displayName": "팝업북_쿠크",
+      "displayName": "세이튼_1관문_연출",
       "sequenceInstanceId": "world.sequence.instance.original_kouku",
       "positionOffset": [0, 0, 0],
       "anchorKind": "NONE",
@@ -821,9 +821,14 @@
       "sceneProfileId": "kakulsaydon.g1.sceneprofile.3",
       "displayName": "팝업북_1관문환경",
       "renderingProfileId": "scene.kakulsaydon.g1.popup.v1"
+    },
+    {
+      "sceneProfileId": "kakulsaydon.g1.sceneprofile.4",
+      "displayName": "1관문_연출암전",
+      "renderingProfileId": "scene.kakulsaydon.spider-blackout.v1"
     }
   ],
-  "nextPresentationResourceOrdinal": 53,
+  "nextPresentationResourceOrdinal": 57,
   "presentationResources": [
     {"resourceId": "presentation.kouku.gate2.intro.camera.1", "displayName": "2관문 진입 카메라 / cam1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.intro.camera.1", "resourceKind": "", "elementId": "", "durationMs": 2100, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "presentation.kouku.gate2.intro.camera.2", "displayName": "2관문 진입 카메라 / cam2", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.intro.camera.2", "resourceKind": "", "elementId": "", "durationMs": 11850, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
@@ -947,11 +952,15 @@
     {"resourceId": "kakulsaydon.g1.presentation.46", "displayName": "카메라_통합_포탈진입", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate1.authored.portal", "resourceKind": "", "elementId": "", "durationMs": 4400, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.47", "displayName": "카메라_통합_팝업북", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate1.authored.book", "resourceKind": "", "elementId": "", "durationMs": 37800, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.48", "displayName": "통합_피날레팝업북_암전", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "kouku.gate1.authored.fade.black", "resourceKind": "LEAF", "elementId": "", "durationMs": 58810, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "kakulsaydon.g1.presentation.49", "displayName": "통합_포탈흡입_원본이펙트_1", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "effect.kouku.gate1.authored.portal-arrival.1", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 58810, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "kakulsaydon.g1.presentation.49", "displayName": "1관문_전후 쥐·금빛 연결", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "effect.kouku.gate1.authored.portal-arrival.context", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 58810, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.50", "displayName": "통합_포탈흡입_원본이펙트_2", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "effect.kouku.gate1.authored.portal-arrival.2", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 58810, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.g1.presentation.51", "displayName": "통합_팝업북_축포", "defaultAnchorKind": "WORLD", "kind": "EFFECT", "assetId": "effect.kouku.gate1.authored.festival", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 58810, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "kakulsaydon.effect.8e7eaa218533fd414f00", "displayName": "1관문_금빛 이동 축포_무대 4경로", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate1.intro.gold-trails.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 9413, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "kakulsaydon.g1.presentation.52", "displayName": "effect.kouku.gate1.intro.fireworks.full.restore", "defaultAnchorKind": "BOSS", "kind": "EFFECT", "assetId": "effect.kouku.gate1.intro.fireworks.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 6239, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45}
+    {"resourceId": "kakulsaydon.g1.presentation.52", "displayName": "effect.kouku.gate1.intro.fireworks.full.restore", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate1.intro.fireworks.full.restore", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 12239, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "kakulsaydon.g1.presentation.53", "displayName": "월드_1관문스포트라이트", "defaultAnchorKind": "MAP", "kind": "LIGHT", "assetId": "light.LV_LUT_MIDNIGHTC_ED.1", "resourceKind": "", "elementId": "", "durationMs": 3000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "kakulsaydon.g1.presentation.54", "displayName": "1관문_포탈 생성·흡입", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate1.intro.portal-suction.centered", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 15511, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "kakulsaydon.g1.presentation.55", "displayName": "1관문_팝업북_원본 무대 조명", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate1.popup.movable-lights", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 46552, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "kakulsaydon.g1.presentation.56", "displayName": "1관문_팝업북_원본 재질·커튼", "defaultAnchorKind": "MAP", "kind": "EFFECT", "assetId": "effect.kouku.gate1.popup.source-material-carriers", "resourceKind": "V1_EFFECT", "elementId": "", "durationMs": 46552, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45}
   ],
   "patterns": [
     {
@@ -1272,7 +1281,7 @@
       "nextLogicOccurrenceOrdinal": 1,
       "nextSummonOccurrenceOrdinal": 1,
       "nextWorldOccurrenceOrdinal": 22,
-      "nextSceneProfileOccurrenceOrdinal": 3,
+      "nextSceneProfileOccurrenceOrdinal": 4,
       "stages": [
         {
           "stageId": "STAGE_1",
@@ -1359,11 +1368,18 @@
           "startMs": 21010,
           "durationMs": 37800,
           "blendMs": 0
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.sceneprofile.3",
+          "sceneProfileId": "kakulsaydon.g1.sceneprofile.4",
+          "startMs": 26525,
+          "durationMs": 32285,
+          "blendMs": 500
         }
       ],
       "resetBossToSpawn": false,
       "enterCombatOnFinish": true,
-      "nextPresentationOccurrenceOrdinal": 31,
+      "nextPresentationOccurrenceOrdinal": 35,
       "presentationOccurrences": [
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.23", "resourceId": "kakulsaydon.g1.presentation.45", "startMs": 0, "durationMs": 12258, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.24", "resourceId": "kakulsaydon.g1.presentation.46", "startMs": 12258, "durationMs": 4400, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
@@ -1376,7 +1392,11 @@
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.20", "resourceId": "kakulsaydon.g1.presentation.49", "startMs": 0, "durationMs": 58810, "positionOffset": [58.016010742187504, 0.75053901672363288, -86.865615234374999], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.21", "resourceId": "kakulsaydon.g1.presentation.50", "startMs": 0, "durationMs": 58810, "positionOffset": [58.016010742187504, 0.75053901672363288, -86.865615234374999], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.22", "resourceId": "kakulsaydon.g1.presentation.51", "startMs": 0, "durationMs": 58810, "positionOffset": [13.990144042968751, 1.0400756072998047, 735.37335937500006], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.30", "resourceId": "kakulsaydon.g1.presentation.52", "startMs": 0, "durationMs": 38418, "positionOffset": [14, 15.77400016784668, 745], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""}
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.30", "resourceId": "kakulsaydon.g1.presentation.52", "startMs": 0, "durationMs": 24785, "positionOffset": [62.657180786132812, 4.1899975585937499, -101.64555358886719], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.31", "resourceId": "kakulsaydon.g1.presentation.53", "startMs": 26525, "durationMs": 11243, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": true, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "kakulsaydon.g1.world.13", "logicOccurrenceId": "", "worldOccurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.21"},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.32", "resourceId": "kakulsaydon.g1.presentation.54", "startMs": 0, "durationMs": 36541, "positionOffset": [72.857119140625002, 1.7616273498535158, -99.769365234375002], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.33", "resourceId": "kakulsaydon.g1.presentation.55", "startMs": 12258, "durationMs": 46552, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_4.presentation.34", "resourceId": "kakulsaydon.g1.presentation.56", "startMs": 12258, "durationMs": 46552, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""}
       ]
     },
     {

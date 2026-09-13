@@ -343,6 +343,59 @@ descriptor가 있어도 program 식이 grouped approximation이면 source-exact�
 DXBC와 output/ABI 동등성을 별도 봉인하기 전까지 `BOUNDED_TRANSLATED`다. 어느 경로든 Product가 소비하는
 Program/Layout은 build와 harness로 봉인된 ID여야 하며 JSON이 shader 경로나 macro를 저작하지 않는다.
 
+### Typed V1 LIGHT 계약
+
+V1 `detail.light`는 다음 profile을 기존 `CEffectPlayback -> Try_BuildEffectLightDesc ->
+CPresentation_Manager::Add_TransientLight -> CLight` 경로로 소비한다. Effect Tool에서 밝기나 색을
+수정해도 저장된 광원 종류를 유지한다.
+
+| `profileId` | Engine 종류 | 추가 저장 입력 |
+|---|---|---|
+| `light.point.reconstructed.v1` | POINT | 없음 |
+| `light.spot.reconstructed.v1` | SPOT | `direction`, `innerConeDegrees`, `outerConeDegrees` 필수 |
+| `light.directional.reconstructed.v1` | DIRECTIONAL | `direction` 필수 |
+
+`direction`은 유한한 영벡터가 아닌 **element local 방향**이다. 실제 element transform,
+`SourceTransformTrack`, occurrence root를 합성한 basis로 한 번 변환하고 최종 Light descriptor에서
+정규화한다. UE3 원본 전방·FRotator·cm 단위의 변환은 기존 source transform 경로가 소유하며,
+이미 변환된 방향에 별도 90도 보정을 더하지 않는다. SPOT은 `0 <= inner <= outer < 90`과
+`outer > 0`을 요구한다. 알 수 없는 profile이나 잘못된 방향·각도는 POINT로 대체하지 않고 거부한다.
+
+모든 종류의 optional `specularIntensity`는 유한한 0 이상이며 생략 기본값은 0이다. 양수이면
+최종 diffuse RGB, 즉 원본 밝기·색 곡선까지 평가한 광색에 이 배율을 곱해 specular RGB를 만든다.
+원본 근거가 있는 광원만 명시적으로 켠다. 기본값 0은 기존 POINT의 specular 0과 저장 형식을
+유지하며, 임의로 다른 문서나 맵 광원에 specular를 더하지 않는다. 광원 수신 범위와 shadow·light
+shaft·named channel의 지원 여부는 이 profile 이름만으로 복원됐다고 간주하지 않는다.
+
+Engine `LIGHT_DESC`의 x64 ABI는 108 bytes로 유지된다. Client의 `EFFECT_LIGHT_DETAIL_DESC`는
+72 bytes, `EFFECT_EVALUATED_LIGHT`는 96 bytes이며 이들을 포함한 문서·프레임의 C++ 크기는
+기존 POINT 전용 구조와 다르다. 헤더가 바뀌면 codec, playback, renderer, tool 및 검증 실행파일의
+모든 소비자를 같은 헤더로 다시 컴파일한다. 새 probe만 컴파일한 뒤 예전 Client OBJ와 링크한
+결과를 ABI·재생 검증으로 사용하지 않는다.
+
+검증은 실제 codec 저장 왕복과 잘못된 입력 거부, 원본 시계의 위치·방향·RGB 곡선, occurrence
+회전의 단일 적용, 되감기 재현을 포함한다. 기존 POINT는 새 필드를 생략한 문서와 동일한 평가
+입력에서 최종 `LIGHT_DESC`를 이전 구현과 바이트 단위로 비교한다. 이 수치·호환성 검증은
+GPU 표시나 사용자의 최종 화면 판정을 대신하지 않는다.
+
+### Source Transform의 정적 Mesh와 재질 곡선
+
+원본 `StaticMeshComponent`가 사용하는 native program은 generator의 `sourceTransformMesh`와
+`ARTIST_PROGRAM_DESC::bSourceTransformMesh`로 승인한다. 이 경로는 `MESH`, 비활성 SourceRecipe,
+실제 `sourceTransformTrack.nodes`, 하나의 meshModel을 요구하며 particle program과 구분한다.
+원본 texture·scalar·vector·static switch와 native packet 계약도 기존 검사를 그대로 통과해야 한다.
+
+Optional `sourceTransformTrack.materialParameterTracks`는 `name`, `kind`(`SCALAR`/`VECTOR`),
+`keys`를 저장한다. key의 값과 tangent는 각각 1/3성분이며 기존 `constant`/`linear`/`cubic`
+분포를 사용한다. staging은 등록된 native program의 정확한 이름·형·row/lane에만 연결하고,
+누락·중복·미지원 program·비유한 값은 거부한다. draw는 기존 Frame 시계에 source origin을 한 번
+더해 prepared packet의 복사본만 갱신한다. vector는 XYZ만 바꾸고 W를 유지하며 곡선 없는
+element의 기존 packet은 바꾸지 않는다.
+
+각 node의 optional `useQuaternionInterpolation`은 기본 false다. true는 원본 Matinee의
+quaternion 보간 근거가 있는 node에만 기록하고, 기존 false node의 Euler 보간과 직렬화를 유지한다.
+헤더 변경 뒤 모든 codec·playback·renderer 소비자는 같은 ABI로 다시 컴파일한다.
+
 ## 9. 새 HLSL과 새 adapter를 만드는 기준
 
 | 실측 결과 | 구현 선택 |
@@ -555,6 +608,7 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 | `Data/Effects/Authored/*.effect.json` | stable element, composition, carrier/resource/material 선택과 v15 inline runtime carrier/history |
 | `Data/Effects/Contracts`와 Imported receipts | source identity, exact variant, evidence와 admission 상태 |
 | `Data/Effects/EffectCatalog.json` | Product EffectAssetId와 exact authored 상대 경로 admission |
+| `Data/Effects/EffectResourceTree.json` | 저작 라이브러리 분류·표시 이름. runtime 보스·관문 선택이나 Product admission을 소유하지 않음 |
 | `Client/Bin/Resources/Effect`와 필요한 Character model | Product 문서가 참조하는 Drive-owned DDS/WModel binary; Git 추적 금지 |
 | `Effect_AuthoringDocument.h` | element, renderer, resource, material execution descriptor schema |
 | `Effect_VisualProgramCorpus.*` | 같은 authored document pointer에서 만드는 transient `ADAPTER_PACKET_V1` projection. disk corpus를 읽거나 쓰지 않음 |
@@ -570,6 +624,11 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 Generated runtime Effect 문서는 존재하지 않는다. authored 문서와 source catalog를 직접 고치고
 `Validate-EffectSources.ps1`로 검증한다. Save activation 실패는 compare-and-swap으로 authored 파일과
 prepared target을 이전 상태로 되돌린다.
+
+Kouku 저작 브라우저는 Catalog와 실제 Authored 헤더, 저장된 Tree 참조를 함께 표시한다.
+Catalog 미등록 원본도 canonical 저작 경로에서 열 수 있으나 이 탐색을 admission으로 취급하지 않는다.
+Play All의 보스는 sourceModelPreview 또는 실제 Composition 사용 관계로 선택하고, 공유 원본의
+모호한 문맥은 사용자의 명시적인 Model View 선택으로 해결한다. Tree의 첫 분류를 actor로 해석하지 않는다.
 
 현재 contract 파일의 역할도 구분한다.
 

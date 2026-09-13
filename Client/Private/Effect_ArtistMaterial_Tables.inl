@@ -32214,7 +32214,140 @@ constexpr std::array<ARTIST_SWITCH_DESC,4> ARTIST_SWITCHES_3606 = {{
     {"30.usefresnal", false},
     {"checkisdepthbiasalpha", true},
 }};
-constexpr std::array<ARTIST_PROGRAM_DESC,1136> ARTIST_PROGRAM_STORAGE = {{
+constexpr std::array<std::string_view,1> ARTIST_TEXTURES_3616 = {{"opacity_texture"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,2> ARTIST_PARAMETERS_3616 = {{
+    {"selectioncolor", 1u, 0u, true},
+    {"op", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_3616 = {{
+}};
+constexpr std::array<std::string_view,0> ARTIST_TEXTURES_3617 = {{}};
+constexpr std::array<ARTIST_PARAMETER_DESC,3> ARTIST_PARAMETERS_3617 = {{
+    {"selectioncolor", 2u, 0u, true},
+    {"color", 1u, 0u, true},
+    {"op", 0u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_3617 = {{
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_3618 = {{"01.map_a","06.map_b"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,19> ARTIST_PARAMETERS_3618 = {{
+    {"selectioncolor", 5u, 0u, true},
+    {"11.direct", 2u, 2u, false},
+    {"11.width.power", 3u, 0u, false},
+    {"12.width.strength", 3u, 2u, false},
+    {"01.height.power", 0u, 0u, false},
+    {"02.height.strength", 0u, 1u, false},
+    {"04.map_a_panning_x", 1u, 0u, false},
+    {"02.map_a_uvscale_r", 0u, 2u, false},
+    {"03.map_a_uvscale_g", 0u, 3u, false},
+    {"05.map_a_panning_y", 1u, 1u, false},
+    {"09.map_b_panning_x", 2u, 0u, false},
+    {"07.map_b_uvscale_r", 1u, 2u, false},
+    {"08.map_b_uvscale_g", 1u, 3u, false},
+    {"10.map_b_panning_y", 2u, 1u, false},
+    {"31.noisepower", 4u, 0u, false},
+    {"32.noisestr", 4u, 1u, false},
+    {"31.fresnal_power", 3u, 3u, false},
+    {"11.range", 2u, 3u, false},
+    {"12.power", 3u, 1u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,12> ARTIST_SWITCHES_3618 = {{
+    {"00.checkisdepthbiasalpha", false},
+    {"10.usefakedepthbiasalpha", true},
+    {"01.useconeuv", false},
+    {"30.usefresnal", true},
+    {"00.usenoise", true},
+    {"00.blendingadd", false},
+    {"30.use((map_a+map_b)*0.5)", false},
+    {"00.useuvnoise", false},
+    {"01.usemesh", true},
+    {"00.usecolor", false},
+    {"01.usenoise", false},
+    {"10.usemapcolor", false},
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_3619 = {{"native_texture_0","native_texture_1"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,1> ARTIST_PARAMETERS_3619 = {{
+    {"selectioncolor", 0u, 0u, true},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,0> ARTIST_SWITCHES_3619 = {{
+}};
+constexpr std::array<std::string_view,2> ARTIST_TEXTURES_3620 = {{"texture_diffuse","texture_normal"}};
+constexpr std::array<ARTIST_PARAMETER_DESC,24> ARTIST_PARAMETERS_3620 = {{
+    {"selectioncolor", 9u, 0u, true},
+    {"hit_color", 8u, 0u, true},
+    {"fx_color_intensity_buffsettool", 7u, 0u, true},
+    {"fx_color_intensity_actiontool", 6u, 0u, true},
+    {"transcolor", 11u, 0u, true},
+    {"constantoutline_color", 4u, 0u, true},
+    {"diffuse_color", 5u, 0u, true},
+    {"specular_color", 10u, 0u, true},
+    {"bump_offset", 0u, 2u, false},
+    {"bump_intensity", 0u, 1u, false},
+    {"normal_intensity", 2u, 2u, false},
+    {"fx_color_desaturation_actiontool", 2u, 0u, false},
+    {"fx_color_desaturation_buffsettool", 2u, 1u, false},
+    {"transcolor_rimlight ", 3u, 3u, false},
+    {"trans_rim_inradius", 3u, 2u, false},
+    {"trans_rim_hard", 3u, 1u, false},
+    {"constantoutline", 0u, 3u, false},
+    {"constantoutline_blink", 1u, 0u, false},
+    {"constantoutline_power", 1u, 1u, false},
+    {"diffuse_saturation", 1u, 3u, false},
+    {"diffuse_brightness", 1u, 2u, false},
+    {"bump_brightness", 0u, 0u, false},
+    {"specular_intensity", 2u, 3u, false},
+    {"specular_power", 3u, 0u, false},
+}};
+constexpr std::array<ARTIST_SWITCH_DESC,47> ARTIST_SWITCHES_3620 = {{
+    {"1.use_worldoffset", false},
+    {"1.use_wind", false},
+    {"1.use_overlay", false},
+    {"1.use_detail_normal", false},
+    {"1.use_normalmap", true},
+    {"1.uv_fixed_normal", false},
+    {"1.use_bump", true},
+    {"1.use_uv_tiling", false},
+    {"1.use_uv_panning", false},
+    {"1.use_uv_rotate", false},
+    {"1.invert_overlay", false},
+    {"1.use_vertexcolor_paint", false},
+    {"1.use_overlay_direction", false},
+    {"1.use_overlay_normal", false},
+    {"1.use_reflection", false},
+    {"1.use_diffuse_saturation", true},
+    {"1.use_linear_blend", false},
+    {"1.use_worldreflection", false},
+    {"1.use_rimlight", false},
+    {"1.use_specular", true},
+    {"1.use_specular_texture", false},
+    {"1.use_specular_saturation", false},
+    {"is_solid", false},
+    {"is_blend_translucent", false},
+    {"is_blend_masked", true},
+    {"1.use_opacity_texture", false},
+    {"1.use_opacityfalloff", false},
+    {"use_occludeblend", false},
+    {"1.use_objectheight_blend", false},
+    {"1.use_emissive", false},
+    {"1.use_subspecular", false},
+    {"1.use_flicker", false},
+    {"1.use_flicker_linear", false},
+    {"1.use_emissive_uvani", false},
+    {"1.use_uv_moving", false},
+    {"1.use_fx_dead", false},
+    {"1.use_fx_dead_edgeglow", false},
+    {"1.use_fx_dead_worldoffset", false},
+    {"1.use_dead_movepiece", false},
+    {"1.use_fx_panning", false},
+    {"1.use_constant_fx", false},
+    {"1.use_uvchannel_2", false},
+    {"1.use_state_material", false},
+    {"constantoutline+diffuseadd", false},
+    {"1.use_hitcolordirection", false},
+    {"1.use_parts_highlight", false},
+    {"isnpc", false},
+}};
+constexpr std::array<ARTIST_PROGRAM_DESC,1141> ARTIST_PROGRAM_STORAGE = {{
     {460u,"effect.ue3.artist-460-native.v1","sk_sdm_tig_00.mat.sk_sdm_tig_00aa_mi","efbasematerial_prologue.pbr.pbr_base_trn","ue3.material.efbasematerial.prologue.pbr.pbr.base.trn.6efcc2fcdb7b",false,true,"skeletalMesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_460,ARTIST_PARAMETERS_460,ARTIST_SWITCHES_460},
     {461u,"effect.ue3.artist-461-native.v1","sk_sdm_dra_00.mat.sk_sdm_dra_00_mi","efbasematerial_prologue.pbr.pbr_base_trn","ue3.material.efbasematerial.prologue.pbr.pbr.base.trn.6efcc2fcdb7b",false,true,"skeletalMesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_461,ARTIST_PARAMETERS_461,ARTIST_SWITCHES_461},
     {462u,"effect.ue3.artist-462-native.v1","fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr","fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr","ue3.material.fx.m.mi.02.fx.m.fx.j.maskedrib.01.tr.b508403ea55f",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_462,ARTIST_PARAMETERS_462,ARTIST_SWITCHES_462},
@@ -33351,4 +33484,9 @@ constexpr std::array<ARTIST_PROGRAM_DESC,1136> ARTIST_PROGRAM_STORAGE = {{
     {3604u,"effect.ue3.kouku-3604-native.v1","fx_m_mi_d_00.fx_mi.fx_d_pa_worldpospatten_01_05_tr","fx_m_mi_d_00.fx_m.fx_d_pa_worldpospatten_01_tr","ue3.material.fx.m.mi.d.00.fx.m.fx.d.pa.worldpospatten.01.tr.98d4e6e1db85",false,false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_3604,ARTIST_PARAMETERS_3604,ARTIST_SWITCHES_3604},
     {3605u,"effect.ue3.kouku-3605-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_fire_18_03_dt_tr","fx_m_mi_00.fx_m.fx_d_pa_fire_18_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.pa.fire.18.tr.a94801fb6eec",false,false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_3605,ARTIST_PARAMETERS_3605,ARTIST_SWITCHES_3605},
     {3606u,"effect.ue3.kouku-3606-native.v1","fx_m_mi_00.fx_mi.fx_d_pa_glow_01_01_dt_ad","bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_ad","ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.ad.0f4a4414a90a",false,false,"sprite",false,true,false,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,ARTIST_TEXTURES_3606,ARTIST_PARAMETERS_3606,ARTIST_SWITCHES_3606},
+    {3616u,"effect.ue3.kouku-3616-native.v1","scene_a.trision.black_t_msk_inst","scene_a.trision.black_t_msk","ue3.material.scene.a.trision.black.t.msk.f6f84add2937",true,false,"mesh",false,false,false,false,EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE,ARTIST_TEXTURES_3616,ARTIST_PARAMETERS_3616,ARTIST_SWITCHES_3616,true},
+    {3617u,"effect.ue3.kouku-3617-native.v1","scene_a.mat.white_t","scene_a.mat.white_t","ue3.material.scene.a.mat.white.t.460bb4eb84bf",true,false,"mesh",false,false,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_3617,ARTIST_PARAMETERS_3617,ARTIST_SWITCHES_3617,true},
+    {3618u,"effect.ue3.kouku-3618-native.v1","bfx_m_mi_00.bfx_mi.bfx_g_me_shine_03_01_ad","fx_m_mi_02.fx_m.fx_d_pa_shine_02_ad","ue3.material.fx.m.mi.02.fx.m.fx.d.pa.shine.02.ad.29d7864aadba",true,false,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,ARTIST_TEXTURES_3618,ARTIST_PARAMETERS_3618,ARTIST_SWITCHES_3618,true},
+    {3619u,"effect.ue3.kouku-3619-native.v1","enginematerials.defaultmaterial","enginematerials.defaultmaterial","ue3.material.enginematerials.defaultmaterial.6131d8dad51a",true,false,"mesh",false,false,false,false,EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE,ARTIST_TEXTURES_3619,ARTIST_PARAMETERS_3619,ARTIST_SWITCHES_3619,true},
+    {3620u,"effect.ue3.kouku-3620-native.v1","bg_rad_koukusaton_a.mat.bg_rad_koukusaton_curtain01c_mi","efbasematerial_prologue.bg.base.bg_base_msk","ue3.material.efbasematerial.prologue.bg.base.bg.base.msk.375076976ce5",true,false,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE,ARTIST_TEXTURES_3620,ARTIST_PARAMETERS_3620,ARTIST_SWITCHES_3620,true},
 }};

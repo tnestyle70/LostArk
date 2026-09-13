@@ -7,6 +7,7 @@
 #include "Effect_ComponentDocument.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
 #include "EffectResourceCatalog.h"
+#include "EffectAuthoringResourceTree.h"
 #include "EffectCompositionWorldResource.h"
 #include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
@@ -104,54 +105,6 @@ enum class EFFECT_DOCUMENT_SOURCE : uint8_t
 	RUNTIME_VISUAL_PROGRAM,
     END
 };
-
-enum class EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND : uint8_t
-{
-	PLAYER_CLASS,
-	VALTAN_BOSS,
-	KOUKU_BOSS,
-	WORLD
-};
-
-struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
-{
-	EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND eKind =
-		EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS;
-	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
-		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	std::string_view strLabel;
-};
-
-inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 9u>
-	EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS = {{
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
-			"Lance Master" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
-			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
-			"Gunslinger" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
-			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
-			"Slayer" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
-			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-			"Artist" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
-			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-			"Dimension Master" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
-			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
-			"Warlord" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS,
-			LostArk::Shared::CHARACTER_CLASS_ID::END,
-			"Valtan" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::KOUKU_BOSS,
-			LostArk::Shared::CHARACTER_CLASS_ID::END,
-			"KoukuSaydon" },
-		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::WORLD,
-			LostArk::Shared::CHARACTER_CLASS_ID::END,
-			"World" }
-	}};
 
 /* Valtan Boss Tool transfers only stable Product identity. Effect Tool re-resolves
    the current joined tree and exact writable source; no pointers, paths, or
@@ -836,6 +789,7 @@ private:
     bool_t Try_ClearMeshAuthoringSlot();
 	bool_t Try_DuplicateSelectedElement();
 	bool_t Try_MoveSelectedElement(int32_t iDirection);
+	bool_t Try_RemoveCinematicLeadingDelay();
     bool_t Try_DeleteSelectedElement();
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
@@ -922,6 +876,8 @@ private:
 	const std::filesystem::path* Observe_DirectAuthoredEditablePath(
 		const std::string& strEffectAssetId,
 		std::string& strOutStatus) const;
+	bool_t Resolve_SavedKoukuEffectSource(const std::string& strEffectAssetId,
+		std::filesystem::path& outPath, std::string& outStatus);
 	const std::filesystem::path* Resolve_DirectAuthoredEditablePath(
 		const std::string& strEffectAssetId,
 		std::string& strOutStatus);
@@ -1432,6 +1388,13 @@ private:
     bool_t m_bAllEffectsRefreshAttempted = false;
     bool_t m_bSavedEffectOrganizationLoaded = false;
     std::map<std::string, std::pair<std::string, std::vector<std::string>>> m_SavedEffectOrganization;
+    struct SAVED_KOUKU_EFFECT_SOURCE final
+    {
+        std::filesystem::path Path;
+        std::string strDisplayName, strStatus, strLoadStatus;
+    };
+    std::map<std::string, SAVED_KOUKU_EFFECT_SOURCE> m_SavedKoukuEffectSources;
+    std::string m_strSavedKoukuInventoryStatus;
     bool_t m_bDataFilesRefreshAttempted = false;
 	bool_t m_bCatalogMetadataViewInitialized = false;
     bool_t m_bPendingWorldPivotPick = false;

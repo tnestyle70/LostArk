@@ -279,6 +279,12 @@ function Get-EncounterProfiles {
 			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['bossMotion']) { $patternProperties += 'bossMotion' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['fixedTimeline']) {
+				# Parent timing belongs to the gameplay publisher and Server. Accept its
+				# typed Product field while resolving this encounter's world placements.
+				$patternProperties += 'fixedTimeline'
+				if ($pattern.fixedTimeline -isnot [bool]) { throw 'KoukuSaydon fixedTimeline must be boolean' }
+			}
 			if ($isKoukuSaydon) {
 				foreach ($field in @('gateId','targetBossPlacementId','actorProfileId','folderId')) {
 					if ($null -ne $pattern.PSObject.Properties[$field]) {

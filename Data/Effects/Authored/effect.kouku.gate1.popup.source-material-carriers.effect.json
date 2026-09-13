@@ -1,0 +1,5288 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.kouku.gate1.popup.source-material-carriers",
+  "displayName": "1관문_팝업북 원본 암전·섬광·빛기둥·바닥·커튼",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
+  "modelCues": [],
+  "elements": [
+    {
+      "id": "kouku.popup.carrier.672",
+      "displayName": "SCENE03A plan0",
+      "groupId": "effect.kouku.gate1.popup.source-material-carriers",
+      "sourceNode": "theworld.persistentlevel.interpactor_426.staticmeshcomponent_761",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/bfm_mossfog_001.wmodel"
+        }
+      ],
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "scene_a.trision.black_t_msk_inst",
+        "renderProfile": "opaque_back_depth_write",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.scene.a.trision.black.t.msk.f6f84add2937",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3616-native.v1",
+          "parentMaterialPath": "scene_a.trision.black_t_msk",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "opacity_texture",
+              "sourceObjectPath": "efmaster_material_prologue.tex.flat_white",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/efmaster_material_prologue/flat_white.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "op",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 46.55200000000001,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": false
+        },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 64,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.5,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "kouku.popup.carrier.672",
+        "sourceTimeOriginSeconds": 0.0,
+        "previewOriginUE3Cm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "theworld.persistentlevel.interpactor_426",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              1977.7598876953125,
+              -91389.703125,
+              -15777.8623046875
+            ],
+            "initialEulerDegrees": [
+              -0.2362060546875,
+              -0.2581787109375,
+              42.5390625
+            ],
+            "scaleUE3": [
+              50.0,
+              50.0,
+              1.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  1977.7593994140625,
+                  -91389.671875,
+                  -15777.8583984375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  1977.7593994140625,
+                  -91389.671875,
+                  -15777.8583984375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.31913957832122,
+                "value": [
+                  1977.7593994140625,
+                  -91389.671875,
+                  -15777.8583984375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 12.19231735481931,
+                "value": [
+                  1977.7603759765625,
+                  -91389.65625,
+                  -16225.1943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  1977.7603759765625,
+                  -91389.65625,
+                  -16225.1943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  1977.7603759765625,
+                  -91389.65625,
+                  -16225.1943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  1977.7603759765625,
+                  -91389.65625,
+                  -16225.1943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  1977.7603759765625,
+                  -91389.65625,
+                  -16225.1943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  1977.7603759765625,
+                  -91389.65625,
+                  -16225.1943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.31913957832122,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 12.19231735481931,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  0.0,
+                  0.0,
+                  42.5390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "kouku.popup.carrier.691",
+      "displayName": "SCENE03A b05",
+      "groupId": "effect.kouku.gate1.popup.source-material-carriers",
+      "sourceNode": "theworld.persistentlevel.interpactor_444.staticmeshcomponent_233",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/bfm_planbottom_01.wmodel"
+        }
+      ],
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "enginematerials.defaultmaterial",
+        "renderProfile": "opaque_back_depth_write",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.enginematerials.defaultmaterial.6131d8dad51a",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3619-native.v1",
+          "parentMaterialPath": "enginematerials.defaultmaterial",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "native_texture_0",
+              "sourceObjectPath": "enginematerials.defaultnormal",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/enginematerials/defaultnormal.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_1",
+              "sourceObjectPath": "enginematerials.defaultdiffuse",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/enginematerials/defaultdiffuse.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 46.55200000000001,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": false
+        },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 64,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.5,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "kouku.popup.carrier.691",
+        "sourceTimeOriginSeconds": 0.0,
+        "previewOriginUE3Cm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "theworld.persistentlevel.interpactor_444",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              1226.386474609375,
+              -91598.6796875,
+              -16022.8310546875
+            ],
+            "initialEulerDegrees": [
+              0.0,
+              0.736083984375,
+              -140.0537109375
+            ],
+            "scaleUE3": [
+              20.0,
+              10.0,
+              1.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  1810.1953125,
+                  -91508.65625,
+                  -15676.2421875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  1810.1953125,
+                  -91508.65625,
+                  -15676.2421875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.42231781870649,
+                "value": [
+                  1810.1953125,
+                  -91508.65625,
+                  -15676.2421875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 10.912489442300966,
+                "value": [
+                  1816.390380859375,
+                  -91515.2578125,
+                  -15675.853515625
+                ],
+                "arriveTangent": [
+                  8.836694149374962,
+                  -9.438900233209132,
+                  0.5525567470863461
+                ],
+                "leaveTangent": [
+                  8.836694149374962,
+                  -9.438900233209132,
+                  0.5525567470863461
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 12.421193358841798,
+                "value": [
+                  1827.8587646484375,
+                  -91527.5234375,
+                  -15675.1376953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  1827.8587646484375,
+                  -91527.5234375,
+                  -15675.1376953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  1827.8587646484375,
+                  -91527.5234375,
+                  -15675.1376953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  1827.8587646484375,
+                  -91527.5234375,
+                  -15675.1376953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  1827.8587646484375,
+                  -91527.5234375,
+                  -15675.1376953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  1827.8587646484375,
+                  -91527.5234375,
+                  -15675.1376953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 10.42231781870649,
+                "value": [
+                  91.3623046875,
+                  -1.7138671875,
+                  -134.67041015625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 10.912489442300966,
+                "value": [
+                  76.278076171875,
+                  -0.6866455078125,
+                  -132.56103515625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 12.421193358841798,
+                "value": [
+                  -1.0107421875,
+                  1.73583984375,
+                  -134.3023681640625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "useQuaternionInterpolation": true
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "kouku.popup.carrier.692",
+      "displayName": "SCENE03A b06",
+      "groupId": "effect.kouku.gate1.popup.source-material-carriers",
+      "sourceNode": "theworld.persistentlevel.interpactor_445.staticmeshcomponent_235",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/bfm_planbottom_01.wmodel"
+        }
+      ],
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "enginematerials.defaultmaterial",
+        "renderProfile": "opaque_back_depth_write",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.enginematerials.defaultmaterial.6131d8dad51a",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3619-native.v1",
+          "parentMaterialPath": "enginematerials.defaultmaterial",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "native_texture_0",
+              "sourceObjectPath": "enginematerials.defaultnormal",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/enginematerials/defaultnormal.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_1",
+              "sourceObjectPath": "enginematerials.defaultdiffuse",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/enginematerials/defaultdiffuse.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 46.55200000000001,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": false
+        },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 64,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.5,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "kouku.popup.carrier.692",
+        "sourceTimeOriginSeconds": 0.0,
+        "previewOriginUE3Cm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "theworld.persistentlevel.interpactor_445",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              1260.375,
+              -91576.7109375,
+              -16036.65234375
+            ],
+            "initialEulerDegrees": [
+              0.0,
+              0.0,
+              39.90234375
+            ],
+            "scaleUE3": [
+              20.0,
+              10.0,
+              1.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  1862.93994140625,
+                  -91509.6875,
+                  -15673.7724609375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  1862.93994140625,
+                  -91509.6875,
+                  -15673.7724609375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.42231781870649,
+                "value": [
+                  1862.93994140625,
+                  -91509.6875,
+                  -15673.7724609375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 10.912489442300966,
+                "value": [
+                  1858.90478515625,
+                  -91505.015625,
+                  -15675.3818359375
+                ],
+                "arriveTangent": [
+                  -8.634878045618533,
+                  9.975248708724974,
+                  -3.446978464275598
+                ],
+                "leaveTangent": [
+                  -8.634878045618533,
+                  9.975248708724974,
+                  -3.446978464275598
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 12.52488064209451,
+                "value": [
+                  1844.3309326171875,
+                  -91488.21875,
+                  -15681.205078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  1844.3309326171875,
+                  -91488.21875,
+                  -15681.205078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  1844.3309326171875,
+                  -91488.21875,
+                  -15681.205078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  1844.3309326171875,
+                  -91488.21875,
+                  -15681.205078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  1844.3309326171875,
+                  -91488.21875,
+                  -15681.205078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  1844.3309326171875,
+                  -91488.21875,
+                  -15681.205078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 10.42231781870649,
+                "value": [
+                  102.8924560546875,
+                  -2.054443359375,
+                  42.5994873046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 10.912489442300966,
+                "value": [
+                  71.6748046875,
+                  -1.5765380859375,
+                  43.96728515625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 12.52488064209451,
+                "value": [
+                  0.0604248046875,
+                  0.0604248046875,
+                  43.74755859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "useQuaternionInterpolation": true
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "kouku.popup.carrier.811",
+      "displayName": "SCENE03A plan02",
+      "groupId": "effect.kouku.gate1.popup.source-material-carriers",
+      "sourceNode": "theworld.persistentlevel.interpactor_591.staticmeshcomponent_1355",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/bfm_mossfog_001.wmodel"
+        }
+      ],
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "scene_a.mat.white_t",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.scene.a.mat.white.t.460bb4eb84bf",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3617-native.v1",
+          "parentMaterialPath": "scene_a.mat.white_t",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [],
+          "scalars": [
+            {
+              "name": "op",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "color",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 46.55200000000001,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": false
+        },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 64,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.5,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "kouku.popup.carrier.811",
+        "sourceTimeOriginSeconds": 0.0,
+        "previewOriginUE3Cm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "theworld.persistentlevel.interpactor_591",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              337.6783142089844,
+              -73381.359375,
+              -2451.847412109375
+            ],
+            "initialEulerDegrees": [
+              -170.3759765625,
+              87.9949951171875,
+              -126.9580078125
+            ],
+            "scaleUE3": [
+              4.0,
+              7.0,
+              1.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  339.4151306152344,
+                  -73379.0,
+                  -2533.697021484375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  339.4151306152344,
+                  -73379.0,
+                  -2533.697021484375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  339.4151306152344,
+                  -73379.0,
+                  -2533.697021484375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.851807070504652,
+                "value": [
+                  265.0743103027344,
+                  -73477.8125,
+                  969.4547729492188
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  265.0743103027344,
+                  -73477.8125,
+                  969.4547729492188
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  265.0743103027344,
+                  -73477.8125,
+                  969.4547729492188
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.542219497140287,
+                "value": [
+                  340.80462646484375,
+                  -73377.1640625,
+                  -2599.1767578125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  340.80462646484375,
+                  -73377.1640625,
+                  -2599.1767578125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  340.80462646484375,
+                  -73377.1640625,
+                  -2599.1767578125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.851807070504652,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.542219497140287,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  -170.3759765625,
+                  87.978515625,
+                  -126.9580078125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "op",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.30000001192092896
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  0.30000001192092896
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  0.30000001192092896
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.851807070504652,
+                "value": [
+                  0.30000001192092896
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  0.29999994980089906
+                ],
+                "arriveTangent": [
+                  -0.0006439097174957994
+                ],
+                "leaveTangent": [
+                  -0.0005862097729347638
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 21.658350437067206,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          },
+          {
+            "name": "color",
+            "kind": "VECTOR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.851807070504652,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  1.0,
+                  0.26527974009513855,
+                  0.277337908744812
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "kouku.popup.carrier.812",
+      "displayName": "SCENE03A l_shaft",
+      "groupId": "effect.kouku.gate1.popup.source-material-carriers",
+      "sourceNode": "theworld.persistentlevel.interpactor_592.staticmeshcomponent_241",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/bfm_simplelightbeam_002.wmodel"
+        }
+      ],
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_g_me_shine_03_01_ad",
+        "renderProfile": "additive_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.d.pa.shine.02.ad.29d7864aadba",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3618-native.v1",
+          "parentMaterialPath": "fx_m_mi_02.fx_m.fx_d_pa_shine_02_ad",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "01.map_a",
+              "sourceObjectPath": "fx_tex_02.fx_d_noise_033",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_noise_033.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "06.map_b",
+              "sourceObjectPath": "fx_tex_02.fx_d_noise_033",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_noise_033.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "11.direct",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "11.width.power",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "12.width.strength",
+              "group": "None",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "01.height.power",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "02.height.strength",
+              "group": "None",
+              "value": 3.0
+            },
+            {
+              "name": "04.map_a_panning_x",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "02.map_a_uvscale_r",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "03.map_a_uvscale_g",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "05.map_a_panning_y",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "09.map_b_panning_x",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "07.map_b_uvscale_r",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "08.map_b_uvscale_g",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "10.map_b_panning_y",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "31.noisepower",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "32.noisestr",
+              "group": "None",
+              "value": 5.0
+            },
+            {
+              "name": "31.fresnal_power",
+              "group": "None",
+              "value": 10.0
+            },
+            {
+              "name": "11.range",
+              "group": "None",
+              "value": 3.0
+            },
+            {
+              "name": "12.power",
+              "group": "None",
+              "value": 2.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "00.checkisdepthbiasalpha",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "10.usefakedepthbiasalpha",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "01.useconeuv",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "30.usefresnal",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "00.usenoise",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "00.blendingadd",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "30.use((map_a+map_b)*0.5)",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.useuvnoise",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "01.usemesh",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "00.usecolor",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "01.usenoise",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "10.usemapcolor",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 46.55200000000001,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": false
+        },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 64,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.5,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "kouku.popup.carrier.812",
+        "sourceTimeOriginSeconds": 0.0,
+        "previewOriginUE3Cm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "theworld.persistentlevel.interpactor_592",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              1978.73583984375,
+              -91383.4375,
+              -13800.5166015625
+            ],
+            "initialEulerDegrees": [
+              0.0,
+              0.0,
+              -110.56640625
+            ],
+            "scaleUE3": [
+              12.5,
+              12.5,
+              15.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 16.055947719914517,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  1978.7353515625,
+                  -91383.40625,
+                  -13454.677734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 16.055947719914517,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "32.noisestr",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 15.154691905328626,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 15.876203100472633,
+                "value": [
+                  3.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  3.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  3.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  3.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  3.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  3.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          },
+          {
+            "name": "31.fresnal_power",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 15.728870598403802,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  5.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "kouku.popup.carrier.848",
+      "displayName": "SCENE03A U32 부착 커튼",
+      "groupId": "effect.kouku.gate1.popup.source-material-carriers",
+      "sourceNode": "theworld.persistentlevel.interpactor_91.staticmeshcomponent_2474",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/bg_rad_koukusaton_curtain01c_sm.wmodel"
+        }
+      ],
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "bg_rad_koukusaton_a.mat.bg_rad_koukusaton_curtain01c_mi",
+        "renderProfile": "opaque_back_depth_write",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.efbasematerial.prologue.bg.base.bg.base.msk.375076976ce5",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3620-native.v1",
+          "parentMaterialPath": "efbasematerial_prologue.bg.base.bg_base_msk",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "texture_diffuse",
+              "sourceObjectPath": "bg_rad_koukusaton_a.tex.bg_rad_koukusaton_curtain01c_d",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/bg_rad_koukusaton_a/bg_rad_koukusaton_curtain01c_d.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "texture_normal",
+              "sourceObjectPath": "efmaster_material_prologue.tex.normal",
+              "assetId": "Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/normal.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "bump_offset",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "bump_intensity",
+              "group": "None",
+              "value": 0.007499999832361937
+            },
+            {
+              "name": "normal_intensity",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "fx_color_desaturation_actiontool",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "fx_color_desaturation_buffsettool",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "transcolor_rimlight ",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "trans_rim_inradius",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "trans_rim_hard",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "constantoutline",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "constantoutline_blink",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "constantoutline_power",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "diffuse_saturation",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "diffuse_brightness",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "bump_brightness",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "specular_intensity",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "specular_power",
+              "group": "None",
+              "value": 60.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "hit_color",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "name": "fx_color_intensity_buffsettool",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "fx_color_intensity_actiontool",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "transcolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "constantoutline_color",
+              "group": "None",
+              "value": [
+                0.4230642020702362,
+                0.7928890585899353,
+                0.8507974147796631,
+                1.0
+              ]
+            },
+            {
+              "name": "diffuse_color",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "specular_color",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "1.use_worldoffset",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_wind",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_overlay",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_detail_normal",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_normalmap",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.uv_fixed_normal",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_bump",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.use_uv_tiling",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_uv_panning",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_uv_rotate",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.invert_overlay",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_vertexcolor_paint",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_overlay_direction",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_overlay_normal",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_reflection",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_diffuse_saturation",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.use_linear_blend",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_worldreflection",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_rimlight",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_specular",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.use_specular_texture",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_specular_saturation",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "is_solid",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "is_blend_translucent",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "is_blend_masked",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.use_opacity_texture",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_opacityfalloff",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_occludeblend",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_objectheight_blend",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_emissive",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_subspecular",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_flicker",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_flicker_linear",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_emissive_uvani",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_uv_moving",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_fx_dead",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_fx_dead_edgeglow",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_fx_dead_worldoffset",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_dead_movepiece",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_fx_panning",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_constant_fx",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_uvchannel_2",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_state_material",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "constantoutline+diffuseadd",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_hitcolordirection",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_parts_highlight",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "isnpc",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 46.55200000000001,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": false
+        },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 64,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 1,
+          "lifeTimeSeconds": [
+            0.5,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.2,
+            0.2
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "kouku.popup.carrier.848",
+        "sourceTimeOriginSeconds": 0.0,
+        "previewOriginUE3Cm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "lv_lut_midnightc_ed_scene03a.theworld.persistentlevel.interpactor_65",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              3766.308349609375,
+              -89601.25,
+              -13900.3681640625
+            ],
+            "initialEulerDegrees": [
+              0.0,
+              0.0,
+              225.0
+            ],
+            "scaleUE3": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  -18556.744140625,
+                  -109235.7421875,
+                  -16660.666015625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  -18556.744140625,
+                  -109235.7421875,
+                  -16660.666015625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.03319412025662,
+                "value": [
+                  -18556.744140625,
+                  -109235.7421875,
+                  -16660.666015625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.456922736123909,
+                "value": [
+                  3777.432861328125,
+                  -89590.4609375,
+                  -15346.025390625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 12.269940143623737,
+                "value": [
+                  4139.0849609375,
+                  -89241.328125,
+                  -15340.90234375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  4139.0849609375,
+                  -89241.328125,
+                  -15340.90234375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  4139.0849609375,
+                  -89241.328125,
+                  -15340.90234375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  4139.0849609375,
+                  -89241.328125,
+                  -15340.90234375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  4139.0849609375,
+                  -89241.328125,
+                  -15340.90234375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  4139.0849609375,
+                  -89241.328125,
+                  -15340.90234375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 10.03319412025662,
+                "value": [
+                  -47.63671875,
+                  -86.2261962890625,
+                  89.0496826171875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 10.456922736123909,
+                "value": [
+                  -47.669677734375,
+                  -86.2261962890625,
+                  -270.9503173828125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 12.269940143623737,
+                "value": [
+                  -180.0,
+                  -0.604248046875,
+                  -135.9942626953125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "useQuaternionInterpolation": true
+          },
+          {
+            "sourceObjectPath": "lv_lut_midnightc_ed_scene03a.theworld.persistentlevel.cameraactor_0",
+            "frame": "PARENT",
+            "initialPositionUE3Cm": [
+              38.9921875,
+              169.546875,
+              -2.4833984375
+            ],
+            "initialEulerDegrees": [
+              0.0,
+              0.0,
+              90.0
+            ],
+            "scaleUE3": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "positionKeys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  5932.841796875,
+                  -456.4140625,
+                  -1683.87890625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 8.752,
+                "value": [
+                  5932.841796875,
+                  -456.4140625,
+                  -1683.87890625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.46101507420062,
+                "value": [
+                  5932.841796875,
+                  -456.4140625,
+                  -1683.87890625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 10.977880205933918,
+                "value": [
+                  -38.30078125,
+                  -179.4765625,
+                  -1766.2265625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 11.523797438862868,
+                "value": [
+                  -82.9140625,
+                  -178.0859375,
+                  -1784.9306640625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  4.700911562293768,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  4.700911562293768,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 12.232924979045096,
+                "value": [
+                  32.6640625,
+                  -170.4140625,
+                  -1750.6669921875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 18.352,
+                "value": [
+                  32.6640625,
+                  -170.4140625,
+                  -1750.6669921875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 20.852,
+                "value": [
+                  32.6640625,
+                  -170.4140625,
+                  -1750.6669921875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 25.981,
+                "value": [
+                  32.6640625,
+                  -170.4140625,
+                  -1750.6669921875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 35.409,
+                "value": [
+                  32.6640625,
+                  -170.4140625,
+                  -1750.6669921875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 46.55200000000001,
+                "value": [
+                  32.6640625,
+                  -170.4140625,
+                  -1750.6669921875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 10.46101507420062,
+                "value": [
+                  75.7781982421875,
+                  -1.153564453125,
+                  -83.2818603515625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 10.977880205933918,
+                "value": [
+                  -3.2574462890625,
+                  0.63720703125,
+                  -85.6109619140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 11.523797438862868,
+                "value": [
+                  -93.8946533203125,
+                  0.50537109375,
+                  -87.0281982421875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 12.232924979045096,
+                "value": [
+                  -179.384765625,
+                  0.010986328125,
+                  -91.0107421875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "linear"
+              }
+            ],
+            "useQuaternionInterpolation": true
+          },
+          {
+            "sourceObjectPath": "lv_lut_midnightc_ed_scene03a.theworld.persistentlevel.interpactor_91",
+            "frame": "PARENT",
+            "initialPositionUE3Cm": [
+              -169.5546875,
+              -2489.01171875,
+              2402.484375
+            ],
+            "initialEulerDegrees": [
+              0.0,
+              0.0,
+              -90.0
+            ],
+            "scaleUE3": [
+              1.2000000476837158,
+              2.1000000834465027,
+              1.2000000476837158
+            ],
+            "positionKeys": [],
+            "eulerKeys": []
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    }
+  ]
+}

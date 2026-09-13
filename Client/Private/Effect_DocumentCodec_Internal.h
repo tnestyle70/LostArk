@@ -233,7 +233,9 @@ namespace Client::EffectDocumentCodecDetail
 	};
 	inline constexpr const char_t* LIGHT_PROFILE_TOKENS[] =
 	{
-		"light.point.reconstructed.v1"
+		"light.point.reconstructed.v1",
+		"light.spot.reconstructed.v1",
+		"light.directional.reconstructed.v1"
 	};
 	inline constexpr const char_t* SCREEN_POST_PROFILE_TOKENS[] =
 	{

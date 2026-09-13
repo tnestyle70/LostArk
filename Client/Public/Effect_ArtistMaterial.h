@@ -39,6 +39,7 @@ struct ARTIST_PROGRAM_DESC final
     std::span<const std::string_view> TextureNames;
     std::span<const ARTIST_PARAMETER_DESC> Parameters;
     std::span<const ARTIST_SWITCH_DESC> StaticSwitches;
+    bool bSourceTransformMesh = false;
 };
 
 // Native material tables are compiled once; generators use native_material_tables.py.
@@ -97,6 +98,64 @@ inline bool Build_ArtistParameters(const EFFECT_SOURCE_MATERIAL_DESC& Source,
     return true;
 }
 
+// The native program owns the named parameter packing. Curves reuse those exact lanes.
+inline bool Build_ArtistMaterialTrackBindings(const EFFECT_ELEMENT_DESC& Element,
+    std::vector<ARTIST_PARAMETER_DESC>& Bindings, std::string& Error)
+{
+    if (!Element.SourceTransformTrack || Element.SourceTransformTrack->MaterialParameterTracks.empty())
+    { Bindings.clear(); return true; }
+    const auto& Tracks = Element.SourceTransformTrack->MaterialParameterTracks;
+    const auto* Program = Find_ArtistProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+    std::array<float4_t, 32u> Parameters;
+    if (Element.eKind != EFFECT_ELEMENT_KIND::MESH || !Program || !Program->bMesh || !Program->bSourceTransformMesh ||
+        Tracks.size() > 64u || !std::isfinite(Element.SourceTransformTrack->fSourceTimeOriginSeconds) ||
+        !Build_ArtistParameters(Element.Material.SourceMaterial, Parameters))
+    { Error = "Source material parameter tracks require an admitted native Mesh material."; return false; }
+    std::vector<ARTIST_PARAMETER_DESC> Candidate;
+    for (const auto& Track : Tracks)
+    {
+        const auto Parameter = std::find_if(Program->Parameters.begin(), Program->Parameters.end(),
+            [&](const auto& Value) { return Value.strName == Track.strName && Value.bVector == Track.bVector; });
+        if (Parameter == Program->Parameters.end() || Parameter->iRow >= 32u || Parameter->iLane >= 4u ||
+            (Parameter->bVector && Parameter->iLane != 0u) ||
+            std::any_of(Candidate.begin(), Candidate.end(), [&](const auto& Value) { return Value.strName == Track.strName; }) ||
+            Track.Values.Keys.empty() || Track.Values.iOperation != 1u ||
+            Track.Values.iComponentCount != (Track.bVector ? 3u : 1u) || !CEffectDistribution::Validate(Track.Values, Error))
+        { if (Error.empty()) Error = "Missing, duplicate or invalid native material parameter track: " + Track.strName; return false; }
+        Candidate.push_back(*Parameter);
+    }
+    Bindings = std::move(Candidate);
+    return true;
+}
+
+inline bool Apply_ArtistMaterialTrackSamples(const EFFECT_SOURCE_TRANSFORM_TRACK& Track,
+    std::span<const ARTIST_PARAMETER_DESC> Bindings, const f32_t SampleTimeSeconds,
+    std::array<float4_t, 32u>& Parameters)
+{
+    if (Bindings.size() != Track.MaterialParameterTracks.size()) return false;
+    if (Bindings.empty()) return true;
+    const f32_t SourceTime = SampleTimeSeconds + Track.fSourceTimeOriginSeconds;
+    if (!std::isfinite(SourceTime)) return false;
+    auto Candidate = Parameters;
+    for (size_t i = 0u; i < Bindings.size(); ++i)
+    {
+        const auto& Binding = Bindings[i];
+        const auto& Curve = Track.MaterialParameterTracks[i];
+        if (Binding.iRow >= Candidate.size() || Binding.iLane >= 4u ||
+            Binding.strName != Curve.strName || Binding.bVector != Curve.bVector) return false;
+        const auto Value = CEffectDistribution::Evaluate(Curve.Values, SourceTime, 0.f);
+        if (!std::isfinite(Value.x) || (Binding.bVector && (!std::isfinite(Value.y) || !std::isfinite(Value.z)))) return false;
+        auto& Row = Candidate[Binding.iRow];
+        if (Binding.bVector) { Row.x = Value.x; Row.y = Value.y; Row.z = Value.z; }
+        else if (Binding.iLane == 0u) Row.x = Value.x;
+        else if (Binding.iLane == 1u) Row.y = Value.x;
+        else if (Binding.iLane == 2u) Row.z = Value.x;
+        else Row.w = Value.x;
+    }
+    Parameters = Candidate;
+    return true;
+}
+
 inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
 {
     const auto& Source=Element.Material.SourceMaterial;
@@ -105,7 +164,13 @@ inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
         Element.Material.eRenderProfile!=Program->eRenderProfile ||
         Element.Material.strSourceMaterialPath!=Program->strSourceMaterialPath) return false;
     const bool bStaticAction = Program->strRendererShape == "staticMesh";
-    if (bStaticAction)
+    if (Program->bSourceTransformMesh)
+    {
+        if (!Program->bMesh || Program->strRendererShape != "mesh" || Element.eKind != EFFECT_ELEMENT_KIND::MESH ||
+            Element.SourceRecipe.bEnabled || !Element.SourceTransformTrack || Element.SourceTransformTrack->Nodes.empty() ||
+            Element.ActionCueAttachment.bEnabled || Element.Detail.Mesh.bUseModelMaterial) return false;
+    }
+    else if (bStaticAction)
     {
         const auto& Attachment = Element.ActionCueAttachment;
         if (Element.eKind != EFFECT_ELEMENT_KIND::MESH || Element.SourceRecipe.bEnabled ||

@@ -8,6 +8,7 @@ import struct
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import extract_ue3_material_shader_maps as subject
@@ -1211,6 +1212,87 @@ class TexturelessNativeBindingTests(unittest.TestCase):
             b"\xff" * 73 + self.glow_triple() + b"\x00" * 20,
             0, counts, closure,
         ), [])
+
+
+class MaterialGlobalShaderReferenceTests(unittest.TestCase):
+    names = ["none", "globalpass", "basepass", "flocalvertexfactory"]
+
+    @staticmethod
+    def reference(type_index: int, shader_id: int) -> bytes:
+        return struct.pack("<II", type_index, 0) + bytes([shader_id]) * 16 + struct.pack("<II", type_index, 0)
+
+    def fixture(self, global_count: int) -> tuple[dict, dict, dict, str, bytes]:
+        static_set = bytes.fromhex("00112233445566778899aabbccddeeff") + bytes(16)
+        global_refs = b"".join(self.reference(1, i + 1) for i in range(global_count))
+        body = global_refs + struct.pack("<II", 1, 1) + self.reference(2, 9)
+        body += struct.pack("<II", 3, 0) + bytes(16)
+        body += struct.pack("<i", 8) + b"fixture\0" + static_set + bytes(13 * 4) + struct.pack("<I", 5)
+        data = static_set + struct.pack("<IIII", 868, 16, 100 + 48 + len(body), global_count) + body
+
+        class Reader:
+            logical_size = 100 + len(data)
+
+            def read_logical_range(self, start: int, size: int) -> bytes:
+                return data[start - 100 : start - 100 + size]
+
+        package = {"reader": Reader(), "names": self.names,
+                   "summary": SimpleNamespace(version=868, licensee_version=16)}
+        context = {"logicalOffset": 100, "logicalEndOffset": 100 + len(data), "vertexFactoryCount": 1}
+        if global_count:
+            context["globalShaderReferenceCount"] = global_count
+        parsed = subject.parse_static_parameter_set(data, 0, self.names)
+        equality = subject.canonical_json_sha256(subject.engine_equivalent_static_parameter_set(parsed))
+        return package, {"platform": 5}, context, equality, data
+
+    def test_global_references_are_separate_from_mesh_vf_and_uniforms(self) -> None:
+        package, layout, context, equality, _ = self.fixture(3)
+        parsed = subject.parse_material_map(package, layout, context, equality)
+        self.assertEqual(parsed["globalShaderReferenceCount"], 3)
+        self.assertEqual([r["shaderType"] for r in parsed["globalShaderReferences"]], ["globalpass"] * 3)
+        self.assertEqual(parsed["vertexFactories"][0]["shaderReferences"],
+                         [{"shaderType": "basepass", "shaderIdHex": "09" * 16}])
+        self.assertEqual(parsed["friendlyName"], "fixture")
+        self.assertTrue(all(count == 0 for count in parsed["uniformExpressionCounts"].values()))
+
+    def test_zero_global_keeps_original_public_shape_and_offsets(self) -> None:
+        package, layout, context, equality, _ = self.fixture(0)
+        parsed = subject.parse_material_map(package, layout, context, equality)
+        self.assertNotIn("globalShaderReferences", parsed)
+        self.assertNotIn("globalShaderReferenceCount", parsed)
+        self.assertEqual(parsed["suffixU32"], [868, 16, context["logicalEndOffset"], 0, 1])
+        self.assertEqual(parsed["friendlyName"], "fixture")
+
+    def test_context_must_pin_nonzero_global_count(self) -> None:
+        package, layout, context, equality, _ = self.fixture(3)
+        context.pop("globalShaderReferenceCount")
+        with self.assertRaisesRegex(ValueError, "suffix changed"):
+            subject.parse_material_map(package, layout, context, equality)
+
+    def test_scan_finds_unique_global_map_without_selecting_repeated_static_set(self) -> None:
+        package, _, context, equality, _ = self.fixture(3)
+        base_id = "00112233445566778899aabbccddeeff"
+        scan = subject.scan_base_material_contexts(
+            package, {"materialMapScanStartLogicalOffset": 100}, [base_id]
+        )[base_id]
+        self.assertEqual(scan["rawHitCount"], 2)
+        self.assertEqual(scan["parseableStaticSetCount"], 2)
+        self.assertEqual(scan["materialMapContextCount"], 1)
+        selected = subject.select_unique_map_context(scan, equality)
+        self.assertEqual({key: selected[key] for key in context}, context)
+
+    def test_references_reject_truncation_and_type_mismatch(self) -> None:
+        ref = self.reference(1, 1)
+        with self.assertRaisesRegex(ValueError, "truncated"):
+            subject.parse_shader_references(ref[:-1], 0, 1, self.names)
+        with self.assertRaisesRegex(ValueError, "repeat changed"):
+            subject.parse_shader_references(ref[:24] + struct.pack("<II", 2, 0), 0, 1, self.names)
+
+    def test_header_rejects_global_count_over_limit_and_missing_vf(self) -> None:
+        for count, tail, expected in [(257, bytes(4), "count is invalid"),
+                                      (1, self.reference(1, 1), "VF count is truncated")]:
+            header = struct.pack("<IIII", 868, 16, 200, count) + tail
+            with self.assertRaisesRegex(ValueError, expected):
+                subject.parse_material_map_header(header, 0, self.names, 868, 16, 100, 200)
 
 
 if __name__ == "__main__":

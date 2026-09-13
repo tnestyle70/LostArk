@@ -1128,6 +1128,8 @@ enum class EFFECT_PRESENTATION_RUNTIME_STATUS : uint8_t
 enum class EFFECT_LIGHT_PROFILE : uint8_t
 {
 	POINT_RECONSTRUCTED_V1,
+	SPOT_RECONSTRUCTED_V1,
+	DIRECTIONAL_RECONSTRUCTED_V1,
 	END
 };
 
@@ -1151,6 +1153,12 @@ struct EFFECT_LIGHT_DETAIL_DESC final
 	float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vAmbient = { 0.f, 0.f, 0.f, 1.f };
 	f32_t fFalloffExponent = 1.f;
+	// Local direction is transformed once by the evaluated element/source/root basis.
+	float3_t vDirection = { 1.f, 0.f, 0.f };
+	f32_t fInnerConeDegrees = 0.f;
+	f32_t fOuterConeDegrees = 44.f;
+	// Zero preserves legacy diffuse-only documents.
+	f32_t fSpecularIntensity = 0.f;
 };
 
 struct EFFECT_SCREEN_POST_DETAIL_DESC final
@@ -1283,6 +1291,14 @@ struct EFFECT_SOURCE_TRANSFORM_NODE final
     float3_t vScaleUE3 = { 1.f, 1.f, 1.f };
     EFFECT_DISTRIBUTION_DESC Position;
     EFFECT_DISTRIBUTION_DESC Euler;
+    bool_t bUseQuaternionInterpolation = false;
+};
+
+struct EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK final
+{
+    std::string strName;
+    bool_t bVector = false;
+    EFFECT_DISTRIBUTION_DESC Values;
 };
 
 struct EFFECT_SOURCE_TRANSFORM_TRACK final
@@ -1293,6 +1309,7 @@ struct EFFECT_SOURCE_TRANSFORM_TRACK final
     std::vector<EFFECT_SOURCE_TRANSFORM_NODE> Nodes;
     // A direct ParticleParameter driving ColorScaleOverLife alpha at scene time.
     std::optional<EFFECT_DISTRIBUTION_DESC> AlphaScale;
+    std::vector<EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK> MaterialParameterTracks;
 };
 
 struct EFFECT_TRANSFORM_INHERITANCE_DESC final

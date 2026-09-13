@@ -142,6 +142,12 @@ struct EFFECT_EVALUATED_LIGHT final
 	float4_t vAmbient = { 0.f, 0.f, 0.f, 1.f };
 	f32_t fFalloffExponent = 0.f;
 	f32_t fNormalizedLife = 0.f;
+	EFFECT_LIGHT_PROFILE eProfile = EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+	float3_t vWorldDirection = { 1.f, 0.f, 0.f };
+	f32_t fInnerConeDegrees = 0.f;
+	f32_t fOuterConeDegrees = 44.f;
+	// Zero preserves legacy diffuse-only documents.
+	f32_t fSpecularIntensity = 0.f;
 };
 
 struct EFFECT_EVALUATED_SCREEN_POST final

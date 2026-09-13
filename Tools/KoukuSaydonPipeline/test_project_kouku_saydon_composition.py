@@ -284,6 +284,64 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertTrue(windows[-1]["cancelAtEnd"])
         self.assertEqual(3, len({row["logicId"] for row in result["logicOccurrences"]}))
 
+    def test_parent_product_passes_world_encounter_admission_with_typed_fixed_timeline(self):
+        document, parent, _ = self.parent_fixture()
+        encounter = subject.project_encounter(document)
+        projected_parent = self.find(encounter, parent["patternId"])
+        self.assertIs(True, projected_parent["fixedTimeline"])
+        publisher = (ROOT / "Tools/WorldPipeline/Publish-WorldGameplay.ps1").read_text(encoding="utf-8-sig")
+        functions = []
+        for name in ("Get-ProjectJsonVersion", "Read-ProjectJson", "Assert-ExactProperties",
+                     "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+                     "Assert-JsonNumber", "Get-EncounterProfiles"):
+            functions.append(re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0))
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for relative in ("Data/Encounters/Valtan/ValtanEncounter.json", "Data/Balance/BossProfiles.json"):
+                target = folder / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, target)
+            product_path = folder / subject.ENCOUNTER_PATH
+            product_path.parent.mkdir(parents=True, exist_ok=True)
+            script = "$ErrorActionPreference='Stop'\n$repoRoot=$PSScriptRoot\n"
+            script += "$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n$script:projectJsonSnapshots=@{}\n"
+            script += "\n".join(functions) + "\n(Get-EncounterProfiles).Count\n"
+            check = folder / "check.ps1"
+            check.write_text(script, encoding="utf-8-sig")
+
+            def run():
+                product_path.write_bytes(subject.serialize_json(encounter))
+                before = product_path.read_bytes()
+                result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(check)],
+                                        capture_output=True, text=True, timeout=30)
+                self.assertEqual(before, product_path.read_bytes())
+                return result
+
+            for value in (True, False):
+                projected_parent["fixedTimeline"] = value
+                result = run()
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual("2", result.stdout.strip())
+            for value in (None, "true", 1, []):
+                with self.subTest(value=value):
+                    projected_parent["fixedTimeline"] = value
+                    result = run()
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("fixedTimeline must be boolean", result.stderr)
+            projected_parent.pop("fixedTimeline")
+            result = run()
+            self.assertEqual(0, result.returncode, result.stderr)
+            projected_parent["unknownTimeline"] = True
+            result = run()
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("unknown fields", result.stderr)
+            projected_parent.pop("unknownTimeline")
+            valtan_path = folder / "Data/Encounters/Valtan/ValtanEncounter.json"
+            valtan = subject.load_json(valtan_path)
+            valtan["patterns"][0]["fixedTimeline"] = True
+            valtan_path.write_bytes(subject.serialize_json(valtan))
+            self.assertNotEqual(0, run().returncode)
+
     def test_parent_rejects_overlaps_recursion_and_dynamic_control(self):
         for change, message in (("self", "recursive"), ("overlap", "overlap"), ("motion", "bossMotion"),
                                 ("followup", "FOLLOWUP"), ("early", "endsPattern")):
@@ -2480,7 +2538,11 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         box = {"occurrenceId": f"{pattern['patternId']}.presentation.{ordinal}",
                "resourceId": resource_id, "startMs": 0, "durationMs": 500,
                "anchorKind": anchor, "brightnessMultiplier": 2.5}
-        pattern.setdefault("presentationOccurrences", []).append(box)
+        pattern["presentationOccurrences"] = [box]
+        # This fixture owns one lane; unrelated editable drafts may have incomplete timelines.
+        document["patterns"] = [pattern]
+        pattern["logicOccurrences"] = []
+        document["playAllPatternIds"] = [pattern["patternId"]]
         return document, box
 
     @staticmethod
@@ -2497,7 +2559,12 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         }))
 
     def test_light_anchors_project_without_server_gameplay_rows(self):
-        baseline = subject.project_encounter(self.document, ROOT)
+        baseline_document = copy.deepcopy(self.document)
+        baseline_document["patterns"] = [self.first_product(baseline_document)]
+        baseline_document["patterns"][0]["logicOccurrences"] = []
+        baseline_document["patterns"][0]["presentationOccurrences"] = []
+        baseline_document["playAllPatternIds"] = [baseline_document["patterns"][0]["patternId"]]
+        baseline = subject.project_encounter(baseline_document, ROOT)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.write_light_catalog(root)
@@ -2524,6 +2591,57 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         document["presentationResources"][-1].update(kind="CAMERA")
         with self.assertRaisesRegex(subject.CompositionError, "anchorKind"):
             self.validate(document)
+
+    def world_light_document(self):
+        document, light = self.light_document("MAP")
+        pattern = self.first_product(document)
+        world = copy.deepcopy(self.find(self.document, ROULETTE_ID)["worldOccurrences"][0])
+        ordinal = pattern.get("nextWorldOccurrenceOrdinal", 1)
+        pattern["nextWorldOccurrenceOrdinal"] = ordinal + 1
+        world.update(occurrenceId=f"{pattern['patternId']}.world.{ordinal}", durationMs=500)
+        pattern.setdefault("worldOccurrences", []).append(world)
+        light.update(anchorKind="WORLD", worldId=world["worldId"], worldOccurrenceId=world["occurrenceId"],
+                     followBoss=True, positionOffset=[1, 2, 3])
+        return document, light, world
+
+    def test_world_light_projects_exact_world_box_and_preserves_meter_offsets(self):
+        document, light, world = self.world_light_document()
+        self.validate(document)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_light_catalog(root)
+            for explicit in (True, False):
+                if not explicit:
+                    light.pop("worldOccurrenceId")
+                before = copy.deepcopy(document)
+                projected = subject.project_presentation(document, root)
+                row = next(row for pattern in projected["patterns"] for row in pattern["presentationOccurrences"]
+                           if row["occurrenceId"] == light["occurrenceId"])
+                self.assertEqual(("LIGHT", "WORLD", world["worldId"], world["occurrenceId"], [1, 2, 3], 2.5),
+                                 (row["kind"], row["anchorKind"], row["worldId"], row["worldOccurrenceId"],
+                                  row["positionOffset"], row["brightnessMultiplier"]))
+                self.assertTrue(row["followBoss"])
+                self.assertEqual(before, document)
+
+    def test_world_light_rejects_missing_cross_pattern_or_ambiguous_targets(self):
+        for change in ("missing_world", "missing_box", "cross_pattern", "wrong_world", "ambiguous", "bone", "scale", "non_world_link"):
+            with self.subTest(change=change):
+                document, light, world = self.world_light_document()
+                pattern = self.first_product(document)
+                if change == "missing_world": light["worldId"] = ""
+                elif change == "missing_box": light["worldOccurrenceId"] = pattern["patternId"] + ".world.999"
+                elif change == "cross_pattern": light["worldOccurrenceId"] = self.find(self.document, ROULETTE_ID)["worldOccurrences"][0]["occurrenceId"]
+                elif change == "wrong_world": light["worldId"] = document["worlds"][1]["worldId"]
+                elif change == "ambiguous":
+                    light.pop("worldOccurrenceId")
+                    duplicate = {**world, "occurrenceId": pattern["patternId"] + ".world.2"}
+                    pattern["nextWorldOccurrenceOrdinal"] = 3
+                    pattern["worldOccurrences"].append(duplicate)
+                elif change == "bone": light["bone"] = "bip001-head"
+                elif change == "scale": light["scale"] = [2, 2, 2]
+                else: light.update(anchorKind="MAP", worldId="")
+                with self.assertRaises(subject.CompositionError):
+                    self.validate(document)
 
     def test_light_catalog_changes_rejoin_without_composition_edits(self):
         document, _ = self.light_document()

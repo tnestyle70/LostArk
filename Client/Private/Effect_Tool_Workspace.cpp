@@ -79,6 +79,13 @@ bool CEffect_Tool::Consume_AuthoringInteraction()
 
 bool CEffect_Tool::Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key)
 {
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.kouku."))
+    {
+        std::filesystem::path path;
+        if (!Resolve_SavedKoukuEffectSource(key.strStableId, path, m_strDocumentStatus)) return false;
+        return Try_LoadDocumentPath(path, EFFECT_DOCUMENT_SOURCE::AUTHORED, key.strStableId,
+            EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+    }
     if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
         return Try_LoadDocument(key.strStableId);
     if (key.Is_Valid())
@@ -137,6 +144,28 @@ void CEffect_Tool::Render_AuthoringResourceTree()
                 m_strAuthoringParentId = command.strParentId;
                 const auto& createdId = m_ActiveDocument->strEffectAssetId;
                 m_AuthoringParents[Parent_Key({command.eKind, createdId})] = command.strParentId;
+            }
+        }
+        else if (m_pAuthoringSequencer && command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::PREVIEW &&
+            key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.kouku."))
+        {
+            const bool active = m_ActiveDocument && m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+                m_ActiveDocument->strEffectAssetId == key.strStableId;
+            if (active || Open_AuthoringResource(key))
+            {
+                (void)Try_PlayActiveUnifiedEffect();
+                m_pAuthoringResources->Set_Status(m_strPreviewStatus);
+            }
+            else
+            {
+                if (m_PendingDocumentLoad && m_PendingDocumentLoad->strSelectionId == key.strStableId &&
+                    m_PendingDocumentLoad->ePreviewIntent == EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT)
+                {
+                    m_PendingDocumentLoad->strElementSelectionId.clear();
+                    m_PendingDocumentLoad->strModelCueSelectionId.clear();
+                    m_PendingDocumentLoad->bPlayCompleteAfterLoad = true;
+                }
+                m_pAuthoringResources->Set_Status(m_strDocumentStatus);
             }
         }
         else if (m_pAuthoringSequencer)

@@ -872,6 +872,7 @@ private:
 	bool_t m_bOccurrenceElementSelected = false;
 	EFFECT_GPU_RENDER_SUBMISSION_STATS m_LastRenderSubmissionStats;
 	float4_t m_vSourceActorPosition{};
+	f32_t m_fSourceTrackSampleSeconds = 0.f;
 	bool_t m_bWorldMarkSubmissionPending = false;
 	uint64_t m_iWorldMarkSubmissionSerial = 0u;
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)

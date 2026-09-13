@@ -240,6 +240,9 @@
     <ClCompile Include="..\Private\MainApp_SequenceViewer.cpp">
       <Filter>00.MainApp</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MainApp_WorldLevel.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\LevelRegistry.cpp">
       <Filter>01.Levels</Filter>
     </ClCompile>
@@ -2682,6 +2685,9 @@
     <ClCompile Include="..\Private\WorldObjectTool.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldLevelTool.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\PhysicalResourceCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -2689,6 +2695,9 @@
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldObjectTool.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldLevelTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PhysicalResourceCatalog.h">
@@ -3621,5 +3630,39 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.gold-trails.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.centered.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.context.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.movable-lights.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.source-material-carriers.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.muzzle.world.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.signature.world.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.fixed.ground.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.tracking.ground.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.target.end.ground.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.radial.lasers.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.suit.floor.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.throw.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

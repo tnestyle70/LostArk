@@ -356,6 +356,16 @@ for ordinal, selection in enumerate(selections):
             'e5ff54c5c354204e951b91b524341cb3': ('239396ffe9f57b47a19ee2955207d2e8', 23, 'world', [0, 1, 23, 24, 25]),
             '231a7f149fd8054589dc4baf0825beb0': ('3973e380b469714a933b0f1c2c776d5c', 27, 'actor', [0, 1, 2, 27, 28, 29]),
             '21310dd53f047b4c9c6d215723e659ae': ('70a7b0749eb5904898747857eecc9da2', 7, 'opacity', [0, 7, 8, 9]),
+            # SCENE03A white_t LocalVF: TEXCOORD7 is the source tangent-up
+            # vector; CB0[5..7] owns sky/ambient and CB0[0].x owns opacity.
+            '286c952473acd34a8cdd4e981db6ec1f': ('76933afe48b6a34380ab05bdd2a93dc1', 5, 'opacity', [0, 4, 5, 6, 7]),
+            # Exact EngineMaterials.DefaultMaterial LocalVF: CB0[0] is the
+            # bound selection color, [2..4] are sky/ambient. CB0[1] only
+            # reaches the archived secondary material MRT, outside RT0.
+            '2837f9c4eed1a745b242b4abb6f57be1': ('0c1413bd3ee54d449ce7fdac8c7f1542', 2, 'none', [1, 2, 3, 4]),
+            # SCENE03A's attached curtain uses source vertex alpha for normal
+            # strength, TEXCOORD6 view, TEXCOORD7 up and sky rows [10..12].
+            '5add713d06b8684d84689591b7ef144f': ('0c1413bd3ee54d449ce7fdac8c7f1542', 10, 'none', [10, 11, 12]),
             '3a96e00bdfda46489bb6aa32ae1ac89c': ('0c1413bd3ee54d449ce7fdac8c7f1542', 6, 'color', [0, 5, 6, 7, 8]),
             '8c7feae3b54e7a46835555bfa86e7e6e': ('239396ffe9f57b47a19ee2955207d2e8', 26, 'actor', [0, 1, 2, 26, 27, 28]),
         }.get(sid) if arguments.profile_domain=='kouku' else None
@@ -467,6 +477,8 @@ for ordinal, selection in enumerate(selections):
         if pass_count > 4:
             assert arguments.profile_domain == 'kouku' and sid in (
                 '1eb6e82b0befd243ba7ffc9e49b6d067', '42ebb4e66c0c0b4b92db497fcd69ccc2',
+                '286c952473acd34a8cdd4e981db6ec1f',
+                '2837f9c4eed1a745b242b4abb6f57be1',
                 '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930'), ('Unreviewed source pass constants', sid, pass_count)
         lines += [f'    float4 passValues[{pass_count}]; [unroll] for(uint passIndex=0u;passIndex<{pass_count}u;++passIndex) passValues[passIndex]=0.f;',
                   '    passValues[0]=float4(.5f,-.5f,.5f,.5f);']
@@ -580,6 +592,10 @@ for ordinal, selection in enumerate(selections):
              'nativeTwoSided':r['parentProperties'].get('twosided',{}).get('value',False),
              'staticSwitches':r.get('mic',{}).get('staticParameterSet',{}).get('staticSwitchParameters',[])}
         row['modelCue']=model
+        if selection.get('sourceTransformMesh'):
+            assert mesh and not model and selection.get('sourceStaticMeshComponents')
+            row['sourceTransformMesh'] = True
+            row['sourceStaticMeshComponents'] = selection['sourceStaticMeshComponents']
         rows.append(row)
     except Exception as ex:
         errors.append({"program":program,"sourceMaterial":selection["resolvedMaterial"],"occurrences":selection["occurrences"],"reason":str(ex)})

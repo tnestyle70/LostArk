@@ -117,6 +117,29 @@ namespace
             Position.x,Position.y,Position.z,1.f);
     }
 
+    matrix_t Evaluate_SourceQuaternionRotation(const Client::EFFECT_DISTRIBUTION_DESC& Euler,
+        const f32_t Time)
+    {
+        const auto Quaternion = [](const Client::EFFECT_DISTRIBUTION_KEY_DESC& Key)
+        {
+            return XMQuaternionRotationMatrix(SourceUE3Transform({},
+                {Key.vMinimum.x, Key.vMinimum.y, Key.vMinimum.z}, {1.f, 1.f, 1.f}));
+        };
+        const auto& Keys = Euler.Keys;
+        if (Time <= Keys.front().fTime)
+            return XMMatrixRotationQuaternion(Quaternion(Keys.front()));
+        if (Time >= Keys.back().fTime)
+            return XMMatrixRotationQuaternion(Quaternion(Keys.back()));
+        const auto Next = std::upper_bound(Keys.begin(), Keys.end(), Time,
+            [](const f32_t Sample, const auto& Key) { return Sample < Key.fTime; });
+        const auto& Previous = *(Next - 1);
+        const f32_t Alpha = (Time - Previous.fTime) / (Next->fTime - Previous.fTime);
+        // Matinee's quaternion mode follows the shortest arc with linear time;
+        // Euler curve tangents/winding are used only by the existing false path.
+        return XMMatrixRotationQuaternion(XMQuaternionSlerp(
+            Quaternion(Previous), Quaternion(*Next), Alpha));
+    }
+
     matrix_t Evaluate_SourceTransformTrack(const Client::EFFECT_SOURCE_TRANSFORM_TRACK& Track,
         const f32_t SampleTime)
     {
@@ -139,6 +162,12 @@ namespace
                 Euler = {V.x,V.y,V.z};
             }
             matrix_t Current = SourceUE3Transform(Position,Euler,Node.vScaleUE3);
+            if (Node.bUseQuaternionInterpolation && !Node.Euler.Keys.empty())
+            {
+                Current = XMMatrixScaling(Node.vScaleUE3.x, Node.vScaleUE3.y, Node.vScaleUE3.z) *
+                    Evaluate_SourceQuaternionRotation(Node.Euler, Time);
+                Current.r[3] = XMVectorSet(Position.x, Position.y, Position.z, 1.f);
+            }
             if (Relative)
                 Current = Current * SourceUE3Transform(Node.vInitialPositionUE3Cm,Node.vInitialEulerDegrees,{1.f,1.f,1.f});
             World = Node.eFrame == EFFECT_SOURCE_TRANSFORM_FRAME::PARENT ? Current * World : Current;
@@ -7776,8 +7805,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		if (bPresentationActive &&
 			EFFECT_ELEMENT_KIND::LIGHT == Element.eKind &&
 			Element.Detail.Light.bEnabled &&
-			Element.Detail.Light.eProfile ==
-				EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 &&
+			Element.Detail.Light.eProfile < EFFECT_LIGHT_PROFILE::END &&
 			Element.Detail.Light.eStatus ==
 				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE)
 		{
@@ -7815,6 +7843,15 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				XMStoreFloat3(&Light.vWorldPosition, XMVector3TransformCoord(
 					XMLoadFloat3(&Element.Detail.Particle.vInitialPositionMin),
 					XMLoadFloat4x4(&World)));
+			}
+			Light.eProfile = Element.Detail.Light.eProfile;
+			Light.fSpecularIntensity = Element.Detail.Light.fSpecularIntensity;
+			if (Light.eProfile != EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1)
+			{
+				XMStoreFloat3(&Light.vWorldDirection, XMVector3TransformNormal(
+					XMLoadFloat3(&Element.Detail.Light.vDirection), XMLoadFloat4x4(&World)));
+				Light.fInnerConeDegrees = Element.Detail.Light.fInnerConeDegrees;
+				Light.fOuterConeDegrees = Element.Detail.Light.fOuterConeDegrees;
 			}
 			Light.fRange = Element.Detail.Light.fRange;
 			Light.fIntensity = Element.Detail.Light.fIntensity *

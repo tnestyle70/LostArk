@@ -840,23 +840,38 @@ bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& ins
  const uint32_t emissionIndex) const
 {
  if (Try_GetObjectPivot(instanceId, out, emissionIndex)) return true;
- // Placed map aliases have no emission rows; only row 0 can name them.
+ // Placed map/deploy aliases have no emission rows; only row 0 can name them.
  if (0u != emissionIndex) return false;
  const auto* instance = Get_Document().Find_Instance(instanceId);
  if (!instance) return false;
  const WORLD_SEQUENCE_BINDING* binding = nullptr;
- for (const auto& candidate : instance->bindings)
+ // Preserve the existing map-alias choice; a Deploy-only sequence resolves its animated prop.
+ for (const auto kind : {WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT, WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT})
  {
-  if (candidate.targetKind != WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT) continue;
-  if (candidate.slotId == "object") { binding = &candidate; break; }
-  if (binding) return false;
-  binding = &candidate;
+  for (const auto& candidate : instance->bindings)
+  {
+   if (candidate.targetKind != kind) continue;
+   if (candidate.slotId == "object") { binding = &candidate; break; }
+   if (binding) return false;
+   binding = &candidate;
+  }
+  if (binding) break;
  }
  if (!binding) return false;
  uint64_t placementId = 0;
+ if (!CWorldSequencePlayer::Try_ParseTargetId(*binding, placementId)) return false;
+ if (binding->targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT)
+ {
+  const auto active = std::find_if(m_Active.begin(), m_Active.end(),
+   [&](const auto& value) { return value.instanceId == instanceId; });
+  if (active == m_Active.end()) return false;
+  const auto sampled = active->sampledDeployPivots.find(placementId);
+  if (sampled == active->sampledDeployPivots.end()) return false;
+  out = sampled->second;
+  return true;
+ }
  MAP_PLACEMENT_RECORD record;
- if (!CWorldSequencePlayer::Try_ParseTargetId(*binding, placementId) ||
-  !Try_GetSampledPlacementRecord(instanceId, placementId, record)) return false;
+ if (!Try_GetSampledPlacementRecord(instanceId, placementId, record)) return false;
  XMStoreFloat4x4(&out, XMMatrixScaling(record.signedScale.x, record.signedScale.y, record.signedScale.z) *
   XMMatrixRotationQuaternion(XMLoadFloat4(&record.rotationQuaternion)) *
   XMMatrixTranslation(record.position.x, record.position.y, record.position.z));

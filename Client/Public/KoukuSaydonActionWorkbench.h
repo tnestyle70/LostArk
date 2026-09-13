@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompositionResourceTree.h"
+#include "EffectAuthoringResourceTree.h"
 #include "CompositionAnimationResource.h"
 #include "CompositionWorkbenchSession.h"
 #include "KoukuSaydonCompositionDocument.h"
@@ -10,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 
 namespace Client
 {
@@ -89,6 +91,25 @@ namespace Client
 	{
 		std::string strPatternId;
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE Occurrence;
+	};
+
+
+	enum class KOUKU_MAP_EFFECT_PLACEMENT_ACTION : std::uint8_t { PICK, FOCUS };
+
+	struct KOUKU_MAP_EFFECT_PLACEMENT final
+	{
+		std::string strPatternId, strOccurrenceId, strResourceId, strEffectAssetId;
+		std::array<double, 3u> Position{}, Scale{1.0, 1.0, 1.0};
+		std::uint32_t iStartMs = 0u, iDurationMs = 0u;
+		std::uint64_t iDraftGeneration = 0u;
+		bool operator==(const KOUKU_MAP_EFFECT_PLACEMENT&) const = default;
+	};
+
+	struct KOUKU_MAP_EFFECT_PLACEMENT_REQUEST final
+	{
+		KOUKU_MAP_EFFECT_PLACEMENT_ACTION eAction = KOUKU_MAP_EFFECT_PLACEMENT_ACTION::PICK;
+		std::uint64_t iRequestToken = 0u;
+		KOUKU_MAP_EFFECT_PLACEMENT Selection;
 	};
 
 	/* K-only authoring session and Stage/Animation lane editor. It owns no socket
@@ -197,11 +218,24 @@ namespace Client
 		bool_t Select_PatternById(
 			std::string_view patternId,
 			std::string& outStatus);
+		// MainApp owns picking/focus; this owner validates the exact selected unsaved edit.
+		bool_t Get_SelectedMapEffectPlacement(KOUKU_MAP_EFFECT_PLACEMENT& outPlacement) const;
+		bool_t Request_MapEffectPlacement(KOUKU_MAP_EFFECT_PLACEMENT_ACTION action);
+		bool_t Consume_MapEffectPlacementRequest(KOUKU_MAP_EFFECT_PLACEMENT_REQUEST& outRequest);
+		bool_t Is_MapEffectPlacementRequestCurrent(const KOUKU_MAP_EFFECT_PLACEMENT_REQUEST& request) const;
+		bool_t Complete_MapEffectPlacementRequest(const KOUKU_MAP_EFFECT_PLACEMENT_REQUEST& request,
+			const std::array<double, 3u>& position, std::string& outStatus);
+		void Cancel_MapEffectPlacementRequest(std::uint64_t token = 0u);
+		bool_t Select_WorldBoxById(std::string_view patternId,
+			std::string_view occurrenceId, std::string& outStatus);
+		bool_t Select_PresentationBoxById(std::string_view patternId,
+			std::string_view occurrenceId, std::string& outStatus);
 		bool_t Consume_AnimationPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& outRequest);
 		// Play restarts at the end; paused scrubbing keeps the exact endpoint pose.
 		bool_t Request_PatternPreview(std::string_view patternId,
-			std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused = false);
+			std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused = false,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* presentationOverride = nullptr);
 		// Sequence workspace uses source order within the selected Gate, always from zero.
 		bool_t Request_CompleteSequencePlay(std::string& outStatus, std::string_view gateId = {});
 		void Set_CompleteSequenceAdmission(std::function<bool_t(std::string_view, std::string&)> admission)
@@ -569,6 +603,8 @@ namespace Client
 			std::string_view displayName, std::string& outStatus);
 		bool_t Render_RenameControl(RENAME_TARGET target, std::string_view id,
 			std::string_view displayName);
+		void Render_PresentationWorldAnchor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
 		void Render_PresentationAnchor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence, bool_t effect);
 
@@ -728,6 +764,11 @@ namespace Client
 		char_t m_NewCameraActionName[129]{};
 		int32_t m_iLightResourceCategory = 0;
 		int32_t m_iEffectResourceVersion = 0;
+		std::string m_strEffectResourceOwner = "KoukuSaydon";
+		bool_t m_bLocatePresentationSource = false;
+		std::unordered_map<std::string, CEffectAuthoringResourceTree::RESOURCE> m_EffectSourceInventory;
+		std::unordered_map<std::string, CEffectAuthoringResourceTree::RESOURCE> m_EffectSourceOrganization;
+		std::string m_strEffectSourceMetadataStatus;
 		std::string m_strExpandedV1EffectId;
 		std::string m_strV1ElementResourceStatus;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> m_V1ElementResources;
@@ -738,6 +779,10 @@ namespace Client
 		std::string m_strSelectedPresentationOccurrenceId;
 		char_t m_NewPresentationName[256]{};
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_PresentationBoxEdit;
+		KOUKU_MAP_EFFECT_PLACEMENT_REQUEST m_MapEffectPlacementRequest;
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_MapEffectPlacementEditSnapshot;
+		std::uint64_t m_iNextMapEffectPlacementToken = 0u;
+		bool_t m_bMapEffectPlacementRequestPending = false;
 		std::string m_strColliderExecutionType = "DURATION";
 		std::string m_strColliderExecutionEditId;
 		std::string m_strColliderLogicDefinitionId;

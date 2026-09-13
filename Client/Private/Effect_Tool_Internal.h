@@ -14,6 +14,12 @@ enum class EFFECT_RUNTIME_RENDERER_KIND : uint8_t;
 
 namespace EffectToolDetail
 {
+    // Common pre-roll removal is supported only for independent map-source clocks.
+    bool Resolve_CinematicLeadingDelay(const Client::EFFECT_DOCUMENT_DESC& document,
+        float& seconds, std::string& error);
+    bool Remove_CinematicLeadingDelay(Client::EFFECT_DOCUMENT_DESC& document,
+        float& removedSeconds, std::string& error);
+
 
     constexpr const wchar_t* PREVIEW_LAYER = L"Layer_EffectPreview";
 	constexpr uint32_t ARTIST_F_CORE_SKILL_ID = 31470u;
