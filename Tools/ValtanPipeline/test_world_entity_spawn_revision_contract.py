@@ -3,6 +3,10 @@ import unittest
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+import sys
+sys.path.insert(0, str(REPO_ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain, read_source_text
+
 
 
 class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
@@ -17,12 +21,8 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         cls.messages_cpp = (
             REPO_ROOT / "Shared/Private/Network/PacketMessages.cpp"
         ).read_text(encoding="utf-8")
-        cls.game_room_cpp = (
-            REPO_ROOT / "Server/Private/GameRoom.cpp"
-        ).read_text(encoding="utf-8")
-        cls.server_tests = (
-            REPO_ROOT / "Server/Private/ServerGameplayContractTests.cpp"
-        ).read_text(encoding="utf-8")
+        cls.game_room_cpp = read_source_text(REPO_ROOT / "Server/Private/GameRoom.cpp", encoding="utf-8")
+        cls.server_tests = read_cpp_domain(REPO_ROOT / "Server", "ServerGameplayContractTests")
         cls.network_manager = (
             REPO_ROOT / "Client/Private/NetworkManager.cpp"
         ).read_text(encoding="utf-8")

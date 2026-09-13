@@ -90,6 +90,20 @@ bool_t CNavPathFollower::Update(
 		fTimeDelta <= 0.f)
 		return Has_Path();
 
+	const auto SetGroundedPosition = [&](fvector_t vPosition)
+		{
+			float3_t grounded{};
+			if (!pNavigation->Try_SampleWalkablePoint(vPosition, grounded))
+			{
+				Cancel();
+				return false;
+			}
+			pTransform->Set_State(STATE::POSITION,
+				XMVectorSetW(XMLoadFloat3(&grounded), 1.f));
+			return true;
+		};
+	// Speed is horizontal distance. Resolve the current ground height instead
+	// of climbing toward a distant smoothed waypoint before reaching its cell.
 	f32_t fRemainingDistance = fMoveSpeed * fTimeDelta;
 	while (0.f < fRemainingDistance && Has_Path())
 	{
@@ -97,13 +111,14 @@ bool_t CNavPathFollower::Update(
 		vector_t vWaypoint = XMVectorSetW(
 			XMLoadFloat3(&m_Waypoints[m_iNextWaypoint]),
 			1.f);
-		vector_t vToWaypoint = vWaypoint - vPosition;
+		vector_t vToWaypoint = XMVectorSetY(vWaypoint - vPosition, 0.f);
 		const f32_t fDistance = XMVectorGetX(
 			XMVector3Length(vToWaypoint));
 
 		if (fDistance <= 0.02f)
 		{
-			pTransform->Set_State(STATE::POSITION, vWaypoint);
+			if (!SetGroundedPosition(vWaypoint))
+				return false;
 			++m_iNextWaypoint;
 			continue;
 		}
@@ -117,16 +132,16 @@ bool_t CNavPathFollower::Update(
 
 		if (fDistance <= fRemainingDistance)
 		{
-			pTransform->Set_State(STATE::POSITION, vWaypoint);
+			if (!SetGroundedPosition(vWaypoint))
+				return false;
 			fRemainingDistance -= fDistance;
 			++m_iNextWaypoint;
 			continue;
 		}
 
 		vPosition += XMVector3Normalize(vToWaypoint) * fRemainingDistance;
-		pTransform->Set_State(
-			STATE::POSITION,
-			XMVectorSetW(vPosition, 1.f));
+		if (!SetGroundedPosition(vPosition))
+			return false;
 		fRemainingDistance = 0.f;
 	}
 

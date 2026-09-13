@@ -44,6 +44,11 @@ def previous_positive_float32(value: float) -> float:
     return struct.unpack("<f", struct.pack("<I", bits - 1))[0]
 
 
+def next_positive_float32(value: float) -> float:
+    bits = struct.unpack("<I", struct.pack("<f", value))[0]
+    return struct.unpack("<f", struct.pack("<I", bits + 1))[0]
+
+
 class RenderingProfilePublisherTest(unittest.TestCase):
     def setUp(self) -> None:
         if POWERSHELL is None:
@@ -178,6 +183,84 @@ class RenderingProfilePublisherTest(unittest.TestCase):
             "globalQuality.fxaaEdgeThreshold",
             result.stdout + result.stderr,
         )
+
+    def test_nine_digit_float32_spelling_round_trips_without_rewriting_values(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        kouku = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")
+        kouku["exposureMultiplier"] = float(format(to_float32(0.1), ".9g"))
+        kouku["fog"]["heightFalloff"] = float(format(to_float32(0.0001), ".9g"))
+        kouku["environmentRegions"][0]["fog"]["heightFalloff"] = kouku["fog"]["heightFalloff"]
+        document["globalQuality"]["fxaaEdgeThreshold"] = float(format(to_float32(0.0312), ".9g"))
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source.json"
+            destination = Path(temporary_directory) / "runtime.json"
+            self.write_document(source, document)
+            source_bytes = source.read_bytes()
+            for mode in ("Validate", "Publish"):
+                result = self.run_publisher(source, mode, destination)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(source_bytes, source.read_bytes())
+            self.assertEqual(document, json.loads(destination.read_text(encoding="utf-8")))
+
+    def test_invalid_float32_values_preserve_published_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source.json"
+            destination = Path(temporary_directory) / "runtime.json"
+            self.write_document(source, self.source_document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            published = destination.read_bytes()
+            cases = (
+                ("exposure", previous_positive_float32(0.1)),
+                ("exposure", next_positive_float32(4.0)),
+                ("height", previous_positive_float32(0.0001)),
+                ("exposure", 1e100),
+                ("exposure", float("nan")),
+                ("exposure", float("inf")),
+                ("exposure", "0.1"),
+                ("exposure", True),
+                ("exposure", None),
+            )
+            for field, value in cases:
+                with self.subTest(field=field, value=value):
+                    invalid = copy.deepcopy(self.source_document)
+                    profile = invalid["profiles"][0]
+                    if field == "height":
+                        profile["fog"]["heightFalloff"] = value
+                    else:
+                        profile["exposureMultiplier"] = value
+                    self.write_document(source, invalid)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual(published, destination.read_bytes())
+
+    def test_shadow_planes_that_collapse_in_float32_are_rejected(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        document["profiles"][0]["shadow"]["near"] = 1.000000001
+        document["profiles"][0]["shadow"]["far"] = 1.000000002
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Validate")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("shadow.far", result.stdout + result.stderr)
+
+    def test_vector_raw_double_limits_are_not_relaxed_by_float32_rounding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source.json"
+            for group, field, index, value in (
+                ("light", "diffuse", 0, 64.0000001),
+                ("shadow", "focus", 0, 100000.001),
+                ("environment", "rotationIntensity", 2, 64.0000001),
+            ):
+                with self.subTest(field=field):
+                    document = copy.deepcopy(self.source_document)
+                    profile = next(profile for profile in document["profiles"] if group in profile)
+                    profile[group][field][index] = value
+                    self.write_document(source, document)
+                    result = self.run_publisher(source, "Validate")
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn(field, result.stdout + result.stderr)
 
     def test_level_quality_override_round_trips_and_invalid_publish_preserves_runtime(self) -> None:
         document = copy.deepcopy(self.source_document)

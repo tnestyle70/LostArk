@@ -1639,15 +1639,15 @@ float4 VNative68(V_NATIVE_INPUT input)
     // 6: mad r0.zw, r0.zzzz, r1.xxxz, r0.xxxy
     r0.zw = ((r0.zzzz)*(r1.xxxz)+(r0.xxxy)).zw;
     // 7: sample_indexable(texture2d)(float,float,float,float) r2.z, r0.zwzz, t1.xyzw, s1 (native engine SceneColor)
-    r2.z = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r0.zwzz).xy, (0.f).x).xyzw).z;
+    r2.z = (Read_EffectSceneColorBias(LinearClampUVSampler, (r0.zwzz).xy, (0.f).x).xyzw).z;
     // 8: mul r0.zw, r1.yyyy, cb0[2].zzzw
     r0.zw = ((r1.yyyy)*(source[2].zzzw)).zw;
     // 9: mad r1.xyzw, r0.zzww, r1.xzxz, r0.xyxy
     r1.xyzw = ((r0.zzww)*(r1.xzxz)+(r0.xyxy)).xyzw;
     // 12: sample_indexable(texture2d)(float,float,float,float) r2.x, r1.xyxx, t1.xyzw, s1 (native engine SceneColor)
-    r2.x = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r1.xyxx).xy, (0.f).x).xyzw).x;
+    r2.x = (Read_EffectSceneColorBias(LinearClampUVSampler, (r1.xyxx).xy, (0.f).x).xyzw).x;
     // 13: sample_indexable(texture2d)(float,float,float,float) r2.y, r1.zwzz, t1.xyzw, s1 (native engine SceneColor)
-    r2.y = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r1.zwzz).xy, (0.f).x).xyzw).y;
+    r2.y = (Read_EffectSceneColorBias(LinearClampUVSampler, (r1.zwzz).xy, (0.f).x).xyzw).y;
     // 14: mul r0.yzw, r2.xxyz, v3.xxyz
     r0.yzw = ((r2.xxyz)*(v3.xxyz)).yzw;
     // 15: dp3 r1.x, r0.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
@@ -1775,7 +1775,7 @@ float4 VNative69(V_NATIVE_INPUT input)
     // 28: mad r0.w, v4.x, l(0.010000), r2.y
     r0.w = ((v4.xxxx)*(float4(0.010000,0.010000,0.010000,0.010000))+(r2.yyyy)).w;
     // 29: sample_b_indexable(texture2d)(float,float,float,float) r3.xyz, r2.zwzz, t1.xyzw, s0, l(0.000000) (native engine SceneColor)
-    r3.xyz = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    r3.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
     // 30: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
     r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
     // 31: mul r1.xy, r1.xyxx, l(0.000000, 1.000000, 0.000000, 0.000000)
@@ -1797,7 +1797,7 @@ float4 VNative69(V_NATIVE_INPUT input)
     // 39: mad r4.xy, -r1.yxyy, r0.wwww, r4.xyxx
     r4.xy = ((-(r1.yxyy))*(r0.wwww)+(r4.xyxx)).xy;
     // 40: sample_b_indexable(texture2d)(float,float,float,float) r1.w, r4.yxyy, t1.yzwx, s0, l(0.000000) (native engine SceneColor)
-    r1.w = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r4.yxyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).yzwx).w;
+    r1.w = (Read_EffectSceneColorBias(LinearClampUVSampler, (r4.yxyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).yzwx).w;
     // 41: add r5.x, r1.w, r5.x
     r5.x = ((r1.wwww)+(r5.xxxx)).x;
     // 42: add r5.y, r5.y, l(1.000000)
@@ -1821,7 +1821,7 @@ float4 VNative69(V_NATIVE_INPUT input)
     // 51: mad r2.yw, -r1.yyyx, r0.wwww, r2.yyyw
     r2.yw = ((-(r1.yyyx))*(r0.wwww)+(r2.yyyw)).yw;
     // 52: sample_b_indexable(texture2d)(float,float,float,float) r1.w, r2.wyww, t1.xzwy, s0, l(0.000000) (native engine SceneColor)
-    r1.w = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.wyww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xzwy).w;
+    r1.w = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.wyww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xzwy).w;
     // 53: add r6.x, r1.w, r6.x
     r6.x = ((r1.wwww)+(r6.xxxx)).x;
     // 54: add r6.y, r6.y, l(1.000000)
@@ -1845,7 +1845,7 @@ float4 VNative69(V_NATIVE_INPUT input)
     // 63: mad r3.xy, -r1.xyxx, r0.wwww, r3.xyxx
     r3.xy = ((-(r1.xyxx))*(r0.wwww)+(r3.xyxx)).xy;
     // 64: sample_b_indexable(texture2d)(float,float,float,float) r1.w, r3.xyxx, t1.xywz, s0, l(0.000000) (native engine SceneColor)
-    r1.w = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xywz).w;
+    r1.w = (Read_EffectSceneColorBias(LinearClampUVSampler, (r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xywz).w;
     // 65: add r4.x, r1.w, r4.x
     r4.x = ((r1.wwww)+(r4.xxxx)).x;
     // 66: add r4.y, r4.y, l(1.000000)
@@ -2821,11 +2821,11 @@ float4 VNative76(V_NATIVE_INPUT input)
     // 23: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
     r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
     // 24: sample_indexable(texture2d)(float,float,float,float) r3.xyz, r1.xyxx, t0.xyzw, s0 (native engine SceneColor)
-    r3.xyz = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r1.xyxx).xy, (0.f).x).xyzw).xyz;
+    r3.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r1.xyxx).xy, (0.f).x).xyzw).xyz;
     // 25: mul r1.w, v4.x, l(-0.010000)
     r1.w = ((v4.xxxx)*(float4(-0.010000,-0.010000,-0.010000,-0.010000))).w;
     // 26: sample_b_indexable(texture2d)(float,float,float,float) r4.xyz, r1.xyxx, t0.xyzw, s0, l(0.000000) (native engine SceneColor)
-    r4.xyz = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    r4.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
     // 27: dp2 r2.x, r2.zwzz, r2.zwzz
     r2.x = (dot((r2.zwzz).xy,(r2.zwzz).xy).xxxx).x;
     // 28: rsq r2.x, r2.x
@@ -2857,7 +2857,7 @@ float4 VNative76(V_NATIVE_INPUT input)
     // 41: add r2.zw, r2.xxxy, r2.zzzw
     r2.zw = ((r2.xxxy)+(r2.zzzw)).zw;
     // 42: sample_b_indexable(texture2d)(float,float,float,float) r6.xyz, r2.zwzz, t0.xyzw, s0, l(0.000000) (native engine SceneColor)
-    r6.xyz = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    r6.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
     // 43: add r5.xyz, r5.xyzx, r6.xyzx
     r5.xyz = ((r5.xyzx)+(r6.xyzx)).xyz;
     // 44: add r1.w, r1.w, l(1.000000)

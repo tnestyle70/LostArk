@@ -1019,6 +1019,13 @@ const Client::BOSS_ACTOR_ENTRY* Client::CActorCatalog::Find_Boss(
 	return nullptr;
 }
 
+const std::vector<Client::BOSS_ACTOR_ENTRY>&
+Client::CActorCatalog::Get_Bosses()
+{
+	Initialize();
+	return g_Bosses;
+}
+
 const Client::BOSS_COMBAT_OBJECT_VISUAL_ENTRY*
 Client::CActorCatalog::Find_BossCombatObjectVisual(
 	const std::string_view bossArchetypeId,

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "AnimationTargetService.h"
-#include "CharacterPreviewPanel.h"
 #include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
@@ -37,6 +36,7 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CCharacterPreviewPanel;
 class CEffectObject;
 class CEffectAuthoringResourceTree;
 class CEffectAuthoringSequencer;
@@ -587,6 +587,7 @@ private:
     void Render_EffectToolWindow();
     void Render_ModelViewWindow();
     void Render_EffectDetailWindow();
+    bool_t Try_SetDocumentBloomIntensity(f32_t value);
     void Render_AuthoringSessionBar();
     void Render_AllEffectsWindow();
 	void Render_SavedAuthoredEffectSection(const std::string& strSearch, bool_t bWorld);

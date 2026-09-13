@@ -7,6 +7,8 @@
 #include "Bounding_OBB.h"
 #include "Bounding_Sphere.h"
 
+namespace DirectX { inline namespace DX11 { template<typename TVertex> class PrimitiveBatch; struct VertexPositionColor; class BasicEffect; } }
+
 NS_BEGIN(Engine)
 
 class ENGINE_DLL CCollider final : public CComponent

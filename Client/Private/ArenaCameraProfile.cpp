@@ -164,7 +164,7 @@ ARENA_CAMERA_PROFILE CArenaCameraProfile::Default(const ARENA_CAMERA_MAP map)
 	};
 	profile.focusDistance = std::hypot(deltaY, horizontalDistance);
 	profile.fovYDegrees = characterSelect ? 45.f : 60.f;
-	profile.followResponse = characterSelect ? 18.f : 0.f;
+	profile.followResponse = 12.f;
 	return profile;
 }
 

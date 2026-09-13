@@ -3,6 +3,7 @@
   "version": 15,
   "effectAssetId": "effect.kouku.gate2.4219776.stage2.full.restore",
   "displayName": "쿠크 거미카운터 원본 돌진·바닥",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

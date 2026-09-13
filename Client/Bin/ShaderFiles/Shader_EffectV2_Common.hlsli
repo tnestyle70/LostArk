@@ -153,6 +153,10 @@ BlendState BS_EffectV2Alpha
 	DestBlendAlpha[1] = One;
 	BlendOpAlpha[1] = Add;
 	RenderTargetWriteMask[1] = 0x03;
+	BlendEnable[2] = true;
+	SrcBlend[2] = Src_Alpha;
+	DestBlend[2] = Inv_Src_Alpha;
+	BlendOp[2] = Add;
 };
 
 BlendState BS_EffectV2Additive
@@ -172,6 +176,10 @@ BlendState BS_EffectV2Additive
 	DestBlendAlpha[1] = One;
 	BlendOpAlpha[1] = Add;
 	RenderTargetWriteMask[1] = 0x03;
+	BlendEnable[2] = true;
+	SrcBlend[2] = Src_Alpha;
+	DestBlend[2] = One;
+	BlendOp[2] = Add;
 };
 
 BlendState BS_EffectV2Opaque
@@ -185,6 +193,7 @@ BlendState BS_EffectV2Opaque
 	DestBlendAlpha[1] = One;
 	BlendOpAlpha[1] = Add;
 	RenderTargetWriteMask[1] = 0x03;
+	BlendEnable[2] = false;
 };
 
 BlendState BS_EffectV2Multiply
@@ -204,6 +213,10 @@ BlendState BS_EffectV2Multiply
 	DestBlendAlpha[1] = One;
 	BlendOpAlpha[1] = Add;
 	RenderTargetWriteMask[1] = 0x03;
+	BlendEnable[2] = true;
+	SrcBlend[2] = Dest_Color;
+	DestBlend[2] = Inv_Src_Alpha;
+	BlendOp[2] = Add;
 };
 
 float2 Effect_UV(float2 texcoord)
@@ -225,6 +238,7 @@ struct PS_EFFECT_OUT
 {
 	float4 vSceneColor : SV_TARGET0;
 	float4 vDistortion : SV_TARGET1;
+	float4 vBloomContribution : SV_TARGET2;
 };
 
 PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
@@ -312,6 +326,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 
 	output.vSceneColor = color;
 	output.vDistortion = float4(distortion, 0.f, 0.f);
+	output.vBloomContribution = Write_SceneBloom(output.vSceneColor);
 	return output;
 }
 
@@ -320,6 +335,7 @@ PS_EFFECT_OUT PS_EFFECT_V2_MULTIPLY(PS_EFFECT_IN input)
 {
 	PS_EFFECT_OUT output = PS_EFFECT_V2(input);
 	output.vSceneColor.rgb *= output.vSceneColor.a;
+	output.vBloomContribution = output.vSceneColor;
 	return output;
 }
 
@@ -348,6 +364,7 @@ PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
 		discard;
 	output.vSceneColor = g_OutlineColor;
 	output.vDistortion = float4(0.f, 0.f, 0.f, 0.f);
+	output.vBloomContribution = Write_SceneBloom(output.vSceneColor);
 	return output;
 }
 

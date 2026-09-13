@@ -1,4 +1,5 @@
 #include "Engine_Shader_Defines.hlsli"
+#define clip Effect_Clip
 
 Texture2D g_BaseTexture;
 Texture2D g_NoiseTexture;
@@ -136,7 +137,14 @@ struct EFFECT_PS_OUT
 {
     float4 SceneColor : SV_TARGET0;
     float4 Distortion : SV_TARGET1;
+    float4 BloomContribution : SV_TARGET2;
 };
+
+EFFECT_PS_OUT Write_EffectBloom(EFFECT_PS_OUT output)
+{
+    output.BloomContribution = Write_SceneBloom(output.SceneColor);
+    return output;
+}
 
 EFFECT_PS_OUT Apply_GenericMeshRingFill(
     EFFECT_PS_OUT output,
@@ -2522,6 +2530,7 @@ BlendState BS_EffectOpaque
     DestBlendAlpha[1] = One;
     BlendOpAlpha[1] = Add;
     RenderTargetWriteMask[1] = 0x03;
+    BlendEnable[2] = false;
 };
 
 BlendState BS_EffectAlpha
@@ -2541,6 +2550,13 @@ BlendState BS_EffectAlpha
     DestBlendAlpha[1] = One;
     BlendOpAlpha[1] = Add;
     RenderTargetWriteMask[1] = 0x03;
+    BlendEnable[2] = true;
+    SrcBlend[2] = Src_Alpha;
+    DestBlend[2] = Inv_Src_Alpha;
+    BlendOp[2] = Add;
+    SrcBlendAlpha[2] = One;
+    DestBlendAlpha[2] = Inv_Src_Alpha;
+    BlendOpAlpha[2] = Add;
 };
 
 BlendState BS_EffectAdditive
@@ -2560,4 +2576,11 @@ BlendState BS_EffectAdditive
     DestBlendAlpha[1] = One;
     BlendOpAlpha[1] = Add;
     RenderTargetWriteMask[1] = 0x03;
+    BlendEnable[2] = true;
+    SrcBlend[2] = Src_Alpha;
+    DestBlend[2] = One;
+    BlendOp[2] = Add;
+    SrcBlendAlpha[2] = One;
+    DestBlendAlpha[2] = One;
+    BlendOpAlpha[2] = Add;
 };

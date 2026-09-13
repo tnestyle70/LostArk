@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.warlord.skill.17820.clip1.full.restore",
   "displayName": "이펙트_워로드X_전체 clip1",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,

@@ -3758,7 +3758,7 @@ float4 WRNative235(WR_NATIVE_INPUT input)
     // 31: mad r1.xy, r1.xxxx, r1.yzyy, r1.yzyy
     r1.xy = ((r1.xxxx)*(r1.yzyy)+(r1.yzyy)).xy;
     // 32: sample_indexable(texture2d)(float,float,float,float) r1.xyz, r1.xyxx, t4.xyzw, s0 (project resolved HDR SceneColor snapshot adapter)
-    r1.xyz = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.xyxx).xy).xyzw).xyz;
+    r1.xyz = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).xyzw).xyz;
     // 33: mul r1.xyzw, r1.xxyz, v4.yyyy
     r1.xyzw = ((r1.xxyz)*(v4.yyyy)).xyzw;
     // 34: sample_b_indexable(texture2d)(float,float,float,float) r2.x, v2.xyxx, t0.xyzw, s1, l(0.000000)

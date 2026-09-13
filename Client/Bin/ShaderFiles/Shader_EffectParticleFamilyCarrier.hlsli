@@ -133,7 +133,7 @@ VS_OUT VS_MAIN(VS_IN input)
     return output;
 }
 
-EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
+EFFECT_PS_OUT PS_MATERIAL(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
 #if EFFECT_SHADER_FAMILY == 0
     if (0u != g_StandardColorV1Enabled)
@@ -392,6 +392,23 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
 
 // The render states differ by pass; the shader programs do not.
 // Compile each program once and share it across these passes.
+EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    g_EffectSceneReadMode = 0u;
+    g_EffectSceneSampleUsed = false;
+    EFFECT_PS_OUT output = PS_MATERIAL(input, frontFace);
+    if (!g_EffectSceneSampleUsed)
+        return Write_EffectBloom(output);
+    g_EffectSceneReadMode = 1u;
+    const EFFECT_PS_OUT transported = PS_MATERIAL(input, frontFace);
+    g_EffectSceneReadMode = 2u;
+    const EFFECT_PS_OUT emission = PS_MATERIAL(input, frontFace);
+    g_EffectSceneReadMode = 0u;
+    output.BloomContribution = float4(transported.SceneColor.rgb - emission.SceneColor.rgb +
+        Write_SceneBloom(emission.SceneColor).rgb, output.SceneColor.a);
+    return output;
+}
+
 VertexShader EffectPreviewVS = compile vs_5_0 VS_MAIN();
 PixelShader EffectPreviewPS = compile ps_5_0 PS_MAIN();
 

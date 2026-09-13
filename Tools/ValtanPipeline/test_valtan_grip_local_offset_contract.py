@@ -6,6 +6,11 @@ from pathlib import Path
 
 from Tools.ValtanPipeline import valtan_tuning_pipeline as pipeline
 
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 ROOT = Path(__file__).resolve().parents[2]
 GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
@@ -67,7 +72,7 @@ class ValtanGripLocalOffsetContractTests(unittest.TestCase):
         replication_header = REPLICATION_HEADER.read_text(encoding="utf-8-sig")
         replication = REPLICATION_SOURCE.read_text(encoding="utf-8-sig")
         character = CHARACTER_SOURCE.read_text(encoding="utf-8-sig")
-        game_room = GAME_ROOM_SOURCE.read_text(encoding="utf-8-sig")
+        game_room = read_source_text(GAME_ROOM_SOURCE, encoding="utf-8-sig")
         # The only Client writer runs inside CCharacter::Update, after the
         # Server interpolation and before the parts compose their world.
         update = character[character.index("void CCharacter::Update(f32_t fTimeDelta)"):]

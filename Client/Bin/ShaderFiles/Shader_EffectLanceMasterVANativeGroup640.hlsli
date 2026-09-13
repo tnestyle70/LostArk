@@ -2846,7 +2846,7 @@ float4 LanceVANative659(LANCE_VA_NATIVE_INPUT input)
     // 9: mad r0.xy, v2.xxxx, r0.yzyy, r0.xwxx
     r0.xy = ((v2.xxxx)*(r0.yzyy)+(r0.xwxx)).xy;
     // 10: sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t1.yxzw, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.x = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r0.xyxx).xy).yxzw).x;
+    r0.x = (Read_EffectSceneColor(LinearClampUVSampler, (r0.xyxx).xy).yxzw).x;
     // 11: mul r0.y, r0.x, cb0[11].w
     r0.y = ((r0.xxxx)*(source[11].wwww)).y;
     // 12: add r1.zw, v2.xxxy, cb0[7].xxxy
@@ -2866,7 +2866,7 @@ float4 LanceVANative659(LANCE_VA_NATIVE_INPUT input)
     // 19: mad r1.zw, v2.xxxx, r1.zzzw, r2.xxxy
     r1.zw = ((v2.xxxx)*(r1.zzzw)+(r2.xxxy)).zw;
     // 20: sample_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t1.xywz, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.w = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.zwzz).xy).xywz).w;
+    r0.w = (Read_EffectSceneColor(LinearClampUVSampler, (r1.zwzz).xy).xywz).w;
     // 21: mul r0.z, r0.w, cb0[13].x
     r0.z = ((r0.wwww)*(source[13].xxxx)).z;
     // 22: mad r1.zw, v2.xxxy, l(0.000000, 0.000000, 5.000000, 5.000000), cb0[2].xxxy
@@ -2878,7 +2878,7 @@ float4 LanceVANative659(LANCE_VA_NATIVE_INPUT input)
     // 25: add r1.xy, r1.zwzz, r1.xyxx
     r1.xy = ((r1.zwzz)+(r1.xyxx)).xy;
     // 26: sample_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.w = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.xyxx).xy).yzwx).w;
+    r0.w = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).yzwx).w;
     // 27: mul r0.x, r0.w, cb0[11].x
     r0.x = ((r0.wwww)*(source[11].xxxx)).x;
     // 28: mul r1.xyz, r0.xyzx, v3.xyzx

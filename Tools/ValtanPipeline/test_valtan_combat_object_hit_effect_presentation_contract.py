@@ -1,4 +1,9 @@
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
+
 
 import json
 import unittest
@@ -6,13 +11,19 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+import sys
+sys.path.insert(0, str(ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain
+
 
 
 def _read(relative: str) -> str:
-    return (ROOT / relative).read_text(encoding="utf-8-sig")
+    return read_source_text(ROOT / relative, encoding="utf-8-sig")
 
 
 def _function(source: str, signature: str, next_signature: str) -> str:
+    if not signature.lstrip().startswith('/*'):
+        return cpp_function_definition(source, signature)
     start = source.index(signature)
     end = source.index(next_signature, start)
     return source[start:end]
@@ -228,7 +239,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
     def test_native_ground_roar_runtime_owns_four_group_root_instances(
         self,
     ) -> None:
-        source = _read("Server/Private/ServerGameplayContractTests.cpp")
+        source = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")
         body = _function(
             source,
             "/* Ground Roar owns",

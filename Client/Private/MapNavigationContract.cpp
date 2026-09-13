@@ -139,6 +139,42 @@ bool_t Client::CMapNavigationContract::Resolve_Area(
 	return true;
 }
 
+bool_t Client::CMapNavigationContract::Read_RuntimeStepHeight(
+	const MAP_NAVIGATION_CONTRACT& contract,
+	f32_t& outMaximumStepHeight,
+	std::string& outStatus)
+{
+	if (!Is_ValidAreaId(contract.areaId) || contract.runtimePath.empty())
+	{
+		outStatus = "Navigation runtime policy owner is invalid";
+		return false;
+	}
+	std::filesystem::path policyPath = contract.runtimePath;
+	policyPath.replace_extension(L".navpolicy");
+	std::ifstream input(policyPath);
+	std::string magic;
+	std::string stagedAreaId;
+	uint32_t version = 0u;
+	f32_t maximumStepHeight = 0.f;
+	if (!(input >> magic >> version >> std::quoted(stagedAreaId) >> maximumStepHeight) ||
+		magic != "LOSTARK_NAVIGATION_POLICY" || version != 1u ||
+		stagedAreaId != contract.areaId || !std::isfinite(maximumStepHeight) ||
+		maximumStepHeight < 0.f)
+	{
+		outStatus = "Navigation runtime policy is invalid: " + policyPath.string();
+		return false;
+	}
+	input >> std::ws;
+	if (!input.eof())
+	{
+		outStatus = "Navigation runtime policy has trailing data: " + policyPath.string();
+		return false;
+	}
+	outMaximumStepHeight = maximumStepHeight;
+	outStatus = "Navigation runtime policy ready for " + contract.areaId;
+	return true;
+}
+
 bool_t Client::CMapNavigationContract::Is_ValidAreaId(
 	const std::string& areaId)
 {

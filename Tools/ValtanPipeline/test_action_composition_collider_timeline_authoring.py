@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import json
 import shutil
@@ -42,7 +47,7 @@ class ActionCompositionColliderTimelineAuthoringTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.source = WORKBENCH_CPP.read_text(encoding="utf-8-sig")
         cls.header = WORKBENCH_H.read_text(encoding="utf-8-sig")
-        cls.animation_source = ANIMATION_TOOL_CPP.read_text(encoding="utf-8-sig")
+        cls.animation_source = read_source_text(ANIMATION_TOOL_CPP, encoding="utf-8-sig")
         cls.valtan_source = VALTAN_CPP.read_text(encoding="utf-8-sig")
 
     def test_body_shift_preserves_spacing_and_clamps_to_stage_clock(self) -> None:

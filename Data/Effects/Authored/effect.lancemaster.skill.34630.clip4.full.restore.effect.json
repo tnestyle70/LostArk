@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.lancemaster.skill.34630.clip4.full.restore",
   "displayName": "창술사 Alt+V 4 원본 전체",
+  "bloomIntensity": 1.3,
   "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
   "modelCues": [
     { "cueId": "action-34630.stage-003.notify-005.section0", "modelAssetId": "Effect/LanceMaster/Models/SK_FLM_HOR_00/sk_flm_hor_00_sk.section0.wmodel", "clipName": "sk_super_squalllance_04", "startDelaySeconds": 0, "durationSeconds": 1.36666703, "opacity": 1, "colorMultiply": [1, 1, 1, 1], "holdLastFrame": true, "loop": false, "alphaMode": "TRANSLUCENT", "visible": true,

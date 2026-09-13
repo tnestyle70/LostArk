@@ -16,6 +16,7 @@ from pathlib import Path
 from build_kouku_gate3_rainbow_native import (
     ROOT, RELEASE, UMODEL, material, obj, pkg, fullref, sm, restore, norm, merge)
 import build_kouku_gate3_rainbow_native as source_native
+from native_material_tables import read_material_bytes
 
 
 _parse_static_parameter_set = sm.parse_static_parameter_set
@@ -516,7 +517,7 @@ def generate_native(evidence, first, last):
     write('merged_native_runtime_contract.json', merged)
     tables.FIRST, tables.LAST = min([first] + [p['program'] for p in reused]), last
     candidate = out / 'Effect_ArtistMaterial.candidate.h'
-    shutil.copyfile(ROOT / 'Client/Public/Effect_ArtistMaterial.h', candidate)
+    candidate.write_bytes(read_material_bytes(ROOT / 'Client/Public/Effect_ArtistMaterial.h'))
     tables.install(out / 'merged_native_runtime_contract.json', out, candidate)
 
 

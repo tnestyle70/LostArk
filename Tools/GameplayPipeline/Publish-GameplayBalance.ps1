@@ -1378,6 +1378,25 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 	# Kouku row keeps its exact-value admission below.
 	$isKoukuSaydonFamily = [string]$presentationBoss.archetypeId -clike
 		'BOSS_KAKULSAYDON_*'
+	if ($isKoukuSaydonFamily) {
+		# The body contract also admits the one implemented, level-owned Albion visual.
+		# Other combat-object joins require their own Server and Client consumer.
+		if ($presentationBoss.combatObjectVisuals -isnot [Array] -or
+			@($presentationBoss.combatObjectVisuals).Count -gt 1) {
+			throw 'The KoukuSaydon combat-object visual list is invalid.'
+		}
+		foreach ($visual in @($presentationBoss.combatObjectVisuals)) {
+			Assert-ExactProperties $visual @('combatObjectArchetypeId','clientVisualId','effectAssetId') 'KoukuSaydon combat-object visual'
+			foreach ($field in @('combatObjectArchetypeId','clientVisualId','effectAssetId')) {
+				Assert-JsonString $visual.$field "KoukuSaydon combat-object visual $field"
+			}
+			if ($visual.combatObjectArchetypeId -cne 'combatobject.kouku.albion.bluecircle' -or
+				$visual.clientVisualId -cne 'combatvisual.kouku.albion.bluecircle' -or
+				$visual.effectAssetId -cne 'effect.kouku.albion.bluecircle.warning.impact.runtime') {
+				throw 'The KoukuSaydon combat-object visual is not the supported Albion join.'
+			}
+		}
+	}
 	if ($isWeaponlessKouku) {
 		if ($null -ne $presentationBoss.weaponModel -or
 			$null -ne $presentationBoss.weaponModelPreScale -or
@@ -1395,7 +1414,6 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 			[double]$presentationBoss.bodyModelPreScale -ne 0.017 -or
 			@($presentationBoss.armorModels).Count -ne 0 -or
 			@($presentationBoss.armorParts).Count -ne 0 -or
-			@($presentationBoss.combatObjectVisuals).Count -ne 0 -or
 			[string]$presentationBoss.presentationClips.idle -cne
 			'rpcz00_idle_battle_1') {
 			throw 'The KoukuSaydon body-only presentation admission is invalid.'
@@ -1409,8 +1427,7 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 			[string]$presentationBoss.bodyModel -cnotlike
 				'Character/KoukuSaton/*.wmodel' -or
 			@($presentationBoss.armorModels).Count -ne 0 -or
-			@($presentationBoss.armorParts).Count -ne 0 -or
-			@($presentationBoss.combatObjectVisuals).Count -ne 0) {
+			@($presentationBoss.armorParts).Count -ne 0) {
 			throw "The KoukuSaydon family presentation admission is invalid: $($presentationBoss.archetypeId)"
 		}
 		if ($null -eq $presentationBoss.weaponModel) {
@@ -3897,14 +3914,14 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	$triggerIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	foreach ($trigger in @($koukuPattern.mechanicTriggers)) {
 		Assert-ExactProperties $trigger @('triggerId','kind','startMs','durationMs',
-			'hudMode','teleportPosition','clonePatternId','clockHours','faceCenterYawOffsetDegrees') 'KoukuSaydon mechanic trigger'
+			'hudMode','teleportPosition','clonePatternId','clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs') 'KoukuSaydon mechanic trigger'
 		Assert-StableId $trigger.triggerId 'KoukuSaydon mechanic trigger ID'
 		Assert-JsonInteger $trigger.startMs 'KoukuSaydon trigger startMs' 0 600000
 		Assert-JsonInteger $trigger.durationMs 'KoukuSaydon trigger durationMs' 1 600000
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -3916,6 +3933,19 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
 			 ($trigger.kind -ceq 'CARD_MAZE_HIDE_NEXT' -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
+		}
+		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8
+		Assert-JsonInteger $trigger.effectLifetimeMs 'KoukuSaydon effect lifetime' 0 600000
+		Assert-JsonNumber $trigger.radiusM 'KoukuSaydon player effect radius'
+		if ($trigger.kind -ceq 'ALBION_BLUE_CIRCLE') {
+			if ($trigger.countPerPlayer -lt 1 -or $trigger.radiusM -lt 0 -or $trigger.radiusM -gt 20 -or
+				(($trigger.countPerPlayer -eq 1) -ne ($trigger.radiusM -eq 0)) -or $trigger.effectLifetimeMs -lt 1 -or
+				$triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or @($position | Where-Object { $_ -ne 0 }).Count -ne 0) {
+				throw 'KoukuSaydon Albion player effect layout is invalid'
+			}
+		}
+		elseif ($trigger.countPerPlayer -ne 0 -or $trigger.radiusM -ne 0 -or $trigger.effectLifetimeMs -ne 0) {
+			throw 'Non-Albion mechanic trigger carries player effect values'
 		}
 		$hours = @(0,0,0)
 		$clone = '-'
@@ -3938,7 +3968,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $position[0] 'KoukuSaydon teleport X'),
 			(Format-InvariantSignedFloat $position[1] 'KoukuSaydon teleport Y'),
 			(Format-InvariantSignedFloat $position[2] 'KoukuSaydon teleport Z'),
-			$clone, $hours[0], $hours[1], $hours[2], 1, (Format-InvariantSignedFloat $trigger.faceCenterYawOffsetDegrees 'KoukuSaydon face-center offset')) -join "`t"))
+			$clone, $hours[0], $hours[1], $hours[2], 1, (Format-InvariantSignedFloat $trigger.faceCenterYawOffsetDegrees 'KoukuSaydon face-center offset'),
+			[uint32]$trigger.countPerPlayer, (Format-InvariantSignedFloat $trigger.radiusM 'KoukuSaydon player effect radius'), [uint32]$trigger.effectLifetimeMs) -join "`t"))
 	}
 	foreach ($worldSequence in @($koukuPattern.worldSequences)) {
 		$worldSequenceProperties = @('sequenceInstanceId','occurrenceId','startMs','durationMs','playbackSpeed','positionOffset','anchorKind','anchorPosition')

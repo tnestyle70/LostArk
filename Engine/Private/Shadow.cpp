@@ -1,4 +1,5 @@
 #include "Shadow.h"
+#include "Engine_RenderTypes.h"
 
 #include "Shader.h"
 

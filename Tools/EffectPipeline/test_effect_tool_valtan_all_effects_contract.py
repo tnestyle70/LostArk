@@ -1,4 +1,9 @@
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
+
 
 import json
 import re
@@ -53,6 +58,8 @@ REQUIRED_INDEPENDENT_EFFECT_ASSETS = {
 
 
 def source_section(source: str, start: str, end: str) -> str:
+    if start.lstrip().startswith(('void ', 'bool_t ', 'const char_t* ', 'Client::CEffect_Tool::~')):
+        return cpp_function_definition(source, start)
     start_index = source.index(start)
     end_index = source.index(end, start_index)
     return source[start_index:end_index]
@@ -61,7 +68,7 @@ def source_section(source: str, start: str, end: str) -> str:
 class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cls.cpp = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         cls.header = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         cls.pattern_tree_cpp = PATTERN_TREE_CPP.read_text(encoding="utf-8")
         cls.encounter_reference_cpp = ENCOUNTER_REFERENCE_CPP.read_text(

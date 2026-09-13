@@ -25,6 +25,7 @@ struct EFFECT_NATIVE_SCREEN_POST_SNAPSHOT final
     float4_t vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
     f32_t fProjectionW = 0.f;
     f32_t fLocalTimeSeconds = 0.f;
+    f32_t fBloomIntensity = 1.3f;
 };
 
 bool Is_NativeScreenPostShaderProfile(uint32_t iProfile);

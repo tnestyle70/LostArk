@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 29,
+  "revision": 36,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -259,7 +259,7 @@
       }
     },
     {
-      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.0399999991, "ssaoBias": 0, "ssaoIntensity": 0.689999998, "ssaoPower": 2.0999999, "ssaoDistanceFade": 132.5, "bloomEnabled": true, "bloomThreshold": 2.74000001, "bloomSoftKnee": 1, "bloomIntensity": 2.6099999, "bloomScatter": 1, "exposure": 0.730000019, "whitePoint": 1, "gamma": 1.90499997, "fxaaEnabled": true, "fxaaSubpixel": 0, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006},
+      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.0399999991, "ssaoBias": 0, "ssaoIntensity": 0.689999998, "ssaoPower": 2.0999999, "ssaoDistanceFade": 132.5, "bloomEnabled": true, "bloomThreshold": 2.74000001, "bloomSoftKnee": 1, "bloomIntensity": 0.5, "bloomScatter": 1, "exposure": 0.730000019, "whitePoint": 1, "gamma": 1.90499997, "fxaaEnabled": true, "fxaaSubpixel": 0, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006},
       "profileId": "scene.kakulsaydon.g1.base.v1",
       "exposureMultiplier": 1,
       "bloomIntensityMultiplier": 1,
@@ -315,6 +315,51 @@
         {"regionId": "kouku.ps.environment.56", "boundsMinimum": [-1923.828, -163.839996, -1677.33557], "boundsMaximum": [-1424.21411, 245.759995, -1177.7218], "planes": [[-0.707106769, 0, 0.707106829, -420.05661], [-0.707106471, 0, -0.707107067, -2300.64673], [0.707107425, 0, -0.707106173, -71.4618225], [0.707106471, 0, 0.707107067, 2085.60669], [0, 1, 0, -245.759995], [0, -1, 0, -163.839996]], "directionalColor": [0, 0, 0, 1], "ambientColor": [1.0196079, 1.12745094, 1.17647064, 1], "blendTimeIn": 1, "blendTimeOut": 1, "fog": {"density": 0.200000003, "heightFalloff": 0.00999999978, "topHeight": 129.023163, "startDistance": 70, "maximumOpacity": 0.0500000007, "color": [1, 0, 0.776470602, 1], "inscatteringColor": [0, 0.501960814, 1, 1], "lightDirection": [-0.479700267, 0.767138898, 0.425893813, -0.5]}},
         {"regionId": "kouku.sl03.environment.59", "boundsMinimum": [-82.989975, -215.039993, 1464.18286], "boundsMaximum": [80.8506546, 112.640015, 1638.26343], "planes": [[-1, 0, -1.12196787e-07, -82.9897919], [1.55716566e-06, 0, -1, 1464.18298], [1, 0, 1.12196835e-06, -80.8522949], [-1.31129877e-06, 0, 1, -1638.26331], [0, 1, 0, -112.640015], [0, -1, 0, -215.039993]], "directionalColor": [0.24000001, 0.242352948, 0.300000012, 1], "ambientColor": [0.203921571, 0.225490198, 0.235294119, 1], "blendTimeIn": 1, "blendTimeOut": 1, "fog": {"density": 2, "heightFalloff": 0.0199999996, "topHeight": 129.023163, "startDistance": 100, "maximumOpacity": 0.0500000007, "color": [0.580392182, 0.823529422, 1, 1], "inscatteringColor": [0.960784316, 0, 0.866666675, 1], "lightDirection": [-0.479700267, 0.767138898, 0.425893813, -0.5]}}
       ]
+    },
+    {
+      "displayName": "1관문 팝업북 환경",
+      "profileId": "scene.kakulsaydon.g1.popup.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "mapLightIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [0.479700267, -0.767138898, -0.425893813, 0],
+        "diffuse": [0.800000012, 0.800000012, 0.800000012, 1],
+        "ambient": [0.407843143, 0.450980395, 0.470588237, 1],
+        "specular": [0.5, 0.5, 0.5, 1]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 80,
+        "orthographicWidth": 64,
+        "orthographicHeight": 64,
+        "near": 0.100000001,
+        "far": 180,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": true,
+        "color": [0.134901956, 0.174117655, 0.200000003, 1],
+        "density": 0.100000001,
+        "heightFalloff": 0.200000003,
+        "topHeight": 129.023163,
+        "startDistance": 16,
+        "maximumOpacity": 0.300000012,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006,
+        "sourceExponential": {"inscatteringColor": [0.480392158, 0.249019608, 0, 1], "lightDirection": [-0.479700267, 0.767138898, 0.425893813, 0.707106769]}
+      }
     },
     {
       "displayName": "거미카운터_완전암전",

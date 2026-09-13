@@ -2,6 +2,11 @@
 """Focused source contract for Effect Tool lazy document admission."""
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import unittest
 from pathlib import Path
@@ -9,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_PATH = ROOT / "Client" / "Private" / "Effect_Tool.cpp"
-SOURCE = SOURCE_PATH.read_text(encoding="utf-8")
+SOURCE = read_source_text(SOURCE_PATH, encoding="utf-8")
 
 
 def function_body(signature: str) -> str:

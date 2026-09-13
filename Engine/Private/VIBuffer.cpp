@@ -34,6 +34,21 @@ HRESULT CVIBuffer::Render()
 	return S_OK;
 }
 
+HRESULT CVIBuffer::Render_Instanced(uint32_t instanceCount)
+{
+    if (instanceCount == 0u) return S_OK;
+    if (CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+    {
+        pProfiler->Add_Counter(EProfilerCounter::DrawCalls);
+        pProfiler->Add_Counter(EProfilerCounter::InstancedDrawCalls);
+        pProfiler->Add_Counter(EProfilerCounter::Instances, instanceCount);
+        pProfiler->Add_Counter(EProfilerCounter::Indices,
+            static_cast<uint64_t>(m_iNumIndices) * instanceCount);
+    }
+    m_pContext->DrawIndexedInstanced(m_iNumIndices, instanceCount, 0u, 0, 0u);
+    return S_OK;
+}
+
 HRESULT CVIBuffer::Bind_Resources()
 {
 	ID3D11Buffer* pVertexBuffers[] = {

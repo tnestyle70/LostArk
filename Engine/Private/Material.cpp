@@ -1,4 +1,13 @@
 #include "Material.h"
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/DDSTextureLoader.h"
+#include "DirectXTK/WICTextureLoader.h"
+#pragma pop_macro("new")
 
 #include <mutex>
 #include <unordered_map>
@@ -899,13 +908,20 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
         FAILED(shader->Bind_RawValue("g_SourceCharacterRow", &row, sizeof(row))) ||
         FAILED(shader->Bind_RawValue(lightPass ? "g_SourceCharacterLightConstants" :
             "g_SourceCharacterBaseConstants", constants.data(), sizeof(constants)))) return E_FAIL;
+    static constexpr const char_t* textureNames[] =
+    {
+        "g_SourceCharacterTexture0", "g_SourceCharacterTexture1", "g_SourceCharacterTexture2", "g_SourceCharacterTexture3",
+        "g_SourceCharacterTexture4", "g_SourceCharacterTexture5", "g_SourceCharacterTexture6", "g_SourceCharacterTexture7",
+        "g_SourceCharacterTexture8", "g_SourceCharacterTexture9", "g_SourceCharacterTexture10", "g_SourceCharacterTexture11",
+        "g_SourceCharacterTexture12", "g_SourceCharacterTexture13", "g_SourceCharacterTexture14", "g_SourceCharacterTexture15"
+    };
+    static_assert(std::size(textureNames) == SOURCE_CHARACTER_TEXTURE_COUNT);
     for (uint32_t index = 0u; index < SOURCE_CHARACTER_TEXTURE_COUNT; ++index)
     {
         if ((mask & (1u << index)) == 0u) continue;
-        const auto name = std::string("g_SourceCharacterTexture") + std::to_string(index);
         /* A creation choice repaints the register on the clone; the authored view stays put. */
         const auto repainted = m_SourceCharacterTextureOverrides.find(index);
-        if (FAILED(shader->Bind_Texture(name.c_str(),
+        if (FAILED(shader->Bind_Texture(textureNames[index],
             repainted != m_SourceCharacterTextureOverrides.end() ?
             repainted->second : m_SourceCharacterTextures[index]))) return E_FAIL;
     }

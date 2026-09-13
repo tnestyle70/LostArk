@@ -152,7 +152,13 @@
       "weaponModel": null,
       "armorModels": [],
       "armorParts": [],
-      "combatObjectVisuals": [],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+          "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+          "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime"
+        }
+      ],
       "animationSetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
       "serverProfileId": "boss.kakulsaydon.g1.kouku.server.v1",
       "clientPresentationId": "boss.kakulsaydon.g1.kouku.client.v1",
@@ -174,10 +180,16 @@
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
       "presentationScale": 1.0,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "weaponModel": null,
+      "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel",
       "armorModels": [],
       "armorParts": [],
-      "combatObjectVisuals": [],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+          "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+          "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime"
+        }
+      ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
       "serverProfileId": "boss.kakulsaydon.g1.saydon.server.v1",
       "clientPresentationId": "boss.kakulsaydon.g1.saydon.client.v1",
@@ -191,8 +203,8 @@
         "dead": "rpct00_dead_1"
       },
       "bodyModelPreScale": 0.017,
-      "weaponModelPreScale": null,
-      "weaponModelPreRotationDegrees": null
+      "weaponModelPreScale": 0.01,
+      "weaponModelPreRotationDegrees": [-90.0, 0.0, 0.0]
     },
     {
       "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
@@ -202,7 +214,13 @@
       "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel",
       "armorModels": [],
       "armorParts": [],
-      "combatObjectVisuals": [],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+          "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+          "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime"
+        }
+      ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
       "serverProfileId": "boss.kakulsaydon.g2.big-saydon.server.v1",
       "clientPresentationId": "boss.kakulsaydon.g2.big-saydon.client.v1",
@@ -231,7 +249,13 @@
       "weaponModel": null,
       "armorModels": [],
       "armorParts": [],
-      "combatObjectVisuals": [],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+          "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+          "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime"
+        }
+      ],
       "animationSetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
       "serverProfileId": "boss.kakulsaydon.g2.kouku.server.v1",
       "clientPresentationId": "boss.kakulsaydon.g2.kouku.client.v1",
@@ -253,10 +277,16 @@
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
       "presentationScale": 1.0,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "weaponModel": null,
+      "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel",
       "armorModels": [],
       "armorParts": [],
-      "combatObjectVisuals": [],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+          "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+          "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime"
+        }
+      ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
       "serverProfileId": "boss.kakulsaydon.g3.saydon.server.v1",
       "clientPresentationId": "boss.kakulsaydon.g3.saydon.client.v1",
@@ -270,8 +300,8 @@
         "dead": "rpct00_dead_1"
       },
       "bodyModelPreScale": 0.017,
-      "weaponModelPreScale": null,
-      "weaponModelPreRotationDegrees": null
+      "weaponModelPreScale": 0.01,
+      "weaponModelPreRotationDegrees": [-90.0, 0.0, 0.0]
     },
     {
       "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
@@ -281,7 +311,13 @@
       "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel",
       "armorModels": [],
       "armorParts": [],
-      "combatObjectVisuals": [],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+          "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+          "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime"
+        }
+      ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
       "serverProfileId": "boss.kakulsaydon.bingo.saydon.server.v1",
       "clientPresentationId": "boss.kakulsaydon.bingo.saydon.client.v1",

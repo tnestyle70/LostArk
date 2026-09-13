@@ -156,10 +156,16 @@ def alpha_parameter_track(occurrence, tracks, template, index):
 def actor_groups(occurrence, cache, actor):
     rows=cache['rows']
     matinee=rows[str(occurrence['matineeExport'])]['p']
-    names={link['linkdesc'] for link in matinee.get('variablelinks',[])
+    # UE3 group names are FNames; serialized display casing can differ.
+    names={link['linkdesc'].casefold() for link in matinee.get('variablelinks',[])
         if any(rows[str(v)]['p'].get('objvalue')==actor for v in link.get('linkedvariables',[]) if v>0)}
-    return [rows[str(g)] for g in rows[str(occurrence['dataExport'])]['p'].get('interpgroups',[])
-        if rows[str(g)]['p'].get('groupname') in names]
+    groups=[(g,rows[str(g)]) for g in rows[str(occurrence['dataExport'])]['p'].get('interpgroups',[])
+        if rows[str(g)]['p'].get('groupname','').casefold() in names]
+    group_names=[row['p']['groupname'].casefold() for _,row in groups]
+    assert len(group_names)==len(set(group_names)), 'SOURCE_AMBIGUOUS_ACTOR_GROUP_NAME'
+    if actor==occurrence['actorExport']:
+        assert any(g==occurrence['groupExport'] for g,_ in groups), 'SOURCE_ACTOR_GROUP_BINDING_MISMATCH'
+    return [row for _,row in groups]
 
 
 def actor_tracks(occurrence, cache, actor):

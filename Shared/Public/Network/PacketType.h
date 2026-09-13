@@ -73,8 +73,10 @@ namespace LostArk::Shared
 	both incompatible with this combined layout.
 	80 combines the independent v79 branches: card maze entry-hidden flags
 	and Mario popped-ball (U16) / curse-released (U8) snapshot masks.
-	Neither v79 branch is compatible with this combined contract. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 80;
+	Neither v79 branch is compatible with this combined contract.
+	81 adds processed MOVE sequence, effective speed, prediction permission and
+	the next authoritative waypoint to player snapshots. Both peers need 81. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 81;
 
 	enum class WORLD_ID : std::uint16_t
 	{

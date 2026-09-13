@@ -1,4 +1,5 @@
 #include "MapAssetRenderUtils.h"
+#include "Engine_RenderTypes.h"
 
 #include "GameInstance.h"
 #include "Model.h"
@@ -977,7 +978,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &lighting.scaleBias, sizeof(lighting.scaleBias))) ||
                 FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &lighting.averageScale, sizeof(lighting.averageScale))) ||
                 FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale))) ||
-                (hasBaked && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
+                (hasBaked && !hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
         }
         return model->Bind_SourceCharacter(shader, meshIndex);
     }
@@ -1005,7 +1006,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
         FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &lighting.scaleBias, sizeof(lighting.scaleBias))) ||
         FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &lighting.averageScale, sizeof(lighting.averageScale))) ||
         FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale)))) return E_FAIL;
-    if (hasBaked || hasEnvironment)
+    // A static-shadow bind above already supplies this material's RNM and environment SRVs.
+    // Reuse only within this call; sibling materials share the Effect and may replace them.
+    if ((hasBaked || hasEnvironment) && !hasStaticShadow)
     {
         if (FAILED(model->Bind_SurfaceLighting(shader, meshIndex))) return E_FAIL;
     }
@@ -1087,7 +1090,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
             FAILED(shader->Bind_RawValue("g_SourceBgRimlight", &surface->sourceBgRimlight, sizeof(surface->sourceBgRimlight))) ||
             FAILED(shader->Bind_RawValue("g_SourceBgSpecularSaturation", &surface->sourceBgSpecularSaturation, sizeof(surface->sourceBgSpecularSaturation))) ||
             FAILED(shader->Bind_RawValue("g_SourceBgPanning", &surface->sourceBgPanning, sizeof(surface->sourceBgPanning))) ||
-            FAILED(shader->Bind_RawValue("g_SurfaceEmissiveTime", &elapsedTime, sizeof(elapsedTime)))) return E_FAIL;
+            (!surface->hasEmissive &&
+             FAILED(shader->Bind_RawValue("g_SurfaceEmissiveTime", &elapsedTime, sizeof(elapsedTime))))) return E_FAIL;
         if ((flags & 32768u) &&
             (FAILED(model->Bind_SurfaceTexture(shader, "g_DetailNormalTexture", meshIndex, aiTextureType_HEIGHT)) ||
              FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalIntensity", &surface->detailNormalIntensity, sizeof(surface->detailNormalIntensity))) ||

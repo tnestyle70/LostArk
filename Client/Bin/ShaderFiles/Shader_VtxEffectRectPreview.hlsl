@@ -30,7 +30,7 @@ VS_OUT VS_MAIN(VS_IN input)
     return output;
 }
 
-EFFECT_PS_OUT PS_MAIN(VS_OUT input)
+EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
 {
     if (0u != g_RuntimeMaterialV2Enabled)
     {
@@ -47,6 +47,23 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         float3(1.f, 1.f, 1.f),
         float4(1.f, 1.f, 1.f, 1.f));
     return Apply_GenericLinearReveal(output, input.rawCarrierUV);
+}
+
+EFFECT_PS_OUT PS_MAIN(VS_OUT input)
+{
+    g_EffectSceneReadMode = 0u;
+    g_EffectSceneSampleUsed = false;
+    EFFECT_PS_OUT output = PS_MATERIAL(input);
+    if (!g_EffectSceneSampleUsed)
+        return Write_EffectBloom(output);
+    g_EffectSceneReadMode = 1u;
+    const EFFECT_PS_OUT transported = PS_MATERIAL(input);
+    g_EffectSceneReadMode = 2u;
+    const EFFECT_PS_OUT emission = PS_MATERIAL(input);
+    g_EffectSceneReadMode = 0u;
+    output.BloomContribution = float4(transported.SceneColor.rgb - emission.SceneColor.rgb +
+        Write_SceneBloom(emission.SceneColor).rgb, output.SceneColor.a);
+    return output;
 }
 
 technique11 DefaultTechnique

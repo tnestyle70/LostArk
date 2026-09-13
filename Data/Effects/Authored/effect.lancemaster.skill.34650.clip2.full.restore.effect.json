@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.lancemaster.skill.34650.clip2.full.restore",
   "displayName": "창술사 34650 flm_sk_dragoncleave_03 전체 복원",
+  "bloomIntensity": 1.3,
   "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
   "modelCues": [
     { "cueId": "action.34650.stage.001.notify.014.section0", "modelAssetId": "Effect/LanceMaster/Models/SK_FLM_GDR_01/sk_flm_pmshb_00_sk.section0.wmodel", "clipName": "sk_dragoncleave_03", "startDelaySeconds": 0.5, "durationSeconds": 1.20000005, "opacity": 1, "colorMultiply": [1, 1, 1, 1], "holdLastFrame": false, "loop": false, "alphaMode": "TRANSLUCENT", "visible": true,

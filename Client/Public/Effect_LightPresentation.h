@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Effect_Playback.h"
+#include "Engine_RenderTypes.h"
 
 NS_BEGIN(Client)
 

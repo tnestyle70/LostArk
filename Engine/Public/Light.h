@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "Engine_RenderTypes.h"
 
 NS_BEGIN(Engine)
 
@@ -14,6 +15,7 @@ public:
 public:
 	HRESULT Initialize(const LIGHT_DESC& LightDesc);
 	HRESULT Render(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer);
+	static bool_t Is_ValidDesc(const LIGHT_DESC& LightDesc);
 	static HRESULT Render_Desc(
 		const LIGHT_DESC& LightDesc,
 		shared_ptr<class CShader> pShader,

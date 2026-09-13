@@ -1,3 +1,8 @@
+
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
 import copy
 import json
 import re
@@ -438,7 +443,7 @@ class KoukuSaydonAnimationPatternDocumentContractTests(unittest.TestCase):
         self.assertIn("96.DataFiles\\Animation\\Authored\\KoukuSaydon", filters)
 
     def test_animation_tool_exposes_all_profiles_and_pattern_workflow(self):
-        source = ANIMATION_TOOL_SOURCE.read_text(encoding="utf-8")
+        source = read_source_text(ANIMATION_TOOL_SOURCE, encoding="utf-8")
         for token in (
             "KOUKU_SAYDON_ACTION_PROFILES",
             '"MN_RPCT_05"',

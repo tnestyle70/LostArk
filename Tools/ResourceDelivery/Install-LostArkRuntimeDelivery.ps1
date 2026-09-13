@@ -96,6 +96,9 @@ try {
         }
     }
 
+    Write-Output 'This installs prebuilt files without compiling. Matching target files, including newer local build outputs, will be replaced.'
+    Write-Output 'For code/header/shader changes, use Tools/Build/Invoke-BuildAndRegression.ps1 -Profile Product with the intended Configuration.'
+
     if (-not $PSCmdlet.ShouldProcess($repositoryPath, "Install $($verified.Count) verified runtime files")) {
         Write-Output "Runtime delivery verified only: Files=$($verified.Count) ResourcesTouched=0"
         return

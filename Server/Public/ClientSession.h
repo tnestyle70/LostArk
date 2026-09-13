@@ -25,6 +25,8 @@
 
 namespace LostArk::Server
 {
+	class CServerGameplayContractRunner;
+
 	class CClientSession;
 
 	struct CLIENT_SESSION_RELIABLE_BATCH final
@@ -73,7 +75,7 @@ namespace LostArk::Server
 
 	class CClientSession final
 	{
-		friend int Run_ServerGameplayContractTests(bool, bool, bool, bool);
+		friend class CServerGameplayContractRunner;
 	public:
 		// 수신 스레드가 완성한 한 프레임을 ServerApp에 전달하는 계약이다.
 		using FRAME_HANDLER = std::function<void(
@@ -190,7 +192,7 @@ namespace LostArk::Server
 		OUTBOUND_ENQUEUE_RESULT Queue_OutboundFrame(
 			LostArk::Shared::PACKET_TYPE packetType,
 			std::vector<std::uint8_t> frameBytes);
-		bool Configure_SendTimeout();
+		bool Configure_TransportOptions();
 		void Close_Socket();
 		void Record_InboundPacket(
 			LostArk::Shared::PACKET_TYPE packetType) noexcept;

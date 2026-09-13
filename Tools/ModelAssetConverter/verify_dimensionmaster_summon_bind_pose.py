@@ -178,20 +178,23 @@ class Animation:
     name: str
     duration_ticks: float
     ticks_per_second: float
-    channels: list[AnimationChannel]
+    # None means the caller requested timing metadata without key decoding.
+    channels: list[AnimationChannel] | None
 
 
 @dataclass
 class WModel:
     submeshes: list[tuple[int, ...]]
-    vertices: list[Vertex]
+    # None means geometry decoding was explicitly omitted, not an empty mesh.
+    vertices: list[Vertex] | None
     mesh_bones: list[Bone]
     skeleton_bones: list[Bone]
     animations: list[Animation]
 
 
 def _read_nested_header(data: bytes, offset: int, size: int, label: str) -> int:
-    require(offset + FILE_HEADER.size <= len(data), f"{label} is truncated")
+    require(size >= FILE_HEADER.size and 0 <= offset <= len(data) - size,
+            f"{label} is truncated")
     magic, major, _, flags, content_size = FILE_HEADER.unpack_from(data, offset)
     require(
         magic == b"WINT" and major == 1 and flags == 0
@@ -201,7 +204,24 @@ def _read_nested_header(data: bytes, offset: int, size: int, label: str) -> int:
     return offset + FILE_HEADER.size
 
 
-def read_wmodel(path: Path) -> WModel:
+def read_wmodel(
+    path: Path, *, include_geometry: bool = True,
+    animation_names: Iterable[str] | None = None,
+) -> WModel:
+    """Read the existing skinned WModel contract, optionally omitting heavy data.
+
+    The default decodes every vertex and animation key. Publishers can request
+    timing metadata with ``include_geometry=False, animation_names=()`` or name
+    only the clips whose keys they need for bone sampling. All section bounds,
+    channel spans and bone references are checked even for omitted payloads.
+    Omitted vertices/channels are None and must not be used as decoded data.
+    """
+    require(isinstance(include_geometry, bool), "include_geometry must be boolean")
+    require(not isinstance(animation_names, (str, bytes)),
+            "animation_names must be a collection of exact clip names")
+    requested = None if animation_names is None else frozenset(animation_names)
+    require(requested is None or all(isinstance(name, str) and name for name in requested),
+            "animation_names must contain nonempty clip names")
     data = path.read_bytes()
     require(len(data) >= FILE_HEADER.size + MODEL_HEADER.size, "WModel is truncated")
     magic, major, _, flags, content_size = FILE_HEADER.unpack_from(data, 0)
@@ -219,15 +239,24 @@ def read_wmodel(path: Path) -> WModel:
         "WModel section table is truncated",
     )
     sections: list[tuple[int, int, int, int, str]] = []
+    section_ids: set[tuple[int, int]] = set()
     for index in range(model[1]):
         type_id, section_index, offset, size, raw_name = SECTION_DESC.unpack_from(
             data, section_table + index * SECTION_DESC.size
         )
         require(
-            offset <= content_size and size <= content_size - offset,
+            offset >= MODEL_HEADER.size + model[1] * SECTION_DESC.size
+            and offset <= content_size and size <= content_size - offset,
             f"WModel section {index} is out of range",
         )
+        require((type_id, section_index) not in section_ids,
+                f"WModel section {index} duplicates a section ID")
+        section_ids.add((type_id, section_index))
         sections.append((type_id, section_index, content + offset, size, fixed_name(raw_name)))
+    section_end = section_table + model[1] * SECTION_DESC.size
+    for _, _, offset, size, _ in sorted(sections, key=lambda row: row[2]):
+        require(offset >= section_end, "WModel sections overlap")
+        section_end = offset + size
 
     mesh_sections = [row for row in sections if row[0] == 1]
     skeleton_sections = [row for row in sections if row[0] == 3]
@@ -236,6 +265,8 @@ def read_wmodel(path: Path) -> WModel:
 
     _, _, mesh_offset, mesh_size, _ = mesh_sections[0]
     offset = _read_nested_header(data, mesh_offset, mesh_size, "WMSH")
+    mesh_end = mesh_offset + mesh_size
+    require(offset + MESH_HEADER.size <= mesh_end, "WMSH header is truncated")
     mesh_header = MESH_HEADER.unpack_from(data, offset)
     require(mesh_header[0] == b"WMSH", "WModel mesh has no WMSH header")
     submesh_count = mesh_header[1]
@@ -247,7 +278,7 @@ def read_wmodel(path: Path) -> WModel:
     require(vertex_stride == 76 and index_stride in (2, 4),
             "WMSH skinned vertex contract is invalid")
     offset += MESH_HEADER.size
-    require(offset + submesh_count * SUBMESH_DESC.size <= len(data),
+    require(offset + submesh_count * SUBMESH_DESC.size <= mesh_end,
             "WMSH submesh table is truncated")
     submeshes = [
         SUBMESH_DESC.unpack_from(data, offset + index * SUBMESH_DESC.size)
@@ -264,24 +295,32 @@ def read_wmodel(path: Path) -> WModel:
         row = MESH_BONE.unpack_from(data, offset + index * MESH_BONE.size)
         mesh_bones.append(Bone(row[0], fixed_name(row[1]), row[2], list(row[3:19])))
 
-    vertices: list[Vertex] = []
+    vertices: list[Vertex] | None = [] if include_geometry else None
+    aggregate_vertices = 0
     for submesh_index, submesh in enumerate(submeshes):
         byte_offset, count = submesh[0], submesh[1]
         require(byte_offset + count * vertex_stride <= vertex_count * vertex_stride,
                 "WMSH submesh vertex span is invalid")
+        aggregate_vertices += count
+        if vertices is None:
+            continue
         for index in range(count):
             row = vertex_blob + byte_offset + index * vertex_stride
             position = struct.unpack_from("<3f", data, row)
             indices = struct.unpack_from("<4I", data, row + 44)
             weights = struct.unpack_from("<4f", data, row + 60)
             vertices.append(Vertex(position, indices, weights, submesh_index))
-    require(len(vertices) == vertex_count, "WMSH aggregate vertex count differs")
+    require(aggregate_vertices == vertex_count, "WMSH aggregate vertex count differs")
 
     _, _, skeleton_offset, skeleton_size, _ = skeleton_sections[0]
     offset = _read_nested_header(data, skeleton_offset, skeleton_size, "WSKL")
+    skeleton_end = skeleton_offset + skeleton_size
+    require(offset + SKELETON_HEADER.size <= skeleton_end, "WSKL header is truncated")
     skeleton_header = SKELETON_HEADER.unpack_from(data, offset)
     require(skeleton_header[0] == b"WSKL", "WModel skeleton has no WSKL header")
     offset += SKELETON_HEADER.size
+    require(offset + skeleton_header[1] * SKELETON_BONE.size <= skeleton_end,
+            "WSKL bone table is truncated")
     skeleton_bones: list[Bone] = []
     for index in range(skeleton_header[1]):
         row = SKELETON_BONE.unpack_from(data, offset + index * SKELETON_BONE.size)
@@ -295,10 +334,16 @@ def read_wmodel(path: Path) -> WModel:
     hash_to_bone = {bone.name_hash: index for index, bone in enumerate(skeleton_bones)}
     require(len(hash_to_bone) == len(skeleton_bones), "WSKL contains duplicate bone hashes")
     animations: list[Animation] = []
+    seen_names: set[str] = set()
     for type_id, section_index, animation_offset, animation_size, name in sections:
         if type_id != 4:
             continue
+        require(name not in seen_names, f"WModel contains duplicate animation name: {name}")
+        seen_names.add(name)
         offset = _read_nested_header(data, animation_offset, animation_size, f"WANM {section_index}")
+        animation_end = animation_offset + animation_size
+        require(offset + ANIMATION_HEADER.size <= animation_end,
+                f"animation {section_index} header is truncated")
         header = ANIMATION_HEADER.unpack_from(data, offset)
         require(header[0] == b"WANM", f"animation {section_index} has no WANM header")
         channel_count = header[1]
@@ -306,6 +351,8 @@ def read_wmodel(path: Path) -> WModel:
         ticks_per_second = header[3]
         event_count = header[5]
         offset += ANIMATION_HEADER.size
+        require(offset + channel_count * ANIMATION_CHANNEL.size <= animation_end,
+                f"animation {section_index} channel table is truncated")
         channel_rows = [
             ANIMATION_CHANNEL.unpack_from(data, offset + index * ANIMATION_CHANNEL.size)
             for index in range(channel_count)
@@ -327,13 +374,22 @@ def read_wmodel(path: Path) -> WModel:
                 data, key_block + byte_offset + key * QUATERNION_KEY.size)
                     for key in range(count)]
 
-        channels: list[AnimationChannel] = []
+        channels: list[AnimationChannel] | None = (
+            [] if requested is None or name in requested else None
+        )
         seen_bones: set[int] = set()
         for row in channel_rows:
             require(row[0] in hash_to_bone, f"animation {section_index} has an unknown bone")
             bone_index = hash_to_bone[row[0]]
             require(bone_index not in seen_bones, f"animation {section_index} duplicates a bone")
             seen_bones.add(bone_index)
+            require(row[2] + row[1] * VECTOR_KEY.size <= key_block_size
+                    and row[6] + row[5] * VECTOR_KEY.size <= key_block_size,
+                    f"animation {section_index} vector key span is invalid")
+            require(row[4] + row[3] * QUATERNION_KEY.size <= key_block_size,
+                    f"animation {section_index} quaternion key span is invalid")
+            if channels is None:
+                continue
             channels.append(AnimationChannel(
                 bone_index,
                 vector_keys(row[2], row[1]),
@@ -343,6 +399,8 @@ def read_wmodel(path: Path) -> WModel:
         animations.append(Animation(name, duration, ticks_per_second, channels))
     animations.sort(key=lambda animation: animation.name)
     require(len(animations) == model[2], "WMOD animation count differs")
+    require(requested is None or requested <= seen_names,
+            f"WModel requested animation is missing: {sorted((requested or set()) - seen_names)}")
     return WModel(submeshes, vertices, mesh_bones, skeleton_bones, animations)
 
 
@@ -428,6 +486,8 @@ def bounds(points: Iterable[tuple[float, float, float]]) -> dict[str, Any]:
 
 
 def sample_animation(model: WModel, animation: Animation, time: float) -> dict[str, Any]:
+    require(model.vertices is not None, "animation geometry sampling requires decoded vertices")
+    require(animation.channels is not None, "animation sampling requires decoded channels")
     require(0.0 <= time <= animation.duration_ticks, "animation sample is out of range")
     local = [list(bone.transform) for bone in model.skeleton_bones]
     for channel in animation.channels:
@@ -475,6 +535,7 @@ def sample_animation(model: WModel, animation: Animation, time: float) -> dict[s
 
 def verify_animation_motion(model: WModel, animation: Animation) -> list[str]:
     """Reject a REST-mode FBX bake that turns every source clock into a still."""
+    require(animation.channels is not None, "motion verification requires decoded channels")
     moving: list[str] = []
     for channel in animation.channels:
         name = model.skeleton_bones[channel.bone_index].name

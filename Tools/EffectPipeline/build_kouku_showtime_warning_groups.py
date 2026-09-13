@@ -1,8 +1,9 @@
-"""Compose source GroundEffect warnings with installed Showtime attack leaves.
+"""Build independent source GroundEffect warnings and Showtime attack groups.
 
 The source FixedArea/SkillDecal/ParticleSound chain owns circle and donut timing.
-The fan uses the same original warning family with the requested shot cone as an
-explicit authored combination. No Composition, gameplay authority, or UI launch.
+Legacy circle/donut merged documents remain unchanged; new groups start at zero.
+The fan retains its explicit authored warning/shot combination. No Composition,
+gameplay authority, or UI launch.
 """
 from pathlib import Path
 import argparse
@@ -170,8 +171,7 @@ def install_native(evidence):
     materials.install(folder / 'native_runtime_contract.json', folder, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
     shader_root = ROOT / 'Client/Bin/ShaderFiles'
     existing = '\n'.join(path.read_text(encoding='utf8') for path in sorted(shader_root.glob('Shader_EffectKoukuNativeGroup*.hlsli')))
-    main = (shader_root / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
-    cases = re.search(r'// BEGIN KOUKU NATIVE CASES\n(.*?)// END KOUKU NATIVE CASES', main, re.S)[1]
+    cases = shaders.installed_kouku_cases(shader_root)
     owned = {3600, 3601, 3602}
     existing_blocks = [block for block in shaders.conditional_blocks(existing)
                        if int(re.search(r'float4 ArtistNative(\d+)', block)[1]) not in owned]
@@ -197,14 +197,130 @@ def constant_distribution(name, values):
         defaultMaximum=defaults, lookupTable=[], keys=[])
 
 
+def independent_document(template, asset_id, display_name):
+    document = copy.deepcopy(template)
+    document.update(effectAssetId=asset_id, displayName=display_name)
+    document.pop('sourceModelPreview', None)
+    assert not document.get('modelCues'), 'Independent particle group cannot discard model cues'
+    identities = {element['id']: asset_id + '.' + hashlib.sha256(element['id'].encode()).hexdigest()[:20]
+                  for element in document['elements']}
+    def remap(value):
+        if isinstance(value, dict):
+            return {key: remap(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [remap(item) for item in value]
+        return identities.get(value, value) if isinstance(value, str) else value
+    document = remap(document)
+    for element in document['elements']:
+        element['groupId'] = asset_id
+    return document
+
+
+def resize_warning(document, radius, inner_radius, lifetime, color=None):
+    assert len(document['elements']) == 1
+    element = document['elements'][0]
+    detail = element['detail']
+    old_lifetime = detail['timing']['lifeTimeSeconds']
+    detail['timing'].update(startDelaySeconds=0, lifeTimeSeconds=lifetime)
+    detail['decal']['size'] = [radius * 2] * 2
+    detail['particle'].update(lifeTimeSeconds=[lifetime] * 2,
+        startSize=[radius * 2] * 2, endSize=[radius * 2] * 2)
+    if color is not None:
+        detail['color']['multiply'] = color
+    recipe = element['sourceRecipe']
+    recipe.update(emitterDelaySeconds=0, emitterDurationSeconds=lifetime, emitterLoopCount=1)
+    for module in recipe['modules']:
+        for literal in module['literals']:
+            if literal['propertyPath'] == 'emitterduration':
+                literal['value'] = lifetime
+        for distribution in module['distributions']:
+            name = distribution['propertyPath']
+            if name in ('lifetime', 'startsize'):
+                replacement = constant_distribution(name, [lifetime] if name == 'lifetime' else [radius * 200] * 3)
+                distribution.update(replacement)
+    track = element.get('sourceTransformTrack', {})
+    for key in track.get('alphaScaleKeys', []):
+        key['timeSeconds'] *= lifetime / old_lifetime
+    for scalar in element['material']['sourceProfile']['scalars']:
+        if scalar['name'] == 'decal_drawscale':
+            scalar['value'] = radius * 2
+        elif scalar['name'] == 'thickness' and inner_radius:
+            scalar['value'] = inner_radius / radius
+    return document
+
+
+def document_duration_ms(document, warning=False):
+    return math.ceil(max(element['detail']['timing']['startDelaySeconds']
+        + element['detail']['timing']['lifeTimeSeconds']
+        + element['detail']['timing']['afterImageSeconds']
+        + (0 if warning else max(element['detail']['particle']['lifeTimeSeconds']))
+        for element in document['elements']) * 1000)
+
+
+def install_independent_documents(documents):
+    """Preflight every document before writing; authored tuning is never replaced."""
+    targets = []
+    for document in documents:
+        assert document['elements'] and len({e['id'] for e in document['elements']}) == len(document['elements'])
+        assert all(not e['actionCueAttachment']['enabled'] for e in document['elements'])
+        path = ROOT / 'Data/Effects/Authored' / (document['effectAssetId'] + '.effect.json')
+        if path.exists():
+            assert source.read(path) == document, 'Preserve authored tuning: ' + str(path)
+        targets.append((path, document))
+    for path, document in targets:
+        if not path.exists():
+            source.write(path, document)
+
+
+def compose_independent(evidence):
+    """Split the three original fixed areas while retaining legacy merged assets."""
+    authored = ROOT / 'Data/Effects/Authored'
+    rows = source.read(evidence / 'source_warning_chains.json')['groups']
+    row_by_shape = {row['shape']: row for row in rows}
+    documents, records = [], []
+    for shape, label, radius, inner, projectile, damage, attack in (
+        ('circle', '원형', 4, 0, 421991207, 421991218, 'fire.impact'),
+        ('innerdonut', '도넛1', 8, 4, 421991208, 421991220, 'circle.impact01'),
+        ('outerdonut', '도넛2', 12, 8, 421991209, 421991222, 'circle.impact03')):
+        source_shape = 'circle' if shape == 'circle' else 'donut'
+        chain = row_by_shape[source_shape]
+        raw = (ROOT / 'out/KoukuShowtimeInventory20260911/source' / (str(projectile) + '.loa')).read_bytes()
+        assert struct.unpack_from('<I', raw, len(raw) - 116)[0] == chain['decalId']
+        assert struct.unpack_from('<I', raw, len(raw) - 112)[0] == damage
+        lead = struct.unpack_from('<f', raw, len(raw) - 164)[0]
+        warning = source.read(authored / ('effect.kouku.gate3.showtime.' + source_shape + '.warning.impact.effect.json'))
+        warning['elements'] = [copy.deepcopy(next(e for e in warning['elements']
+            if e['id'] == 'kouku.showtime.warning.' + source_shape))]
+        resize_warning(warning, radius, inner, lead)
+        for phase, template in (('warning', warning), ('impact', source.read(authored / ('effect.kouku.gate3.showtime.' + attack + '.effect.json')))):
+            asset_id = 'effect.kouku.gate3.showtime.' + shape + '.' + phase
+            name = '쇼타임_' + label + ('_예고' if phase == 'warning' else '_폭발')
+            document = independent_document(template, asset_id, name)
+            documents.append(document)
+            records.append(dict(effectAssetId=asset_id, displayName=name,
+                authoringPath='Effects/Authored/' + asset_id + '.effect.json',
+                parentPath=['KoukuSaydon', '3관문', '패턴', '세이튼', '쇼타임', '원형·도넛'],
+                durationMs=document_duration_ms(document, phase == 'warning'), elementCount=len(document['elements']),
+                phase=phase, radiusM=radius, innerRadiusM=inner, warningSeconds=lead,
+                sourceProjectileId=projectile, sourceDamageSkillEffectId=damage,
+                sourceSkillDecalId=chain['decalId'], sourceMaterial=chain['sourceMaterial'],
+                sourceAttackEffectAssetId='effect.kouku.gate3.showtime.' + attack,
+                pairing='ORIGINAL_FIXED_AREA_WARNING_AND_IMPACT',
+                resourceId='kakulsaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20]))
+    install_independent_documents(documents)
+    return records
+
+
 def compose(evidence):
     """GroundEffect values use an explicit one-burst LocalDecal adapter."""
     rows = source.read(evidence / 'source_warning_chains.json')['groups']
     patches = {row['program']: row['material'] for row in source.read(evidence / 'native/native_material_patch.json')['programs']}
     authored = ROOT / 'Data/Effects/Authored'
     template = source.read(authored / 'effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json')['elements'][-1]
-    records = []
+    records = compose_independent(evidence)
     for index, row in enumerate(rows):
+        if row['shape'] != 'sector':
+            continue
         asset_id = 'effect.kouku.gate3.showtime.' + row['shape'] + '.warning.' + ('shot' if row['shape'] == 'sector' else 'impact')
         attack_asset = 'effect.kouku.gate3.showtime.' + row['attack']
         attack_path = authored / (attack_asset + '.effect.json')
@@ -268,7 +384,7 @@ def compose(evidence):
             if parameter['name'] in overrides:
                 parameter['value'] = overrides[parameter['name']]
         document['elements'].insert(0, warning)
-        source.write(authored / (asset_id + '.effect.json'), document)
+        install_independent_documents([document])
         record = dict(effectAssetId=asset_id, displayName=row['displayName'], sourceAttackEffectAssetId=attack_asset,
             sourceAttackAuthoringPath=attack_path.relative_to(ROOT).as_posix(), warningSeconds=lead,
             radiusM=radius, innerRadiusM=row['sourceArea']['AreaRemoveRange'] * .01,

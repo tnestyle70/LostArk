@@ -1,10 +1,16 @@
 #include "Mesh.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/scene.h"
+#pragma pop_macro("new")
+#include "Engine_VertexTypes.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Bone.h"
 
 #include "Shader.h"
 #include "GameInstance.h"
 #include "Profiler.h"
+#include "StaticMeshLod.h"
 
 CMesh::CMesh(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CVIBuffer { pDevice, pContext }
@@ -173,7 +179,7 @@ void CMesh::Build_SkinPalette(const vector<shared_ptr<class CBone>>& Bones,
 
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	uint32_t iInstanceStride, uint32_t iNumInstances,
-	uint32_t iInstanceByteOffset)
+	uint32_t iInstanceByteOffset, const MESH_SCREEN_LOD_DESC* screenLod)
 {
 	if (nullptr == pInstanceBuffer ||
 		0 == iInstanceStride ||
@@ -191,6 +197,13 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 		0u != (iInstanceByteOffset % sizeof(f32_t)) ||
 		requiredBytes > instanceDesc.ByteWidth)
 		return E_INVALIDARG;
+
+    // Measured crossover: small submissions cost more in dispatch/indirect work
+    // than they save. Keep their exact original direct draw.
+    constexpr uint64_t minimumLodSubmittedIndices = 294912u;
+    const bool_t useLod = screenLod && m_StaticLod && !Has_MorphBaseVertices() &&
+        uint64_t(m_iNumIndices) * iNumInstances >= minimumLodSubmittedIndices &&
+        S_OK == m_StaticLod->Prepare(m_pContext.Get(), *screenLod, iNumInstances);
 
 	ID3D11Buffer* vertexBuffers[] =
 	{
@@ -214,7 +227,7 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	);
 
 	m_pContext->IASetIndexBuffer(
-		m_pIB.Get(),
+        useLod ? m_StaticLod->Get_IndexBuffer() : m_pIB.Get(),
 		m_eIndexFormat,
 		0
 	);
@@ -235,12 +248,18 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 			EProfilerCounter::Instances,
 			iNumInstances);
 
+        if (useLod) pProfiler->Add_Counter(EProfilerCounter::IndirectDrawCalls);
+        // Direct indices remain exact. GPU-selected geometry gets its own upper
+        // bound; post-frame pipeline statistics measure actual indirect work.
 		pProfiler->Add_Counter(
-			EProfilerCounter::Indices,
+            useLod ? EProfilerCounter::IndirectIndexUpperBound : EProfilerCounter::Indices,
 			static_cast<uint64_t>(m_iNumIndices) *
 			iNumInstances);
 	}
 
+    if (useLod)
+        m_pContext->DrawIndexedInstancedIndirect(m_StaticLod->Get_DrawArguments(), 0u);
+    else
 	m_pContext->DrawIndexedInstanced(
 		m_iNumIndices,
 		iNumInstances,
@@ -594,3 +613,25 @@ shared_ptr<CPrototype> CMesh::Clone(void* pArg)
 	return pInstance;
 }
 
+
+HRESULT CMesh::Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTransform)
+{
+    if (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || mesh.indices.size() < 24576u ||
+        mesh.indices.size() > 3u * 1024u * 1024u || Has_MorphBaseVertices()) return S_FALSE;
+    try
+    {
+        auto vertices = mesh.vertices;
+        for (size_t i = 0u; i < vertices.size(); ++i)
+        {
+            auto& v = vertices[i];
+            v.color0Rgba8 = mesh.hasColor0 ? mesh.color0Rgba8[i] : 0xffffffffu;
+            XMStoreFloat3(&v.vPosition, XMVector3TransformCoord(XMLoadFloat3(&v.vPosition), preTransform));
+            XMStoreFloat3(&v.vNormal, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&v.vNormal), preTransform)));
+            XMStoreFloat3(&v.vTangent, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&v.vTangent), preTransform)));
+            XMStoreFloat3(&v.vBinormal, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&v.vBinormal), preTransform)));
+        }
+        return CStaticMeshLod::Create(m_pDevice.Get(), vertices, mesh.indices, m_StaticLod);
+    }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const std::length_error&) { return E_OUTOFMEMORY; }
+}

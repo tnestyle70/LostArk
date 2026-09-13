@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate1.intro.festival.full.restore",
   "displayName": "쿠크 1관문 연출 축포",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

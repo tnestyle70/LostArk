@@ -1,4 +1,5 @@
 ﻿#include "Navigation.h"
+#include "Engine_VertexTypes.h"
 #include "Profiler.h"
 #include "Cell.h"
 
@@ -42,6 +43,7 @@ CNavigation::CNavigation(const CNavigation& Prototype)
 	, m_eMode { Prototype.m_eMode }
 	, m_Cells { Prototype.m_Cells }
 	, m_pNavGrid { Prototype.m_pNavGrid }
+	, m_fMaxStepHeight { Prototype.m_fMaxStepHeight }
 #ifdef _DEBUG
 	, m_pShader { Prototype.m_pShader }
 #endif
@@ -119,8 +121,12 @@ HRESULT CNavigation::Initialize_Prototype(const tchar_t* pNavigationDataFiles,
 	return S_OK;
 }
 
-HRESULT CNavigation::Initialize_NavGrid_Prototype(const tchar_t* pNavGridFilePath)
+HRESULT CNavigation::Initialize_NavGrid_Prototype(
+	const tchar_t* pNavGridFilePath,
+	f32_t fMaxStepHeight)
 {
+	if (!std::isfinite(fMaxStepHeight) || fMaxStepHeight < 0.f)
+		return E_INVALIDARG;
 	const std::filesystem::path navGridPath =
 		ResolveNavigationDataPath(pNavGridFilePath);
 
@@ -139,6 +145,7 @@ HRESULT CNavigation::Initialize_NavGrid_Prototype(const tchar_t* pNavGridFilePat
 	m_pTargetTransformCom.reset();
 	m_pNavGrid = move(pStagedNavGrid);
 	m_pPathFinder = move(pStagedPathFinder);
+	m_fMaxStepHeight = fMaxStepHeight;
 	m_eMode = MODE::NAVGRID_ASTAR;
 
 	return S_OK;
@@ -679,13 +686,14 @@ unique_ptr<CNavigation> CNavigation::Create(ComPtr<ID3D11Device> pDevice, ComPtr
 unique_ptr<CNavigation> CNavigation::Create_NavGrid(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
-	const tchar_t* pNavGridFilePath)
+	const tchar_t* pNavGridFilePath,
+	f32_t fMaxStepHeight)
 {
 	auto pInstance = unique_ptr<CNavigation>(
 		new CNavigation(pDevice, pContext));
 
 	if (FAILED(pInstance->Initialize_NavGrid_Prototype(
-		pNavGridFilePath)))
+		pNavGridFilePath, fMaxStepHeight)))
 	{
 		OutputDebugStringA("[Engine][Navigation] NavGrid create failed.\n");
 		return nullptr;

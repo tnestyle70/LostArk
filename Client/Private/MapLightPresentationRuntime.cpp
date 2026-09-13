@@ -1,4 +1,5 @@
 #include "MapLightPresentationRuntime.h"
+#include "Engine_RenderTypes.h"
 
 #include "Effect_LightPresentation.h"
 #include "MapAssetCatalog.h"

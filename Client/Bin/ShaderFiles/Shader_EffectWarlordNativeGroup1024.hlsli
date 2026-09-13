@@ -7476,7 +7476,7 @@ float4 WarlordNative1084(WARLORD_NATIVE_INPUT input)
     // 6: mad r0.zw, r0.zzzz, r1.xxxz, r0.xxxy
     r0.zw = ((r0.zzzz)*(r1.xxxz)+(r0.xxxy)).zw;
     // 7: sample_indexable(texture2d)(float,float,float,float) r2.z, r0.zwzz, t1.xyzw, s1 (project resolved HDR SceneColor snapshot adapter)
-    r2.z = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r0.zwzz).xy).xyzw).z;
+    r2.z = (Read_EffectSceneColor(LinearClampUVSampler, (r0.zwzz).xy).xyzw).z;
     // 8: mul r0.zw, r1.yyyy, cb0[2].zzzw
     r0.zw = ((r1.yyyy)*(source[2].zzzw)).zw;
     // 9: mad r1.xyzw, r0.zzww, r1.xzxz, r0.xyxy
@@ -7484,9 +7484,9 @@ float4 WarlordNative1084(WARLORD_NATIVE_INPUT input)
     // Native 10: source device depth mapped to centimetre view depth; reconstruction at 20.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
     // 12: sample_indexable(texture2d)(float,float,float,float) r2.x, r1.xyxx, t1.xyzw, s1 (project resolved HDR SceneColor snapshot adapter)
-    r2.x = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.xyxx).xy).xyzw).x;
+    r2.x = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).xyzw).x;
     // 13: sample_indexable(texture2d)(float,float,float,float) r2.y, r1.zwzz, t1.xyzw, s1 (project resolved HDR SceneColor snapshot adapter)
-    r2.y = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.zwzz).xy).xyzw).y;
+    r2.y = (Read_EffectSceneColor(LinearClampUVSampler, (r1.zwzz).xy).xyzw).y;
     // 14: mul r0.yzw, r2.xxyz, v3.xxyz
     r0.yzw = ((r2.xxyz)*(v3.xxyz)).yzw;
     // 15: dp3 r1.x, r0.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)

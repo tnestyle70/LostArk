@@ -95,6 +95,7 @@ struct PS_IN
 struct PS_OUT
 {
     float4 vColor : SV_TARGET0;
+    float4 vBloomContribution : SV_TARGET2;
 };
 
 /* �ȼ� ���̴� */ 
@@ -106,6 +107,7 @@ PS_OUT PS_MAIN(PS_IN In)
 
     Out.vColor = g_Texture.Sample(UISampler, In.vTexcoord);
 
+    Out.vBloomContribution = Write_SceneBloom(Out.vColor);
     return Out;
 }
 
@@ -139,6 +141,7 @@ PS_OUT PS_MAIN_UI(PS_IN In)
 
     Out.vColor = g_Texture.Sample(UISampler, vSampleTexcoord) * g_TintColor;
 
+    Out.vBloomContribution = Write_SceneBloom(Out.vColor);
     return Out;
 }
 
@@ -163,6 +166,7 @@ PS_OUT PS_MAIN_SOFTEFFECT(PS_IN In)
     
     Out.vColor.a = Out.vColor.a * saturate(fOldZ - In.vProjPos.w);
     
+    Out.vBloomContribution = Write_SceneBloom(Out.vColor);
     return Out;
 }
 

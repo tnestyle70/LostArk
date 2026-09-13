@@ -1,4 +1,5 @@
 #include "Effect_ThumbnailCache.h"
+#include "Engine_VertexTypes.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
 #include "Model.h"

@@ -1,4 +1,5 @@
 #include "VIBuffer_Cell.h"
+#include "Engine_VertexTypes.h"
 
 CVIBuffer_Cell::CVIBuffer_Cell(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CVIBuffer { pDevice, pContext }

@@ -33,8 +33,10 @@ powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.14`로 갱신한다.
 현재 endpoint 주소를 실제로 가진 PC만 `server-host`로 판정해 `Server.vcxproj.user`의
 `--bind-address 0.0.0.0`과 TCP 7777 LocalSubnet 방화벽 규칙도 확인한다. 출력이
-`server-host`이면 `Server + Client` profile, `client`이면 Client project를 사용자가 `Ctrl+F5`로
-시작할 대상으로 안내한다. 에이전트가 Client나 UI를 자율적으로 실행·조작하지 않는다.
+`server-host`이면 `Server + Client` profile, `client`이면 Client project가 VS 시작 대상이다.
+이미 빌드·설치된 결과 확인은 대상 경로를 확인한 `Client (no build)`/Server 바로가기로 안내할 수 있다.
+`F5`와 `Ctrl+F5` 모두 VS 설정에 따라 Build를 수행하므로 무빌드 실행으로 설명하지 않는다.
+에이전트가 Client나 UI를 자율적으로 실행·조작하지 않는다.
 관리자 권한이 있어야 방화벽 규칙을 추가할 수 있으면 그 사실을 즉시 보고한다.
 현재 Server가 꺼져 있어 endpoint probe가 `not-listening`이어도 로컬 설정은 완료된 것이므로 작업을
 막지 않는다. 만료 뒤에는 `-AllowExpired`로 조용히 우회하지 말고 endpoint 정본과 public 계약을
@@ -71,6 +73,24 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.14`로 갱신
 CModel preScale·socket offset·particle 단위를 함께 실측한다. synthetic anchor의 finite/count
 성공을 실제 모델 부착이나 GPU 표시 성공으로 대신 기록하지 않는다. 반복 방지 항목은
 `.md/GB/gotchas.md`에도 남기며, 개별 오류 이력은 AGENTS에 누적하지 않는다.
+
+### 이펙트 복원의 방향·크기 점검
+
+- 일부 이펙트만 90도 틀어지거나 크기가 다르면 전체 asset·shader에 같은 회전·배율을
+  강제하지 않는다. 실제 occurrence의 원본 TypeData mesh pre-rotation, StartRotation,
+  local/world space, notify TRS, socket·부모 basis, 독립 그룹의 전방 변환 순서와 소비자를 확인한다.
+- UE FRotator 정수, MeshRotation turn, TypeData degree를 구분하고 좌표계 변환은 기존
+  런타임 경로로 한 번만 적용한다. 이미 정상인 sprite·decal·mesh·bone-follow에 보정을 전파하지 않는다.
+- 크기는 실제 설치 WModel의 정점·preScale, cm→m, StartSize, notify scale, 골격·owner basis와
+  사용자의 occurrence scale을 따로 측정한다. 원본 복원값과 사용자가 요청한 확대값을 구분해 기록한다.
+- 수정 후 실제 재생 transform의 중심·전방·메시 법선·축별 크기를 대조하고, 본 부착은 실제
+  모델·본을 사용한다. 수치 검증과 사용자의 최종 화면 판정을 구분한다.
+- 새로 확인한 원인·적용 범위·재발 방지 절차는 같은 변경에서 `gotchas.md`와
+  `렌더링이펙트복원V2.md`에 반영한다. 공통 작업 절차가 바뀌면 이 항목도 갱신하고,
+  개별 asset ID·측정값·검증 로그는 대응 RESULT에 남긴다.
+- 실행 중 저작 도구가 읽은 Composition에 외부 리소스를 등록할 때는 미저장 draft와 저장
+  기준본 충돌을 함께 확인한다. Reload·종료·재빌드 전에 사용자 편집의 보존을 확인하며,
+  저장 거절을 freshness 검사 제거 또는 파일 전체 덮어쓰기로 우회하지 않는다.
 
 ## 계획서 규칙
 
@@ -185,7 +205,7 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 - 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. 명시적인 `Publish-GameplayBalance.ps1` 실행으로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
 - 아이템 정의 정본은 `Data/Items/ItemCatalog.json`이다. 명시적인 `Publish-ItemCatalog.ps1` 실행으로 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하며, `CItemCatalog`은 이 생성물만 읽는다. 누락을 JSON 직접 읽기나 hardcoded fallback으로 숨기지 않는다.
 - field-level 공식 근거 정본은 `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`이다. publisher는 5 profile, 88 skill definition, 63 damage profile과 Valtan encounter의 모든 저작 field coverage/result 일치를 검사한다. F1 Balance Tool에서 바뀐 field는 receipt 동기화 단계에서 `PROJECT_TUNED`로 분류하며 공식 basis를 수동 유지하지 않는다. Publish 뒤 Server 재시작 전에는 적용 완료가 아니다.
-- 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 정본으로 사용한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.
+- 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 정본으로 사용한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다. 일반 클릭 이동의 로컬 표시는 typed 이동 명령 송신 후 기존 Character navigation 경로로 예측할 수 있다. Server snapshot의 처리 sequence·이동 가능 상태·실효 속도·경유점으로 보정하며 gameplay·충돌·스킬 판정 권위는 Server가 유지한다.
 - Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. `Gameplay.world.json` authoring은 formatVersion 6이며 actor placement, NPC의 optional `behavior`, `triggerBox`, `collisionBox`, gated `destroyable` 구조를 구분한다. 제품 publisher/runtime는 player spawn/NPC/boss, 정확히 하나의 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter` action을 가진 triggerBox, Server 권위 정적 collisionBox를 지원한다. NPC 제품 presentation은 `Data/Actors/NpcCatalog.json`의 `runtimeStatus=supported` archetype을 모두 지원하며 현재 75종이다. 세부 작업 절차는 `.md/TEAM/NPC_OWNER_HANDOFF.md`를 따른다. `activateSpawnGroup`은 같은 Area의 `SpawnGroups.world.json` stable group ID만 참조하고, `activateEncounter`는 같은 문서의 disabled boss placement ID만 참조한다. movePlayer/changeLevel/activation의 OBB 진입, player collider와 collisionBox의 swept 이동 차단은 Server authority이고 Shared snapshot/spawn/despawn으로 표현한다. changeLevel은 Bern과 Valtan Arena 사이에서만 Server가 source room leave와 target room enter를 확정하고 Client는 `S2C_ENTER_ACCEPTED` 뒤 typed level transition을 제출한다. destroyable과 다른 trigger action은 dynamic navigation·replication·Client presentation이 닫히기 전까지 publisher가 거부하며 authoring parser 존재만으로 제품 지원 완료 처리하지 않는다.
 - 수업용 `CMonster`와 `astar/Monster`는 계속 금지한다. 제품 일반 몬스터는 `MonsterCatalog.json` + `MonsterProfiles.json` + Area `SpawnGroups.world.json`을 `Publish-WorldGameplay.ps1`로 publish하고, Server `CSpawnGroupRuntime/CMonsterBrain`과 Shared world entity spawn/snapshot/despawn, Client catalog presentation 경로만 사용한다.
 - Valtan 제품 경로의 transform, action, phase, damage 판정은 Server authority다. Client `CValtan`의 로컬 AI는 Development preview 외에 사용하지 않는다.
@@ -234,6 +254,11 @@ Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DL
 ```
 
 - 기본 빌드 명령은 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration <Debug|Release>`이며 기본 profile은 `Product`다. Product는 컴파일·링크와 정상 MSBuild 배포를 수행한다. `Framework.sln` 기본 Build도 제품 네 프로젝트만 빌드한다. 광역 진단은 사용자가 요청할 때만 실행한다.
+- 작업 전에 변경을 데이터/publisher, C++/헤더, HLSL/include/옵션으로 구분한다. 데이터만 바뀌었으면 해당 저장·게시·reload 계약을 확인하며 EXE나 셰이더 빌드를 요구하지 않는다. C++ 또는 HLSL 변경은 정상 증분 Product Build를 사용한다. C++만 수정했다는 이유로 변경됐거나 누락된 CSO까지 강제로 건너뛰지 않는다.
+- 같은 작업 폴더의 VS와 에이전트는 같은 Visual Studio 설치·toolset·SDK·구성·출력 경로를 사용한다. x64 제품은 C++ host `x64`, SDK tool host `Native64Bit`를 사용한다. 정본 runner 밖의 임시 명령으로 기본 IntDir/OutDir와 도구 설정을 바꾸지 않는다. 별도 컴파일 실험은 중간·최종 산출물을 모두 out 아래에 격리한다.
+- 일반 수정·pull·merge 후에는 `Build`를 사용한다. 원인 확인 없이 `Rebuild`, CleanBuild, `.tlog`/`.lastbuildstate`/OBJ/PCH 삭제를 반복하지 않는다. 배포 CSO 존재만으로 현재 소스가 빌드됐다고 간주하거나, timestamp/추적 기록 조작 및 전체 FxCompile 비활성화로 최신 여부를 위장하지 않는다.
+- 변경하지 않은 셰이더가 반복 컴파일되면 다음 전체 빌드를 추가하기 전에 기존 Product 결과와 tracking/command/include 기록을 확인한다. 필요한 한 번의 빌드에만 `-BuildLogDirectory`를 사용한다. 과거 명령·전후 로그가 없는 다른 PC의 원인을 현재 설정 하나로 확정하지 않는다.
+- 완료 보고는 변경 입력, 실제 컴파일·링크/CSO 변경 범위, 성공·실패, 현재 실행 파일 경로를 구분한다. 무변경 재실행은 빌드 설정을 바꾼 경우에만 증분 상태 확인에 사용하고 일반 수정마다 전체 진단을 반복하지 않는다. 무빌드 바로가기 실행과 설치기 재실행은 다르며, 설치기는 로컬 수정 빌드와 runtime DataFiles를 배포본으로 교체할 수 있다.
 - runtime 데이터는 변경한 domain의 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. VS pre-build publish가 필요한 경우에만 `LostArkPublishRuntimeData=true`를 설정한다. 생성물 누락은 목록 편집을 막지 않으며 실제 Server 실행 전 준비한다. 수동 smoke의 Client 작업 디렉터리는 `Client/Default`다.
 
 - Engine public header를 바꿨다면 Product 빌드로 Engine SDK 반영과 Client 컴파일까지 확인한다.

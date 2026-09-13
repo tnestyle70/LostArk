@@ -1,4 +1,5 @@
 #include "LightResourceCatalog.h"
+#include "Engine_RenderTypes.h"
 #include "DataJson.h"
 #include "MapAssetCatalog.h"
 #include "MapLightDocument.h"

@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import argparse
 import copy
+from contextlib import contextmanager
+from contextvars import ContextVar
+import hashlib
 import json
 import math
 import os
@@ -153,7 +156,7 @@ LOGIC_KIND_VALUE_KEYS = {
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
                            "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection"}
-LOGIC_TRIGGER_VALUE_KEYS = {"triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
+LOGIC_TRIGGER_VALUE_KEYS = {"countPerPlayer", "radiusM", "effectLifetimeMs", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
@@ -247,9 +250,99 @@ def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def load_json(path: Path) -> dict[str, Any]:
+class _PublicationInputs:
+    """One invocation's read-only inputs; never survives a publish/validate run."""
+    def __init__(self):
+        self.signatures = {}
+        self.json = {}
+        self.contents = {}
+        self.binary_digests = {}
+        self.models = {}
+        self.actors = {}
+        self.memo = {}
+
+    def observe(self, path):
+        path = Path(path).resolve()
+        try:
+            stat = path.stat()
+            signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_ino)
+        except FileNotFoundError:
+            signature = None
+        except OSError as error:
+            raise CompositionError(f"Cannot observe publication input {path}: {error}") from error
+        previous = self.signatures.setdefault(path, signature)
+        if previous != signature:
+            raise CompositionError(f"Publication input changed during validation: {path}")
+        return path
+
+    def read_content(self, path):
+        path = self.observe(path)
+        content = path.read_bytes()
+        self.observe(path)
+        previous = self.contents.setdefault(path, content)
+        if previous != content:
+            raise CompositionError(f"Publication input changed during validation: {path}")
+        return content
+
+    def observe_binary(self, path):
+        path = self.observe(path)
+        with path.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").digest()
+        self.observe(path)
+        previous = self.binary_digests.setdefault(path, digest)
+        if previous != digest:
+            raise CompositionError(f"Publication input changed during validation: {path}")
+
+    def assert_unchanged(self):
+        for path in tuple(self.signatures):
+            self.observe(path)
+        try:
+            for path in tuple(self.contents):
+                self.read_content(path)
+            for path in tuple(self.binary_digests):
+                self.observe_binary(path)
+        except OSError as error:
+            raise CompositionError(f"Cannot recheck publication input: {error}") from error
+
+
+_PUBLICATION_INPUTS = ContextVar("kouku_publication_inputs", default=None)
+
+
+@contextmanager
+def _publication_session(*, final_check=True):
+    current = _PUBLICATION_INPUTS.get()
+    if current is not None:
+        yield current
+        return
+    current = _PublicationInputs()
+    token = _PUBLICATION_INPUTS.set(current)
     try:
-        text = path.read_text(encoding="utf-8")
+        yield current
+        if final_check:
+            current.assert_unchanged()
+    finally:
+        _PUBLICATION_INPUTS.reset(token)
+
+
+def _publication_memo(kind, key, build):
+    session = _PUBLICATION_INPUTS.get()
+    if session is None:
+        return build()
+    identity = (kind, key)
+    if identity not in session.memo:
+        session.memo[identity] = build()
+    return session.memo[identity]
+
+
+def load_json(path: Path, *, use_cache: bool = True) -> dict[str, Any]:
+    session = _PUBLICATION_INPUTS.get() if use_cache else None
+    if session is not None:
+        path = session.observe(path)
+        if path in session.json:
+            return session.json[path]
+    try:
+        text = (session.read_content(path).decode("utf-8") if session is not None
+                else path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError) as error:
         raise CompositionError(f"cannot read UTF-8 JSON {path}: {error}") from error
     try:
@@ -258,7 +351,22 @@ def load_json(path: Path) -> dict[str, Any]:
         raise CompositionError(f"invalid JSON {path}: {error}") from error
     if not isinstance(value, dict):
         raise CompositionError(f"JSON root must be an object: {path}")
+    if session is not None:
+        session.observe(path)
+        # Publisher input consumers do not mutate these documents. Candidate edits
+        # always start from _publication_candidate's private deep copy.
+        session.json[path] = value
     return value
+
+
+def _read_input_text(path: Path) -> str:
+    session = _PUBLICATION_INPUTS.get()
+    if session is None:
+        return path.read_text("utf-8")
+    path = session.observe(path)
+    text = _publication_memo("text", path, lambda: session.read_content(path).decode("utf-8").replace("\r\n", "\n").replace("\r", "\n"))
+    session.observe(path)
+    return text
 
 
 def _exact_keys(value: Any, expected: set[str], context: str) -> None:
@@ -350,6 +458,11 @@ def arena_boss_archetypes_by_profile(root: Path = REPOSITORY_ROOT) -> dict[str, 
     A PRODUCT pattern plays only on a live arena boss whose catalog body is the
     pattern's actor body, so the join is read from the boss catalog instead of
     being authored a second time in the composition."""
+    return _publication_memo("arena-boss-profiles", str(root.resolve()),
+        lambda: _arena_boss_archetypes_by_profile(root))
+
+
+def _arena_boss_archetypes_by_profile(root: Path) -> dict[str, list[str]]:
     catalog = load_json(root / BOSS_CATALOG_PATH)
     result: dict[str, set[str]] = {}
     for boss in catalog.get("bosses", []):
@@ -481,6 +594,14 @@ def _validate_logic_definition(
                 "NONE", "POLYMORPH", "MARIO", "DANCE", "MAZE"
             }:
                 raise CompositionError(f"{context} HUD_ENTER requires a supported hudMode")
+        elif kind == "ALBION_BLUE_CIRCLE":
+            if extra != {"triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs"}:
+                raise CompositionError(f"{context} Albion needs countPerPlayer, radiusM and effectLifetimeMs")
+            count = _integer(logic["countPerPlayer"], f"{context} countPerPlayer", 1, 8)
+            radius = _number(logic["radiusM"], f"{context} radiusM", 0, 20)
+            _integer(logic["effectLifetimeMs"], f"{context} effectLifetimeMs", 1, 600000)
+            if (count == 1) != (radius == 0):
+                raise CompositionError(f"{context} one circle uses radius 0; multiple circles need a positive radius")
         elif kind == "CARD_MAZE_HIDE_NEXT":
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
@@ -1979,6 +2100,11 @@ def _pattern_dependencies(source: dict[str, Any], pattern: dict[str, Any]) -> se
 
 
 def prepare_publication(source: dict[str, Any], root: Path = REPOSITORY_ROOT) -> tuple[dict[str, Any], dict[str, Any]]:
+    with _publication_session():
+        return _prepare_publication(source, root)
+
+
+def _prepare_publication(source: dict[str, Any], root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     """Admit complete dependency closures, preserving every saved tree row."""
     inventory = _saved_pattern_inventory(source, root)
     patterns = {row["patternId"]: row for row in source["patterns"]}
@@ -2474,7 +2600,7 @@ def _load_region_world(root: Path, area: str, sequences: dict[str, Any], world: 
         raise CompositionError("Collider WORLD requires a placement or World Object")
     placement = None
     path = root / f"Data/Maps/Authoring/{area}/{area}.mapplacements"
-    for line in path.read_text("utf-8").splitlines()[1:]:
+    for line in _read_input_text(path).splitlines()[1:]:
         if line.split(" ", 1)[0] == str(binding["targetId"]):
             placement = shlex.split(line)
             break
@@ -2649,6 +2775,39 @@ def _sample_region_world(root: Path, area: str, sequences: dict[str, Any], world
     return position, yaw, scale
 
 
+def _load_bake_model(path, cache, animation_names=()):
+    session = _PUBLICATION_INPUTS.get()
+    path = session.observe(path) if session is not None else path.resolve()
+    model = cache.get(path)
+    wanted = set(animation_names)
+    if model is not None and all(any(row.name == name and row.channels is not None
+                                     for row in model.animations) for name in wanted):
+        return model
+    if session is not None:
+        session.observe_binary(path)
+    loaded = wmodel_pose.read_wmodel(path, include_geometry=False, animation_names=wanted)
+    if session is not None:
+        session.observe_binary(path)
+    if model is None:
+        model = loaded
+        cache[path] = model
+    else:
+        # Metadata remains stable within the pinned input. Add only newly requested
+        # clips; actor-local normalized channels never modify this shared raw model.
+        for previous, current in zip(model.animations, loaded.animations):
+            if previous.channels is None and current.channels is not None:
+                previous.channels = current.channels
+    return model
+
+
+def _bake_actor_model(raw):
+    model = copy.copy(raw)
+    model.animations = [copy.copy(row) for row in raw.animations]
+    for row in model.animations:
+        row.channels = None
+    return model
+
+
 def _load_bone_bake_actor(pattern, root, cache):
     metadata = _pattern_target_metadata(pattern)
     expected = GATE_TARGETS.get((metadata["gateId"], metadata["actorProfileId"]))
@@ -2662,21 +2821,25 @@ def _load_bone_bake_actor(pattern, root, cache):
         raise CompositionError("Bone Collider requires the exact boss catalog model")
     actor = actors[0]
     resources = (root / "Client/Bin/Resources").resolve()
-    def load_model(asset_id):
+    session = _PUBLICATION_INPUTS.get()
+    model_cache = session.models if session is not None else {}
+    model_paths = {}
+    def load_model(asset_id, part):
         if not isinstance(asset_id, str) or not asset_id or "\\" in asset_id or ":" in asset_id or ".." in Path(asset_id).parts:
             raise CompositionError("Bone Collider model needs a Resources-relative asset ID")
         path = (resources / asset_id).resolve()
         if not path.is_relative_to(resources) or path.suffix.lower() != ".wmodel":
             raise CompositionError("Bone Collider model escapes Resources or has an unsupported format")
         try:
-            model = wmodel_pose.read_wmodel(path)
+            model = _bake_actor_model(_load_bake_model(path, model_cache))
         except (OSError, ValueError, IndexError, KeyError, struct.error) as error:
             raise CompositionError(f"Cannot read Bone Collider model {asset_id}: {error}") from error
         if not model.skeleton_bones or len({row.name for row in model.skeleton_bones}) != len(model.skeleton_bones):
             raise CompositionError("Bone Collider model has an empty or ambiguous skeleton")
+        model_paths[part] = path
         return model
-    body = load_model(actor["bodyModel"])
-    weapon = load_model(actor["weaponModel"]) if actor.get("weaponModel") else None
+    body = load_model(actor["bodyModel"], "body")
+    weapon = load_model(actor["weaponModel"], "weapon") if actor.get("weaponModel") else None
     body_scale = _number(actor.get("bodyModelPreScale"), "Bone Collider body scale", .000001, 100)
     body_pre = wmodel_pose.affine_matrix((body_scale,) * 3, (0, 0, 0, 1), (0, 0, 0))
     weapon_pre = None
@@ -2691,7 +2854,8 @@ def _load_bone_bake_actor(pattern, root, cache):
                       sr*cp*cy - cr*sp*sy, cr*cp*cy + sr*sp*sy)
         weapon_pre = wmodel_pose.affine_matrix((scale,) * 3, quaternion, (0, 0, 0))
     value = {"body": body, "weapon": weapon, "bodyPre": body_pre, "weaponPre": weapon_pre,
-             "actorProfileId": metadata["actorProfileId"], "poses": {}, "validatedClips": set()}
+             "actorProfileId": metadata["actorProfileId"], "poses": {}, "validatedClips": set(),
+             "modelPaths": model_paths, "modelCache": model_cache}
     cache[cache_key] = value
     return value
 
@@ -2779,6 +2943,15 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical
     if clip_name and len(clips) != 1:
         raise CompositionError(f"Bone Collider has a missing or ambiguous clip: {clip_name}")
     animation = clips[0] if clips else None
+    if animation is not None and animation.channels is None:
+        try:
+            raw = _load_bake_model(actor["modelPaths"][part], actor["modelCache"], {clip_name})
+            selected = [row for row in raw.animations if row.name == clip_name]
+            if len(selected) != 1 or selected[0].channels is None:
+                raise ValueError("requested native animation keys are unavailable")
+            animation.channels = copy.deepcopy(selected[0].channels)
+        except (OSError, ValueError, IndexError, KeyError, struct.error) as error:
+            raise CompositionError(f"Cannot read Bone Collider clip {clip_name}: {error}") from error
     if animation and (not math.isfinite(animation.ticks_per_second) or animation.ticks_per_second <= 0 or
                       not math.isfinite(animation.duration_ticks) or animation.duration_ticks <= 0):
         raise CompositionError("Bone Collider clip has invalid native timing")
@@ -2886,6 +3059,27 @@ def _bone_bake_clip_sample(pattern, pattern_ms):
 
 
 def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
+    key = (str(root.resolve()), hashlib.sha256(serialize_json([pattern, logic_box, collider])).digest())
+    track = _publication_memo("bone-track", key,
+        lambda: _build_bone_collider_track(pattern, logic_box, collider, root, cache))
+    return copy.deepcopy(track)
+
+
+def _resolve_saydon_weapon_clip(body_clip, weapon):
+    if body_clip == "rpct00_att_battle_17_01":
+        candidate = "wp_mn_rpct_05_sk.ao_att_battle_17_01"
+    elif body_clip.startswith("mn_rpct_06_sk.ao_"):
+        suffix = body_clip[len("mn_rpct_06_sk.ao_"):]
+        if suffix.startswith(("att_battle_1_", "att_battle_3_")):
+            suffix = suffix[:11] + "0" + suffix[11:]
+        candidate = "wprpct06_" + suffix
+    else:
+        return ""
+    # The live NPC uses the loaded weapon rest pose when no exact clip exists.
+    return candidate if any(row.name == candidate for row in weapon.animations) else ""
+
+
+def _build_bone_collider_track(pattern, logic_box, collider, root, cache):
     if collider["anchorKind"] != "BOSS" or not collider["followBoss"] or not collider["bone"]:
         raise CompositionError("Bone Collider requires a following BOSS and a named bone")
     actor = _load_bone_bake_actor(pattern, root, cache)
@@ -2946,22 +3140,10 @@ def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
         body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds, pattern.get("animationRootVerticalScale", 1.0), blend)
         matrix = body_pose[bone_indices[0]] if part == "body" else None
         if part == "weapon":
-            prefix = "mn_rpct_06_sk.ao_"
-            if not body_clip.startswith(prefix):
-                raise CompositionError("Weapon Bone Collider has an unsupported body clip family")
-            suffix = body_clip[len(prefix):]
-            if suffix.startswith(("att_battle_1_", "att_battle_3_")):
-                suffix = suffix[:11] + "0" + suffix[11:]
-            weapon_clip = "wprpct06_" + suffix
-            if not any(row.name == weapon_clip for row in model.animations):
-                weapon_clip = ""  # The live hammer uses its loaded rest pose for unmapped body clips.
+            weapon_clip = _resolve_saydon_weapon_clip(body_clip, model)
             weapon_blend = None
             if blend:
-                suffix = blend[0][len(prefix):]
-                if suffix.startswith(("att_battle_1_", "att_battle_3_")):
-                    suffix = suffix[:11] + "0" + suffix[11:]
-                previous_weapon_clip = "wprpct06_" + suffix
-                if not any(row.name == previous_weapon_clip for row in model.animations): previous_weapon_clip = ""
+                previous_weapon_clip = _resolve_saydon_weapon_clip(blend[0], model)
                 weapon_blend = previous_weapon_clip, blend[1], blend[2]
             weapon_pose = _sample_bone_bake_pose(actor, "weapon", weapon_clip, seconds, blend=weapon_blend)
             matrix = wmodel_pose.matrix_multiply(weapon_pose[bone_indices[0]], body_pose[socket_indices[0]])
@@ -3128,7 +3310,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
     worlds = {world["worldId"]: world for world in document.get("worlds", [])}
     scene_profiles = {row["sceneProfileId"]: row for row in document.get("sceneProfiles", [])}
     world_sequences: dict[str, Any] | None = None
-    bone_cache: dict[Any, Any] = {}
+    session = _PUBLICATION_INPUTS.get()
+    bone_cache: dict[Any, Any] = session.actors if session is not None else {}
     patterns: list[dict[str, Any]] = []
     for source in document["patterns"]:
         if source["authoringStatus"] != "PRODUCT":
@@ -3206,6 +3389,9 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 "teleportPosition": logic.get("teleportPosition", [0.0, 0.0, 0.0]),
                 "clonePatternId": clone_id, "clockHours": logic.get("clockHours", []),
                 "faceCenterYawOffsetDegrees": float(logic.get("faceCenterYawOffsetDegrees", 0.0)),
+                "countPerPlayer": logic.get("countPerPlayer", 0),
+                "radiusM": float(logic.get("radiusM", 0.0)),
+                "effectLifetimeMs": logic.get("effectLifetimeMs", 0),
             })
         patterns.append(
             {
@@ -3529,7 +3715,8 @@ def _join_light_resources(document: dict[str, Any], root: Path) -> int | None:
     if not used:
         return None
     try:
-        catalog = validate_light_resources(load_json(root / LIGHT_RESOURCES_PATH))
+        catalog = _publication_memo("light-catalog", str(root.resolve()),
+            lambda: validate_light_resources(load_json(root / LIGHT_RESOURCES_PATH)))
     except LightValidationError as error:
         raise CompositionError(f"Light Resource catalog is invalid: {error}") from error
     revision = catalog["revision"]
@@ -3550,7 +3737,8 @@ def _join_light_resources(document: dict[str, Any], root: Path) -> int | None:
             # Legacy v1 source remains a read-only Area layer, never an Append resource.
             if map_lights.get("formatVersion") == 2:
                 try:
-                    validate_map_lights_v2(map_lights, document["areaId"])
+                    _publication_memo("map-lights", (str(root.resolve()), document["areaId"]),
+                        lambda: validate_map_lights_v2(map_lights, document["areaId"]))
                 except LightValidationError as error:
                     raise CompositionError(f"Map Light catalog is invalid: {error}") from error
                 # The map owner already validates the array and its capacity.
@@ -3623,7 +3811,8 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
     document = _expand_parent_patterns(document)
     light_revision = _join_light_resources(document, root)
     bindings: list[dict[str, Any]] = []
-    native_actor_cache = {}
+    session = _PUBLICATION_INPUTS.get()
+    native_actor_cache = session.actors if session is not None else {}
     for pattern in document["patterns"]:
         if pattern["authoringStatus"] != "PRODUCT":
             continue
@@ -3688,12 +3877,14 @@ def serialize_json(document: dict[str, Any]) -> bytes:
 
 def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
                       pattern_inventory: dict[str, Any] | None = None) -> dict[Path, bytes]:
-    encounter = project_encounter(document, root)
+    key = (str(root.resolve()), hashlib.sha256(serialize_json(document)).digest())
+    encounter, presentation = _publication_memo("projection", key,
+        lambda: (project_encounter(document, root), project_presentation(document, root)))
     if pattern_inventory is not None:
-        encounter["patternInventory"] = pattern_inventory
+        encounter = {**encounter, "patternInventory": pattern_inventory}
     return {
         ENCOUNTER_PATH: serialize_json(encounter),
-        PRESENTATION_PATH: serialize_json(project_presentation(document, root)),
+        PRESENTATION_PATH: serialize_json(presentation),
     }
 
 
@@ -3708,7 +3899,7 @@ def validate_outputs(root: Path, expected: dict[Path, bytes]) -> None:
             raise CompositionError(f"projected Product is stale: {relative}")
         # Reparse with duplicate-key rejection after byte parity so a writer
         # regression cannot be hidden by Python's permissive default parser.
-        load_json(path)
+        load_json(path, use_cache=False)
 
 
 def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
@@ -3730,7 +3921,7 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
-            load_json(temporary)
+            load_json(temporary, use_cache=False)
             staged[destination] = temporary
             if destination.exists():
                 backup = destination.with_name(
@@ -3740,10 +3931,15 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
                 backups[destination] = backup
             else:
                 backups[destination] = None
+        session = _PUBLICATION_INPUTS.get()
+        if session is not None:
+            session.assert_unchanged()
         for destination, temporary in staged.items():
             os.replace(temporary, destination)
             promoted.append(destination)
         validate_outputs(root, outputs)
+        if session is not None:
+            session.assert_unchanged()
     except Exception as publish_error:
         rollback_failures: list[str] = []
         for destination in reversed(promoted):
@@ -3775,6 +3971,12 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
 
 
 def run(root: Path, mode: str) -> dict[str, Any]:
+    # Publish performs its final guard inside the existing rollback transaction.
+    with _publication_session(final_check=False):
+        return _run(root, mode)
+
+
+def _run(root: Path, mode: str) -> dict[str, Any]:
     source = load_json(root / SOURCE_PATH)
     document, inventory = prepare_publication(source, root)
     outputs = projected_outputs(document, root, inventory)
@@ -3782,6 +3984,9 @@ def run(root: Path, mode: str) -> dict[str, Any]:
         publish_outputs(root, outputs)
     else:
         validate_outputs(root, outputs)
+        session = _PUBLICATION_INPUTS.get()
+        if session is not None:
+            session.assert_unchanged()
     return {
         "compositionId": COMPOSITION_ID,
         "sourceRevision": document["revision"],

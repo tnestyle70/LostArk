@@ -1,4 +1,5 @@
 import copy
+from contextlib import nullcontext
 import json
 import math
 import re
@@ -878,6 +879,26 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             else: collider["boneTarget"] = ["BODY"]
             with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
                 self.validate(document)
+
+    def test_saydon_weapon_lookup_preserves_exact_staff_hammer_and_rest_pose(self):
+        clips = ["wp_mn_rpct_05_sk.ao_att_battle_17_01", "wprpct06_att_battle_01_02",
+                 "wprpct06_att_battle_03_01", "wprpct06_att_battle_8_02"]
+        weapon = mock.Mock()
+        weapon.animations = [subject.wmodel_pose.Animation(name, 95, 30, []) for name in clips]
+        cases = {
+            "rpct00_att_battle_17_01": clips[0],
+            "mn_rpct_06_sk.ao_att_battle_1_02": clips[1],
+            "mn_rpct_06_sk.ao_att_battle_3_01": clips[2],
+            "mn_rpct_06_sk.ao_att_battle_8_02": clips[3],
+            "rpct00_idle_battle_1": "", "rpct00_att_battle_14_01": "",
+            "rpct00_att_battle_14_02": "", "rpct00_att_battle_17_02": "",
+            "mn_rpct_06_sk.ao_idle_battle_1": "", "other_att_battle_17_01": "",
+        }
+        for body_clip, expected in cases.items():
+            with self.subTest(body_clip=body_clip):
+                self.assertEqual(expected, subject._resolve_saydon_weapon_clip(body_clip, weapon))
+        weapon.animations = weapon.animations[1:]
+        self.assertEqual("", subject._resolve_saydon_weapon_clip("rpct00_att_battle_17_01", weapon))
 
     def test_bone_contact_bakes_real_hammer_and_body_with_target_yaw(self):
         document = self.bone_contact_document()
@@ -3247,6 +3268,79 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         subject.validate_outputs(ROOT, expected)
 
 
+    def test_gameplay_publisher_admits_only_exact_kouku_albion_visual(self):
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        functions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                     for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonNumber")]
+        start = publisher.index("foreach ($presentationBoss in @($bossCatalogDocument.bosses))")
+        end = publisher.index("$bossCatalogOwners =", start)
+        baseline = json.loads((ROOT / "Data/Actors/BossCatalog.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            path = folder / "bosses.json"
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(functions)
+            script += "\n$bossCatalogDocument=Get-Content -Raw (Join-Path $PSScriptRoot 'bosses.json') | ConvertFrom-Json\n"
+            script += publisher[start:end]
+            check = folder / "check.ps1"; check.write_text(script, encoding="utf-8-sig")
+            def run(document):
+                path.write_text(json.dumps(document), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(check)], capture_output=True, text=True)
+            result = run(baseline)
+            self.assertEqual(0, result.returncode, result.stderr)
+            legacy = copy.deepcopy(baseline)
+            for row in legacy["bosses"]:
+                if row["archetypeId"].startswith("BOSS_KAKULSAYDON_"):
+                    row["combatObjectVisuals"] = []
+            result = run(legacy)
+            self.assertEqual(0, result.returncode, result.stderr)
+            target_id = "BOSS_KAKULSAYDON_G1_KOUKU"
+            visual = next(row for row in baseline["bosses"] if row["archetypeId"] == target_id)["combatObjectVisuals"][0]
+            for invalid_visuals in (None, visual, [visual, visual],
+                    [{**visual, "combatObjectArchetypeId": "combatobject.unknown"}],
+                    [{**visual, "clientVisualId": "combatvisual.unknown"}],
+                    [{**visual, "effectAssetId": "effect.unknown"}],
+                    [{**visual, "effectAssetId": [visual["effectAssetId"]]}],
+                    [{**visual, "effectV2Group": {}}]):
+                candidate = copy.deepcopy(baseline)
+                next(row for row in candidate["bosses"] if row["archetypeId"] == target_id)["combatObjectVisuals"] = invalid_visuals
+                with self.subTest(visuals=invalid_visuals):
+                    self.assertNotEqual(0, run(candidate).returncode)
+            candidate = copy.deepcopy(baseline)
+            next(row for row in candidate["bosses"] if row["archetypeId"] == target_id)["bodyModel"] = "Character/Other.wmodel"
+            self.assertNotEqual(0, run(candidate).returncode)
+
+    def test_albion_trigger_projects_user_timing_layout_and_separate_effect_lifetime(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
+            trigger.pop(key, None)
+        trigger.update(triggerKind="ALBION_BLUE_CIRCLE", countPerPlayer=1, radiusM=0.0, effectLifetimeMs=7000)
+        product = self.strip_lanes(self.first_product(document))
+        product["nextLogicOccurrenceOrdinal"] = 2
+        product["logicOccurrences"] = [{"occurrenceId": product["patternId"] + ".logic.1",
+            "logicId": trigger["logicId"], "startMs": 250, "durationMs": 100}]
+        self.validate(document)
+        original = copy.deepcopy(document)
+        projected = subject.project_encounter(document)
+        row = next(p for p in projected["patterns"] if p["patternId"] == product["patternId"])["mechanicTriggers"][0]
+        self.assertEqual((250, 100, 1, 0.0, 7000), tuple(row[key] for key in
+            ("startMs", "durationMs", "countPerPlayer", "radiusM", "effectLifetimeMs")))
+        self.assertEqual(original, document)
+        trigger.update(countPerPlayer=4, radiusM=2.5)
+        self.validate(document)
+        row = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == product["patternId"])["mechanicTriggers"][0]
+        self.assertEqual((4, 2.5), (row["countPerPlayer"], row["radiusM"]))
+        for change in ({"countPerPlayer": 0}, {"countPerPlayer": 9}, {"countPerPlayer": 1},
+                       {"radiusM": 0}, {"radiusM": 21}, {"effectLifetimeMs": 0},
+                       {"effectLifetimeMs": 600001}, {"hudMode": "MAZE"}):
+            invalid = copy.deepcopy(document)
+            candidate = next(r for r in invalid["logics"] if r["logicId"] == trigger["logicId"])
+            candidate.update(change)
+            before = copy.deepcopy(invalid)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                self.validate(invalid)
+            self.assertEqual(before, invalid)
+
     def test_typed_trigger_projects_exact_target_and_rejects_missing_clone(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
         trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
@@ -3622,6 +3716,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 class KoukuPublishAllInventoryTests(unittest.TestCase):
     def source(self):
         source = subject.load_json(ROOT / subject.SOURCE_PATH)
+        source.pop("patternFlows", None)  # This fixture retains only three local Pattern identities.
         by_id = {p["patternId"]: p for p in source["patterns"]}
         source["patterns"] = [by_id[f"KAKULSAYDON_G1_PATTERN_{n}"] for n in (8, 9, 3)]
         for row in source["patterns"]:
@@ -3635,6 +3730,7 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
         source["bundles"] = [b for b in source["bundles"] if b["bundleId"] in {"kakulsaydon.bundle.1", "kakulsaydon.bundle.4"}]
         for row in source["bundles"]:
             row.update(authoringStatus="DRAFT", sceneProfileOccurrences=[], presentationOccurrences=[])
+            if row["bundleId"] == "kakulsaydon.bundle.4": row["members"] = []
         source["playAllPatternIds"] = []
         return source
 
@@ -3728,6 +3824,117 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
             with self.assertRaises(subject.CompositionError):
                 subject.run(root, "publish")
             self.assertEqual(old_outputs, {relative: (root / relative).read_bytes() for relative in old_outputs})
+
+
+    def test_publication_cache_preserves_bytes_and_unavailable_inventory(self):
+        source = self.source()
+        with subject._publication_session():
+            cached, cached_inventory = subject.prepare_publication(source)
+            cached_outputs = subject.projected_outputs(cached, ROOT, cached_inventory)
+            self.assertEqual(cached_outputs, subject.projected_outputs(cached, ROOT, cached_inventory))
+        with mock.patch.object(subject, "_publication_session", side_effect=lambda **_: nullcontext()):
+            uncached, uncached_inventory = subject.prepare_publication(source)
+            uncached_outputs = subject.projected_outputs(uncached, ROOT, uncached_inventory)
+        self.assertEqual((uncached, uncached_inventory, uncached_outputs),
+                         (cached, cached_inventory, cached_outputs))
+
+    def test_json_cache_is_one_run_only_and_invalid_json_is_never_cached(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.json"
+            path.write_text('{"value": 1}', encoding="utf-8")
+            with mock.patch.object(subject.json, "loads", wraps=json.loads) as decode:
+                with subject._publication_session():
+                    first = subject.load_json(path)
+                    self.assertIs(first, subject.load_json(path))
+                    self.assertEqual(1, decode.call_count)
+                path.write_text('{"value": 2}', encoding="utf-8")
+                with subject._publication_session():
+                    self.assertEqual(2, subject.load_json(path)["value"])
+                    self.assertEqual(2, decode.call_count)
+            path.write_text('{"value": 1, "value": 2}', encoding="utf-8")
+            with subject._publication_session():
+                for _ in range(2):
+                    with self.assertRaisesRegex(subject.CompositionError, "duplicate JSON property"):
+                        subject.load_json(path)
+            self.assertIsNone(subject._PUBLICATION_INPUTS.get())
+
+    def test_exact_input_guard_rejects_equal_size_changes_with_unchanged_stat(self):
+        readers = (("json", subject.load_json, b'{"value":1}', b'{"value":2}'),
+                   ("text", subject._read_input_text, b"a\r\nb", b"a\r\nc"),
+                   ("model", lambda p: subject._PUBLICATION_INPUTS.get().observe_binary(p), b"model1", b"model2"))
+        for kind, read, before, after in readers:
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as directory:
+                path = (Path(directory) / "input").resolve()
+                path.write_bytes(before)
+                original_stat, stat = path.stat(), Path.stat
+                def stable_stat(candidate, *args, **kwargs):
+                    return original_stat if candidate == path else stat(candidate, *args, **kwargs)
+                with mock.patch.object(Path, "stat", stable_stat):
+                    with self.assertRaisesRegex(subject.CompositionError, "input changed during validation"):
+                        with subject._publication_session():
+                            read(path)
+                            path.write_bytes(after)
+                self.assertIsNone(subject._PUBLICATION_INPUTS.get())
+
+    def test_input_creation_after_missing_lookup_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "missing.json"
+            with self.assertRaisesRegex(subject.CompositionError, "input changed during validation"):
+                with subject._publication_session() as inputs:
+                    inputs.observe(path)
+                    path.write_text("{}", encoding="utf-8")
+
+    def test_input_change_before_or_after_promotion_preserves_both_products(self):
+        for changed_check in (1, 2):
+            with self.subTest(changed_check=changed_check), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / "input.json"
+                source.write_text('{"revision":1}', encoding="utf-8")
+                old = {relative: subject.serialize_json({"revision": 1}) for relative in
+                       (subject.ENCOUNTER_PATH, subject.PRESENTATION_PATH)}
+                for relative, content in old.items():
+                    (root / relative).parent.mkdir(parents=True, exist_ok=True)
+                    (root / relative).write_bytes(content)
+                new = {relative: subject.serialize_json({"revision": 2}) for relative in old}
+                with subject._publication_session(final_check=False) as inputs:
+                    subject.load_json(source)
+                    guard = inputs.assert_unchanged
+                    checks = 0
+                    def change_input():
+                        nonlocal checks
+                        checks += 1
+                        if checks == changed_check:
+                            source.write_text('{"revision":3}', encoding="utf-8")
+                        guard()
+                    with mock.patch.object(inputs, "assert_unchanged", side_effect=change_input):
+                        with self.assertRaisesRegex(subject.CompositionError, "input changed during validation"):
+                            subject.publish_outputs(root, new)
+                self.assertEqual(old, {relative: (root / relative).read_bytes() for relative in old})
+                self.assertFalse(list(root.rglob("*.staging.*")))
+                self.assertFalse(list(root.rglob("*.rollback.*")))
+
+    def test_native_cache_loads_metadata_then_only_requested_clip(self):
+        pattern = self.source()["patterns"][0]
+        clip = "rpcz00_att_battle_7_01"
+        with subject._publication_session() as inputs:
+            with mock.patch.object(subject.wmodel_pose, "read_wmodel", wraps=subject.wmodel_pose.read_wmodel) as read:
+                actor = subject._load_bone_bake_actor(pattern, ROOT, inputs.actors)
+                self.assertEqual(1, read.call_count)
+                self.assertEqual(set(), read.call_args.kwargs["animation_names"])
+                self.assertFalse(read.call_args.kwargs["include_geometry"])
+                self.assertIsNone(actor["body"].vertices)
+                self.assertTrue(all(row.channels is None for row in actor["body"].animations))
+                pose = subject._sample_bone_bake_pose(actor, "body", clip, 1.0)
+                self.assertEqual(2, read.call_count)
+                self.assertEqual({clip}, read.call_args.kwargs["animation_names"])
+                other_actor = subject._load_bone_bake_actor(pattern, ROOT, {})
+                self.assertEqual(pose, subject._sample_bone_bake_pose(other_actor, "body", clip, 1.0))
+                self.assertEqual(2, read.call_count)
+                self.assertIs(pose, subject._sample_bone_bake_pose(actor, "body", clip, 1.0))
+                original_clip = next(row for row in actor["body"].animations if row.name == clip)
+                other_clip = next(row for row in other_actor["body"].animations if row.name == clip)
+                self.assertIsNot(original_clip.channels, other_clip.channels)
+                self.assertTrue(all(row.channels is None for row in other_actor["body"].animations if row.name != clip))
 
 
 if __name__ == "__main__":

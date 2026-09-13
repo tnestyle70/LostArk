@@ -3,6 +3,10 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
+import sys
+sys.path.insert(0, str(ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain
+
 
 
 def read(relative: str) -> str:
@@ -64,7 +68,7 @@ class DynamicGhostConsumerContractTests(unittest.TestCase):
             "Tools/ValtanPatternAuditionServiceHarness/Private/"
             "ValtanEncounterReferenceContractTests.cpp"
         )
-        server_test = read("Server/Private/ServerGameplayContractTests.cpp")
+        server_test = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")
 
         for source in (client_test, server_test):
             self.assertIn("VALTAN_FOUR_SLASH", source)

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <CL_MPCount Condition="'$(CL_MPCount)'==''">$([System.Math]::Min(8, $([System.Environment]::ProcessorCount)))</CL_MPCount>
+    <LostArkUsePch Condition="'$(LostArkUsePch)'=='' and '$(Platform)'=='x64'">true</LostArkUsePch>
+    <LostArkPchHeader>$(MSBuildThisFileDirectory)CppStandardPch.h</LostArkPchHeader>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>$(LostArkPchHeader)</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <ForcedIncludeFiles>$(LostArkPchHeader);%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>

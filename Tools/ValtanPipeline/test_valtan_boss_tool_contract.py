@@ -11,6 +11,9 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "Tools/Build"))
+from cpp_source_domains import read_cpp_domain, read_source_text
+
 sys.path.insert(0, str(ROOT / "Tools/ValtanPipeline"))
 import valtan_tuning_pipeline as tuning_pipeline  # noqa: E402
 BOSS_CPP = ROOT / "Client/Private/ValtanBossTool.cpp"
@@ -76,7 +79,7 @@ class ValtanValtanBossToolContractTests(unittest.TestCase):
         cls.boss_h = BOSS_H.read_text(encoding="utf-8")
         cls.balance_cpp = BALANCE_CPP.read_text(encoding="utf-8")
         cls.balance_h = BALANCE_H.read_text(encoding="utf-8")
-        cls.effect_cpp = EFFECT_CPP.read_text(encoding="utf-8")
+        cls.effect_cpp = read_source_text(EFFECT_CPP, encoding="utf-8")
         cls.effect_h = EFFECT_H.read_text(encoding="utf-8")
         cls.main_cpp = MAIN_CPP.read_text(encoding="utf-8")
         cls.main_h = MAIN_H.read_text(encoding="utf-8")
@@ -86,8 +89,8 @@ class ValtanValtanBossToolContractTests(unittest.TestCase):
         cls.hud_h = HUD_H.read_text(encoding="utf-8")
         cls.network_cpp = NETWORK_CPP.read_text(encoding="utf-8")
         cls.network_h = NETWORK_H.read_text(encoding="utf-8")
-        cls.server_room = SERVER_ROOM.read_text(encoding="utf-8")
-        cls.server_tests = SERVER_TESTS.read_text(encoding="utf-8")
+        cls.server_room = read_source_text(SERVER_ROOM, encoding="utf-8")
+        cls.server_tests = read_cpp_domain(ROOT / "Server", "ServerGameplayContractTests")
         cls.presentation_admission_native_tests = (
             PRESENTATION_ADMISSION_NATIVE_TESTS.read_text(encoding="utf-8")
         )

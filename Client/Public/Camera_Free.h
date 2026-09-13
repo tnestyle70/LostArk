@@ -103,6 +103,7 @@ private:
 	float3_t			m_vPositionOffset = { 0.4f, 7.5f, 4.5f };
 	float3_t			m_vLookOffset = { 0.f, 1.2f, 0.f };
 	float3_t			m_vCurrentLookAt = {};
+	float3_t			m_vPreviousFollowTarget = {};
 	f32_t				m_fFollowResponse = 18.f;
 	f32_t				m_fFollowRollDegrees = 0.f;
 	bool_t				m_allowCapturedKeyboardInput = false;

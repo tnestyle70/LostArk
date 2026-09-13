@@ -6,6 +6,7 @@ not rewrite the renderer or Has_ArtistMaterialContract implementation.
 """
 from pathlib import Path
 import argparse, copy, hashlib, json, re
+from native_material_tables import read_material_bytes, read_material_source, write_material_source
 
 ROOT=Path(__file__).resolve().parents[2]
 FIRST,LAST=2304,3711
@@ -44,7 +45,7 @@ def install(contract_path,evidence,header_path):
             staticSwitches=[dict(name=v['parameterName'],group='None',value=v['value']) for v in switches],dynamicParameterSemantics=['unbound']*4,subUVMode='none')
         materials.append(dict(program=i,sourceMaterial=p['sourceMaterial'],rendererShape=shape,occurrences=p['occurrences'],
             material=dict(templateId='effect.source_material',sourceMaterialPath=p['sourceMaterial'],renderProfile=render.lower(),sourceProfile=source)))
-    raw=header_path.read_bytes();bom=b'\xef\xbb\xbf' if raw.startswith(b'\xef\xbb\xbf') else b'';payload=raw[len(bom):]
+    raw=read_material_bytes(header_path);bom=b'\xef\xbb\xbf' if raw.startswith(b'\xef\xbb\xbf') else b'';payload=raw[len(bom):]
     try:original=payload.decode('utf-8');encoding='utf-8'
     except UnicodeDecodeError:original=payload.decode('cp949');encoding='cp949'
     newline='\r\n' if '\r\n' in original else '\n';text=original
@@ -59,12 +60,11 @@ def install(contract_path,evidence,header_path):
     final=text[:start]+replacement+text[end:]
     # Reapplying changes no bytes; non-owned arrays and the consumer tail remain
     # byte-identical, including their original encoding and newline convention.
-    result=bom+final.encode(encoding)
-    assert header_path.read_bytes()==raw,'header changed concurrently; rerun against current source'
-    if result!=raw:header_path.write_bytes(result)
+    assert read_material_bytes(header_path)==raw,'header changed concurrently; rerun against current source'
+    changed_paths=write_material_source(header_path,final,expected_source=original)
     write(evidence/'native_material_patch.json',dict(programs=materials))
-    write(evidence/'native_table_installation.json',dict(programCount=len(programs),first=min(owned),last=max(owned),header=str(header_path),encoding=encoding,changed=result!=raw))
-    print('Kouku native tables',len(programs),'header changed',result!=raw)
+    write(evidence/'native_table_installation.json',dict(programCount=len(programs),first=min(owned),last=max(owned),header=str(header_path),encoding=encoding,changed=bool(changed_paths),changedPaths=changed_paths))
+    print('Kouku native tables',len(programs),'source changed',bool(changed_paths))
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--contract',type=Path,default=ROOT/'out/KoukuGate1Restore20260911/native_runtime_contract.json');parser.add_argument('--evidence-root',type=Path,default=ROOT/'out/KoukuGate1FullRestore20260911');parser.add_argument('--header',type=Path,default=ROOT/'Client/Public/Effect_ArtistMaterial.h');args=parser.parse_args()
     install(args.contract,args.evidence_root,args.header)

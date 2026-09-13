@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import copy
 import hashlib
@@ -384,15 +389,11 @@ class DimensionMasterGlassWaterVisualCanaryTests(unittest.TestCase):
                 opcode_documents.append(path.name)
         self.assertEqual([WATER_PATH.name], opcode_documents)
 
-        codec = (
-            REPOSITORY_ROOT / "Client" / "Private" / "Effect_DocumentCodec.cpp"
-        ).read_text(encoding="utf-8")
-        renderer = (
-            REPOSITORY_ROOT
+        codec = read_source_text(REPOSITORY_ROOT / "Client" / "Private" / "Effect_DocumentCodec.cpp", encoding="utf-8")
+        renderer = read_source_text(REPOSITORY_ROOT
             / "Client"
             / "Private"
-            / "Effect_DocumentRenderer.cpp"
-        ).read_text(encoding="utf-8")
+            / "Effect_DocumentRenderer.cpp", encoding="utf-8")
         families = (
             REPOSITORY_ROOT
             / "Client"
@@ -400,12 +401,17 @@ class DimensionMasterGlassWaterVisualCanaryTests(unittest.TestCase):
             / "ShaderFiles"
             / "Shader_EffectUe3MaterialFamilies.hlsli"
         ).read_text(encoding="utf-8")
-        particle = (
+        particle_entrypoint = (
             REPOSITORY_ROOT
             / "Client"
             / "Bin"
             / "ShaderFiles"
             / "Shader_VtxEffectParticle.hlsl"
+        ).read_text(encoding="utf-8")
+        self.assertIn('#include "Shader_EffectParticleFamilyCarrier.hlsli"', particle_entrypoint)
+        particle = (
+            REPOSITORY_ROOT / "Client" / "Bin" / "ShaderFiles"
+            / "Shader_EffectParticleFamilyCarrier.hlsli"
         ).read_text(encoding="utf-8")
         self.assertEqual(2, codec.count("iOpcode == 1003u"))
         self.assertIn(

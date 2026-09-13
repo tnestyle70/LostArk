@@ -1,4 +1,14 @@
 #include "Model.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/Importer.hpp"
+#include "Assimp/postprocess.h"
+#pragma pop_macro("new")
+#pragma push_macro("new")
+#undef new
+#include "Assimp/scene.h"
+#pragma pop_macro("new")
+#include "Engine_VertexTypes.h"
 #include "Profiler.h"
 #include "GameInstance.h"
 
@@ -953,7 +963,7 @@ HRESULT CModel::Render(uint32_t iMeshIndex)
 
 HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
     ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride, uint32_t iNumInstances,
-    uint32_t iInstanceByteOffset)
+    uint32_t iInstanceByteOffset, const MESH_SCREEN_LOD_DESC* screenLod)
 {
     if (iMeshIndex >= m_Meshes.size() ||
         nullptr == m_Meshes[iMeshIndex])
@@ -962,7 +972,7 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
     }
 
     const HRESULT drawResult = m_Meshes[iMeshIndex]->Render_Instanced(
-        pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset);
+        pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset, screenLod);
     if (S_OK == drawResult)
         if (auto* profiler = CGameInstance::Get().Get_Profiler())
             profiler->Record_ModelSubmitted(this);
@@ -2233,6 +2243,26 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
             mesh, asset.skeleton, XMLoadFloat4x4(&m_PreTransformMatrix));
         if (nullptr == pMesh)
             return E_FAIL;
+        // Only undeformed native opaque map geometry opts into additional LOD
+        // indices. Other models retain their original buffer and render contract.
+        if (MODEL::NONANIM == m_eType && mesh.materialIndex < asset.materials.size())
+        {
+            const auto& material = asset.materials[mesh.materialIndex];
+            const auto& surface = material.surface;
+            if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
+                (surface.sourceBgFlags & 64u) == 0u && material.opacityPath.empty() &&
+                (surface.renderMode == MODEL_SURFACE_RENDER_MODE::INHERIT ||
+                 surface.renderMode == MODEL_SURFACE_RENDER_MODE::DEFERRED))
+            {
+                const HRESULT lodResult = pMesh->Prepare_StaticLod(mesh, XMLoadFloat4x4(&m_PreTransformMatrix));
+                if (FAILED(lodResult))
+                {
+                    char message[192]{};
+                    sprintf_s(message, "[Engine][MeshLOD] optional index LOD unavailable hr=0x%08X; keeping original mesh\n", static_cast<uint32_t>(lodResult));
+                    OutputDebugStringA(message);
+                }
+            }
+        }
         m_Meshes.push_back(pMesh);
     }
     // Keep source geometry only for explicitly opted-in multi-submesh effects.

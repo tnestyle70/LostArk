@@ -1189,7 +1189,7 @@ float4 ArtistNative3270(ARTIST_NATIVE_INPUT input)
     // 28: mad r0.w, r0.w, l(0.035000), l(0.010000)
     r0.w = ((r0.wwww)*(float4(0.035000,0.035000,0.035000,0.035000))+(float4(0.010000,0.010000,0.010000,0.010000))).w;
     // 29: sample_b_indexable(texture2d)(float,float,float,float) r3.xyz, r2.xyxx, t1.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r3.xyz = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    r3.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
     // 30: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
     r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
     // 31: mul r1.xy, r1.xyxx, l(0.000000, 1.000000, 0.000000, 0.000000)
@@ -1211,7 +1211,7 @@ float4 ArtistNative3270(ARTIST_NATIVE_INPUT input)
     // 39: mad r2.zw, -r1.yyyx, r0.wwww, r2.zzzw
     r2.zw = ((-(r1.yyyx))*(r0.wwww)+(r2.zzzw)).zw;
     // 40: sample_b_indexable(texture2d)(float,float,float,float) r3.w, r2.wzww, t1.yzwx, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r3.w = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.wzww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).yzwx).w;
+    r3.w = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.wzww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).yzwx).w;
     // 41: add r4.x, r3.w, r4.x
     r4.x = ((r3.wwww)+(r4.xxxx)).x;
     // 42: add r4.y, r4.y, l(1.000000)
@@ -1233,7 +1233,7 @@ float4 ArtistNative3270(ARTIST_NATIVE_INPUT input)
     // 50: mad r2.yw, -r1.yyyx, r0.wwww, r2.yyyw
     r2.yw = ((-(r1.yyyx))*(r0.wwww)+(r2.yyyw)).yw;
     // 51: sample_b_indexable(texture2d)(float,float,float,float) r3.x, r2.wyww, t1.yxzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r3.x = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r2.wyww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).yxzw).x;
+    r3.x = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.wyww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).yxzw).x;
     // 52: add r5.x, r3.x, r5.x
     r5.x = ((r3.xxxx)+(r5.xxxx)).x;
     // 53: add r5.y, r5.y, l(1.000000)
@@ -1257,7 +1257,7 @@ float4 ArtistNative3270(ARTIST_NATIVE_INPUT input)
     // 62: mad r3.xy, -r1.xyxx, r0.wwww, r3.xyxx
     r3.xy = ((-(r1.xyxx))*(r0.wwww)+(r3.xyxx)).xy;
     // 63: sample_b_indexable(texture2d)(float,float,float,float) r2.z, r3.xyxx, t1.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r2.z = (g_EffectSceneColorTexture.SampleBias(LinearClampUVSampler, (r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).z;
+    r2.z = (Read_EffectSceneColorBias(LinearClampUVSampler, (r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).z;
     // 64: add r5.x, r2.z, r5.x
     r5.x = ((r2.zzzz)+(r5.xxxx)).x;
     // 65: add r5.y, r5.y, l(1.000000)
@@ -10427,7 +10427,7 @@ float4 ArtistNative3326(ARTIST_NATIVE_INPUT input)
     // 9: mad r0.xy, v2.xxxx, r0.yzyy, r0.xwxx
     r0.xy = ((v2.xxxx)*(r0.yzyy)+(r0.xwxx)).xy;
     // 10: sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t1.yxzw, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.x = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r0.xyxx).xy).yxzw).x;
+    r0.x = (Read_EffectSceneColor(LinearClampUVSampler, (r0.xyxx).xy).yxzw).x;
     // 11: mul r0.y, r0.x, cb0[11].w
     r0.y = ((r0.xxxx)*(source[11].wwww)).y;
     // 12: add r1.zw, v2.xxxy, cb0[7].xxxy
@@ -10447,7 +10447,7 @@ float4 ArtistNative3326(ARTIST_NATIVE_INPUT input)
     // 19: mad r1.zw, v2.xxxx, r1.zzzw, r2.xxxy
     r1.zw = ((v2.xxxx)*(r1.zzzw)+(r2.xxxy)).zw;
     // 20: sample_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t1.xywz, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.w = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.zwzz).xy).xywz).w;
+    r0.w = (Read_EffectSceneColor(LinearClampUVSampler, (r1.zwzz).xy).xywz).w;
     // 21: mul r0.z, r0.w, cb0[13].x
     r0.z = ((r0.wwww)*(source[13].xxxx)).z;
     // 22: mad r1.zw, v2.xxxy, l(0.000000, 0.000000, 5.000000, 5.000000), cb0[2].xxxy
@@ -10459,7 +10459,7 @@ float4 ArtistNative3326(ARTIST_NATIVE_INPUT input)
     // 25: add r1.xy, r1.zwzz, r1.xyxx
     r1.xy = ((r1.zwzz)+(r1.xyxx)).xy;
     // 26: sample_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.w = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.xyxx).xy).yzwx).w;
+    r0.w = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).yzwx).w;
     // 27: mul r0.x, r0.w, cb0[11].x
     r0.x = ((r0.wwww)*(source[11].xxxx)).x;
     // 28: mul r1.xyz, r0.xyzx, v3.xyzx
@@ -10570,7 +10570,7 @@ float4 ArtistNative3327(ARTIST_NATIVE_INPUT input)
     // 9: mad r0.xy, v2.xxxx, r0.yzyy, r0.xwxx
     r0.xy = ((v2.xxxx)*(r0.yzyy)+(r0.xwxx)).xy;
     // 10: sample_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t1.yxzw, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.x = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r0.xyxx).xy).yxzw).x;
+    r0.x = (Read_EffectSceneColor(LinearClampUVSampler, (r0.xyxx).xy).yxzw).x;
     // 11: mul r0.y, r0.x, cb0[11].w
     r0.y = ((r0.xxxx)*(source[11].wwww)).y;
     // 12: add r1.zw, v2.xxxy, cb0[7].xxxy
@@ -10590,7 +10590,7 @@ float4 ArtistNative3327(ARTIST_NATIVE_INPUT input)
     // 19: mad r1.zw, v2.xxxx, r1.zzzw, r2.xxxy
     r1.zw = ((v2.xxxx)*(r1.zzzw)+(r2.xxxy)).zw;
     // 20: sample_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t1.xywz, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.w = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.zwzz).xy).xywz).w;
+    r0.w = (Read_EffectSceneColor(LinearClampUVSampler, (r1.zwzz).xy).xywz).w;
     // 21: mul r0.z, r0.w, cb0[13].x
     r0.z = ((r0.wwww)*(source[13].xxxx)).z;
     // 22: mad r1.zw, v2.xxxy, l(0.000000, 0.000000, 5.000000, 5.000000), cb0[2].xxxy
@@ -10602,7 +10602,7 @@ float4 ArtistNative3327(ARTIST_NATIVE_INPUT input)
     // 25: add r1.xy, r1.zwzz, r1.xyxx
     r1.xy = ((r1.zwzz)+(r1.xyxx)).xy;
     // 26: sample_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s0 (project resolved HDR SceneColor snapshot adapter)
-    r0.w = (g_EffectSceneColorTexture.Sample(LinearClampUVSampler, (r1.xyxx).xy).yzwx).w;
+    r0.w = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).yzwx).w;
     // 27: mul r0.x, r0.w, cb0[11].x
     r0.x = ((r0.wwww)*(source[11].xxxx)).x;
     // 28: mul r1.xyz, r0.xyzx, v3.xyzx

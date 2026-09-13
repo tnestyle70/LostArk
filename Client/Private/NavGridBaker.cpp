@@ -1,4 +1,5 @@
 #include "NavGridBaker.h"
+#include "Engine_VertexTypes.h"
 
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"

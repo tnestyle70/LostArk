@@ -11,6 +11,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import valtan_tuning_pipeline as pipeline
 
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -329,7 +334,7 @@ class ValtanRockPillarGroupContractTests(unittest.TestCase):
             pipeline.validate_combat_authoring(invalid)
 
     def test_server_projects_damaging_cover_sets_before_atomic_staging(self) -> None:
-        source = (ROOT / "Server/Private/GameRoom.cpp").read_text(encoding="utf-8")
+        source = read_source_text(ROOT / "Server/Private/GameRoom.cpp", encoding="utf-8")
         start = source.index(
             "const bool damagingCoverVolleyMayProject ="
         )

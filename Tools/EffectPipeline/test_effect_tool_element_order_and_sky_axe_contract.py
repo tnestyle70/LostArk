@@ -1,3 +1,8 @@
+
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
 import json
 import unittest
 from pathlib import Path
@@ -29,7 +34,7 @@ def extract_function(source: str, signature: str) -> str:
 class EffectToolElementOrderContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cls.cpp = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         cls.header = EFFECT_TOOL_H.read_text(encoding="utf-8")
 
     def test_current_effect_exposes_typed_up_down_controls(self) -> None:
@@ -89,7 +94,7 @@ class EffectToolElementOrderContractTests(unittest.TestCase):
 class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.effect_tool = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cls.effect_tool = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
 
     def test_high_jump_owns_exact_v2_group_runtime_effect(self) -> None:
         gameplay = load_json("Data/Valtan/Valtan.gameplay.json")

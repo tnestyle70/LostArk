@@ -60,6 +60,8 @@ enum class EProfilerCounter : uint16_t
     ImGuiBufferMapFailures,
     PickingReadbacks,
     PickingReadbackBytes,
+    IndirectDrawCalls,
+    IndirectIndexUpperBound,
     Count
 };
 

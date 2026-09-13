@@ -37,6 +37,7 @@ public:
 
 public:
 	MODE Get_Mode() const { return m_eMode; }
+	f32_t Get_MaxStepHeight() const { return m_fMaxStepHeight; }
 
 	HRESULT SetUp_Neighbors();
 	HRESULT SetUp_Neighbors(const tchar_t* pNeighborDataFile);
@@ -73,7 +74,8 @@ public:
 
 private:
 	HRESULT Initialize_NavGrid_Prototype(
-		const tchar_t* pNavGridFilePath);
+		const tchar_t* pNavGridFilePath,
+		f32_t fMaxStepHeight);
 	void Simplify_Path(
 		const vector<float3_t>& RawPath,
 		f32_t fMaxStepHeight,
@@ -89,6 +91,7 @@ private:
 	int32_t									m_iCurrentCellIndex = { -1 };
 	shared_ptr<CNavGrid>						m_pNavGrid = { nullptr };
 	unique_ptr<CPathFinder>					m_pPathFinder = { nullptr };
+	f32_t m_fMaxStepHeight = 0.6f;
 
 private:
 	shared_ptr<class CTransform>			m_pTargetTransformCom = {};
@@ -108,7 +111,8 @@ public:
 	static unique_ptr<CNavigation> Create_NavGrid(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext,
-		const tchar_t* pNavGridFilePath);
+		const tchar_t* pNavGridFilePath,
+		f32_t fMaxStepHeight = 0.6f);
 
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 };

@@ -1,3 +1,8 @@
+
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
 import copy
 import ctypes
 from ctypes import wintypes
@@ -155,9 +160,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         cls.animation_h = (
             REPO_ROOT / "Client/Public/Animation_Tool.h"
         ).read_text(encoding="utf-8")
-        cls.animation_cpp = (
-            REPO_ROOT / "Client/Private/Animation_Tool.cpp"
-        ).read_text(encoding="utf-8")
+        cls.animation_cpp = read_source_text(REPO_ROOT / "Client/Private/Animation_Tool.cpp", encoding="utf-8")
         cls.workbench_h = (
             REPO_ROOT / "Client/Public/ValtanActionWorkbench.h"
         ).read_text(encoding="utf-8")

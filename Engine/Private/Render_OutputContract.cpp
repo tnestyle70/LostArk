@@ -11,6 +11,7 @@ namespace
 		ID3D11DeviceContext* pContext = nullptr;
 		ID3D11RenderTargetView* pSceneColor = nullptr;
 		ID3D11RenderTargetView* pDistortion = nullptr;
+		ID3D11RenderTargetView* pBloom = nullptr;
 		ID3D11DepthStencilView* pDepthStencil = nullptr;
 	};
 
@@ -31,6 +32,7 @@ bool_t Engine::CRenderOutputContract::Matches_ActiveRenderTargets(
 		pContext != g_ActiveOutputContract.pContext ||
 		nullptr == g_ActiveOutputContract.pSceneColor ||
 		nullptr == g_ActiveOutputContract.pDistortion ||
+		nullptr == g_ActiveOutputContract.pBloom ||
 		nullptr == g_ActiveOutputContract.pDepthStencil)
 	{
 		return false;
@@ -52,11 +54,12 @@ bool_t Engine::CRenderOutputContract::Matches_ActiveRenderTargets(
 			g_ActiveOutputContract.pSceneColor ||
 		RenderTargetRefs[1u].Get() !=
 			g_ActiveOutputContract.pDistortion ||
+		RenderTargetRefs[2u].Get() != g_ActiveOutputContract.pBloom ||
 		pDepthStencil.Get() != g_ActiveOutputContract.pDepthStencil)
 	{
 		return false;
 	}
-	for (size_t iTarget = 2u; iTarget < RenderTargetRefs.size(); ++iTarget)
+	for (size_t iTarget = 3u; iTarget < RenderTargetRefs.size(); ++iTarget)
 	{
 		if (nullptr != RenderTargetRefs[iTarget].Get())
 			return false;
@@ -71,6 +74,7 @@ Engine::CRenderOutputContractScope::CRenderOutputContractScope(
 	, m_pPreviousContext(g_ActiveOutputContract.pContext)
 	, m_pPreviousSceneColor(g_ActiveOutputContract.pSceneColor)
 	, m_pPreviousDistortion(g_ActiveOutputContract.pDistortion)
+	, m_pPreviousBloom(g_ActiveOutputContract.pBloom)
 	, m_pPreviousDepthStencil(g_ActiveOutputContract.pDepthStencil)
 {
 	std::array<ID3D11RenderTargetView*,
@@ -86,6 +90,7 @@ Engine::CRenderOutputContractScope::CRenderOutputContractScope(
 	g_ActiveOutputContract.pContext = pContext;
 	g_ActiveOutputContract.pSceneColor = RenderTargets[0u];
 	g_ActiveOutputContract.pDistortion = RenderTargets[1u];
+	g_ActiveOutputContract.pBloom = RenderTargets[2u];
 	g_ActiveOutputContract.pDepthStencil = pDepthStencil;
 	for (ID3D11RenderTargetView* pRenderTarget : RenderTargets)
 	{
@@ -94,13 +99,14 @@ Engine::CRenderOutputContractScope::CRenderOutputContractScope(
 	}
 	if (nullptr != pDepthStencil)
 		pDepthStencil->Release();
-	for (size_t iTarget = 2u; iTarget < RenderTargets.size(); ++iTarget)
+	for (size_t iTarget = 3u; iTarget < RenderTargets.size(); ++iTarget)
 	{
 		if (nullptr != RenderTargets[iTarget])
 		{
 			g_ActiveOutputContract.pContext = nullptr;
 			g_ActiveOutputContract.pSceneColor = nullptr;
 			g_ActiveOutputContract.pDistortion = nullptr;
+			g_ActiveOutputContract.pBloom = nullptr;
 			g_ActiveOutputContract.pDepthStencil = nullptr;
 			break;
 		}
@@ -113,5 +119,6 @@ Engine::CRenderOutputContractScope::~CRenderOutputContractScope()
 	g_ActiveOutputContract.pContext = m_pPreviousContext;
 	g_ActiveOutputContract.pSceneColor = m_pPreviousSceneColor;
 	g_ActiveOutputContract.pDistortion = m_pPreviousDistortion;
+	g_ActiveOutputContract.pBloom = m_pPreviousBloom;
 	g_ActiveOutputContract.pDepthStencil = m_pPreviousDepthStencil;
 }

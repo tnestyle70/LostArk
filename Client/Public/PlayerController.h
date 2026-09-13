@@ -467,6 +467,7 @@ namespace Client
 		pick. Same Server validation, sequence and result path as Move Player. */
 		bool_t Request_DebugTeleportToPosition(
 			LostArk::Shared::WORLD_ID worldId, f32_t x, f32_t y, f32_t z);
+		bool_t Request_DebugReturnToKoukuStart();
 		bool_t Is_DebugPlayerPlacementArmed() const { return m_debugPlacementArmed; }
 		bool_t Is_DebugPlayerPlacementPending() const { return 0u != m_pendingDebugPlacementSequence; }
 		bool_t Did_DebugPlayerPlacementSucceed() const { return m_debugPlacementSucceeded; }

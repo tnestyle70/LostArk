@@ -15,6 +15,7 @@ public:
 	virtual HRESULT Initialize_Prototype() override;
 	virtual HRESULT Initialize(void* pArg) override;	
 	virtual HRESULT Render();
+	HRESULT Render_Instanced(uint32_t instanceCount);
 
 public:
 	virtual HRESULT Bind_Resources();

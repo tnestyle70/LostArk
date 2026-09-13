@@ -1,26 +1,19 @@
 #ifndef Engine_Define_h__
 #define Engine_Define_h__
 
-#include <d3d11.h>
+#include <d3d11_1.h>
+
+// Do not depend on a vendor header to remove the Windows function macros.
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
-#include <d3dcompiler.h>
-#define DIRECTINPUT_VERSION	0x0800
-#include <dinput.h>
 
-#include "DirectXTK/DDSTextureLoader.h"
-#include "DirectXTK/WICTextureLoader.h"
-#include "DirectXTK/SpriteBatch.h"
-#include "DirectXTK/SpriteFont.h"
-#include "DirectXTK/ScreenGrab.h"
-#include "DirectXTK/PrimitiveBatch.h"
-#include "DirectXTK/Effects.h"
-#include "DirectXTK/VertexTypes.h"
 
-#include "Fx11/d3dx11effect.h"
-#include "Assimp/scene.h"
-#include "Assimp/Importer.hpp"
-#include "Assimp/postprocess.h"
 
 using namespace DirectX;
 
@@ -40,7 +33,6 @@ using namespace Microsoft::WRL;
 
 #include "Engine_Enum.h"
 #include "Engine_Macro.h"
-#include "Engine_Struct.h"
 #include "Engine_Typedef.h"
 #include "Engine_Function.h"
 

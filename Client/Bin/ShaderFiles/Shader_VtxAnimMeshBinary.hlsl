@@ -1,4 +1,5 @@
 #include "Engine_Shader_Defines.hlsli"
+#define clip Effect_Clip
 
 float4x4 g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 Texture2D g_DiffuseTexture;
@@ -190,6 +191,10 @@ PS_OUT Evaluate_Material(
             input.vNormal.xyz, input.vProjPos, input.vPosition, g_ViewMatrix, g_ProjMatrix, frontFace);
         output.vDiffuse = source.diffuse;
         output.vNormal = source.normal;
+        // Source-character lighting reads RGB only. Positive UNORM alpha tags a
+        // per-pixel bloom multiplier without stealing static-shadow/UV lanes.
+        output.vNormal.a = g_fEffectBloomIntensity >= 0.f ?
+            (1.f + clamp(g_fEffectBloomIntensity, 0.f, 16.f)) / 17.f : 0.f;
         output.vDepth = source.depth;
         output.vPickPos = source.pickPosition;
         output.vEmissive = source.indirect;
@@ -335,7 +340,7 @@ PS_OUT PS_MAIN_EFFECT_MODEL_CUE_MASKED(VS_OUT input, bool frontFace : SV_IsFront
     return Evaluate_Material(input, true, 0.333f, frontFace);
 }
 
-float4 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input) : SV_TARGET0
+SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input)
 {
     float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
     diffuse.rgb *= g_EffectModelCueColorMultiply.rgb;
@@ -343,10 +348,10 @@ float4 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input) : SV_TARGET0
         diffuse.a * g_EffectModelCueColorMultiply.a * g_EffectModelCueOpacity);
     if (diffuse.a <= 0.f)
         discard;
-    return diffuse;
+    return Write_SceneColorAndBloom(diffuse);
 }
 
-float4 PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFace : SV_IsFrontFace) : SV_TARGET0
+float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
     float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
@@ -446,6 +451,23 @@ float4 PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFace : SV_IsFront
     clip(color.a - 1e-6f);
     return color;
 }
+SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    g_EffectSceneReadMode = 0u;
+    g_EffectSceneSampleUsed = false;
+    const float4 color = Evaluate_EffectModelCueNative(input, frontFace);
+    SCENE_COLOR_BLOOM_OUT output = Write_SceneColorAndBloom(color);
+    if (!g_EffectSceneSampleUsed) return output;
+    g_EffectSceneReadMode = 1u;
+    const float4 transported = Evaluate_EffectModelCueNative(input, frontFace);
+    g_EffectSceneReadMode = 2u;
+    const float4 emission = Evaluate_EffectModelCueNative(input, frontFace);
+    g_EffectSceneReadMode = 0u;
+    output.BloomContribution = float4(transported.rgb - emission.rgb +
+        Write_SceneBloom(emission).rgb, color.a);
+    return output;
+}
+
 
 void PS_MAIN_SHADOW(VS_OUT input)
 {
@@ -570,7 +592,7 @@ technique11 DefaultTechnique
     }
 
     /* Source translucent skeletal projectiles render after scene lighting.
-       They write only SceneHDR, keep depth read-only, and preserve the source
+       They write SceneHDR and bloom contribution, keep depth read-only, and preserve the source
        diffuse alpha plus the model-cue opacity/tint contract. */
     pass EffectModelCueTranslucent
     {

@@ -1,4 +1,5 @@
 #include "WMeshReader.h"
+#include "Engine_VertexTypes.h"
 
 #include "BinaryAsset/BinaryReader.h"
 #include "WFormatTypes.h"

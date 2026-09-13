@@ -104,15 +104,19 @@ def install_shaders(stage, programs):
             cases.append(f"    case {number}u: nativeColor=ArtistNative{number}(input); opaqueCoverage={coverage}; break;\n")
         cases.append("#endif\n")
     destination = SHADERS / "Shader_EffectWorldNative.hlsli"
-    destination.write_text("// World marker RT0 programs lowered from the original material shader maps.\n"
+    from native_shader_dispatch import (expand_dispatch_includes, write_if_changed,
+                                        write_partitioned_dispatch)
+    write_if_changed(destination, "// World marker RT0 programs lowered from the original material shader maps.\n"
                            "// Particle color alpha is a signed material input for picking and decal waves.\n"
-                           + "\n".join(blocks), encoding="utf-8", newline="\n")
+                           + "\n".join(blocks))
     def include(text):
         text = replace_section(text, "WORLD NATIVE GROUP",
             '#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304\n'
             '#include "Shader_EffectWorldNative.hlsli"\n#endif\n', "// END KOUKU NATIVE GROUP\n")
         return replace_section(text, "WORLD NATIVE CASES", "".join(cases), "// END KOUKU NATIVE CASES\n")
-    edit_preserving(SHADERS / "Shader_EffectArtistNative.hlsli", include)
+    main_path = SHADERS / "Shader_EffectArtistNative.hlsli"
+    main = expand_dispatch_includes(main_path.read_text(encoding='utf8'), SHADERS)
+    write_partitioned_dispatch(main_path, include(main))
 
 
 def reuse_material(selection, native, header):
@@ -216,7 +220,7 @@ def install(evidence, generate_only=False):
         print("Prepared World color and distortion programs; product files were not changed.")
         return
     header_path = ROOT / "Client/Public/Effect_ArtistMaterial.h"
-    header = header_path.read_text(encoding="utf-8-sig")
+    header = tables.read_material_source(header_path)
     for material, number in OWNED.items():
         old = re.search(rf'^    \{{{number}u,.*$', header, re.M)
         assert old is None or f'"{material}"' in old[0], f"Native slot is owned by another material: {number}"

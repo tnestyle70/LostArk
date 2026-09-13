@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import contextlib
 import hashlib
@@ -820,7 +825,7 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         self.assertEqual(before, self.exact_bytes(owner_paths))
 
     def test_workbench_intake_parser_is_strict_and_save_never_deletes_destination(self) -> None:
-        source = (REPOSITORY_ROOT / "Client/Private/Animation_Tool.cpp").read_text(
+        source = read_source_text(REPOSITORY_ROOT / "Client/Private/Animation_Tool.cpp",
             encoding="utf-8"
         )
         parser = source.split(

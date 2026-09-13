@@ -237,6 +237,21 @@
     <ClInclude Include="..\Public\Engine_Struct.h">
       <Filter>99.Defines</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Engine_InitTypes.h">
+      <Filter>99.Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Engine_RenderTypes.h">
+      <Filter>99.Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Engine_RenderFwd.h">
+      <Filter>99.Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Engine_AnimationTypes.h">
+      <Filter>99.Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Engine_VertexTypes.h">
+      <Filter>99.Defines</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Engine_Typedef.h">
       <Filter>99.Defines</Filter>
     </ClInclude>
@@ -723,6 +738,47 @@
       <Filter>03.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SceneHeightFog.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\MeshLod.h">
+      <Filter>02.Utility\04.Component\Model\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\StaticMeshLod.h">
+      <Filter>02.Utility\04.Component\Model\Mesh</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\StaticMeshLod.cpp">
+      <Filter>02.Utility\04.Component\Model\Mesh</Filter>
+    </ClCompile>
+    <ClInclude Include="..\ThirdPartyLib\meshoptimizer\meshoptimizer.h">
+      <Filter>04. External</Filter>
+    </ClInclude>
+    <ClCompile Include="..\ThirdPartyLib\meshoptimizer\simplifier.cpp">
+      <Filter>04. External</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\meshoptimizer\allocator.cpp">
+      <Filter>04. External</Filter>
+    </ClCompile>
+    <None Include="..\ThirdPartyLib\meshoptimizer\LICENSE.md">
+      <Filter>04. External</Filter>
+    </None>
+    <None Include="..\ThirdPartyLib\meshoptimizer\README.md">
+      <Filter>04. External</Filter>
+    </None>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_MeshLod.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Engine_Pch.cpp" />
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBasePrograms.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightPrograms.hlsli">
       <Filter>03.ShaderFiles</Filter>
     </None>
   </ItemGroup>

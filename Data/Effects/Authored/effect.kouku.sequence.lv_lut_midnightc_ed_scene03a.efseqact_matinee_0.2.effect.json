@@ -470,7 +470,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -2154,8 +2154,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  -1052.713623046875,
+                  -74054.3203125,
+                  170.6407012939453
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  449.7321472167969,
+                  -74352.7578125,
+                  731.7265625
+                ],
+                "arriveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "leaveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  1633.50341796875,
+                  -74156.8359375,
+                  1472.99853515625
+                ],
+                "arriveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "leaveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1820.04345703125,
+                  -73652.953125,
+                  1895.063720703125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  327.4506530761719,
+                  -73290.5859375,
+                  621.1453247070312
+                ],
+                "arriveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "leaveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  -413.40606689453125,
+                  -74000.7578125,
+                  267.952880859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -2615,7 +2845,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -3973,8 +4203,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  -1052.713623046875,
+                  -74054.3203125,
+                  170.6407012939453
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  449.7321472167969,
+                  -74352.7578125,
+                  731.7265625
+                ],
+                "arriveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "leaveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  1633.50341796875,
+                  -74156.8359375,
+                  1472.99853515625
+                ],
+                "arriveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "leaveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1820.04345703125,
+                  -73652.953125,
+                  1895.063720703125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  327.4506530761719,
+                  -73290.5859375,
+                  621.1453247070312
+                ],
+                "arriveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "leaveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  -413.40606689453125,
+                  -74000.7578125,
+                  267.952880859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -4367,7 +4827,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -5974,8 +6434,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  -1052.713623046875,
+                  -74054.3203125,
+                  170.6407012939453
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  449.7321472167969,
+                  -74352.7578125,
+                  731.7265625
+                ],
+                "arriveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "leaveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  1633.50341796875,
+                  -74156.8359375,
+                  1472.99853515625
+                ],
+                "arriveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "leaveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1820.04345703125,
+                  -73652.953125,
+                  1895.063720703125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  327.4506530761719,
+                  -73290.5859375,
+                  621.1453247070312
+                ],
+                "arriveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "leaveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  -413.40606689453125,
+                  -74000.7578125,
+                  267.952880859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -6336,7 +7026,7 @@
         "rendererShape": "ribbon",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -7618,8 +8308,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  -1052.713623046875,
+                  -74054.3203125,
+                  170.6407012939453
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  449.7321472167969,
+                  -74352.7578125,
+                  731.7265625
+                ],
+                "arriveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "leaveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  1633.50341796875,
+                  -74156.8359375,
+                  1472.99853515625
+                ],
+                "arriveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "leaveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1820.04345703125,
+                  -73652.953125,
+                  1895.063720703125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  327.4506530761719,
+                  -73290.5859375,
+                  621.1453247070312
+                ],
+                "arriveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "leaveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  -413.40606689453125,
+                  -74000.7578125,
+                  267.952880859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -7967,7 +8887,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -9049,8 +9969,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  -1052.713623046875,
+                  -74054.3203125,
+                  170.6407012939453
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  449.7321472167969,
+                  -74352.7578125,
+                  731.7265625
+                ],
+                "arriveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "leaveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  1633.50341796875,
+                  -74156.8359375,
+                  1472.99853515625
+                ],
+                "arriveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "leaveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1820.04345703125,
+                  -73652.953125,
+                  1895.063720703125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  327.4506530761719,
+                  -73290.5859375,
+                  621.1453247070312
+                ],
+                "arriveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "leaveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  -413.40606689453125,
+                  -74000.7578125,
+                  267.952880859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -9398,7 +10548,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -10438,8 +11588,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  -1052.713623046875,
+                  -74054.3203125,
+                  170.6407012939453
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  449.7321472167969,
+                  -74352.7578125,
+                  731.7265625
+                ],
+                "arriveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "leaveTangent": [
+                  1160.6939697265625,
+                  -128.94337463378906,
+                  633.7259521484375
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  1633.50341796875,
+                  -74156.8359375,
+                  1472.99853515625
+                ],
+                "arriveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "leaveTangent": [
+                  396.091796875,
+                  205.31776428222656,
+                  302.4383544921875
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1820.04345703125,
+                  -73652.953125,
+                  1895.063720703125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  327.4506530761719,
+                  -73290.5859375,
+                  621.1453247070312
+                ],
+                "arriveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "leaveTangent": [
+                  -1008.744873046875,
+                  -251.5006561279297,
+                  -577.847900390625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  -413.40606689453125,
+                  -74000.7578125,
+                  267.952880859375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.076379776000977,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 24.508638381958008,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.80078125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.33531379699707,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.867206573486328,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -10899,7 +12279,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -12583,8 +13963,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  -1308.24755859375,
+                  -74331.0546875,
+                  427.7991943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  122.7132339477539,
+                  -73521.890625,
+                  792.0850830078125
+                ],
+                "arriveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "leaveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  1452.1385498046875,
+                  -72876.984375,
+                  2301.38623046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1452.1387939453125,
+                  -72060.7109375,
+                  2071.310302734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  -537.8626708984375,
+                  -73603.390625,
+                  434.9909973144531
+                ],
+                "arriveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "leaveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  -317.0831298828125,
+                  -74203.03125,
+                  252.7347412109375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -13044,7 +14654,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -14402,8 +16012,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  -1308.24755859375,
+                  -74331.0546875,
+                  427.7991943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  122.7132339477539,
+                  -73521.890625,
+                  792.0850830078125
+                ],
+                "arriveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "leaveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  1452.1385498046875,
+                  -72876.984375,
+                  2301.38623046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1452.1387939453125,
+                  -72060.7109375,
+                  2071.310302734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  -537.8626708984375,
+                  -73603.390625,
+                  434.9909973144531
+                ],
+                "arriveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "leaveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  -317.0831298828125,
+                  -74203.03125,
+                  252.7347412109375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -14796,7 +16636,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -16403,8 +18243,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  -1308.24755859375,
+                  -74331.0546875,
+                  427.7991943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  122.7132339477539,
+                  -73521.890625,
+                  792.0850830078125
+                ],
+                "arriveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "leaveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  1452.1385498046875,
+                  -72876.984375,
+                  2301.38623046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1452.1387939453125,
+                  -72060.7109375,
+                  2071.310302734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  -537.8626708984375,
+                  -73603.390625,
+                  434.9909973144531
+                ],
+                "arriveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "leaveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  -317.0831298828125,
+                  -74203.03125,
+                  252.7347412109375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -16765,7 +18835,7 @@
         "rendererShape": "ribbon",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -18047,8 +20117,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  -1308.24755859375,
+                  -74331.0546875,
+                  427.7991943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  122.7132339477539,
+                  -73521.890625,
+                  792.0850830078125
+                ],
+                "arriveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "leaveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  1452.1385498046875,
+                  -72876.984375,
+                  2301.38623046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1452.1387939453125,
+                  -72060.7109375,
+                  2071.310302734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  -537.8626708984375,
+                  -73603.390625,
+                  434.9909973144531
+                ],
+                "arriveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "leaveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  -317.0831298828125,
+                  -74203.03125,
+                  252.7347412109375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -18396,7 +20696,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -19478,8 +21778,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  -1308.24755859375,
+                  -74331.0546875,
+                  427.7991943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  122.7132339477539,
+                  -73521.890625,
+                  792.0850830078125
+                ],
+                "arriveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "leaveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  1452.1385498046875,
+                  -72876.984375,
+                  2301.38623046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1452.1387939453125,
+                  -72060.7109375,
+                  2071.310302734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  -537.8626708984375,
+                  -73603.390625,
+                  434.9909973144531
+                ],
+                "arriveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "leaveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  -317.0831298828125,
+                  -74203.03125,
+                  252.7347412109375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -19827,7 +22357,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -20867,8 +23397,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  -1308.24755859375,
+                  -74331.0546875,
+                  427.7991943359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  122.7132339477539,
+                  -73521.890625,
+                  792.0850830078125
+                ],
+                "arriveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "leaveTangent": [
+                  1915.1138916015625,
+                  806.7919311523438,
+                  1182.893310546875
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  1452.1385498046875,
+                  -72876.984375,
+                  2301.38623046875
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  1452.1387939453125,
+                  -72060.7109375,
+                  2071.310302734375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  -537.8626708984375,
+                  -73603.390625,
+                  434.9909973144531
+                ],
+                "arriveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "leaveTangent": [
+                  -641.6129150390625,
+                  -1026.0491943359375,
+                  -465.4485778808594
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  -317.0831298828125,
+                  -74203.03125,
+                  252.7347412109375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.71726417541504,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.118383407592773,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.452417373657227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.782861709594727,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.395681381225586,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -21328,7 +24088,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -23012,8 +25772,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  -1764.172119140625,
+                  -74273.4140625,
+                  128.76031494140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  -171.22242736816406,
+                  -74597.0546875,
+                  228.95396423339844
+                ],
+                "arriveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "leaveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  1506.6031494140625,
+                  -74389.5625,
+                  586.9197387695312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  2765.423583984375,
+                  -73778.5234375,
+                  1672.7445068359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  648.930908203125,
+                  -73105.0234375,
+                  720.5138549804688
+                ],
+                "arriveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "leaveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  -526.29833984375,
+                  -73852.9453125,
+                  243.60015869140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  -5.408507823944092,
+                  -7.681546211242676,
+                  -74.053466796875
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -23473,7 +26463,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -24831,8 +27821,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  -1764.172119140625,
+                  -74273.4140625,
+                  128.76031494140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  -171.22242736816406,
+                  -74597.0546875,
+                  228.95396423339844
+                ],
+                "arriveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "leaveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  1506.6031494140625,
+                  -74389.5625,
+                  586.9197387695312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  2765.423583984375,
+                  -73778.5234375,
+                  1672.7445068359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  648.930908203125,
+                  -73105.0234375,
+                  720.5138549804688
+                ],
+                "arriveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "leaveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  -526.29833984375,
+                  -73852.9453125,
+                  243.60015869140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  -5.408507823944092,
+                  -7.681546211242676,
+                  -74.053466796875
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -25225,7 +28445,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -26832,8 +30052,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  -1764.172119140625,
+                  -74273.4140625,
+                  128.76031494140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  -171.22242736816406,
+                  -74597.0546875,
+                  228.95396423339844
+                ],
+                "arriveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "leaveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  1506.6031494140625,
+                  -74389.5625,
+                  586.9197387695312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  2765.423583984375,
+                  -73778.5234375,
+                  1672.7445068359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  648.930908203125,
+                  -73105.0234375,
+                  720.5138549804688
+                ],
+                "arriveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "leaveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  -526.29833984375,
+                  -73852.9453125,
+                  243.60015869140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  -5.408507823944092,
+                  -7.681546211242676,
+                  -74.053466796875
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -27194,7 +30644,7 @@
         "rendererShape": "ribbon",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -28476,8 +31926,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  -1764.172119140625,
+                  -74273.4140625,
+                  128.76031494140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  -171.22242736816406,
+                  -74597.0546875,
+                  228.95396423339844
+                ],
+                "arriveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "leaveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  1506.6031494140625,
+                  -74389.5625,
+                  586.9197387695312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  2765.423583984375,
+                  -73778.5234375,
+                  1672.7445068359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  648.930908203125,
+                  -73105.0234375,
+                  720.5138549804688
+                ],
+                "arriveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "leaveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  -526.29833984375,
+                  -73852.9453125,
+                  243.60015869140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  -5.408507823944092,
+                  -7.681546211242676,
+                  -74.053466796875
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -28825,7 +32505,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -29907,8 +33587,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  -1764.172119140625,
+                  -74273.4140625,
+                  128.76031494140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  -171.22242736816406,
+                  -74597.0546875,
+                  228.95396423339844
+                ],
+                "arriveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "leaveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  1506.6031494140625,
+                  -74389.5625,
+                  586.9197387695312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  2765.423583984375,
+                  -73778.5234375,
+                  1672.7445068359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  648.930908203125,
+                  -73105.0234375,
+                  720.5138549804688
+                ],
+                "arriveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "leaveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  -526.29833984375,
+                  -73852.9453125,
+                  243.60015869140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  -5.408507823944092,
+                  -7.681546211242676,
+                  -74.053466796875
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -30256,7 +34166,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -31296,8 +35206,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  -1764.172119140625,
+                  -74273.4140625,
+                  128.76031494140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  -171.22242736816406,
+                  -74597.0546875,
+                  228.95396423339844
+                ],
+                "arriveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "leaveTangent": [
+                  1607.4422607421875,
+                  23.80060386657715,
+                  235.6104736328125
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  1506.6031494140625,
+                  -74389.5625,
+                  586.9197387695312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  2765.423583984375,
+                  -73778.5234375,
+                  1672.7445068359375
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  648.930908203125,
+                  -73105.0234375,
+                  720.5138549804688
+                ],
+                "arriveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "leaveTangent": [
+                  -1844.827880859375,
+                  -85.29786682128906,
+                  -815.49853515625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  -526.29833984375,
+                  -73852.9453125,
+                  243.60015869140625
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  -5.408507823944092,
+                  -7.681546211242676,
+                  -74.053466796875
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 23.850921630859375,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 25.23257827758789,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.662887573242188,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 29.0014591217041,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.624935150146484,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -31757,7 +35897,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -33441,8 +37581,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  759.1515502929688,
+                  -73831.25,
+                  249.417236328125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  49.97712707519531,
+                  -73517.8828125,
+                  279.0147399902344
+                ],
+                "arriveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "leaveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  -370.15325927734375,
+                  -73331.90625,
+                  349.9969177246094
+                ],
+                "arriveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "leaveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  -1129.0279541015625,
+                  -72027.546875,
+                  714.4412231445312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  -721.9917602539062,
+                  -74208.0,
+                  193.50717163085938
+                ],
+                "arriveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "leaveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  -120.57808685302734,
+                  -74253.515625,
+                  275.0340881347656
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -33902,7 +38272,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -35260,8 +39630,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  759.1515502929688,
+                  -73831.25,
+                  249.417236328125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  49.97712707519531,
+                  -73517.8828125,
+                  279.0147399902344
+                ],
+                "arriveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "leaveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  -370.15325927734375,
+                  -73331.90625,
+                  349.9969177246094
+                ],
+                "arriveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "leaveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  -1129.0279541015625,
+                  -72027.546875,
+                  714.4412231445312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  -721.9917602539062,
+                  -74208.0,
+                  193.50717163085938
+                ],
+                "arriveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "leaveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  -120.57808685302734,
+                  -74253.515625,
+                  275.0340881347656
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -35654,7 +40254,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -37261,8 +41861,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  759.1515502929688,
+                  -73831.25,
+                  249.417236328125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  49.97712707519531,
+                  -73517.8828125,
+                  279.0147399902344
+                ],
+                "arriveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "leaveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  -370.15325927734375,
+                  -73331.90625,
+                  349.9969177246094
+                ],
+                "arriveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "leaveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  -1129.0279541015625,
+                  -72027.546875,
+                  714.4412231445312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  -721.9917602539062,
+                  -74208.0,
+                  193.50717163085938
+                ],
+                "arriveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "leaveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  -120.57808685302734,
+                  -74253.515625,
+                  275.0340881347656
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -37623,7 +42453,7 @@
         "rendererShape": "ribbon",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -38905,8 +43735,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  759.1515502929688,
+                  -73831.25,
+                  249.417236328125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  49.97712707519531,
+                  -73517.8828125,
+                  279.0147399902344
+                ],
+                "arriveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "leaveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  -370.15325927734375,
+                  -73331.90625,
+                  349.9969177246094
+                ],
+                "arriveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "leaveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  -1129.0279541015625,
+                  -72027.546875,
+                  714.4412231445312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  -721.9917602539062,
+                  -74208.0,
+                  193.50717163085938
+                ],
+                "arriveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "leaveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  -120.57808685302734,
+                  -74253.515625,
+                  275.0340881347656
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -39254,7 +44314,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -40336,8 +45396,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  759.1515502929688,
+                  -73831.25,
+                  249.417236328125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  49.97712707519531,
+                  -73517.8828125,
+                  279.0147399902344
+                ],
+                "arriveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "leaveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  -370.15325927734375,
+                  -73331.90625,
+                  349.9969177246094
+                ],
+                "arriveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "leaveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  -1129.0279541015625,
+                  -72027.546875,
+                  714.4412231445312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  -721.9917602539062,
+                  -74208.0,
+                  193.50717163085938
+                ],
+                "arriveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "leaveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  -120.57808685302734,
+                  -74253.515625,
+                  275.0340881347656
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }
@@ -40685,7 +45975,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -41725,8 +47015,238 @@
               2.0,
               2.0
             ],
-            "positionKeys": [],
-            "eulerKeys": []
+            "positionKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  759.1515502929688,
+                  -73831.25,
+                  249.417236328125
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  49.97712707519531,
+                  -73517.8828125,
+                  279.0147399902344
+                ],
+                "arriveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "leaveTangent": [
+                  -1142.3253173828125,
+                  624.596923828125,
+                  178.02662658691406
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  -370.15325927734375,
+                  -73331.90625,
+                  349.9969177246094
+                ],
+                "arriveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "leaveTangent": [
+                  -1965.27587890625,
+                  1313.3243408203125,
+                  474.46337890625
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  -1129.0279541015625,
+                  -72027.546875,
+                  714.4412231445312
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  -721.9917602539062,
+                  -74208.0,
+                  193.50717163085938
+                ],
+                "arriveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "leaveTangent": [
+                  561.243896484375,
+                  -926.425048828125,
+                  -174.68014526367188
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  -120.57808685302734,
+                  -74253.515625,
+                  275.0340881347656
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ],
+            "eulerKeys": [
+              {
+                "timeSeconds": 25.814863204956055,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.319536209106445,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.623638153076172,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 26.91945457458496,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 28.620880126953125,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              },
+              {
+                "timeSeconds": 30.789331436157227,
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "interpolation": "cubic"
+              }
+            ]
           }
         ]
       }

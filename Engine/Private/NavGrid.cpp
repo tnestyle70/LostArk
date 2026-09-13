@@ -214,55 +214,61 @@ bool_t CNavGrid::Is_SegmentWalkable(
 			return fabsf(fToHeight - fFromHeight) <= fMaxStepHeight;
 		};
 
-	const f32_t fDeltaX = vToPosition.x - vFromPosition.x;
-	const f32_t fDeltaZ = vToPosition.z - vFromPosition.z;
-	const f32_t fLength = sqrtf(fDeltaX * fDeltaX + fDeltaZ * fDeltaZ);
-	const f32_t fSampleDistance = m_Desc.fCellSize * 0.25f;
-	const uint32_t iNumSamples = (std::max)(
-		1u,
-		static_cast<uint32_t>(ceilf(fLength / fSampleDistance)));
-
-	for (uint32_t i = 1; i <= iNumSamples; ++i)
+	// Visit actual grid crossings. Distance samples can merge two nearby axis
+	// crossings into a diagonal and reject a cell the segment never touches.
+	const double fStartX = (vFromPosition.x - m_Desc.fOriginX) / m_Desc.fCellSize;
+	const double fStartZ = (vFromPosition.z - m_Desc.fOriginZ) / m_Desc.fCellSize;
+	const double fEndX = (vToPosition.x - m_Desc.fOriginX) / m_Desc.fCellSize;
+	const double fEndZ = (vToPosition.z - m_Desc.fOriginZ) / m_Desc.fCellSize;
+	const double fDeltaX = fEndX - fStartX;
+	const double fDeltaZ = fEndZ - fStartZ;
+	const int32_t iStepX = (fDeltaX > 0.0) - (fDeltaX < 0.0);
+	const int32_t iStepZ = (fDeltaZ > 0.0) - (fDeltaZ < 0.0);
+	const double fInfinity = (std::numeric_limits<double>::infinity)();
+	const double fRatioStepX = iStepX == 0 ? fInfinity : std::abs(1.0 / fDeltaX);
+	const double fRatioStepZ = iStepZ == 0 ? fInfinity : std::abs(1.0 / fDeltaZ);
+	double fNextRatioX = iStepX == 0 ? fInfinity :
+		(iCurrentX + (iStepX > 0 ? 1.0 : 0.0) - fStartX) / fDeltaX;
+	double fNextRatioZ = iStepZ == 0 ? fInfinity :
+		(iCurrentZ + (iStepZ > 0 ? 1.0 : 0.0) - fStartZ) / fDeltaZ;
+	const bool_t followsXBoundary = iStepX == 0 && fStartX == std::floor(fStartX);
+	const bool_t followsZBoundary = iStepZ == 0 && fStartZ == std::floor(fStartZ);
+	constexpr double CORNER_TOLERANCE = 0.000000000001;
+	const uint64_t iMaximumVisits = static_cast<uint64_t>(m_Desc.iWidth) + m_Desc.iHeight + 1u;
+	for (uint64_t iVisit = 0; iVisit < iMaximumVisits; ++iVisit)
 	{
-		const f32_t fRatio =
-			static_cast<f32_t>(i) / static_cast<f32_t>(iNumSamples);
-		const vector_t vSamplePosition = XMVectorSet(
-			vFromPosition.x + fDeltaX * fRatio,
-			0.f,
-			vFromPosition.z + fDeltaZ * fRatio,
-			1.f);
-		int32_t iSampleX = {};
-		int32_t iSampleZ = {};
-		if (false == World_ToCell(vSamplePosition, iSampleX, iSampleZ))
+		// An internal grid edge touches both cells; it must not become a
+		// shortcut along the exact edge of a blocked cell.
+		if ((followsXBoundary && iCurrentX > 0 &&
+			!CanStep(iCurrentX, iCurrentZ, iCurrentX - 1, iCurrentZ)) ||
+			(followsZBoundary && iCurrentZ > 0 &&
+			!CanStep(iCurrentX, iCurrentZ, iCurrentX, iCurrentZ - 1)))
 			return false;
+		if (iCurrentX == iTargetX && iCurrentZ == iTargetZ)
+			return true;
 
-		if (iSampleX == iCurrentX && iSampleZ == iCurrentZ)
-			continue;
-
-		const int32_t iCellDeltaX = iSampleX - iCurrentX;
-		const int32_t iCellDeltaZ = iSampleZ - iCurrentZ;
-		if (1 < std::abs(iCellDeltaX) || 1 < std::abs(iCellDeltaZ))
+		const bool_t crossesX = fNextRatioX <= fNextRatioZ + CORNER_TOLERANCE;
+		const bool_t crossesZ = fNextRatioZ <= fNextRatioX + CORNER_TOLERANCE;
+		const int32_t iNextX = iCurrentX + (crossesX ? iStepX : 0);
+		const int32_t iNextZ = iCurrentZ + (crossesZ ? iStepZ : 0);
+		if (!CanStep(iCurrentX, iCurrentZ, iNextX, iNextZ))
 			return false;
-
-		if (0 != iCellDeltaX && 0 != iCellDeltaZ)
+		if (crossesX && crossesZ &&
+			(!CanStep(iCurrentX, iCurrentZ, iNextX, iCurrentZ) ||
+			 !CanStep(iCurrentX, iCurrentZ, iCurrentX, iNextZ) ||
+			 !CanStep(iNextX, iCurrentZ, iNextX, iNextZ) ||
+			 !CanStep(iCurrentX, iNextZ, iNextX, iNextZ)))
+			return false;
+		if (crossesX)
 		{
-			if (false == CanStep(iCurrentX, iCurrentZ, iSampleX, iCurrentZ) ||
-				false == CanStep(iCurrentX, iCurrentZ, iCurrentX, iSampleZ) ||
-				false == CanStep(iSampleX, iCurrentZ, iSampleX, iSampleZ) ||
-				false == CanStep(iCurrentX, iSampleZ, iSampleX, iSampleZ))
-				return false;
+			iCurrentX = iNextX;
+			fNextRatioX += fRatioStepX;
 		}
-		else if (false == CanStep(
-			iCurrentX,
-			iCurrentZ,
-			iSampleX,
-			iSampleZ))
+		if (crossesZ)
 		{
-			return false;
+			iCurrentZ = iNextZ;
+			fNextRatioZ += fRatioStepZ;
 		}
-
-		iCurrentX = iSampleX;
-		iCurrentZ = iSampleZ;
 	}
 
 	return iCurrentX == iTargetX && iCurrentZ == iTargetZ;

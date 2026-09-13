@@ -50,7 +50,8 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	uint32_t iMeshIndex,
 	const DEFERRED_MATERIAL_PROFILE& Profile,
 	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride,
-	const ComPtr<ID3D11ShaderResourceView>& diffuseOverride)
+	const ComPtr<ID3D11ShaderResourceView>& diffuseOverride,
+	bool_t nativeBinaryBasePass)
 {
 	if (nullptr == pShader || iMeshIndex >= Model.Get_NumMeshes())
 	{
@@ -63,12 +64,6 @@ HRESULT Client::Bind_DeferredMaterialInputs(
     pShader->Bind_RawValue("g_SourceCharacterProgram", &noSurface, sizeof(noSurface));
     pShader->Bind_RawValue("g_SourceCharacterRow", &noSurface, sizeof(noSurface));
 	pShader->Bind_RawValue("g_HasSurfaceDefinition", &noSurface, sizeof(noSurface));
-	const uint32_t iHasNormal = Model.Has_MaterialTexture(
-		iMeshIndex, aiTextureType_NORMALS) ? 1u : 0u;
-	const uint32_t iHasSpecular = Model.Has_MaterialTexture(
-		iMeshIndex, aiTextureType_SPECULAR) ? 1u : 0u;
-	const uint32_t iHasEmissive = Model.Has_MaterialTexture(
-		iMeshIndex, aiTextureType_EMISSIVE) ? 1u : 0u;
 	const bool_t hasValidOverride =
 		nullptr != pEmissiveOverride && pEmissiveOverride->isEnabled &&
 		std::isfinite(pEmissiveOverride->fIntensity) &&
@@ -90,6 +85,36 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 			hFirstBindFailure = hResult;
 		return true;
 	};
+
+	const auto* surface = nativeBinaryBasePass ? Model.Get_MaterialSurface(iMeshIndex) : nullptr;
+	if (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+		surface->sourceCharacter.program != 0u)
+	{
+		// The binary native base branch reads its own texture registers and returns
+		// before legacy lighting/dye. Preserve diffuse admission/reset and the
+		// independent hit/skill glow, then publish the same native material row.
+		if (BindFailed(diffuseOverride ? pShader->Bind_Texture("g_DiffuseTexture", diffuseOverride) : Model.Bind_Material(
+			pShader, "g_DiffuseTexture", iMeshIndex, aiTextureType_DIFFUSE, 0)) ||
+			BindFailed(pShader->Bind_RawValue("g_HasFullSurfaceEmissiveOverride",
+				&iHasFullSurfaceEmissiveOverride, sizeof(iHasFullSurfaceEmissiveOverride))) ||
+			BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveColor",
+				&vFullSurfaceEmissiveColor, sizeof(vFullSurfaceEmissiveColor))) ||
+			BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveIntensity",
+				&fFullSurfaceEmissiveIntensity, sizeof(fFullSurfaceEmissiveIntensity))) ||
+			BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveMaskMode",
+				&iFullSurfaceEmissiveMaskMode, sizeof(iFullSurfaceEmissiveMaskMode))))
+		{
+			return hFirstBindFailure;
+		}
+		return Model.Bind_SourceCharacter(pShader, iMeshIndex);
+	}
+
+	const uint32_t iHasNormal = Model.Has_MaterialTexture(
+		iMeshIndex, aiTextureType_NORMALS) ? 1u : 0u;
+	const uint32_t iHasSpecular = Model.Has_MaterialTexture(
+		iMeshIndex, aiTextureType_SPECULAR) ? 1u : 0u;
+	const uint32_t iHasEmissive = Model.Has_MaterialTexture(
+		iMeshIndex, aiTextureType_EMISSIVE) ? 1u : 0u;
 
 	if (BindFailed(diffuseOverride ? pShader->Bind_Texture("g_DiffuseTexture", diffuseOverride) : Model.Bind_Material(
 		pShader, "g_DiffuseTexture", iMeshIndex, aiTextureType_DIFFUSE, 0)) ||

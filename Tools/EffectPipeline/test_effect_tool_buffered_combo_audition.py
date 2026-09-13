@@ -1,3 +1,8 @@
+
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
 import json
 import unittest
 from pathlib import Path
@@ -7,34 +12,24 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.repository_root = Path(__file__).resolve().parents[2]
-        cls.header = (
-            cls.repository_root / "Client/Public/Effect_Tool.h"
-        ).read_text(encoding="utf-8")
-        cls.source = (
-            cls.repository_root / "Client/Private/Effect_Tool.cpp"
-        ).read_text(encoding="utf-8")
+        cls.header = read_source_text(cls.repository_root / "Client/Public/Effect_Tool.h", encoding="utf-8")
+        cls.source = read_source_text(cls.repository_root / "Client/Private/Effect_Tool.cpp", encoding="utf-8")
         cls.player_skills = json.loads(
-            (cls.repository_root / "Data/Balance/PlayerSkills.json").read_text(
+            read_source_text(cls.repository_root / "Data/Balance/PlayerSkills.json",
                 encoding="utf-8"
             )
         )["skills"]
         cls.artist_bindings = json.loads(
-            (
-                cls.repository_root
-                / "Data/Animation/Authored/Artist/Artist.skillbindings.json"
-            ).read_text(encoding="utf-8")
+            read_source_text(cls.repository_root
+                / "Data/Animation/Authored/Artist/Artist.skillbindings.json", encoding="utf-8")
         )["bindings"]
         cls.dimensionmaster_bindings = json.loads(
-            (
-                cls.repository_root
-                / "Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json"
-            ).read_text(encoding="utf-8")
+            read_source_text(cls.repository_root
+                / "Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json", encoding="utf-8")
         )["bindings"]
         cls.artist_r_ba4_effect = json.loads(
-            (
-                cls.repository_root
-                / "Data/Effects/Authored/effect.artist.skill.31210.ba4.unified.effect.json"
-            ).read_text(encoding="utf-8")
+            read_source_text(cls.repository_root
+                / "Data/Effects/Authored/effect.artist.skill.31210.ba4.unified.effect.json", encoding="utf-8")
         )
 
     def test_combo_skill_root_exposes_explicit_authoring_audition(self) -> None:
@@ -44,15 +39,9 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
         self.assertIn("m_bBufferedComboAuditionActive", self.header)
 
     def test_server_buffer_boundaries_are_not_inferred_from_effect_lifetime(self) -> None:
-        builder_start = self.source.index(
-            "bool_t Client::CEffect_Tool::Try_BuildBufferedComboAnimationClips("
+        builder = cpp_function_definition(
+            self.source, "bool_t Client::CEffect_Tool::Try_BuildBufferedComboAnimationClips("
         )
-        builder = self.source[
-            builder_start : self.source.index(
-                "bool_t Client::CEffect_Tool::Try_PlayBufferedComboAudition(",
-                builder_start,
-            )
-        ]
         self.assertIn("ServerTiming.iActionDurationMs", builder)
         self.assertIn("ServerTiming.iComboAdvanceMs", builder)
         self.assertIn("bFinalStage ?", builder)
@@ -61,15 +50,9 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
         self.assertIn("Trimmed.iPlayMs", builder)
 
     def test_repeated_clip_names_remain_ordered_occurrences(self) -> None:
-        builder_start = self.source.index(
-            "bool_t Client::CEffect_Tool::Try_BuildBufferedComboAnimationClips("
+        builder = cpp_function_definition(
+            self.source, "bool_t Client::CEffect_Tool::Try_BuildBufferedComboAnimationClips("
         )
-        builder = self.source[
-            builder_start : self.source.index(
-                "bool_t Client::CEffect_Tool::Try_PlayBufferedComboAudition(",
-                builder_start,
-            )
-        ]
         self.assertIn("StagedClips.emplace_back(Clip);", builder)
         self.assertIn("StagedClips.push_back(std::move(Trimmed));", builder)
         self.assertNotIn("std::unique", builder)
@@ -101,23 +84,16 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
             )
         ]
         self.assertIn("Try_SelectProductCue(*pProductEntry, iCue)", product_play)
-        select_product = self.source[
-            self.source.index("bool_t Client::CEffect_Tool::Try_SelectProductCue(") :
-            self.source.index("bool_t Client::CEffect_Tool::Try_PlayVisualProgramFamily(")
-        ]
+        select_product = cpp_function_definition(
+            self.source, "bool_t Client::CEffect_Tool::Try_SelectProductCue("
+        )
         self.assertIn("Reset_BufferedComboAudition();", select_product)
         self.assertIn("exact Product cue playback was restored", self.source)
 
     def test_failed_buffered_audition_restores_the_previous_preview_transaction(self) -> None:
-        audition_start = self.source.index(
-            "bool_t Client::CEffect_Tool::Try_PlayBufferedComboAudition("
+        audition = cpp_function_definition(
+            self.source, "bool_t Client::CEffect_Tool::Try_PlayBufferedComboAudition("
         )
-        audition = self.source[
-            audition_start : self.source.index(
-                "bool_t Client::CEffect_Tool::Try_SelectProductCue(",
-                audition_start,
-            )
-        ]
         snapshot = audition.index("strPreviousTargetAsset")
         build = audition.index("Try_BuildBufferedComboAnimationClips(")
         self.assertLess(snapshot, build)

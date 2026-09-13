@@ -156,6 +156,14 @@
       <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>
   </ItemDefinitionGroup>
+  <Import Project="..\..\Tools\Build\CppCompilation.props" />
+  <ItemGroup>
+    <ClCompile Include="..\Private\Shared_Pch.cpp">
+      <PrecompiledHeader Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">Create</PrecompiledHeader>
+      <ExcludedFromBuild Condition="'$(LostArkUsePch)'!='true' or '$(Platform)'!='x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

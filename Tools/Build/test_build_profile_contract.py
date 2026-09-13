@@ -44,7 +44,7 @@ class BuildProfileContractTests(unittest.TestCase):
 
     def test_product_runner_is_explicit_and_has_no_retired_harness(self) -> None:
         runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
-        self.assertRegex(runner, r"\[string\]\$Profile\s*=\s*'Core'")
+        self.assertRegex(runner, r"\[string\]\$Profile\s*=\s*'Product'")
         self.assertIn("[ValidateSet('Product', 'Core', 'FullDiagnostic')]", runner)
         for retired in (
             "EffectRenderContractHarness",
@@ -67,10 +67,15 @@ class BuildProfileContractTests(unittest.TestCase):
         positions = [runner.index(project) for project in product_projects]
         self.assertEqual(sorted(positions), positions)
         self.assertIn("/p:BuildProjectReferences=false", runner)
+        self.assertIn("$Project /m:1 /nodeReuse:false /t:Build", runner)
+        self.assertIn('"/p:CL_MPCount=$MaxCompilerProcesses"', runner)
+        self.assertIn("Compare-BuildOutputSnapshot $beforeOutputs $afterOutputs", runner)
+        self.assertIn("rebuildReasonSamples = $rebuildReasons", runner)
+        self.assertIn("try { Write-ProductCompileEvidence 'FAIL' }", runner)
 
     def test_core_runs_the_actual_valtan_canonical_loader_harness(self) -> None:
         runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
-        core_build = runner.index("if ($includeCore) {")
+        core_build = runner.index("        if ($includeCore) {", runner.index("    Capture-BuildStartIdentity\n"))
         server_build = runner.index(
             "Invoke-MSBuildProject $msbuild 'Server\\Default\\Server.vcxproj'",
             core_build,
@@ -94,11 +99,11 @@ class BuildProfileContractTests(unittest.TestCase):
         self.assertIn("Assert-StandardProductOutputsNotRunning", runner)
         self.assertIn("product:output-lock-preflight", runner)
         self.assertIn("old EXE cannot", guard)
-        preflight = runner.index("Assert-ProductOutputsUnlocked\n", runner.index("try {"))
-        domain_publish = runner.index("Invoke-SelectedBuildDomains", preflight)
-        first_msbuild = runner.index("Invoke-MSBuildProject $msbuild", domain_publish)
+        preflight = runner.index("if (-not $SkipBuild) { Assert-ProductOutputsUnlocked }")
+        first_msbuild = runner.index("Invoke-MSBuildProject $msbuild", preflight)
+        domain_publish = runner.index("    Invoke-SelectedBuildDomains\n", preflight)
+        self.assertLess(preflight, first_msbuild)
         self.assertLess(preflight, domain_publish)
-        self.assertLess(domain_publish, first_msbuild)
         for token in (
             "'Debug', 'Release'",
             "Client",
@@ -131,8 +136,7 @@ class BuildProfileContractTests(unittest.TestCase):
 
     def test_core_runs_valtan_status_and_world_destruction_contract_gates(self) -> None:
         runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
-        canary = runner.index("DimensionMaster glass/water Tool audition canary gates")
-        core_start = runner.index("if ($includeCore) {", canary)
+        core_start = runner.index("if ($includeCore) {", runner.index("    if (-not $includeCore) {"))
         core_end = runner.index("\n    }\n\n    Invoke-SelectedBuildDomains", core_start)
         core_block = runner[core_start:core_end]
 

@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.dimensionmaster.skill.2050210.a1.full.restore",
   "displayName": "이펙트_차원술사A_전체",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

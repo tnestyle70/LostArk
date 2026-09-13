@@ -1,4 +1,9 @@
 #include "Channel.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/scene.h"
+#pragma pop_macro("new")
+#include "Engine_AnimationTypes.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Bone.h"
 
@@ -7,8 +12,29 @@
 
 namespace
 {
+	template<typename TKey>
+	const TKey* FindRightKey(const vector<TKey>& keys, const f32_t time,
+		uint32_t* const leftIndex)
+	{
+		const TKey* const begin = keys.data();
+		const size_t count = keys.size();
+		if (leftIndex && count > 1u && static_cast<size_t>(*leftIndex) < count - 1u)
+		{
+			const TKey* const left = begin + *leftIndex;
+			if (left->timeTicks <= time && time < (left + 1)->timeTicks)
+				return left + 1;
+		}
+		// A clone owns its cursors. Channels and their compact tracks stay immutable.
+		// Random seeks and reversed playback use a bounded search of the same keys.
+		const TKey* const right = upper_bound(begin, begin + count, time,
+			[](f32_t value, const TKey& key) { return value < key.timeTicks; });
+		if (leftIndex)
+			*leftIndex = static_cast<uint32_t>(right - begin - 1);
+		return right;
+	}
+
 	float3_t SampleVector(const vector<MODEL_VECTOR_KEY_DATA>& keys,
-		f32_t time, const float3_t& fallback)
+		f32_t time, const float3_t& fallback, uint32_t* leftIndex = nullptr)
 	{
 		if (keys.empty())
 			return fallback;
@@ -17,9 +43,7 @@ namespace
 		if (time >= keys.back().timeTicks)
 			return keys.back().value;
 
-		auto right = upper_bound(keys.begin(), keys.end(), time,
-			[](f32_t value, const MODEL_VECTOR_KEY_DATA& key)
-			{ return value < key.timeTicks; });
+		const auto right = FindRightKey(keys, time, leftIndex);
 		const auto left = right - 1;
 		const f32_t span = right->timeTicks - left->timeTicks;
 		const f32_t ratio = span > 0.f ? (time - left->timeTicks) / span : 0.f;
@@ -30,7 +54,7 @@ namespace
 	}
 
 	float4_t SampleQuaternion(const vector<MODEL_QUAT_KEY_DATA>& keys,
-		f32_t time)
+		f32_t time, uint32_t* leftIndex = nullptr)
 	{
 		if (keys.empty())
 			return float4_t(0.f, 0.f, 0.f, 1.f);
@@ -39,9 +63,7 @@ namespace
 		if (time >= keys.back().timeTicks)
 			return keys.back().value;
 
-		auto right = upper_bound(keys.begin(), keys.end(), time,
-			[](f32_t value, const MODEL_QUAT_KEY_DATA& key)
-			{ return value < key.timeTicks; });
+		const auto right = FindRightKey(keys, time, leftIndex);
 		const auto left = right - 1;
 		const f32_t span = right->timeTicks - left->timeTicks;
 		const f32_t ratio = span > 0.f ? (time - left->timeTicks) / span : 0.f;
@@ -138,18 +160,19 @@ HRESULT CChannel::Initialize(const MODEL_ANIMATION_CHANNEL_DATA& channel,
 	return S_OK;
 }
 
-void CChannel::Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex)
+void CChannel::Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex, std::array<uint32_t, 3>* pSeparateTrackIndices)
 {
 	if (m_bUsesSeparateTracks)
 	{
 		const float3_t scale = SampleVector(
 			m_ScaleKeys, fCurrentTrackPosition,
-			float3_t(1.f, 1.f, 1.f));
+			float3_t(1.f, 1.f, 1.f), pSeparateTrackIndices ? &(*pSeparateTrackIndices)[0] : nullptr);
 		const float4_t rotation = SampleQuaternion(
-			m_RotationKeys, fCurrentTrackPosition);
+			m_RotationKeys, fCurrentTrackPosition,
+			pSeparateTrackIndices ? &(*pSeparateTrackIndices)[1] : nullptr);
 		const float3_t translation = SampleVector(
 			m_PositionKeys, fCurrentTrackPosition,
-			float3_t(0.f, 0.f, 0.f));
+			float3_t(0.f, 0.f, 0.f), pSeparateTrackIndices ? &(*pSeparateTrackIndices)[2] : nullptr);
 
 		const matrix_t boneTranslationMatrix =
 			XMMatrixAffineTransformation(

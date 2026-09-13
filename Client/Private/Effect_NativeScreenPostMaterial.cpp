@@ -1,8 +1,13 @@
 #include "Client_Defines.h"
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
 #include "Effect_NativeScreenPostMaterial.h"
 
 #include "Shader.h"
 #include "Effect_ArtistMaterial.h"
+#include "GameInstance.h"
 
 #include <cmath>
 #include <utility>
@@ -38,11 +43,12 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
     const Engine::PRESENTATION_SCREEN_POST_MATERIAL_INPUT& Input) const
 {
     const auto& State = m_Snapshot;
-    if (!State.pShader || !Input.pSceneColor || !Input.pSceneDepth ||
+    if (!State.pShader || !Input.pSceneColor || !Input.pSceneBloom || !Input.pSceneDepth ||
         !Is_NativeScreenPostShaderProfile(State.iProfile) ||
         !IsFinite(State.vSourceColor) || !IsFinite(State.vDynamicParameter) ||
         !std::isfinite(State.fProjectionW) || !std::isfinite(State.fLocalTimeSeconds) ||
-        State.fLocalTimeSeconds < 0.f || (State.iTextureMask & ~0x3ffu) != 0u)
+        State.fLocalTimeSeconds < 0.f || !std::isfinite(State.fBloomIntensity) ||
+        State.fBloomIntensity < 0.f || State.fBloomIntensity > 16.f || (State.iTextureMask & ~0x3ffu) != 0u)
         return E_INVALIDARG;
     for (const auto& Value : State.Parameters)
         if (!IsFinite(Value)) return E_INVALIDARG;
@@ -69,6 +75,11 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
     BindMatrix("g_ViewMatrix", Input.View);
     BindMatrix("g_ProjMatrix", Input.Projection);
     BindTexture("g_EffectSceneColorTexture", Input.pSceneColor);
+    BindTexture("g_EffectSceneBloomTexture", Input.pSceneBloom);
+    const auto Quality = Engine::CGameInstance::Get().Get_RenderQualitySettings();
+    BindRaw("g_fEffectBloomIntensity", State.fBloomIntensity);
+    BindRaw("g_fEffectBloomThreshold", Quality.fBloomThreshold);
+    BindRaw("g_fEffectBloomSoftKnee", Quality.fBloomSoftKnee);
     BindTexture("g_EffectSceneDepthTexture", Input.pSceneDepth);
     static constexpr std::array<const char*, 10u> TextureNames = {{
         "g_SourceTexture0", "g_SourceTexture1", "g_SourceTexture2",

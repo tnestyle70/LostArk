@@ -1,7 +1,12 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "Engine_AnimationTypes.h"
 #include "BinaryAsset/ModelAssetData.h"
+
+#include <array>
+
+struct aiNodeAnim;
 
 NS_BEGIN(Engine)
 
@@ -18,7 +23,8 @@ public:
 	HRESULT Initialize(const aiNodeAnim* pAIChannel, const vector<shared_ptr<class CBone>>& Bones);
 	HRESULT Initialize(const MODEL_ANIMATION_CHANNEL_DATA& channel,
 		const vector<shared_ptr<class CBone>>& Bones);
-	void Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex);
+	void Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex,
+		std::array<uint32_t, 3>* pSeparateTrackIndices = nullptr);
 
 private:
 	friend class CAnimation;

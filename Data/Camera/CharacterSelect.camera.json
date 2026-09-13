@@ -6,5 +6,5 @@
   "rotationDegrees": [55, -180, 0],
   "focusDistance": 7,
   "fovYDegrees": 70,
-  "followResponse": 0
+  "followResponse": 12
 }

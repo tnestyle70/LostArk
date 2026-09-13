@@ -40,6 +40,12 @@ public:
 		const std::string& areaId,
 		MAP_NAVIGATION_CONTRACT& outContract,
 		std::string& outStatus);
+	/* Product runtime policy is published beside the grid for both peers.
+	   Parse into a temporary value; failure preserves the caller's policy. */
+	static bool_t Read_RuntimeStepHeight(
+		const MAP_NAVIGATION_CONTRACT& contract,
+		f32_t& outMaximumStepHeight,
+		std::string& outStatus);
 	static bool_t Is_ValidAreaId(const std::string& areaId);
 	/* Resolves the paths of the detail grid "<AreaId>.<regionId>". The grid is
 	   an ordinary navigation grid, so this only builds the composed id and

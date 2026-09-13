@@ -3,6 +3,8 @@
 #include "Client_Defines.h"
 #include "GameObject.h"
 
+namespace DirectX { inline namespace DX11 { template<typename TVertex> class PrimitiveBatch; struct VertexPositionColor; class BasicEffect; } }
+
 NS_BEGIN(Client)
 
 class CTrigger_Box final : public CGameObject

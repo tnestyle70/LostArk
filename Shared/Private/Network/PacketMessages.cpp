@@ -128,6 +128,20 @@ namespace
             std::isfinite(snapshot.fPositionY) &&
             std::isfinite(snapshot.fPositionZ) &&
             std::isfinite(snapshot.fYawDegrees) &&
+			std::isfinite(snapshot.fMoveSpeed) && snapshot.fMoveSpeed >= 0.f &&
+			std::isfinite(snapshot.fMoveWaypointX) &&
+			std::isfinite(snapshot.fMoveWaypointY) &&
+			std::isfinite(snapshot.fMoveWaypointZ) &&
+			(!snapshot.canPredictMove ||
+			 (snapshot.fMoveSpeed > 0.f && snapshot.iCurrentHp != 0u &&
+			  LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
+			  !snapshot.isPatternBound && snapshot.iMarioStage == 0u &&
+			  snapshot.CardMaze.transferStartTick == 0u)) &&
+			(snapshot.hasMoveGoal ?
+			 (snapshot.canPredictMove &&
+			  LostArk::Shared::PLAYER_LOCOMOTION_STATE::MOVING == snapshot.eLocomotionState) :
+			 (snapshot.fMoveWaypointX == 0.f && snapshot.fMoveWaypointY == 0.f &&
+			  snapshot.fMoveWaypointZ == 0.f)) &&
             Is_Valid_Locomotion(snapshot.eLocomotionState) &&
 			Is_Valid_PlayerAction(snapshot.eAction) &&
 			Is_Valid_Stance(snapshot.eStance) &&
@@ -2844,6 +2858,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_U32(cooldown.iSkillId);
 			writer.Write_U32(cooldown.iCooldownEndTick);
 		}
+		writer.Write_U32(player.iLastProcessedMoveSequence);
+		writer.Write_F32(player.fMoveSpeed);
+		writer.Write_U8(player.canPredictMove ? 1u : 0u);
+		writer.Write_U8(player.hasMoveGoal ? 1u : 0u);
+		writer.Write_F32(player.fMoveWaypointX);
+		writer.Write_F32(player.fMoveWaypointY);
+		writer.Write_F32(player.fMoveWaypointZ);
     }
 	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
 	{
@@ -3140,6 +3161,20 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			}
 			player.Cooldowns.push_back(cooldown);
 		}
+		std::uint8_t rawCanPredictMove = 0u;
+		std::uint8_t rawHasMoveGoal = 0u;
+		if (!reader.Read_U32(player.iLastProcessedMoveSequence) ||
+			!reader.Read_F32(player.fMoveSpeed) ||
+			!reader.Read_U8(rawCanPredictMove) || rawCanPredictMove > 1u ||
+			!reader.Read_U8(rawHasMoveGoal) || rawHasMoveGoal > 1u ||
+			!reader.Read_F32(player.fMoveWaypointX) ||
+			!reader.Read_F32(player.fMoveWaypointY) ||
+			!reader.Read_F32(player.fMoveWaypointZ))
+		{
+			return false;
+		}
+		player.canPredictMove = rawCanPredictMove != 0u;
+		player.hasMoveGoal = rawHasMoveGoal != 0u;
 
         if (!Is_Valid_PlayerSnapshot(player))
             return false;

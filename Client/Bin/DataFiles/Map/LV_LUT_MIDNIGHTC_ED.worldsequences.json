@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 675,
+  "revision": 677,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -7567,6 +7567,22 @@
           "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco03b_mi"
         }
       ]
+    },
+    {
+      "objectId": "world.object.kouku.iron_maiden",
+      "displayName": "아이언메이든",
+      "modelAssetId": "Effect/KoukuSaydon/WorldObjects/IronMaiden/IronMaiden.wmodel",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.01,
+      "animated": true,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.iron_maiden.idle_normal_1"
     }
   ],
   "templates": [
@@ -533378,6 +533394,386 @@
           "holdLastFrame": true
         }
       ]
+    },
+    {
+      "sequenceId": "sequence.kouku.iron_maiden.idle_normal_1",
+      "displayName": "idle_normal_1",
+      "category": "Animation",
+      "durationMs": 34,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 34,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "idle_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.iron_maiden.att_battle_01",
+      "displayName": "att_battle_01",
+      "category": "Animation",
+      "durationMs": 1167,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1167,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.iron_maiden.dead_1",
+      "displayName": "dead_1",
+      "category": "Animation",
+      "durationMs": 7000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 7000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "dead_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.iron_maiden.dead_1_loop",
+      "displayName": "dead_1_loop",
+      "category": "Animation",
+      "durationMs": 34,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 34,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "dead_1_loop",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
     }
   ],
   "instances": [
@@ -543974,6 +544370,116 @@
           "slotId": "actor",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.gate3.intro.saydonarrival"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.kouku.gate1.authored.book",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.book_open",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 0.699999988,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        -1.41,
+        737.28
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "animated.prop",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.popup.book"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.iron_maiden.idle_normal_1",
+      "templateId": "sequence.kouku.iron_maiden.idle_normal_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.iron_maiden"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.iron_maiden.att_battle_01",
+      "templateId": "sequence.kouku.iron_maiden.att_battle_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.iron_maiden"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.iron_maiden.dead_1",
+      "templateId": "sequence.kouku.iron_maiden.dead_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.iron_maiden"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.iron_maiden.dead_1_loop",
+      "templateId": "sequence.kouku.iron_maiden.dead_1_loop",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.iron_maiden"
         }
       ]
     }

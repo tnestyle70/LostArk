@@ -2,10 +2,14 @@
 
 #include "VIBuffer.h"
 
+struct aiMesh;
+
 NS_BEGIN(Engine)
 
 struct MODEL_MESH_DATA;
 struct MODEL_SKELETON_DATA;
+struct MESH_SCREEN_LOD_DESC;
+class CStaticMeshLod;
 
 class ENGINE_DLL CMesh final : public CVIBuffer
 {
@@ -32,7 +36,8 @@ public:
 public:
 	HRESULT Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 		uint32_t iInstanceStride, uint32_t iNumInstances,
-		uint32_t iInstanceByteOffset = 0u);
+		uint32_t iInstanceByteOffset = 0u,
+        const MESH_SCREEN_LOD_DESC* screenLod = nullptr);
 
 public:
 	/* True once Make_VertexBuffer_Unique() has run on this instance -- i.e. it has read back
@@ -68,6 +73,9 @@ public:
 	bool_t Get_MorphBaseVertex(uint32_t iIndex, float3_t& OutPosition, float3_t& OutNormal) const;
 
 private:
+    HRESULT Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTransform);
+    std::shared_ptr<CStaticMeshLod> m_StaticLod;
+
 	char_t					m_szName[MAX_PATH] = {};
 	uint32_t				m_iMaterialIndex = {};
 	uint32_t				m_iNumBones = {};

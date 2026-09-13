@@ -1,4 +1,9 @@
 #include "Bounding_AABB.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/PrimitiveBatch.h"
+#include "DirectXTK/VertexTypes.h"
+#pragma pop_macro("new")
 #include "Bounding_OBB.h"
 #include "Bounding_Sphere.h"
 #include "debugDraw.h"

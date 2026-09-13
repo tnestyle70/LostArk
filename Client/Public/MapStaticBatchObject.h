@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "Engine_VertexTypes.h"
 #include "GameObject.h"
 #include "MapAssetCatalog.h"
 #include "MapLoadScope.h"
@@ -14,6 +15,7 @@ NS_BEGIN(Engine)
 
 class CModel;
 class CShader;
+struct MESH_SCREEN_LOD_DESC;
 
 NS_END
 
@@ -113,6 +115,9 @@ private:
 		const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
 	HRESULT Upload_ShadowInstances();
 	HRESULT Rebuild_PlacementLookup();
+    void Rebuild_BatchCullBounds();
+    bool_t Build_ScreenLodView(const struct MAP_CAMERA_CULL_SNAPSHOT& camera,
+        Engine::MESH_SCREEN_LOD_DESC& result) const;
 
 private:
 	//배치하는 에셋의 ID
@@ -123,6 +128,12 @@ private:
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 
 	bool_t m_bMirrored = false;
+    bool_t m_bBatchBoundsDirty = true;
+    bool_t m_bHasBatchBounds = false;
+    float4_t m_BatchBounds = {};
+    MAP_FRUSTUM_RUNTIME_STATE m_BatchFrustumState{};
+    float4_t m_VisibleLodBounds = {};
+    f32_t m_fVisibleLodScale = 0.f;
 	bool_t m_bShadowInstancesDirty = true;
 	bool_t m_bShadowInstancesUsedLight = false;
 	uint64_t m_iShadowLightRevision = {};

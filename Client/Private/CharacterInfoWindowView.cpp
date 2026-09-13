@@ -1,4 +1,8 @@
 #include "CharacterInfoWindowView.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
 
 #include "Character.h"
 #include "CharacterPortraitRenderer.h"

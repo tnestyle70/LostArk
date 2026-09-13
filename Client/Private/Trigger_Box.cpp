@@ -1,4 +1,10 @@
 #include "Trigger_Box.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/PrimitiveBatch.h"
+#include "DirectXTK/VertexTypes.h"
+#include "DirectXTK/Effects.h"
+#pragma pop_macro("new")
 
 #include "GameInstance.h"
 

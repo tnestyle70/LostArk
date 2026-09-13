@@ -466,6 +466,7 @@ PS_OUT PS_MAIN(VS_OUT input)
 struct PS_OUT_FORWARD
 {
     float4 vColor : SV_TARGET0;
+    float4 vBloomContribution : SV_TARGET2;
 };
 
 PS_OUT_FORWARD PS_MAIN_ALPHA(
@@ -513,6 +514,7 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(
         discard;
 
     output.vColor = color;
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
 }
 
@@ -524,6 +526,7 @@ struct PS_OUT_WATER
 {
     float4 vColor : SV_TARGET0;
     float4 vDistortion : SV_TARGET1;
+    float4 vBloomContribution : SV_TARGET2;
 };
 
 float2 Water_PannedUV(float2 baseUV, float4 tilingPanning)
@@ -649,6 +652,7 @@ PS_OUT_WATER PS_MAIN_WATER(
 			0.f,
 			alpha);
 
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
 }
 
@@ -668,6 +672,7 @@ PS_OUT_FORWARD PS_MAIN_SKY(
 				g_ColorTint.rgb,
 			1.f);
 
+    output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
 }
 

@@ -1345,6 +1345,9 @@
 	<ClInclude Include="..\Public\CombatObjectProjectionRuntime.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
+    <ClInclude Include="..\Public\LocalMovePrediction.h">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\PlayerController.h">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
@@ -3054,6 +3057,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.festival.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.festival.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.fireworks.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.grid.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.rainbow.fire.wave.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -3116,7 +3120,13 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.1.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.1.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene03a.efseqact_matinee_0.2.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.2.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_1.1.effect.json">
@@ -3126,6 +3136,9 @@
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.full.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.authored.fade.black.effectv2.json">
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.clear.fade.black.effectv2.json">
@@ -3184,5 +3197,402 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3264.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3328.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3584.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.dance.aura.root.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.dance.light.root.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.dance.full.root.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.a.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.a.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.b.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.b.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.c.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.c.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.line.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firegrid.line.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.circle.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.innerdonut.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.innerdonut.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.outerdonut.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.outerdonut.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.circle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.circle.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.innerdonut.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.innerdonut.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.outerdonut.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.outerdonut.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.bluecircle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.thunderstorm.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.bluecircle.warning.impact.runtime.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.fourfan.warning.single.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.fourfan.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.fourfan.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.warning.line.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.line.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.light.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.impact.full.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.wand.spin.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.firecross.wand.decal.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_d.par_d_boim_buff01_02l.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_d.par_d_boim_buff01_03e_loc_int.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_pjt_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_pjt_02_loc_int.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.flame.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ground.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.full.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ring.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ring.flame.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.ring.end.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.clone.breath.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.threeway.breath.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Client_Pch.cpp" />
+    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Effect_Tool_Internal.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\Effect_Tool_ResourceBrowser.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Detail.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_MaterialDetail.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_CatalogPreview.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Valtan.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_ValtanWorld.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Editing.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_DocumentIo.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Playback.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_OccurrenceAuthoring.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_TransformHistory.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Helpers.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Effect_DocumentRenderer_Internal.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_ResourceStaging.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_PreparedDocument.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Catalog.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Staging.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_MaterialBinding.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Geometry.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Particles.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_Rendering.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_MaterialHelpers.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_GeometryHelpers.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer_CacheHelpers.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase448.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase512.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase768.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchBase832.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchAdditionalArtistCases1600.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchAdditionalArtistCases1664.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchWorldNativeCases2304.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2304.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2368.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2432.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2560.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3584.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2688.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2752.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2816.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2880.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2944.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3008.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3072.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3136.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3200.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3264.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3328.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3584Part2.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeDispatchBase64.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeDispatchBase128.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeDispatchBase192.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase512.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase576.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase640.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase704.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase768.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1152.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1216.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1280.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeDispatchBase1344.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase0.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase960.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1024.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1088.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1152.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeDispatchBase1984.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBasePrograms.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightPrograms.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\MapTool_Internal.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\MapTool_NavigationResources.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\MapTool_DestructionAuthoring.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_WorldGameplay.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Cutscenes.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_WorldGameplayPanels.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Navigation.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Area.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_NavigationPanels.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Placements.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_DestructionPanels.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_CameraShots.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_NavigationBake.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool_Helpers.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Animation_Tool_Internal.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\Animation_Tool_ValtanPlayback.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_KoukuPlayback.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_ValtanComposition.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_PatternAuthoring.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_CompositionSounds.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_DocumentIo.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_ValtanInspector.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_ValtanPanels.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_KoukuAuthoring.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_SkillBindings.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Animation_Tool_Helpers.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Effect_ArtistMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_ArtistMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_LanceMasterVAMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_LanceMasterVAMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_WarlordNativeMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_WarlordNativeMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_DimensionMasterALTVMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_DimensionMasterALTVMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_DimensionMasterQMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_DimensionMasterQMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_DimensionMasterVMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_DimensionMasterVMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_DimensionMasterWRMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_DimensionMasterWRMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <ClCompile Include="..\Private\Effect_DimensionMasterSDMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <None Include="..\Private\Effect_DimensionMasterSDMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup000.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_Artist31470.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_AuthoredElements.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_AuthoringOverrides.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_DetailIo.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_JsonPrimitives.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_MaterialIo.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_MaterialValidation.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_PortableRuntime.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_RuntimeValidation.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_SourceRecipeIo.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_SourceValidation.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec_Validation.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
+    <ClInclude Include="..\Private\Effect_DocumentCodec_Internal.h"><Filter>03. Tools\02. Effect</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.gold-trails.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

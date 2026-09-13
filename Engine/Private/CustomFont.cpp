@@ -1,4 +1,9 @@
 #include "CustomFont.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/SpriteBatch.h"
+#include "DirectXTK/SpriteFont.h"
+#pragma pop_macro("new")
 
 #include "GameInstance.h"
 

@@ -1,4 +1,5 @@
 #include "Effect_Object.h"
+#include "Engine_RenderTypes.h"
 
 #include "Effect_DocumentRenderer.h"
 #include "Effect_MaterialTemplate.h"
@@ -627,6 +628,17 @@ void Client::CEffectObject::Set_ReconstructedDiagnosticSolo(
 		"Reconstructed Sprite diagnostic solo active; Product execution remains blocked.";
 }
 
+bool_t Client::CEffectObject::Set_BloomIntensity(const f32_t value, std::string& error)
+{
+	if (!m_pRenderer) { error = "Effect renderer is unavailable."; return false; }
+	return m_pRenderer->Set_BloomIntensity(value, error);
+}
+
+f32_t Client::CEffectObject::Get_BloomIntensity() const
+{
+	return m_pRenderer ? m_pRenderer->Get_BloomIntensity() : 1.3f;
+}
+
 bool_t Client::CEffectObject::Select_OccurrenceElement(
     const std::string_view elementId, std::string& status)
 {
@@ -1133,6 +1145,7 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 		OverlayStats.iExpected =
 			m_pScreenOverlayPresentation->Get_ActiveOverlayCount();
 		OverlayStats.iAttempted = OverlayStats.iExpected;
+		m_pScreenOverlayPresentation->Set_BloomIntensity(Get_BloomIntensity());
 		const HRESULT hOverlayResult =
 			m_pScreenOverlayPresentation->Submit_Presentation();
 		if (FAILED(hOverlayResult))

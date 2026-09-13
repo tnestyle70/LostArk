@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "Engine_RenderTypes.h"
 #include "Engine_Defines.h"
 #include "LobbyCommandService.h"
 #include "Network/PacketMessages.h"

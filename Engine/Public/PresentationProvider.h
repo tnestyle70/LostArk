@@ -56,6 +56,7 @@ inline constexpr uint32_t PRESENTATION_TEXTURED_OVERLAY_PASS_INDEX = 14u;
 struct PRESENTATION_SCREEN_POST_MATERIAL_INPUT final
 {
 	ComPtr<ID3D11ShaderResourceView> pSceneColor;
+	ComPtr<ID3D11ShaderResourceView> pSceneBloom;
 	ComPtr<ID3D11ShaderResourceView> pSceneDepth;
 	float4x4_t World{};
 	float4x4_t View{};
@@ -96,6 +97,7 @@ struct PRESENTATION_SCREEN_OVERLAY_DESC final
 	float2_t vUvDriftPerSecond = {};
 	float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
 	f32_t fAlpha = 1.f;
+	f32_t fBloomIntensity = -1.f; // Unowned overlays follow the scene benchmark.
 	bool_t bDisplaySpace = false; // Display image: no scene exposure or bloom.
 	PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE eColorSpace =
 		PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::LINEAR;

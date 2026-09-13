@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.artist.skill.31930.full.restore",
   "displayName": "이펙트_도화가AltV_전체",
+  "bloomIntensity": 1.3,
   "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
   "modelCues": [  ],
   "elements": [

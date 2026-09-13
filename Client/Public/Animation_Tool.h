@@ -8,7 +8,7 @@
 #include "KoukuSaydonCompositionDocument.h"
 #include "CompositionAnimationResource.h"
 #include "AnimationEffectCueDocument.h"
-#include "CharacterPreviewPanel.h"
+#include "EffectV2_Target.h"
 #include "EncounterPatternReference.h"
 #include "ValtanPatternPreviewDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
@@ -30,6 +30,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CCharacter;
+class CCharacterPreviewPanel;
 class CValtan;
 class CBalanceTool;
 class CValtanBossTool;

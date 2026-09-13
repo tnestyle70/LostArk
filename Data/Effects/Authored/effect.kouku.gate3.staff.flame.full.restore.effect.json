@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.staff.flame.full.restore",
   "displayName": "3관문_세이튼_지팡이 내려찍기_바닥 예고 후 화염기둥",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

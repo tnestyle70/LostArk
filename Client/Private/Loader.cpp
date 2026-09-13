@@ -1,4 +1,5 @@
 #include "Loader.h"
+#include "Engine_VertexTypes.h"
 
 #include "GameInstance.h"
 #include "Profiler.h"
@@ -860,10 +861,18 @@ HRESULT CLoader::Ready_MapArea(
 
 	if (navigationContract.runtimeGridAvailable)
 	{
+		f32_t maximumStepHeight = 0.f;
+		if (!CMapNavigationContract::Read_RuntimeStepHeight(
+			navigationContract, maximumStepHeight, navigationStatus))
+		{
+			OutputDebugStringA(("[Loader][Map] " + navigationStatus + "\n").c_str());
+			return E_FAIL;
+		}
 		auto pNavigation = CNavigation::Create_NavGrid(
 			m_pDevice,
 			m_pContext,
-			navigationContract.runtimePath.c_str());
+			navigationContract.runtimePath.c_str(),
+			maximumStepHeight);
 		if (nullptr == pNavigation ||
 			FAILED(CGameInstance::Get().Add_Prototype(
 				iLevelIndex,

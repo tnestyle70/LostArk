@@ -1,6 +1,15 @@
 #include "Shader.h"
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
+#pragma push_macro("new")
+#undef new
+#include "Fx11/d3dx11effect.h"
+#pragma pop_macro("new")
 #include "GameInstance.h"
 #include "Profiler.h"
+#include "Render_OutputContract.h"
 
 #include <cwchar>
 #include <cstring>
@@ -166,6 +175,10 @@ CShader::CShader(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pCont
 	: CComponent { pDevice, pContext }
 {
 }
+
+CShader::CShader(const CShader& shader) = default;
+
+CShader& CShader::operator=(const CShader& shader) = default;
 
 CShader::~CShader()
 {
@@ -367,14 +380,14 @@ HRESULT CShader::Initialize(void* pArg)
 	return S_OK;
 }
 
-const CShader::VARIABLE_BINDING* CShader::Find_Variable(const char_t* pConstantName) const
+CShader::VARIABLE_BINDING* CShader::Find_Variable(const char_t* pConstantName) const
 {
-	const EFFECT_BINDINGS* pBindings = m_pBindings.get();
+	EFFECT_BINDINGS* pBindings = m_pBindings.get();
 	if (nullptr == pBindings || nullptr == pConstantName || '\0' == pConstantName[0])
 		return nullptr;
 	const uint64_t NameHash = Hash_VariableName(pConstantName);
 	size_t Slot = static_cast<size_t>(NameHash) & pBindings->iVariableMask;
-	const VARIABLE_BINDING* pVariables = pBindings->Variables.data();
+	VARIABLE_BINDING* pVariables = pBindings->Variables.data();
 	while (nullptr != pVariables[Slot].pVariable)
 	{
 		if (pVariables[Slot].iNameHash == NameHash &&
@@ -398,46 +411,82 @@ uint64_t CShader::Hash_VariableName(const char_t* pConstantName) noexcept
 
 HRESULT CShader::Bind_RawValue(const char_t* pConstantName, const void* pData, uint32_t iLength)
 {
-	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
 	if (nullptr == pBinding)
 		return E_FAIL;
 
-	return pBinding->pVariable->SetRawValue(pData, 0, iLength);
+	const bool cacheable = pData && iLength > 0u && iLength <= sizeof(pBinding->LastValue);
+	if (cacheable && pBinding->eLastValueKind == VARIABLE_BINDING::VALUE_KIND::RAW &&
+		pBinding->iLastValueBytes == iLength &&
+		0 == std::memcmp(pBinding->LastValue, pData, iLength))
+		return S_OK;
+	pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
+	const HRESULT result = pBinding->pVariable->SetRawValue(pData, 0, iLength);
+	if (SUCCEEDED(result) && cacheable)
+	{
+		std::memcpy(pBinding->LastValue, pData, iLength);
+		pBinding->iLastValueBytes = iLength;
+		pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::RAW;
+	}
+	return result;
 }
 
 HRESULT CShader::Bind_Matrix(const char_t* pConstantName, const float4x4_t* pMatrix)
 {
-	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
 	if (nullptr == pBinding || nullptr == pBinding->pMatrix)
 		return E_FAIL;
 
-	return pBinding->pMatrix->SetMatrix(reinterpret_cast<const float_t*>(pMatrix));
+	if (pMatrix && pBinding->eLastValueKind == VARIABLE_BINDING::VALUE_KIND::MATRIX &&
+		0 == std::memcmp(pBinding->LastValue, pMatrix, sizeof(*pMatrix)))
+		return S_OK;
+	pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
+	const HRESULT result = pBinding->pMatrix->SetMatrix(reinterpret_cast<const float_t*>(pMatrix));
+	if (SUCCEEDED(result) && pMatrix)
+	{
+		std::memcpy(pBinding->LastValue, pMatrix, sizeof(*pMatrix));
+		pBinding->iLastValueBytes = sizeof(*pMatrix);
+		pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::MATRIX;
+	}
+	return result;
 }
 
 HRESULT CShader::Bind_Matrices(const char_t* pConstantName, const float4x4_t* pMatrices, uint32_t iNumMatrices)
 {
-	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
 	if (nullptr == pBinding || nullptr == pBinding->pMatrix)
 		return E_FAIL;
 
+	pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
 	return pBinding->pMatrix->SetMatrixArray(reinterpret_cast<const float_t*>(pMatrices), 0, iNumMatrices);
 }
 
-HRESULT CShader::Bind_Texture(const char_t* pConstantName, ComPtr<ID3D11ShaderResourceView> pSRV)
+HRESULT CShader::Bind_Texture(const char_t* pConstantName, const ComPtr<ID3D11ShaderResourceView>& pSRV)
 {
-	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
 	if (nullptr == pBinding || nullptr == pBinding->pResource)
 		return E_FAIL;
 
-	return pBinding->pResource->SetResource(pSRV.Get());
+	if (pBinding->bHasLastResource && pBinding->pLastResource == pSRV.Get())
+		return S_OK;
+	pBinding->bHasLastResource = false;
+	const HRESULT result = pBinding->pResource->SetResource(pSRV.Get());
+	if (SUCCEEDED(result))
+	{
+		// The Effect owns the SRV reference until another resource setter replaces it.
+		pBinding->pLastResource = pSRV.Get();
+		pBinding->bHasLastResource = true;
+	}
+	return result;
 }
 
 HRESULT CShader::Bind_Textures(const char_t* pConstantName, ID3D11ShaderResourceView** ppSRV, uint32_t iNumSRVs)
 {
-	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
 	if (nullptr == pBinding || nullptr == pBinding->pResource)
 		return E_FAIL;
 
+	pBinding->bHasLastResource = false;
 	return pBinding->pResource->SetResourceArray(ppSRV, 0, iNumSRVs);
 }
 
@@ -448,6 +497,20 @@ HRESULT CShader::Begin(uint32_t iPassIndex)
 	if (nullptr == m_pBindings || iPassIndex >= m_iNumPasses)
 		return E_FAIL;
 
+	// Every HDR contributor uses the same current extraction curve. The effect
+	// owner alone controls g_fEffectBloomIntensity, so concurrent skills stay independent.
+	if (CRenderOutputContract::Get_Active() != RENDER_OUTPUT_CONTRACT::NONE &&
+		nullptr != Find_Variable("g_fEffectBloomThreshold"))
+	{
+		const auto& quality = CGameInstance::Get().Get_RenderQualitySettings();
+		if (FAILED(Bind_RawValue("g_fSceneBloomIntensity",
+			&quality.fBloomIntensity, sizeof(quality.fBloomIntensity))) ||
+			FAILED(Bind_RawValue("g_fEffectBloomThreshold",
+			&quality.fBloomThreshold, sizeof(quality.fBloomThreshold))) ||
+			FAILED(Bind_RawValue("g_fEffectBloomSoftKnee",
+				&quality.fBloomSoftKnee, sizeof(quality.fBloomSoftKnee))))
+			return E_FAIL;
+	}
 	m_pContext->IASetInputLayout(m_InputLayouts[iPassIndex].Get());
 
 	return m_pBindings->Passes[iPassIndex]->Apply(0, m_pContext.Get());

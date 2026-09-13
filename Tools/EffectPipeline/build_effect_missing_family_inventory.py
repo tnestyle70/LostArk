@@ -27,6 +27,11 @@ Read-only with respect to the corpus.  The only file written is the inventory.
 """
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import argparse
 import collections
@@ -442,7 +447,7 @@ def build_inventory(
     renderer_path = repository_root / DOCUMENT_RENDERER_SOURCE.relative_to(
         REPOSITORY_ROOT)
     executor_opcodes = parse_executor_opcodes(
-        renderer_path.read_text(encoding="utf-8", errors="replace"))
+        read_source_text(renderer_path, encoding="utf-8", errors="replace"))
     common_shader_path = repository_root / COMMON_EFFECT_SHADER.relative_to(
         REPOSITORY_ROOT)
     bounded_opcodes = parse_bounded_profile_opcodes(

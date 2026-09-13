@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include "PlayerHandGripTransform.h"
 #include "Network/PacketMessages.h"
+#include "LocalMovePrediction.h"
 
 NS_BEGIN(Engine)
 class CModel;
@@ -157,6 +158,11 @@ public:
 		f32_t yawDegrees,
 		bool_t isMoving,
 		std::uint32_t iServerTick);
+	// Replication supplies the authoritative movement view; the controller only
+	// requests presentation after its typed movement command was sent.
+	void Apply_LocalMoveSnapshot(const CLocalMovePrediction::Snapshot& snapshot, bool_t isSkillAction);
+	bool_t Predict_NetworkMoveGoal(std::uint32_t sequence, const float3_t& goal);
+	void Cancel_NetworkMovePrediction();
 	/* comboStage is the server's 1-based stage, 0 outside a combo. The client
 	never counts stages itself. */
 	bool_t Apply_NetworkAction(
@@ -444,6 +450,12 @@ private:
 	};
 	static constexpr size_t NETWORK_SAMPLE_CAPACITY = 8;
 	NETWORK_TRANSFORM_SAMPLE m_NetworkSamples[NETWORK_SAMPLE_CAPACITY] = {};
+	CLocalMovePrediction m_LocalMovePrediction;
+	bool_t m_isLocalMovePredictionEnabled = false;
+	// Only the prediction-to-skill presentation handoff uses this residual.
+	bool_t m_isNetworkMoveHandoffPending = false;
+	float3_t m_NetworkMoveHandoffOffset{};
+	f32_t m_fNetworkMoveHandoffRemaining = 0.f;
 	size_t m_iNetworkSampleCount = 0;
 	f32_t m_fPlaybackServerTick = 0.f;
 	/* Follows the network yaw at TURN_DEGREES_PER_SECOND instead of jumping to
@@ -548,6 +560,11 @@ private:
 	void Update_PresentationRootMatrix();
 
 	//server snapshot interpolation
+	CLocalMovePrediction::Pose Get_LocalMovePose() const;
+	void Apply_LocalMovePose(const CLocalMovePrediction::Pose& pose,
+		f32_t fTimeDelta, bool_t snapRotation = false);
+	void Update_PresentationYaw(f32_t targetYawDegrees, f32_t fTimeDelta);
+	bool_t Update_LocalMovePrediction(f32_t fTimeDelta);
 	void Update_NetworkTransform(f32_t fTimeDelta);
 	/* Runs after Update_NetworkTransform and before the parts compose: while
 	   GRABBED it replaces the interpolated position with the owner socket, and

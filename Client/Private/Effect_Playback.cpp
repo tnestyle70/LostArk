@@ -35,6 +35,20 @@ namespace
 	// advances at the same rate as the authoritative action/animation clock.
 	constexpr uint32_t MAX_CATCH_UP_STEPS = 60u;
 	constexpr uint32_t MAX_SOURCE_EVENTS_PER_STEP = 4096u;
+
+	bool_t Same_SourceAnchorWorlds(
+		const std::unordered_map<std::string, float4x4_t>& Left,
+		const std::unordered_map<std::string, float4x4_t>& Right)
+	{
+		if (Left.size() != Right.size()) return false;
+		for (const auto& [Name, World] : Left)
+		{
+			const auto Found = Right.find(Name);
+			if (Found == Right.end() ||
+				0 != std::memcmp(&World, &Found->second, sizeof(World))) return false;
+		}
+		return true;
+	}
 	struct DYNAMIC_PARAMETER_PROPERTY_PATHS final
 	{
 		std::string_view strSpawnTimeOnly;
@@ -2684,6 +2698,7 @@ struct Client::CEffectPlayback::PREPARED_RESOURCES final
 	std::unordered_map<std::string, std::vector<SOURCE_UPDATE_MODULE>>
 		SourceUpdateModules;
 	std::unordered_map<std::string, SOURCE_SPAWN_RECIPE> SourceSpawnRecipes;
+	std::vector<size_t> SourceTransformVelocityElementIndices;
 	std::unordered_map<std::string, std::vector<size_t>> SourceVectorFieldModuleIndices;
 	std::unordered_map<std::string, std::vector<size_t>> SourceSpawnPerUnitModuleIndices;
 	std::unordered_set<std::string> SourceDeathEventGeneratorElementIds;
@@ -3323,6 +3338,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		std::make_shared<PREPARED_RESOURCES>(*pPreparedResources);
 	StagedPreparedResources->SourceUpdateModules.clear();
 	StagedPreparedResources->SourceSpawnRecipes.clear();
+	StagedPreparedResources->SourceTransformVelocityElementIndices.clear();
 	StagedPreparedResources->SourceVectorFieldModuleIndices.clear();
 	StagedPreparedResources->SourceSpawnPerUnitModuleIndices.clear();
 	StagedPreparedResources->SourceDeathEventGeneratorElementIds.clear();
@@ -3345,8 +3361,15 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
                 Element.SourceRecipe.Modules[iModule].strClassName == "particlemodulecollision")
                 StagedPreparedResources->SourceWorldCollisionModules.emplace_back(
                     static_cast<size_t>(&Element - Document.Elements.data()), iModule);
-		StagedPreparedResources->SourceSpawnRecipes.emplace(
-			Element.strElementId, SOURCE_SPAWN_RECIPE::Prepare(Element));
+		const auto& SpawnRecipe = StagedPreparedResources->SourceSpawnRecipes.emplace(
+			Element.strElementId, SOURCE_SPAWN_RECIPE::Prepare(Element)).first->second;
+		if (Element.SourceRecipe.bEnabled && Element.SourceTransformTrack &&
+			std::ranges::any_of(SpawnRecipe.Modules, [](const auto& Module)
+			{ return Module.eKind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT; }))
+		{
+			StagedPreparedResources->SourceTransformVelocityElementIndices.push_back(
+				static_cast<size_t>(&Element - Document.Elements.data()));
+		}
 		auto& UpdateModules =
 			StagedPreparedResources->SourceUpdateModules[Element.strElementId];
 		for (size_t iModule = 0u;
@@ -3615,6 +3638,7 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_SourceAnchorWorlds.clear();
 	m_PendingSourceEvents.clear();
 	m_Frame = {};
+	m_bFrameInputsDirty = true;
 	m_fSampleTimeSeconds = 0.f;
 	m_fAccumulatorSeconds = 0.0;
 	m_fDurationSeconds = 0.f;
@@ -3753,6 +3777,7 @@ void Client::CEffectPlayback::Reset()
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
+		m_bFrameInputsDirty = true;
 		return;
 	}
 	m_fSampleTimeSeconds = 0.f;
@@ -3764,6 +3789,7 @@ void Client::CEffectPlayback::Reset()
 	m_bSourceEventQueueOverflow = false;
 	m_PendingSourceEvents.clear();
 	m_Frame = {};
+	m_bFrameInputsDirty = true;
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		if (!Is_PlaybackElementAdmitted(Element))
@@ -3790,6 +3816,7 @@ void Client::CEffectPlayback::Set_ModelCueAnchorProvider(
 			return Element.bVisible && !Element.ActionCueAttachment.strModelCueId.empty();
 		});
 	m_ModelCueAnchorProvider = bNeeded ? std::move(Provider) : EFFECT_MODEL_CUE_ANCHOR_PROVIDER{};
+	m_bFrameInputsDirty = true;
 }
 
 bool_t Client::CEffectPlayback::Refresh_ModelCueAnchors(
@@ -3804,7 +3831,7 @@ bool_t Client::CEffectPlayback::Refresh_ModelCueAnchors(
 		m_strSourceVisualProgramStatus = "Model Cue anchor sampling failed: " + Error;
 		return false;
 	}
-	m_SourceAnchorWorlds = std::move(Staged);
+	Set_SourceAnchorWorlds(std::move(Staged));
 	return true;
 }
 
@@ -3820,6 +3847,7 @@ void Client::CEffectPlayback::Update(
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
+		m_bFrameInputsDirty = true;
 		return;
 	}
 	if (!std::isfinite(fTimeDelta) || fTimeDelta <= 0.f)
@@ -3853,6 +3881,7 @@ void Client::CEffectPlayback::Seek(
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
+		m_bFrameInputsDirty = true;
 		return;
 	}
 	const f32_t fTarget = std::clamp(
@@ -3860,6 +3889,7 @@ void Client::CEffectPlayback::Seek(
 		0.f,
 		m_fDurationSeconds);
 	Reset();
+	m_bFrameInputsDirty = true;
 	/* A zero-time product cue still needs to freeze snapshot attachments at the
 	post-Character root supplied by the presentation service. Product staging
 	does not call Seek, so this is the first snapshot capture for that instance. */
@@ -4103,6 +4133,7 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 	}
 
 	Reset();
+	m_bFrameInputsDirty = true;
 	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
 	{
 		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
@@ -4131,6 +4162,7 @@ bool_t Client::CEffectPlayback::Step(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
+	m_bFrameInputsDirty = true;
 	Engine::CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FixedStep");
 	const f32_t fNextSampleTime = static_cast<f32_t>(
@@ -4162,6 +4194,28 @@ bool_t Client::CEffectPlayback::Step(
 		static_cast<f64_t>(m_iSimulationStep) * FIXED_STEP_SECONDS_EXACT);
 	m_PendingSourceEvents.clear();
 	m_bSourceEventQueueOverflow = false;
+
+	// Track only source-motion emitters that consume inherited velocity. Sampling
+	// before their activation delay preserves the actual previous fixed-step pose.
+	for (const size_t iElement : m_pPreparedResources->SourceTransformVelocityElementIndices)
+	{
+		const auto& Element = Get_StagedDocument().Elements[iElement];
+		if (!Is_PlaybackElementAdmitted(Element)) continue;
+		auto& State = m_States[Element.strElementId];
+		State.vSourceTransformVelocity = {};
+		if (!Can_EvaluateElementWorld(Element))
+		{
+			State.bSourceTransformVelocityInitialized = false;
+			continue;
+		}
+		const auto Origin = Get_Translation(Evaluate_ElementWorld(
+			Element, m_fSampleTimeSeconds, RootWorld));
+		if (State.bSourceTransformVelocityInitialized)
+			State.vSourceTransformVelocity = Scale3(Subtract3(
+				Origin, State.vPreviousSourceTransformOrigin), 1.f / fFixedDelta);
+		State.vPreviousSourceTransformOrigin = Origin;
+		State.bSourceTransformVelocityInitialized = true;
+	}
 
 	{
 		Engine::CProfilerScope particleProfile(
@@ -4908,6 +4962,9 @@ bool_t Client::CEffectPlayback::Dispatch_SourceEvents(
 void Client::CEffectPlayback::Set_SourceAnchorWorlds(
 	const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds)
 {
+	if (!m_bFrameInputsDirty &&
+		!Same_SourceAnchorWorlds(m_SourceAnchorWorlds, SourceAnchorWorlds))
+		m_bFrameInputsDirty = true;
 	m_SourceAnchorWorlds = SourceAnchorWorlds;
 }
 
@@ -4916,6 +4973,9 @@ void Client::CEffectPlayback::Set_SourceAnchorWorlds(
 {
 	/* Swap returns the previous frame's buckets to the caller scratch map, so
 	   FOLLOW anchor resolution reuses both maps without copying or reallocating. */
+	if (!m_bFrameInputsDirty &&
+		!Same_SourceAnchorWorlds(m_SourceAnchorWorlds, SourceAnchorWorlds))
+		m_bFrameInputsDirty = true;
 	m_SourceAnchorWorlds.swap(SourceAnchorWorlds);
 }
 
@@ -5653,7 +5713,14 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT)
 		{
 			float3_t ParentVelocity = m_vParentVelocity;
-			if (Element.Detail.Particle.bLocalSpace)
+			if (Element.SourceTransformTrack)
+			{
+				// Source-track particles retain ElementWorld as their simulation basis,
+				// even in world space. Undo that basis before the birth matrix applies it.
+				ParentVelocity = Transform_Normal(State.vSourceTransformVelocity,
+					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));
+			}
+			else if (Element.Detail.Particle.bLocalSpace)
 			{
 				ParentVelocity = Transform_Normal(ParentVelocity,
 					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));
@@ -7588,8 +7655,18 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 {
 	Engine::CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FrameRebuild");
+	// A provider may change or reject anchors even at the same effect time.
+	// Always consume that result before deciding whether evaluated rows match.
 	if (!Refresh_ModelCueAnchors(m_fSampleTimeSeconds, RootWorld))
+	{
+		m_bFrameInputsDirty = true;
 		return;
+	}
+	if (!m_bFrameInputsDirty &&
+		m_Frame.fSampleTimeSeconds == m_fSampleTimeSeconds &&
+		0 == std::memcmp(&m_Frame.RootWorld, &RootWorld, sizeof(RootWorld)))
+		return;
+	m_bFrameInputsDirty = true;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	/* Rebuild runs for every active Effect.  Keep the retained row storage so
 	   a stable particle/trail population does not free and reallocate all
@@ -8172,6 +8249,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			Occurrence.bActive = Occurrence.bActive || 0u < iCandidateRowCount;
 		}
 	}
+	m_bFrameInputsDirty = false;
 }
 
 bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(

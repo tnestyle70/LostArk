@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore",
   "displayName": "작은 오망성",
+  "bloomIntensity": 1.3,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

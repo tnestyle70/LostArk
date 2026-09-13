@@ -1,6 +1,10 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#pragma push_macro("new")
+#undef new
+#include "Assimp/material.h"
+#pragma pop_macro("new")
 
 #include "BinaryAsset/ModelAssetData.h"
 

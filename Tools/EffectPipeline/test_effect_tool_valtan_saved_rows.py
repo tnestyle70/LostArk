@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
+
 
 import copy
 import hashlib
@@ -143,9 +148,7 @@ RETIRED_CANARY_DEDICATED_PATHS = (
 
 
 def function_slice(text: str, signature: str, next_signature: str) -> str:
-    start = text.index(signature)
-    end = text.index(next_signature, start + len(signature))
-    return text[start:end]
+    return cpp_function_definition(text, signature)
 
 
 def validate_source_contract(cpp_text: str, header_text: str) -> None:
@@ -1462,13 +1465,13 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     )
     def test_source_contract_is_flat_lazy_and_valtan_specific(self) -> None:
         validate_source_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8"),
             EFFECT_TOOL_HEADER.read_text(encoding="utf-8"),
         )
 
     def test_editor_admission_is_independent_from_product_and_preview_joins(self) -> None:
         validate_editor_admission_isolation_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8"),
             DIRECT_AUTHORED_INDEX_CPP.read_text(encoding="utf-8"),
             DIRECT_AUTHORED_INDEX_HEADER.read_text(encoding="utf-8"),
         )
@@ -1483,7 +1486,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         row = catalog[effect_id]
         self.assertEqual("DIRECT_AUTHORED_DOCUMENT", row["payloadKind"])
         document = json.loads(
-            (REPOSITORY_ROOT / "Data" / row["authoringPath"]).read_text(
+            read_source_text(REPOSITORY_ROOT / "Data" / row["authoringPath"],
                 encoding="utf-8"
             )
         )
@@ -1491,7 +1494,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(effect_id, document["effectAssetId"])
 
     def test_failed_valtan_tree_cold_load_uses_typed_admission_and_bounded_retry(self) -> None:
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         refresh = function_slice(
             cpp_text,
@@ -1579,7 +1582,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
         tree_cpp = VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
         tree_header = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
-        tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        tool_cpp = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         for token in (
             "Parse_MasterDocument",
             "Apply_MasterDocument",
@@ -1658,7 +1661,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         self.assertEqual(3, windup["animation"]["repeatCount"])
         self.assertEqual(3, len(windup["animation"]["occurrences"]))
-        tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        tool_cpp = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         for token in (
             "CValtanPatternTree::Build_PreviewStagePath(",
             "VALTAN_PATTERN_PREVIEW_PATH::NORMAL",
@@ -1679,7 +1682,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     )
     def test_full_product_cue_uses_the_complete_pattern_timeline(self) -> None:
         validate_full_valtan_product_timeline_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8"),
             EFFECT_TOOL_HEADER.read_text(encoding="utf-8"),
         )
 
@@ -1720,7 +1723,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     def test_master_wall_budget_caps_loop_and_keeps_full_timeline_seekable(self) -> None:
         tree_header = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
         tool_header = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
-        tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        tool_cpp = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         self.assertIn("uint32_t iAuthoringWallMs = 0u;", tree_header)
         self.assertIn("uint32_t iAuthoringWallMs = 0u;", tool_header)
         for token in (
@@ -1744,7 +1747,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     )
     def test_typed_v1_aliases_project_as_paired_saved_rows(self) -> None:
         validate_v1_alias_projection_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8"),
             VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8"),
             VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8"),
         )
@@ -1756,7 +1759,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_saved_open_and_play_fail_closed_before_preview_mutation(self) -> None:
         validate_drawable_preflight_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     @unittest.skip(
@@ -1764,7 +1767,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     )
     def test_animation_stage_rows_do_not_decode_or_open_saved_documents(self) -> None:
         validate_animation_stage_metadata_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     @unittest.skip(
@@ -1772,7 +1775,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     )
     def test_stage_reference_play_uses_the_complete_clip_sequence(self) -> None:
         validate_stage_reference_sequence_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     @unittest.skip(
@@ -1780,17 +1783,17 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     )
     def test_saved_rows_aggregate_all_provenance_and_path_fallbacks(self) -> None:
         validate_saved_row_aggregation_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     def test_saved_reference_load_guard_precedes_target_selection(self) -> None:
         validate_saved_reference_load_guard_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     def test_pending_saved_reference_replays_animation_and_effect(self) -> None:
         validate_pending_reference_preview_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     def test_high_jump_world_owner_and_target_axe_timing_are_exact(self) -> None:
@@ -1849,7 +1852,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(1200, target_axe["hits"][0]["atMs"])
         self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
 
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         pattern = function_slice(
             cpp_text,
@@ -1933,12 +1936,12 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
         validate_manual_authoring_detail_contract(
-            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+            read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         )
 
     def test_retired_authoring_canaries_have_no_live_execution_path(self) -> None:
         live_text = "\n".join(
-            path.read_text(encoding="utf-8") for path in RETIRED_CANARY_LIVE_FILES
+            read_source_text(path, encoding="utf-8") for path in RETIRED_CANARY_LIVE_FILES
         )
         forbidden = (
             "Set_AuthoringExactPreviewExecutionEnabled",
@@ -2033,7 +2036,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         source_path = REPOSITORY_ROOT / "Data" / source_catalog[effect_id][
             "authoringPath"
         ]
-        source_document = json.loads(source_path.read_text(encoding="utf-8"))
+        source_document = json.loads(read_source_text(source_path, encoding="utf-8"))
         self.assertEqual(
             "VALTAN_WHIRLWIND / SPIN / carrier V1",
             source_document["displayName"],
@@ -2101,7 +2104,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         tree_header_text = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
         tree_cpp_text = VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         self.assertIn("uint32_t iStageDurationMs = 0u;", tree_header_text)
         self.assertIn(
             "Cue.iStageDurationMs = SourceCue.iStageDurationMs;", tree_cpp_text
@@ -2264,7 +2267,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             factory.pattern(factory_presentation, "VALTAN_FOUR_SLASH"),
         )
 
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         for token in (
             "bool Is_DirectHandAuthoredElement(",
             "bool Is_OptionalHandAuthoredResourceSlot(",
@@ -2370,7 +2373,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         source_path = (
             REPOSITORY_ROOT / "Data" / source_catalog[effect_id]["authoringPath"]
         )
-        source_document = json.loads(source_path.read_text(encoding="utf-8"))
+        source_document = json.loads(read_source_text(source_path, encoding="utf-8"))
         trail = next(
             row
             for row in source_document["elements"]
@@ -2401,7 +2404,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             source_catalog[effect_id]["payloadKind"],
         )
 
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         model_view = function_slice(
             cpp_text,
             "void Client::CEffect_Tool::Render_ModelViewWindow()",
@@ -2459,9 +2462,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cpp_text.count("Seek_WorldPreviewWithSourceAnchorHistory("), 3
         )
 
-        renderer_text = (
-            REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp"
-        ).read_text(encoding="utf-8")
+        renderer_text = read_source_text(REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp", encoding="utf-8")
         self.assertIn(
             "const bool_t bDistanceTessellated = bTypedSourceRibbon ||",
             renderer_text,
@@ -2520,7 +2521,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             self.assertNotIn(mutator, sampler)
 
     def test_valtan_sequence_preflights_every_clip_before_model_or_state_commit(self) -> None:
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         sequence = function_slice(
             cpp_text,
             "bool_t Client::CEffect_Tool::Play_ValtanStageSequence(",
@@ -2736,12 +2737,10 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         windup_id = "effect.valtan.project-tuned.dash-charge.windup-telegraph"
         active_id = "effect.valtan.project-tuned.dash-charge.active-shield"
         windup = json.loads(
-            (REPOSITORY_ROOT / "Data" / catalog[windup_id]["authoringPath"])
-            .read_text(encoding="utf-8")
+            read_source_text(REPOSITORY_ROOT / "Data" / catalog[windup_id]["authoringPath"], encoding="utf-8")
         )
         active = json.loads(
-            (REPOSITORY_ROOT / "Data" / catalog[active_id]["authoringPath"])
-            .read_text(encoding="utf-8")
+            read_source_text(REPOSITORY_ROOT / "Data" / catalog[active_id]["authoringPath"], encoding="utf-8")
         )
         self.assertEqual(windup_id, windup["effectAssetId"])
         self.assertEqual([], windup["modelCues"])
@@ -2973,7 +2972,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     if entry is not None
                     else AUTHORED_ROOT / f"{effect_id}.effect.json"
                 )
-                document = json.loads(path.read_text(encoding="utf-8"))
+                document = json.loads(read_source_text(path, encoding="utf-8"))
                 if document.get("elements") or document.get("modelCues"):
                     nonempty_candidates += 1
                 else:
@@ -3076,7 +3075,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 effect_id,
             )
             source_path = REPOSITORY_ROOT / "Data" / source_entry["authoringPath"]
-            source_document = json.loads(source_path.read_text(encoding="utf-8"))
+            source_document = json.loads(read_source_text(source_path, encoding="utf-8"))
             self.assertEqual(effect_id, source_document["effectAssetId"])
             if effect_id in INTENTIONAL_EMPTY_PRODUCT_SHELLS:
                 self.assertEqual([], source_document.get("elements"), effect_id)
@@ -3120,7 +3119,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             with self.subTest(effect_id=effect_id):
                 source_entry = source_catalog[effect_id]
                 source_path = REPOSITORY_ROOT / "Data" / source_entry["authoringPath"]
-                source_document = json.loads(source_path.read_text(encoding="utf-8"))
+                source_document = json.loads(read_source_text(source_path, encoding="utf-8"))
                 element_ids = [row["id"] for row in source_document["elements"]]
                 self.assertEqual(len(expected_ids), len(element_ids))
                 self.assertEqual(len(element_ids), len(set(element_ids)))
@@ -3159,10 +3158,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertNotIn(center_id, source_catalog)
         self.assertFalse((AUTHORED_ROOT / f"{center_id}.effect.json").exists())
         floor = json.loads(
-            (
-                REPOSITORY_ROOT / "Data" /
-                source_catalog[floor_id]["authoringPath"]
-            ).read_text(encoding="utf-8")
+            read_source_text(REPOSITORY_ROOT / "Data" /
+                source_catalog[floor_id]["authoringPath"], encoding="utf-8")
         )
         self.assertEqual(
             RECOVERED_VALTAN_EFFECT_ELEMENT_IDS[floor_id],
@@ -3226,14 +3223,14 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 / "Data"
                 / source_catalog[row["v1EffectAssetId"]]["authoringPath"]
             )
-            v1_document = json.loads(v1_path.read_text(encoding="utf-8"))
+            v1_document = json.loads(read_source_text(v1_path, encoding="utf-8"))
             self.assertTrue(
                 v1_document.get("elements") or v1_document.get("modelCues"),
                 row["v1EffectAssetId"],
             )
 
     def test_ui_contract_mutations_fail_closed(self) -> None:
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         mutations = (
             cpp_text.replace("Clip.ProductCues", "Clip.RemovedCues"),
@@ -3250,7 +3247,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     validate_source_contract(mutation, header_text)
 
     def test_v1_and_drawable_gate_mutations_fail_closed(self) -> None:
-        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cpp_text = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         tree_cpp_text = VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
         tree_header_text = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
         v1_mutations = (

@@ -1,4 +1,7 @@
+#include "Input_Device.h" // Load DirectInput before Engine::POINT enters global lookup.
 #include "GameInstance.h"
+#include "Engine_InitTypes.h"
+#include "Engine_RenderTypes.h"
 
 #include "Shadow.h"
 #include "Picking.h"
@@ -6,7 +9,6 @@
 #include "Renderer.h"
 #include "PipeLine.h"
 #include "Font_Manager.h"
-#include "Input_Device.h"
 #ifdef _WIN64
 #include "Sound/Sound_Manager.h"
 #endif

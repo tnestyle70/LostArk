@@ -1,4 +1,5 @@
 #include "EffectV2_Object.h"
+#include "Engine_VertexTypes.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "GameInstance.h"
 #include "Model.h"

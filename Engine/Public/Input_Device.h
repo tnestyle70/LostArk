@@ -1,5 +1,12 @@
 #pragma once
 
+#pragma push_macro("new")
+#undef new
+#ifndef DIRECTINPUT_VERSION
+#define DIRECTINPUT_VERSION 0x0800
+#endif
+#include <dinput.h>
+#pragma pop_macro("new")
 #include "Engine_Defines.h"
 #include "MouseButtonReleaseGate.h"
 

@@ -1,4 +1,8 @@
 #include "InventoryView.h"
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"

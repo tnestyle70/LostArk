@@ -7,6 +7,11 @@ import pathlib
 import json
 import unittest
 
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
@@ -63,7 +68,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.audition_cpp = AUDITION_CPP.read_text(encoding="utf-8")
         cls.audition_h = AUDITION_H.read_text(encoding="utf-8")
         cls.tuning_command_cpp = TUNING_COMMAND_CPP.read_text(encoding="utf-8")
-        cls.effect_cpp = EFFECT_CPP.read_text(encoding="utf-8")
+        cls.effect_cpp = read_source_text(EFFECT_CPP, encoding="utf-8")
         cls.boss_cpp = BOSS_CPP.read_text(encoding="utf-8")
         cls.project = PROJECT.read_text(encoding="utf-8")
         cls.filters = FILTERS.read_text(encoding="utf-8")
@@ -76,7 +81,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             PRESENTATION_ADMISSION_NATIVE_TESTS.read_text(encoding="utf-8")
         )
         cls.main_app_cpp = MAIN_APP_CPP.read_text(encoding="utf-8")
-        cls.server_game_room_cpp = SERVER_GAME_ROOM_CPP.read_text(encoding="utf-8")
+        cls.server_game_room_cpp = read_source_text(SERVER_GAME_ROOM_CPP, encoding="utf-8")
         cls.server_project = SERVER_PROJECT.read_text(encoding="utf-8")
         cls.gameplay_publisher = GAMEPLAY_PUBLISHER.read_text(encoding="utf-8")
         cls.full_pipeline_runner = FULL_PIPELINE_RUNNER.read_text(encoding="utf-8")

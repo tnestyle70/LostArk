@@ -1925,6 +1925,11 @@ struct EFFECT_SOURCE_MODEL_PREVIEW final
     bool operator==(const EFFECT_SOURCE_MODEL_PREVIEW&) const = default;
 };
 
+inline bool_t Is_ValidEffectBloomIntensity(const f32_t value) noexcept
+{
+	return std::isfinite(value) && value >= 0.f && value <= 16.f;
+}
+
 struct EFFECT_DOCUMENT_DESC final
 {
 	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
@@ -1932,6 +1937,8 @@ struct EFFECT_DOCUMENT_DESC final
 	bool_t bSourceContract = false;
 	std::string strEffectAssetId;
 	std::string strDisplayName;
+	// The whole effect contributes bloom independently of its HDR scene color.
+	f32_t fBloomIntensity = 1.3f;
 	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
 	std::optional<EFFECT_SOURCE_MODEL_PREVIEW> SourceModelPreview;

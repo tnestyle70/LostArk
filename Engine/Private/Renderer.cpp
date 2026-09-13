@@ -1,4 +1,10 @@
 #include "Renderer.h"
+#pragma push_macro("new")
+#undef new
+#include "DirectXTK/DDSTextureLoader.h"
+#pragma pop_macro("new")
+#include "Engine_RenderTypes.h"
+#include "Engine_VertexTypes.h"
 #include "Material.h"
 #include "Render_OutputContract.h"
 #include "Profiler.h"
@@ -186,8 +192,17 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
+	// One shared full-resolution contribution target for all effects, never one per skill.
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SceneBloom"), vViewportSize.x, vViewportSize.y,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
 	/* Refractive effects read this snapshot while SceneHDR remains the output. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_EffectSceneColor"), vViewportSize.x, vViewportSize.y,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_EffectSceneBloom"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
@@ -258,6 +273,8 @@ HRESULT CRenderer::Initialize()
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SceneHDR"), TEXT("Target_SceneHDR"))))
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SceneHDR"), TEXT("Target_Distortion"))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SceneHDR"), TEXT("Target_SceneBloom"))))
 		return E_FAIL;
 
 	/* Half-resolution bloom ping-pong targets. */
@@ -1085,6 +1102,12 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
 	if (!sourceResource || !snapshotResource || sourceResource.Get() == snapshotResource.Get() ||
 		FAILED(sourceResource.As(&sourceTexture)) || FAILED(snapshotResource.As(&snapshotTexture)))
 		return E_FAIL;
+	const auto bloomSnapshotSRV = CGameInstance::Get().Get_RT_SRV(TEXT("Target_EffectSceneBloom"));
+	ComPtr<ID3D11Resource> bloomSnapshotResource;
+	ComPtr<ID3D11Texture2D> bloomSnapshotTexture;
+	if (!bloomSnapshotSRV) return E_FAIL;
+	bloomSnapshotSRV->GetResource(bloomSnapshotResource.GetAddressOf());
+	if (!bloomSnapshotResource || FAILED(bloomSnapshotResource.As(&bloomSnapshotTexture))) return E_FAIL;
 	D3D11_TEXTURE2D_DESC sourceDesc{}, snapshotDesc{};
 	sourceTexture->GetDesc(&sourceDesc);
 	snapshotTexture->GetDesc(&snapshotDesc);
@@ -1117,10 +1140,12 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
         CProfilerGpuScope copyScope(profiler, "Render.SceneColorCopy");
         result = CGameInstance::Get().Copy_RT_Resource(
             TEXT("Target_SceneHDR"), snapshotTexture);
+        if (SUCCEEDED(result))
+            result = CGameInstance::Get().Copy_RT_Resource(TEXT("Target_SceneBloom"), bloomSnapshotTexture);
     }
     if (SUCCEEDED(result) && profiler)
     {
-        profiler->Add_Counter(EProfilerCounter::SceneColorCopies);
+        profiler->Add_Counter(EProfilerCounter::SceneColorCopies, 2u);
         // Both named targets are created as RGBA16F. Count the copied logical
         // payload, not read+write bus traffic or driver allocation overhead.
         uint64_t pixels = 0;
@@ -1133,7 +1158,7 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
             height = (std::max)(1u, height / 2);
         }
         profiler->Add_Counter(EProfilerCounter::SceneColorCopyBytes,
-            pixels * 8u * sourceDesc.ArraySize * sourceDesc.SampleDesc.Count);
+            pixels * 16u * sourceDesc.ArraySize * sourceDesc.SampleDesc.Count);
     }
 	m_pContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
 		outputs, depth.Get());
@@ -1239,9 +1264,15 @@ HRESULT CRenderer::Render_ScreenPostPass(
 	ComPtr<ID3D11ShaderResourceView> pSourceSRV,
 	ComPtr<ID3D11RenderTargetView> pDestinationRTV,
 	const uint32_t iPassIndex,
+	ComPtr<ID3D11ShaderResourceView> pBloomSourceSRV,
+	ComPtr<ID3D11RenderTargetView> pBloomDestinationRTV,
 	const PRESENTATION_SCREEN_POST_DESC* pPostDesc)
 {
-	if (nullptr == pDestinationRTV)
+	if (nullptr == pDestinationRTV || nullptr == pBloomDestinationRTV)
+		return E_FAIL;
+	if (FAILED(m_pShader->Bind_RawValue("g_fSceneBloomIntensity", &m_RenderQualitySettings.fBloomIntensity, sizeof(float))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fEffectBloomThreshold", &m_RenderQualitySettings.fBloomThreshold, sizeof(float))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fEffectBloomSoftKnee", &m_RenderQualitySettings.fBloomSoftKnee, sizeof(float))))
 		return E_FAIL;
 	if (nullptr != pSourceSRV)
 	{
@@ -1260,20 +1291,23 @@ HRESULT CRenderer::Render_ScreenPostPass(
 		D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
 	m_pContext->PSSetShaderResources(
 		0u, _countof(pNullSRVs), pNullSRVs);
-	ID3D11RenderTargetView* pDestination = pDestinationRTV.Get();
-	m_pContext->OMSetRenderTargets(1u, &pDestination, nullptr);
+	ID3D11RenderTargetView* destinations[3] = {
+		pDestinationRTV.Get(), nullptr, pBloomDestinationRTV.Get() };
+	m_pContext->OMSetRenderTargets(3u, destinations, nullptr);
 	const float4_t vClear{};
-	m_pContext->ClearRenderTargetView(pDestination, &vClear.x);
+	m_pContext->ClearRenderTargetView(destinations[0], &vClear.x);
+	m_pContext->ClearRenderTargetView(destinations[2], &vClear.x);
 
 	if (nullptr != pPostDesc && nullptr != pPostDesc->pMaterial)
 	{
 		PRESENTATION_SCREEN_POST_MATERIAL_INPUT Input;
 		Input.pSceneColor = pSourceSRV;
+		Input.pSceneBloom = pBloomSourceSRV;
 		Input.pSceneDepth = CGameInstance::Get().Get_RT_SRV(TEXT("Target_Depth"));
 		Input.World = m_WorldMatrix;
 		Input.View = m_ViewMatrix;
 		Input.Projection = m_ProjMatrix;
-		if (nullptr == Input.pSceneColor || nullptr == Input.pSceneDepth ||
+		if (nullptr == Input.pSceneColor || nullptr == Input.pSceneBloom || nullptr == Input.pSceneDepth ||
 			FAILED(pPostDesc->pMaterial->Bind(Input)) ||
 			FAILED(m_pVIBuffer->Bind_Resources()) || FAILED(m_pVIBuffer->Render()))
 			return E_FAIL;
@@ -1286,14 +1320,17 @@ HRESULT CRenderer::Render_ScreenPostPass(
 				"g_SceneHDRTexture")) ||
 			FAILED(CGameInstance::Get().Bind_RT_SRV(
 				TEXT("Target_Distortion"), m_pShader,
-				"g_DistortionTexture")))
+				"g_DistortionTexture")) ||
+			FAILED(CGameInstance::Get().Bind_RT_SRV(
+				TEXT("Target_SceneBloom"), m_pShader, "g_SceneBloomTexture")))
 		{
 			return E_FAIL;
 		}
 	}
 	else
 	{
-		if (nullptr == pSourceSRV ||
+		if (nullptr == pSourceSRV || nullptr == pBloomSourceSRV ||
+			FAILED(m_pShader->Bind_Texture("g_PostBloomTexture", pBloomSourceSRV)) ||
 			FAILED(m_pShader->Bind_Texture(
 				"g_PostProcessTexture", pSourceSRV)) ||
 			FAILED(m_pShader->Bind_RawValue(
@@ -1346,7 +1383,8 @@ HRESULT CRenderer::Render_ScreenPosts()
 	SetUp_ViewportDesc(m_iScenePostWidth, m_iScenePostHeight);
 
 	HRESULT hResult = Render_ScreenPostPass(
-		nullptr, m_pScenePostRTVs[0], DEFERRED_PASS_SCENE_RESOLVE);
+		nullptr, m_pScenePostRTVs[0], DEFERRED_PASS_SCENE_RESOLVE,
+		nullptr, m_pSceneBloomPostRTVs[0]);
 	const vector<PRESENTATION_SCREEN_POST_DESC>& ScreenPosts =
 		Presentation.Get_ScreenPosts();
 	for (size_t iPost = 0u;
@@ -1380,7 +1418,8 @@ HRESULT CRenderer::Render_ScreenPosts()
 		hResult = Render_ScreenPostPass(
 			m_pScenePostSRVs[Step.iSourceTarget],
 			m_pScenePostRTVs[Step.iDestinationTarget],
-			iPassIndex, &Post);
+			iPassIndex, m_pSceneBloomPostSRVs[Step.iSourceTarget],
+			m_pSceneBloomPostRTVs[Step.iDestinationTarget], &Post);
 	}
 	const vector<PRESENTATION_SCREEN_OVERLAY_DESC>& ScreenOverlays =
 		Presentation.Get_ScreenOverlays();
@@ -1424,11 +1463,14 @@ HRESULT CRenderer::Render_ScreenPosts()
 			D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
 		m_pContext->PSSetShaderResources(
 			0u, _countof(pNullSRVs), pNullSRVs);
-		ID3D11RenderTargetView* pDestination = pDestinationRTV.Get();
-		m_pContext->OMSetRenderTargets(1u, &pDestination, nullptr);
+		ID3D11RenderTargetView* destinations[3] = { pDestinationRTV.Get(),
+			nullptr, m_pSceneBloomPostRTVs[Step.iDestinationTarget].Get() };
+		m_pContext->OMSetRenderTargets(3u, destinations, nullptr);
 		const float4_t vClear{};
-		m_pContext->ClearRenderTargetView(pDestination, &vClear.x);
+		m_pContext->ClearRenderTargetView(destinations[0], &vClear.x);
+		m_pContext->ClearRenderTargetView(destinations[2], &vClear.x);
 		if (FAILED(m_pShader->Bind_Texture("g_PostProcessTexture", pSourceSRV)) ||
+			FAILED(m_pShader->Bind_Texture("g_PostBloomTexture", m_pSceneBloomPostSRVs[Step.iSourceTarget])) ||
 			FAILED(Render_ScreenOverlay(Overlay)))
 			hResult = E_FAIL;
 	}
@@ -1459,7 +1501,8 @@ HRESULT CRenderer::Render_ScreenOverlay(
 		static_cast<uint32_t>(Overlay.eCoverageChannel);
 	const uint32_t iFilter = static_cast<uint32_t>(Overlay.eFilter);
 	const uint32_t iAddress = static_cast<uint32_t>(Overlay.eAddress);
-	if (FAILED(m_pShader->Bind_Texture(
+	if (FAILED(m_pShader->Bind_RawValue("g_fEffectBloomIntensity", &Overlay.fBloomIntensity, sizeof(Overlay.fBloomIntensity))) ||
+		FAILED(m_pShader->Bind_Texture(
 			"g_PresentationOverlayTexture", Overlay.pTexture)) ||
 		FAILED(m_pShader->Bind_RawValue(
 			"g_fPresentationTime", &Overlay.fSampleTimeSeconds,
@@ -1547,7 +1590,7 @@ HRESULT CRenderer::Render_Bloom()
 
 	HRESULT hResult = Render_BloomPass(
 		TEXT("MRT_BloomExtract"),
-		m_pScenePostSRVs[m_iScenePostFinalTarget],
+		m_pSceneBloomPostSRVs[m_iScenePostFinalTarget],
 		DEFERRED::BLOOM_EXTRACT);
 	if (SUCCEEDED(hResult))
 	{
@@ -1649,9 +1692,6 @@ HRESULT CRenderer::Render_Final()
 		return E_FAIL;
 	if (FAILED(m_pShader->Bind_RawValue(
 			"g_iBloomEnabled", &iBloomEnabled, sizeof(iBloomEnabled))) ||
-		FAILED(m_pShader->Bind_RawValue(
-			"g_fBloomIntensity", &m_RenderQualitySettings.fBloomIntensity,
-			sizeof(m_RenderQualitySettings.fBloomIntensity))) ||
 		FAILED(m_pShader->Bind_RawValue(
 			"g_fToneMapExposure", &m_RenderQualitySettings.fExposure,
 			sizeof(m_RenderQualitySettings.fExposure))) ||
@@ -1857,7 +1897,8 @@ HRESULT CRenderer::Ready_ScenePostTargets(
 		nullptr != m_pScenePostRTVs[0] &&
 		nullptr != m_pScenePostRTVs[1] &&
 		nullptr != m_pScenePostSRVs[0] &&
-		nullptr != m_pScenePostSRVs[1])
+		nullptr != m_pScenePostSRVs[1] &&
+		nullptr != m_pSceneBloomPostSRVs[0] && nullptr != m_pSceneBloomPostSRVs[1])
 	{
 		return S_OK;
 	}
@@ -1865,6 +1906,9 @@ HRESULT CRenderer::Ready_ScenePostTargets(
 	ComPtr<ID3D11Texture2D> StagedTextures[2];
 	ComPtr<ID3D11RenderTargetView> StagedRTVs[2];
 	ComPtr<ID3D11ShaderResourceView> StagedSRVs[2];
+	ComPtr<ID3D11Texture2D> StagedBloomTextures[2];
+	ComPtr<ID3D11RenderTargetView> StagedBloomRTVs[2];
+	ComPtr<ID3D11ShaderResourceView> StagedBloomSRVs[2];
 	D3D11_TEXTURE2D_DESC TextureDesc{};
 	TextureDesc.Width = iWidth;
 	TextureDesc.Height = iHeight;
@@ -1885,7 +1929,10 @@ HRESULT CRenderer::Ready_ScenePostTargets(
 				StagedRTVs[iTarget].GetAddressOf())) ||
 			FAILED(m_pDevice->CreateShaderResourceView(
 				StagedTextures[iTarget].Get(), nullptr,
-				StagedSRVs[iTarget].GetAddressOf())))
+				StagedSRVs[iTarget].GetAddressOf())) ||
+			FAILED(m_pDevice->CreateTexture2D(&TextureDesc, nullptr, StagedBloomTextures[iTarget].GetAddressOf())) ||
+			FAILED(m_pDevice->CreateRenderTargetView(StagedBloomTextures[iTarget].Get(), nullptr, StagedBloomRTVs[iTarget].GetAddressOf())) ||
+			FAILED(m_pDevice->CreateShaderResourceView(StagedBloomTextures[iTarget].Get(), nullptr, StagedBloomSRVs[iTarget].GetAddressOf())))
 		{
 			return E_FAIL;
 		}
@@ -1896,6 +1943,8 @@ HRESULT CRenderer::Ready_ScenePostTargets(
 		m_pScenePostTextures[iTarget] = std::move(StagedTextures[iTarget]);
 		m_pScenePostRTVs[iTarget] = std::move(StagedRTVs[iTarget]);
 		m_pScenePostSRVs[iTarget] = std::move(StagedSRVs[iTarget]);
+		m_pSceneBloomPostRTVs[iTarget] = std::move(StagedBloomRTVs[iTarget]);
+		m_pSceneBloomPostSRVs[iTarget] = std::move(StagedBloomSRVs[iTarget]);
 	}
 	m_iScenePostWidth = iWidth;
 	m_iScenePostHeight = iHeight;

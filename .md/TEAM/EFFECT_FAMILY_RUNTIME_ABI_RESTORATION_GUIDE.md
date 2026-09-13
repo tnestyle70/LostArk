@@ -95,6 +95,26 @@ ShaderMap/DXBC의 연산과 ABI를 읽을 수 있는 Winters HLSL과 typed descr
 
 ## 4. 반드시 분리해야 하는 네 축
 
+### 문서별 bloom 기여
+
+V1 authored Effect root의 optional `bloomIntensity`는 그 문서 전체가 만드는 bloom 기여의 배율이다.
+유한한 0~16만 허용하며 생략 기본값은 1.3이다. stable `effectAssetId`가 다른 Full Restore의 단계별·
+clip별·통합 버전은 각각 독립 값을 저장한다. 같은 skill ID나 공통 source group을 이유로 합치지 않는다.
+`Effect Tool V1 → Effect Detail → Skill Bloom Intensity`에서 현재 문서 전체 값을 즉시 조절하고
+`Save Changes`로 저장한다. 편집은 같은 문서를 사용하는 preview의 draw scalar만 갱신하며 시계와
+리소스를 다시 준비하지 않는다. 다른 문서의 값과 Rendering Benchmark의 전역 품질 값은 보존한다.
+
+원본 HDR 색·emissive와 bloom 기여는 별도 출력이다. SceneHDR의 RT0 색, RT1 distortion에 이어
+RT2에 문서 intensity를 적용한 bright-pass 기여를 모으고 기존 blur/final 합성에서 소비한다. 전역 bloom
+enable·threshold·soft knee·scatter는 공통 품질 계약이다. 비Effect 기여는 전역 intensity를 사용하고,
+V1은 문서 intensity를 사용한다. 최종 합성에서 전역 intensity를 다시 곱하지 않는다. 문서 intensity를 원본 RGB에
+곱하거나 최종 전체 화면 intensity를 스킬마다 바꾸지 않는다. SceneColor를 사용하는 화면 왜곡도
+다른 문서의 가중치를 잃지 않도록 bloom 입력을 함께 운반해야 한다.
+
+draw별 threshold는 어두운 반투명 출력 여러 개가 겹쳐 임계치를 넘는 경우 기존 전체 화면 threshold와
+다를 수 있다. 원본 HDR 보존, 문서별 가중치 독립성과 사용자 화면 판정은 각각 별도로 확인한다.
+구현과 실행 검증의 현재 상태는 [스킬별 Bloom 결과](../GB/09-12/2026-09-12_EFFECT_PER_SKILL_BLOOM_RESULT.md)를 따른다.
+
 현재 복원 단위는 다음 네 축의 곱이다.
 
 ```text

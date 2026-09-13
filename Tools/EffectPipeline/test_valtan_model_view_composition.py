@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import hashlib
 import importlib.util
@@ -683,9 +688,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
         service_header = (
             REPOSITORY_ROOT / "Client/Public/Effect_PresentationService.h"
         ).read_text(encoding="utf-8-sig")
-        effect_tool = (
-            REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
-        ).read_text(encoding="utf-8-sig")
+        effect_tool = read_source_text(REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp", encoding="utf-8-sig")
         valtan = (REPOSITORY_ROOT / "Client/Private/Valtan.cpp").read_text(
             encoding="utf-8-sig"
         )

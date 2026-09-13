@@ -7,6 +7,7 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -41,12 +42,40 @@ NAMES = {
 }
 
 
+SPLIT_GROUP_REPLACEMENTS = {
+    'effect.kouku.gate3.showtime.circle.warning.impact':
+        ('effect.kouku.gate3.showtime.circle.warning', '원형 예고·폭발 (이전 합성)'),
+    'effect.kouku.gate3.showtime.donut.warning.impact':
+        ('effect.kouku.gate3.showtime.innerdonut.warning', '도넛 예고·폭발 (이전 합성)'),
+}
+
+
 def read(path): return json.loads(path.read_text(encoding='utf-8-sig'))
 def payload(value): return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf8')
 def identity(value): return hashlib.sha256(value.encode('utf8')).hexdigest()[:20]
 
 
-def register(manifests, organization, output, install):
+def replace_root_value(original, key, value, *, rows=False):
+    """Keep untouched authoring lanes byte-for-byte during library registration."""
+    text = original.decode('utf-8-sig')
+    match = re.search(r'^  "' + re.escape(key) + r'"\s*:\s*', text, re.MULTILINE)
+    assert match, ('Missing root field', key)
+    _, consumed = json.JSONDecoder().raw_decode(text[match.end():])
+    newline = '\r\n' if '\r\n' in text else '\n'
+    if rows:
+        encoded = '[' + newline + (',' + newline).join(
+            '    ' + json.dumps(row, ensure_ascii=False, allow_nan=False) for row in value)
+        encoded += newline + '  ]'
+    else:
+        encoded = json.dumps(value, ensure_ascii=False, allow_nan=False)
+    result = text[:match.end()] + encoded + text[match.end() + consumed:]
+    before = json.loads(text)
+    before[key] = value
+    assert json.loads(result) == before
+    return (b'\xef\xbb\xbf' if original.startswith(b'\xef\xbb\xbf') else b'') + result.encode('utf8')
+
+
+def register(manifests, organization, output, install, library_only=False):
     snapshots, staged = {}, {}
     def load(relative):
         path = ROOT / relative
@@ -76,8 +105,9 @@ def register(manifests, organization, output, install):
         return parent
     known = {r['effectAssetId']: r for r in catalog['effects']}
     resources = {r['assetId']: r for r in composition['presentationResources'] if r['kind'] == 'EFFECT'}
-    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_32')
-    assert pattern['gateId'] == 'GATE3' and '쇼타임' in pattern['displayName']
+    pattern = None if library_only else next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_32')
+    if pattern is not None:
+        assert pattern['gateId'] == 'GATE3' and '쇼타임' in pattern['displayName']
     additions = []
     for row in documents:
         path = ROOT / row['path']
@@ -94,7 +124,7 @@ def register(manifests, organization, output, install):
             catalog['effects'].append(entry)
             known[asset] = entry
         suffix = asset.removeprefix('effect.kouku.gate3.')
-        if suffix in NAMES:
+        if suffix in NAMES and not row.get('categoryPath'):
             branch, label = NAMES[suffix]
             labels = ['KoukuSaydon', '3관문', '패턴', '세이튼'] + branch.split('/')
             name = '3관문_세이튼_' + branch.split('/')[0] + '_' + label
@@ -122,14 +152,14 @@ def register(manifests, organization, output, install):
             staged[path] = payload(doc)
         if asset not in resources:
             resource = dict(resourceId='kakulsaydon.effect.' + identity(asset), displayName=name,
-                defaultAnchorKind='BOSS' if doc.get('sourceModelPreview') else 'MAP', kind='EFFECT', assetId=asset,
+                defaultAnchorKind=row.get('defaultAnchorKind', 'BOSS' if doc.get('sourceModelPreview') else 'MAP'), kind='EFFECT', assetId=asset,
                 resourceKind='V1_EFFECT', elementId='', durationMs=row['durationMs'], shape='BOX', colliderKind='GEOMETRY',
                 halfExtents=[1,1,1], radiusM=3, halfAngleDegrees=45)
             composition['presentationResources'].append(resource)
             resources[asset] = resource
         else:
             resources[asset]['displayName'] = name
-        if suffix.startswith('showtime.') and not any(o['resourceId'] == resources[asset]['resourceId'] for o in pattern['presentationOccurrences']):
+        if pattern is not None and suffix.startswith('showtime.') and not any(o['resourceId'] == resources[asset]['resourceId'] for o in pattern['presentationOccurrences']):
             ordinal = pattern['nextPresentationOccurrenceOrdinal']
             pattern['presentationOccurrences'].append(dict(occurrenceId=pattern['patternId'] + '.presentation.' + str(ordinal),
                 resourceId=resources[asset]['resourceId'], startMs=0, durationMs=row['durationMs'], positionOffset=[0,0,0],
@@ -140,14 +170,37 @@ def register(manifests, organization, output, install):
             pattern['nextPresentationOccurrenceOrdinal'] = ordinal + 1
         additions.append(dict(effectAssetId=asset, displayName=name, categoryPath=labels, elements=len(doc['elements']),
             durationMs=row['durationMs'], path=row['path']))
+    if library_only:
+        installed_assets = {row['effectAssetId'] for row in documents}
+        for legacy_asset, (replacement, label) in SPLIT_GROUP_REPLACEMENTS.items():
+            if replacement not in installed_assets:
+                continue
+            # Preserve saved IDs and authored payloads; organize the replaced
+            # combinations separately from the independent sequencing groups.
+            legacy = references.get(('V1', legacy_asset))
+            if legacy is not None:
+                legacy.update(displayName=label, parentId=category(
+                    ['KoukuSaydon', '3관문', '패턴', '세이튼', '쇼타임', '이전 합성']))
+            if legacy_asset in resources:
+                resources[legacy_asset]['displayName'] = label
     tree['nodes'] = list(nodes.values())
     tree['references'] = list(references.values())
-    for relative, value in [('Data/Effects/EffectCatalog.json', catalog), ('Data/Effects/EffectResourceTree.json', tree)]:
-        staged[ROOT / relative] = payload(value)
+    staged[ROOT / 'Data/Effects/EffectCatalog.json'] = payload(catalog)
+    tree_path = ROOT / 'Data/Effects/EffectResourceTree.json'
+    if library_only:
+        value = replace_root_value(snapshots[tree_path], 'nodes', tree['nodes'], rows=True)
+        staged[tree_path] = replace_root_value(value, 'references', tree['references'], rows=True)
+    else:
+        staged[tree_path] = payload(tree)
     composition_path = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
     if json.loads(snapshots[composition_path]) != composition:
         composition['revision'] += 1
-        staged[composition_path] = payload(composition)
+        if library_only:
+            value = replace_root_value(snapshots[composition_path], 'presentationResources', composition['presentationResources'], rows=True)
+            staged[composition_path] = replace_root_value(value, 'revision', composition['revision'])
+            assert json.loads(staged[composition_path]) == composition
+        else:
+            staged[composition_path] = payload(composition)
     for suffix in ('', '.filters'):
         path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
         snapshots[path] = path.read_bytes()
@@ -173,7 +226,8 @@ def register(manifests, organization, output, install):
             if install: path.write_bytes(value)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(payload(dict(installed=install, documents=additions, changedPaths=changed,
-        showtimePatternId=pattern['patternId'], showtimeMode='INDEPENDENT_GROUP_TUNING_DRAFT',
+        showtimePatternId=pattern['patternId'] if pattern else None,
+        showtimeMode='LIBRARY_ONLY_MANUAL_SEQUENCER_TIMING' if library_only else 'INDEPENDENT_GROUP_TUNING_DRAFT',
         manualVisualValidation='USER_PENDING')))
     print(json.dumps(dict(installed=install, groups=len(additions), changedFiles=len(changed))))
 
@@ -184,5 +238,6 @@ if __name__ == '__main__':
     parser.add_argument('--organization', type=Path)
     parser.add_argument('--output', type=Path, default=ROOT / 'out/KoukuGate3Effects20260912/library_installation.json')
     parser.add_argument('--install', action='store_true')
+    parser.add_argument('--library-only', action='store_true', help='Register groups without placing occurrences in user patterns')
     args = parser.parse_args()
-    register(args.manifest, args.organization, args.output, args.install)
+    register(args.manifest, args.organization, args.output, args.install, args.library_only)

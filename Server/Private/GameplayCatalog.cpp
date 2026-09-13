@@ -3010,7 +3010,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
 			std::uint32_t mode = 0u;
-			if ((16u != fields.size() && 17u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+			if ((16u != fields.size() && 17u != fields.size() && 20u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
 				!IsStableId(fields[3]) || !ParseNumber(fields[5], trigger.iStartMs) ||
 				!ParseNumber(fields[6], trigger.iDurationMs) || 0u == trigger.iDurationMs ||
 				!ParseNumber(fields[7], mode) || mode >= static_cast<std::uint32_t>(LostArk::Shared::KOUKU_HUD_MODE::END) ||
@@ -3022,9 +3022,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				m_strStatus = "KoukuSaydon mechanic trigger row is invalid";
 				return false;
 			}
-			if (17u == fields.size() && (!ParseNumber(fields[16], trigger.fFaceCenterYawOffsetDegrees) ||
+			if (fields.size() >= 17u && (!ParseNumber(fields[16], trigger.fFaceCenterYawOffsetDegrees) ||
 				!std::isfinite(trigger.fFaceCenterYawOffsetDegrees)))
 			{ m_strStatus = "KoukuSaydon face-center offset is invalid"; return false; }
+			if (20u == fields.size() && (!ParseNumber(fields[17], trigger.iCountPerPlayer) ||
+				!ParseNumber(fields[18], trigger.fPlayerEffectRadiusM) || !std::isfinite(trigger.fPlayerEffectRadiusM) ||
+				!ParseNumber(fields[19], trigger.iEffectLifetimeMs)))
+			{ m_strStatus = "KoukuSaydon player effect values are invalid"; return false; }
+			if (fields[4] != "ALBION_BLUE_CIRCLE" && (trigger.iCountPerPlayer != 0u || trigger.fPlayerEffectRadiusM != 0.f || trigger.iEffectLifetimeMs != 0u))
+			{ m_strStatus = "Non-Albion trigger carries player effect values"; return false; }
 			trigger.strTriggerId = std::string(fields[3]);
 			trigger.eHudMode = static_cast<LostArk::Shared::KOUKU_HUD_MODE>(mode);
 			if (fields[4] == "REAL_GAZE_TELEPORT")
@@ -3041,6 +3047,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						return false;
 					trigger.ClockHours.push_back(hour);
 				}
+			}
+			else if (fields[4] == "ALBION_BLUE_CIRCLE")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_BLUE_CIRCLE;
+				if (trigger.iCountPerPlayer < 1u || trigger.iCountPerPlayer > 8u ||
+					trigger.fPlayerEffectRadiusM < 0.f || trigger.fPlayerEffectRadiusM > 20.f ||
+					((trigger.iCountPerPlayer == 1u) != (trigger.fPlayerEffectRadiusM == 0.f)) ||
+					trigger.iEffectLifetimeMs < 1u || trigger.iEffectLifetimeMs > 600000u ||
+					mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+					trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
+				{ m_strStatus = "KoukuSaydon Albion layout is invalid"; return false; }
 			}
 			else if (fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER")
 			{

@@ -1,4 +1,5 @@
 #include "RenderingProfileService.h"
+#include "Engine_RenderTypes.h"
 
 #include "DataJson.h"
 #include "GameInstance.h"

@@ -1,6 +1,7 @@
 #include "imgui.h"
-
 #include "Effect_Tool_V2.h"
+#include "Engine_VertexTypes.h"
+#include "CharacterPreviewPanel.h"
 #include "EffectAuthoringV2Pane.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"

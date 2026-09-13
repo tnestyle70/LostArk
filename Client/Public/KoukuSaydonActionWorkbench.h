@@ -107,6 +107,7 @@ namespace Client
 		void Begin_WorkbenchFrame() override;
 		void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 		void End_WorkbenchFrame() override;
+		COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
 		void Tick_Background() { Poll_PublishProcess(); }
 		bool_t Consume_ProductInventoryRefreshRequest() {
 			const bool_t requested = m_bProductInventoryRefreshRequested;
@@ -243,6 +244,7 @@ namespace Client
 			std::string& outPatternId,
 			std::string& outStatus);
 		bool_t Create_ParentTimeline(std::string_view folderId, std::string& outStatus);
+		// ownerId accepts a Parent folder or its timeline Pattern; creation and append commit together.
 		bool_t Append_PatternBox(std::string_view ownerId, std::string_view childId,
 			std::uint32_t startMs, std::uint32_t durationMs, std::string& outStatus);
 		bool_t Set_PatternBoxWindow(std::string_view ownerId, std::string_view occurrenceId,
@@ -615,6 +617,11 @@ namespace Client
 		void Synchronize_EditorFields();
 		void Render_Toolbar();
 		void Render_PatternsAndResources();
+		bool_t Render_AppendPatternButton();
+		void Render_PatternTree(bool_t resourcePicker);
+		void Render_PatternResources();
+		bool_t Resolve_PatternResourceAppend(std::string& ownerId, std::uint32_t& startMs,
+			std::uint32_t& durationMs, std::string& status) const;
 		void Select_Hierarchy(KOUKU_PATTERN_SELECTION kind, std::string_view id);
 		void Render_HierarchyDetails();
 		bool_t Render_PatternReferenceControls(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
@@ -785,7 +792,10 @@ namespace Client
 		std::optional<KOUKU_SAYDON_COMPOSITION_DOCUMENT> m_ExpandedPatternPreview;
 		std::string m_strSelectedPatternOccurrenceId;
 		std::string m_strParentReturnPatternId;
+		// Resource selection never changes the active Pattern, cursor or preview.
 		std::string m_strAppendPatternId;
+		bool_t m_bPatternResourceTabRequested = false;
+		COMPOSITION_WORKBENCH_VIEW_REQUEST m_WorkbenchViewRequest;
 		int32_t m_iPatternBoxStartMs = 0, m_iPatternBoxDurationMs = 1000;
 		bool_t m_bPatternBoxRepeat = false;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;

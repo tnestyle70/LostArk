@@ -44,6 +44,7 @@ public:
 	void Stop();
 	void Cancel();
 	HRESULT Queue_Frame();
+	void Set_BloomIntensity(f32_t value) { m_fBloomIntensity = value; }
 
 	uint64_t Get_CommittedGeneration() const
 	{
@@ -99,6 +100,7 @@ private:
 	string m_strPresentationId;
 	uint64_t m_iCommittedGeneration = 0u;
 	f32_t m_fElapsedSeconds = 0.f;
+	f32_t m_fBloomIntensity = 1.3f;
 	f32_t m_fMaximumEndSeconds = 0.f;
 	bool_t m_bPlaying = false;
 	Engine::PRESENTATION_FAILURE_SCOPE m_eLastFailureScope =

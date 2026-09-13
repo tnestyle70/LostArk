@@ -2,6 +2,11 @@
 """Validate the Effect Product source contract without producing artifacts."""
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
+
 
 import argparse
 import hashlib
@@ -826,7 +831,7 @@ def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> N
 def _validate_active_consumer_guard(root: Path) -> None:
     catalog_source = root / "Client/Private/Effect_Catalog.cpp"
     try:
-        catalog_text = catalog_source.read_text(encoding="utf-8-sig")
+        catalog_text = read_source_text(catalog_source, encoding="utf-8-sig")
     except OSError as exc:
         raise ContractError(f"active Effect catalog source is unavailable: {exc}") from exc
     load_marker = "bool_t Client::CEffectCatalog::Load"
@@ -843,8 +848,8 @@ def _validate_active_consumer_guard(root: Path) -> None:
     for relative in ("Client/Private/Effect_Tool.cpp",):
         path = root / relative
         try:
-            guarded_files[relative] = path.read_text(encoding="utf-8-sig")
-        except OSError as exc:
+            guarded_files[relative] = read_source_text(path, encoding="utf-8-sig")
+        except (OSError, ValueError, UnicodeError) as exc:
             raise ContractError(f"active Effect consumer is unavailable: {relative}: {exc}") from exc
 
     pipeline_root = root / "Tools/EffectPipeline"
@@ -861,7 +866,7 @@ def _validate_active_consumer_guard(root: Path) -> None:
             ):
                 continue
             try:
-                guarded_files[path.relative_to(root).as_posix()] = path.read_text(
+                guarded_files[path.relative_to(root).as_posix()] = read_source_text(path,
                     encoding="utf-8-sig"
                 )
             except OSError as exc:
@@ -1011,7 +1016,7 @@ def _validate_declared_draft_effects(
 
 def _read_effect_asset_payloads(path: Path, owner: str) -> set[str]:
     try:
-        text = path.read_text(encoding="utf-8-sig")
+        text = read_source_text(path, encoding="utf-8-sig")
     except (OSError, UnicodeError) as exc:
         raise ContractError(f"{owner} is unreadable: {path}: {exc}") from exc
     references: set[str] = set()

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
+
 
 from pathlib import Path
 import unittest
@@ -14,17 +19,15 @@ EFFECT_PLAYBACK_CPP = REPOSITORY_ROOT / "Client/Private/Effect_Playback.cpp"
 
 
 def function_slice(text: str, signature: str, next_signature: str) -> str:
-    start = text.index(signature)
-    end = text.index(next_signature, start + len(signature))
-    return text[start:end]
+    return cpp_function_definition(text, signature)
 
 
 class EffectToolSavedElementCloneTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        cls.cpp = read_source_text(EFFECT_TOOL_CPP, encoding="utf-8")
         cls.header = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
-        cls.codec = EFFECT_CODEC_CPP.read_text(encoding="utf-8")
+        cls.codec = read_source_text(EFFECT_CODEC_CPP, encoding="utf-8")
         cls.playback = EFFECT_PLAYBACK_CPP.read_text(encoding="utf-8")
 
     def test_duplicate_button_uses_all_marks_and_reports_the_count(self) -> None:
@@ -600,7 +603,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         header = (REPOSITORY_ROOT / "Client/Public/Effect_AuthoringDocument.h").read_text(
             encoding="utf-8-sig"
         )
-        renderer = (REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp").read_text(
+        renderer = read_source_text(REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp",
             encoding="utf-8-sig"
         )
         material = (REPOSITORY_ROOT / "Client/Public/Effect_MaterialTemplate.h").read_text(

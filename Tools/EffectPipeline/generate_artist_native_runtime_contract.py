@@ -1,5 +1,6 @@
 from pathlib import Path
 import argparse,json,hashlib,re,shutil
+from native_material_tables import read_material_source, write_material_source
 R=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description='Generate Artist material contracts and descriptors from the native runtime source receipt.')
 parser.add_argument('--source-dir',type=Path,default=R/'out/ArtistCoreRestore20260909')
@@ -8,7 +9,7 @@ parser.add_argument('--extend-existing',action='store_true',
 arguments=parser.parse_args()
 O=arguments.source_dir.resolve()
 rows=json.loads((O/'native_runtime_contract.json').read_text())['programs'];q=lambda x:json.dumps(x,ensure_ascii=False)
-source=(R/'Client/Public/Effect_DimensionMasterWRMaterial.h').read_text();head=source[:source.index('inline constexpr std::array<std::string_view,2>')];head=head.replace('DIMENSIONMASTER_WR','ARTIST').replace('DimensionMasterWR','Artist').replace('W/R unlit','Artist source')
+source=read_material_source(R/'Client/Public/Effect_DimensionMasterWRMaterial.h');head=source[:source.index('inline constexpr std::array<std::string_view,2>')];head=head.replace('DIMENSIONMASTER_WR','ARTIST').replace('DimensionMasterWR','Artist').replace('W/R unlit','Artist source')
 head=head.replace('    bool bMesh;','    bool bMesh;\n    bool bModelCue;')
 materials=[]
 for p in rows:
@@ -51,8 +52,9 @@ a=tail.index('NS_END');tail=tail[:a]+'''inline bool Has_ArtistModelCueMaterialCo
 NS_END
 '''
 header_path=R/'Client/Public/Effect_ArtistMaterial.h'
+original_header=read_material_source(header_path)
 if arguments.extend_existing:
-    existing=header_path.read_text(encoding='utf8')
+    existing=original_header
     supplied='(?:'+'|'.join(str(p['program']) for p in rows)+')'
     existing=re.sub(r'inline constexpr std::array<(?:std::string_view|ARTIST_PARAMETER_DESC|ARTIST_SWITCH_DESC),\d+> ARTIST_(?:TEXTURES|PARAMETERS|SWITCHES)_'+supplied+r' = \{\{.*?\}\};\n','',existing,flags=re.S)
     existing=re.sub(r'^    \{'+supplied+r'u,.*\n','',existing,flags=re.M)
@@ -68,7 +70,7 @@ if arguments.extend_existing:
 else:
     final=head+tail
     shutil.copy2(O/'Shader_EffectArtistNative.hlsli',R/'Client/Bin/ShaderFiles/Shader_EffectArtistNative.hlsli')
-header_path.write_text(final,encoding='utf8')
+write_material_source(header_path,final,expected_source=original_header)
 (O/'native_material_patch.json').write_text(json.dumps(dict(programs=materials),indent=2),encoding='utf8')
 (O/'native_header_contract.json').write_text(json.dumps(rows,indent=2))
 print('header/models',len(rows),'extendExisting',arguments.extend_existing)

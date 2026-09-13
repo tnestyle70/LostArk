@@ -56,6 +56,7 @@
       "tools": [
         "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
         "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+        "Tools/ModelAssetConverter/verify_dimensionmaster_summon_bind_pose.py",
         "Tools/RenderingPipeline/light_resources_pipeline.py"
       ],
       "outputs": [
@@ -369,6 +370,8 @@
         "Tools/GameplayPipeline/valtan_presentation_generation.py",
         "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
         "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+        "Tools/ModelAssetConverter/verify_dimensionmaster_summon_bind_pose.py",
+        "Tools/RenderingPipeline/light_resources_pipeline.py",
         "Tools/ValtanPipeline/ValtanCanonicalWriterAdmission.psm1",
         "Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py",
         "Tools/GameplayPipeline/Publish-FileTransaction.ps1"

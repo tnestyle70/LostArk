@@ -1289,6 +1289,22 @@ namespace LostArk::Shared
 	//player
 	struct PLAYER_SNAPSHOT
 	{
+		/* The server consumes MOVE sequences even when a gameplay lock or path
+		validation refuses the requested goal. This acknowledgement retires only
+		that input; it never authorizes a Client position as gameplay truth. */
+		std::uint32_t iLastProcessedMoveSequence = 0u;
+		// Effective metres/second, including the active stance speed scale.
+		float fMoveSpeed = 0.f;
+		// Ordinary click locomotion is currently permitted by the Server.
+		bool canPredictMove = false;
+		/* Only an active ordinary movement path is exposed. Forced movement and
+		Mario use their own Server state. The next waypoint is canonical zero
+		when there is no ordinary path; it is never a Client-authored position. */
+		bool hasMoveGoal = false;
+		float fMoveWaypointX = 0.f;
+		float fMoveWaypointY = 0.f;
+		float fMoveWaypointZ = 0.f;
+
 		NET_ENTITY_ID iNetEntityId =
 			INVALID_NET_ENTITY_ID;
 		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
