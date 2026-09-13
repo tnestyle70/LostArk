@@ -423,6 +423,27 @@
       }
     },
     {
+      "id": "vehicles.profiles",
+      "kind": "publisher",
+      "profiles": ["Core", "FullDiagnostic"],
+      "inputs": ["Data/Vehicles/VehicleProfiles.json"],
+      "tools": ["Tools/GameplayPipeline/Publish-VehicleProfiles.ps1"],
+      "outputs": ["Server/Bin/DataFiles/Vehicles/Vehicles.bootstrap"],
+      "requiredOutputPatterns": ["Server/Bin/DataFiles/Vehicles/Vehicles.bootstrap"],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/GameplayPipeline/Publish-VehicleProfiles.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
       "id": "valtan.rewards",
       "kind": "publisher",
       "profiles": ["Core", "FullDiagnostic"],

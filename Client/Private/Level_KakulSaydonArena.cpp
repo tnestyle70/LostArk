@@ -1,4 +1,4 @@
-#include "Level_KakulSaydonArena.h"
+﻿#include "Level_KakulSaydonArena.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -18,6 +18,7 @@
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "RuntimeAssetRoot.h"
 #include "Profiler.h"
 #include "KakulArenaHiddenPlacements.h"
 #include "KoukuSaydonPatternAuditionService.h"
@@ -1288,7 +1289,17 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_DeadScene(fTimeDelta);
 	Update_RaidClear(fTimeDelta);
 	if (nullptr != m_pMvpResultView)
+	{
+		/* The award page has no characters of its own: every panel is a host
+		   render target in mvp.gfx, so the page is handed whichever character
+		   each one should draw. Until a raid roster exists the only character
+		   here is the local one, and it fills all four so the column path gets
+		   exercised alongside the MVP panel. */
+		const shared_ptr<CCharacter> pStaged = m_Replication.Get_LocalCharacter();
+		for (size_t iStageSlot = 0; iStageSlot < 4u; ++iStageSlot)
+			m_pMvpResultView->Set_StageCharacter(iStageSlot, pStaged);
 		m_pMvpResultView->Update(fTimeDelta);
+	}
 
 #ifdef _DEBUG
 	/* Gate spawn replies arrive one per requested placement. They are Debug
@@ -2026,12 +2037,14 @@ namespace
 
 	Client::MVP_AWARD_PARTICIPANT Make_PreviewParticipant(
 		const wchar_t* const pName,
+		const char* const szNetworkClassId,
 		vector<Client::MVP_AWARD_CONTRIBUTION> Contributions,
 		vector<int32_t> Medals)
 	{
 		Client::MVP_AWARD_PARTICIPANT Participant;
 		Participant.strCharacterName = pName;
 		Participant.strGuildName = PREVIEW_GUILD;
+		Participant.strNetworkClassId = szNetworkClassId;
 		Participant.Contributions = std::move(Contributions);
 		Participant.Medals = std::move(Medals);
 		for (const Client::MVP_AWARD_CONTRIBUTION& Contribution
@@ -2054,20 +2067,20 @@ namespace
 	Client::MVP_RESULT_DATA Build_MvpResultPreviewData(const int32_t iGate)
 	{
 		const vector<Client::MVP_AWARD_PARTICIPANT> Participants = {
-			Make_PreviewParticipant(L"Test",
+			Make_PreviewParticipant(L"Test", "LANCE_MASTER",
 				{ { MVP_STAT_DAMAGE, 4250.f, 42.5f, L"42.5%" },
 				  { MVP_STAT_STAGGER, 1655.f, 33.1f, L"33.1%" },
 				  { MVP_STAT_COUNTER, 248.f, 24.8f, L"11" } },
 				{ 1, 9, 13 }),
-			Make_PreviewParticipant(L"Berserker",
+			Make_PreviewParticipant(L"Berserker", "WARLORD",
 				{ { MVP_STAT_DAMAGE, 2830.f, 28.3f, {} },
 				  { MVP_STAT_STAGGER, 1530.f, 30.6f, {} } },
 				{ 2, 9 }),
-			Make_PreviewParticipant(L"Bard",
+			Make_PreviewParticipant(L"Bard", "ARTIST",
 				{ { MVP_STAT_SUPPORT_DAMAGE, 2260.f, 22.6f, {} },
 				  { MVP_STAT_HEAL, 1230.f, 41.0f, {} } },
 				{ 14, 16, 17 }),
-			Make_PreviewParticipant(L"Sorceress",
+			Make_PreviewParticipant(L"Sorceress", "DIMENSIONMASTER",
 				{ { MVP_STAT_DAMAGE, 1520.f, 15.2f, {} },
 				  { MVP_STAT_BATTLE_ITEM, 210.f, 21.0f, {} } },
 				{ 5 }),
@@ -2109,6 +2122,20 @@ namespace
 	   HUD_RAIDCLEAR_TEXT_RECTS has no alpha field, so the caption is gated on at the frame
 	   its own alphaMultTerm leaves 0; its 126..136 scale-in is not reproduced yet. */
 	constexpr f32_t CLEAR_CAPTION_IN_FRAME = 126.f;
+
+	/* The document's first 91 frames are empty -- nothing in it has a non-zero alpha
+	until the white flash at frame 92 -- so the clear cue waits for that frame too.
+	Firing it when the clock starts put the whole 5.77s sound 2.3s ahead of the
+	picture. A delay on screen is a delay on the sound. */
+	constexpr f32_t CLEAR_FLASH_IN_FRAME = 92.f;
+	const wchar_t* const CLEAR_CUE =
+		L"Sound/UI/System/sys_raid_success1__457395004.wav";
+}
+
+void Client::CLevel_KakulSaydonArena::Render_MvpPortraits()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Render_Portraits();
 }
 
 int32_t Client::CLevel_KakulSaydonArena::Current_GateNumber() const
@@ -2131,6 +2158,15 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 	{
 		m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_Frame", true);
 		m_pRaidClearView->Play_KeyframeAnimation("RaidClear_Kouku_Frame", "intro");
+	}
+	/* epicgatecommonclear.gfx embeds no audio, so the cue is the host's to fire, and
+	it belongs on the flash rather than on the clock. Same frame-crossing test the
+	document's own end uses below. */
+	if (fPrevious * CLEAR_FPS < CLEAR_FLASH_IN_FRAME && fFrame >= CLEAR_FLASH_IN_FRAME)
+	{
+		const std::filesystem::path SoundPath = CRuntimeAssetRoot::Resolve(CLEAR_CUE);
+		if (!SoundPath.empty())
+			CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f);
 	}
 	m_pRaidClearView->Set_SlotVisible("RaidClear_Kouku_Frame", isShowing);
 	/* Authoring-only marker; the caption itself is drawn from the text pass. */
@@ -2157,11 +2193,16 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 	}
 }
 
+void Client::CLevel_KakulSaydonArena::Trigger_RaidClear()
+{
+	m_fRaidClearElapsedSeconds = 0.f;
+}
+
 void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()
 {
 	if (nullptr != m_pMvpResultView)
 		m_pMvpResultView->Hide();
-	m_fRaidClearElapsedSeconds = 0.f;
+	Trigger_RaidClear();
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_Show_MvpResult()

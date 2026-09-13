@@ -29,4 +29,12 @@ namespace LostArk::Shared
 
 	inline constexpr COMBAT_OBJECT_ID
 		INVALID_COMBAT_OBJECT_ID = 0;
+
+	// EFTable_Vehicle primary key. The Server admits only ids its published
+	// vehicle bootstrap carries; zero means the player is on foot.
+	using VEHICLE_ID =
+		std::uint32_t;
+
+	inline constexpr VEHICLE_ID
+		INVALID_VEHICLE_ID = 0;
 }

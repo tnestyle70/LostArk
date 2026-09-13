@@ -165,6 +165,11 @@ namespace
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
 			snapshot.iCurrentMadness <= snapshot.iMaximumMadness &&
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
+			(LostArk::Shared::INVALID_VEHICLE_ID == snapshot.iVehicleId ||
+			 (snapshot.iCurrentHp != 0u &&
+			  LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
+			  LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL == snapshot.eMadnessForm &&
+			  !snapshot.isPatternBound && snapshot.iMarioStage == 0u)) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(snapshot.eMechanicCardSymbol) &&
 			LostArk::Shared::Is_Valid_MechanicCardColor(snapshot.eMechanicCardColor) &&
 			((LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == snapshot.eMechanicCardSymbol) ==
@@ -2507,6 +2512,63 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_SET_VEHICLE_RIDING& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U32(message.iVehicleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_SET_VEHICLE_RIDING& message)
+{
+	C2S_SET_VEHICLE_RIDING decoded{};
+	std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U32(decoded.iVehicleId))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_SET_VEHICLE_RIDING_RESULT& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= VEHICLE_RIDING_RESULT::END)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U32(message.iActiveVehicleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_SET_VEHICLE_RIDING_RESULT& message)
+{
+	S2C_SET_VEHICLE_RIDING_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result) || !reader.Read_U32(decoded.iActiveVehicleId))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<VEHICLE_RIDING_RESULT>(result);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= VEHICLE_RIDING_RESULT::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_INTERACTION_SLOT& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
@@ -2865,6 +2927,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(player.fMoveWaypointX);
 		writer.Write_F32(player.fMoveWaypointY);
 		writer.Write_F32(player.fMoveWaypointZ);
+		writer.Write_U32(player.iVehicleId);
     }
 	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
 	{
@@ -3169,7 +3232,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawHasMoveGoal) || rawHasMoveGoal > 1u ||
 			!reader.Read_F32(player.fMoveWaypointX) ||
 			!reader.Read_F32(player.fMoveWaypointY) ||
-			!reader.Read_F32(player.fMoveWaypointZ))
+			!reader.Read_F32(player.fMoveWaypointZ) ||
+			!reader.Read_U32(player.iVehicleId))
 		{
 			return false;
 		}

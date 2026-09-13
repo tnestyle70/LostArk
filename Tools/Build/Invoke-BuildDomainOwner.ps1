@@ -76,6 +76,7 @@ else {
         'world.destruction',
         'gameplay.balance',
         'items.catalog',
+        'vehicles.profiles',
         'valtan.rewards'
     )
 }

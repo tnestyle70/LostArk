@@ -11,4 +11,5 @@ namespace LostArk::Server
 	int Run_ServerBingoContractTests();
 	int Run_ServerKoukuSupportSurfaceContractTests();
 	int Run_ServerKoukuObjectOverlapContractTests();
+	int Run_ServerVehicleRidingContractTests();
 }

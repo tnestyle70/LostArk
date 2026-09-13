@@ -211,6 +211,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iCurrentMadness = snapshot.iCurrentMadness;
 	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
 	m_Player.eMadnessForm = snapshot.eMadnessForm;
+	m_Player.iVehicleId = snapshot.iVehicleId;
 	m_Player.eKoukuHudMode = snapshot.eKoukuHudMode;
 	m_KoukuGimmick = {};
 	m_KoukuGimmick.isValid = 0u != snapshot.iMaximumMadness;

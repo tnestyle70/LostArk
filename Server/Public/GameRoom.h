@@ -6,6 +6,7 @@
 #include "WorldBootstrap.h"
 #include "GameplayCatalog.h"
 #include "ItemCatalog.h"
+#include "VehicleCatalog.h"
 #include "ValtanClearRewards.h"
 #include "PlayerSkillSystem.h"
 #include "CombatObjectRuntime.h"
@@ -193,6 +194,7 @@ namespace LostArk::Server
 		friend int Run_ServerKoukuSupportSurfaceContractTests();
 		friend int Run_ServerCardMazeContractTests();
         friend int Run_ServerKoukuObjectOverlapContractTests();
+		friend int Run_ServerVehicleRidingContractTests();
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -389,6 +391,22 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT Apply_DebugMadnessForm(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request);
+		/* H key riding toggle for this session's player. The verdict is sent
+		back; the ridden vehicle itself rides the world snapshot. */
+		void Handle_SetVehicleRiding(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_SET_VEHICLE_RIDING& request);
+		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT Apply_SetVehicleRiding(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_SET_VEHICLE_RIDING& request);
+		/* True while nothing the player is doing forbids a vehicle underneath. */
+		bool Can_RideVehicle(const SERVER_PLAYER& player) const;
+		/* Metres per second the player walks at: the ridden vehicle's speed, or
+		the class speed scaled by its held stance. */
+		float Resolve_PlayerMoveSpeed(const SERVER_PLAYER& player) const;
+		/* Dismounts every player the world, catalog or current state no longer
+		lets ride. Runs once per tick before the snapshot is committed. */
+		void Enforce_VehicleRidingState();
 		/* One quick-slot press while this session's player shows an interaction
 		HUD. DANCE answers the open pose window; the other modes only record the
 		press until their skills own a Server judgement. */
@@ -1371,6 +1389,7 @@ namespace LostArk::Server
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalogGenerations m_GameplayCatalog;
 		CItemCatalog m_ItemCatalog;
+		CVehicleCatalog m_VehicleCatalog;
 		CValtanClearRewards m_ValtanClearRewards;
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;

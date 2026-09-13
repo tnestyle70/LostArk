@@ -2965,6 +2965,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM;
 		command.DebugSetMadnessForm = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_SET_VEHICLE_RIDING)
+	{
+		C2S_SET_VEHICLE_RIDING request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_SET_VEHICLE_RIDING");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::SET_VEHICLE_RIDING;
+		command.SetVehicleRiding = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_INTERACTION_SLOT)
 	{
 		C2S_INTERACTION_SLOT request{};

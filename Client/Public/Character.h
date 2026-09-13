@@ -187,6 +187,10 @@ public:
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
+	/* Replication hands over the replicated vehicle. Zero dismounts. A vehicle
+	whose presentation is not admitted leaves the character on foot and logs
+	once; gameplay truth stays on the Server either way. */
+	void Apply_NetworkVehicle(std::uint32_t vehicleId);
 	/* Replication hands over the replicated owner presentation while the Server
 	   reports GRABBED. The character keeps only a weak reference and the admitted
 	   grip; every Update re-resolves the socket so a vanished owner falls back to
@@ -212,6 +216,11 @@ public:
 
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
+	/* Shows or hides every weapon part this class carries. Weapons are their own part
+	list, outside the equipment visibility rule, so this is what the character-creation
+	preview already used to strip them; the MVP award page needs the same thing without
+	the rest of that preview (retail poses all four winners unarmed but in their gear). */
+	void Set_WeaponPartsVisible(bool_t isVisible);
 	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
 	bool_t Try_SampleTargetGround(
 		f32_t x,
@@ -380,6 +389,13 @@ private:
 	f32_t m_fPendingIdleSeconds = { -1.f };
 	wstring_t m_strNavigationPrototypeTag;
 	bool_t m_isNetworkPresentationHidden = false;
+	std::uint32_t m_iVehicleId = 0u;
+	std::uint32_t m_iRejectedVehicleId = 0u;
+	shared_ptr<class CPart_Vehicle> m_pVehiclePart;
+	// Vehicle part parent: the ground transform without the seat lift or class scale.
+	float4x4_t m_VehicleRootMatrix = {};
+	// World-space lift from the ground transform to the vehicle seat bone.
+	float3_t m_vVehicleSeatOffset = {};
 
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
@@ -521,6 +537,7 @@ private:
 	/* IDLE and RUN can belong to the current stance instead of the class. Every
 	other state resolves straight off the spec. */
 	const char_t* Resolve_LocomotionClip(CHARACTER_ANIM eAnim) const;
+	const VEHICLE_RIDER_ENTRY* Find_VehicleRider() const;
 	bool_t Load_ClipChains(bool_t reloadSource = false);
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;

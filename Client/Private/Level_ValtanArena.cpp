@@ -1813,13 +1813,7 @@ namespace
 void CLevel_ValtanArena::Trigger_RaidClear()
 {
 	m_fRaidClearElapsedSeconds = 0.f;
-	/* Real cue name confirmed in the extracted sound resource pool
-	(D:\...\Sound\UI\System\sys_raid_success1__457395004.wav) -- epicgatecommonclear.gfx itself
-	carries no embedded sound (Scaleform UI movies play native-triggered cues, not baked audio),
-	so this is played from here rather than anywhere inside m_pRaidClearView. */
-	const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-		L"Sound/UI/System/sys_raid_success1__457395004.wav");
-	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+	m_bRaidClearCuePlayed = false;
 }
 
 void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
@@ -1855,6 +1849,25 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 
 	if (m_fRaidClearElapsedSeconds >= 0.f)
 		m_fRaidClearElapsedSeconds += fTimeDelta;
+
+	/* Real cue name confirmed in the extracted sound resource pool
+	(Sound/UI/System/sys_raid_success1__457395004.wav) -- epicgatecommonclear.gfx itself
+	carries no embedded sound (Scaleform UI movies play native-triggered cues, not baked
+	audio), so this is played from here rather than anywhere inside m_pRaidClearView.
+
+	It waits for the reveal instead of firing with the clock: the overlay's first
+	RAIDCLEAR_REVEAL_SECONDS are empty, so starting the 5.77s cue at zero ran it well
+	ahead of the picture. The test-mode branch above jumps straight to
+	RAIDCLEAR_TOTAL_SECONDS, which is why this is a latch rather than a crossing -- that
+	jump must not fire a cue for a celebration that is already over. */
+	if (!m_bRaidClearCuePlayed && m_fRaidClearElapsedSeconds >= RAIDCLEAR_REVEAL_SECONDS &&
+		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS)
+	{
+		m_bRaidClearCuePlayed = true;
+		const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+			L"Sound/UI/System/sys_raid_success1__457395004.wav");
+		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+	}
 
 	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
 		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
