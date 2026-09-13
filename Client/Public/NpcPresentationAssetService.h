@@ -20,6 +20,12 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext,
 		uint32_t iLevelIndex,
 		std::string_view archetypeId);
+	/* Registers the shared CNpc GameObject prototype once per level for a body
+	that is not an NpcCatalog archetype (a vehicle previewed in a tool). */
+	static HRESULT Ensure_ObjectPrototype(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint32_t iLevelIndex);
 	static bool_t Is_Ready(
 		uint32_t iLevelIndex,
 		std::string_view archetypeId);

@@ -1469,6 +1469,26 @@ bool CNetworkManager::Send_DebugSetMadnessForm(
 		writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
+bool CNetworkManager::Send_SetVehicleRiding(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::VEHICLE_ID vehicleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_SET_VEHICLE_RIDING message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.iVehicleId = vehicleId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_SET_VEHICLE_RIDING,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_InteractionSlot(std::uint32_t sequence,
  LostArk::Shared::INTERACTION_SLOT slot)
 {
@@ -1562,6 +1582,16 @@ bool CNetworkManager::Try_Consume_DebugMadnessFormResult(
 		return false;
 	result = m_DebugMadnessFormResults.front();
 	m_DebugMadnessFormResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_VehicleRidingResult(
+	LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result)
+{
+	if (m_VehicleRidingResults.empty())
+		return false;
+	result = m_VehicleRidingResults.front();
+	m_VehicleRidingResults.pop_front();
 	return true;
 }
 
@@ -2352,6 +2382,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugMarioJumpResults.clear();
 	m_DebugWorldPlaybackResults.clear();
 	m_DebugMadnessFormResults.clear();
+	m_VehicleRidingResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
@@ -3600,6 +3631,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_DebugMadnessFormResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
+	{
+		S2C_SET_VEHICLE_RIDING_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_VehicleRidingResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_VehicleRidingResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:

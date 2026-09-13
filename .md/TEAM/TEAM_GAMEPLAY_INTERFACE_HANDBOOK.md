@@ -105,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v81 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v82 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -269,6 +269,7 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 | T | `34640` | 맹룡난무 사용 의도 제출 |
 | V | `34600` | 은하유성탄 사용 의도 제출 |
 | Alt+V | `34620` | 은하비섬창 사용 의도 제출 |
+| H | `vehicleId` | 탈것 탑승/하차 토글. `C2S_SET_VEHICLE_RIDING`을 제출하고 결과는 `PLAYER_SNAPSHOT.iVehicleId`로 반영 |
 
 `CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Controller는 Transform을 직접 변경하거나 `Play_Skill`을 호출하지 않는다. 일반 이동 명령의 typed sink 송신이 성공하면 `CCharacter::Predict_NetworkMoveGoal(sequence, goal)`로 자기 캐릭터의 표시 예측을 요청한다.
 
@@ -324,7 +325,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 81의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 82의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -427,7 +428,7 @@ Client는 기존 IDLE/CHASE/ATTACK/DEAD snapshot으로 catalog의 원본 clip을
 피해/사망은 ServerCombatHitRuntime에서 확정하고 W는 Q 피해를 공유하지 않는다.
 Mario modelYawDegrees=-90은 모델 +X 앞축을 Server yaw의 +Z 앞축으로 정렬한다.
 이는 원본 AI·표적 집계·폭탄 피해의 복원 완료를 의미하지 않는다.
-Server와 Client를 protocol 81으로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
+Server와 Client를 protocol 82로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
 
 ## 5. Character와 Animation
 
@@ -865,7 +866,7 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 81으로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol 82로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
 `iMarioCurseReleasedMask`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다. 두 기능이 별도 branch에서
 각각 79를 사용했으므로 두 종류의 v79 및 이전73/77/78 실행 파일과 혼용하지 않는다.

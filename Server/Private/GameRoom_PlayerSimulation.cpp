@@ -804,7 +804,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 					(yawDifference > 0.f ? maxYawStep : -maxYawStep));
 			}
 			const float moveDistance = (std::min)(
-				player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player) *
+				Resolve_PlayerMoveSpeed(player) *
 					fixedDeltaSeconds,
 				distance);
 			const float moveRatio = moveDistance / distance;

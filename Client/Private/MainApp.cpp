@@ -9337,6 +9337,27 @@ void CMainApp::RenderDeveloperTools()
 		}
 	}
 
+	if (ImGui::CollapsingHeader("Vehicle Riding (Debug)"))
+	{
+		ImGui::TextDisabled(
+			"H mounts the selected vehicle. A class without its rider pose uses the first catalog vehicle.");
+		const HUD_PLAYER_STATE& ridingPlayer = CCombatHUDViewModel::Get().Get_Player();
+		const std::uint32_t preferredVehicleId = CPlayerController::Get_PreferredVehicleId();
+		if (ImGui::RadioButton("First available##VehicleRiding", 0u == preferredVehicleId))
+			CPlayerController::Set_PreferredVehicleId(0u);
+		for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
+		{
+			const bool_t hasRider = ridingPlayer.isValid &&
+				nullptr != vehicle.Find_Rider(ridingPlayer.eCharacterClass);
+			const std::string label = vehicle.archetypeId + "  (" +
+				std::to_string(vehicle.vehicleId) + ")" + (hasRider ? "" : "  - no rider pose") +
+				"##VehicleRiding" + std::to_string(vehicle.vehicleId);
+			if (ImGui::RadioButton(label.c_str(), vehicle.vehicleId == preferredVehicleId))
+				CPlayerController::Set_PreferredVehicleId(vehicle.vehicleId);
+		}
+		ImGui::TextDisabled("Riding now: %u", ridingPlayer.iVehicleId);
+	}
+
 	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
 	{
 		ImGui::TextDisabled(

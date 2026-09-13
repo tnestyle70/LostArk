@@ -1442,6 +1442,14 @@ HRESULT CModel::Bind_SourceCharacter(shared_ptr<CShader> shader, uint32_t meshIn
     return m_Materials[materialIndex]->Bind_SourceCharacter(shader);
 }
 
+HRESULT CModel::Bind_SourceCharacterForwardLight(shared_ptr<CShader> shader, uint32_t meshIndex)
+{
+    if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
+    const uint32_t materialIndex = m_Meshes[meshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size() || !m_Materials[materialIndex]) return E_INVALIDARG;
+    return m_Materials[materialIndex]->Bind_SourceCharacterForwardLight(shader);
+}
+
 HRESULT CModel::Bind_SourceSpecialSurface(shared_ptr<CShader> shader, uint32_t meshIndex)
 {
     if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
@@ -1691,7 +1699,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 84u || (source.program > 65u && source.program < 80u) ||
+            if (source.program == 0u || source.program > 88u || (source.program > 65u && source.program < 80u) ||
                 (mask == 0u && source.program != 64u && source.program != 65u) ||
                 ((source.program == 64u || source.program == 65u) && mask != 0u) || source.requiredExtraUVMask > 3u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||

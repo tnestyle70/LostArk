@@ -4,6 +4,7 @@
 
 #include "PlayerController.h"
 
+#include "ActorCatalog.h"
 #include "Character.h"
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
@@ -125,6 +126,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iNextMoveSequence = 1;
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
+	m_wasVehicleKeyDown = false;
 	m_wasKeyDown.fill(false);
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
@@ -167,6 +169,17 @@ void Client::CPlayerController::Update(
 	(void)debugPlacementEnabled;
 #endif
 	const bool_t marioControlsActive = Update_MarioControls(gameplayCommandsEnabled);
+	{
+		const bool_t useRawVehicleKeyboard =
+			m_allowCapturedKeyboardInput && GetForegroundWindow() == g_hWnd;
+		const bool_t vehicleInputAllowed = gameplayCommandsEnabled && !marioControlsActive &&
+			!m_GroundTargeting.Is_Active() &&
+			!Is_PlayerControlCaptured(CCombatHUDViewModel::Get().Get_Player()) &&
+			GetForegroundWindow() == g_hWnd &&
+			!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive() &&
+			(useRawVehicleKeyboard || !CGameInstance::Get().IsKeyboardInputBlocked());
+		Update_VehicleRiding(vehicleInputAllowed, useRawVehicleKeyboard);
+	}
 	/* One-shot, consumed here regardless of which branch below actually
 	runs this frame -- see Suppress_MoveClickThisFrame's own comment. */
 	const bool_t isMoveClickSuppressed = m_isMoveClickSuppressed;
@@ -371,8 +384,9 @@ void Client::CPlayerController::Update(
 		LostArk::Shared::INVALID_SKILL_ID;
 	LostArk::Shared::SKILL_ID releasedSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
+	const bool_t isMounted = 0u != CCombatHUDViewModel::Get().Get_Player().iVehicleId;
 	Poll_SkillSlots(
-		suppressKeyboard || !gameplayCommandsEnabled,
+		suppressKeyboard || !gameplayCommandsEnabled || isMounted,
 		useRawKeyboard,
 		character,
 		requestedSkillId,
@@ -507,7 +521,7 @@ void Client::CPlayerController::Update(
 		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
 
 	const std::uint8_t estherSlot = Poll_EstherSlot(
-		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
+		suppressKeyboard || !gameplayCommandsEnabled || isMounted, useRawKeyboard);
 	if (0 != estherSlot && nullptr != character && nullptr != commandSink)
 	{
 		const shared_ptr<CTransform> transform = character->Get_Transform();
@@ -735,6 +749,94 @@ std::uint8_t Client::CPlayerController::Poll_EstherSlot(
 	return pressedSlot;
 }
 
+namespace
+{
+	void Log_VehicleRiding(const char* status)
+	{
+		OutputDebugStringA((std::string("[Client][VehicleRiding] ") + status + "\n").c_str());
+	}
+}
+
+void Client::CPlayerController::Update_VehicleRiding(
+	const bool_t inputAllowed,
+	const bool_t useRawKeyboard)
+{
+	using namespace LostArk::Shared;
+	S2C_SET_VEHICLE_RIDING_RESULT result{};
+	while (nullptr != m_pCommandSink && m_pCommandSink->Consume_VehicleRidingResult(result))
+	{
+		if (0u == m_pendingVehicleRidingSequence ||
+			result.iRequestSequence != m_pendingVehicleRidingSequence)
+			continue;
+		m_pendingVehicleRidingSequence = 0u;
+		switch (result.eResult)
+		{
+		case VEHICLE_RIDING_RESULT::ACCEPTED:
+			Log_VehicleRiding(0u == result.iActiveVehicleId ? "Dismounted." : "Mounted."); break;
+		case VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED:
+			Log_VehicleRiding("Vehicles cannot be ridden in this area."); break;
+		case VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE:
+			Log_VehicleRiding("Cannot mount right now."); break;
+		case VEHICLE_RIDING_RESULT::REJECTED_UNKNOWN_VEHICLE:
+			Log_VehicleRiding("The Server does not know this vehicle."); break;
+		case VEHICLE_RIDING_RESULT::REJECTED_SAME_STATE:
+			break;
+		default:
+			Log_VehicleRiding("The Server rejected the riding request."); break;
+		}
+	}
+	const auto now = std::chrono::steady_clock::now();
+	if (0u != m_pendingVehicleRidingSequence &&
+		now - m_vehicleRidingSentAt > std::chrono::seconds(5))
+	{
+		m_pendingVehicleRidingSequence = 0u;
+	}
+
+	const int8_t state = m_CaptureInputGate.Is_Blocked(DIK_H) ?
+		static_cast<int8_t>(0) :
+		(useRawKeyboard ?
+			CGameInstance::Get().Get_DIKeyStateRaw(DIK_H) :
+			CGameInstance::Get().Get_DIKeyState(DIK_H));
+	const bool_t isDown = 0 != (state & 0x80);
+	const bool_t pressed = inputAllowed && isDown && !m_wasVehicleKeyDown;
+	m_wasVehicleKeyDown = isDown;
+	if (!pressed || 0u != m_pendingVehicleRidingSequence || nullptr == m_pCommandSink)
+		return;
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const shared_ptr<CCharacter> character = m_pLocalCharacter.lock();
+	if (!player.isValid || player.isPreview || nullptr == character)
+		return;
+	VEHICLE_ID requested = INVALID_VEHICLE_ID;
+	if (INVALID_VEHICLE_ID == player.iVehicleId)
+	{
+		const VEHICLE_ACTOR_ENTRY* preferred = CActorCatalog::Find_Vehicle(s_iPreferredVehicleId);
+		if (nullptr != preferred && nullptr != preferred->Find_Rider(character->Get_CharacterClass()))
+			requested = preferred->vehicleId;
+		for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
+		{
+			if (INVALID_VEHICLE_ID != requested)
+				break;
+			if (nullptr != vehicle.Find_Rider(character->Get_CharacterClass()))
+				requested = vehicle.vehicleId;
+		}
+		if (INVALID_VEHICLE_ID == requested)
+		{
+			Log_VehicleRiding("No vehicle has a riding pose for this class yet.");
+			return;
+		}
+	}
+	if (!m_pCommandSink->Request_SetVehicleRiding(m_nextVehicleRidingSequence, requested))
+	{
+		Log_VehicleRiding("Could not send the riding request.");
+		return;
+	}
+	m_pendingVehicleRidingSequence = m_nextVehicleRidingSequence;
+	m_vehicleRidingSentAt = now;
+	if (0u == ++m_nextVehicleRidingSequence)
+		m_nextVehicleRidingSequence = 1u;
+}
+
 bool_t Client::CPlayerController::Poll_InteractKey(
 	const bool_t isKeyboardBlocked,
 	const bool_t useRawKeyboard)
@@ -825,6 +927,7 @@ void Client::CPlayerController::Set_CommandSink(
 	if (m_pCommandSink != commandSink)
 	{
 		m_iLastMarioMoveDirection = 0;
+		m_pendingVehicleRidingSequence = 0u;
 	}
 #ifdef _DEBUG
 	if (m_pCommandSink != commandSink)

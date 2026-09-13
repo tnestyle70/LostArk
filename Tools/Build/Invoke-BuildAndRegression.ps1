@@ -497,6 +497,7 @@ try {
         $missingRuntimeInputs = @(
             'Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap',
             'Server/Bin/DataFiles/Items/Items.bootstrap',
+            'Server/Bin/DataFiles/Vehicles/Vehicles.bootstrap',
             'Server/Bin/DataFiles/World/BERN.worldbootstrap',
             'Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap',
             'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap',

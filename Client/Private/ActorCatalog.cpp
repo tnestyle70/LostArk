@@ -23,6 +23,8 @@ namespace
 	ModelMaterials g_BossModelMaterials;
 	std::vector<NPC_ACTOR_ENTRY> g_Npcs;
 	std::vector<MONSTER_ACTOR_ENTRY> g_Monsters;
+	std::vector<VEHICLE_ACTOR_ENTRY> g_Vehicles;
+	ModelMaterials g_VehicleModelMaterials;
 	std::string g_Status = "Actor catalog is not initialized.";
 	bool_t g_isInitialized = false;
 
@@ -835,6 +837,89 @@ namespace
 		g_Monsters = std::move(staged);
 		return !g_Monsters.empty();
 	}
+
+	bool_t ParseVehicles(const DATA_JSON_VALUE& root)
+	{
+		const DATA_JSON_VALUE* pSchema = root.Find("schema");
+		const DATA_JSON_VALUE* pVersion = root.Find("formatVersion");
+		const DATA_JSON_VALUE* pEntries = root.Find("vehicles");
+		if (3u != root.Get_Object().size() ||
+			nullptr == pSchema || !pSchema->Is_String() ||
+			pSchema->Get_String() != "lostark.vehicle-catalog" ||
+			nullptr == pVersion || !pVersion->Is_Number() ||
+			pVersion->Get_Number() != 1.0 ||
+			nullptr == pEntries || !pEntries->Is_Array())
+		{
+			return false;
+		}
+
+		std::set<std::uint32_t> vehicleIds;
+		std::set<std::string> archetypes;
+		std::vector<VEHICLE_ACTOR_ENTRY> staged;
+		ModelMaterials stagedMaterials;
+		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
+		{
+			if (!value.Is_Object() || 10u != value.Get_Object().size())
+				return false;
+			VEHICLE_ACTOR_ENTRY entry;
+			const DATA_JSON_VALUE* pRiders = value.Find("riders");
+			if (!ReadRequiredU32(value, "vehicleId", entry.vehicleId) || 0u == entry.vehicleId ||
+				!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
+				!IsStableId(entry.archetypeId) ||
+				!ReadRequiredString(value, "modelAssetId", entry.modelAssetId) ||
+				!IsResourceId(entry.modelAssetId) ||
+				!ReadRequiredNumber(value, "modelPreScale", entry.modelPreScale) ||
+				entry.modelPreScale <= 0.f || entry.modelPreScale > 1.f ||
+				!ReadRequiredString(value, "seatBone", entry.seatBone) ||
+				!ReadRequiredString(value, "vehicleIdleClip", entry.vehicleIdleClip) ||
+				!ReadRequiredString(value, "vehicleRunClip", entry.vehicleRunClip) ||
+				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
+				entry.runtimeStatus != "supported" ||
+				nullptr == pRiders || !pRiders->Is_Array() ||
+				pRiders->Get_Array().empty() || pRiders->Get_Array().size() > 16u ||
+				nullptr == value.Find("modelMaterialOverrides") ||
+				!vehicleIds.insert(entry.vehicleId).second ||
+				!archetypes.insert(entry.archetypeId).second)
+			{
+				return false;
+			}
+			std::set<LostArk::Shared::CHARACTER_CLASS_ID> riderClasses;
+			for (const DATA_JSON_VALUE& riderValue : pRiders->Get_Array())
+			{
+				VEHICLE_RIDER_ENTRY rider;
+				std::string characterClass;
+				if (!riderValue.Is_Object() || 3u != riderValue.Get_Object().size() ||
+					!ReadRequiredString(riderValue, "characterClass", characterClass) ||
+					!ReadRequiredString(riderValue, "idleClip", rider.idleClip) ||
+					!ReadRequiredString(riderValue, "runClip", rider.runClip))
+				{
+					return false;
+				}
+				rider.characterClass = ParseClass(characterClass);
+				if (LostArk::Shared::CHARACTER_CLASS_ID::END == rider.characterClass ||
+					!riderClasses.insert(rider.characterClass).second)
+				{
+					return false;
+				}
+				entry.riders.push_back(std::move(rider));
+			}
+			if (!ParseModelMaterialOverrides(value, stagedMaterials))
+				return false;
+			staged.push_back(std::move(entry));
+		}
+		for (const auto& [asset, materials] : stagedMaterials)
+		{
+			(void)materials;
+			if (std::none_of(staged.begin(), staged.end(),
+				[&asset](const VEHICLE_ACTOR_ENTRY& vehicle) { return vehicle.modelAssetId == asset; }))
+			{
+				return false;
+			}
+		}
+		g_Vehicles = std::move(staged);
+		g_VehicleModelMaterials = std::move(stagedMaterials);
+		return !g_Vehicles.empty();
+	}
 }
 
 bool_t Client::CActorCatalog::Initialize()
@@ -845,18 +930,22 @@ bool_t Client::CActorCatalog::Initialize()
 	DATA_JSON_VALUE bosses;
 	DATA_JSON_VALUE npcs;
 	DATA_JSON_VALUE monsters;
+	DATA_JSON_VALUE vehicles;
 	if (!ReadDocument(L"Actors/CharacterCatalog.json", characters) ||
 		!ReadDocument(L"Actors/BossCatalog.json", bosses) ||
 		!ReadDocument(L"Actors/NpcCatalog.json", npcs) ||
 		!ReadDocument(L"Actors/MonsterCatalog.json", monsters) ||
+		!ReadDocument(L"Actors/VehicleCatalog.json", vehicles) ||
 		!ParseCharacters(characters) || !ParseBosses(bosses) ||
-		!ParseNpcs(npcs) || !ParseMonsters(monsters))
+		!ParseNpcs(npcs) || !ParseMonsters(monsters) || !ParseVehicles(vehicles))
 	{
 		g_Characters.clear();
 		g_Bosses.clear();
 		g_BossModelMaterials.clear();
 		g_Npcs.clear();
 		g_Monsters.clear();
+		g_Vehicles.clear();
+		g_VehicleModelMaterials.clear();
 		g_Status = "Actor catalog contract mismatch.";
 		return false;
 	}
@@ -918,7 +1007,16 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
     else
     {
         const auto found = g_BossModelMaterials.find(asset);
-        if (found != g_BossModelMaterials.end()) staged.materialOverrides = found->second;
+        const auto vehicle = g_VehicleModelMaterials.find(asset);
+        if (found != g_BossModelMaterials.end() && vehicle != g_VehicleModelMaterials.end())
+        {
+            outStatus = "Model material ownership is ambiguous: " + asset;
+            return false;
+        }
+        if (found != g_BossModelMaterials.end())
+            staged.materialOverrides = found->second;
+        else if (vehicle != g_VehicleModelMaterials.end())
+            staged.materialOverrides = vehicle->second;
     }
 	outDesc = std::move(staged);
 	outStatus.clear();
@@ -977,6 +1075,34 @@ const std::vector<Client::NPC_ACTOR_ENTRY>& Client::CActorCatalog::Get_Npcs()
 {
 	Initialize();
 	return g_Npcs;
+}
+
+const Client::VEHICLE_ACTOR_ENTRY* Client::CActorCatalog::Find_Vehicle(
+	const std::uint32_t vehicleId)
+{
+	if (!Initialize())
+		return nullptr;
+	for (const VEHICLE_ACTOR_ENTRY& entry : g_Vehicles)
+		if (entry.vehicleId == vehicleId)
+			return &entry;
+	return nullptr;
+}
+
+const Client::VEHICLE_ACTOR_ENTRY* Client::CActorCatalog::Find_VehicleByArchetype(
+	const std::string_view archetypeId)
+{
+	if (!Initialize())
+		return nullptr;
+	for (const VEHICLE_ACTOR_ENTRY& entry : g_Vehicles)
+		if (entry.archetypeId == archetypeId)
+			return &entry;
+	return nullptr;
+}
+
+const std::vector<Client::VEHICLE_ACTOR_ENTRY>& Client::CActorCatalog::Get_Vehicles()
+{
+	Initialize();
+	return g_Vehicles;
 }
 
 const Client::MONSTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Monster(

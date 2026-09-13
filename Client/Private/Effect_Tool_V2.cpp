@@ -22,6 +22,7 @@
 #include "Model.h"
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
+#include "VehiclePresentationAssetService.h"
 #include "Part_Body.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -1871,6 +1872,8 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		bSpawned = Attach_ArenaBossTarget(strArchetypeId, vPosition);
 	else if (const KAKUL_PREVIEW_TARGET* pKakul = Find_KakulPreviewTarget(strArchetypeId))
 		bSpawned = Spawn_PreviewBodyTarget(pKakul->pAssetName, pKakul->pBindingArchetypeId, vPosition);
+	else if (nullptr != CActorCatalog::Find_VehicleByArchetype(strArchetypeId))
+		bSpawned = Spawn_VehicleTarget(strArchetypeId, vPosition);
 	else
 		bSpawned = Spawn_NpcTarget(strArchetypeId, vPosition);
 	if (!bSpawned)
@@ -2006,6 +2009,64 @@ bool_t Client::CEffect_Tool_V2::Spawn_NpcTarget(
 	const auto Strike = pActor->actionClips.find("esther.strike");
 	if (Strike != pActor->actionClips.end() && !Strike->second.empty())
 		Play_TargetClip(Strike->second.front().c_str(), m_bTargetClipLoop);
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Spawn_VehicleTarget(
+	const std::string& strArchetypeId,
+	const float3_t& vPosition)
+{
+	CGameInstance& GameInstance = CGameInstance::Get();
+	const uint32_t iLevel = GameInstance.Get_CurrentLevelID();
+	const VEHICLE_ACTOR_ENTRY* pVehicle = CActorCatalog::Find_VehicleByArchetype(strArchetypeId);
+	if (nullptr == pVehicle)
+	{
+		m_strAttachStatus = "Unknown vehicle archetype: " + strArchetypeId;
+		return false;
+	}
+	if (FAILED(CVehiclePresentationAssetService::Ensure_Prototypes(
+			m_pDevice, m_pContext, iLevel, pVehicle->vehicleId)) ||
+		FAILED(CNpcPresentationAssetService::Ensure_ObjectPrototype(m_pDevice, m_pContext, iLevel)))
+	{
+		m_strAttachStatus = "Vehicle presentation prototypes failed: " + strArchetypeId + " " +
+			CVehiclePresentationAssetService::Get_Status();
+		return false;
+	}
+
+	CNpc::NPC_DESC Desc{};
+	Desc.iPrototypeLevelIndex = iLevel;
+	Desc.strModelTag = CVehiclePresentationAssetService::Get_ModelPrototypeTag(pVehicle->vehicleId);
+	Desc.strShaderTag = TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+	Desc.pIdleClip = pVehicle->vehicleIdleClip.c_str();
+	Desc.isLoop = true;
+	Desc.vPosition = vPosition;
+	Desc.fYawDegree = 0.f;
+	Desc.fCollisionRadius = 0.f;
+	std::shared_ptr<CGameObject> pGameObject;
+	if (FAILED(GameInstance.Add_GameObject_to_Layer(
+		iLevel, TEXT("Prototype_GameObject_Npc"), iLevel, TARGET_LAYER_TAG,
+		&Desc, &pGameObject)))
+	{
+		m_strAttachStatus = "Target spawn failed: " + strArchetypeId;
+		return false;
+	}
+	const std::shared_ptr<CNpc> pNpc = std::dynamic_pointer_cast<CNpc>(pGameObject);
+	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
+	{
+		GameInstance.Remove_GameObject_from_Layer(iLevel, TARGET_LAYER_TAG, pGameObject);
+		m_strAttachStatus = "Target spawn returned an unexpected object.";
+		return false;
+	}
+	m_Target = EFFECT_V2_TARGET::From_Npc(pNpc);
+
+	std::vector<std::string> BoneNames;
+	Collect_BoneNames(pVehicle->modelAssetId, BoneNames);
+	m_TargetBoneNames.clear();
+	for (const std::string& strBone : BoneNames)
+	{
+		if (pNpc->Get_Model()->Has_Bone(strBone.c_str()))
+			m_TargetBoneNames.push_back(strBone);
+	}
 	return true;
 }
 
@@ -3501,7 +3562,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	const bool_t bHasTarget = Resolve_TargetView(View);
 	const std::shared_ptr<Engine::CModel> pModel = bHasTarget ? View.pModel : nullptr;
 
-	ImGui::SeparatorText("Target (NPC archetype / Valtan / KoukuSaydon body)");
+	ImGui::SeparatorText("Target (NPC / vehicle / Valtan / KoukuSaydon body)");
 	const std::vector<NPC_ACTOR_ENTRY>& Npcs = CActorCatalog::Get_Npcs();
 	if (ImGui::BeginCombo("Archetype",
 		m_strSelectedArchetypeId.empty() ? "(select)" : m_strSelectedArchetypeId.c_str()))
@@ -3547,6 +3608,14 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 				continue;
 			const std::string strLabel = Entry.archetypeId + "  (" +
 				std::filesystem::path(Entry.modelAssetId).stem().string() + ")";
+			if (ImGui::Selectable(strLabel.c_str(), Entry.archetypeId == m_strSelectedArchetypeId))
+				m_strSelectedArchetypeId = Entry.archetypeId;
+		}
+		ImGui::Separator();
+		for (const VEHICLE_ACTOR_ENTRY& Entry : CActorCatalog::Get_Vehicles())
+		{
+			const std::string strLabel = Entry.archetypeId + "  (vehicle " +
+				std::to_string(Entry.vehicleId) + ")";
 			if (ImGui::Selectable(strLabel.c_str(), Entry.archetypeId == m_strSelectedArchetypeId))
 				m_strSelectedArchetypeId = Entry.archetypeId;
 		}
