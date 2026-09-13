@@ -310,7 +310,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v81 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v82 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -338,6 +338,8 @@ cleanup으로 처리해 queue 포화와 close/entry race가 player slot을 남�
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
 Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 slot이 보이며 여섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 팀장이 관리하는 `Client/Bin/Resources` 물리 폴더를 사용한다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, Warlord는 body가 얼굴과 눈만 그려 머리카락이 별도 equipment 파츠이고 총창과 방패 두 무기를 함께 든다. 나머지 네 class는 body/equipment/weapon 형식이다. 여섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S T V Z ALT_V`, DimensionMaster `Q W E R A S D F T V ALT_V`, Warlord `Q W E R A S D F T X V ALT_V`다. Artist는 `Z` 저무는 달을 사용하고, Warlord는 `X` 전장의 방패와 `Z` 방어 태세 전환을 사용한다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010/17000`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
+
+탈것은 `Data/Actors/VehicleCatalog.json`(Client 표현: 모델·좌석 본·탈것 idle/run·직업별 탑승자 클립·원작 재질)과 `Data/Vehicles/VehicleProfiles.json`(Server 이동 속도, `EFTable_Vehicle.MoveSpeed` cm/s ÷ 100)이 정본이다. `Tools/GameplayPipeline/Publish-VehicleProfiles.ps1 -Mode Publish`가 `Server/Bin/DataFiles/Vehicles/Vehicles.bootstrap`을 만들고 `CGameRoom`은 이 파일 없이 준비되지 않는다(`Invoke-BuildDomainOwner.ps1 -Owner Server`의 `vehicles.profiles`). H 키가 protocol 82의 `C2S_SET_VEHICLE_RIDING`으로 탑승/하차를 요청하고, Server는 Bern·Character Select에서만 허용하며 사망·강제 행동·광대·마리오·패턴 속박 등에서는 매 tick 강제 하차시킨다. 탑승 중 스킬·에스더 요청은 거부되고 다른 월드 입장은 도보로 시작한다. Client `CCharacter`는 snapshot의 `iVehicleId`로 `CPart_Vehicle`을 붙이고 좌석 본(`b_cockpit`) 위치를 표현 루트에만 더하며, 창술사·워로드·도화가·차원술사는 `Character/<Class>/AnimSets/<Class>_RideHorseAnimSet.wmodel`의 `ride_horse_*` 클립을 사용한다. 황금 테르페이온(6705) 몸체는 SourceCharacter program 85, 장식은 24, 갈기는 18이다.
 
 Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
@@ -481,7 +483,7 @@ Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift �
 레이아웃에서 전부 터지면 `iMarioCurseReleasedMask`가 그 색 비트를 세운다. Client는 그 비트로 배치를
 `CWorldSequencePlayer`의 억제 집합에 넣어 숨기고 `boss.kouku.ball.smoke.<색>_1` 연기를 한 번 재생하며
 `빨간/파란/노란 인형의 저주 해제` 문구를 화면 중앙에 3초 표시한다. 뿅망치 접촉 틱은 카드미로와 공용인
-`HAMMER_HIT_TICK_OFFSET`이며 실측 스윙에 맞춘 30틱(1.0초)이다. 이 배치는 protocol 81을 쓰므로
+`HAMMER_HIT_TICK_OFFSET`이며 실측 스윙에 맞춘 30틱(1.0초)이다. 이 배치는 현재 protocol 82를 쓰므로
 Server와 Client를 같은 버전으로 함께 빌드·재시작한다.
 카드미로 문양 몬스터는 Server 권위다. 미로 중앙의 `cardmaze.telescope` 상자(`claimCardMazeTelescope` trigger action,
 Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모드 뿅망치로 먼저 가격한 플레이어가 망원경 담당이 되고, 그 순간
@@ -557,7 +559,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v81의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v82의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지

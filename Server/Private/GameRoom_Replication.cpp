@@ -513,7 +513,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.fPositionZ = player.fPositionZ;
 		snapshot.fYawDegrees = player.fYawDegrees;
 		snapshot.iLastProcessedMoveSequence = player.iLastMoveSequence;
-		snapshot.fMoveSpeed = player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player);
+		snapshot.fMoveSpeed = Resolve_PlayerMoveSpeed(player);
 		snapshot.canPredictMove =
 			PLAYER_ACTION_STATE::NONE == player.eAction &&
 			player.iCurrentHp != 0u && !player.bPatternBound &&
@@ -580,6 +580,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentMadness = player.iCurrentMadness;
 		snapshot.iMaximumMadness = player.iMaximumMadness;
 		snapshot.eMadnessForm = player.eMadnessForm;
+		snapshot.iVehicleId = player.iVehicleId;
 		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
 		snapshot.eMechanicCardColor = player.eMechanicCardColor;
 		snapshot.eKoukuHudMode = player.eKoukuHudMode;

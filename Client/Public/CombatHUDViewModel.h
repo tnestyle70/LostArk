@@ -47,6 +47,8 @@ namespace Client
 		std::uint32_t iMaximumMadness = 0;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
+		// The vehicle the Server has this player riding; 0 on foot.
+		std::uint32_t iVehicleId = 0u;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioLayoutVariant = 0u;

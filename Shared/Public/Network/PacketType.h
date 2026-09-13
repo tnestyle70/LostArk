@@ -75,8 +75,10 @@ namespace LostArk::Shared
 	and Mario popped-ball (U16) / curse-released (U8) snapshot masks.
 	Neither v79 branch is compatible with this combined contract.
 	81 adds processed MOVE sequence, effective speed, prediction permission and
-	the next authoritative waypoint to player snapshots. Both peers need 81. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 81;
+	the next authoritative waypoint to player snapshots.
+	82 appends the ridden vehicle to player snapshots and the riding toggle
+	request/verdict. Both peers need 82. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 82;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -335,7 +337,11 @@ namespace LostArk::Shared
 		// The bomb rides the same snapshot, so there is no result message.
 		C2S_DEBUG_BINGO_BOMB,
 		// Bingo hammer: Debug-only start on a random row or column.
-		C2S_DEBUG_BINGO_HAMMER
+		C2S_DEBUG_BINGO_HAMMER,
+		// H key riding toggle and its typed verdict. The snapshot carries the
+		// ridden vehicle, so the verdict only reports why a request did nothing.
+		C2S_SET_VEHICLE_RIDING,
+		S2C_SET_VEHICLE_RIDING_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -435,6 +441,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_DEBUG_MARIO_JUMP:
 		case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
 		case PACKET_TYPE::C2S_MARIO_MOVE:
+		case PACKET_TYPE::C2S_SET_VEHICLE_RIDING:
+		case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
 			return true;
 		default:
 			return  false;

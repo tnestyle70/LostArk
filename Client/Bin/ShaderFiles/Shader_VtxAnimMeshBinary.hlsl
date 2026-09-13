@@ -468,6 +468,99 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFa
     return output;
 }
 
+// Source BLEND_Translucent hair drawn after scene lighting. The same native base
+// and light programs as the deferred marker-5 path run here per forward light.
+float4 g_SourceCharacterLightConstants[64];
+#include "Shader_SourceCharacterLightPrograms.hlsli"
+#include "Shader_SceneHeightFog.hlsli"
+
+cbuffer SourceMapForwardLighting
+{
+    uint g_SourceMapForwardLightCount = 0u;
+    float4 g_SourceMapForwardLightPositionRange[400];
+    float4 g_SourceMapForwardLightDirectionType[400];
+    float4 g_SourceMapForwardLightColorExponent[400];
+    float4 g_SourceMapForwardLightConeShadow[400];
+    float4 g_SourceMapForwardLightAmbient[400];
+};
+
+SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
+    float3 cameraPosition, float3 lightDirection, float3 lightColor)
+{
+    SOURCE_CHARACTER_NATIVE_INPUT light = (SOURCE_CHARACTER_NATIVE_INPUT)0;
+    float3 t = SourceCharacterSafeUnit(input.vTangent.xyz);
+    const float3 n = SourceCharacterSafeUnit(input.vNormal.xyz);
+    t = SourceCharacterSafeUnit(t - n * dot(t, n));
+    const float3 b = SourceCharacterSafeUnit(-input.vBinormal.xyz);
+    const float3 view = SourceCharacterSafeUnit(cameraPosition - input.vWorldPos.xyz);
+    const float3 direction = SourceCharacterSafeUnit(lightDirection);
+    const float4x4 viewProjection = mul(g_ViewMatrix, g_ProjMatrix);
+    light.values[0] = float4(t.x, b.x, n.x, 0.f);
+    light.values[1] = float4(t.y, b.y, n.y,
+        dot(cross(t.xzy, b.xzy), n.xzy) < 0.f ? -1.f : 1.f);
+    light.values[2] = 1.f;
+    light.values[4] = float4(input.vTexcoord, input.vSourceExtraUV.yx);
+    light.values[5] = float4(dot(t, direction), dot(b, direction), dot(n, direction), 1.f);
+    light.values[7] = float4(dot(t, view), dot(b, view), dot(n, view), 1.f);
+    light.values[8] = float4(input.vWorldPos.xzy * 100.f, 1.f);
+    light.projection[0] = viewProjection[0] * 0.01f;
+    light.projection[1] = viewProjection[2] * 0.01f;
+    light.projection[2] = viewProjection[1] * 0.01f;
+    light.projection[3] = viewProjection[3];
+    light.lightColor = lightColor;
+    light.shadow = 1.f;
+    return light;
+}
+
+SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (18u != g_SourceCharacterProgram) discard;
+    const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
+        input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+        input.vNormal.xyz, camera, input.vProjPos, mul(g_ViewMatrix, g_ProjMatrix),
+        float3(0.f, 1.f, 0.f), 0.f, 1.f, frontFace);
+    const SOURCE_CHARACTER_NATIVE_OUTPUT base = EvaluateSourceCharacterBase(baseInput);
+    const float opacity = saturate(base.targets[0].a);
+    if (base.discarded || opacity <= 1e-4f) discard;
+
+    float3 direct = 0.f;
+    float3 ambient = 0.f;
+    [loop] for (uint index = 0u; index < g_SourceMapForwardLightCount; ++index)
+    {
+        const float4 directionType = g_SourceMapForwardLightDirectionType[index];
+        const float4 colorExponent = g_SourceMapForwardLightColorExponent[index];
+        float3 direction = -directionType.xyz;
+        float attenuation = 1.f;
+        if (directionType.w > 1.f)
+        {
+            const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
+            const float3 delta = positionRange.xyz - input.vWorldPos.xyz;
+            const float distance = length(delta);
+            direction = distance > 1e-6f ? delta / distance : input.vNormal.xyz;
+            attenuation = pow(saturate((positionRange.w - distance) /
+                max(positionRange.w, 1e-6f)), colorExponent.w);
+            if (directionType.w > 2.f)
+            {
+                const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
+                const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
+                    coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
+                attenuation *= cone * cone;
+            }
+        }
+        if (attenuation <= 0.f) continue;
+        ambient += colorExponent.rgb * g_SourceMapForwardLightAmbient[index].rgb * attenuation;
+        const SOURCE_CHARACTER_NATIVE_OUTPUT lit = SourceCharacterLight18(
+            MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb));
+        if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;
+    }
+
+    float3 color = base.targets[3].rgb * ambient + direct;
+    const float4 fog = EvaluateSceneFog(input.vWorldPos.xyz, camera);
+    color = color * fog.w + fog.rgb + base.targets[0].rgb;
+    return Write_SceneColorAndBloom(float4(color, opacity));
+}
+
 
 void PS_MAIN_SHADOW(VS_OUT input)
 {
@@ -642,5 +735,15 @@ technique11 DefaultTechnique
         VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = EffectSourceModelPS;
+    }
+    // Appended index 9: source translucent two-sided hair, forward lit after scene lighting.
+    pass SourceCharacterTranslucentTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
     }
 }

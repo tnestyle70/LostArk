@@ -37,6 +37,11 @@ public:
 		LostArk::Shared::PLAYER_MADNESS_FORM form) = 0;
 	virtual bool Consume_DebugMadnessFormResult(
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result) = 0;
+	/* H key riding toggle: a vehicle id mounts, INVALID_VEHICLE_ID dismounts.
+	Sinks without a Server reject it. */
+	virtual bool Request_SetVehicleRiding(std::uint32_t, LostArk::Shared::VEHICLE_ID) { return false; }
+	virtual bool Consume_VehicleRidingResult(
+		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT&) { return false; }
 
 	virtual bool Request_InteractionSlot(std::uint32_t sequence,
 		LostArk::Shared::INTERACTION_SLOT slot) = 0;

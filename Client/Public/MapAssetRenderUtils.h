@@ -114,6 +114,11 @@ public:
         const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting = nullptr,
         const float4_t* worldCullSphere = nullptr);
 
+	/* Scene and transient lights, their ambient and the scene fog for a
+	source-character material drawn forward after scene lighting. */
+	static HRESULT Bind_SourceCharacterForwardLights(
+		const shared_ptr<Engine::CShader>& shader);
+
 	static std::vector<MAP_SURFACE_BINDING_ROW> Get_RecentSurfaceBindings();
 };
 

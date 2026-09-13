@@ -947,6 +947,12 @@ HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
     return Bind_SourceCharacterInputs(shader, false, row);
 }
 
+HRESULT CMaterial::Bind_SourceCharacterForwardLight(shared_ptr<CShader> shader)
+{
+    if (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return E_INVALIDARG;
+    return Bind_SourceCharacterInputs(shader, true, 0u);
+}
+
 HRESULT CMaterial::Bind_SourceCharacterLight(shared_ptr<CShader> shader, uint32_t index)
 {
     if (index >= g_SourceCharacterFrame.size()) return E_INVALIDARG;

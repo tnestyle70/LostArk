@@ -83,6 +83,19 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugMadnessFormResult(
 	return CNetworkManager::Get().Try_Consume_DebugMadnessFormResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_SetVehicleRiding(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::VEHICLE_ID vehicleId)
+{
+	return CNetworkManager::Get().Send_SetVehicleRiding(requestSequence, vehicleId);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_VehicleRidingResult(
+	LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_VehicleRidingResult(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_InteractionSlot(
  std::uint32_t sequence, LostArk::Shared::INTERACTION_SLOT slot)
 {

@@ -1,0 +1,16 @@
+{
+  "mn_pmstg_00_n": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00_n.tga",
+  "mn_pmstg_00_s": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00_s.tga",
+  "mn_pmstg_00_e": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00_e.tga",
+  "mn_pmstg_00_cm": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00_cm.tga",
+  "mn_pmstg_00-1_n": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00-1_n.tga",
+  "mn_pmstg_00-1_s": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00-1_s.tga",
+  "mn_pmstg_00-1_cm": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_00-1_cm.tga",
+  "mn_pmstg_01_d": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_01_d.tga",
+  "mn_pmstg_01-1_d": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_01-1_d.tga",
+  "mn_pmstg_01_hair_d": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmstg_01_hair_d.tga",
+  "mn_pmshs_00_hair_n": "Character/Vehicle/Terpeion/SourceMaterials/mn_pmshs_00_hair_n.tga",
+  "hdr07_1": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+  "statefx_default": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+  "brdf_beckmann_spec": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds"
+}

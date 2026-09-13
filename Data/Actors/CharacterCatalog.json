@@ -23,7 +23,8 @@
       ],
       "animationSetModels": [
         "Character/LanceMaster/AnimSets/LanceMaster_EstherAnimSet.wmodel",
-        "Character/LanceMaster/AnimSets/LanceMaster_CustomizingAnimSet.wmodel"
+        "Character/LanceMaster/AnimSets/LanceMaster_CustomizingAnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_RideHorseAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported",
@@ -1532,7 +1533,8 @@
       ],
       "animationSetModels": [
         "Character/Artist/AnimSets/Artist_EstherAnimSet.wmodel",
-        "Character/Artist/AnimSets/Artist_CustomizingAnimSet.wmodel"
+        "Character/Artist/AnimSets/Artist_CustomizingAnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_RideHorseAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_ARTIST",
       "runtimeStatus": "supported",
@@ -4714,7 +4716,8 @@
       ],
       "animationSetModels": [
         "Character/DimensionMaster/AnimSets/DimensionMaster_EstherAnimSet.wmodel",
-        "Character/DimensionMaster/AnimSets/DimensionMaster_CustomizingAnimSet.wmodel"
+        "Character/DimensionMaster/AnimSets/DimensionMaster_CustomizingAnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideHorseAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported",
@@ -7294,7 +7297,8 @@
       ],
       "animationSetModels": [
         "Character/Warlord/AnimSets/Warlord_EstherAnimSet.wmodel",
-        "Character/Warlord/AnimSets/Warlord_CustomizingAnimSet.wmodel"
+        "Character/Warlord/AnimSets/Warlord_CustomizingAnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_RideHorseAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_WARLORD",
       "runtimeStatus": "supported",

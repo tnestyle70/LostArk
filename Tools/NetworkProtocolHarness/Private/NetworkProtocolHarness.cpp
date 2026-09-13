@@ -2282,10 +2282,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 81u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 82u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 81");
+			"Mario direction packet retains its appended identity in protocol 82");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2709,14 +2709,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 81u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 82u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 81 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 82 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2774,10 +2774,106 @@ namespace
 			"Madness form packet identities append without renumbering peers");
 	}
 
+	void Test_VehicleRidingProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_SET_VEHICLE_RIDING request{};
+		request.iRequestSequence = 21u;
+		request.eWorldId = WORLD_ID::BERN;
+		request.iVehicleId = 6705u;
+		CPacketWriter writer;
+		testRunner.Require(Write_Message(writer, request) && writer.Get_Buffer().size() == 10u,
+			"Riding toggle carries sequence, world and vehicle id");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_SET_VEHICLE_RIDING decoded{};
+		testRunner.Require(Read_Message(reader, decoded) && decoded.iRequestSequence == 21u &&
+			decoded.eWorldId == WORLD_ID::BERN && decoded.iVehicleId == 6705u &&
+			0u == reader.Get_RemainingSize(),
+			"Riding toggle round trip");
+		request.iVehicleId = INVALID_VEHICLE_ID;
+		CPacketWriter dismount;
+		testRunner.Require(Write_Message(dismount, request),
+			"Dismount is the same request with the invalid vehicle id");
+		request.iRequestSequence = 0u;
+		CPacketWriter zeroSequence;
+		testRunner.Require(!Write_Message(zeroSequence, request) && zeroSequence.Get_Buffer().empty(),
+			"Riding toggle refuses the reserved zero sequence");
+		for (std::uint8_t reason = 0u;
+			reason < static_cast<std::uint8_t>(VEHICLE_RIDING_RESULT::END); ++reason)
+		{
+			S2C_SET_VEHICLE_RIDING_RESULT result{};
+			result.iRequestSequence = 21u;
+			result.eWorldId = WORLD_ID::BERN;
+			result.eResult = static_cast<VEHICLE_RIDING_RESULT>(reason);
+			result.iActiveVehicleId = 6705u;
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) &&
+				11u == resultWriter.Get_Buffer().size(),
+				"Riding verdict writer accepts every typed reason");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_SET_VEHICLE_RIDING_RESULT read{};
+			testRunner.Require(Read_Message(resultReader, read) &&
+				read.eResult == result.eResult && read.iActiveVehicleId == 6705u &&
+				0u == resultReader.Get_RemainingSize(),
+				"Riding verdict echoes correlation, reason and active vehicle");
+		}
+		auto unknownReason = CPacketWriter{};
+		unknownReason.Write_U32(21u);
+		unknownReason.Write_U16(static_cast<std::uint16_t>(WORLD_ID::BERN));
+		unknownReason.Write_U8(static_cast<std::uint8_t>(VEHICLE_RIDING_RESULT::END));
+		unknownReason.Write_U32(0u);
+		CPacketReader unknownReader{ unknownReason.Get_Buffer() };
+		S2C_SET_VEHICLE_RIDING_RESULT preserved{};
+		preserved.iRequestSequence = 99u;
+		testRunner.Require(!Read_Message(unknownReader, preserved) && preserved.iRequestSequence == 99u,
+			"Riding verdict refuses an unknown reason and preserves caller output");
+
+		S2C_WORLD_SNAPSHOT source{};
+		source.iServerTick = 100u;
+		source.eWorldId = WORLD_ID::BERN;
+		source.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		PLAYER_SNAPSHOT rider{};
+		rider.iNetEntityId = 100u;
+		rider.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+		rider.fMoveSpeed = 5.f;
+		rider.iVehicleId = 6705u;
+		source.Players.push_back(rider);
+		std::vector<std::uint8_t> payload;
+		const bool written = Build_WorldSnapshotPayload(source, payload);
+		CPacketReader snapshotReader{ payload };
+		S2C_WORLD_SNAPSHOT decodedSnapshot{};
+		testRunner.Require(written && Read_Message(snapshotReader, decodedSnapshot) &&
+			0u == snapshotReader.Get_RemainingSize() &&
+			decodedSnapshot.Players.front().iVehicleId == 6705u,
+			"Player snapshot preserves the ridden vehicle");
+		for (unsigned scenario = 0u; scenario < 4u; ++scenario)
+		{
+			auto invalid = source;
+			auto& bad = invalid.Players.front();
+			switch (scenario)
+			{
+			case 0u: bad.iCurrentHp = 0u; break;
+			case 1u: bad.eAction = PLAYER_ACTION_STATE::KNOCKDOWN; bad.iActionStartTick = 90u; break;
+			case 2u: bad.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN; break;
+			case 3u: bad.iMarioStage = 1u; break;
+			}
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalid),
+				"A ridden vehicle cannot accompany death, a forced action, the clown body or Mario");
+		}
+		testRunner.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
+			NETWORK_PROTOCOL_VERSION == 82u,
+			"Riding packet identities append without renumbering peers");
+	}
+
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 81u, "World Object owner lifecycle and fear use protocol 81");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 82u, "World Object owner lifecycle and fear use protocol 82");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2790,7 +2886,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) == 80u &&
 			static_cast<std::uint8_t>(PLAYER_ACTION_STATE::FEAR) == 9u &&
 			static_cast<std::uint8_t>(PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP) == 2u,
-			"Protocol 81 preserves main identities and bundle state");
+			"Protocol 82 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -3130,8 +3226,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 81u,
-			"Protocol 81 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 82u,
+			"Protocol 82 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3247,8 +3343,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(81u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 81");
+			testRunner.Require(82u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 82");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3745,10 +3841,13 @@ namespace
         constexpr std::size_t playerFearBytes = 4 + 2;
 		// Protocol 81 appends the acknowledgement and ordinary movement state.
 		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
+		// Protocol 82 appends the ridden vehicle id.
+		constexpr std::size_t playerVehicleBytes = 4;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
-			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerPredictionBytes;
+			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerPredictionBytes +
+			playerVehicleBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -6580,7 +6679,7 @@ namespace
 		}
 
 		testRunner.Require(
-			81u == NETWORK_PROTOCOL_VERSION,
+			82u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 80");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6608,8 +6707,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			81u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 81");
+			82u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 82");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -7930,6 +8029,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_KakulAuthoringCommandProtocol(testRunner);
 	Test_DebugTeleportPositionProtocol(testRunner);
 	Test_DebugMadnessFormProtocol(testRunner);
+	Test_VehicleRidingProtocol(testRunner);
 	Test_KoukuInteractionProtocol(testRunner);
 	Test_DebugMarioJumpProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);

@@ -1,0 +1,17 @@
+{
+  "schema": "lostark.vehicle-profiles",
+  "formatVersion": 1,
+  "vehicles": [
+    {
+      "vehicleId": 6705,
+      "moveSpeed": 5.0,
+      "source": {
+        "table": "EFTable_Vehicle",
+        "primaryKey": 6705,
+        "column": "MoveSpeed",
+        "value": 500,
+        "divisor": 100
+      }
+    }
+  ]
+}
