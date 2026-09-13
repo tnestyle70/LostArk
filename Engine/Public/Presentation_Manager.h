@@ -32,6 +32,7 @@ private:
 
 public:
 	static CPresentation_Manager& Get();
+	static constexpr uint32_t TRANSIENT_LIGHT_CAPACITY = 384u;
 
 	HRESULT Add_FrameProvider(shared_ptr<IPresentationProvider> pProvider);
 	HRESULT Submit_FrameProviders();

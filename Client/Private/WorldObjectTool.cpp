@@ -11,6 +11,8 @@
 #include "ProjectDataRoot.h"
 #include "WorldSequencePlayer.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "Effect_Catalog.h"
+#include "Effect_PresentationService.h"
 
 #include <algorithm>
 #include <cctype>
@@ -20,6 +22,20 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+
+namespace Client
+{
+struct WORLD_OBJECT_TRAVEL_DRAFT
+{
+    float3_t start{}, end{}, initialFacing{}, finalFacing{};
+    float speed = 1.f;
+    uint32_t lifetimeMs = 1000u;
+    bool despawnAtEndpoint = false;
+    bool conversion = false;
+    std::string instanceId;
+    uint32_t sourceRevision = 0u;
+};
+}
 
 namespace
 {
@@ -81,12 +97,144 @@ const char* MotionEndLabel(const Client::WORLD_SEQUENCE_MOTION_END motionEnd)
 float3_t QuaternionEuler(const float4_t& q)
 {
     float4x4_t matrix;
-    XMStoreFloat4x4(&matrix, XMMatrixRotationQuaternion(XMLoadFloat4(&q)));
+    XMStoreFloat4x4(&matrix, XMMatrixRotationQuaternion(XMQuaternionNormalize(XMLoadFloat4(&q))));
     const float pitch = std::asin((std::clamp)(-matrix._32, -1.f, 1.f));
     const float cosine = std::cos(pitch);
-    const float yaw = std::abs(cosine) > .00001f ? std::atan2(matrix._31, matrix._33) : std::atan2(-matrix._13, matrix._11);
-    const float roll = std::abs(cosine) > .00001f ? std::atan2(matrix._12, matrix._22) : 0.f;
+    const float yaw = std::abs(cosine) > .001f ? std::atan2(matrix._31, matrix._33) : std::atan2(-matrix._13, matrix._11);
+    const float roll = std::abs(cosine) > .001f ? std::atan2(matrix._12, matrix._22) : 0.f;
     return {XMConvertToDegrees(pitch), XMConvertToDegrees(yaw), XMConvertToDegrees(roll)};
+}
+
+namespace ObjectTravel
+{
+using namespace Client;
+bool Near(const float3_t& a, const float3_t& b)
+{ return std::abs(a.x-b.x) <= .00001f && std::abs(a.y-b.y) <= .00001f && std::abs(a.z-b.z) <= .00001f; }
+bool SameRotation(const float4_t& a, const float4_t& b)
+{ return std::abs(XMVectorGetX(XMVector4Dot(XMQuaternionNormalize(XMLoadFloat4(&a)), XMQuaternionNormalize(XMLoadFloat4(&b))))) >= .999999f; }
+bool Bounded(const float3_t& v)
+{ return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z) && std::abs(v.x)<=100000.f && std::abs(v.y)<=100000.f && std::abs(v.z)<=100000.f; }
+float Distance(const float3_t& a, const float3_t& b)
+{ return XMVectorGetX(XMVector3Length(XMLoadFloat3(&b)-XMLoadFloat3(&a))); }
+float4_t Facing(const float3_t& degrees)
+{
+    float4_t result;
+    XMStoreFloat4(&result, XMQuaternionRotationRollPitchYaw(XMConvertToRadians(degrees.x),
+        XMConvertToRadians(degrees.y), XMConvertToRadians(degrees.z)));
+    return result;
+}
+bool Arrival(const WORLD_OBJECT_TRAVEL_DRAFT& edit, uint32_t& arrival, std::string& status)
+{
+    const double distance = Distance(edit.start, edit.end);
+    if (!Bounded(edit.start) || !Bounded(edit.end) || !Bounded(edit.initialFacing) || !Bounded(edit.finalFacing) ||
+        !std::isfinite(edit.speed) || edit.speed <= 0.f || edit.speed > 100000.f ||
+        !edit.lifetimeMs || edit.lifetimeMs > CWorldSequenceDocument::MAX_DURATION_MS)
+    { status = "Travel positions, facing, positive speed or Individual Lifetime are invalid."; return false; }
+    const double ms = distance > 0.0 ? distance * 1000.0 / edit.speed : edit.lifetimeMs;
+    if (!std::isfinite(ms) || ms > edit.lifetimeMs + .5 || ms < .5)
+    { status = "Arrival must fit Individual Lifetime and last at least 1 ms. Increase speed or Lifetime."; return false; }
+    arrival = static_cast<uint32_t>(std::llround(ms));
+    if (arrival == 0u || arrival > edit.lifetimeMs)
+    { status = "Rounded arrival must fit Individual Lifetime."; return false; }
+    return true;
+}
+bool Build(const WORLD_SEQUENCE_TEMPLATE& source, const WORLD_OBJECT_TRAVEL_DRAFT& edit,
+    WORLD_SEQUENCE_TEMPLATE& output, std::string& status)
+{
+    uint32_t arrival = 0u;
+    if (!Arrival(edit, arrival, status) || source.tracks.size()!=1u || source.tracks.front().keys.empty()) return false;
+    const uint64_t duration = uint64_t(edit.lifetimeMs) + (source.effectTracks.empty() ? source.objectMotion.LastEmissionDelayMs() : 0u);
+    if (duration > CWorldSequenceDocument::MAX_DURATION_MS ||
+        duration + (source.effectTracks.empty() ? 0u : source.objectMotion.LastEmissionDelayMs()) > CWorldSequenceDocument::MAX_DURATION_MS)
+    { status = "Individual Lifetime plus the last emission delay exceeds the 600-second Motion limit."; return false; }
+    auto candidate = source;
+    candidate.durationMs = static_cast<uint32_t>(duration);
+    candidate.interpolation = WORLD_SEQUENCE_INTERPOLATION::LINEAR;
+    candidate.objectMotion.velocity = {};
+    const auto scale = source.tracks.front().keys.front().scaleMultiplier;
+    const auto initial = Facing(edit.initialFacing), final = Facing(edit.finalFacing);
+    auto& keys = candidate.tracks.front().keys; keys.clear();
+    std::set<uint32_t> times{0u, arrival, edit.lifetimeMs, candidate.durationMs};
+    for (const auto time : times)
+    {
+        WORLD_SEQUENCE_TRANSFORM_KEY key;
+        key.timeMs=time; key.positionOffset=time==0u ? edit.start : edit.end;
+        key.rotationQuaternion=time==0u ? initial : final; key.scaleMultiplier=scale;
+        key.visible=time < (edit.despawnAtEndpoint ? arrival : edit.lifetimeMs);
+        keys.push_back(key);
+    }
+    output = std::move(candidate);
+    return true;
+}
+bool Read(const WORLD_SEQUENCE_TEMPLATE& sequence, bool convert, WORLD_OBJECT_TRAVEL_DRAFT& output, std::string& status)
+{
+    const auto& motion=sequence.objectMotion;
+    if (sequence.tracks.size()!=1u || !sequence.animationTracks.empty() ||
+        sequence.tracks.front().keys.size()<2u || !Near(motion.acceleration,{}) ||
+        !Near(motion.revolutionDegreesPerSecond,{}) || !Near(motion.revolutionOffset,{}) ||
+        !Near(motion.spawnHalfExtents,{}) || motion.spreadDegrees!=0.f)
+    { status="Travel requires one straight Transform track without animation, acceleration, orbit or random spread. Existing keys remain available below."; return false; }
+    const auto& keys=sequence.tracks.front().keys;
+    const auto& first=keys.front(); const auto& last=keys.back();
+    WORLD_OBJECT_TRAVEL_DRAFT edit;
+    edit.start=first.positionOffset; edit.end=last.positionOffset;
+    edit.initialFacing=QuaternionEuler(first.rotationQuaternion); edit.finalFacing=QuaternionEuler(last.rotationQuaternion);
+    if (convert)
+    {
+        if (keys.size()!=2u || !first.visible || !last.visible || !Near(first.positionOffset,last.positionOffset) ||
+            !Near(first.scaleMultiplier,last.scaleMultiplier) || !SameRotation(first.rotationQuaternion,last.rotationQuaternion))
+        { status="Convert to Travel only accepts two unchanged pose keys and constant velocity. Complex motion is preserved."; return false; }
+        edit.lifetimeMs=sequence.durationMs;
+        XMStoreFloat3(&edit.end,XMLoadFloat3(&edit.start)+XMLoadFloat3(&motion.velocity)*(edit.lifetimeMs*.001f));
+        edit.speed=Distance({},motion.velocity);
+        if (edit.speed==0.f) edit.speed=.001f;
+        edit.conversion=true;
+    }
+    else
+    {
+        const uint32_t delay=sequence.effectTracks.empty() ? motion.LastEmissionDelayMs() : 0u;
+        if (sequence.interpolation!=WORLD_SEQUENCE_INTERPOLATION::LINEAR || !Near(motion.velocity,{}) ||
+            keys.size()>4u || sequence.durationMs<=delay || !first.visible || last.visible)
+        { status="This Motion is not a saved straight Travel curve. Convert a constant-velocity motion or continue with Advanced keys."; return false; }
+        edit.lifetimeMs=sequence.durationMs-delay;
+        const auto end=std::find_if(keys.begin()+1,keys.end(),[&](const auto& key){
+            return Near(key.positionOffset,last.positionOffset) && SameRotation(key.rotationQuaternion,last.rotationQuaternion); });
+        if (end==keys.end() || end->timeMs>edit.lifetimeMs) return false;
+        edit.speed=Distance(edit.start,edit.end)/(end->timeMs*.001f);
+        if (edit.speed==0.f) edit.speed=.001f;
+        edit.despawnAtEndpoint=end->timeMs<edit.lifetimeMs && !end->visible;
+    }
+    WORLD_SEQUENCE_TEMPLATE expected;
+    if (!Build(sequence,edit,expected,status)) return false;
+    if (!convert)
+    {
+        const auto& generated=expected.tracks.front().keys;
+        if (generated.size()!=keys.size()) return false;
+        for (size_t i=0;i<keys.size();++i)
+            if (generated[i].timeMs!=keys[i].timeMs || generated[i].visible!=keys[i].visible ||
+                !Near(generated[i].positionOffset,keys[i].positionOffset) ||
+                !Near(generated[i].scaleMultiplier,keys[i].scaleMultiplier) ||
+                !SameRotation(generated[i].rotationQuaternion,keys[i].rotationQuaternion)) return false;
+    }
+    output=std::move(edit); return true;
+}
+bool ApplyRadialOffset(const WORLD_SEQUENCE_OBJECT_MOTION& source, float delta,
+    WORLD_SEQUENCE_OBJECT_MOTION& output, std::string& status)
+{
+    if (!std::isfinite(delta) || source.emissions.empty() ||
+        std::abs(source.revolutionDegreesPerSecond.x) > .00001f || std::abs(source.revolutionDegreesPerSecond.z) > .00001f)
+    { status="Radial offset requires finite metres and authored horizontal circular emission rows."; return false; }
+    auto candidate=source;
+    const auto shift=[&](float3_t& offset){
+        const float radius=std::hypot(offset.x,offset.z), next=radius+delta;
+        if (!Bounded(offset) || !std::isfinite(radius) || radius<=.000001f || !std::isfinite(next) || next<=.000001f) return false;
+        offset.x*=next/radius; offset.z*=next/radius; return Bounded(offset);
+    };
+    if (!shift(candidate.revolutionOffset)) { status="Orbit radius must remain positive; existing spacing preserved."; return false; }
+    for (auto& row:candidate.emissions)
+        if (!shift(row.positionOffset)) { status="Every emission radius must remain positive; existing spacing preserved."; return false; }
+    output=std::move(candidate); return true;
+}
 }
 
 struct LinkedAuthoringWrite
@@ -420,6 +568,7 @@ bool CWorldObjectTool::Load_Source()
     Stop_Preview();
     m_Document = std::move(staged);
     m_SavedDocument = m_Document;
+    m_TravelDraft.reset();
     m_MapTargets = std::move(map);
     m_DeployTargets = std::move(deploy);
     m_SourcePath = sourcePath; m_PlacementPath = placementPath; m_DeployPath = deployPath;
@@ -600,6 +749,10 @@ std::vector<uint32_t>& CWorldObjectTool::Emission_Origins(const WORLD_SEQUENCE_T
 
 void CWorldObjectTool::Mark_Dirty()
 {
+    m_EffectPreviewDocument.reset();
+    m_PendingEffectPreviewDocument.reset();
+    m_PreviewPreparationPending = false;
+    m_PlayAfterPreparation = m_Playing;
     m_PristinePatternId.clear();
     if (const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject))
         for (const auto& id : StateIds(*resource))
@@ -612,13 +765,62 @@ void CWorldObjectTool::Stop_Preview()
     if (m_PreviewActive && m_PreviewLevel && m_PreviewLevel == CLevel_KakulSaydonArena::Get_Active())
         m_PreviewLevel->Debug_StopWorldObjectPreview();
     m_PreviewLevel = nullptr; m_PreviewActive = false; m_Playing = false; m_PreviewDirty = false;
+    m_EffectPreviewDocument.reset();
+    m_PendingEffectPreviewDocument.reset();
+    m_PendingEffectInstance.clear();
+    m_PreviewPreparationTargets.clear();
+    m_PreviewPreparationPending = false;
+    m_PlayAfterPreparation = false;
+}
+
+const CWorldSequenceDocument& CWorldObjectTool::Preview_Document() const
+{
+    return m_EffectPreviewDocument ? *m_EffectPreviewDocument : m_Document;
+}
+
+bool CWorldObjectTool::Prepare_PreviewEffects(const CWorldSequenceDocument& document, const std::string& targetId)
+{
+    std::vector<std::string> instances{targetId};
+    if (const auto* group = document.Find_ObjectResource(targetId); group && !group->motionInstanceIds.empty())
+        instances = group->motionInstanceIds;
+    std::set<std::string> visited, effects;
+    for (size_t index = 0; index < instances.size(); ++index)
+    {
+        const auto* instance = document.Find_Instance(instances[index]);
+        if (!instance || !instance->enabled || !visited.insert(instance->instanceId).second) continue;
+        if (const auto* sequence = document.Find_Template(instance->templateId))
+            for (const auto& effect : sequence->effectTracks)
+                if (effect.resourceKind == "V1_EFFECT") effects.insert(effect.resourceId);
+        if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT) instances.push_back(instance->nextMotionId);
+    }
+    m_PreviewPreparationPending = false;
+    m_PreviewPreparationTargets.assign(effects.begin(), effects.end());
+    if (effects.empty()) return true;
+    std::vector<std::string> queued;
+    if (!CEffectPresentationService::Queue_ProductTargets_Priority(m_PreviewPreparationTargets, queued, m_Status)) return false;
+    const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(m_PreviewPreparationTargets);
+    if (probe.iFailedCount || probe.iUnavailableCount)
+    { m_Status = "Object Effect preparation failed. Existing preview and Motion are preserved."; return false; }
+    if (Is_ProductPrewarmTargetActivationReady(probe)) return true;
+    m_PreviewPreparationPending = true;
+    m_Status = "Preparing Object Effects. Playback will start when the selected resources are ready.";
+    return false;
+}
+
+void CWorldObjectTool::Play_Preview()
+{
+    m_PlayAfterPreparation = true;
+    if (m_ClockMs >= PreviewSpanMs()) m_ClockMs = 0.f;
+    Seek(m_ClockMs);
+    m_Playing = m_PreviewActive && !m_PreviewPreparationPending && !m_PreviewDirty;
 }
 
 const WORLD_SEQUENCE_INSTANCE* CWorldObjectTool::Preview_Instance() const
 {
     if (Preview_Group()) return nullptr;
-    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-    const auto* instance = m_Document.Find_Instance(m_SelectedInstance.empty() && resource ?
+    const auto& document = Preview_Document();
+    const auto* resource = document.Find_ObjectResource(m_SelectedObject);
+    const auto* instance = document.Find_Instance(m_SelectedInstance.empty() && resource ?
         resource->defaultMotionInstanceId : m_SelectedInstance);
     return instance && instance->enabled ? instance : nullptr;
 }
@@ -641,39 +843,47 @@ bool CWorldObjectTool::Begin_Preview()
             m_Status = m_PreviewStatus = "All group motions are disabled.";
             return false;
         }
-        if (!level->Debug_BeginWorldObjectPreview(m_Document, group->objectId, m_Status, m_PreviewAtCharacter)) return false;
+        if (!Prepare_PreviewEffects(Preview_Document(), group->objectId) ||
+            !level->Debug_BeginWorldObjectPreview(Preview_Document(), group->objectId, m_Status, m_PreviewAtCharacter)) return false;
         m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
         return true;
     }
     const auto* instance = Preview_Instance();
     if (!instance) { m_Status = "Choose an enabled Default Motion or select a connected Motion."; return false; }
-    if (!level->Debug_BeginWorldObjectPreview(m_Document, instance->instanceId, m_Status, m_PreviewAtCharacter)) return false;
+    if (!Prepare_PreviewEffects(Preview_Document(), instance->instanceId) ||
+        !level->Debug_BeginWorldObjectPreview(Preview_Document(), instance->instanceId, m_Status, m_PreviewAtCharacter)) return false;
     m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
     return true;
 }
 
 f32_t CWorldObjectTool::SpanMs() const
 {
+    const auto& document = Preview_Document();
     if (const auto* group = Preview_Group())
     {
         float span = 0.f;
         for (const auto& id : group->motionInstanceIds)
         {
-            const auto* instance = m_Document.Find_Instance(id);
-            const auto* sequence = instance && instance->enabled ? m_Document.Find_Template(instance->templateId) : nullptr;
+            const auto* instance = document.Find_Instance(id);
+            const auto* sequence = instance && instance->enabled ? document.Find_Template(instance->templateId) : nullptr;
             if (sequence) span = (std::max)(span, static_cast<float>(instance->startDelayMs) +
                 static_cast<float>(sequence->PresentationSpanMs()) / (std::max)(.05f, instance->playbackSpeed));
         }
         return span;
     }
     const auto* instance = Preview_Instance();
-    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    const auto* sequence = instance ? document.Find_Template(instance->templateId) : nullptr;
     return !sequence ? 0.f : static_cast<float>(instance->startDelayMs) +
         static_cast<float>(sequence->PresentationSpanMs()) / (std::max)(.05f, instance->playbackSpeed);
 }
 
 f32_t CWorldObjectTool::PreviewSpanMs() const
 {
+    if (const auto* group = Preview_Group())
+        for (const auto& id : group->motionInstanceIds)
+            if (const auto* member = Preview_Document().Find_Instance(id);
+                member && member->enabled && member->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP)
+                return (std::max)(SpanMs(), static_cast<float>(CWorldSequenceDocument::MAX_DURATION_MS));
     const auto* instance = Preview_Instance();
     if (instance && (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP ||
         instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT))
@@ -699,6 +909,31 @@ void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
     }
     if (!active || !m_Open || (m_PreviewLevel && m_PreviewLevel != CLevel_KakulSaydonArena::Get_Active()))
     { Stop_Preview(); return; }
+    if (m_PreviewPreparationPending)
+    {
+        const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(m_PreviewPreparationTargets);
+        if (probe.iFailedCount || probe.iUnavailableCount)
+        {
+            m_PreviewPreparationPending = false;
+            m_PendingEffectPreviewDocument.reset();
+            m_Status = "Object Effect preparation failed. Existing Motion is preserved.";
+            return;
+        }
+        if (!Is_ProductPrewarmTargetActivationReady(probe)) return;
+        m_PreviewPreparationPending = false;
+        if (m_PendingEffectPreviewDocument)
+        {
+            auto staged = std::move(*m_PendingEffectPreviewDocument);
+            m_PendingEffectPreviewDocument.reset();
+            Begin_EffectPreview(std::move(staged), m_PendingEffectInstance);
+        }
+        else
+        {
+            Seek(m_ClockMs);
+            m_Playing = m_PlayAfterPreparation && m_PreviewActive && !m_PreviewDirty;
+        }
+        return; // Resource preparation time never advances the animation clock.
+    }
     if (m_PreviewActive && m_PreviewDirty) Seek(m_ClockMs);
     if (!m_Playing || !m_PreviewActive) return;
     const float span = PreviewSpanMs();
@@ -857,6 +1092,64 @@ void CWorldObjectTool::Change_ResourceAnchor(
         "Map anchor applied to this resource's states at the current character position.";
 }
 
+void CWorldObjectTool::Begin_WorkbenchFrame()
+{
+    if (!m_Open) Open();
+}
+
+void CWorldObjectTool::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pane)
+{
+    ImGui::PushID("WorldObjectWorkbenchSession");
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0))
+        m_InteractionRequested = true;
+    switch (pane)
+    {
+    case COMPOSITION_WORKBENCH_PANE::PATTERNS:
+        if (m_Ready) Render_Resources(true);
+        else ImGui::TextWrapped("%s", m_Status.c_str());
+        break;
+    case COMPOSITION_WORKBENCH_PANE::RESOURCES:
+        if (m_Ready) Render_EffectResources();
+        Render_PhysicalResources();
+        if (m_Ready) Render_AnimationResources();
+        break;
+    case COMPOSITION_WORKBENCH_PANE::SEQUENCER:
+        Render_SelectedSequence();
+        break;
+    case COMPOSITION_WORKBENCH_PANE::DETAILS:
+        if (m_Ready) Render_Detail();
+        else ImGui::TextDisabled("Load Object Resources to edit an object.");
+        break;
+    case COMPOSITION_WORKBENCH_PANE::TOOLBAR:
+        Render_Toolbar();
+        break;
+    case COMPOSITION_WORKBENCH_PANE::PREVIEW:
+        ImGui::TextUnformatted("Object Motion Preview");
+        ImGui::TextDisabled("Playback elapsed: %.0f ms%s", m_ClockMs, m_Playing ? " (playing)" : "");
+        if (!m_PreviewStatus.empty()) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
+        if (!m_PreviewActive)
+            ImGui::TextWrapped("Select a Motion and use Play in Composition Sequencer. Selecting a parent lists its linked Motion tracks.");
+        break;
+    case COMPOSITION_WORKBENCH_PANE::BOSS_PATTERN:
+        ImGui::TextWrapped("Object motion edits are shared by every action using that stable Object/Motion ID. Collider and Result logic belong to the action that places the object.");
+        break;
+    default:
+        break;
+    }
+    ImGui::PopID();
+}
+
+void CWorldObjectTool::Render_SelectedSequence()
+{
+    auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (const auto* group = Preview_Group()) Render_GroupSequence(*group);
+    else if (sequence) Render_Sequence(*sequence);
+    else if (const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject))
+        Render_GroupSequence(*resource, true);
+    else ImGui::TextWrapped("Select an Object to see all linked Motion, Animation and Effect rows, or a Motion to edit and play its timeline.");
+}
+
 void CWorldObjectTool::Render()
 {
     if (!m_Open) return;
@@ -906,15 +1199,7 @@ void CWorldObjectTool::Render()
             {centerX, topY + height * .57f}, {centerWidth, height * .43f}))
         {
             Render_Toolbar();
-            auto* instance = m_Document.Find_Instance(m_SelectedInstance);
-            auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-            if (const auto* group = Preview_Group()) Render_GroupSequence(*group);
-            else if (sequence) Render_Sequence(*sequence);
-            else
-            {
-                ImGui::TextWrapped("Select a Motion beneath an Object to open its Lifetime timeline. The parent Object edits shared resources only.");
-                ImGui::BeginDisabled(); ImGui::Button("Play"); ImGui::SameLine(); ImGui::Button("Append Clip"); ImGui::EndDisabled();
-            }
+            Render_SelectedSequence();
         }
         ImGui::End();
     }
@@ -973,7 +1258,7 @@ void CWorldObjectTool::Render_Toolbar()
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
 }
 
-void CWorldObjectTool::Render_Resources()
+void CWorldObjectTool::Render_Resources(const bool fillPane)
 {
     if (ImGui::Button("Create Object"))
     {
@@ -1003,7 +1288,7 @@ void CWorldObjectTool::Render_Resources()
     }
     ImGui::SetNextItemWidth(-1.f);
     ImGui::InputTextWithHint("##ObjectSearch", "Search object or motion", m_ObjectSearch.data(), m_ObjectSearch.size());
-    const float treeHeight = (std::max)(120.f, ImGui::GetContentRegionAvail().y * .28f);
+    const float treeHeight = (std::max)(120.f, ImGui::GetContentRegionAvail().y * (fillPane ? 1.f : .28f));
     if (ImGui::BeginChild("ObjectResourceTree", ImVec2(0.f, treeHeight), true))
     {
         const auto search = Lower(m_ObjectSearch.data());
@@ -1086,19 +1371,49 @@ void CWorldObjectTool::Render_Resources()
 
 void CWorldObjectTool::Render_EffectResources()
 {
-    if (!ImGui::CollapsingHeader("V2 Effects", ImGuiTreeNodeFlags_DefaultOpen)) return;
-    const bool reload = ImGui::Button("Reload V2 Effects");
+    if (!ImGui::CollapsingHeader("Effects", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    const bool reload = ImGui::Button("Reload Effects");
     if (!m_EffectInventoryLoaded || reload)
     {
         std::vector<EFFECT_V2_RESOURCE_SUMMARY> staged;
         if (CEffectV2Catalog::Get().Read_Inventory(staged, m_EffectResourceStatus))
             m_EffectResources = std::move(staged);
+        std::vector<CEffectAuthoringResourceTree::RESOURCE> authored, organization;
+        std::string authoredStatus, organizationStatus;
+        if (CEffectAuthoringResourceTree::Read_V1Inventory(authored, authoredStatus))
+        {
+            if (CEffectAuthoringResourceTree::Read_V1Organization(organization, organizationStatus))
+                for (auto& row : authored)
+                    if (const auto found = std::find_if(organization.begin(), organization.end(),
+                        [&](const auto& value) { return value.strAssetId == row.strAssetId; }); found != organization.end())
+                    { row.strDisplayName = found->strDisplayName; row.CategoryPath = found->CategoryPath; }
+            m_AuthoredEffectResources = std::move(authored);
+        }
+        for (const auto& status : {authoredStatus, organizationStatus})
+            if (!status.empty()) m_EffectResourceStatus += (m_EffectResourceStatus.empty() ? "" : "\n") + status;
         m_EffectInventoryLoaded = true;
     }
     ImGui::SetNextItemWidth(-1.f);
-    ImGui::InputTextWithHint("##ObjectEffectSearch", "Search smoke / group / leaf", m_EffectSearch.data(), m_EffectSearch.size());
+    ImGui::InputTextWithHint("##ObjectEffectSearch", "Search fire / flame / doll / effect", m_EffectSearch.data(), m_EffectSearch.size());
     const auto search = Lower(m_EffectSearch.data());
-    if (ImGui::BeginChild("ObjectV2Effects", ImVec2(0.f, 135.f), true))
+    if (ImGui::BeginChild("ObjectEffects", ImVec2(0.f, 180.f), true))
+    {
+        ImGui::PushID("Authored");
+        for (const auto& effect : m_AuthoredEffectResources)
+        {
+            if (!search.empty() && Lower(effect.strDisplayName + " " + effect.strAssetId).find(search) == std::string::npos) continue;
+            ImGui::PushID(effect.strAssetId.c_str());
+            const auto& label = effect.strDisplayName.empty() ? effect.strAssetId : effect.strDisplayName;
+            ImGui::BeginDisabled(!effect.strStatus.empty());
+            if (ImGui::Selectable(label.c_str(), m_SelectedEffectAuthored && m_SelectedEffectResource == effect.strAssetId))
+            { m_SelectedEffectResource = effect.strAssetId; m_SelectedEffectAuthored = true; }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("%s\n%s", effect.strAssetId.c_str(), effect.strStatus.c_str());
+            ImGui::PopID();
+        }
+        ImGui::PopID();
+        ImGui::PushID("Typed");
         for (const auto& effect : m_EffectResources)
         {
             if (!search.empty() && Lower(effect.strDisplayName + " " + effect.strResourceId).find(search) == std::string::npos) continue;
@@ -1106,68 +1421,97 @@ void CWorldObjectTool::Render_EffectResources()
             const auto label = std::string(effect.eKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "[Group] " : "[Leaf] ") +
                 (effect.strDisplayName.empty() ? effect.strResourceId : effect.strDisplayName);
             ImGui::BeginDisabled(!effect.strStatus.empty());
-            if (ImGui::Selectable(label.c_str(), m_SelectedEffectResource == effect.strResourceId && m_SelectedEffectKind == effect.eKind))
-            { m_SelectedEffectResource = effect.strResourceId; m_SelectedEffectKind = effect.eKind; }
+            if (ImGui::Selectable(label.c_str(), !m_SelectedEffectAuthored && m_SelectedEffectResource == effect.strResourceId && m_SelectedEffectKind == effect.eKind))
+            { m_SelectedEffectResource = effect.strResourceId; m_SelectedEffectKind = effect.eKind; m_SelectedEffectAuthored = false; }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGui::SetTooltip("%s\n%s", effect.strResourceId.c_str(), effect.strStatus.c_str());
             ImGui::PopID();
         }
+        ImGui::PopID();
+    }
     ImGui::EndChild();
-    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
-    const bool target = instance && instance->bindings.size() == 1u &&
-        instance->bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
+    const bool target = Effect_TargetInstance() != nullptr;
     ImGui::BeginDisabled(!target || m_SelectedEffectResource.empty());
-    if (ImGui::Button("Append Effect at Motion End")) Append_SelectedEffect();
+    if (ImGui::Button("Play Effect")) Play_SelectedEffect();
+    ImGui::SameLine();
+    if (ImGui::Button("Append Effect")) Append_SelectedEffect();
     ImGui::EndDisabled();
-    if (!target) ImGui::TextWrapped("Select an Object's child Motion, then append an Effect row.");
+    ImGui::TextWrapped("Play previews the model and selected Effect together. Append adds the Effect at 0 ms; Save keeps it in this Motion.");
+    if (!target) ImGui::TextWrapped("Select an Object with a Default Motion, or one of its child Motions.");
+    if (m_EffectPreviewDocument) ImGui::TextDisabled("Temporary Effect preview. Append to keep this Effect.");
     if (!m_EffectResourceStatus.empty()) ImGui::TextWrapped("%s", m_EffectResourceStatus.c_str());
 }
 
-bool CWorldObjectTool::Append_SelectedEffect()
+const WORLD_SEQUENCE_INSTANCE* CWorldObjectTool::Effect_TargetInstance() const
 {
-    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance.empty() && resource ?
+        resource->defaultMotionInstanceId : m_SelectedInstance);
+    return instance && instance->enabled && instance->bindings.size() == 1u &&
+        instance->bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ? instance : nullptr;
+}
+
+bool CWorldObjectTool::Build_SelectedEffectCandidate(CWorldSequenceDocument& staged, std::string& instanceId)
+{
+    const auto* instance = Effect_TargetInstance();
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-    if (!sequence || instance->bindings.size() != 1u || instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
-    { m_Status = "Select a child Object Motion before appending an Effect."; return false; }
-    std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
-    if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(m_SelectedEffectKind, m_SelectedEffectResource, snapshot, m_EffectResourceStatus))
-    { m_Status = "Effect Append failed: " + m_EffectResourceStatus; return false; }
-    // Match the existing V2 authoring preview span, including particles/trails
-    // remaining after emission ends. The row does not stretch leaf envelopes.
-    const auto leafSpan = [](const EFFECT_V2_DOCUMENT& document, const uint32_t explicitMs, const bool tailEnabled)
-    {
-        const auto& params = document.Desc.Params;
-        const double rate = (std::max)(.001, static_cast<double>(params.fPlayRate));
-        const double emission = explicitMs ? explicitMs : params.fLifetime > 0.f ?
-            std::ceil(params.fLifetime * 1000.0 / rate) : 3000.0;
-        const double tail = !tailEnabled ? 0.0 : document.eType == EFFECT_V2_TYPE::PARTICLE ?
-            params.Particle.vLifetime.y * 1000.0 / rate : document.eType == EFFECT_V2_TYPE::TRAIL ?
-            params.Trail.fPointLifetime * 1000.0 / rate : 0.0;
-        return emission + std::ceil(tail);
-    };
+    if (!sequence || m_SelectedEffectResource.empty())
+    { m_Status = "Select an Object Motion and an Effect."; return false; }
     double span = 0.;
-    if (m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP)
+    if (m_SelectedEffectAuthored)
     {
-        const auto* group = snapshot->Find_Group(m_SelectedEffectResource);
-        if (!group) { m_Status = "Selected Effect group is unavailable."; return false; }
-        span = group->iDurationMs;
-        if (!group->iDurationMs)
-            for (const auto& child : group->Children)
-            {
-                const auto* leaf = snapshot->Find_Document(child.strEffectId);
-                if (!leaf) { m_Status = "Selected Effect group child is unavailable."; return false; }
-                span = (std::max)(span, child.iStartMs + leafSpan(*leaf, child.iDurationMs,
-                    child.eStop == EFFECT_V2_CHILD_STOP::DEACTIVATE));
-            }
+        const auto document = CEffectCatalog::Find(m_SelectedEffectResource);
+        if (!document) { m_Status = "Effect unavailable: " + CEffectCatalog::Get_Status(); return false; }
+        for (const auto& element : document->Elements)
+        {
+            const auto& timing = element.Detail.Timing;
+            span = (std::max)(span, 1000.0 * (timing.fStartDelaySeconds + timing.fLifeTimeSeconds + timing.fAfterImageSeconds));
+        }
+        for (const auto& cue : document->ModelCues)
+            span = (std::max)(span, 1000.0 * (cue.fStartDelaySeconds + cue.fDurationSeconds));
     }
     else
     {
-        const auto* leaf = snapshot->Find_Document(m_SelectedEffectResource);
-        if (!leaf) { m_Status = "Selected Effect leaf is unavailable."; return false; }
-        span = leafSpan(*leaf, 0u, true);
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+        if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(m_SelectedEffectKind, m_SelectedEffectResource, snapshot, m_EffectResourceStatus))
+        { m_Status = "Effect Append failed: " + m_EffectResourceStatus; return false; }
+        // Match the existing V2 authoring preview span, including particles/trails
+        // remaining after emission ends. The row does not stretch leaf envelopes.
+        const auto leafSpan = [](const EFFECT_V2_DOCUMENT& document, const uint32_t explicitMs, const bool tailEnabled)
+        {
+            const auto& params = document.Desc.Params;
+            const double rate = (std::max)(.001, static_cast<double>(params.fPlayRate));
+            const double emission = explicitMs ? explicitMs : params.fLifetime > 0.f ?
+                std::ceil(params.fLifetime * 1000.0 / rate) : 3000.0;
+            const double tail = !tailEnabled ? 0.0 : document.eType == EFFECT_V2_TYPE::PARTICLE ?
+                params.Particle.vLifetime.y * 1000.0 / rate : document.eType == EFFECT_V2_TYPE::TRAIL ?
+                params.Trail.fPointLifetime * 1000.0 / rate : 0.0;
+            return emission + std::ceil(tail);
+        };
+        if (m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP)
+        {
+            const auto* group = snapshot->Find_Group(m_SelectedEffectResource);
+            if (!group) { m_Status = "Selected Effect group is unavailable."; return false; }
+            span = group->iDurationMs;
+            if (!group->iDurationMs)
+                for (const auto& child : group->Children)
+                {
+                    const auto* leaf = snapshot->Find_Document(child.strEffectId);
+                    if (!leaf) { m_Status = "Selected Effect group child is unavailable."; return false; }
+                    span = (std::max)(span, child.iStartMs + leafSpan(*leaf, child.iDurationMs,
+                        child.eStop == EFFECT_V2_CHILD_STOP::DEACTIVATE));
+                }
+        }
+        else
+        {
+            const auto* leaf = snapshot->Find_Document(m_SelectedEffectResource);
+            if (!leaf) { m_Status = "Selected Effect leaf is unavailable."; return false; }
+            span = leafSpan(*leaf, 0u, true);
+        }
     }
-    CWorldSequenceDocument staged = m_Document;
+    if (!std::isfinite(span)) { m_Status = "Selected Effect has an invalid duration."; return false; }
+    staged = m_Document;
     auto* edited = staged.Find_Template(sequence->sequenceId);
     WORLD_SEQUENCE_EFFECT_TRACK row;
     uint32_t serial = 1u;
@@ -1175,15 +1519,88 @@ bool CWorldObjectTool::Append_SelectedEffect()
     while (std::any_of(edited->effectTracks.begin(), edited->effectTracks.end(),
         [&](const auto& value) { return value.effectTrackId == row.effectTrackId; }));
     row.slotId = instance->bindings.front().slotId;
-    row.resourceKind = m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF";
+    row.resourceKind = m_SelectedEffectAuthored ? "V1_EFFECT" :
+        m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF";
     row.resourceId = m_SelectedEffectResource;
+    row.timing = "TIME";
+    row.startMs = 0u;
+    row.followObject = true;
     row.durationMs = static_cast<uint32_t>((std::clamp)(std::ceil(span), 1., 600000.));
+    WORLD_OBJECT_TRAVEL_DRAFT travel;
+    std::string travelStatus;
+    const bool preserveTravel = ObjectTravel::Read(*edited, false, travel, travelStatus);
     edited->effectTracks.push_back(row);
+    if (preserveTravel)
+    {
+        WORLD_SEQUENCE_TEMPLATE rebuilt;
+        if (!ObjectTravel::Build(*edited, travel, rebuilt, m_Status)) return false;
+        *edited = std::move(rebuilt);
+    }
     if (!staged.Validate(m_MapTargets, m_DeployTargets, m_Status)) return false;
-    m_SelectedEffectRow = edited->effectTracks.size() - 1u;
+    instanceId = instance->instanceId;
+    return true;
+}
+
+bool CWorldObjectTool::Append_SelectedEffect()
+{
+    CWorldSequenceDocument staged;
+    std::string instanceId;
+    if (!Build_SelectedEffectCandidate(staged, instanceId)) return false;
+    const auto* instance = staged.Find_Instance(instanceId);
+    m_SelectedEffectRow = staged.Find_Template(instance->templateId)->effectTracks.size() - 1u;
+    m_SelectedInstance = instanceId;
     m_Document = std::move(staged);
     Mark_Dirty();
-    m_Status = "Effect row appended at Motion End. Adjust it in Effect Rows, then Save.";
+    m_Status = "Effect appended at 0 ms with the model. Play the Motion, adjust Effect Rows, then Save.";
+    return true;
+}
+
+bool CWorldObjectTool::Play_SelectedEffect()
+{
+    CWorldSequenceDocument staged;
+    std::string instanceId;
+    const auto* instance = Effect_TargetInstance();
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    const std::string kind = m_SelectedEffectAuthored ? "V1_EFFECT" :
+        m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF";
+    const bool alreadyAppended = sequence && std::any_of(sequence->effectTracks.begin(), sequence->effectTracks.end(),
+        [&](const auto& row) { return row.resourceKind == kind && row.resourceId == m_SelectedEffectResource; });
+    if (alreadyAppended)
+    {
+        staged = m_Document;
+        instanceId = instance->instanceId;
+        if (!staged.Validate(m_MapTargets, m_DeployTargets, m_Status)) return false;
+    }
+    else if (!Build_SelectedEffectCandidate(staged, instanceId)) return false;
+    m_PlayAfterPreparation = true;
+    const auto* group = Preview_Group();
+    if (!Prepare_PreviewEffects(staged, group ? group->objectId : instanceId))
+    {
+        if (m_PreviewPreparationPending)
+        {
+            m_PendingEffectPreviewDocument = std::move(staged);
+            m_PendingEffectInstance = instanceId;
+            return true;
+        }
+        return false;
+    }
+    return Begin_EffectPreview(std::move(staged), instanceId);
+}
+
+bool CWorldObjectTool::Begin_EffectPreview(CWorldSequenceDocument staged, const std::string& instanceId)
+{
+    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    if (!level) { m_Status = "Effect preview requires the active KoukuSaydon arena."; return false; }
+    const auto* group = Preview_Group();
+    if (!level->Debug_BeginWorldObjectPreview(staged, group ? group->objectId : instanceId,
+        m_Status, m_PreviewAtCharacter)) return false;
+    m_EffectPreviewDocument = std::move(staged);
+    m_PreviewLevel = level;
+    m_PreviewActive = true;
+    m_PreviewDirty = false;
+    m_ClockMs = 0.f;
+    m_Playing = m_PlayAfterPreparation;
+    m_Status = "Playing the model and selected Effect together. Append commits the Effect to this Motion.";
     return true;
 }
 
@@ -1191,7 +1608,7 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
 {
     if (!ImGui::CollapsingHeader("Effect Rows", ImGuiTreeNodeFlags_DefaultOpen)) return;
     if (sequence.effectTracks.empty())
-    { ImGui::TextWrapped("Choose a V2 Group or Leaf in Object Resources and Append Effect at Motion End."); return; }
+    { ImGui::TextWrapped("Choose an Effect in Object Resources, then Append Effect to play it with this model."); return; }
     m_SelectedEffectRow = (std::min)(m_SelectedEffectRow, sequence.effectTracks.size() - 1u);
     for (size_t index = 0; index < sequence.effectTracks.size(); ++index)
     {
@@ -1205,7 +1622,7 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     if (ImGui::Combo("Effect Trigger", &timing, "Motion End\0At Time\0"))
     {
         row.timing = timing == 0 ? "MOTION_END" : "TIME";
-        row.startMs = timing == 0 ? 0u : sequence.durationMs;
+        row.startMs = 0u;
         changed = true;
     }
     if (timing == 1) changed |= EditUInt("Effect Start (ms)", row.startMs, sequence.durationMs);
@@ -1214,12 +1631,36 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     changed |= ImGui::DragFloat3("Effect Offset (m)", &row.positionOffset.x, .01f);
     changed |= ImGui::DragFloat3("Effect Rotation (deg)", &row.rotationDegrees.x, .5f);
     changed |= ImGui::DragFloat3("Effect Scale", &row.scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-    ImGui::TextWrapped("Each emitted object triggers this Effect at its own trajectory position. The Effect stays there after the model ends; its original envelope is preserved.");
+    changed |= ImGui::Checkbox("Follow Object", &row.followObject);
+    std::array<char, 256> bone{};
+    std::snprintf(bone.data(), bone.size(), "%s", row.bone.c_str());
+    if (ImGui::InputText("Effect Bone (empty = root)", bone.data(), bone.size()))
+    { row.bone = bone.data(); changed = true; }
+    ImGui::TextWrapped("At Time 0 starts with each emitted model. Follow Object tracks its pose; disable it to keep the Effect at the trigger position.");
     if (ImGui::Button("Remove Selected Effect Row"))
     {
-        sequence.effectTracks.erase(sequence.effectTracks.begin() + static_cast<ptrdiff_t>(m_SelectedEffectRow));
-        m_SelectedEffectRow = 0;
-        changed = true;
+        auto candidate = m_Document;
+        auto* edited = candidate.Find_Template(sequence.sequenceId);
+        WORLD_OBJECT_TRAVEL_DRAFT travel;
+        std::string reason;
+        const bool preserveTravel = ObjectTravel::Read(sequence, false, travel, reason);
+        edited->effectTracks.erase(edited->effectTracks.begin() + static_cast<ptrdiff_t>(m_SelectedEffectRow));
+        WORLD_SEQUENCE_TEMPLATE rebuilt;
+        if (preserveTravel && !ObjectTravel::Build(*edited, travel, rebuilt, reason))
+            m_Status = "Effect removal refused: " + reason + " Existing draft preserved.";
+        else
+        {
+            if (preserveTravel) *edited = std::move(rebuilt);
+            if (!candidate.Validate(m_MapTargets, m_DeployTargets, reason))
+                m_Status = "Effect removal refused: " + reason + " Existing draft preserved.";
+            else
+            {
+                // Keep the caller's template reference valid for the key editor below.
+                sequence = std::move(*edited);
+                m_SelectedEffectRow = 0;
+                changed = true;
+            }
+        }
     }
     if (changed) Mark_Dirty();
 }
@@ -1595,10 +2036,15 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
         }
         ImGui::EndCombo();
     }
+    ImGui::BeginDisabled(!defaultMotion || !defaultMotion->enabled || !defaultSequence);
+    if (ImGui::Button("Edit Default Motion")) { Select_State(resource.defaultMotionInstanceId); return; }
+    ImGui::EndDisabled();
+    if (defaultSequence) ImGui::TextDisabled("Default: %s | %u ms | %s",defaultSequence->displayName.c_str(),
+        defaultSequence->durationMs,MotionEndLabel(defaultMotion->motionEnd));
     if (!defaultMotion || !defaultMotion->enabled)
         ImGui::TextWrapped("Choose an enabled Default Motion to Append or Preview this Object.");
     ImGui::BeginDisabled(!Preview_Instance());
-    if (ImGui::Button("Preview Default")) { Stop_Preview(); m_PreviewAtCharacter = true; m_ClockMs = 0.f; Seek(0.f); m_Playing = m_PreviewActive; }
+    if (ImGui::Button("Preview Default")) { Stop_Preview(); m_PreviewAtCharacter = true; m_ClockMs = 0.f; Play_Preview(); }
     ImGui::EndDisabled(); ImGui::SameLine();
     if (ImGui::Button("Stop Preview")) { Stop_Preview(); m_ClockMs = 0.f; }
     if (motions.empty()) ImGui::TextDisabled("No motions yet.");
@@ -1633,6 +2079,74 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
     if (alias) ImGui::TextWrapped("This placed Object retains its existing Motion and bindings.");
 }
 
+bool CWorldObjectTool::Render_TravelEditor(WORLD_SEQUENCE_INSTANCE& instance, WORLD_SEQUENCE_TEMPLATE& sequence)
+{
+    if (!ImGui::CollapsingHeader("Travel / Individual Lifetime", ImGuiTreeNodeFlags_DefaultOpen)) return false;
+    if (!m_TravelDraft || m_TravelDraft->instanceId!=instance.instanceId || m_TravelDraft->sourceRevision!=m_Document.Get_Revision())
+    {
+        auto draft=std::make_shared<WORLD_OBJECT_TRAVEL_DRAFT>();
+        std::string reason;
+        if (!ObjectTravel::Read(sequence,false,*draft,reason) && !ObjectTravel::Read(sequence,true,*draft,reason))
+        {
+            ImGui::TextWrapped("%s",reason.empty() ? "Use Advanced keys for this Motion; its existing curve is preserved." : reason.c_str());
+            return false;
+        }
+        draft->instanceId=instance.instanceId; draft->sourceRevision=m_Document.Get_Revision();
+        m_TravelDraft=std::move(draft);
+    }
+    auto& edit=*m_TravelDraft;
+    ImGui::TextWrapped("Each emitted object uses this local path after its own delay. Row Yaw and the Composition box transform place the path in the world.");
+    ImGui::DragFloat3("Travel Start (local m)",&edit.start.x,.05f);
+    ImGui::DragFloat3("Travel End (local m)",&edit.end.x,.05f);
+    float distance=ObjectTravel::Distance(edit.start,edit.end);
+    const auto delta=XMLoadFloat3(&edit.end)-XMLoadFloat3(&edit.start);
+    float3_t direction{}; if (distance>.000001f) XMStoreFloat3(&direction,delta/distance);
+    float heading[2]={XMConvertToDegrees(std::atan2(direction.x,direction.z)),
+        XMConvertToDegrees(std::asin((std::clamp)(direction.y,-1.f,1.f)))};
+    bool redirect=ImGui::DragFloat2("Direction Yaw / Pitch (deg)",heading,.5f);
+    redirect|=ImGui::DragFloat("Travel Distance (m)",&distance,.05f,0.f,100000.f,"%.3f",ImGuiSliderFlags_AlwaysClamp);
+    if (redirect && std::isfinite(distance) && std::isfinite(heading[0]) && std::isfinite(heading[1]))
+    {
+        const float yaw=XMConvertToRadians(heading[0]), pitch=XMConvertToRadians((std::clamp)(heading[1],-90.f,90.f));
+        edit.end={edit.start.x+distance*std::sin(yaw)*std::cos(pitch),edit.start.y+distance*std::sin(pitch),edit.start.z+distance*std::cos(yaw)*std::cos(pitch)};
+    }
+    ImGui::DragFloat("Travel Speed (m/s)",&edit.speed,.05f,.000001f,100000.f,"%.6f",ImGuiSliderFlags_AlwaysClamp);
+    EditUInt("Individual Lifetime (ms)",edit.lifetimeMs,CWorldSequenceDocument::MAX_DURATION_MS,1);
+    int endpoint=edit.despawnAtEndpoint ? 1 : 0;
+    if (ImGui::Combo("At Endpoint",&endpoint,"Hold until Lifetime\0Despawn on Arrival\0")) edit.despawnAtEndpoint=endpoint==1;
+    ImGui::DragFloat3("Initial Base Facing (deg)",&edit.initialFacing.x,.25f);
+    ImGui::DragFloat3("Final Base Facing (deg)",&edit.finalFacing.x,.25f);
+    ImGui::TextDisabled("Base Facing axes: pitch (X), yaw (Y), roll (Z).");
+    uint32_t arrival=0u; std::string reason;
+    const bool valid=ObjectTravel::Arrival(edit,arrival,reason);
+    if (valid) ImGui::TextDisabled("Arrival: %u ms | Distance: %.3f m | Effective speed: %.3f m/s",arrival,
+        ObjectTravel::Distance(edit.start,edit.end),ObjectTravel::Distance(edit.start,edit.end)/(arrival*.001f));
+    else ImGui::TextWrapped("%s",reason.c_str());
+    ImGui::TextDisabled("Last emission delay: %u ms | Complete object cycle: %llu ms",sequence.objectMotion.LastEmissionDelayMs(),
+        static_cast<unsigned long long>(uint64_t(edit.lifetimeMs)+sequence.objectMotion.LastEmissionDelayMs()));
+    ImGui::TextWrapped("Base Facing preserves the model orientation separately from Self Rotation below. Self Rotation continues while the object is visible; Hold stops its movement. Travel saves a one-cycle Stop Motion. Repeat the whole cycle with Composition Parent Repeat.");
+    if (edit.conversion) ImGui::TextWrapped("Convert replaces constant velocity with straight Transform keys, preserving pose, scale, self rotation and emission rows. All emissions receive the displayed Individual Lifetime.");
+    ImGui::BeginDisabled(!valid);
+    const bool apply=ImGui::Button(edit.conversion ? "Convert to Travel" : "Apply Travel");
+    ImGui::EndDisabled(); ImGui::SameLine();
+    if (ImGui::Button("Reset Travel Inputs")) { m_TravelDraft.reset(); return false; }
+    if (!apply) return false;
+    auto candidate=m_Document;
+    auto* target=candidate.Find_Template(sequence.sequenceId);
+    auto* targetInstance=candidate.Find_Instance(instance.instanceId);
+    WORLD_SEQUENCE_TEMPLATE generated;
+    if (!target || !targetInstance || !ObjectTravel::Build(sequence,edit,generated,reason))
+    { m_Status="Travel refused: "+reason+" Existing draft preserved."; return false; }
+    *target=std::move(generated);
+    targetInstance->motionEnd=WORLD_SEQUENCE_MOTION_END::STOP; targetInstance->nextMotionId.clear();
+    if (!candidate.Validate(m_MapTargets,m_DeployTargets,reason))
+    { m_Status="Travel refused: "+reason+" Existing draft preserved."; return false; }
+    m_Document=std::move(candidate); m_TravelDraft.reset(); m_SelectedKey=0u;
+    Mark_Dirty();
+    m_Status="Travel keys saved in the current draft. Each emission ends at its own Lifetime. Save stores the Motion; Composition Parent Repeat controls complete cycles.";
+    return true;
+}
+
 void CWorldObjectTool::Render_Detail()
 {
     if (auto* group = m_Document.Find_ObjectResource(m_SelectedGroup)) Render_GroupDetail(*group);
@@ -1646,6 +2160,7 @@ void CWorldObjectTool::Render_Detail()
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
     auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (!sequence) { ImGui::TextWrapped("The selected Motion is unavailable. Select its parent Object to continue."); return; }
+    if (!alias && Render_TravelEditor(*instance, *sequence)) return;
     ImGui::SeparatorText("Motion");
     changed |= EditText("Motion Name", sequence->displayName);
     ImGui::TextDisabled("%s", instance->instanceId.c_str());
@@ -1684,8 +2199,12 @@ void CWorldObjectTool::Render_Detail()
     }
     changed |= EditUInt("Start Delay (ms)", instance->startDelayMs, CWorldSequenceDocument::MAX_DURATION_MS);
     changed |= ImGui::DragFloat("Playback Speed", &instance->playbackSpeed, .01f, .05f, 8.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    WORLD_OBJECT_TRAVEL_DRAFT currentTravel;
+    std::string travelStatus;
+    const bool savedTravel = !alias && ObjectTravel::Read(*sequence, false, currentTravel, travelStatus);
     uint32_t duration = sequence->durationMs;
-    if (EditUInt("Lifetime (ms)", duration, CWorldSequenceDocument::MAX_DURATION_MS, 1))
+    ImGui::BeginDisabled(savedTravel);
+    if (EditUInt("Motion Key Timeline (ms)", duration, CWorldSequenceDocument::MAX_DURATION_MS, 1))
     {
         // Preserve the key order and endpoint contract even when shortening a state.
         bool valid = true;
@@ -1729,6 +2248,8 @@ void CWorldObjectTool::Render_Detail()
         }
         else m_Status = "Lifetime must leave at least one millisecond between every existing key or clip.";
     }
+    ImGui::EndDisabled();
+    if (savedTravel) ImGui::TextDisabled("Edit Individual Lifetime above; this timeline also includes the last emission delay when needed.");
     ImGui::BeginDisabled(alias || Preview_Group());
     int motionEnd = static_cast<int>(instance->motionEnd);
     if (ImGui::Combo("On Complete", &motionEnd, "Stop\0Hold Last Pose\0Loop\0Play Motion\0"))
@@ -1779,6 +2300,13 @@ void CWorldObjectTool::Render_Detail()
     {
         auto& motion = sequence->objectMotion;
         auto& origins = Emission_Origins(*sequence);
+        WORLD_OBJECT_TRAVEL_DRAFT previousTravel;
+        std::string travelReason;
+        const bool preserveTravel = ObjectTravel::Read(*sequence, false, previousTravel, travelReason);
+        const auto beforePhysics = preserveTravel ? *sequence : WORLD_SEQUENCE_TEMPLATE{};
+        const auto beforeOrigins = preserveTravel ? origins : std::vector<uint32_t>{};
+        const int beforeGroupCount = m_GroupCount;
+        const uint32_t beforeDelay = motion.LastEmissionDelayMs();
         ImGui::TextWrapped("Motion uses the Lifetime timeline and works without animation clips. Play or drag the ruler to preview, then Save.");
         ImGui::DragFloat("Arc Height (m)", &m_VerticalArcHeight, .05f, .01f, 100.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
         if (ImGui::Button("Apply Vertical Arc"))
@@ -1814,8 +2342,9 @@ void CWorldObjectTool::Render_Detail()
             m_GroupCount = static_cast<int>(motion.count);
             changed = true;
         }
-        const uint32_t maxInterval = motion.count > 1 ? (sequence->effectTracks.empty() ? sequence->durationMs - 1 :
-            CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs) / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
+        const uint32_t emissionDelayLimit = preserveTravel ? CWorldSequenceDocument::MAX_DURATION_MS - previousTravel.lifetimeMs :
+            sequence->effectTracks.empty() ? sequence->durationMs - 1 : CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs;
+        const uint32_t maxInterval = motion.count > 1 ? emissionDelayLimit / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
         if (motion.intervalMs > maxInterval) { motion.intervalMs = maxInterval; changed = true; }
         changed |= EditUInt("Creation Interval (ms)", motion.intervalMs, maxInterval);
         changed |= ImGui::DragFloat(sequence->effectTracks.empty() ? "Spread (deg)" : "Horizontal Spread (deg)", &motion.spreadDegrees, .5f, 0.f, sequence->effectTracks.empty() ? 180.f : 360.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
@@ -1825,7 +2354,7 @@ void CWorldObjectTool::Render_Detail()
         changed |= EditUInt("Seed", motion.seed, INT_MAX);
         ImGui::SeparatorText("Authored Emissions");
         ImGui::TextWrapped("Rows replace the seeded spread. Each row replays this Motion's keys, physics and revolution from its own local offset, yaw and delay. Leave the list empty to keep Count / Creation Interval / Spread.");
-        const uint32_t maxDelay = sequence->effectTracks.empty() ? sequence->durationMs - 1 : CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs;
+        const uint32_t maxDelay = emissionDelayLimit;
         size_t removeRow = emissions.size(), duplicateRow = emissions.size();
         if (!emissions.empty() && ImGui::BeginTable("AuthoredEmissions", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
         {
@@ -1954,6 +2483,30 @@ void CWorldObjectTool::Render_Detail()
             else m_Status = "Spacing exceeds the Motion limits. Rows preserved.";
         }
         ImGui::EndDisabled();
+        ImGui::SeparatorText("Circular Spacing");
+        ImGui::TextDisabled("Current orbit radius: %.3f m",std::hypot(motion.revolutionOffset.x,motion.revolutionOffset.z));
+        ImGui::DragFloat("Radial Offset (m)",&m_RadialOffset,.05f);
+        ImGui::TextWrapped("Adds the same metres to the orbit and each row radius. Height, row yaw, delay, self rotation and model size stay unchanged. Apply separately to each circular Motion.");
+        if (ImGui::Button("Apply Radial Offset"))
+        {
+            auto candidate=m_Document;
+            auto* target=candidate.Find_Template(sequence->sequenceId);
+            WORLD_SEQUENCE_OBJECT_MOTION shifted;
+            std::string reason;
+            if (!target || !ObjectTravel::ApplyRadialOffset(motion,m_RadialOffset,shifted,reason))
+                m_Status="Radial offset refused: "+reason;
+            else
+            {
+                target->objectMotion=std::move(shifted);
+                if (!candidate.Validate(m_MapTargets,m_DeployTargets,reason)) m_Status="Radial offset refused: "+reason+" Existing draft preserved.";
+                else
+                {
+                    m_Document=std::move(candidate); Mark_Dirty();
+                    m_Status="Orbit and emission radii changed by the same metres. Save keeps the circular spacing.";
+                    return;
+                }
+            }
+        }
         ImGui::TextWrapped("Count and delay edits keep linked Collider/Logic rows together when you Save. All boxes using this Motion are updated; unsaved Composition edits are preserved.");
         ImGui::SetNextItemWidth(110.f);
         ImGui::DragInt("Ring Count", &m_RingCount, 1.f, 1, 128, "%d", ImGuiSliderFlags_AlwaysClamp);
@@ -1987,6 +2540,32 @@ void CWorldObjectTool::Render_Detail()
             motion.intervalMs = 0u;
             motion.spreadDegrees = 0.f;
         }
+        if (preserveTravel && beforeDelay != motion.LastEmissionDelayMs())
+        {
+            auto candidate = m_Document;
+            auto* edited = candidate.Find_Template(sequence->sequenceId);
+            WORLD_SEQUENCE_TEMPLATE rebuilt;
+            if (!ObjectTravel::Build(*edited, previousTravel, rebuilt, travelReason))
+            {
+                *sequence = beforePhysics; origins = beforeOrigins; m_GroupCount = beforeGroupCount;
+                m_Status = "Emission edit refused: " + travelReason + " Existing Travel preserved.";
+            }
+            else
+            {
+                *edited = std::move(rebuilt);
+                if (!candidate.Validate(m_MapTargets, m_DeployTargets, travelReason))
+                {
+                    *sequence = beforePhysics; origins = beforeOrigins; m_GroupCount = beforeGroupCount;
+                    m_Status = "Emission edit refused: " + travelReason + " Existing Travel preserved.";
+                }
+                else
+                {
+                    *sequence = std::move(*edited);
+                    m_Status = "Emission timing updated; every blade keeps its Individual Lifetime.";
+                    changed = true;
+                }
+            }
+        }
     }
     if (changed) Mark_Dirty();
     if (!alias) Render_EffectRows(*sequence);
@@ -2015,32 +2594,50 @@ void CWorldObjectTool::Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resour
     ImGui::TextWrapped("All %zu motions stay in preview. The full editor below changes the selected row; Save keeps all rows.", resource.motionInstanceIds.size());
 }
 
-void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
+void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const bool parentOverview)
 {
     ImGui::SeparatorText(resource.displayName.c_str());
-    if (ImGui::Button(m_Playing ? "Pause" : "Play"))
+    const auto parentMotionIds = parentOverview ? StateIds(resource) : std::vector<std::string>{};
+    const auto& motionIds = parentOverview ? parentMotionIds : resource.motionInstanceIds;
+    if (parentOverview)
     {
-        if (m_Playing) m_Playing = false;
-        else { if (m_ClockMs >= PreviewSpanMs()) m_ClockMs = 0.f; Seek(m_ClockMs); m_Playing = m_PreviewActive; }
+        ImGui::TextWrapped("%zu motions on this Object. Select a row to edit and play that Motion. Save retains the shared Object/Motion source.", motionIds.size());
+        if (motionIds.empty())
+        {
+            ImGui::TextDisabled("Create a Motion in Box Detail to add animation, transform and effects.");
+            return;
+        }
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
-    ImGui::SameLine();
-    if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter)) m_PreviewDirty = m_PreviewActive;
-    ImGui::TextWrapped("Click a motion row or key to edit it in Object Detail. All %zu motions keep playing together.", resource.motionInstanceIds.size());
-    if (!m_PreviewStatus.empty()) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
+    else
+    {
+        if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Play"))
+        {
+            if (m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation))
+            { m_Playing = false; m_PlayAfterPreparation = false; }
+            else Play_Preview();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter)) m_PreviewDirty = m_PreviewActive;
+        ImGui::TextWrapped("Click a motion row or key to edit it in Object Detail. All %zu motions keep playing together.", resource.motionInstanceIds.size());
+        if (!m_PreviewStatus.empty()) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
+    }
     // Disabled rows remain on the authoring timeline, even when playback has a shorter span.
     float extent = 1.f;
-    for (const auto& id : resource.motionInstanceIds)
+    for (const auto& id : motionIds)
     {
         const auto* instance = m_Document.Find_Instance(id);
         const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
         if (sequence) extent = (std::max)(extent, instance->startDelayMs +
             sequence->PresentationSpanMs() / (std::max)(.05f, instance->playbackSpeed));
     }
-    float clock = m_ClockMs;
-    if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, extent, "%.0f")) Seek(clock);
-    ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
+    if (!parentOverview)
+    {
+        float clock = m_ClockMs;
+        if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, extent, "%.0f")) Seek(clock);
+        ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
+    }
     ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
     if (ImGui::BeginChild("CombinedObjectTimeline", ImVec2(0.f, (std::max)(110.f, ImGui::GetContentRegionAvail().y)),
         true, ImGuiWindowFlags_HorizontalScrollbar))
@@ -2052,10 +2649,10 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
         const float pixelsPerMs = width / extent;
         CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), duration, pixelsPerMs * 1000.f);
         ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
-        if (ImGui::IsItemActive())
+        if (!parentOverview && ImGui::IsItemActive())
             Seek((std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, extent));
         float y = origin.y + 28.f;
-        for (const auto& id : resource.motionInstanceIds)
+        for (const auto& id : motionIds)
         {
             auto* instance = m_Document.Find_Instance(id);
             auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
@@ -2145,10 +2742,11 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
 void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
 {
     ImGui::SeparatorText(sequence.displayName.c_str());
-    if (ImGui::Button(m_Playing ? "Pause" : "Play"))
+    if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Play"))
     {
-        if (m_Playing) m_Playing = false;
-        else { if (m_ClockMs >= PreviewSpanMs()) m_ClockMs = 0.f; Seek(m_ClockMs); m_Playing = m_PreviewActive; }
+        if (m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation))
+            { m_Playing = false; m_PlayAfterPreparation = false; }
+        else Play_Preview();
     }
     ImGui::SameLine(); if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);

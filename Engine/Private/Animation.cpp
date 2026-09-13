@@ -125,6 +125,40 @@ void CAnimation::Set_TrackPosition(f32_t fTrackPosition)
 		iLeftKeyFrameIndex = 0;
 }
 
+bool_t CAnimation::Is_BoneTransformConstant(const uint32_t boneIndex) const
+{
+    const CChannel* found = nullptr;
+    for (const auto& channel : m_Channels)
+        if (channel && channel->m_iBoneIndex == static_cast<int32_t>(boneIndex))
+        {
+            if (found) return false;
+            found = channel.get();
+        }
+    if (!found) return true;
+    const auto equal3 = [](const float3_t& a, const float3_t& b) {
+        return std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z) &&
+            std::abs(a.x - b.x) <= 1e-7f && std::abs(a.y - b.y) <= 1e-7f && std::abs(a.z - b.z) <= 1e-7f; };
+    const auto equal4 = [&](const float4_t& a, const float4_t& b) {
+        return equal3({a.x,a.y,a.z}, {b.x,b.y,b.z}) && std::isfinite(a.w) && std::abs(a.w - b.w) <= 1e-7f; };
+    if (found->m_bUsesSeparateTracks)
+    {
+        for (const auto& key : found->m_PositionKeys)
+            if (!equal3(key.value, found->m_PositionKeys.front().value)) return false;
+        for (const auto& key : found->m_ScaleKeys)
+            if (!equal3(key.value, found->m_ScaleKeys.front().value)) return false;
+        for (const auto& key : found->m_RotationKeys)
+            if (!equal4(key.value, found->m_RotationKeys.front().value)) return false;
+    }
+    else
+        for (const auto& key : found->m_KeyFrames)
+        {
+            const auto& first = found->m_KeyFrames.front();
+            if (!equal3(key.vTranslation, first.vTranslation) || !equal3(key.vScale, first.vScale) ||
+                !equal4(key.vRotation, first.vRotation)) return false;
+        }
+    return true;
+}
+
 bool_t CAnimation::Sample_LocalBoneTransforms(
 	const f32_t fTrackPosition,
 	const std::span<float4x4_t> InOutLocalTransforms) const

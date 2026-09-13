@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstddef>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -33,11 +34,19 @@ public:
         ICompositionWorkbenchSession* pKoukuSaydonSession,
         bool sequenceWorkspace = false);
 
+    void Set_ActionSessions(ICompositionWorkbenchSession* character,
+        ICompositionWorkbenchSession* object, ICompositionWorkbenchSession* sequence);
+    void Set_TargetChangedCallback(std::function<void(COMPOSITION_WORKBENCH_TARGET)> callback);
+    void Open(COMPOSITION_WORKBENCH_TARGET target);
+    void Open(COMPOSITION_WORKBENCH_TARGET target, COMPOSITION_WORKBENCH_BOSS boss);
+    void Deactivate();
+    [[nodiscard]] COMPOSITION_WORKBENCH_TARGET Get_SelectedTarget() const noexcept { return m_eSelectedTarget; }
+    [[nodiscard]] bool Is_BossSelected() const noexcept { return m_eSelectedTarget == COMPOSITION_WORKBENCH_TARGET::BOSS; }
     void Open();
     void Open(COMPOSITION_WORKBENCH_BOSS boss);
     [[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
     [[nodiscard]] COMPOSITION_WORKBENCH_BOSS Get_SelectedBoss() const noexcept {
-        return m_eSelectedBoss;
+        return m_eSelectedTarget == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ? m_eSequenceBoss : m_eSelectedBoss;
     }
     void Render();
     void Set_AnimationResources(std::vector<COMPOSITION_ANIMATION_RESOURCE> resources,
@@ -53,6 +62,8 @@ public:
 
 private:
     void Select_Boss(COMPOSITION_WORKBENCH_BOSS boss);
+    void Select_Target(COMPOSITION_WORKBENCH_TARGET target);
+    void Render_ActionSelector();
     void Render_WindowMenu();
     void Render_BossSelector();
     void Render_PhysicalAnimationBrowser(ICompositionWorkbenchSession& session);
@@ -63,9 +74,20 @@ private:
         COMPOSITION_WORKBENCH_PANE pane);
     [[nodiscard]] ICompositionWorkbenchSession* Selected_Session() const noexcept;
 
+    bool m_bInsideFrame = false;
+    bool m_bBossChangePending = false;
+    COMPOSITION_WORKBENCH_BOSS m_ePendingBoss = COMPOSITION_WORKBENCH_BOSS::VALTAN;
+    ICompositionWorkbenchSession* m_pCharacterSession = nullptr;
+    ICompositionWorkbenchSession* m_pObjectSession = nullptr;
+    ICompositionWorkbenchSession* m_pSequenceSession = nullptr;
+    std::function<void(COMPOSITION_WORKBENCH_TARGET)> m_TargetChanged;
+    COMPOSITION_WORKBENCH_TARGET m_eSelectedTarget = COMPOSITION_WORKBENCH_TARGET::BOSS;
+    COMPOSITION_WORKBENCH_TARGET m_ePendingTarget = COMPOSITION_WORKBENCH_TARGET::BOSS;
+    bool m_bTargetChangePending = false;
     ICompositionWorkbenchSession* m_pValtanSession = nullptr;
     ICompositionWorkbenchSession* m_pKoukuSaydonSession = nullptr;
     COMPOSITION_WORKBENCH_BOSS m_eSelectedBoss = COMPOSITION_WORKBENCH_BOSS::VALTAN;
+    COMPOSITION_WORKBENCH_BOSS m_eSequenceBoss = COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON;
     const bool m_bSequenceWorkspace;
     bool_t m_bOpen = true;
     bool_t m_bRestoreAuthoringPanesRequested = false;

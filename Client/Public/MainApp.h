@@ -39,6 +39,7 @@ class CCharacterPreviewPanel;
 class CEquipmentAuthoringTool;
 class CProfilerTool;
 class CSequencerTool;
+class CCharacterActionWorkbench;
 class CWorldObjectTool;
 class CWorldLevelTool;
 struct WORLD_LEVEL_TOOL_REQUEST;
@@ -246,6 +247,7 @@ private:
 	otherwise keep showing across a level change or while closed. */
 	void Update_ItemUpgrade(f32_t fTimeDelta);
 	void Update_CustomizingSceneProfile();
+	void Update_KoukuGateSceneProfile();
 	void Hide_ItemUpgrade();
 	void Update_ItemUpgradeSelection();
 	/* Hover/click hit-test for ItemUpgrade_LevelUpBtn ("성장"), same pattern as
@@ -452,6 +454,9 @@ private:
 	/* Set while the character-creation screen holds the dark stage profile, so the
 	swap happens on the open/close edge instead of every frame. */
 	string m_strSceneProfileBeforeCustomizing;
+	string m_strKoukuGateProfileRequest;
+	string m_strKoukuGateProfileApplied;
+	string m_strSceneProfileBeforeKoukuGate;
 	CLightResourceCatalog m_LightResources;
 	unique_ptr<CKoukuSaydonPresentationPlayer> m_pKoukuPresentationPlayer;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
@@ -732,7 +737,7 @@ private:
 	uint32_t m_iWorldObjectCatalogRevision = 0;
 	unique_ptr<CSequencerTool> m_pSequencerTool = { nullptr };
 	unique_ptr<CKoukuSaydonActionWorkbench> m_pSequenceActionWorkbench;
-	unique_ptr<CSequencerTool> m_pSequenceBenchmarkTool;
+	unique_ptr<CCharacterActionWorkbench> m_pCharacterActionWorkbench;
 	// The shared preview clock belongs to its starting session, independently of UI focus.
 	DEBUG_TOOL m_eCompositionPreviewOwner = DEBUG_TOOL::NONE;
 	DEBUG_TOOL m_eColliderAuthoringOwner = DEBUG_TOOL::NONE;

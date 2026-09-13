@@ -37,6 +37,16 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE&) const = default;
 	};
 
+	// Derived presentation window; the authored Logic occurrence owns its clock.
+	// Source/target offsets below are absolute Pattern times, never stage-local.
+	struct KOUKU_SAYDON_ANIMATION_BLEND_WINDOW final
+	{
+		std::string strLogicOccurrenceId;
+		std::uint32_t iStartMs = 0u, iDurationMs = 0u;
+		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE Source, Target;
+		bool operator==(const KOUKU_SAYDON_ANIMATION_BLEND_WINDOW&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_STAGE final
 	{
 		std::string strStageId;
@@ -364,6 +374,8 @@ namespace Client
 		std::string strWorldOccurrenceId;
 		// Row of that World box's authored emission list this box follows; 0 for single emitters.
 		std::uint32_t iWorldEmissionIndex = 0u;
+		// Pattern-local BOSS Collider selection metadata; runtime transforms remain per occurrence.
+		std::string strSelectionGroupId;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE&) const = default;
 	};
 
@@ -432,6 +444,8 @@ namespace Client
 		std::optional<KOUKU_SAYDON_BOSS_MOTION> BossMotion;
 		double fAnimationRootVerticalScale = 1.0;
 		std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
+		// Execution snapshot only. Serialize derives these from Logic definitions/boxes.
+		std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> AnimationBlendWindows;
 		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
 		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE> SummonOccurrences;
 		std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> WorldOccurrences;
@@ -591,6 +605,11 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& source,
 			std::string_view patternId,
 			KOUKU_SAYDON_COMPOSITION_DOCUMENT& outDocument,
+			std::string& outStatus);
+		static bool_t Try_ResolveAnimationBlendWindows(
+			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+			const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+			std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& outWindows,
 			std::string& outStatus);
 		static std::string Serialize(
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);

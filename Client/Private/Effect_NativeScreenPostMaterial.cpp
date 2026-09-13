@@ -21,6 +21,39 @@ namespace
     }
 }
 
+HRESULT Client::EFFECT_SCENE_CAPTURE_STATE::Capture_Once(
+    const Engine::PRESENTATION_SCREEN_POST_MATERIAL_INPUT& Input, const float2_t& destinationUV)
+{
+    if (pColor && pBloom) return hLastResult = S_OK;
+    if (!pDevice || !pContext || !Input.pSceneColor || !Input.pSceneBloom) return hLastResult = E_INVALIDARG;
+    const auto copy = [&](const ComPtr<ID3D11ShaderResourceView>& source,
+        ComPtr<ID3D11ShaderResourceView>& target) -> HRESULT
+    {
+        ComPtr<ID3D11Resource> resource;
+        ComPtr<ID3D11Texture2D> texture, frozen;
+        source->GetResource(&resource);
+        if (!resource || FAILED(resource.As(&texture))) return E_INVALIDARG;
+        D3D11_TEXTURE2D_DESC desc{}; texture->GetDesc(&desc);
+        if (!desc.Width || !desc.Height || desc.SampleDesc.Count != 1u || desc.ArraySize != 1u)
+            return E_INVALIDARG;
+        desc.Usage = D3D11_USAGE_DEFAULT; desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        desc.CPUAccessFlags = 0u; desc.MiscFlags = 0u;
+        HRESULT result = pDevice->CreateTexture2D(&desc, nullptr, &frozen);
+        if (SUCCEEDED(result)) result = pDevice->CreateShaderResourceView(frozen.Get(), nullptr, &target);
+        if (FAILED(result)) return result;
+        // Input is the resolved ping-pong source, never the bound destination.
+        pContext->CopyResource(frozen.Get(), texture.Get());
+        return S_OK;
+    };
+    ComPtr<ID3D11ShaderResourceView> color, bloom;
+    HRESULT result = copy(Input.pSceneColor, color);
+    if (SUCCEEDED(result)) result = copy(Input.pSceneBloom, bloom);
+    if (FAILED(result)) return hLastResult = result;
+    pColor = std::move(color); pBloom = std::move(bloom);
+    vDestinationUV = destinationUV;
+    return hLastResult = S_OK;
+}
+
 bool Client::Is_NativeScreenPostShaderProfile(const uint32_t iProfile)
 {
     if (iProfile >= 2304u && iProfile <= 3711u)
@@ -43,6 +76,38 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
     const Engine::PRESENTATION_SCREEN_POST_MATERIAL_INPUT& Input) const
 {
     const auto& State = m_Snapshot;
+    if (State.bSceneCollapse)
+    {
+        if (!State.pShader || !State.pCapture ||
+            !std::isfinite(State.fCaptureProgress) || State.fCaptureProgress < 0.f || State.fCaptureProgress > 1.f ||
+            !std::isfinite(State.vCaptureDestinationUV.x) || !std::isfinite(State.vCaptureDestinationUV.y) ||
+            !std::isfinite(State.vCaptureDestinationSizeUV.x) || !std::isfinite(State.vCaptureDestinationSizeUV.y) ||
+            State.vCaptureDestinationSizeUV.x < 0.f || State.vCaptureDestinationSizeUV.y < 0.f)
+            return E_INVALIDARG;
+        const bool ready = State.pCapture->pColor && State.pCapture->pBloom;
+        const bool priming = !ready && !State.bCaptureAllowed;
+        HRESULT result = priming ? S_OK : State.pCapture->Capture_Once(Input, State.vCaptureDestinationUV);
+        if (FAILED(result)) return result;
+        auto& shader = *State.pShader;
+        const int live = State.bCaptureOverLiveScene ? 1 : 0;
+        const float progress = priming ? 0.f : State.fCaptureProgress;
+        const auto& destination = State.bCaptureOverLiveScene ?
+            State.vCaptureDestinationUV : State.pCapture->vDestinationUV;
+        result = shader.Bind_Matrix("g_WorldMatrix", &Input.World);
+        if (SUCCEEDED(result)) result = shader.Bind_Matrix("g_ViewMatrix", &Input.View);
+        if (SUCCEEDED(result)) result = shader.Bind_Matrix("g_ProjMatrix", &Input.Projection);
+        if (SUCCEEDED(result)) result = shader.Bind_Texture("g_CapturedSceneColor", priming ? Input.pSceneColor : State.pCapture->pColor);
+        if (SUCCEEDED(result)) result = shader.Bind_Texture("g_CapturedSceneBloom", priming ? Input.pSceneBloom : State.pCapture->pBloom);
+        if (SUCCEEDED(result)) result = shader.Bind_Texture("g_EffectSceneColorTexture", Input.pSceneColor);
+        if (SUCCEEDED(result)) result = shader.Bind_Texture("g_EffectSceneBloomTexture", Input.pSceneBloom);
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureProgress", &progress, sizeof(float));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureDestinationUV", &destination, sizeof(float2_t));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureDestinationSizeUV", &State.vCaptureDestinationSizeUV, sizeof(float2_t));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureOverLiveScene", &live, sizeof(live));
+        result = FAILED(result) ? result : shader.Begin(1u);
+        State.pCapture->hLastResult = SUCCEEDED(result) && priming ? S_FALSE : result;
+        return result;
+    }
     if (!State.pShader || !Input.pSceneColor || !Input.pSceneBloom || !Input.pSceneDepth ||
         !Is_NativeScreenPostShaderProfile(State.iProfile) ||
         !IsFinite(State.vSourceColor) || !IsFinite(State.vDynamicParameter) ||

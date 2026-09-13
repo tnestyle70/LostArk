@@ -905,6 +905,45 @@ namespace ServerGameplayContractDetail
 		}
 
 		{
+			const auto checkSweep = [&](const bool hiddenGap, const bool expired, const bool clippedWindow) {
+				BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_CENTERED_BLADE";
+				BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "blade.damage";
+				window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+				window.iStartMs = clippedWindow ? 134u : 0u; window.iDurationMs = 500u;
+				window.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,10u,0u,{}});
+				BOSS_LOGIC_REGION region{}; region.strRegionId = "blade.circle";
+				region.bCircle = true; region.fRadiusM = .1f;
+				auto& track = region.WorldTrack; track.bEnabled = true;
+				track.iStartDelayMs = 100u; track.iDurationMs = 300u;
+				const auto key = [&](std::uint32_t time, float x, bool visible) {
+					BOSS_LOGIC_WORLD_TRANSFORM_KEY value{};
+					value.iTimeMs = time; value.fOffsetX = x; value.bVisible = visible; track.Keys.push_back(value);
+				};
+				key(0u, -2.f, true);
+				if (hiddenGap) { key(10u, -1.f, false); key(20u, 1.f, true); }
+				key(34u, 2.f, true); key(100u, 2.f, false); key(300u, 2.f, false);
+				window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
+				std::map<PLAYER_ID, SERVER_PLAYER> players;
+				players.emplace(1u, makePlayer(1u, 0.f, 0.f, 0.f));
+				KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> events;
+				CKoukuSaydonLogicRuntime::Build(pattern, logicBoss, 1000u, ledger);
+				const auto update = [&](std::uint32_t tick) { CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players,
+					catalog, &policy, tick, events, output); };
+				update(1002u); // Before this emission's delayed birth.
+				const bool delayed = players.at(1u).iCurrentHp == 1000u;
+				update(expired ? 1007u : clippedWindow ? 1005u : 1004u);
+				const auto expected = hiddenGap || expired || clippedWindow ? 1000u : 900u;
+				const bool judged = players.at(1u).iCurrentHp == expected;
+				update(1008u); update(1009u);
+				return delayed && judged && players.at(1u).iCurrentHp == expected && events.size() == (expected == 900u ? 1u : 0u);
+			};
+			tests.Require(checkSweep(false, false, false), "A fast centered WORLD circle crosses a player between ticks, damages once, and waits for its emission delay");
+			tests.Require(checkSweep(true, false, false), "A WORLD circle sweep never bridges a hidden interval between visible keys");
+			tests.Require(checkSweep(false, true, false), "Hidden Lifetime keys disable WORLD circle contact after expiry");
+			tests.Require(checkSweep(false, false, true), "A clipped Logic occurrence cannot sweep movement before its own start");
+		}
+
+		{
 			BOSS_PATTERN_DEFINITION pattern{};
 			pattern.strPatternId = "KAKULSAYDON_TEST_GAZE";
 			BOSS_PATTERN_LOGIC_WINDOW window{};

@@ -351,11 +351,13 @@ def install(source_dir, append_source_dir=None):
         cases += f"#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {row['program'] // 64 * 64}) && " + carrier_guard(row) + "\n"
         opaque = "true" if row["nativeBlend"] in ("blend_additive", "blend_masked", "blend_opaque") else "false"
         if row.get("distortionPass"):
+            # The early return must retain the common native coverage adapter:
+            # additive RGB already includes source opacity, even when native A is zero.
             cases += f'''    case {row["program"]}u:
     {{
         nativeColor=ArtistNative{row["program"]}(input);
         const float4 accumulated=ArtistNative{row["program"]}Distortion(input);
-        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,{"1.f" if opaque == "true" else "nativeColor.a"});
         output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
         return output;
     }}

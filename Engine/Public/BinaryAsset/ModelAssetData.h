@@ -117,6 +117,8 @@ struct MODEL_SURFACE_PARAMETERS
     // Native texture address: diffuse mirror V=1024, normal mirror U=2048, normal mirror V=4096.
     // linear reflection=8192, fixed base normal UV=16384, detail normal=32768.
     uint32_t sourceBgFlags = 0u;
+    // Authored BG props may emit their surface color independently of scene light.
+    bool_t sourceBgUnlit = false;
     float4_t sourceBgBump = { 0.f, 0.f, 1.f, 0.f }; // offset, intensity, brightness, reserved
     float4_t sourceBgUV = { 0.f, 1.f, 0.f, 0.f }; // sin, cos, fixed move X/Y
     uint32_t sourceBgFlicker = 0u; // 0 steady, 1 nested, 2 linear

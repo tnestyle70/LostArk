@@ -127,6 +127,35 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         nativeBloom, saturate(nativeColor.a)), 0.f), 60000.f), source.a);
     return output;
 }
+// Project-authored transition over the image captured before this occurrence.
+// Keep bloom ownership and leave product UI outside the scene composition.
+Texture2D g_CapturedSceneColor;
+Texture2D g_CapturedSceneBloom;
+float g_CaptureProgress;
+float2 g_CaptureDestinationUV;
+float2 g_CaptureDestinationSizeUV;
+int g_CaptureOverLiveScene;
+EFFECT_PS_OUT PS_SCENE_COLLAPSE(VS_OUT input)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    output.SceneColor.a = 1.f;
+    output.BloomContribution.a = 1.f;
+    if (g_CaptureOverLiveScene != 0)
+    {
+        output.SceneColor = g_EffectSceneColorTexture.SampleLevel(LinearClampUVSampler, input.uv, 0.f);
+        output.BloomContribution = g_EffectSceneBloomTexture.SampleLevel(LinearClampUVSampler, input.uv, 0.f);
+    }
+    const float t = saturate(g_CaptureProgress);
+    const float progress = t * t * (3.f - 2.f * t);
+    const float2 scale = lerp(float2(1.f, 1.f), g_CaptureDestinationSizeUV, progress);
+    if (any(scale <= 0.00001f)) return output;
+    const float2 center = lerp(float2(.5f, .5f), g_CaptureDestinationUV, progress);
+    const float2 uv = (input.uv - center) / scale + 0.5f;
+    if (any(uv < 0.f) || any(uv > 1.f)) return output;
+    output.SceneColor.rgb = g_CapturedSceneColor.SampleLevel(LinearClampUVSampler, uv, 0.f).rgb;
+    output.BloomContribution.rgb = g_CapturedSceneBloom.SampleLevel(LinearClampUVSampler, uv, 0.f).rgb;
+    return output;
+}
 technique11 DefaultTechnique
 {
     pass NativeScreenPost
@@ -137,5 +166,14 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN();
+    }
+    pass SceneImageCollapse
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_EffectOpaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SCENE_COLLAPSE();
     }
 }

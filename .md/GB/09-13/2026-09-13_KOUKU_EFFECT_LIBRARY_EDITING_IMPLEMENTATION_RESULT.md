@@ -1,5 +1,28 @@
 # 쿠크·세이튼 전체 이펙트 편집 결과
 
+## G05 후속 — 2026-09-14 Sequence World 위치 버튼
+
+첨부 화면의 `KAKULSAYDON_G1_PATTERN_4.presentation.35`는 원본 이펙트 문제가 아니라
+`WORLD`, 빈 `worldId`, `followBoss=true`인 occurrence였다. 연결 resource의 기본값도 WORLD라
+Append가 오브젝트 identity 없는 연결을 만들 수 있었고, Player/Mouse 버튼은 MAP에만 표시됐다.
+
+`KoukuSaydonActionWorkbench.cpp/.h`의 기존 배치 경로를 수정했다. 새 Sequence Effect는 MAP으로
+시작하고 명시 선택한 World box 연결만 유지한다. 기존 WORLD에서도 Player/Mouse 버튼을
+제공하며, 마우스 요청·취소는 원래 박스를 유지하고 유효한 hit에서만 MAP/좌표/참조 해제를
+함께 stage한다. 회전·크기·시각을 보존한다. 이미 배치한 Effect의 Resources Preview도
+기존 좌표·시각을 유지하도록 신규 초기화와 구분했다. 실행 중 Composition 파일은 수정하지 않았다.
+
+수정 TU의 실제 OBJ 컴파일은 Product와 같은 문자 집합 옵션으로 통과했다. 기존 MAP projection
+회귀 1건(V1_EFFECT/V1_ELEMENT/GROUP 및 부착 참조 거절)과 수정 파일 `git diff --check`도 통과했다.
+증거는 `out/EffectWorldPick20260914/compile.log`다. 실행 중 Client PID 9404와 Server PID 58992를
+확인했고 종료·UI 조작·화면 캡처는 하지 않았다. 실행 중인 Client는 이전 EXE이며 최종 링크와
+사용자 화면 확인은 별도다.
+
+Production 피킹 함수 본문을 추출한 창 없는 CPU 검사 26건도 통과했다
+(`out/EffectWorldPick20260914/focused_pick_result.log`). WORLD 요청·취소·MAP 전환,
+회전/크기/시각 보존, selection/edit/generation 변경의 stale 요청 거절, NaN hit 거절 후 retry를
+확인했다. geometry preview의 전달 sink까지만 검사했으므로 실제 Save/화면 재생 증거로 삼지 않는다.
+
 ## G00. 범위와 실행 상태
 
 전체 Kouku 저작 목록·관문별 트리, 불뿜기 보스 앵커 미리보기, 애니메이션 preview 지팡이, 트럼펫 레이저·문양 장판과 회전 카드 그룹을 다룬다. 트럼펫 폭발은 사용자가 기존 알비온 네 방향 이펙트로 추가한 항목을 유지한다.

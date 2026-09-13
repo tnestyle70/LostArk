@@ -3,6 +3,7 @@
 #include "CompositionResourceTree.h"
 #include "EffectAuthoringResourceTree.h"
 #include "CompositionAnimationResource.h"
+#include "KoukuCinematicAnimationCatalog.h"
 #include "CompositionWorkbenchSession.h"
 #include "KoukuSaydonCompositionDocument.h"
 
@@ -283,6 +284,8 @@ namespace Client
 			std::uint32_t startMs, std::uint32_t durationMs, std::string& outStatus);
 		bool_t Set_PatternBoxWindow(std::string_view ownerId, std::string_view occurrenceId,
 			std::uint32_t startMs, std::uint32_t durationMs, bool_t repeat, std::string& outStatus);
+		bool_t Repeat_ParentCycle(std::string_view ownerId, std::uint32_t loopWindowMs,
+			std::string& outCyclePatternId, std::string& outStatus);
 		bool_t Delete_Pattern(
 			std::string_view patternId,
 			std::string& outStatus);
@@ -345,6 +348,11 @@ namespace Client
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
 			std::string& outStatus);
+		// Collider groups are authoring selection metadata; geometry remains on each occurrence.
+		bool_t Set_ColliderSelectionGroup(std::string_view patternId,
+			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
+		bool_t Transform_SelectedColliders(const std::array<double, 3u>& translation,
+			double yawDeltaDegrees, std::string& outStatus);
 		// Total lifetime is the sum of Stage clocks; only the final Stage is resized.
 		bool_t Set_PatternDuration(std::string_view patternId,
 			std::uint32_t durationMs, std::string& outStatus);
@@ -639,6 +647,17 @@ namespace Client
 		void Queue_SequencePreview(const COMPOSITION_ANIMATION_SEQUENCE_RESOURCE& sequence);
 		void Queue_ResourcePatternPreview(KOUKU_SAYDON_COMPOSITION_PATTERN pattern,
 			const std::string& targetAssetName);
+		bool_t Queue_PatternDocumentPreview(KOUKU_SAYDON_COMPOSITION_DOCUMENT previewDraft,
+			std::string_view patternId, std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused);
+		void Queue_SequenceEffectPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source);
+		bool_t Get_MapEffectPlacementSelection(KOUKU_MAP_EFFECT_PLACEMENT& outPlacement,
+			bool_t allowWorldPositionPick) const;
+		void Configure_SequenceEffectOccurrence(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence) const;
+		bool_t Stage_PresentationSource(KOUKU_SAYDON_COMPOSITION_DOCUMENT& candidate,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
+			std::string& resourceId, std::string& outStatus);
 		void Queue_SlotPreview(
 			const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
 			const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE& action,
@@ -669,6 +688,9 @@ namespace Client
 		void Render_BundleCommonDetails();
 		void Render_ResourceTree();
 		void Render_AnimationResources();
+		void Rebuild_PatternChildRows(const KOUKU_SAYDON_COMPOSITION_PATTERN& parent);
+		bool_t Render_CinematicResources();
+		bool_t Append_CinematicGroup(const KOUKU_CINEMATIC_ANIMATION_GROUP& group);
 		void Render_LogicResources();
 		void Render_LogicDefinitionValues(
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
@@ -681,6 +703,12 @@ namespace Client
 		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
 		void Render_CameraAuthoring(std::string_view shotId);
 		void Render_CameraWindow();
+		bool_t Move_ColliderTimelineGroup(std::string_view patternId, const std::vector<std::string>& occurrenceIds,
+			std::int64_t deltaMs, std::uint64_t generation, std::string& outStatus);
+		bool_t Collect_ColliderPlacements(std::string_view patternId,
+			const std::vector<std::string>& occurrenceIds,
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>& outBoxes, std::string& outStatus) const;
+		bool_t Render_ColliderGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
 			std::string_view displayName, std::string& outStatus);
@@ -764,6 +792,8 @@ namespace Client
 		char_t m_NewCameraActionName[129]{};
 		int32_t m_iLightResourceCategory = 0;
 		int32_t m_iEffectResourceVersion = 0;
+		// Sequence Effect Play and Append share the chosen model/start clock.
+		int32_t m_iSequenceEffectStart = 0;
 		std::string m_strEffectResourceOwner = "KoukuSaydon";
 		bool_t m_bLocatePresentationSource = false;
 		std::unordered_map<std::string, CEffectAuthoringResourceTree::RESOURCE> m_EffectSourceInventory;
@@ -779,6 +809,8 @@ namespace Client
 		std::string m_strSelectedPresentationOccurrenceId;
 		char_t m_NewPresentationName[256]{};
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_PresentationBoxEdit;
+		std::string m_strColliderSelectionTransformKey;
+		float m_fColliderSelectionYaw = 0.f;
 		KOUKU_MAP_EFFECT_PLACEMENT_REQUEST m_MapEffectPlacementRequest;
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_MapEffectPlacementEditSnapshot;
 		std::uint64_t m_iNextMapEffectPlacementToken = 0u;
@@ -842,6 +874,7 @@ namespace Client
 		bool_t m_bPatternResourceTabRequested = false;
 		COMPOSITION_WORKBENCH_VIEW_REQUEST m_WorkbenchViewRequest;
 		int32_t m_iPatternBoxStartMs = 0, m_iPatternBoxDurationMs = 1000;
+		int32_t m_iParentLoopWindowMs = 30000;
 		bool_t m_bPatternBoxRepeat = false;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		KOUKU_PATTERN_SELECTION m_ePatternSelection = KOUKU_PATTERN_SELECTION::GATE;
@@ -886,11 +919,27 @@ namespace Client
 		std::uint64_t m_iPublishStartedAtMilliseconds = 0u;
 		std::string m_strPendingServerPlayPatternId;
 		std::uint32_t m_iPendingServerPlaySourceRevision = 0u;
+
+        struct PATTERN_CHILD_ROW
+        {
+            std::string runtimeId, patternId, stageId, occurrenceId, label;
+            std::uint32_t startMs = 0u, durationMs = 0u, color = 0u;
+        };
+        std::vector<PATTERN_CHILD_ROW> m_PatternChildRows;
+        std::string m_strChildRowsPattern, m_strChildRowsStatus;
+        std::uint64_t m_iChildRowsGeneration = UINT64_MAX;
+        bool_t m_bShowPatternChildRows = true;
+        std::vector<KOUKU_CINEMATIC_ANIMATION_GROUP> m_CinematicGroups;
+		bool_t m_bCinematicCatalogLoaded = false;
+		std::string m_strCinematicStatus;
 		std::uint64_t m_iDraftGeneration = 0u;
 		std::uint32_t m_iDragOriginOffsetMs = 0u;
 		std::uint32_t m_iDragOriginSourceMs = 0u;
 		std::uint32_t m_iDragOriginPlayMs = 0u;
-		int m_iTimelineDragMode = 0;
+		int m_iTimelineDragMode = 0; // 0 move, 1/2 trim, 3 saved Collider group move.
+		std::string m_strTimelineGroupDragOccurrenceId;
+		std::vector<std::string> m_TimelineGroupDragOccurrenceIds;
+		std::uint64_t m_iTimelineGroupDragGeneration = 0u;
 		std::string m_strTimelineSelectionPatternId;
 		std::vector<std::string> m_TimelineSelectedStageIds;
 		std::vector<std::string> m_TimelineSelectedOccurrenceIds;

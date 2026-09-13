@@ -37,6 +37,8 @@ bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
 void Client::CEffectDocumentRenderer::Preserve_StartingSceneCapture(
 	const CEffectDocumentRenderer& Previous)
 {
+    if (Get_StagedDocument().strEffectAssetId == Previous.Get_StagedDocument().strEffectAssetId)
+        m_ScreenPostCaptures = Previous.m_ScreenPostCaptures;
 	if (nullptr != m_pStartingSceneCapture &&
 		Get_StagedDocument().strEffectAssetId == Previous.Get_StagedDocument().strEffectAssetId &&
 		nullptr != Previous.m_pStartingSceneCapture &&
@@ -141,6 +143,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 		(!Capture_StartingSceneTarget(TEXT("Target_SceneHDR"), StartingCapture, strOutError) ||
 		 !Capture_StartingSceneTarget(TEXT("Target_SceneBloom"), StartingBloomCapture, strOutError)))
 		return false;
+	m_ScreenPostCaptures.clear();
 	m_pStartingSceneCapture = std::move(StartingCapture);
 	m_pStartingSceneBloomCapture = std::move(StartingBloomCapture);
 	m_BloomIntensityOverride.reset();
@@ -1200,6 +1203,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_BloomInputs(const std::shared_ptr<
 void Client::CEffectDocumentRenderer::Clear()
 {
     m_BloomIntensityOverride.reset();
+    m_bScreenPostCaptureAllowed = true;
+    m_ScreenPostCaptures.clear();
     m_pStartingSceneCapture.Reset();
     m_pStartingSceneBloomCapture.Reset();
 	m_Document = {};

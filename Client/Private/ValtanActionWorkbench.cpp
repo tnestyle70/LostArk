@@ -2192,7 +2192,7 @@ bool_t Client::CValtanActionWorkbench::Stage_ProductFallback(
 		std::string{} : pSelected->stages.front().stageId;
 	m_strStatus =
 		"READ-ONLY PRODUCT FALLBACK: " + std::to_string(Patterns.size()) +
-		" generated Product patterns remain visible in Composition Patterns. Save, preview, authoring, and Server playback stay blocked. Strict failure: " +
+		" generated Product patterns remain visible in Composition Actions. Save, preview, authoring, and Server playback stay blocked. Strict failure: " +
 		strStrictFailure;
 	return true;
 }
@@ -11646,7 +11646,7 @@ void Client::CValtanActionWorkbench::Render_PatternsWindow(
 	ImGui::SetNextWindowPos(Layout.PatternsPos, Condition);
 	ImGui::SetNextWindowSize(Layout.PatternsSize, Condition);
 	const bool_t bWindowVisible = ImGui::Begin(
-			"Composition Patterns###CompositionPatternsWindow",
+			"Composition Actions###CompositionPatternsWindow",
 			&m_bPatternsWindowVisible, ImGuiWindowFlags_MenuBar);
 	Render_PendingPatternSelectionModal();
 	if (!bWindowVisible)

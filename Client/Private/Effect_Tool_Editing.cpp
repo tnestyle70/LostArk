@@ -38,6 +38,107 @@
 #include "Effect_ThumbnailCache.h"
 #include "EffectAuthoringSequencer.h"
 
+bool EffectToolDetail::Resolve_ElectricPreviewDestinations(
+    const Client::EFFECT_DOCUMENT_DESC& document,
+    std::array<float3_t, 3>& destinationsCm, std::string& error)
+{
+    error.clear();
+    if (document.strEffectAssetId != "effect.kouku.gate3.backstep.electric.source.aim.preview")
+        return false;
+    std::array<float3_t, 3> staged{};
+    for (size_t branch = 0; branch < staged.size(); ++branch)
+    {
+        const std::string group = "kouku.electric.aim." + std::to_string(branch);
+        const Client::EFFECT_SOURCE_TRANSFORM_NODE* flight = nullptr;
+        size_t arrivals = 0;
+        for (const auto& element : document.Elements)
+        {
+            if (element.strGroupId != group) continue;
+            if (!element.SourceTransformTrack || element.SourceTransformTrack->Nodes.size() != 1)
+            { error = "Projectile destination requires one source node per branch Element."; return false; }
+            const auto& track = *element.SourceTransformTrack;
+            const auto& node = track.Nodes.front();
+            if (track.strSourceOccurrenceId == group + ".flight")
+            {
+                if (node.Position.Keys.size() != 2 || node.Position.Keys.front().fTime != 0.f ||
+                    node.Position.Keys.back().fTime <= 0.f)
+                { error = "Projectile flight must keep its launch and arrival keys."; return false; }
+                if (flight)
+                {
+                    const auto& a = flight->Position.Keys.back();
+                    const auto& b = node.Position.Keys.back();
+                    if (a.fTime != b.fTime || a.vMinimum.x != b.vMinimum.x ||
+                        a.vMinimum.y != b.vMinimum.y || a.vMinimum.z != b.vMinimum.z)
+                    { error = "Branch flight tracks differ; restore their common destination before editing."; return false; }
+                }
+                flight = &node;
+            }
+            else if (track.strSourceOccurrenceId == group + ".arrival" ||
+                     track.strSourceOccurrenceId == group + ".light")
+            {
+                if (!node.Position.Keys.empty())
+                { error = "Arrival Elements must keep their stationary source node."; return false; }
+                ++arrivals;
+            }
+            else { error = "Unknown projectile branch role; destination change was rejected."; return false; }
+        }
+        if (!flight || !arrivals)
+        { error = "Each projectile branch requires flight and arrival Elements."; return false; }
+        const auto& value = flight->Position.Keys.back().vMinimum;
+        staged[branch] = { value.x, value.y, value.z };
+    }
+    destinationsCm = staged;
+    return true;
+}
+
+bool EffectToolDetail::Change_ElectricPreviewDestination(Client::EFFECT_DOCUMENT_DESC& document,
+    const size_t branch, const float3_t& destinationCm, std::string& error)
+{
+    std::array<float3_t, 3> previous{};
+    if (!Resolve_ElectricPreviewDestinations(document, previous, error)) return false;
+    if (branch >= previous.size() || !std::isfinite(destinationCm.x) ||
+        !std::isfinite(destinationCm.y) || !std::isfinite(destinationCm.z))
+    { error = "Destination must contain three finite coordinates."; return false; }
+    const std::string group = "kouku.electric.aim." + std::to_string(branch);
+    const auto& first = *std::find_if(document.Elements.begin(), document.Elements.end(), [&](const auto& element)
+        { return element.strGroupId == group && element.SourceTransformTrack->strSourceOccurrenceId == group + ".flight"; });
+    const auto& oldNode = first.SourceTransformTrack->Nodes.front();
+    const auto& start = oldNode.Position.Keys.front().vMinimum;
+    const float dx = destinationCm.x - start.x, dy = destinationCm.y - start.y, dz = destinationCm.z - start.z;
+    const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+    if (!std::isfinite(distance) || distance < 1.f || distance > 5000.f)
+    { error = "Destination must be between 0.01 m and the source 50 m range from the launch point."; return false; }
+    const float arrival = distance / 7500.f;
+    const float deltaTime = arrival - oldNode.Position.Keys.back().fTime;
+    const float3_t delta = { destinationCm.x - previous[branch].x,
+        destinationCm.y - previous[branch].y, destinationCm.z - previous[branch].z };
+    auto staged = document;
+    for (auto& element : staged.Elements)
+    {
+        if (element.strGroupId != group) continue;
+        auto& track = *element.SourceTransformTrack;
+        auto& node = track.Nodes.front();
+        if (track.strSourceOccurrenceId == group + ".flight")
+        {
+            auto& key = node.Position.Keys.back();
+            key.fTime = arrival;
+            key.vMinimum = key.vMaximum = { destinationCm.x, destinationCm.y, destinationCm.z, 0.f };
+            node.vInitialEulerDegrees.z = std::atan2(dy, dx) * 180.f / 3.14159265358979323846f;
+        }
+        else
+        {
+            node.vInitialPositionUE3Cm.x += delta.x;
+            node.vInitialPositionUE3Cm.y += delta.y;
+            node.vInitialPositionUE3Cm.z += delta.z;
+            element.Detail.Timing.fStartDelaySeconds += deltaTime;
+            element.SourcePresentation.fSourceTimeSeconds += deltaTime;
+        }
+    }
+    if (!Client::CEffectDocumentCodec::Validate_Drawable(staged, error)) return false;
+    document = std::move(staged);
+    return true;
+}
+
 bool EffectToolDetail::Resolve_CinematicLeadingDelay(
     const Client::EFFECT_DOCUMENT_DESC& document, float& seconds, std::string& error)
 {

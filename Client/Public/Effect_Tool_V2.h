@@ -128,6 +128,7 @@ public:
     void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
     void Set_AuthoringCamera(const std::shared_ptr<Engine::CCamera>& camera);
     void Update_AuthoringWorkspace(float dt, bool active);
+    bool Update_AuthoringPlacementInput(bool active);
     bool Consume_AuthoringInteraction();
     void Activate() { m_bNativeRestorePending = true; }
 	void Render();

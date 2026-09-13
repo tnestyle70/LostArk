@@ -21,6 +21,7 @@ NS_BEGIN(Client)
 
 class CWorldSequenceObject;
 class EFFECT_V2_CATALOG_SNAPSHOT;
+struct EFFECT_DOCUMENT_DESC;
 
 /* One playback path for authored world sequences. The Map Tool preview and the
    product level both evaluate a sequence here so a sequence can never look one
@@ -274,6 +275,10 @@ private:
 		{
 			std::string key;
 			uint32_t handle = 0;
+			uint64_t v1Handle = 0;
+			std::shared_ptr<const EFFECT_DOCUMENT_DESC> sourceDocument;
+			std::optional<OBJECT_PLACEMENT> sampledPlacement;
+			float3_t sampledPositionOffset{};
 		};
 		std::vector<EFFECT_INSTANCE> effects;
 		std::unordered_map<std::string, PLAYER_ANCHOR> emissionAnchors;
@@ -296,9 +301,9 @@ private:
 		f32_t emissionStartMs = 0.f, f32_t emissionRate = 1.f, const std::string& emissionMotionId = {});
 	bool_t Get_EmissionAnchor(ACTIVE_INSTANCE& active, const TARGET_SET& targets, const std::string& key,
 		f32_t birthMs, const PLAYER_ANCHOR& baseline, PLAYER_ANCHOR& out);
-	bool_t Sample_ObjectWorld(const ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
+	static bool_t Sample_ObjectWorld(const ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const WORLD_SEQUENCE_TEMPLATE& sequence, const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
-		const std::string& slotId, const PLAYER_ANCHOR& anchor, uint32_t emitter, f32_t ageMs, float4x4_t& out);
+		const std::string& slotId, const PLAYER_ANCHOR& anchor, uint32_t emitter, f32_t ageMs, float4x4_t& out, std::string& status);
 	bool_t Apply_ObjectEffects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const TARGET_SET& targets);
 	void Release_Objects(ACTIVE_INSTANCE& active);

@@ -176,6 +176,15 @@ bool_t CCamera::End_PresentationOverride(const uint64_t iOwnerId)
 	return true;
 }
 
+bool_t CCamera::End_PresentationOverrideAtCurrentPose(const uint64_t iOwnerId)
+{
+	if (!Is_PresentationOverrideOwnedBy(iOwnerId) || nullptr == m_pTransformCom)
+		return false;
+	m_PresentationSavedWorld = m_PresentationAppliedWorld;
+	m_fPresentationSavedFovy = m_fPresentationAppliedFovy;
+	return End_PresentationOverride(iOwnerId);
+}
+
 bool_t CCamera::End_PresentationOverrideToPose(const uint64_t iOwnerId,
 	const float3_t& vEye, const float3_t& vLookAt, const f32_t fFovYDegrees)
 {

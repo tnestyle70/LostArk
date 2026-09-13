@@ -37,8 +37,110 @@
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
+namespace ServerGameplayContractDetail
+{
+    void Run_CharacterActionColliderResultContracts(TESTS& tests, const CGameplayCatalog& source)
+    {
+        struct Outcome { std::uint32_t damage, stagger; bool counter; std::size_t events; };
+        const auto run = [&](bool split, bool missCounter, bool missStagger, bool zeroPowers,
+            bool useProjectile = false, bool contact = false, std::uint32_t repeats = 1u)
+        {
+            CGameplayCatalog catalog = source;
+            auto* skill = const_cast<PLAYER_SKILL_DEFINITION*>(catalog.Find_Skill(34040u));
+            if (!skill) return Outcome{};
+            skill->RootMotion.clear(); skill->Projectiles.clear(); skill->Hits.clear();
+            skill->fMovementDistance = 0.f; skill->iActionDurationMs = 600u;
+            skill->iHitTimeMs = 100u; skill->iCooldownMs = 0u;
+            skill->iStaggerDamage = zeroPowers ? 0u : 10u;
+            skill->iCounterPower = zeroPowers ? 0u : 1u;
+            for (std::uint32_t time : { 100u, 200u })
+            {
+                PLAYER_SKILL_HIT hit{};
+                hit.iTimeMs = time; hit.iAreaType = 1u; hit.fRange = 3.f; hit.fHeight = 1.5f;
+                hit.iRepeatCount = repeats; hit.iRepeatMs = repeats > 1u ? 10u : 0u;
+                hit.iResultKind = split ? 1u : 0u;
+                skill->Hits.push_back(hit);
+                if (split)
+                {
+                    hit.iResultKind = 3u; hit.fOffset = missCounter ? 30.f : 0.f;
+                    skill->Hits.push_back(hit);
+                    hit.iResultKind = 2u; hit.fOffset = missStagger ? 30.f : 0.f;
+                    skill->Hits.push_back(hit);
+                }
+            }
+            if (useProjectile)
+            {
+                PLAYER_SKILL_PROJECTILE projectile{};
+                projectile.eKind = PLAYER_PROJECTILE_KIND::FIXAREA;
+                projectile.eOrigin = PLAYER_PROJECTILE_ORIGIN::CASTER;
+                projectile.iLifeMs = 1000u; projectile.fRadius = 3.f;
+                for (const auto& hit : skill->Hits)
+                {
+                    PLAYER_PROJECTILE_HIT placed{}; placed.isContact = contact; placed.Hit = hit;
+                    if (contact) placed.Hit.iTimeMs = 0u;
+                    projectile.Hits.push_back(placed);
+                }
+                skill->Projectiles.push_back(projectile); skill->Hits.clear();
+            }
+            SERVER_WORLD_ENTITY boss{};
+            boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_VALTAN";
+            boss.iNetEntityId = 99501u; boss.iCurrentHp = 1000000u; boss.iMaximumHp = 1000000u;
+            boss.fPositionX = 1.f; boss.strActionId = "character.collider.contract";
+            boss.strPatternId = "CONTRACT"; boss.strPatternStageId = "HIT"; boss.iPatternSequence = 1u;
+            std::string status; std::vector<BOSS_PART_DEFINITION> noParts;
+            CBossCombatRuntime::Initialize(boss.BossCombat, noParts, status);
+            boss.BossCombat.iStaggerMaximum = 1000u;
+            CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
+            std::vector<SERVER_WORLD_ENTITY> entities{ boss };
+            SERVER_PLAYER player{};
+            player.iPlayerId = 99502u; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+            player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+            player.iCurrentHp = 1000u; player.iMaximumHp = 1000u;
+            player.iCurrentResource = 1000u; player.iMaximumResource = 1000u;
+            C2S_USE_SKILL command{}; command.iSkillId = 34040u; command.iClientSequence = 1u; command.fAimX = 1.f;
+            CPlayerSkillSystem runtime; std::vector<DAMAGE_EVENT> events;
+            if (!runtime.Try_Start(player, command, catalog, 1u)) return Outcome{};
+            for (std::uint32_t tick = 2u; tick < 25u; ++tick)
+                runtime.Update(player, entities, catalog, nullptr, nullptr, 1.f / 30.f, tick, events);
+            return Outcome{ boss.iCurrentHp - entities[0].iCurrentHp,
+                entities[0].BossCombat.iStaggerCurrent,
+                !CBossCombatRuntime::Has_Flag(entities[0].BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE), events.size() };
+        };
+        const auto combined = run(false, false, false, false);
+        const auto split = run(true, false, false, false);
+        tests.Require(combined.damage > 0u && split.damage == combined.damage && split.events == 2u &&
+            split.stagger == combined.stagger && split.stagger == 20u && split.counter,
+            "Independent Result colliders preserve two-hit damage budget, stagger and counter without duplicate HP events");
+        const auto counterMiss = run(true, true, false, false);
+        tests.Require(counterMiss.damage == split.damage && counterMiss.stagger == 20u && !counterMiss.counter,
+            "Counter Collider can miss independently while Damage and Stagger Colliders overlap");
+        const auto staggerMiss = run(true, false, true, false);
+        tests.Require(staggerMiss.damage == split.damage && staggerMiss.stagger == 0u && staggerMiss.counter,
+            "Stagger Collider can miss independently while Damage and Counter Colliders overlap");
+        const auto zero = run(true, false, false, true);
+        tests.Require(zero.damage == split.damage && zero.events == 2u && zero.stagger == 0u && !zero.counter,
+            "Zero-power Counter and Stagger Results produce no fallback damage or other interaction");
+        for (const bool contact : { false, true })
+        {
+            const auto projectile = run(true, false, false, false, true, contact);
+            tests.Require(projectile.damage == split.damage && projectile.events == 2u &&
+                projectile.stagger == 20u && projectile.counter,
+                contact ? "Contact projectile Result colliders retain independent contact marks and full damage" :
+                    "Timed projectile Result colliders retain independent schedules and full damage");
+        }
+        for (const bool projectile : { false, true })
+        {
+            const auto many = run(true, false, false, false, projectile, false, 30u);
+            tests.Require(many.damage == split.damage && many.events == 60u && many.stagger == 600u && many.counter,
+                projectile ? "180 timed projectile collider repeats fit the bounded mask without lost damage" :
+                    "180 caster collider repeats fit the bounded mask without lost damage");
+        }
+    }
+}
+
 void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& tests, CGameplayCatalog& catalog, CServerNavigation& navigation, const float& navCellSize, const float& boundaryProbeZ, float& lastWalkableX, float& firstBlockedX, SERVER_WORLD_ENTITY& boss, const PLAYER_SKILL_DEFINITION*& talonStrike, LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
+    Run_CharacterActionColliderResultContracts(tests, catalog);
 
 	{
 		/* Armour is server state. It mitigates every incoming hit while a plate is
@@ -1045,7 +1147,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 		hit; 34120's three hits are authored push=0. */
 		const PLAYER_SKILL_DEFINITION* pushSkill = catalog.Find_Skill(34540);
 		tests.Require(
-			nullptr != pushSkill && 1u == pushSkill->Hits.size() &&
+			nullptr != pushSkill && 1 == std::count_if(pushSkill->Hits.begin(), pushSkill->Hits.end(),
+				[](const PLAYER_SKILL_HIT& hit) { return hit.iResultKind == 1u; }) &&
 			130u == pushSkill->Hits[0].iPushMs &&
 			std::fabs(pushSkill->Hits[0].fPushRange - 1.f) < 0.0001f &&
 			nullptr != talonStrike && 0u == talonStrike->Hits[0].iPushMs &&
@@ -1274,7 +1377,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 			std::fabs(tigerSkill->Projectiles[0].fSpeed - 6.5f) < 0.001f &&
 			std::fabs(tigerSkill->Projectiles[0].fMaxDistance - 11.f) < 0.001f &&
 			3000u == tigerSkill->Projectiles[0].iLifeMs &&
-			1u == tigerSkill->Projectiles[0].Hits.size() &&
+			1 == std::count_if(tigerSkill->Projectiles[0].Hits.begin(), tigerSkill->Projectiles[0].Hits.end(),
+				[](const PLAYER_PROJECTILE_HIT& hit) { return hit.Hit.iResultKind == 1u; }) &&
 			tigerSkill->Projectiles[0].Hits[0].isContact &&
 			2u == tigerSkill->Projectiles[0].Hits[0].Hit.iAreaType,
 			"Load the authored missile definition of a skill from the gameplay bootstrap");

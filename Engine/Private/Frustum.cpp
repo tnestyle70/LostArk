@@ -1,6 +1,24 @@
 #include "Frustum.h"
 #include "GameInstance.h"
 
+#include <cmath>
+
+namespace
+{
+    void Store_NormalizedFrustumPlane(const vector_t plane, float4_t& output)
+    {
+        const float lengthSquared = XMVectorGetX(XMVector3LengthSq(plane));
+        if (!std::isfinite(lengthSquared) || lengthSquared <= 0.f ||
+            XMVector4IsNaN(plane) || XMVector4IsInfinite(plane))
+        {
+            // Invalid camera data must not reject otherwise visible objects.
+            output = {0.f, 0.f, 0.f, -1.f};
+            return;
+        }
+        XMStoreFloat4(&output, XMPlaneNormalize(plane));
+    }
+}
+
 CFrustum::CFrustum()
 {
 }
@@ -11,48 +29,37 @@ CFrustum::~CFrustum()
 
 HRESULT CFrustum::Initialize()
 {
-    m_vOriginalPoints[0] = float3_t(-1.f, 1.f, 0.f);
-    m_vOriginalPoints[1] = float3_t(1.f, 1.f, 0.f);
-    m_vOriginalPoints[2] = float3_t(1.f, -1.f, 0.f);
-    m_vOriginalPoints[3] = float3_t(-1.f, -1.f, 0.f);
-
-    m_vOriginalPoints[4] = float3_t(-1.f, 1.f, 1.f);
-    m_vOriginalPoints[5] = float3_t(1.f, 1.f, 1.f);
-    m_vOriginalPoints[6] = float3_t(1.f, -1.f, 1.f);
-    m_vOriginalPoints[7] = float3_t(-1.f, -1.f, 1.f);
-
-	return S_OK;
+    return S_OK;
 }
 
 void CFrustum::Update_InWorldSpace()
 {
-    vector_t     vPoints[8] = {};
-
-    for (uint32_t i = 0; i < 8; i++)
-    {
-        vPoints[i] = XMVector3TransformCoord(XMLoadFloat3(&m_vOriginalPoints[i]),
-            XMLoadFloat4x4(CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ)));
-
-        XMStoreFloat3(&m_vWorldPoints[i], XMVector3TransformCoord(vPoints[i],
-            XMLoadFloat4x4(CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW))));
-    }
-
-    Make_Planes(m_vWorldPoints, m_vWorldPlanes);
+    const matrix_t viewProjection =
+        XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW)) *
+        XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
+    // Unprojected far corners can be tens of kilometres apart. Building a
+    // side plane from their differences loses the near-plane separation and
+    // makes its world offset change with camera rotation. Extract the same
+    // homogeneous clip inequalities directly, with outward-facing normals.
+    const matrix_t columns = XMMatrixTranspose(viewProjection);
+    const vector_t planes[6] = {
+        columns.r[0] - columns.r[3], -columns.r[0] - columns.r[3],
+        columns.r[1] - columns.r[3], -columns.r[1] - columns.r[3],
+        columns.r[2] - columns.r[3], -columns.r[2]
+    };
+    for (uint32_t i = 0u; i < 6u; ++i)
+        Store_NormalizedFrustumPlane(planes[i], m_vWorldPlanes[i]);
 }
 
 void CFrustum::Update_InLocalSpace(fmatrix_t WorldMatrix)
 {
-    matrix_t        WorldMatrixInverse = XMMatrixInverse(nullptr, WorldMatrix);
-
-    float3_t     vLocalPoints[8] = {};
-
-    for (uint32_t i = 0; i < 8; i++)
-    {
-        XMStoreFloat3(&vLocalPoints[i], XMVector3TransformCoord(XMLoadFloat3(&m_vWorldPoints[i]),
-            WorldMatrixInverse));
-    }
-
-    Make_Planes(vLocalPoints, m_vLocalPlanes);
+    // A local point reaches world space through WorldMatrix, so its plane
+    // covector uses the transpose. This also preserves nonuniform scale and
+    // shear without rebuilding planes from distant transformed corners.
+    const matrix_t planeTransform = XMMatrixTranspose(WorldMatrix);
+    for (uint32_t i = 0u; i < 6u; ++i)
+        Store_NormalizedFrustumPlane(XMPlaneTransform(
+            XMLoadFloat4(&m_vWorldPlanes[i]), planeTransform), m_vLocalPlanes[i]);
 }
 
 bool_t CFrustum::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRange)
@@ -75,22 +82,6 @@ bool_t CFrustum::isIn_Frustum_InLocalSpace(fvector_t vLocalPoint, f32_t fRange)
     }
 
     return true;
-}
-
-void CFrustum::Make_Planes(const float3_t* pPoints, float4_t* pPlanes)
-{
-    XMStoreFloat4(&pPlanes[0],
-        XMPlaneFromPoints(XMLoadFloat3(&pPoints[1]), XMLoadFloat3(&pPoints[5]), XMLoadFloat3(&pPoints[6])));
-    XMStoreFloat4(&pPlanes[1],
-        XMPlaneFromPoints(XMLoadFloat3(&pPoints[4]), XMLoadFloat3(&pPoints[0]), XMLoadFloat3(&pPoints[3])));
-    XMStoreFloat4(&pPlanes[2],
-        XMPlaneFromPoints(XMLoadFloat3(&pPoints[4]), XMLoadFloat3(&pPoints[5]), XMLoadFloat3(&pPoints[1])));
-    XMStoreFloat4(&pPlanes[3],
-        XMPlaneFromPoints(XMLoadFloat3(&pPoints[3]), XMLoadFloat3(&pPoints[2]), XMLoadFloat3(&pPoints[6])));
-    XMStoreFloat4(&pPlanes[4],
-        XMPlaneFromPoints(XMLoadFloat3(&pPoints[5]), XMLoadFloat3(&pPoints[4]), XMLoadFloat3(&pPoints[7])));
-    XMStoreFloat4(&pPlanes[5],
-        XMPlaneFromPoints(XMLoadFloat3(&pPoints[0]), XMLoadFloat3(&pPoints[1]), XMLoadFloat3(&pPoints[2])));
 }
 
 unique_ptr<CFrustum> CFrustum::Create()

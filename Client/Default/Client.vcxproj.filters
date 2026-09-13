@@ -354,6 +354,12 @@
     <ClCompile Include="..\Private\SequencerTool.cpp">
       <Filter>03. Tools\05. Sequencer</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CharacterActionWorkbench.cpp">
+      <Filter>03. Tools\05. Sequencer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CharacterActionCombatDocument.cpp">
+      <Filter>03. Tools\05. Sequencer</Filter>
+    </ClCompile>
     <ClCompile Include="Client.cpp">
       <Filter>98.Default</Filter>
     </ClCompile>
@@ -883,6 +889,15 @@
 	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\KoukuCinematicAnimationCatalog.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonPreviewRootMotion.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonAnimationBlend.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
@@ -905,6 +920,12 @@
       <Filter>03. Tools\05. Sequencer</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\SequencerTool.h">
+      <Filter>03. Tools\05. Sequencer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterActionWorkbench.h">
+      <Filter>03. Tools\05. Sequencer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterActionCombatDocument.h">
       <Filter>03. Tools\05. Sequencer</Filter>
     </ClInclude>
     <ClInclude Include="framework.h">
@@ -1544,6 +1565,15 @@
 	<ClInclude Include="..\Public\KoukuSaydonPresentationPlayer.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\KoukuCinematicAnimationCatalog.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonPreviewRootMotion.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonAnimationBlend.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\MonsterPresentationContract.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
@@ -1790,6 +1820,9 @@
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
 	</None>
 	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_05.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KoukuSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\KoukuSaydon.cinematicreference.json">
 	  <Filter>96.DataFiles\Animation\Reference\KoukuSaydon</Filter>
 	</None>
 	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_06.actionreference.json">
@@ -3664,5 +3697,23 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.radial.lasers.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.suit.floor.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.throw.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.circle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.innerdonut.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.outerdonut.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.innerdonut.warning.expand.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.outerdonut.warning.expand.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.innerdonut.warning.expand.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.outerdonut.warning.expand.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.innerdonut.warning.expand.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.outerdonut.warning.expand.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.electric.threeway.authored.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.ball.drop.split.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.ritual.hand.trail.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.scene-image-collapse.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.scene-collapse.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

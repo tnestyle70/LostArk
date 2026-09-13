@@ -78,7 +78,7 @@ namespace
         HRESULT Submit_Presentation() override
         {
             auto& presentation = CPresentation_Manager::Get();
-            const bool available = presentation.Get_TransientLights().size() < 64u;
+            const bool available = presentation.Get_TransientLights().size() < CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
             presentation.Register_ProviderSubmissionExpectation(1u, available ? 1u : 0u, 0u, 0u);
             if (!available) { if (skipped) ++*skipped; return S_OK; }
             return presentation.Add_TransientLight(light);
@@ -591,8 +591,9 @@ void Client::CMainApp::RenderLightDetail()
             if (ready && CLightResourceCatalog::Try_BuildLightDesc(*resource, pivot, 1.f, light, ignored)) Lighting_DrawWire(light);
         }
     }
-    ImGui::Text("Frame lights: %u / 64 | Preview frames skipped by budget: %u",
-        CPresentation_Manager::Get().Get_LastTransientLightCount(), *m_pLightPreviewSkipped);
+    ImGui::Text("Frame lights: %u / %u | Preview frames skipped by budget: %u",
+        CPresentation_Manager::Get().Get_LastTransientLightCount(),
+        CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY, *m_pLightPreviewSkipped);
     ImGui::TextWrapped("%s", m_strLightingStatus.c_str());
 }
 bool Client::CMainApp::StageMapLightPreview()

@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "Animation_Tool_Internal.h"
 #include "Character.h"
+#include "EffectEditingSession.h"
 #include "Model.h"
 #include "SoundCueCatalog.h"
 #include <charconv>
@@ -48,19 +49,18 @@ bool_t Client::CAnimation_Tool::Load_SkillBindings(
 {
 	ANIMATION_SKILL_BINDING_DOCUMENT staged;
 	std::string status;
-	if (!CAnimationSkillBindingDocument::Load(
-		m_AssetName,
-		characterClass,
-		CPlayerSkillCatalog::Get_Skills(),
-		Collect_ClipNames(pModel),
-		staged,
-		status))
+	std::ifstream input(CAnimationSkillBindingDocument::Resolve_Path(m_AssetName), std::ios::binary);
+	const std::string baseline{std::istreambuf_iterator<char>(input), {}};
+	if (!input || input.bad() || !CAnimationSkillBindingDocument::Parse_Text(baseline, staged, status) ||
+        !CAnimationSkillBindingDocument::Validate(staged, m_AssetName, characterClass,
+            CPlayerSkillCatalog::Get_Skills(), Collect_ClipNames(pModel), status))
 	{
 		m_SkillBindingStatus =
 			"Load rejected; current Skill Bindings preserved: " + status;
 		return false;
 	}
 
+	m_SkillBindingSourceBaseline = baseline; m_bSkillBindingSourceBaselineKnown = true;
 	m_SkillBindingDocument = std::move(staged);
 	m_iSelectedSkillBinding = -1;
 	m_iSelectedSkillClip = 0;
@@ -82,20 +82,32 @@ bool_t Client::CAnimation_Tool::Save_SkillBindings(
 		return false;
 	}
 
-	std::string status;
-	if (!CAnimationSkillBindingDocument::Save_Atomic(
-		m_SkillBindingDocument,
-		m_AssetName,
-		pCharacter->Get_Spec()->eCharacterClass,
-		CPlayerSkillCatalog::Get_Skills(),
-		Collect_ClipNames(pModel),
-		status))
+	std::string status, committed;
+    auto staged = m_SkillBindingDocument;
+    for (auto& binding : staged.Bindings)
+        for (auto& stage : binding.Stages)
+            for (auto& clip : stage.Clips)
+                if (clip.strClipOccurrenceId.empty()) clip.strClipOccurrenceId = CEffectEditingSession::New_Id("character.clip.");
+    const bool saved = m_bSkillBindingSourceBaselineKnown ?
+        CAnimationSkillBindingDocument::Save_AtomicWithBaseline(staged, m_AssetName,
+            pCharacter->Get_Spec()->eCharacterClass, CPlayerSkillCatalog::Get_Skills(), Collect_ClipNames(pModel),
+            m_SkillBindingSourceBaseline, committed, status) :
+        CAnimationSkillBindingDocument::Save_Atomic(staged, m_AssetName,
+            pCharacter->Get_Spec()->eCharacterClass, CPlayerSkillCatalog::Get_Skills(), Collect_ClipNames(pModel), status);
+    if (!saved)
 	{
 		m_SkillBindingStatus =
 			"Save rejected; destination and current bindings preserved: " + status;
 		return false;
 	}
 
+    m_SkillBindingDocument = std::move(staged);
+    if (committed.empty())
+    {
+        std::ifstream input(CAnimationSkillBindingDocument::Resolve_Path(m_AssetName), std::ios::binary);
+        committed.assign(std::istreambuf_iterator<char>(input), {});
+    }
+    m_SkillBindingSourceBaseline = std::move(committed); m_bSkillBindingSourceBaselineKnown = true;
 	m_bSkillBindingDirty = false;
 	if (!pCharacter->Reload_SkillAnimationBindings())
 	{

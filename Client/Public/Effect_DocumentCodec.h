@@ -122,6 +122,11 @@ public:
 	/* Authoring and Product load the same document format and byte ceiling. */
 	static constexpr size_t MAXIMUM_DOCUMENT_BYTES = 64u * 1024u * 1024u;
 
+	/* Selects staging for a validated document; v15 also permits ordinary
+	   elements with no runtime carrier or baked history. */
+	static bool_t Requires_DocumentOwnedRuntimeProjection(
+		const EFFECT_DOCUMENT_DESC& Document);
+
 	static bool_t Validate(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);

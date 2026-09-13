@@ -1007,8 +1007,7 @@ namespace
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 			SourceProjection;
 
-		if (Committed->iLoadedFormatVersion ==
-			EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+		if (CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(*Committed))
 		{
 			if (!CEffectVisualProgramCorpusCodec::
 					Create_DocumentOwnedRuntimeProjection(
@@ -1305,8 +1304,7 @@ bool_t Client::CEffectCatalog::Stage_ProductLoadTarget(
 
 	Staged->pDocument =
 		std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(Document));
-	if (Staged->pDocument->iLoadedFormatVersion ==
-		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+	if (CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(*Staged->pDocument))
 	{
 		if (!CEffectVisualProgramCorpusCodec::
 				Create_DocumentOwnedRuntimeProjection(
@@ -1698,8 +1696,7 @@ bool_t Client::CEffectCatalog::Stage_DebugDirectAuthoredReplacement(
 		std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(ParsedDocument));
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		StagedProjection;
-	if (StagedDocument->iLoadedFormatVersion ==
-		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+	if (CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(*StagedDocument))
 	{
 		if (!CEffectVisualProgramCorpusCodec::
 				Create_DocumentOwnedRuntimeProjection(
@@ -1726,8 +1723,7 @@ bool_t Client::CEffectCatalog::Stage_DebugDirectAuthoredReplacement(
 		PreviousProjection != g_VisualProjections.end();
 	const bool_t bPreviousDocumentRequiresProjection =
 		bHadPreviousDocument && nullptr != PreviousDocument->second &&
-		PreviousDocument->second->iLoadedFormatVersion ==
-			EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION;
+		CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(*PreviousDocument->second);
 	if (bHadPreviousProjection != bPreviousDocumentRequiresProjection)
 	{
 		strOutStatus =
@@ -2113,8 +2109,7 @@ bool_t Client::CEffectCatalog::Stage_DebugDirectAuthoredRegistration(
 			std::move(ParsedDocument));
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		StagedProjection;
-	if (StagedDocument->iLoadedFormatVersion ==
-		EFFECT_AUTHORED_RUNTIME_EXTENSION_FORMAT_VERSION)
+	if (CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(*StagedDocument))
 	{
 		if (!CEffectVisualProgramCorpusCodec::
 				Create_DocumentOwnedRuntimeProjection(

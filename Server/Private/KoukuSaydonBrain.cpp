@@ -1,4 +1,6 @@
 #include "KoukuSaydonBrain.h"
+#include "ServerNavigation.h"
+#include "ServerCollisionSystem.h"
 
 #include <algorithm>
 #include <cmath>
@@ -57,15 +59,29 @@ namespace
 		}
 	}
 
-	bool Is_ZeroMotion(
-		const LostArk::Server::BOSS_PATTERN_STAGE_MOTION& motion) noexcept
+	bool Is_AnimationRootMotion(
+		const LostArk::Server::BOSS_PATTERN_STAGE_MOTION& motion,
+		const std::uint32_t durationMs) noexcept
 	{
 		using namespace LostArk::Server;
-		return BOSS_PATTERN_STAGE_MOTION_KIND::NONE == motion.eKind &&
-			0u == motion.iRetargetDelayMs && 0.f == motion.fSpeedMps &&
-			0.f == motion.fDistance && 0u == motion.iCornerIndex &&
-			0.f == motion.fHalfExtentsX && 0.f == motion.fHalfExtentsZ &&
-			motion.RootMotion.empty();
+		if (BOSS_PATTERN_STAGE_MOTION_KIND::NONE != motion.eKind ||
+			0u != motion.iRetargetDelayMs || 0.f != motion.fSpeedMps ||
+			0.f != motion.fDistance || 0u != motion.iCornerIndex ||
+			0.f != motion.fHalfExtentsX || 0.f != motion.fHalfExtentsZ) return false;
+		if (motion.RootMotion.empty()) return true;
+		const auto& samples = motion.RootMotion;
+		if (samples.size() < 2u || samples.size() > 512u || samples.front().iTimeMs != 0u ||
+			samples.back().iTimeMs != durationMs || samples.front().fForward != 0.f ||
+			samples.front().fLateral != 0.f || samples.front().fUp != 0.f) return false;
+		for (std::size_t index = 0u; index < samples.size(); ++index)
+		{
+			const auto& sample = samples[index];
+			if (!std::isfinite(sample.fForward) || !std::isfinite(sample.fLateral) ||
+				!std::isfinite(sample.fUp) || std::abs(sample.fForward) > 100000.f ||
+				std::abs(sample.fLateral) > 100000.f || std::abs(sample.fUp) > 100000.f ||
+				(index && sample.iTimeMs <= samples[index - 1u].iTimeMs)) return false;
+		}
+		return true;
 	}
 }
 
@@ -130,6 +146,14 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		return false;
 	}
 
+	const bool hasRootMotion = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
+		[](const auto& stage) { return !stage.Motion.RootMotion.empty(); });
+	if (hasRootMotion && (pattern.BossMotion ||
+		std::any_of(pattern.LogicWindows.begin(), pattern.LogicWindows.end(),
+			[](const auto& window) { return window.fBossChargeDistanceM > 0.f; }) ||
+		std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
+			[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT; })))
+	{ status = "KoukuSaydon animation root motion conflicts with authored movement"; return false; }
 	std::unordered_set<std::string> stageIds;
 	std::unordered_set<std::string> actionIds;
 	for (std::size_t index = 0u; index < pattern.Stages.size(); ++index)
@@ -190,7 +214,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			0.f != stage.fPushRangeM || 0u != stage.iPushMs ||
 			stage.bKnockdown || 0u != stage.iDownMs || stage.bWallContact ||
 			stage.bChargeImpact || stage.bPiercesCover ||
-			!Is_ZeroMotion(stage.Motion) || !stage.strPropBreakSetId.empty() ||
+			!Is_AnimationRootMotion(stage.Motion, stage.iDurationMs) || !stage.strPropBreakSetId.empty() ||
 			!stage.PropBreakSlotIds.empty() || !supportedActions ||
 			!validTimeoutBranch)
 		{
@@ -532,6 +556,11 @@ void LostArk::Server::CKoukuSaydonBrain::Enter_Stage(
 	const std::uint32_t serverTick,
 	const bool evaluatesOnEntryTick)
 {
+	boss.PatternStageRootMotion = stage.Motion.RootMotion;
+	boss.bPatternStageRootOriginCaptured = false;
+	boss.iPatternStageRootLastTick = 0u;
+	boss.fPatternStageOriginY = 0.f;
+	boss.fPatternStageRootGroundY = 0.f;
 	boss.iPatternStageIndex = stageIndex;
 	boss.strPatternStageId = stage.strStageId;
 	boss.strActionId = stage.strActionId;
@@ -585,6 +614,11 @@ void LostArk::Server::CKoukuSaydonBrain::Finish_Pattern(
 		boss.PatternTerminalReceipt.iRootPatternSequence = boss.iPatternSequence;
 		boss.PatternTerminalReceipt.eResult = result;
 	}
+	boss.PatternStageRootMotion.clear();
+	boss.bPatternStageRootOriginCaptured = false;
+	boss.iPatternStageRootLastTick = 0u;
+	boss.fPatternStageOriginX = boss.fPatternStageOriginY = boss.fPatternStageOriginZ = 0.f;
+	boss.fPatternStageOriginYawDegrees = boss.fPatternStageRootGroundY = 0.f;
 	boss.strPatternId.clear();
 	boss.iPatternStartTick = 0u;
 	boss.strPatternStageId.clear();
@@ -727,6 +761,124 @@ std::array<float, 3u> LostArk::Server::CKoukuSaydonBrain::Sample_BossMotion(
         static_cast<float>(motion.StartPosition[0] + (motion.EndPosition[0] - motion.StartPosition[0]) * alpha),
         motion.StartPosition[1],
         static_cast<float>(motion.StartPosition[2] + (motion.EndPosition[2] - motion.StartPosition[2]) * alpha)};
+}
+
+LostArk::Server::ROOT_MOTION_SAMPLE
+LostArk::Server::CKoukuSaydonBrain::Sample_StageRootMotion(
+	const std::vector<ROOT_MOTION_SAMPLE>& samples, const double timeMs) noexcept
+{
+	if (samples.empty() || !std::isfinite(timeMs)) return {};
+	if (timeMs <= samples.front().iTimeMs) return samples.front();
+	if (timeMs >= samples.back().iTimeMs) return samples.back();
+	const auto next = std::upper_bound(samples.begin(), samples.end(), timeMs,
+		[](const double time, const ROOT_MOTION_SAMPLE& sample) { return time < sample.iTimeMs; });
+	const auto& previous = *(next - 1);
+	const double alpha = (timeMs - previous.iTimeMs) / (next->iTimeMs - previous.iTimeMs);
+	return { static_cast<std::uint32_t>(timeMs),
+		static_cast<float>(previous.fForward + (next->fForward - previous.fForward) * alpha),
+		static_cast<float>(previous.fLateral + (next->fLateral - previous.fLateral) * alpha),
+		static_cast<float>(previous.fUp + (next->fUp - previous.fUp) * alpha) };
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
+	SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
+	const std::uint32_t serverTick, const CServerNavigation& navigation,
+	const CServerCollisionSystem& collision, std::string& status)
+{
+	status.clear();
+	if (boss.PatternStageRootMotion.empty() || boss.strPatternId.empty() ||
+		boss.iPatternStageRootLastTick == serverTick) return true;
+	if (serverTick == 0u || boss.strPatternId != pattern.strPatternId ||
+		boss.iPatternStageIndex >= pattern.Stages.size())
+	{ status = "KoukuSaydon root motion lost its running stage"; return false; }
+	// Capture after the Room commits spawn reset and the stage's ENTER actions.
+	SERVER_NAV_POINT originGround;
+	if (!boss.bPatternStageRootOriginCaptured)
+	{
+		if (!std::isfinite(boss.fPositionX) || !std::isfinite(boss.fPositionY) ||
+			!std::isfinite(boss.fPositionZ) || !std::isfinite(boss.fYawDegrees) ||
+			!navigation.Sample_Position(boss.fPositionX, boss.fPositionZ, originGround))
+		{ status = "KoukuSaydon root motion origin is not navigable"; return false; }
+		boss.fPatternStageOriginX = boss.fPositionX;
+		boss.fPatternStageOriginY = boss.fPositionY;
+		boss.fPatternStageOriginZ = boss.fPositionZ;
+		boss.fPatternStageOriginYawDegrees = boss.fYawDegrees;
+		boss.fPatternStageRootGroundY = originGround.y;
+		boss.bPatternStageRootOriginCaptured = true;
+	}
+	double elapsedMs = static_cast<double>(Stage_ElapsedTicks(boss, serverTick)) * 1000.0 / SERVER_TICK_HZ;
+	if (pattern.bFixedTimelineClock)
+	{
+		const std::uint64_t ticks = serverTick >= boss.iPatternStartTick ? serverTick - boss.iPatternStartTick :
+			static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
+		std::uint64_t stageStartMs = 0u;
+		for (std::uint32_t index = 0u; index < boss.iPatternStageIndex; ++index)
+			stageStartMs += pattern.Stages[index].iDurationMs;
+		elapsedMs = (std::max)(0.0, static_cast<double>(ticks) * 1000.0 / SERVER_TICK_HZ - stageStartMs);
+	}
+	const auto sample = Sample_StageRootMotion(boss.PatternStageRootMotion, elapsedMs);
+	constexpr double RADIANS_PER_DEGREE = 3.14159265358979323846 / 180.0;
+	const double yaw = boss.fPatternStageOriginYawDegrees * RADIANS_PER_DEGREE;
+	SERVER_NAV_POINT destination{
+		static_cast<float>(boss.fPatternStageOriginX + sample.fLateral * std::cos(yaw) + sample.fForward * std::sin(yaw)),
+		boss.fPatternStageOriginY + sample.fUp,
+		static_cast<float>(boss.fPatternStageOriginZ - sample.fLateral * std::sin(yaw) + sample.fForward * std::cos(yaw)) };
+	if (!std::isfinite(destination.x) || !std::isfinite(destination.y) || !std::isfinite(destination.z))
+	{ status = "KoukuSaydon root motion destination is invalid"; return false; }
+	SERVER_NAV_POINT ground;
+	if (!navigation.Has_LineOfSight(boss.fPositionX, boss.fPositionZ, destination.x, destination.z) ||
+		!navigation.Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, destination.x, destination.z, ground))
+	{
+		boss.iPatternStageRootLastTick = serverTick;
+		return true; // The animation clock continues while authority holds at the boundary.
+	}
+	// Traversal resolves terrain Y; source up remains relative to the captured stage base.
+	SERVER_NAV_POINT startGround;
+	if (!navigation.Sample_Position(boss.fPositionX, boss.fPositionZ, startGround))
+	{ status = "KoukuSaydon root motion lost its current ground"; return false; }
+	const float targetGroundY = ground.y;
+	destination.y += targetGroundY - boss.fPatternStageRootGroundY;
+	const SERVER_NAV_POINT proposed = destination;
+	bool blocked = false;
+	if (!collision.Resolve_CircleMove(boss.fPositionX, boss.fPositionY, boss.fPositionZ,
+		destination.x, destination.y, destination.z, boss.fCollisionRadius, boss.fCollisionRadius,
+		boss.fCollisionRadius, destination.x, destination.y, destination.z, blocked, boss.iNetEntityId, false))
+	{ status = "KoukuSaydon root motion collision resolution failed"; return false; }
+	if (!navigation.Has_LineOfSight(boss.fPositionX, boss.fPositionZ, destination.x, destination.z) ||
+		!navigation.Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, destination.x, destination.z, ground))
+	{
+		boss.iPatternStageRootLastTick = serverTick;
+		return true;
+	}
+	if (blocked)
+	{
+		// The sweep truncates XYZ together. Replace only its interpolated terrain
+		// component with ground at the resolved XZ, preserving the clipped source up.
+		const double dx = proposed.x - boss.fPositionX, dy = proposed.y - boss.fPositionY,
+			dz = proposed.z - boss.fPositionZ;
+		const double squaredDistance = dx * dx + dy * dy + dz * dz;
+		const double ratio = squaredDistance > 1e-12 ? (std::clamp)(
+			((destination.x - boss.fPositionX) * dx + (destination.y - boss.fPositionY) * dy +
+			 (destination.z - boss.fPositionZ) * dz) / squaredDistance, 0.0, 1.0) : 0.0;
+		const float terrainCorrection = ground.y - static_cast<float>(startGround.y + (targetGroundY - startGround.y) * ratio);
+		if (std::abs(terrainCorrection) > .00001f)
+		{
+			bool correctionBlocked = false;
+			SERVER_NAV_POINT corrected;
+			if (!collision.Resolve_CircleMove(destination.x, destination.y, destination.z,
+				destination.x, destination.y + terrainCorrection, destination.z, boss.fCollisionRadius,
+				boss.fCollisionRadius, boss.fCollisionRadius, corrected.x, corrected.y, corrected.z,
+				correctionBlocked, boss.iNetEntityId, false))
+			{ status = "KoukuSaydon root ground correction failed collision validation"; return false; }
+			if (correctionBlocked)
+			{ boss.iPatternStageRootLastTick = serverTick; return true; }
+			destination = corrected;
+		}
+	}
+	// Commit XYZ together only after both navigation and the body sweep succeed.
+	boss.fPositionX = destination.x; boss.fPositionY = destination.y; boss.fPositionZ = destination.z;
+	boss.iPatternStageRootLastTick = serverTick;
+	return true;
 }
 
 void LostArk::Server::CKoukuSaydonBrain::Abort_Pattern(

@@ -1659,6 +1659,10 @@ namespace EffectToolDetail
 			return "Film Noise (Reconstructed v1)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::MOTION_BLUR_RECONSTRUCTED_V1:
 			return "Motion Blur (Native)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1:
+			return "Captured Scene to Cube (Live Background)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1:
+			return "Scene Image Collapse (Capture)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::END:
 		default:
 			return "Unresolved";

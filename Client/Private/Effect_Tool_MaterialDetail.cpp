@@ -1547,6 +1547,9 @@ void Client::CEffect_Tool::Render_KindDetail(
 					bSelected))
 				{
 					Post.eProfile = eCandidate;
+                    if (eCandidate != EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1)
+                        Post.strCaptureTargetModelCueId.clear();
+                    Post.fCaptureShrinkSeconds = 0.f;
 					bPresentationChanged = true;
 				}
 				if (bSelected)
@@ -1554,6 +1557,25 @@ void Client::CEffect_Tool::Render_KindDetail(
 			}
 			ImGui::EndCombo();
 		}
+        if (Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1)
+        {
+            ImGui::TextWrapped("Capture the scene when this box begins, then shrink it over black. A shorter shrink duration holds black until the box ends. Zero uses the full box duration.");
+            bPresentationChanged |= ImGui::DragFloat("Shrink Duration (s)", &Post.fCaptureShrinkSeconds,
+                .01f, 0.f, Detail.Timing.fLifeTimeSeconds, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        }
+        else if (Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1)
+        {
+            ImGui::TextWrapped("The captured scene shrinks to the target cube while the live world stays visible outside it.");
+            if (ImGui::BeginCombo("Capture Target Model Cue", Post.strCaptureTargetModelCueId.c_str()))
+            {
+                if (m_ActiveDocument) for (const auto& cue : m_ActiveDocument->ModelCues)
+                    if (cue.bVisible && ImGui::Selectable(cue.strCueId.c_str(), cue.strCueId == Post.strCaptureTargetModelCueId))
+                    { Post.strCaptureTargetModelCueId = cue.strCueId; bPresentationChanged = true; }
+                ImGui::EndCombo();
+            }
+        }
+        else
+        {
 		bPresentationChanged |= ImGui::DragFloat("Post Intensity",
 			&Post.fIntensity, 0.001f, 0.f, 100.f, "%.4f",
 			ImGuiSliderFlags_AlwaysClamp);
@@ -1572,6 +1594,7 @@ void Client::CEffect_Tool::Render_KindDetail(
 			Post.iRandomSeed = (std::max)(1u, Post.iRandomSeed);
 			bPresentationChanged = true;
 		}
+        }
 		ImGui::EndDisabled();
 		if (bPresentationChanged)
 		{

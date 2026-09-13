@@ -1,6 +1,8 @@
 #ifndef LOSTARK_MAP_MATERIAL_SURFACE
 #define LOSTARK_MAP_MATERIAL_SURFACE
 
+uint g_SourceBgUnlit = 0u;
+
 // A source-evidenced parallel N/T has a zero bitangent. Keep it finite and
 // preserve zero; never manufacture a normal axis for that native input.
 float3 MapGeometryNormalizeOrZero(float3 value)

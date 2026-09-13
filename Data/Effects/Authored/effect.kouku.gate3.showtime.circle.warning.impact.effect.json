@@ -762,6 +762,40 @@
             ],
             "interpolation": "linear"
           }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "inner",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 1.2999999970197678,
+                "value": [
+                  1
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
         ]
       }
     },

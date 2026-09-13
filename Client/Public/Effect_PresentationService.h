@@ -62,6 +62,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
+	// The owning Object supplies the model and every model-cue bone anchor.
+	bool_t bExternalModelCueAnchors = false;
 	// Set by external world-root sampling; shares the existing playback history path.
 	EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
 	std::string strLevelPlacementId;
@@ -93,6 +95,8 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	uint32_t iSpawnTick = 0u;
 	f32_t fInitialSampleTimeSeconds = 0.f;
 	bool_t bExternallySampled = false;
+	// The owning Object supplies the model and every model-cue bone anchor.
+	bool_t bExternalModelCueAnchors = false;
 };
 
 struct EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC final
@@ -360,6 +364,13 @@ public:
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider = {},
 		bool_t bRebuildHistory = false);
+	// Completes only this external preview handle after its final WORLD sample.
+	static HRESULT Commit_WorldRootCaptureSample(EFFECT_WORLD_ROOT_HANDLE Handle);
+	static void Set_ScreenPostCaptureAllowed(EFFECT_WORLD_ROOT_HANDLE Handle, bool_t allowed);
+	static bool_t Has_CapturedScreenPost(EFFECT_WORLD_ROOT_HANDLE Handle,
+		const std::string& elementId);
+	static HRESULT Get_ScreenPostCaptureResult(EFFECT_WORLD_ROOT_HANDLE Handle,
+		const std::string& elementId);
 	static void Stop_WorldRoot(EFFECT_WORLD_ROOT_HANDLE Handle);
 	/* Product cue requests can originate while Object Manager is iterating its
 	   layer map.  Commit them only after Update_Engine finishes. */

@@ -172,7 +172,10 @@
     {"id": "kouku.category.307dc752ac2c9dbcb2fd", "parentId": "kouku.category.da6d0e916268a03da071", "kind": "CATEGORY", "displayName": "SCENE01A / efseqact_matinee_49"},
     {"id": "kouku.category.60101ad7c01d34fae26a", "parentId": "kouku.category.da6d0e916268a03da071", "kind": "CATEGORY", "displayName": "SCENE06A / efseqact_matinee_0"},
     {"id": "kouku.category.7d3b6e4ed355a330b39f", "parentId": "kouku.category.da6d0e916268a03da071", "kind": "CATEGORY", "displayName": "SCENE02B / efseqact_matinee_15"},
-    {"id": "kouku.category.5444b9f82eb2508f5e75", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "세이튼_빙글빙글돌며카드던지기"}
+    {"id": "kouku.category.5444b9f82eb2508f5e75", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "세이튼_빙글빙글돌며카드던지기"},
+    {"id": "kouku.category.867ede1a948dc387a93d", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "쓰리투원투하"},
+    {"id": "kouku.category.09e8f3783398b64fe729", "parentId": "kouku.category.867ede1a948dc387a93d", "kind": "CATEGORY", "displayName": "원형·도넛"},
+    {"id": "kouku.category.0776c7cee95cb433a758", "parentId": "kouku.category.dd3ad69607b344ac7646", "kind": "CATEGORY", "displayName": "제물 의식"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -373,7 +376,9 @@
     {"kind": "V1", "assetId": "effect.kouku.gate1.authored.portal-arrival.context", "displayName": "1관문_전후 쥐·금빛 연결", "parentId": "kouku.category.373a61b916022af2f314"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.intro.festival.full.restore", "displayName": "쿠크 1관문 연출 축포", "parentId": "kouku.category.c23993a78a16e7073331"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.intro.fireworks.full.restore", "displayName": "effect.kouku.gate1.intro.fireworks.full.restore", "parentId": "kouku.category.373a61b916022af2f314"},
-    {"kind": "V1", "assetId": "effect.kouku.gate1.intro.portal-suction.centered", "displayName": "1관문_포탈 생성·흡입", "parentId": "kouku.category.373a61b916022af2f314"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.intro.portal-suction.centered", "displayName": "1관문_포탈 생성·흡입", "parentId": "kouku.category.c23993a78a16e7073331"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.intro.portal-suction.scene-collapse", "displayName": "1관문_포탈 흡입·장면 수축", "parentId": "kouku.category.c23993a78a16e7073331"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.intro.scene-image-collapse", "displayName": "1관문_장면 이미지 수축·소멸_검은 배경", "parentId": "kouku.category.c23993a78a16e7073331"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.popup.movable-lights", "displayName": "1관문_팝업북_원본 무대 조명", "parentId": "kouku.category.373a61b916022af2f314"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.popup.source-material-carriers", "displayName": "1관문_팝업북_원본 재질·커튼", "parentId": "kouku.category.373a61b916022af2f314"},
     {"kind": "V1", "assetId": "effect.kouku.gate2.4219776.stage1.full.restore", "displayName": "쿠크_거미카운터(rpcz00_att_battle_6_02)_눈빛·먼지_FullRestore", "parentId": "kouku.category.b8dc4587c31f3a259b9e"},
@@ -923,6 +928,18 @@
     {"kind": "V1", "assetId": "effect.kouku.source.scene_a.fx.par_mp_deathmon_01_cine", "displayName": "par_mp_deathmon_01_cine", "parentId": "kouku.category.a2ed32fd100e0c23b6af"},
     {"kind": "V1", "assetId": "effect.kouku.common.trumpet.radial.lasers", "displayName": "트럼펫_8방향레이저", "parentId": "kouku.category.e7ad87098d3cca9f0d67"},
     {"kind": "V1", "assetId": "effect.kouku.common.trumpet.suit.floor", "displayName": "트럼펫_카드문양장판(원본)", "parentId": "kouku.category.e7ad87098d3cca9f0d67"},
-    {"kind": "V1", "assetId": "effect.kouku.common.spinning.card.throw", "displayName": "세이튼_빙글빙글돌며카드던지기", "parentId": "kouku.category.5444b9f82eb2508f5e75"}
+    {"kind": "V1", "assetId": "effect.kouku.common.spinning.card.throw", "displayName": "세이튼_빙글빙글돌며카드던지기", "parentId": "kouku.category.5444b9f82eb2508f5e75"},
+    {"kind": "V1", "assetId": "effect.kouku.common.circus.circle.warning", "displayName": "쓰리투원투하_원형_예고", "parentId": "kouku.category.09e8f3783398b64fe729"},
+    {"kind": "V1", "assetId": "effect.kouku.common.circus.innerdonut.warning", "displayName": "쓰리투원투하_도넛1_예고", "parentId": "kouku.category.09e8f3783398b64fe729"},
+    {"kind": "V1", "assetId": "effect.kouku.common.circus.outerdonut.warning", "displayName": "쓰리투원투하_도넛2_예고", "parentId": "kouku.category.09e8f3783398b64fe729"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.blade-dance.innerdonut.warning.expand", "displayName": "칼날댄스_도넛1_예고_채움확장(고정경계)", "parentId": "kouku.category.da0152a31a343073b7f0"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.blade-dance.outerdonut.warning.expand", "displayName": "칼날댄스_도넛2_예고_채움확장(고정경계)", "parentId": "kouku.category.da0152a31a343073b7f0"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.innerdonut.warning.expand", "displayName": "쇼타임_도넛1_예고_채움확장(고정경계)", "parentId": "kouku.category.ac8d699485e3ca68cb9f"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.outerdonut.warning.expand", "displayName": "쇼타임_도넛2_예고_채움확장(고정경계)", "parentId": "kouku.category.ac8d699485e3ca68cb9f"},
+    {"kind": "V1", "assetId": "effect.kouku.common.circus.innerdonut.warning.expand", "displayName": "쓰리투원투하_도넛1_예고_채움확장(고정경계)", "parentId": "kouku.category.09e8f3783398b64fe729"},
+    {"kind": "V1", "assetId": "effect.kouku.common.circus.outerdonut.warning.expand", "displayName": "쓰리투원투하_도넛2_예고_채움확장(고정경계)", "parentId": "kouku.category.09e8f3783398b64fe729"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.backstep.electric.threeway.authored", "displayName": "백스텝_세갈래전격(편집용배치)", "parentId": "kouku.category.36085383a796da20cec4"},
+    {"kind": "V1", "assetId": "effect.kouku.common.circus.ball.drop.split", "displayName": "세이튼_서커스공_낙하분열(편집용)", "parentId": "kouku.category.824077a92a3229098976"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.ritual.hand.trail.full.restore", "displayName": "제물 의식_손 궤적", "parentId": "kouku.category.0776c7cee95cb433a758"}
   ]
 }

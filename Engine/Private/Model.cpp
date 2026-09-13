@@ -121,6 +121,9 @@ CModel::CModel(const CModel& Prototype)
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
+    , m_bHasBindGeometryBounds { Prototype.m_bHasBindGeometryBounds }
+    , m_vBindGeometryBoundsMin { Prototype.m_vBindGeometryBoundsMin }
+    , m_vBindGeometryBoundsMax { Prototype.m_vBindGeometryBoundsMax }
 	, m_bHasSelfConsistentUnauthenticatedGeometryMetadata { Prototype.m_bHasSelfConsistentUnauthenticatedGeometryMetadata }
 	, m_iGeometryFormatVersionMajor { Prototype.m_iGeometryFormatVersionMajor }
 	, m_iGeometryFormatVersionMinor { Prototype.m_iGeometryFormatVersionMinor }
@@ -318,6 +321,95 @@ bool_t CModel::Sample_AnimationBoneCombinedMatrices(
 		Sample_BoneCombinedMatricesForAnimation(
 			iAnimationIndex, fTrackPositionTicks, false, 0.f,
 			BoneIndices, OutCombinedMatrices);
+}
+
+bool_t CModel::Sample_AnimationRootTranslation(const char_t* name,
+    const f32_t ticks, const uint32_t rootIndex, const int32_t verticalAxis,
+    const f32_t verticalScale, float3_t& output) const
+{
+    if (!name || !*name || !std::isfinite(ticks) || ticks < 0.f ||
+        verticalAxis < 0 || verticalAxis > 2 || !std::isfinite(verticalScale) ||
+        verticalScale < 0.f || rootIndex >= m_Bones.size() ||
+        m_BoneRestLocalTransforms.size() != m_Bones.size() ||
+        !Is_FiniteMatrix(m_PreTransformMatrix)) return false;
+    const CAnimation* animation = nullptr;
+    for (const auto& candidate : m_Animations)
+        if (candidate && candidate->Compare_Name(name))
+        {
+            if (animation) return false;
+            animation = candidate.get();
+        }
+    if (!animation || ticks > animation->Get_Duration()) return false;
+    auto local = m_BoneRestLocalTransforms;
+    auto initial = m_BoneRestLocalTransforms;
+    if (!animation->Sample_LocalBoneTransforms(ticks, local) ||
+        !animation->Sample_LocalBoneTransforms(0.f, initial)) return false;
+    const auto& raw = local[rootIndex];
+    const auto& rest = m_BoneRestLocalTransforms[rootIndex];
+    if (!m_Bones[rootIndex] || !Is_FiniteMatrix(raw) || !Is_FiniteMatrix(rest)) return false;
+    matrix_t basis = XMMatrixIdentity();
+    int32_t parent = m_Bones[rootIndex]->Get_ParentBoneIndex();
+    uint32_t child = rootIndex;
+    while (parent >= 0)
+    {
+        if (static_cast<uint32_t>(parent) >= child || !m_Bones[parent] ||
+            !Is_FiniteMatrix(local[parent]) || !Is_FiniteMatrix(initial[parent]) ||
+            !animation->Is_BoneTransformConstant(static_cast<uint32_t>(parent))) return false;
+        // Native-key constancy above owns this admission. Re-sampling equal
+        // quaternion keys can change a scale-100 matrix by float roundoff
+        // (Albion: 2.38e-5 at 5 ms); that is not animated ancestor motion.
+        // Always use the admitted initial basis, independent of sample time.
+        basis = basis * XMLoadFloat4x4(&initial[parent]);
+        child = static_cast<uint32_t>(parent);
+        parent = m_Bones[parent]->Get_ParentBoneIndex();
+    }
+    if (parent != -1) return false;
+    float3_t delta{raw._41 - rest._41, raw._42 - rest._42, raw._43 - rest._43};
+    if (verticalAxis == 0) delta.x *= verticalScale;
+    else if (verticalAxis == 1) delta.y *= verticalScale;
+    else delta.z *= verticalScale;
+    float3_t result;
+    XMStoreFloat3(&result, XMVector3TransformNormal(XMLoadFloat3(&delta),
+        basis * XMLoadFloat4x4(&m_PreTransformMatrix)));
+    if (!std::isfinite(result.x) || !std::isfinite(result.y) || !std::isfinite(result.z)) return false;
+    output = result;
+    return true;
+}
+
+CModel::ROOT_MOTION_SUPPRESSION_STATE CModel::Capture_RootMotionSuppression() const
+{
+    return {this, m_iRootMotionBoneIndex, m_iRootMotionVerticalAxis,
+        m_vRootMotionRestTranslation, m_vRootMotionUnscaledTranslation, m_fRootMotionVerticalScale};
+}
+
+bool_t CModel::Configure_RootMotionSuppressionFromRest(const uint32_t rootIndex,
+    const int32_t verticalAxis, const f32_t verticalScale)
+{
+    if (rootIndex >= m_Bones.size() || !m_Bones[rootIndex] ||
+        rootIndex >= m_BoneRestLocalTransforms.size() || verticalAxis < 0 || verticalAxis > 2 ||
+        !std::isfinite(verticalScale) || verticalScale < 0.f ||
+        !Is_FiniteMatrix(m_BoneRestLocalTransforms[rootIndex])) return false;
+    const auto& rest = m_BoneRestLocalTransforms[rootIndex];
+    m_iRootMotionBoneIndex = static_cast<int32_t>(rootIndex);
+    m_iRootMotionVerticalAxis = verticalAxis;
+    m_vRootMotionRestTranslation = {rest._41, rest._42, rest._43};
+    float4x4_t current;
+    XMStoreFloat4x4(&current, m_Bones[rootIndex]->Get_TransformationMatrix());
+    m_vRootMotionUnscaledTranslation = {current._41, current._42, current._43};
+    m_fRootMotionVerticalScale = verticalScale;
+    return true;
+}
+
+bool_t CModel::Restore_RootMotionSuppression(const ROOT_MOTION_SUPPRESSION_STATE& state)
+{
+    if (state.owner != this || state.boneIndex < -1 ||
+        (state.boneIndex >= 0 && static_cast<size_t>(state.boneIndex) >= m_Bones.size())) return false;
+    m_iRootMotionBoneIndex = state.boneIndex;
+    m_iRootMotionVerticalAxis = state.verticalAxis;
+    m_vRootMotionRestTranslation = state.restTranslation;
+    m_vRootMotionUnscaledTranslation = state.unscaledTranslation;
+    m_fRootMotionVerticalScale = state.verticalScale;
+    return true;
 }
 
 bool_t CModel::Sample_AnimationTransitionBoneCombinedMatrices(
@@ -1569,6 +1661,17 @@ HRESULT CModel::Ready_Meshes()
 					XMLoadFloat3(&position), XMLoadFloat4x4(&m_PreTransformMatrix)));
 			}
 		}
+        else if (MODEL::ANIM == m_eType)
+        {
+            const aiMesh* pAIMesh = m_pAIScene->mMeshes[i];
+            for (uint32_t vertexIndex = 0; vertexIndex < pAIMesh->mNumVertices; ++vertexIndex)
+            {
+                float3_t position{};
+                memcpy(&position, &pAIMesh->mVertices[vertexIndex], sizeof(float3_t));
+                Include_BindGeometryPosition(XMVector3TransformCoord(
+                    XMLoadFloat3(&position), XMLoadFloat4x4(&m_PreTransformMatrix)));
+            }
+        }
 
         auto pMesh = CMesh::Create(m_pDevice, m_pContext, m_eType, m_pAIScene->mMeshes[i], m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
         if (nullptr == pMesh)
@@ -2238,6 +2341,12 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
 					XMLoadFloat4x4(&m_PreTransformMatrix)));
 			}
 		}
+        else if (MODEL::ANIM == m_eType)
+        {
+            for (const VTXANIMMESH& vertex : mesh.skinnedVertices)
+                Include_BindGeometryPosition(XMVector3TransformCoord(
+                    XMLoadFloat3(&vertex.vPosition), XMLoadFloat4x4(&m_PreTransformMatrix)));
+        }
 
         auto pMesh = CMesh::Create(m_pDevice, m_pContext, m_eType,
             mesh, asset.skeleton, XMLoadFloat4x4(&m_PreTransformMatrix));
@@ -2287,6 +2396,9 @@ void CModel::Reset_LocalBounds()
 	m_vLocalBoundsMin = float3_t(maximum, maximum, maximum);
 	m_vLocalBoundsMax = float3_t(-maximum, -maximum, -maximum);
 	m_bHasLocalBounds = false;
+    m_bHasBindGeometryBounds = false;
+    m_vBindGeometryBoundsMin = float3_t(maximum, maximum, maximum);
+    m_vBindGeometryBoundsMax = float3_t(-maximum, -maximum, -maximum);
 }
 
 void CModel::Include_LocalPosition(fvector_t vPosition)
@@ -2303,6 +2415,27 @@ void CModel::Include_LocalPosition(fvector_t vPosition)
 	m_vLocalBoundsMax.y = (max)(m_vLocalBoundsMax.y, position.y);
 	m_vLocalBoundsMax.z = (max)(m_vLocalBoundsMax.z, position.z);
 	m_bHasLocalBounds = true;
+}
+
+bool_t CModel::Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) const
+{
+    if (MODEL::NONANIM == m_eType && m_bHasLocalBounds)
+    { minimum = m_vLocalBoundsMin; maximum = m_vLocalBoundsMax; return true; }
+    if (!m_bHasBindGeometryBounds) return false;
+    minimum = m_vBindGeometryBoundsMin; maximum = m_vBindGeometryBoundsMax; return true;
+}
+
+void CModel::Include_BindGeometryPosition(fvector_t value)
+{
+    float3_t position; XMStoreFloat3(&position, value);
+    if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return;
+    m_vBindGeometryBoundsMin.x = (std::min)(m_vBindGeometryBoundsMin.x, position.x);
+    m_vBindGeometryBoundsMin.y = (std::min)(m_vBindGeometryBoundsMin.y, position.y);
+    m_vBindGeometryBoundsMin.z = (std::min)(m_vBindGeometryBoundsMin.z, position.z);
+    m_vBindGeometryBoundsMax.x = (std::max)(m_vBindGeometryBoundsMax.x, position.x);
+    m_vBindGeometryBoundsMax.y = (std::max)(m_vBindGeometryBoundsMax.y, position.y);
+    m_vBindGeometryBoundsMax.z = (std::max)(m_vBindGeometryBoundsMax.z, position.z);
+    m_bHasBindGeometryBounds = true;
 }
 
 HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)

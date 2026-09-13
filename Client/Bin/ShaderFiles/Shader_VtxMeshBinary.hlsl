@@ -275,6 +275,21 @@ PS_OUT PS_MAIN(VS_OUT input)
     {
         const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord, input.vColor,
             input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz);
+        if (IsMapSurfaceSourceBG())
+        {
+            if (g_SourceBgUnlit != 0u)
+            {
+                // Authored luminous BG props keep source UV/mask/color, but do not
+                // receive diffuse/specular lighting from the deferred light pass.
+                output.vDiffuse = float4(0.f, 0.f, 0.f, surface.diffuse.a);
+                output.vNormal = float4(surface.worldNormal * .5f + .5f, 0.f);
+                output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+                    input.vProjPos.w / 1000.f, 0.f, 1.f);
+                output.vPickPos = input.vWorldPos;
+                output.vEmissive = float4(surface.diffuse.rgb, 0.f);
+                return output;
+            }
+        }
         output.vDiffuse = surface.diffuse;
         if (g_SurfaceDebugView == 4u)
             output.vDiffuse.rgb = surface.reflectionDelta;

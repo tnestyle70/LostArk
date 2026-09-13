@@ -8,6 +8,7 @@
 #include "ServerNavigation.h"
 
 #include <cstdint>
+#include <bitset>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -66,7 +67,7 @@ namespace LostArk::Server
 		std::uint64_t iTotalDamage = 0;
 		std::uint32_t iSubHitTotal = 1;
 		std::uint32_t iSubHitBase = 0;
-		std::uint64_t iAppliedTimedMask = 0;
+		std::bitset<192u> iAppliedTimedMask;
 		std::vector<SERVER_PROJECTILE_CONTACT_MARK> ContactMarks;
 	};
 
@@ -421,7 +422,7 @@ namespace LostArk::Server
 			fSkillTargetZ = 0.f;
 		}
 		bool hasAppliedSkillDamage = false;
-		std::uint64_t iAppliedHitMask = 0;
+		std::bitset<192u> iAppliedHitMask;
 		// Bit per projectile definition of the running stage already spawned.
 		std::uint16_t iSpawnedProjectileMask = 0;
 		std::vector<SERVER_SKILL_PROJECTILE> Projectiles;

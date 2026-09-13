@@ -70,6 +70,8 @@ public:
 	// Own all program inputs until the queued frame is consumed. Bind only;
 	// the renderer retains target selection, ping-pong order and the quad draw.
 	virtual HRESULT Bind(const PRESENTATION_SCREEN_POST_MATERIAL_INPUT& Input) const = 0;
+	// Captured-scene replacements precede live forward effects; normal posts remain last.
+	virtual bool Replaces_SceneBeforeBlend() const { return false; }
 };
 
 struct PRESENTATION_SCREEN_POST_DESC final

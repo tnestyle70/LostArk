@@ -30,6 +30,8 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+    <ClInclude Include="..\Public\CharacterActionWorkbench.h" />
+    <ClInclude Include="..\Public\CharacterActionCombatDocument.h" />
 	<ClInclude Include="..\Public\KoukuSaydonAnimationActionDocument.h" />
 	<ClInclude Include="..\Public\KoukuSaydonAnimationPatternDocument.h" />
 	<ClInclude Include="..\Public\KoukuSaydonCompositionDocument.h" />
@@ -123,6 +125,9 @@
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
 	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h" />
 	<ClInclude Include="..\Public\KoukuSaydonPresentationPlayer.h" />
+	<ClInclude Include="..\Public\KoukuCinematicAnimationCatalog.h" />
+	<ClInclude Include="..\Public\KoukuSaydonPreviewRootMotion.h" />
+	<ClInclude Include="..\Public\KoukuSaydonAnimationBlend.h" />
 	<ClInclude Include="..\Public\MonsterPresentationContract.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
@@ -283,6 +288,8 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+    <ClCompile Include="..\Private\CharacterActionWorkbench.cpp" />
+    <ClCompile Include="..\Private\CharacterActionCombatDocument.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonAnimationActionDocument.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonAnimationPatternDocument.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonCompositionDocument.cpp" />
@@ -369,6 +376,9 @@
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp" />
+	<ClCompile Include="..\Private\KoukuCinematicAnimationCatalog.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPreviewRootMotion.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonAnimationBlend.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
@@ -586,6 +596,7 @@
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
 	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_05.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\KoukuSaydon.cinematicreference.json" />
 	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_06.actionreference.json" />
 	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_07.actionreference.json" />
 	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCZ_00.actionreference.json" />
@@ -2160,5 +2171,23 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.radial.lasers.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.common.trumpet.suit.floor.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.throw.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.circle.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.innerdonut.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.outerdonut.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.innerdonut.warning.expand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.blade-dance.outerdonut.warning.expand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.innerdonut.warning.expand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.outerdonut.warning.expand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.innerdonut.warning.expand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.outerdonut.warning.expand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.backstep.electric.threeway.authored.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.circus.ball.drop.split.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.ritual.hand.trail.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.scene-image-collapse.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.scene-collapse.effect.json" />
   </ItemGroup>
 </Project>

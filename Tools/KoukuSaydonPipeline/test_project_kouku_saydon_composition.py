@@ -33,6 +33,106 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    @staticmethod
+    def collider_selection_group_fixture():
+        resource = {"resourceId": "collider.group.fixture", "displayName": "Box",
+                    "kind": "COLLIDER", "assetId": "", "shape": "BOX"}
+        pattern = {"patternId": "pattern.group", "actorProfileId": "MN_RPCZ_00", "gateId": "GATE1",
+                   "nextPresentationOccurrenceOrdinal": 6, "stages": [{"durationMs": 8000, "animationOccurrences": []}],
+                   "presentationOccurrences": [
+                       {"occurrenceId": f"pattern.group.presentation.{index + 1}", "resourceId": resource["resourceId"],
+                        "startMs": start, "durationMs": 500, "positionOffset": [float(index), 0.0, 2.0],
+                        "selectionGroupId": "collider.selection.1"}
+                       for index, start in enumerate((5112, 5450, 5779, 6110, 6451))]}
+        return {resource["resourceId"]: resource}, pattern
+
+    def test_collider_selection_group_roundtrip_keeps_authoring_and_runtime_projection_unchanged(self):
+        resources, pattern = self.collider_selection_group_fixture()
+        before = copy.deepcopy(pattern)
+        reopened = json.loads(subject.serialize_json(pattern))
+        subject._validate_presentation_occurrences(reopened, resources, 8000, {})
+        self.assertEqual(before, reopened)
+        document = {"presentationResources": list(resources.values())}
+        grouped_output = subject._project_pattern_presentation(document, reopened)
+        ungrouped = copy.deepcopy(pattern)
+        for row in ungrouped["presentationOccurrences"]:
+            row.pop("selectionGroupId")
+        subject._validate_presentation_occurrences(ungrouped, resources, 8000, {})
+        self.assertEqual(grouped_output, subject._project_pattern_presentation(document, ungrouped))
+        self.assertNotIn("selectionGroupId", subject.serialize_json(grouped_output).decode("utf-8"))
+        self.assertEqual(before, pattern)
+        # Identical group strings in separate Patterns never combine their members.
+        for suffix in ("a", "b"):
+            separate = copy.deepcopy(pattern)
+            separate["patternId"] += suffix
+            for row in separate["presentationOccurrences"]:
+                row["occurrenceId"] = row["occurrenceId"].replace("pattern.group.", f"pattern.group{suffix}.")
+            subject._validate_presentation_occurrences(separate, resources, 8000, {})
+            separate["presentationOccurrences"] = separate["presentationOccurrences"][:1]
+            with self.assertRaisesRegex(subject.CompositionError, "at least two"):
+                subject._validate_presentation_occurrences(separate, resources, 8000, {})
+
+    def test_collider_selection_group_rejects_invalid_identity_kind_and_mixed_anchor_without_mutation(self):
+        changes = ({"selectionGroupId": None}, {"selectionGroupId": 1}, {"selectionGroupId": "../bad"},
+                   {"selectionGroupId": "x" * 129}, {"selectionGroupId": "new.group"},
+                   {"followBoss": False}, {"bone": "bip001-head"}, {"boneTarget": "WEAPON"},
+                   {"anchorKind": "WORLD"}, {"worldId": "different.world"},
+                   {"worldOccurrenceId": "different.world.box"}, {"worldEmissionIndex": 1},
+                   {"selectionGroupIds": ["typo.group"]})
+        for change in changes:
+            resources, pattern = self.collider_selection_group_fixture()
+            pattern["presentationOccurrences"][0].update(change)
+            before = copy.deepcopy(pattern)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                subject._validate_presentation_occurrences(pattern, resources, 8000, {})
+            self.assertEqual(before, pattern)
+        for kind in ("EFFECT", "SOUND", "CAMERA", "LIGHT"):
+            resources, pattern = self.collider_selection_group_fixture()
+            resources["collider.group.fixture"]["kind"] = kind
+            with self.subTest(kind=kind), self.assertRaisesRegex(subject.CompositionError, "Collider"):
+                subject._validate_presentation_occurrences(pattern, resources, 8000, {})
+
+    def test_collider_selection_group_frozen_anchor_requires_identical_capture_time(self):
+        resources, pattern = self.collider_selection_group_fixture()
+        for row in pattern["presentationOccurrences"]:
+            row["followBoss"] = False
+        with self.assertRaisesRegex(subject.CompositionError, "anchor frame"):
+            subject._validate_presentation_occurrences(pattern, resources, 8000, {})
+        for row in pattern["presentationOccurrences"]:
+            row["startMs"] = 5000
+        subject._validate_presentation_occurrences(pattern, resources, 8000, {})
+        for row in pattern["presentationOccurrences"]:
+            row["anchorKind"] = "WORLD"
+        with self.assertRaisesRegex(subject.CompositionError, "WORLD"):
+            subject._validate_collider_selection_groups(pattern, resources)
+
+    def test_parent_repeat_and_clipping_remove_derived_selection_groups_only(self):
+        document, parent, child = self.parent_fixture()
+        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        document["nextPresentationResourceOrdinal"] += 1
+        document["presentationResources"].append({"resourceId": resource_id, "displayName": "Group box",
+            "kind": "COLLIDER", "assetId": "", "shape": "BOX"})
+        child["nextPresentationOccurrenceOrdinal"] = 3
+        child["presentationOccurrences"] = [{"occurrenceId": f"{child['patternId']}.presentation.{i + 1}",
+            "resourceId": resource_id, "startMs": start, "durationMs": 300, "selectionGroupId": "selection.1"}
+            for i, start in enumerate((0, 600))]
+        parent["nextPresentationOccurrenceOrdinal"] = 3
+        parent["presentationOccurrences"] = [{"occurrenceId": f"{parent['patternId']}.presentation.{i + 1}",
+            "resourceId": resource_id, "startMs": start, "durationMs": 300, "selectionGroupId": "selection.1"}
+            for i, start in enumerate((2800, 3100))]
+        before = copy.deepcopy(document)
+        subject.validate_document(document)
+        expanded = subject.expand_pattern_document(document, parent["patternId"])
+        result = self.find(expanded, parent["patternId"])
+        self.assertEqual(7, len(result["presentationOccurrences"]))
+        self.assertTrue(all("selectionGroupId" not in row for row in result["presentationOccurrences"]))
+        self.assertEqual(child["presentationOccurrences"], self.find(expanded, child["patternId"])["presentationOccurrences"])
+        subject.validate_document(expanded)
+        self.assertEqual(before, document)
+        parent["presentationOccurrences"].pop()
+        with self.assertRaisesRegex(subject.CompositionError, "at least two"):
+            subject.expand_pattern_document(document, parent["patternId"])
+
     def test_intro_import_saves_sequence_with_world_and_presentation_definitions(self):
         import sys
         from unittest.mock import patch
@@ -891,6 +991,80 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             second["placement"]["rotationDegrees"][0] = 10
             with self.assertRaisesRegex(subject.CompositionError, "yaw-only"):
                 subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, next(row for row in document["worlds"] if row["worldId"] == second["worldId"]), second)
+
+    @staticmethod
+    def spinning_circle_world_fixture():
+        instance = {"instanceId": "blade.motion", "templateId": "blade.template", "anchorKind": "WORLD",
+                    "motionEnd": "STOP", "position": [1, 2, 3], "startDelayMs": 50,
+                    "bindings": [{"slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "blade"}]}
+        keys = [{"timeMs": time, "positionOffset": [x, 0, 0], "rotationQuaternion": [0, 0, math.sqrt(.5), math.sqrt(.5)],
+                 "scaleMultiplier": [3, 3, 3], "visible": visible}
+                for time, x, visible in ((0, 0, True), (1000, 10, True), (2000, 10, False), (2500, 10, False))]
+        template = {"sequenceId": "blade.template", "durationMs": 2500, "interpolation": "LINEAR", "tracks": [{"slotId": "object", "keys": keys}],
+                    "objectMotion": {"angularVelocityDegrees": [1440, 0, 0], "count": 2, "emissions": [
+                        {"positionOffset": [0, 0, 0], "yawDegrees": 0, "startDelayMs": 0},
+                        {"positionOffset": [4, 0, 5], "yawDegrees": 90, "startDelayMs": 500}]}}
+        sequences = {"instances": [instance], "templates": [template], "objectResources": [{"objectId": "blade", "scale": [2, 2, 2]}]}
+        return sequences, {"sequenceInstanceId": "blade.motion"}, {"startMs": 200, "durationMs": 1400, "playbackSpeed": 2}
+
+    def test_centered_circle_spin_projects_position_scale_visibility_and_emission_clock(self):
+        sequences, world, cue = self.spinning_circle_world_fixture()
+        before = copy.deepcopy(sequences)
+        track = subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, world, cue, 1, True)
+        self.assertEqual([5, 2, 8], track["baselinePosition"])
+        self.assertEqual(90, track["baselineYawDegrees"])
+        self.assertEqual(300, track["startDelayMs"])  # 50 ms instance + 500 / 2 row delay.
+        self.assertEqual([2, 2, 2], track["baselineScale"])
+        self.assertEqual([True, True, False, False], [key["visible"] for key in track["keys"]])
+        self.assertEqual([10, 0, 0], track["keys"][1]["positionOffset"])
+        self.assertTrue(all((key["rotationY"], key["rotationW"]) == (0, 1) for key in track["keys"]))
+        self.assertEqual(before, sequences)
+        # Opting out of the centered-circle contract keeps tilted BOX/offset geometry rejected.
+        with self.assertRaisesRegex(subject.CompositionError, "zero physical"):
+            subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, world, cue, 1)
+
+    def test_centered_circle_spin_requires_centered_circle_occurrence_at_actual_projection_seam(self):
+        sequences, world, cue = self.spinning_circle_world_fixture()
+        world["worldId"] = "world.blade"
+        cue.update(occurrenceId="world.box", worldId="world.blade")
+        row = {"occurrenceId": "circle.box", "resourceId": "circle", "startMs": 200, "durationMs": 1000,
+               "anchorKind": "WORLD", "worldId": "world.blade", "worldOccurrenceId": "world.box", "logicOccurrenceId": "logic.box"}
+        document = {"areaId": subject.AREA_ID, "worlds": [world], "presentationResources": [
+            {"resourceId": "circle", "kind": "COLLIDER", "shape": "CIRCLE", "radiusM": .5}]}
+        pattern = {"worldOccurrences": [cue], "presentationOccurrences": [row]}
+        logic_box = {"occurrenceId": "logic.box", "startMs": 200, "durationMs": 1000}
+        logic = {"triggerKind": "ENTER_AREA"}
+        result = subject._project_collider_regions(document, pattern, logic_box, logic, sequences, ROOT)
+        self.assertEqual(("CIRCLE", [0, 0, 0]), (result[0]["shape"], result[0]["center"]))
+        self.assertEqual(0, result[0]["worldTrack"]["keys"][0]["rotationY"])
+        for changes in ({"positionOffset": [1, 0, 0]}, {"scale": [1, 2, 1]}, {"bone": "socket"}, {"followBoss": False}):
+            original = copy.deepcopy(row)
+            row.update(changes)
+            with self.assertRaises(subject.CompositionError):
+                subject._project_collider_regions(document, pattern, logic_box, logic, sequences, ROOT)
+            row.clear(); row.update(original)
+        document["presentationResources"][0]["shape"] = "BOX"
+        with self.assertRaises(subject.CompositionError):
+            subject._project_collider_regions(document, pattern, logic_box, logic, sequences, ROOT)
+
+    def test_centered_circle_spin_rejects_unprojected_motion_nonuniform_scale_and_moving_loop(self):
+        for invalid in ("velocity", "acceleration", "revolutionDegreesPerSecond", "revolutionOffset", "spawnHalfExtents", "sourceScale", "keyScale", "loop", "next"):
+            sequences, world, cue = self.spinning_circle_world_fixture()
+            template = sequences["templates"][0]
+            if invalid in {"sourceScale", "keyScale"}:
+                if invalid == "sourceScale": sequences["objectResources"][0]["scale"][1] = 4
+                else: template["tracks"][0]["keys"][1]["scaleMultiplier"][1] = 4
+            elif invalid in {"loop", "next"}: sequences["instances"][0]["motionEnd"] = invalid.upper()
+            else: template["objectMotion"][invalid] = [1, 0, 0]
+            before = copy.deepcopy(sequences)
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, world, cue, 0, True)
+            self.assertEqual(before, sequences)
+        for policy in ("LOOP", "HOLD"):
+            sequences, world, cue = self.spinning_circle_world_fixture()
+            sequences["instances"][0]["motionEnd"] = policy
+            for key in sequences["templates"][0]["tracks"][0]["keys"]: key["positionOffset"] = [0, 0, 0]
+            subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, world, cue, 0, True)
 
     def test_world_placement_bootstrap_sidecar_and_canonical_legacy_fields(self):
         projected = self.first_product(subject.project_encounter(self.placed_contact_document()))
@@ -2720,6 +2894,11 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def test_animation_root_vertical_scale_projects_only_its_actions(self):
         document = copy.deepcopy(self.document)
         pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        # This regression owns the animation lane and its manual/automatic root
+        # authority; unrelated live lane edits must not alter its lifetime.
+        document["patterns"] = [self.strip_lanes(pattern)]
+        for key in ("logics", "summons", "worlds", "sceneProfiles", "presentationResources"):
+            document[key] = []
         pattern["authoringStatus"] = "PRODUCT"
         pattern["animationRootVerticalScale"] = .8
         document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
@@ -2729,11 +2908,17 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertTrue(all(row["animationRootVerticalScale"] == .8 for row in product["bindings"] if row["actionId"] in actions))
         self.assertTrue(all("animationRootVerticalScale" not in row for row in product["bindings"] if row["actionId"] not in actions))
         self.assertEqual(.8, self.find(product, pattern["patternId"])["animationRootVerticalScale"])
+        manual_motion = pattern.pop("bossMotion")
+        automatic = subject.project_presentation(document)
+        self.assertTrue(all(row["animationRootVerticalScale"] == 0 for row in automatic["bindings"]))
+        self.assertEqual(0, self.find(automatic, pattern["patternId"])["animationRootVerticalScale"])
         for scale in (None, True, "0.8", -.1, 1.1, float("nan"), float("inf")):
             pattern["animationRootVerticalScale"] = scale
             with self.subTest(scale=scale), self.assertRaisesRegex(subject.CompositionError, "animationRootVerticalScale"):
                 self.validate(document)
         pattern.pop("animationRootVerticalScale")
+        self.assertTrue(all(row["animationRootVerticalScale"] == 0 for row in subject.project_presentation(document)["bindings"]))
+        pattern["bossMotion"] = manual_motion
         self.assertTrue(all("animationRootVerticalScale" not in row for row in subject.project_presentation(document)["bindings"]))
 
     def test_animation_root_vertical_scale_matches_original_rise_and_cache_isolation(self):
@@ -3338,6 +3523,42 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         with mock.patch.object(subject,"load_world_sequences",return_value=sequences):
             with self.assertRaisesRegex(subject.CompositionError,"increasing"):
                 subject.project_encounter(document)
+
+    def test_world_effect_exact_anchor_is_independent_of_legacy_companion(self):
+        resource = {"resourceId": "effect.fire", "displayName": "Fire", "kind": "EFFECT",
+                    "assetId": "effect.fire", "resourceKind": "LEAF"}
+        resources = {resource["resourceId"]: resource}
+        worlds = {"world.doll": {"worldId": "world.doll", "sequenceInstanceId": "motion.doll"},
+                  "world.other": {"worldId": "world.other", "sequenceInstanceId": "motion.other"}}
+        pattern = {"patternId": "sequence.fire", "nextPresentationOccurrenceOrdinal": 3,
+                   "worldOccurrences": [{"occurrenceId": "sequence.fire.world.1", "worldId": "world.doll",
+                                         "startMs": 400, "durationMs": 2000}],
+                   "presentationOccurrences": [
+                       {"occurrenceId": f"sequence.fire.presentation.{i}", "resourceId": "effect.fire",
+                        "anchorKind": "WORLD", "worldId": "world.doll", "worldOccurrenceId": "sequence.fire.world.1",
+                        "startMs": 400, "durationMs": 1000} for i in (1, 2)]}
+        before = copy.deepcopy(pattern)
+        subject._validate_presentation_occurrences(pattern, resources, 5000, worlds)
+        self.assertEqual(before, json.loads(subject.serialize_json(pattern)))
+        # A missing/cross-definition occurrence is rejected without editing the source.
+        for patch in ({"worldId": "world.other"}, {"worldOccurrenceId": "sequence.fire.world.99"}):
+            invalid = copy.deepcopy(pattern)
+            invalid["presentationOccurrences"][0].update(patch)
+            with self.assertRaises(subject.CompositionError):
+                subject._validate_presentation_occurrences(invalid, resources, 5000, worlds)
+        self.assertEqual(before, pattern)
+        # The legacy BOSS companion retains the one-resource/one-box contract.
+        worlds["world.doll"]["companionEffectResourceId"] = "effect.fire"
+        companion = copy.deepcopy(pattern["presentationOccurrences"][0])
+        companion.update(occurrenceId="sequence.fire.presentation.3", anchorKind="BOSS", worldId="")
+        pattern["nextPresentationOccurrenceOrdinal"] = 4
+        pattern["presentationOccurrences"].append(companion)
+        subject._validate_presentation_occurrences(pattern, resources, 5000, worlds)
+        duplicate = {**companion, "occurrenceId": "sequence.fire.presentation.4"}
+        pattern["nextPresentationOccurrenceOrdinal"] = 5
+        pattern["presentationOccurrences"].append(duplicate)
+        with self.assertRaisesRegex(subject.CompositionError, "at most one"):
+            subject._validate_presentation_occurrences(pattern, resources, 5000, worlds)
 
     def test_world_companion_effect_is_explicit_and_keeps_independent_timing(self):
         document = copy.deepcopy(self.document)
@@ -4053,6 +4274,309 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
                 other_clip = next(row for row in other_actor["body"].animations if row.name == clip)
                 self.assertIsNot(original_clip.channels, other_clip.channels)
                 self.assertTrue(all(row.channels is None for row in other_actor["body"].animations if row.name != clip))
+
+
+class KoukuAnimationRootMotionTests(unittest.TestCase):
+    @staticmethod
+    def animation(**changes):
+        return {"occurrenceId": "root.animation", "runtimeClip": "root.clip", "profileId": "MN_RPCZ_00",
+            "sourceActionId": 0, "sourceStageId": "RAW", "sourceStartMs": 0, "sourceEndMs": 0,
+            "startOffsetMs": 0, "playMs": 1000, "playRate": 1.0, "endPolicy": "EXACT", **changes}
+
+    @staticmethod
+    def curve(points):
+        return [{"timeMs": time, "forward": x, "lateral": y, "up": z} for time, x, y, z in points]
+
+    def bake(self, points, animation=None, duration=1000):
+        with mock.patch.object(subject, "_animation_root_curve", return_value=(points[-1][0], self.curve(points))):
+            return subject._build_animation_root_motion_samples({}, animation or self.animation(), duration)
+
+    def test_crop_rate_delay_hold_preserve_xyz_relative_to_source_in(self):
+        rows = self.bake([(0, 5, -2, 7), (1000, 15, 18, 37)],
+            self.animation(sourceStartMs=200, sourceEndMs=800, startOffsetMs=100, playMs=700,
+                           playRate=2, endPolicy="HOLD_LAST_POSE"))
+        self.assertEqual((0, 0, 0), subject._sample_root_curve(rows, 100))
+        self.assertEqual((2, 4, 6), subject._sample_root_curve(rows, 200))
+        self.assertEqual((6, 12, 18), subject._sample_root_curve(rows, 400))
+        self.assertEqual((6, 12, 18), subject._sample_root_curve(rows, 1000))
+        self.assertEqual([0, 1000], [rows[0]["timeMs"], rows[-1]["timeMs"]])
+
+    def test_loop_accumulates_displacement_and_keeps_round_trip_turns(self):
+        linear = self.bake([(0, 2, 3, 4), (1000, 4, 7, 10)],
+            self.animation(playMs=2500, endPolicy="LOOP_TO_WINDOW"), 2500)
+        self.assertEqual(2, len(linear))
+        self.assertEqual((5, 10, 15), subject._sample_root_curve(linear, 2500))
+        returns = self.bake([(0, 0, 0, 0), (500, -3, 2, 5), (1000, 0, 0, 0)],
+            self.animation(playMs=2500, endPolicy="LOOP_TO_WINDOW"), 2500)
+        for age in (500, 1500, 2500):
+            self.assertEqual((-3, 2, 5), subject._sample_root_curve(returns, age))
+        self.assertEqual((0, 0, 0), subject._sample_root_curve(returns, 2000))
+
+    def test_inplace_omits_curve_and_full_return_keeps_middle_motion(self):
+        self.assertEqual([], self.bake([(0, 5, -3, 8), (1000, 5, -3, 8)]))
+        rows = self.bake([(0, 0, 0, 0), (400, -2, 0, 3), (1000, 0, 0, 0)])
+        self.assertEqual(3, len(rows))
+        self.assertEqual((-2, 0, 3), subject._sample_root_curve(rows, 400))
+
+    def test_reduction_bound_rejects_unrepresentable_curves_without_losing_turns(self):
+        dense = self.curve([(index, index / 1000, 0, 0) for index in range(2000)])
+        self.assertEqual(2, len(subject._reduce_root_motion_samples(dense)))
+        zigzag = self.curve([(index, index % 2, 0, 0) for index in range(514)])
+        with self.assertRaisesRegex(subject.CompositionError, "512 samples"):
+            subject._reduce_root_motion_samples(zigzag)
+        with self.assertRaisesRegex(subject.CompositionError, "millisecond timeline"):
+            self.bake([(0, 0, 0, 0), (0.5, 0, 0, 2), (1, 0, 0, 0)], self.animation(playMs=1), 1)
+        with self.assertRaisesRegex(subject.CompositionError, "source range"):
+            self.bake([(0, 0, 0, 0), (1000, 1, 0, 0)], self.animation(sourceEndMs=1100))
+        with self.assertRaisesRegex(subject.CompositionError, "sub-millisecond reversal"):
+            self.bake([(0, 0, 0, 0), (10, 10, 0, 0), (10.2, 10, 0, 0), (10.5, 12, 0, 0),
+                       (10.8, 10, 0, 0), (100, 20, 0, 0)], self.animation(playMs=100), 100)
+        for points in (
+                [(0, 0, 0, 0), (.5, 2, 0, .5), (1, 4, 0, 0)],
+                [(0, 0, 0, 0), (10.2, 10, 0, 0), (10.35, 11, 0, 0), (10.5, 11, 1, 0),
+                 (10.65, 10, 1, 0), (10.8, 10, 0, 0), (100, 20, 0, 0)]):
+            with self.subTest(points=points), self.assertRaisesRegex(subject.CompositionError, "sub-millisecond reversal"):
+                self.bake(points, self.animation(playMs=int(points[-1][0])), int(points[-1][0]))
+
+    def test_crop_near_native_turning_key_keeps_normal_trim_and_reports_quantization_separately(self):
+        points = self.curve([(0, 0, 0, 0), (500, 3, 0, 0), (1000, 0, 0, 0)])
+        diagnostics = {}
+        with mock.patch.object(subject, "_animation_root_curve", return_value=(1000, points)):
+            rows = subject._build_animation_root_motion_samples({},
+                self.animation(sourceStartMs=499, sourceEndMs=1000, playRate=4, playMs=200, endPolicy="HOLD_LAST_POSE"),
+                200, diagnostics=diagnostics)
+        self.assertAlmostEqual(-2.994, rows[-1]["forward"])
+        self.assertGreater(diagnostics["quantizationErrorM"], .001)
+        self.assertLessEqual(diagnostics["reductionErrorM"], .001 + 1e-9)
+        self.assertLessEqual(diagnostics["nativeErrorM"], diagnostics["quantizationErrorM"] + .001 + 1e-9)
+
+    def test_native_root_uses_parent_basis_catalog_scale_and_authored_vertical_scale(self):
+        from types import SimpleNamespace as NS
+        identity = subject.wmodel_pose.affine_matrix((1, 1, 1), (0, 0, 0, 1), (0, 0, 0))
+        basis = subject.wmodel_pose.affine_matrix((2, 2, 2),
+            (math.sin(math.pi / 4), 0, 0, math.cos(math.pi / 4)), (10, 20, 30))
+        skeleton = [NS(name="parent", parent=-1, transform=identity),
+                    NS(name="b_root", parent=0, transform=identity)]
+        channel = NS(bone_index=1, position_keys=[(0, 0, 0, 0), (30, 1, 2, 3)], rotation_keys=[], scale_keys=[])
+        native = NS(name="root.clip", channels=[channel], ticks_per_second=30, duration_ticks=30)
+        actor = {"body": NS(skeleton_bones=skeleton, animations=[native]), "bodyPre": basis}
+        with mock.patch.object(subject, "_sample_bone_bake_pose", return_value=[identity, identity]):
+            native_ms, curve = subject._animation_root_curve(actor, self.animation(), 0.5)
+            self.assertEqual(1000, native_ms)
+            self.assertAlmostEqual(2, curve[-1]["lateral"])
+            self.assertAlmostEqual(4, curve[-1]["forward"])
+            self.assertAlmostEqual(-3, curve[-1]["up"])
+            native.channels.append(NS(bone_index=0, position_keys=[(0, 0, 0, 0), (30, 1, 0, 0)],
+                rotation_keys=[], scale_keys=[]))
+            with self.assertRaisesRegex(subject.CompositionError, "animated b_root ancestor"):
+                subject._animation_root_curve(actor, self.animation(), 1)
+            native.channels.pop()
+            skeleton[1].name = "b_root_extra"
+            with self.assertRaisesRegex(subject.CompositionError, "one b_root"):
+                subject._animation_root_curve(actor, self.animation(), 1)
+
+    def test_manual_ownership_excludes_whole_pattern_before_native_reads(self):
+        pattern = {"patternId": "root.pattern", "stages": [{"stageId": "S1", "durationMs": 1000,
+            "animationOccurrences": [self.animation()]}]}
+        for definition in ({"bossChargeDistanceM": 3}, {"triggerKind": "REAL_GAZE_TELEPORT"}):
+            pattern["logicOccurrences"] = [{"logicId": "manual.logic"}]
+            with mock.patch.object(subject, "_load_bone_bake_actor", side_effect=AssertionError("must not read WModel")):
+                self.assertEqual({}, subject._project_pattern_root_motion(
+                    {"logics": [{"logicId": "manual.logic", **definition}]}, pattern, ROOT, {}))
+        pattern["logicOccurrences"] = []
+        pattern["bossMotion"] = {"keys": []}
+        with mock.patch.object(subject, "_load_bone_bake_actor", side_effect=AssertionError("must not read WModel")):
+            self.assertEqual({}, subject._project_pattern_root_motion({}, pattern, ROOT, {}))
+
+    def test_generated_pattern_bindings_share_server_root_ownership_without_source_mutation(self):
+        pattern = {"patternId": "root.pattern", "actorProfileId": "MN_RPCZ_00", "authoringStatus": "PRODUCT",
+            "category": "NORMAL", "displayName": "Root", "animationRootVerticalScale": 0.8,
+            "stages": [{"stageId": "S1", "actionId": "root.stage.1", "stageKind": "ACTIVE", "durationMs": 1000,
+                        "animationOccurrences": [self.animation()]},
+                       {"stageId": "S2", "actionId": "root.stage.2", "stageKind": "RECOVERY", "durationMs": 1000,
+                        "animationOccurrences": [self.animation(occurrenceId="root.animation.2")]}]}
+        document = {"patterns": [pattern], "revision": 1, "bossArchetypeId": subject.BOSS_ARCHETYPE_ID,
+            "encounterId": subject.ENCOUNTER_ID, "fixedTickHz": 30, "playAllPatternIds": ["root.pattern"]}
+        before = copy.deepcopy(document)
+        moving = {"S1": self.curve([(0, 0, 0, 0), (1000, 1, -2, 3)])}
+        for curves in (moving, {}):
+            with mock.patch.object(subject, "_project_pattern_root_motion", return_value=curves), \
+                    mock.patch.object(subject, "_join_light_resources", return_value=None), \
+                    mock.patch.object(subject, "arena_boss_archetypes_by_profile", return_value={"MN_RPCZ_00": [subject.BOSS_ARCHETYPE_ID]}):
+                presentation = subject.project_presentation(document)
+                encounter = subject.project_encounter(document)
+            expected = 0.0 if curves else 0.8
+            self.assertEqual([expected, expected], [row["animationRootVerticalScale"] for row in presentation["bindings"]])
+            self.assertEqual(expected, presentation["patterns"][0]["animationRootVerticalScale"])
+            self.assertEqual(bool(curves), "rootMotionSamples" in encounter["patterns"][0]["stages"][0])
+            self.assertNotIn("rootMotionSamples", encounter["patterns"][0]["stages"][1])
+        self.assertEqual(before, document)
+
+    def test_installed_native_backstep_crop_loop_and_return_match_original_coordinates(self):
+        pattern = {"patternId": "root.installed", "actorProfileId": "MN_RPCT_05", "gateId": "GATE1"}
+        with subject._publication_session() as inputs:
+            actor = subject._load_bone_bake_actor(pattern, ROOT, inputs.actors)
+            animation = self.animation(runtimeClip="rpct00_att_battle_34_02", profileId="MN_RPCT_05",
+                sourceEndMs=1600, playMs=1600, endPolicy="HOLD_LAST_POSE")
+            rows = subject._build_animation_root_motion_samples(actor, animation, 1700)
+            self.assertAlmostEqual(-6.7999995947, rows[-1]["lateral"], places=6)
+            self.assertAlmostEqual(-7.2859053612, subject._sample_root_curve(rows, 1100)[1], places=6)
+            animation.update(sourceStartMs=400, sourceEndMs=1200, startOffsetMs=100, playMs=400, playRate=2)
+            crop = subject._build_animation_root_motion_samples(actor, animation, 600)
+            self.assertAlmostEqual(-2.6421329975, subject._sample_root_curve(crop, 300)[1], places=6)
+            self.assertAlmostEqual(-2.816513443, crop[-1]["lateral"], places=6)
+            self.assertAlmostEqual(-.01091134325, crop[-1]["up"], places=6)
+            animation.update(playMs=1000, endPolicy="LOOP_TO_WINDOW")
+            loop = subject._build_animation_root_motion_samples(actor, animation, 1200)
+            self.assertAlmostEqual(2 * crop[-1]["lateral"] - 2.6421329975, loop[-1]["lateral"], places=6)
+            animation = self.animation(runtimeClip="rpct00_att_battle_1_01", profileId="MN_RPCT_05",
+                sourceEndMs=2000, playMs=4000, endPolicy="LOOP_TO_WINDOW")
+            returns = subject._build_animation_root_motion_samples(actor, animation, 4100)
+            self.assertEqual((0, 0, 0), subject._sample_root_curve(returns, 4000))
+            self.assertAlmostEqual(-.7940448612, subject._sample_root_curve(returns, 800)[1], places=6)
+            self.assertAlmostEqual(-.7940448612, subject._sample_root_curve(returns, 2800)[1], places=6)
+            self.assertTrue(all(len(rows) <= 512 for rows in (rows, crop, loop, returns)))
+
+    def test_publication_batches_native_keys_and_keeps_actual_inplace_stage_unchanged(self):
+        animations = [self.animation(runtimeClip=clip, profileId="MN_RPCT_05", endPolicy="HOLD_LAST_POSE")
+            for clip in ("rpct00_att_battle_34_02", "rpct00_att_battle_1_01", "rpct00_run_battle_1")]
+        pattern = {"patternId": "root.cache", "actorProfileId": "MN_RPCT_05", "gateId": "GATE1",
+            "stages": [{"stageId": f"S{index}", "durationMs": 1000, "animationOccurrences": [animation]}
+                       for index, animation in enumerate(animations)]}
+        with subject._publication_session() as inputs, \
+                mock.patch.object(subject.wmodel_pose, "read_wmodel", wraps=subject.wmodel_pose.read_wmodel) as reader:
+            curves = subject._project_pattern_root_motion({}, pattern, ROOT, inputs.actors)
+            self.assertEqual({"S0", "S1"}, set(curves))
+            self.assertEqual(3, reader.call_count)  # Body/weapon headers, one batch of requested body clips.
+            self.assertFalse(reader.call_args.kwargs["include_geometry"])
+            self.assertEqual({row["runtimeClip"] for row in animations}, reader.call_args.kwargs["animation_names"])
+            self.assertEqual(curves, subject._project_pattern_root_motion({}, pattern, ROOT, inputs.actors))
+            self.assertEqual(3, reader.call_count)
+            curves["S0"][0]["up"] = 999
+            self.assertEqual(0, subject._project_pattern_root_motion({}, pattern, ROOT, inputs.actors)["S0"][0]["up"])
+
+    def test_installed_g1_and_g2_jumps_bake_authored_scale_and_separate_native_time_error(self):
+        for gate, scale, expected_peak in (("GATE1", 1.0, 25.1709807265), ("GATE2", .8, 14.276980268)):
+            pattern = {"patternId": "root.jump", "actorProfileId": "MN_RPCZ_00", "gateId": gate}
+            with self.subTest(gate=gate), subject._publication_session() as inputs:
+                actor = subject._load_bone_bake_actor(pattern, ROOT, inputs.actors)
+                animation = self.animation(runtimeClip="rpcz00_att_battle_7_01", sourceEndMs=7400,
+                    playMs=7400, endPolicy="HOLD_LAST_POSE")
+                diagnostics = {}
+                rows = subject._build_animation_root_motion_samples(actor, animation, 7500, scale, diagnostics=diagnostics)
+                self.assertAlmostEqual(expected_peak, subject._sample_root_curve(rows, 163000 / 30)[2], delta=.002)
+                self.assertLessEqual(diagnostics["reductionErrorM"], .001 + 1e-9)
+                self.assertLessEqual(diagnostics["nativeErrorM"], diagnostics["quantizationErrorM"] + .001 + 1e-9)
+                if gate == "GATE1":
+                    self.assertGreater(diagnostics["quantizationErrorM"], .01)
+                self.assertLessEqual(len(rows), 512)
+                self.assertEqual(0, rows[0]["up"])
+                self.assertAlmostEqual(0, rows[-1]["up"], places=5)
+
+    def test_albion_takeoff_balances_installed_repeated_landings_without_source_changes(self):
+        document = subject.load_json(ROOT / "Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json")
+        pattern = next(row for row in document["patterns"] if row["patternId"] == "KAKULSAYDON_G1_PATTERN_39")
+        before = copy.deepcopy(pattern)
+        with subject._publication_session() as inputs:
+            actor = subject._load_bone_bake_actor(pattern, ROOT, inputs.actors)
+            raw = {stage["stageId"]: subject._build_animation_root_motion_samples(actor,
+                stage["animationOccurrences"][0], stage["durationMs"]) for stage in pattern["stages"]}
+            result = subject._project_pattern_root_motion(document, pattern, ROOT, inputs.actors)
+            self.assertEqual([], raw["STAGE_6"])
+            self.assertAlmostEqual(6.556622863264095, result["STAGE_6"][-1]["up"], places=6)
+            self.assertAlmostEqual(3.5610952209681305, result["STAGE_9"][-1]["up"], places=6)
+            self.assertAlmostEqual(3.5610952209681305, result["STAGE_10"][-1]["up"], places=6)
+            for stage in ("STAGE_4", "STAGE_5", "STAGE_7", "STAGE_8", "STAGE_11"):
+                self.assertEqual(raw[stage], result[stage])
+            for group in (("STAGE_6", "STAGE_7", "STAGE_8"), ("STAGE_9", "STAGE_10", "STAGE_11")):
+                self.assertAlmostEqual(0.0, sum(result[stage][-1]["up"] for stage in group), places=7)
+            forward = [subject._sample_root_curve(result["STAGE_6"], ms) for ms in range(1001)]
+            reverse = [subject._sample_root_curve(result["STAGE_6"], ms) for ms in reversed(range(1001))]
+            self.assertEqual(forward, list(reversed(reverse)))
+            self.assertAlmostEqual(3.2783114316320474, forward[500][2], places=6)
+        self.assertEqual(before, pattern)
+
+    def test_albion_takeoff_uses_edited_crop_rate_and_active_window_lengths(self):
+        stages = [{"stageId": str(i), "durationMs": play + delay,
+                   "animationOccurrences": [self.animation(runtimeClip=clip, sourceActionId=4219903,
+                    playMs=play, startOffsetMs=delay, **changes)]}
+                  for i, (clip, play, delay, changes) in enumerate((
+                      ("rpct00_att_battle_24_03", 300, 100, {}),
+                      ("rpct00_att_battle_24_03", 900, 200, {}),
+                      ("rpct00_att_battle_24_04", 300, 0,
+                       {"sourceStartMs": 200, "sourceEndMs": 800, "playRate": 2.0}))) ]
+        landing = self.bake([(0, 0, 0, 7), (1000, 1, 2, 2)], stages[2]["animationOccurrences"][0], 300)
+        curves = {"2": landing}
+        subject._apply_albion_takeoff_motion(stages, curves)
+        self.assertAlmostEqual(-3, landing[-1]["up"])
+        self.assertAlmostEqual(.75, curves["0"][-1]["up"])
+        self.assertAlmostEqual(2.25, curves["1"][-1]["up"])
+        self.assertEqual((0, 0, 0), subject._sample_root_curve(curves["0"], 100))
+        self.assertAlmostEqual(.375, subject._sample_root_curve(curves["0"], 250)[2])
+        self.assertIs(landing, curves["2"])
+
+    def test_albion_takeoff_does_not_cross_action_or_clip_boundaries_and_bounds_drop(self):
+        def stages(clips, actions):
+            return [{"stageId": str(i), "durationMs": 1000,
+                     "animationOccurrences": [self.animation(runtimeClip=clip, sourceActionId=action)]}
+                    for i, (clip, action) in enumerate(zip(clips, actions))]
+        takeoff, landing = "rpct00_att_battle_24_03", "rpct00_att_battle_24_04"
+        for clips, actions in (((takeoff, landing), (4219904, 4219903)),
+                               ((takeoff, landing), (4219903, 0)),
+                               ((takeoff, "unrelated", landing), (4219903,) * 3)):
+            rows = stages(clips, actions)
+            curves = {str(len(rows) - 1): self.curve([(0, 0, 0, 0), (1000, 0, 0, -3)])}
+            before = copy.deepcopy(curves)
+            subject._apply_albion_takeoff_motion(rows, curves)
+            self.assertEqual(before, curves)
+        with self.assertRaisesRegex(subject.CompositionError, "finite root-motion"):
+            subject._apply_albion_takeoff_motion(stages((takeoff, landing), (4219903,) * 2),
+                {"1": self.curve([(0, 0, 0, 0), (1000, 0, 0, -100001)])})
+
+    def test_publisher_emits_xyz_stage_rows_preserves_legacy_pack_and_rejects_invalid_samples(self):
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        functions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0) for name in
+            ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+             "Assert-JsonNumber", "Format-InvariantSignedFloat", "Format-RootMotionSamples")]
+        start = publisher.index("\t$koukuStageIds =")
+        end = publisher.index("\t# Pattern-clock lanes beside the stages", start)
+        stage = subject._project_stage({"stageId": "S1", "actionId": "root.stage", "stageKind": "ACTIVE", "durationMs": 1000},
+            self.curve([(0, 0, 0, 0), (500, -1, 2, 3), (1000, -2, 1, 0)]))
+        pattern = {"patternId": "root.pattern", "stages": [stage], "logicWindows": [], "mechanicTriggers": []}
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            product = folder / "pattern.json"
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(functions)
+            script += "\n$koukuPattern=Get-Content -Raw (Join-Path $PSScriptRoot 'pattern.json') | ConvertFrom-Json\n"
+            script += "$koukuEncounterDocument=[pscustomobject]@{encounterId='encounter.root'}\n$patternRows=[Collections.Generic.List[string]]::new()\n"
+            script += publisher[start:end]
+            script += "\n$legacy=Format-RootMotionSamples $koukuPattern.stages[0].rootMotionSamples 'legacy' 1000\n"
+            script += "ConvertTo-Json -InputObject @{rows=@($patternRows); legacy=$legacy} -Compress\n"
+            check = folder / "check.ps1"
+            check.write_text(script, encoding="utf-8-sig")
+            def run(value):
+                product.write_bytes(subject.serialize_json(value))
+                before = product.read_bytes()
+                result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(check)],
+                    capture_output=True, text=True, timeout=30)
+                self.assertEqual(before, product.read_bytes())
+                return result
+            result = run(pattern)
+            self.assertEqual(0, result.returncode, result.stderr)
+            output = json.loads(result.stdout)
+            self.assertEqual("0:0:0,500:-1:2,1000:-2:1", output["legacy"])
+            root_row = next(row for row in output["rows"] if row.startswith("PATTERNSTAGEROOTMOTION\t"))
+            self.assertEqual(["PATTERNSTAGEROOTMOTION", "encounter.root", "root.pattern", "0", "3",
+                              "0:0:0:0,500:-1:2:3,1000:-2:1:0"], root_row.split("\t"))
+            for change in ({"bossMotion": {}}, {"logicWindows": [{"bossChargeDistanceM": 2}]},
+                           {"mechanicTriggers": [{"kind": "REAL_GAZE_TELEPORT"}]}):
+                self.assertNotEqual(0, run({**pattern, **change}).returncode)
+            for index, field, value in ((0, "up", 1), (2, "timeMs", 999), (1, "timeMs", 0),
+                                        (1, "timeMs", 500.5), (1, "up", "3"), (1, "up", 100001)):
+                bad = copy.deepcopy(pattern)
+                bad["stages"][0]["rootMotionSamples"][index][field] = value
+                with self.subTest(field=field, value=value):
+                    self.assertNotEqual(0, run(bad).returncode)
 
 
 if __name__ == "__main__":

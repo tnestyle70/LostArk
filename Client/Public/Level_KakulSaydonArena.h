@@ -195,6 +195,7 @@ public:
 	void Debug_HoldSequenceCombatFade();
 	void Debug_RetireGateActivation(const std::string& reason);
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
+	const string& Get_GatePresentationProfileId() const { return m_strGatePresentationProfileId; }
 	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
 	/* Debug tuning only: the live body of one arena boss archetype. */
@@ -228,6 +229,7 @@ public:
 	void Collect_KoukuMazeTargets(std::vector<KOUKU_MAZE_TARGET_VIEW>& targets) const
 	{ m_Replication.Collect_KoukuMazeTargets(targets); }
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
+	bool_t Is_CompositionCameraEnabled() const;
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
 		std::string_view occurrenceId = {}, std::uint32_t emissionIndex = 0u) const;
@@ -412,6 +414,34 @@ private:
 #ifdef _DEBUG
 	unique_ptr<CWorldSequencePlayer> m_pWorldObjectPreview;
 	std::vector<std::string> m_WorldObjectPreviewInstances;
+	struct WORLD_OBJECT_PREVIEW_SCREEN_EFFECT final
+	{
+		uint32_t handle = 0u;
+		f32_t startDelayMs = 0.f, playbackSpeed = 1.f, durationMs = 0.f;
+	};
+	std::vector<WORLD_OBJECT_PREVIEW_SCREEN_EFFECT> m_WorldObjectPreviewScreenEffects;
+	std::string m_strWorldObjectPreviewNotice;
+	struct GATE_OBJECT_PRESENTATION final
+	{
+		size_t gateIndex = NO_ACTIVE_DEBUG_GATE;
+		unique_ptr<CWorldSequencePlayer> player;
+		std::vector<std::pair<std::string, f32_t>> instances;
+		struct VISIBILITY final { uint64_t placementId; bool_t previous, applied; };
+		std::vector<VISIBILITY> visibility;
+		std::optional<DEPLOY_PROP_STATE> previousLegacyBook;
+		bool_t suspended = true;
+	};
+	unique_ptr<GATE_OBJECT_PRESENTATION> m_pPendingGateObjects;
+	unique_ptr<GATE_OBJECT_PRESENTATION> m_pGateObjects;
+	bool_t m_bCompositionWorldPreviewBorrowsGateObjects = false;
+	bool_t Debug_PrepareGateObjects(size_t gateIndex, std::string& status);
+	bool_t Debug_CommitGateObjects(size_t gateIndex, std::string& status);
+	void Debug_CancelGateObjects();
+	void Debug_StopGateObjects();
+	void Debug_UpdateGateObjects(f32_t delta);
+	bool_t Debug_StartGateObjectPresentation(GATE_OBJECT_PRESENTATION& state, std::string& status);
+	bool_t Debug_ReleaseGateObjectPresentation(GATE_OBJECT_PRESENTATION& state, std::string& status);
+	bool_t Debug_SetGateObjectsSuspended(bool_t suspended, std::string& status);
 #endif
 #ifdef _DEBUG
 	struct COMPOSITION_WORLD_PREVIEW_PLAYBACK final
@@ -495,6 +525,13 @@ private:
 	/* Index into Get_DebugGates() of the gate whose bosses are raised now;
 	   that button stays disabled until another gate or Despawn is chosen. */
 	size_t m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	string m_strGatePresentationProfileId;
+    size_t m_iGateLightingIndex = NO_ACTIVE_DEBUG_GATE;
+    std::shared_ptr<CMapLightPresentationRuntime> m_pGateMapLightPresentation;
+    std::shared_ptr<CMapLightPresentationRuntime> m_pPendingGateMapLights;
+    std::optional<CMapLightDocument> m_GateMapLightSource;
+    std::optional<CMapLightDocument> m_PendingGateMapLightSource;
+
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
 	bool_t m_bDebugGateFailed = false;

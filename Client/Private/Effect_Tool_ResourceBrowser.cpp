@@ -1895,6 +1895,9 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	const std::string CurrentDisplayName = FriendlyDocumentLabel(
 		*m_ActiveDocument, "Current Effect");
 	ImGui::TextWrapped("Editing and saving: %s", CurrentDisplayName.c_str());
+    Render_ProjectileDestinationControls();
+    if (m_pAuthoringSequencer && Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId))
+        m_pAuthoringSequencer->Render_PreviewPlacementControls();
 	ImGui::TextDisabled(
 		(m_bDocumentDirty || Has_UnappliedDetailDraft()) ?
 			"Status: unsaved or unapplied changes. Element row edits; Solo only changes preview." :
@@ -2273,9 +2276,110 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
         else m_strSavedKoukuInventoryStatus = "Previous saved Effect list preserved: " + status;
         m_bSavedEffectOrganizationLoaded = true;
     }
+    struct SAVED_EFFECT_LABEL final
+    {
+        int gateOrder = 4;
+        std::string text;
+        std::string originalName;
+        std::string fullPath;
+    };
+    std::map<std::string, SAVED_EFFECT_LABEL> labels;
+    const auto LabelFor = [&](const std::string& id) -> const SAVED_EFFECT_LABEL&
+    {
+        auto [entry, inserted] = labels.try_emplace(id);
+        if (!inserted) return entry->second;
+        auto& label = entry->second;
+        const auto organization = m_SavedEffectOrganization.find(id);
+        const auto source = m_SavedKoukuEffectSources.find(id);
+        label.originalName = organization != m_SavedEffectOrganization.end() && !organization->second.first.empty() ?
+            organization->second.first : !bWorld && source != m_SavedKoukuEffectSources.end() &&
+                !source->second.strDisplayName.empty() ? source->second.strDisplayName : id;
+        label.text = label.originalName;
+        if (bWorld) return label;
+
+        std::vector<std::string> path;
+        if (organization != m_SavedEffectOrganization.end()) path = organization->second.second;
+        for (const auto& segment : path)
+        {
+            if (!label.fullPath.empty()) label.fullPath += " / ";
+            label.fullPath += segment;
+        }
+        if (!path.empty() && path.front() == "KoukuSaydon") path.erase(path.begin());
+        const auto GateOrder = [](const std::string& gate)
+        {
+            if (gate == "\x31\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 1") return 1;
+            if (gate == "\x32\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 2") return 2;
+            if (gate == "\x33\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 3") return 3;
+            if (gate == "\xEA\xB3\xB5\xED\x86\xB5" || gate == "Common") return 4;
+            return 0;
+        };
+        if (!path.empty()) label.gateOrder = GateOrder(path.front());
+        if (path.empty() || label.gateOrder == 0)
+        {
+            label.gateOrder = 4;
+            std::string category = "\xEA\xB8\xB0\xED\x83\x80\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
+            for (int gate = 1; gate <= 3; ++gate)
+            {
+                const std::string prefix = ".gate" + std::to_string(gate) + ".";
+                const auto found = id.find(prefix);
+                if (found == std::string::npos) continue;
+                label.gateOrder = gate;
+                const auto from = found + prefix.size();
+                category = id.substr(from, id.find('.', from) - from);
+                break;
+            }
+            const std::string gate = label.gateOrder <= 3 ? std::to_string(label.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
+            if (path.empty())
+            {
+                const bool intro = category == "intro";
+                if (category == "showtime") category = "\xEC\x87\xBC\xED\x83\x80\xEC\x9E\x84";
+                else if (category == "rainbow") category = "\xEB\xAC\xB4\xEC\xA7\x80\xEA\xB0\x9C";
+                else if (category == "mario") category = "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4";
+                else if (intro) category = "\xEC\x9E\x85\xEC\x9E\xA5";
+                else if (category == "downstrike" || category == "slam" || category == "staff") category = "\xEC\xA7\x80\xED\x8C\xA1\xEC\x9D\xB4\x20\xEB\x82\xB4\xEB\xA0\xA4\xEC\xB0\x8D\xEA\xB8\xB0\x20\xC2\xB7\x20\xED\x99\x94\xEC\x97\xBC";
+                else if (category == "spider") category = "\xEA\xB1\xB0\xEB\xAF\xB8\x20\xEC\xB9\xB4\xEC\x9A\xB4\xED\x84\xB0";
+                path = {gate, intro ? "\xEC\x97\xB0\xEC\xB6\x9C" : "\xED\x8C\xA8\xED\x84\xB4", category};
+            }
+            else path.insert(path.begin(), gate);
+        }
+        else path.front() = label.gateOrder <= 3 ? std::to_string(label.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
+        if (path.size() == 1u) path.push_back("\xEA\xB8\xB0\xED\x83\x80\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8");
+        if (path[1] == "Patterns") path[1] = "\xED\x8C\xA8\xED\x84\xB4";
+        else if (path[1] == "Cinematics") path[1] = "\xEC\x97\xB0\xEC\xB6\x9C";
+        if (label.fullPath.empty())
+            for (const auto& segment : path)
+            {
+                if (!label.fullPath.empty()) label.fullPath += " / ";
+                label.fullPath += segment;
+            }
+
+        std::string name = label.originalName;
+        const std::string gatePrefix = path.front() + "_";
+        if (name.starts_with(gatePrefix)) name.erase(0u, gatePrefix.size());
+        for (size_t index = 2u; index < path.size(); ++index)
+        {
+            const std::string prefix = path[index] + "_";
+            if (!name.starts_with(prefix)) break;
+            name.erase(0u, prefix.size());
+        }
+        if (name.empty()) name = label.originalName;
+        label.text = path[0] + " | " + path[1];
+        if (path.size() > 2u)
+        {
+            label.text += " | ";
+            for (size_t index = 2u; index < path.size(); ++index)
+            {
+                if (index > 2u) label.text += " / ";
+                label.text += path[index];
+            }
+        }
+        label.text += " | " + name;
+        return label;
+    };
     const auto MatchesSearch = [&](const std::string& id)
     {
-        if (strSearch.empty() || Contains_NoCase(id, strSearch)) return true;
+        if (strSearch.empty() || Contains_NoCase(id, strSearch) ||
+            (!bWorld && Contains_NoCase(LabelFor(id).text, strSearch))) return true;
         if (!bWorld)
         {
             const auto source = m_SavedKoukuEffectSources.find(id);
@@ -2308,15 +2412,27 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 	}
 	std::ranges::sort(EffectIds);
 	EffectIds.erase(std::unique(EffectIds.begin(), EffectIds.end()), EffectIds.end());
-	ImGui::SetNextItemOpen(true, strSearch.empty() ?
-		ImGuiCond_FirstUseEver : ImGuiCond_Always);
-	const std::string strLabel = std::string(pOwnerLabel) + " Saved Effects (" +
-		std::to_string(EffectIds.size()) + ")";
-	if (!ImGui::TreeNodeEx(strLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
-		return;
+    if (bWorld)
+    {
+        ImGui::SetNextItemOpen(true, strSearch.empty() ? ImGuiCond_FirstUseEver : ImGuiCond_Always);
+        const std::string label = "World Saved Effects (" + std::to_string(EffectIds.size()) + ")";
+        if (!ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow)) return;
+    }
+    else
+    {
+        std::ranges::sort(EffectIds, [&](const auto& leftId, const auto& rightId)
+        {
+            const auto& left = LabelFor(leftId);
+            const auto& right = LabelFor(rightId);
+            if (left.gateOrder != right.gateOrder) return left.gateOrder < right.gateOrder;
+            if (left.text != right.text) return left.text < right.text;
+            return leftId < rightId;
+        });
+        ImGui::TextDisabled("KoukuSaydon Effects (%zu)", EffectIds.size());
+    }
 
 	ImGui::TextWrapped("%s", bWorld ?
-		"Play All animates the complete Effect at the scene player. Mouse Click plays once; Move Destination repeats. Open Editor exposes every Element." :
+		"Play All uses the selected Player / World anchor. Mouse Click plays once; Move Destination repeats. Open Editor exposes every Element." :
 		"Play All uses the linked boss, animation and saved Effect anchors. Open Editor exposes every Element's position, size and motion.");
 	if (!m_strPreviewStatus.empty())
 		ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
@@ -2335,13 +2451,11 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 	const auto RenderEffect = [&](const std::string& strEffectAssetId)
 	{
 		ImGui::PushID(strEffectAssetId.c_str());
-		const auto organization = m_SavedEffectOrganization.find(strEffectAssetId);
         const auto source = m_SavedKoukuEffectSources.find(strEffectAssetId);
-        const std::string name = organization != m_SavedEffectOrganization.end() && !organization->second.first.empty() ?
-            organization->second.first : !bWorld && source != m_SavedKoukuEffectSources.end() &&
-                !source->second.strDisplayName.empty() ? source->second.strDisplayName : strEffectAssetId;
-        const bool_t open = ImGui::TreeNodeEx((name + "###SavedEffect").c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", strEffectAssetId.c_str());
+        const auto& label = LabelFor(strEffectAssetId);
+        const bool_t open = ImGui::TreeNodeEx((label.text + "###SavedEffect").c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s\n%s\n%s", label.originalName.c_str(), strEffectAssetId.c_str(), label.fullPath.c_str());
 		if (!open) { ImGui::PopID(); return; }
 		const bool_t bActive = m_ActiveDocument.has_value() &&
 			m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
@@ -2439,7 +2553,7 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", !bActive && nullptr == pEditablePath ?
 				strEditableStatus.c_str() :
-				bWorld ? "Replay every Element from zero at the current player position and facing." :
+				bWorld ? "Replay every Element from zero at the selected Player / World anchor." :
 				"Replay every Element from zero with its linked boss and saved attachment transforms.");
         ImGui::SameLine();
         ImGui::BeginDisabled(!m_pAuthoringSequencer || (!bActive && nullptr == pEditablePath));
@@ -2454,62 +2568,9 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
         ImGui::TreePop();
         ImGui::PopID();
     };
-    if (bWorld)
-    {
-        for (const auto& id : EffectIds) RenderEffect(id);
-    }
-    else
-    {
-        // The stable asset namespace supplies organization only. Opening a tree
-        // never parses all particle documents or admits an unrelated boss graph.
-        struct CATEGORY_NODE final
-        {
-            std::map<std::string, CATEGORY_NODE> children;
-            std::vector<std::string> effects;
-        };
-        CATEGORY_NODE tree;
-        for (const auto& id : EffectIds)
-        {
-            const auto organization = m_SavedEffectOrganization.find(id);
-            std::vector<std::string> path;
-            if (organization != m_SavedEffectOrganization.end()) path = organization->second.second;
-            if (!path.empty() && path.front() == "KoukuSaydon") path.erase(path.begin());
-            const auto start = id.find(".gate");
-            std::string gate = "Common", category = "Other Effects";
-            if (start != std::string::npos && start + 6u < id.size())
-            {
-                const auto end = id.find('.', start + 1u);
-                gate = "Gate " + id.substr(start + 5u, end - start - 5u);
-                if (end != std::string::npos)
-                {
-                    const auto next = id.find('.', end + 1u);
-                    category = id.substr(end + 1u, next - end - 1u);
-                }
-            }
-            if (category == "showtime") category = "Showtime";
-            else if (category == "rainbow") category = "Rainbow";
-            else if (category == "mario") category = "Mario";
-            else if (category == "intro") category = "Intro";
-            else if (category == "downstrike" || category == "slam" || category == "staff") category = "Staff Slam / Fire";
-            else if (category == "spider") category = "Spider Counter";
-            if (path.empty()) path = {gate, "Patterns", category};
-            auto* node = &tree;
-            for (const auto& segment : path) node = &node->children[segment];
-            node->effects.push_back(id);
-        }
-        std::function<void(const CATEGORY_NODE&)> RenderCategory = [&](const CATEGORY_NODE& node)
-        {
-            for (const auto& [name, child] : node.children)
-            {
-                if (!strSearch.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-                if (ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
-                { RenderCategory(child); ImGui::TreePop(); }
-            }
-            for (const auto& id : node.effects) RenderEffect(id);
-        };
-        RenderCategory(tree);
-    }
-    ImGui::TreePop();
+    // Each saved Effect is a top-level row; only its own actions expand.
+    for (const auto& id : EffectIds) RenderEffect(id);
+    if (bWorld) ImGui::TreePop();
 }
 
 void Client::CEffect_Tool::Render_AllEffectsWindow()

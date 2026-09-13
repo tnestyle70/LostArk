@@ -2,6 +2,7 @@
 #include "EffectRecoveryCamera.h"
 
 #include "AnimationTargetService.h"
+#include "HitAreaWire.h"
 #include "CharacterPreviewPanel.h"
 #include "EffectCompositionModelPreview.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -24,6 +25,9 @@ namespace Client
 class CEffectObject;
 class DATA_JSON_VALUE;
 struct EFFECT_DOCUMENT_DESC;
+struct ANIMATION_SKILL_BINDING;
+struct ANIMATION_EFFECT_CUE_DOCUMENT;
+struct CHARACTER_ACTION_COMBAT_ROW;
 
 // One editor clock. The resource owners retain their codecs and prepare each
 // independent occurrence; this adapter owns only its lifetime and sampling.
@@ -49,11 +53,19 @@ public:
     bool Resolve_KoukuSourceAnchors(const EFFECT_DOCUMENT_DESC& document, const float4x4_t& root, float seconds,
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error) const;
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
+    void Render_WorkbenchDetail() { Render_BoxDetail(true); }
     void Render_ModelView(); // Contents inside the existing Model View window.
-    void Render_Sequencer(const char* title = "Sequencer##EffectAuthoring", bool integratedEffectWorkspace = false); // The existing Effect Tool calls this panel.
+    void Render_PreviewPlacementControls();
+    bool Update_PreviewPlacementInput(bool active);
+    void Render_Sequencer(const char* title = "Sequencer##EffectAuthoring", bool integratedEffectWorkspace = false, bool embedded = false); // The existing Effect Tool calls this panel.
     void Update(float dt, bool active);
     bool Select_CharacterSkill(const std::string& asset, std::uint32_t skillId,
         std::optional<std::uint32_t> stageIndex = std::nullopt);
+    bool Stage_CharacterAction(const std::string& asset, const ANIMATION_SKILL_BINDING& binding,
+        const ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::vector<CHARACTER_ACTION_COMBAT_ROW>& combat,
+        std::optional<std::uint32_t> stageIndex = std::nullopt);
+    void Render_PreviewOverlays() { Render_Colliders(); }
+    std::uint32_t Preview_DurationMs() const { return DurationMs(); }
     bool Select_KoukuEffect(const std::string& assetId, bool requiresSourceModel, bool reusePlayerAnchor = false,
         const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr);
     bool Select_WorldEffect(const std::string& assetId, bool reusePlayerAnchor = false);
@@ -116,6 +128,11 @@ private:
         bool worldAnchor = false;
         bool muted = false;
         bool screenPost = false;
+        // Product cue projection only; these values are owned by animevents.
+        bool productNaturalDuration = false, productSnapshot = false, productActionFacing = false;
+        std::optional<std::uint32_t> productStopDuration;
+        std::optional<float4x4_t> productSpawnPivot, productSpawnOwner;
+        float productFacingDegrees = 0.f;
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
         std::shared_ptr<CEffectObject> v1;
         // Unsaved document scalar survives delayed starts and Play/Stop restaging.
@@ -145,6 +162,7 @@ private:
         float3_t offset{}, rotation{}, scale{1.f, 1.f, 1.f};
         std::string anchorSlotId = "root";
         bool muted = false, debugRender = true;
+        std::optional<HIT_AREA_SHAPE> productShape;
     };
     struct RESOURCE_ENTRY final
     {
@@ -207,6 +225,8 @@ private:
     bool Begin_Model();
     bool Sample_Model(std::uint32_t clockMs);
     bool Resolve_Root(float4x4_t& root);
+    bool Resolve_ScenePreviewPlacement(float4x4_t& root);
+    bool Set_WorldPreviewPlacement(const float3_t& position, float yawDegrees);
     bool Resolve_RowPivot(const EFFECT_ROW& row, const float4x4_t& root, float4x4_t& pivot);
     bool Record_RowPivot(EFFECT_ROW& row, const float4x4_t& pivot, float age);
     bool Render_AnchorChoice(const char* label, std::string& anchor);
@@ -231,6 +251,7 @@ private:
     {
         std::string assetId;
         float4x4_t playerRoot{};
+        std::uint64_t placementRevision = 0u;
         std::optional<CEffectCompositionModelPreview> model;
         // Only the independent preview consumes this; saved sequence Loop is unchanged.
         std::optional<bool> loopPolicy;
@@ -265,6 +286,12 @@ private:
     std::string m_SourceModelEffectId;
     std::string m_ExplicitKoukuPatternId;
     float4x4_t m_WorldRoot{};
+    // Explicit Play All placement is session state; Append stores it in its own occurrence.
+    std::optional<float4x4_t> m_ScenePreviewWorldRoot;
+    std::uint32_t m_ScenePreviewWorldLevel = UINT32_MAX, m_PreviewPlacementPickLevel = UINT32_MAX;
+    std::uint64_t m_PreviewPlacementRevision = 0u;
+    bool m_PreviewPlacementPickPending = false, m_PreviewPlacementLeftDown = false;
+    bool m_PreviewPlacementSuppressMouse = false;
     double m_ClockMs = 0.0;
     float m_Zoom = 80.f;
     bool m_Active = false, m_Paused = false, m_Loop = false, m_UseKouku = false;

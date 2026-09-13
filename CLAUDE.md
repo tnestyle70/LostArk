@@ -625,13 +625,22 @@ gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입�
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
-KoukuSaydon의 F1 Tools → `World Object Tool`은 왼쪽 `Object Resources`, 아래 `Object Sequencer`,
-오른쪽 `Object Detail`을 독립 창으로 제공한다. Windows 메뉴에서 다시 열거나 배치를 초기화한다.
+F1 Tools → `Action Workbench`는 `Composition Actions`의 Boss / Character / Object / Sequence를
+같은 Resources / Sequencer / Box Detail / Preview 창에서 편집한다. Boss와
+Sequence는 관문 선택을 따로 기억하고, 대상 전환은 preview를 정리하면서 각 문서의 초안과 선택을
+보존한다. 기존 Object/Sequence의 내부 열기 요청은 이 창의 해당 대상으로 연결한다.
+`Open Effect Tool V1`, `Open Effect Tool V2`는 각각 기존 독립 창을 열며 함께 표시할 수 있다.
+Action에서 Effect resource를 편집하는 명령도 해당 독립 Effect owner로 전달한다.
+Windows 메뉴에서 창을 다시 열거나 배치를 초기화한다. Character는 실제 여섯 class의 inputSlot과
+skillbindings를 조회한다. Animation 저장, Combat 저장과 Effect asset/clip cue 저장은 각각의
+실제 정본 owner를 사용한다. 세부 저장·검증 경계는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md`를 따른다.
+
+KoukuSaydon의 Object는 이 통합 창에서 기존 World Object 문서를 편집한다.
 Object Resources는 Map/Character 앵커별 저장 상태와 Physical Resources 폴더를 보여 준다. 모델과 DDS는
 Effect/Map/Deploy/Character 실제 Resources-relative 경로로 선택하며 파일을 상태별로 복제하지 않는다.
 원본 Animation Resources는 기존 WModel metadata에서 클립을 읽는다. Create Object → 부모의 Assign Model →
 Create Motion → 자식 선택 → 원본 클립 선택 → Append Clip → Save로 필요한 모션만 저장한다. 부모 선택은
-공통 설정과 연결 모션 목록, 자식 선택은 해당 Detail과 Sequencer만 표시한다. 여러 클립은 같은
+공통 설정과 연결 모션의 Transform/Animation/Effect overview, 자식 선택은 해당 Detail과 편집 Sequencer를 표시한다. 여러 클립은 같은
 Sequencer에서 순서대로 재생하며, 원본 클립 목록 전체를 저장 패턴으로 자동 복제하지 않는다.
 정본은 `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json`
 formatVersion 3이다. `Save` 하나로 source를 원자 저장하고 기존 Map publisher의 `-Scope WorldSequences`를 비동기로 실행해 runtime을 배포한다. 별도 Publish 버튼은 없다.

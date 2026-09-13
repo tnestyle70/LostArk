@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 1737,
+  "revision": 1738,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -484,7 +484,7 @@
     },
     {
       "objectId": "world.object.kouku.odd_doll",
-      "displayName": "괴기스러운 인형 · 네 다리 화염 모델",
+      "displayName": "괴기스러운 인형 - 작은 사이즈",
       "modelAssetId": "Character/KoukuSaton/MN_CDMD_00/MN_CDMD_00.wmodel",
       "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
@@ -497,6 +497,22 @@
       ],
       "sequenceInstanceId": "",
       "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.att_battle_2_01"
+    },
+    {
+      "objectId": "world.object.kouku.odd_doll.large",
+      "displayName": "괴기스러운 인형 - 큰 사이즈",
+      "modelAssetId": "Character/KoukuSaton/MN_CDMD_00/MN_CDMD_00.wmodel",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.00999999978,
+      "animated": true,
+      "scale": [
+        1.6,
+        1.6,
+        1.6
+      ],
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
     },
     {
       "objectId": "world.object.mario.red_star_ball",
@@ -581,7 +597,8 @@
         {
           "materialName": "SLOT_000_bg_rad_koukusaton_deco24_mi_khb",
           "sourceAssetId": "MAP_CFEDE8067300_BG_RAD_KOUKUSATON_DECO24D_SM_KHB",
-          "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco24_mi_khb"
+          "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco24_mi_khb",
+          "unlit": true
         }
       ]
     },
@@ -604,7 +621,8 @@
         {
           "materialName": "SLOT_000_bg_rad_koukusaton_deco24a_mi_khb",
           "sourceAssetId": "MAP_B71A2EC9D778_BG_RAD_KOUKUSATON_DECO24E_SM_KHB",
-          "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco24a_mi_khb"
+          "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco24a_mi_khb",
+          "unlit": true
         }
       ]
     },
@@ -627,7 +645,8 @@
         {
           "materialName": "SLOT_000_bg_rad_koukusaton_deco24a_mi_khb",
           "sourceAssetId": "MAP_7AC8BB3D2FEE_BG_RAD_KOUKUSATON_DECO24F_SM_KHB",
-          "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco24a_mi_khb"
+          "sourceMaterialName": "SLOT_000_bg_rad_koukusaton_deco24a_mi_khb",
+          "unlit": true
         }
       ]
     },
@@ -7762,7 +7781,30 @@
   ],
   "sequenceInstanceId": "world.sequence.instance.original_kouku",
   "defaultMotionInstanceId": "world.sequence.instance.original_kouku"
-}
+},
+    {
+      "objectId": "world.object.group.kouku.g3.outer_fire",
+      "displayName": "3관문_외곽불",
+      "modelAssetId": "",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.00999999978,
+      "animated": false,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "sequenceInstanceId": "",
+      "motionInstanceIds": [
+        "world.object.instance.kouku.g3.outer_fire.d_cw",
+        "world.object.instance.kouku.g3.outer_fire.d_ccw",
+        "world.object.instance.kouku.g3.outer_fire.e_cw",
+        "world.object.instance.kouku.g3.outer_fire.e_ccw",
+        "world.object.instance.kouku.g3.outer_fire.f_cw",
+        "world.object.instance.kouku.g3.outer_fire.f_ccw"
+      ]
+    }
 ],
   "templates": [
     {
@@ -337352,7 +337394,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.walk_normal_1",
+      "displayName": "walk_normal_1",
+      "category": "Animation",
+      "durationMs": 3067,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "walk_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.run_battle_1",
+      "displayName": "run_battle_1",
+      "category": "Animation",
+      "durationMs": 1000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "run_battle_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.run_battle_1",
       "displayName": "run_battle_1",
       "category": "Animation",
       "durationMs": 1000,
@@ -337450,7 +337590,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_4_01",
+      "displayName": "자폭 동작",
+      "category": "Animation",
+      "durationMs": 2934,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_4_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.att_battle_3_01",
+      "displayName": "괴기스러운 형상",
+      "category": "Animation",
+      "durationMs": 5301,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_3_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_3_01",
       "displayName": "괴기스러운 형상",
       "category": "Animation",
       "durationMs": 5301,
@@ -337545,10 +337783,164 @@
           "loop": false,
           "holdLastFrame": true
         }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "effect.doll.flame",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.doll.flame.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 11334,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "followObject": true,
+          "bone": ""
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_2_01",
+      "displayName": "회전 화염 뿜기 (모델 동작)",
+      "category": "Animation",
+      "durationMs": 11334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_2_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "effect.doll.flame",
+          "slotId": "object",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.kouku.gate3.doll.flame.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 11334,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "followObject": true,
+          "bone": ""
+        }
       ]
     },
     {
       "sequenceId": "sequence.kouku.odd_doll.att_battle_1_r",
+      "displayName": "용수철 오른쪽",
+      "category": "Animation",
+      "durationMs": 2000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_1_r",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_1_r",
       "displayName": "용수철 오른쪽",
       "category": "Animation",
       "durationMs": 2000,
@@ -337646,7 +338038,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_1_l",
+      "displayName": "용수철 왼쪽",
+      "category": "Animation",
+      "durationMs": 2000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_1_l",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.att_battle_1_f",
+      "displayName": "용수철 전방",
+      "category": "Animation",
+      "durationMs": 2000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_1_f",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_1_f",
       "displayName": "용수철 전방",
       "category": "Animation",
       "durationMs": 2000,
@@ -337744,7 +338234,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.att_battle_1_b",
+      "displayName": "용수철 후방",
+      "category": "Animation",
+      "durationMs": 2000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "att_battle_1_b",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.abn_stun_1",
+      "displayName": "abn_stun_1",
+      "category": "Animation",
+      "durationMs": 2000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "abn_stun_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.abn_stun_1",
       "displayName": "abn_stun_1",
       "category": "Animation",
       "durationMs": 2000,
@@ -337842,7 +338430,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.abn_shock_1",
+      "displayName": "abn_shock_1",
+      "category": "Animation",
+      "durationMs": 1067,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "abn_shock_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.abn_fear_1",
+      "displayName": "abn_fear_1",
+      "category": "Animation",
+      "durationMs": 1201,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "abn_fear_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.abn_fear_1",
       "displayName": "abn_fear_1",
       "category": "Animation",
       "durationMs": 1201,
@@ -337940,7 +338626,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.abn_earthquake_1",
+      "displayName": "abn_earthquake_1",
+      "category": "Animation",
+      "durationMs": 1667,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "abn_earthquake_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.abn_bug_1",
+      "displayName": "abn_bug_1",
+      "category": "Animation",
+      "durationMs": 1201,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "abn_bug_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.abn_bug_1",
       "displayName": "abn_bug_1",
       "category": "Animation",
       "durationMs": 1201,
@@ -338038,7 +338822,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.twistknockdown",
+      "displayName": "twistknockdown",
+      "category": "Animation",
+      "durationMs": 634,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "twistknockdown",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.twistknockdown_land",
+      "displayName": "twistknockdown_land",
+      "category": "Animation",
+      "durationMs": 867,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "twistknockdown_land",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.twistknockdown_land",
       "displayName": "twistknockdown_land",
       "category": "Animation",
       "durationMs": 867,
@@ -338136,7 +339018,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.standup_1",
+      "displayName": "standup_1",
+      "category": "Animation",
+      "durationMs": 1334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "standup_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.respawn_1",
+      "displayName": "respawn_1",
+      "category": "Animation",
+      "durationMs": 2167,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "respawn_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.respawn_1",
       "displayName": "respawn_1",
       "category": "Animation",
       "durationMs": 2167,
@@ -338234,7 +339214,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.knockdown_land",
+      "displayName": "knockdown_land",
+      "category": "Animation",
+      "durationMs": 1000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "knockdown_land",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.knockdown",
+      "displayName": "knockdown",
+      "category": "Animation",
+      "durationMs": 534,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "knockdown",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.knockdown",
       "displayName": "knockdown",
       "category": "Animation",
       "durationMs": 534,
@@ -338332,7 +339410,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.idle_normal_1_1",
+      "displayName": "idle_normal_1_1",
+      "category": "Animation",
+      "durationMs": 2767,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "idle_normal_1_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.idle_normal_1",
+      "displayName": "idle_normal_1",
+      "category": "Animation",
+      "durationMs": 1200,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "idle_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.idle_normal_1",
       "displayName": "idle_normal_1",
       "category": "Animation",
       "durationMs": 1200,
@@ -338430,7 +339606,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.idle_battle_1",
+      "displayName": "전투 대기",
+      "category": "Animation",
+      "durationMs": 1334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "idle_battle_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.ground_1",
+      "displayName": "ground_1",
+      "category": "Animation",
+      "durationMs": 1667,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "ground_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.ground_1",
       "displayName": "ground_1",
       "category": "Animation",
       "durationMs": 1667,
@@ -338528,7 +339802,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.dmg_idle_2",
+      "displayName": "dmg_idle_2",
+      "category": "Animation",
+      "durationMs": 334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "dmg_idle_2",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.dmg_idle_1",
+      "displayName": "dmg_idle_1",
+      "category": "Animation",
+      "durationMs": 334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "dmg_idle_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.dmg_idle_1",
       "displayName": "dmg_idle_1",
       "category": "Animation",
       "durationMs": 334,
@@ -338626,7 +339998,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.dead_1",
+      "displayName": "dead_1",
+      "category": "Animation",
+      "durationMs": 3667,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "dead_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.bound_hit_land",
+      "displayName": "bound_hit_land",
+      "category": "Animation",
+      "durationMs": 1100,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "bound_hit_land",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.bound_hit_land",
       "displayName": "bound_hit_land",
       "category": "Animation",
       "durationMs": 1100,
@@ -338724,7 +340194,105 @@
       ]
     },
     {
+      "sequenceId": "sequence.kouku.odd_doll.large.bound_land",
+      "displayName": "bound_land",
+      "category": "Animation",
+      "durationMs": 1000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "bound_land",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
       "sequenceId": "sequence.kouku.odd_doll.bound",
+      "displayName": "bound",
+      "category": "Animation",
+      "durationMs": 700,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "bound",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.kouku.odd_doll.large.bound",
       "displayName": "bound",
       "category": "Animation",
       "durationMs": 700,
@@ -534887,6 +536455,1074 @@
           "holdLastFrame": true
         }
       ]
+    },
+    {
+      "sequenceId": "sequence.kouku.g3.outer_fire.d_cw",
+      "displayName": "3관문_외곽불_D_CW",
+      "category": "KoukuGate3",
+      "durationMs": 36000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          24,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          24,
+          0
+        ],
+        "revolutionOffset": [
+          12.6000004,
+          0,
+          0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              10.193614,
+              0,
+              -7.40609407
+            ],
+            "yawDegrees": -324,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              3.89361405,
+              0,
+              -11.9833117
+            ],
+            "yawDegrees": -288,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -3.89361405,
+              0,
+              -11.9833117
+            ],
+            "yawDegrees": -252,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -10.193614,
+              0,
+              -7.40609407
+            ],
+            "yawDegrees": -216,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -12.6000004,
+              0,
+              0
+            ],
+            "yawDegrees": -180,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -10.193614,
+              0,
+              7.40609407
+            ],
+            "yawDegrees": -144,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -3.89361405,
+              0,
+              11.9833117
+            ],
+            "yawDegrees": -108,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              3.89361405,
+              0,
+              11.9833117
+            ],
+            "yawDegrees": -72,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              10.193614,
+              0,
+              7.40609407
+            ],
+            "yawDegrees": -36,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              12.6000004,
+              0,
+              0
+            ],
+            "yawDegrees": 0,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 36000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.kouku.g3.outer_fire.d_ccw",
+      "displayName": "3관문_외곽불_D_CCW",
+      "category": "KoukuGate3",
+      "durationMs": 36000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          -24,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          -24,
+          0
+        ],
+        "revolutionOffset": [
+          13.6000004,
+          0,
+          0.0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              12.934368215068925,
+              0,
+              -4.202631048148884
+            ],
+            "yawDegrees": -342,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              7.993879321509618,
+              0,
+              -11.002630994943727
+            ],
+            "yawDegrees": -306,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0.0,
+              0,
+              -13.6000004
+            ],
+            "yawDegrees": -270,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -7.993879321509618,
+              0,
+              -11.002630994943727
+            ],
+            "yawDegrees": -234,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -12.934368215068925,
+              0,
+              -4.202631048148884
+            ],
+            "yawDegrees": -198,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -12.934368215068925,
+              0,
+              4.202631048148884
+            ],
+            "yawDegrees": -162,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -7.993879321509618,
+              0,
+              11.002630994943727
+            ],
+            "yawDegrees": -126,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              0.0,
+              0,
+              13.6000004
+            ],
+            "yawDegrees": -90,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              7.993879321509618,
+              0,
+              11.002630994943727
+            ],
+            "yawDegrees": -54,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              12.934368215068925,
+              0,
+              4.202631048148884
+            ],
+            "yawDegrees": -18,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 36000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.kouku.g3.outer_fire.e_cw",
+      "displayName": "3관문_외곽불_E_CW",
+      "category": "KoukuGate3",
+      "durationMs": 36000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          24,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          24,
+          0
+        ],
+        "revolutionOffset": [
+          12.699999800000002,
+          0,
+          0.0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              10.998522198419636,
+              0,
+              -6.349999909292115
+            ],
+            "yawDegrees": -330,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              5.1655557557460305,
+              0,
+              -11.602027752001453
+            ],
+            "yawDegrees": -294,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -2.640478570591239,
+              0,
+              -12.422475000781953
+            ],
+            "yawDegrees": -258,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -9.437938506429127,
+              0,
+              -8.4979584875141
+            ],
+            "yawDegrees": -222,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -12.630428095570625,
+              0,
+              -1.3275114613424135
+            ],
+            "yawDegrees": -186,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -10.998522198419636,
+              0,
+              6.349999909292115
+            ],
+            "yawDegrees": -150,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -5.1655557557460305,
+              0,
+              11.602027752001453
+            ],
+            "yawDegrees": -114,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              2.640478570591239,
+              0,
+              12.422475000781953
+            ],
+            "yawDegrees": -78,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              9.437938506429127,
+              0,
+              8.4979584875141
+            ],
+            "yawDegrees": -42,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              12.630428095570625,
+              0,
+              1.3275114613424135
+            ],
+            "yawDegrees": -6,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 36000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.kouku.g3.outer_fire.e_ccw",
+      "displayName": "3관문_외곽불_E_CCW",
+      "category": "KoukuGate3",
+      "durationMs": 36000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          -24,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          -24,
+          0
+        ],
+        "revolutionOffset": [
+          11.6999998,
+          0,
+          0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              11.4443274,
+              0,
+              -2.43256688
+            ],
+            "yawDegrees": -348,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              7.82882786,
+              0,
+              -8.6947937
+            ],
+            "yawDegrees": -312,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              1.222983,
+              0,
+              -11.6359062
+            ],
+            "yawDegrees": -276,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -5.8499999,
+              0,
+              -10.1324968
+            ],
+            "yawDegrees": -240,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -10.6884823,
+              0,
+              -4.7588191
+            ],
+            "yawDegrees": -204,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -11.4443274,
+              0,
+              2.43256688
+            ],
+            "yawDegrees": -168,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -7.82882786,
+              0,
+              8.6947937
+            ],
+            "yawDegrees": -132,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.222983,
+              0,
+              11.6359062
+            ],
+            "yawDegrees": -96,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              5.8499999,
+              0,
+              10.1324968
+            ],
+            "yawDegrees": -60,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              10.6884823,
+              0,
+              4.7588191
+            ],
+            "yawDegrees": -24,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 36000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.kouku.g3.outer_fire.f_cw",
+      "displayName": "3관문_외곽불_F_CW",
+      "category": "KoukuGate3",
+      "durationMs": 36000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          24,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          24,
+          0
+        ],
+        "revolutionOffset": [
+          10.8000002,
+          0,
+          0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              9.86629105,
+              0,
+              -4.39275599
+            ],
+            "yawDegrees": -336,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              5.4000001,
+              0,
+              -9.35307407
+            ],
+            "yawDegrees": -300,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -1.12890697,
+              0,
+              -10.7408361
+            ],
+            "yawDegrees": -264,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -7.22661114,
+              0,
+              -8.02596378
+            ],
+            "yawDegrees": -228,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -10.5639944,
+              0,
+              -2.24544597
+            ],
+            "yawDegrees": -192,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -9.86629105,
+              0,
+              4.39275599
+            ],
+            "yawDegrees": -156,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -5.4000001,
+              0,
+              9.35307407
+            ],
+            "yawDegrees": -120,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              1.12890697,
+              0,
+              10.7408361
+            ],
+            "yawDegrees": -84,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              7.22661114,
+              0,
+              8.02596378
+            ],
+            "yawDegrees": -48,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              10.5639944,
+              0,
+              2.24544597
+            ],
+            "yawDegrees": -12,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 36000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.kouku.g3.outer_fire.f_ccw",
+      "displayName": "3관문_외곽불_F_CCW",
+      "category": "KoukuGate3",
+      "durationMs": 36000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          -24,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          -24,
+          0
+        ],
+        "revolutionOffset": [
+          10.8000002,
+          0,
+          0
+        ],
+        "count": 10,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1,
+        "emissions": [
+          {
+            "positionOffset": [
+              10.7408361,
+              0,
+              -1.12890697
+            ],
+            "yawDegrees": -354,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              8.02596378,
+              0,
+              -7.22661114
+            ],
+            "yawDegrees": -318,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              2.24544597,
+              0,
+              -10.5639944
+            ],
+            "yawDegrees": -282,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -4.39275599,
+              0,
+              -9.86629105
+            ],
+            "yawDegrees": -246,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -9.35307407,
+              0,
+              -5.4000001
+            ],
+            "yawDegrees": -210,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -10.7408361,
+              0,
+              1.12890697
+            ],
+            "yawDegrees": -174,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -8.02596378,
+              0,
+              7.22661114
+            ],
+            "yawDegrees": -138,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              -2.24544597,
+              0,
+              10.5639944
+            ],
+            "yawDegrees": -102,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              4.39275599,
+              0,
+              9.86629105
+            ],
+            "yawDegrees": -66,
+            "startDelayMs": 0
+          },
+          {
+            "positionOffset": [
+              9.35307407,
+              0,
+              5.4000001
+            ],
+            "yawDegrees": -30,
+            "startDelayMs": 0
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 36000,
+              "positionOffset": [
+                0,
+                0,
+                0
+              ],
+              "rotationQuaternion": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
     }
   ],
   "instances": [
@@ -540999,6 +543635,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.walk_normal_1",
+      "templateId": "sequence.kouku.odd_doll.large.walk_normal_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.run_battle_1",
       "templateId": "sequence.kouku.odd_doll.run_battle_1",
       "enabled": true,
@@ -541017,6 +543675,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.run_battle_1",
+      "templateId": "sequence.kouku.odd_doll.large.run_battle_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541043,6 +543723,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_4_01",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_4_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.att_battle_3_01",
       "templateId": "sequence.kouku.odd_doll.att_battle_3_01",
       "enabled": true,
@@ -541061,6 +543763,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_3_01",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_3_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541087,6 +543811,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_2_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.att_battle_1_r",
       "templateId": "sequence.kouku.odd_doll.att_battle_1_r",
       "enabled": true,
@@ -541105,6 +543851,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_1_r",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_1_r",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541131,6 +543899,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_1_l",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_1_l",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.att_battle_1_f",
       "templateId": "sequence.kouku.odd_doll.att_battle_1_f",
       "enabled": true,
@@ -541149,6 +543939,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_1_f",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_1_f",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541175,6 +543987,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_1_b",
+      "templateId": "sequence.kouku.odd_doll.large.att_battle_1_b",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.abn_stun_1",
       "templateId": "sequence.kouku.odd_doll.abn_stun_1",
       "enabled": true,
@@ -541193,6 +544027,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.abn_stun_1",
+      "templateId": "sequence.kouku.odd_doll.large.abn_stun_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541219,6 +544075,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.abn_shock_1",
+      "templateId": "sequence.kouku.odd_doll.large.abn_shock_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.abn_fear_1",
       "templateId": "sequence.kouku.odd_doll.abn_fear_1",
       "enabled": true,
@@ -541237,6 +544115,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.abn_fear_1",
+      "templateId": "sequence.kouku.odd_doll.large.abn_fear_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541263,6 +544163,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.abn_earthquake_1",
+      "templateId": "sequence.kouku.odd_doll.large.abn_earthquake_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.abn_bug_1",
       "templateId": "sequence.kouku.odd_doll.abn_bug_1",
       "enabled": true,
@@ -541281,6 +544203,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.abn_bug_1",
+      "templateId": "sequence.kouku.odd_doll.large.abn_bug_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541307,6 +544251,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.twistknockdown",
+      "templateId": "sequence.kouku.odd_doll.large.twistknockdown",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.twistknockdown_land",
       "templateId": "sequence.kouku.odd_doll.twistknockdown_land",
       "enabled": true,
@@ -541325,6 +544291,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.twistknockdown_land",
+      "templateId": "sequence.kouku.odd_doll.large.twistknockdown_land",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541351,6 +544339,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.standup_1",
+      "templateId": "sequence.kouku.odd_doll.large.standup_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.respawn_1",
       "templateId": "sequence.kouku.odd_doll.respawn_1",
       "enabled": true,
@@ -541369,6 +544379,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.respawn_1",
+      "templateId": "sequence.kouku.odd_doll.large.respawn_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541395,6 +544427,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.knockdown_land",
+      "templateId": "sequence.kouku.odd_doll.large.knockdown_land",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.knockdown",
       "templateId": "sequence.kouku.odd_doll.knockdown",
       "enabled": true,
@@ -541413,6 +544467,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.knockdown",
+      "templateId": "sequence.kouku.odd_doll.large.knockdown",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541439,6 +544515,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.idle_normal_1_1",
+      "templateId": "sequence.kouku.odd_doll.large.idle_normal_1_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.idle_normal_1",
       "templateId": "sequence.kouku.odd_doll.idle_normal_1",
       "enabled": true,
@@ -541457,6 +544555,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.idle_normal_1",
+      "templateId": "sequence.kouku.odd_doll.large.idle_normal_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541483,6 +544603,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.idle_battle_1",
+      "templateId": "sequence.kouku.odd_doll.large.idle_battle_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.ground_1",
       "templateId": "sequence.kouku.odd_doll.ground_1",
       "enabled": true,
@@ -541501,6 +544643,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.ground_1",
+      "templateId": "sequence.kouku.odd_doll.large.ground_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541527,6 +544691,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.dmg_idle_2",
+      "templateId": "sequence.kouku.odd_doll.large.dmg_idle_2",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.dmg_idle_1",
       "templateId": "sequence.kouku.odd_doll.dmg_idle_1",
       "enabled": true,
@@ -541545,6 +544731,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.dmg_idle_1",
+      "templateId": "sequence.kouku.odd_doll.large.dmg_idle_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541571,6 +544779,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.dead_1",
+      "templateId": "sequence.kouku.odd_doll.large.dead_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.bound_hit_land",
       "templateId": "sequence.kouku.odd_doll.bound_hit_land",
       "enabled": true,
@@ -541589,6 +544819,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.bound_hit_land",
+      "templateId": "sequence.kouku.odd_doll.large.bound_hit_land",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -541615,6 +544867,28 @@
       ]
     },
     {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.bound_land",
+      "templateId": "sequence.kouku.odd_doll.large.bound_land",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
+        }
+      ]
+    },
+    {
       "instanceId": "world.object.instance.kouku.odd_doll.bound",
       "templateId": "sequence.kouku.odd_doll.bound",
       "enabled": true,
@@ -541633,6 +544907,28 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.odd_doll"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.odd_doll.large.bound",
+      "templateId": "sequence.kouku.odd_doll.large.bound",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.odd_doll.large"
         }
       ]
     },
@@ -545615,6 +548911,138 @@
           "slotId": "object",
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.hook"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.g3.outer_fire.d_cw",
+      "templateId": "sequence.kouku.g3.outer_fire.d_cw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.g3.outer_fire.d"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.g3.outer_fire.d_ccw",
+      "templateId": "sequence.kouku.g3.outer_fire.d_ccw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.g3.outer_fire.d"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.g3.outer_fire.e_cw",
+      "templateId": "sequence.kouku.g3.outer_fire.e_cw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.g3.outer_fire.e"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.g3.outer_fire.e_ccw",
+      "templateId": "sequence.kouku.g3.outer_fire.e_ccw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.g3.outer_fire.e"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.g3.outer_fire.f_cw",
+      "templateId": "sequence.kouku.g3.outer_fire.f_cw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.g3.outer_fire.f"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.g3.outer_fire.f_ccw",
+      "templateId": "sequence.kouku.g3.outer_fire.f_ccw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0,
+        1.29999995,
+        942.080017
+      ],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.g3.outer_fire.f"
         }
       ]
     }

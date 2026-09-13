@@ -297,12 +297,12 @@ void CMainApp::RenderWorldLevelTool()
     {
         const bool sequence = request.compositionOwner == WORLD_LEVEL_COMPOSITION_OWNER::SEQUENCE;
         const auto owner = sequence ? DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER;
-        auto* shell = sequence ? m_pSequenceBenchmarkTool.get() : m_pSequencerTool.get();
+        auto* shell = m_pSequencerTool.get();
         if (!shell && FAILED(EnsureDebugTool(owner))) status = "Composition could not initialize.";
         else
         {
             auto* workbench = sequence ? m_pSequenceActionWorkbench.get() : m_pKoukuSaydonActionWorkbench.get();
-            shell = sequence ? m_pSequenceBenchmarkTool.get() : m_pSequencerTool.get();
+            shell = m_pSequencerTool.get();
             if (!workbench->Has_Composition() && !workbench->Reload(status)) {}
             else if (workbench->Get_Composition().strAreaId != request.areaId)
                 status = "This Area's sequences are edited in Map Tool; this Composition belongs to another Area.";
@@ -312,6 +312,19 @@ void CMainApp::RenderWorldLevelTool()
                 const auto pattern = std::find_if(patterns.begin(), patterns.end(), [&](const auto& value) {
                     return value.strPatternId == request.patternId;
                 });
+                auto boss = shell->Get_SelectedBoss();
+                if (pattern != patterns.end())
+                {
+                    const auto& gate = pattern->strGateId;
+                    boss = gate == "GATE2" ? COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE2 :
+                        gate == "GATE3" ? COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE3 :
+                        gate == "BINGO" ? COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_ENCORE :
+                        COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON;
+                }
+                else if (boss == COMPOSITION_WORKBENCH_BOSS::VALTAN) boss = COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON;
+                // Select the target first: opening the matching gate must not discard the same box's edits.
+                shell->Open(sequence ? COMPOSITION_WORKBENCH_TARGET::SEQUENCE :
+                    COMPOSITION_WORKBENCH_TARGET::BOSS, boss);
                 bool selected = request.patternId.empty();
                 if (!request.occurrenceId.empty())
                 {
@@ -326,18 +339,6 @@ void CMainApp::RenderWorldLevelTool()
                 else status = "Composition opened. Create a Sequence/Pattern using its existing authoring controls.";
                 if (selected)
                 {
-                    auto boss = shell->Get_SelectedBoss();
-                    if (pattern != patterns.end())
-                    {
-                        const auto& gate = pattern->strGateId;
-                        boss = gate == "GATE2" ? COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE2 :
-                            gate == "GATE3" ? COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_GATE3 :
-                            gate == "BINGO" ? COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON_ENCORE :
-                            COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON;
-                    }
-                    else if (boss == COMPOSITION_WORKBENCH_BOSS::VALTAN) boss = COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON;
-                    // Select the target first: opening the matching gate must not discard the same box's edits.
-                    shell->Open(boss);
                     SetDebugToolVisible(owner, true);
                     m_eDebugInputOwner = owner; m_eDebugWindowFocusPending = owner;
                 }

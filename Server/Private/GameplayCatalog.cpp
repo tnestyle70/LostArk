@@ -1075,14 +1075,20 @@ bool LostArk::Server::CGameplayCatalog::Parse_RootMotionSamples(
 		const std::size_t first = token.find(':');
 		const std::size_t second = std::string_view::npos == first ?
 			std::string_view::npos : token.find(':', first + 1);
+		const std::size_t third = std::string_view::npos == second ?
+			std::string_view::npos : token.find(':', second + 1);
 		ROOT_MOTION_SAMPLE sample{};
 		if (std::string_view::npos == second ||
 			!ParseNumber(token.substr(0, first), sample.iTimeMs) ||
 			!ParseNumber(token.substr(first + 1, second - first - 1),
 				sample.fForward) ||
-			!ParseNumber(token.substr(second + 1), sample.fLateral) ||
+			!ParseNumber(token.substr(second + 1, third == std::string_view::npos ?
+				std::string_view::npos : third - second - 1), sample.fLateral) ||
+			(third != std::string_view::npos &&
+			 (token.find(':', third + 1) != std::string_view::npos ||
+			  !ParseNumber(token.substr(third + 1), sample.fUp))) ||
 			!std::isfinite(sample.fForward) ||
-			!std::isfinite(sample.fLateral) ||
+			!std::isfinite(sample.fLateral) || !std::isfinite(sample.fUp) ||
 			sample.iTimeMs > limitMs ||
 			(!outSamples.empty() && sample.iTimeMs <= outSamples.back().iTimeMs))
 		{
@@ -1118,10 +1124,10 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 		const std::string_view token{
 			packed.data() + cursor,
 			(std::string::npos == comma ? packed.size() : comma) - cursor };
-		std::string_view fields[13];
+		std::string_view fields[15];
 		std::size_t fieldCount = 0;
 		std::size_t start = 0;
-		while (fieldCount < 13)
+		while (fieldCount < 15)
 		{
 			const std::size_t colon = token.find(':', start);
 			fields[fieldCount++] = token.substr(start,
@@ -1131,7 +1137,8 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			start = colon + 1;
 		}
 		PLAYER_SKILL_HIT hit{};
-		if (13u != fieldCount ||
+		if ((13u != fieldCount && 14u != fieldCount) ||
+			(14u == fieldCount && (!ParseNumber(fields[13], hit.iResultKind) || hit.iResultKind > 3u)) ||
 			!ParseNumber(fields[0], hit.iTimeMs) ||
 			!ParseNumber(fields[1], hit.iRepeatCount) ||
 			!ParseNumber(fields[2], hit.iRepeatMs) ||
@@ -1153,7 +1160,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			break;
 		cursor = comma + 1;
 	}
-	if (outHits.size() != hitCount || subHits > 64u)
+	if (outHits.size() != hitCount || subHits > 192u)
 	{
 		m_strStatus = "Skill hit shape count does not match";
 		return false;
@@ -1232,7 +1239,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
 		!std::isfinite(projectile.fMinDistance) || projectile.fMinDistance < 0.f ||
 		!std::isfinite(projectile.fMaxDistance) || projectile.fMaxDistance < 0.f ||
 		!std::isfinite(projectile.fRadius) || projectile.fRadius < 0.f ||
-		hitCount < 1u || hitCount > 16u)
+		hitCount < 1u || hitCount > 48u)
 	{
 		m_strStatus = "Skill projectile row is invalid";
 		return false;
@@ -1263,16 +1270,17 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
 	const std::string_view packed = fields[firstField + 12u];
 	std::size_t cursor = 0;
 	bool sawTimed = false;
+	std::uint32_t timedCount = 0u;
 	while (cursor <= packed.size())
 	{
 		const std::size_t comma = packed.find(',', cursor);
 		const std::string_view token{
 			packed.data() + cursor,
 			(std::string::npos == comma ? packed.size() : comma) - cursor };
-		std::string_view hitFields[14];
+		std::string_view hitFields[16];
 		std::size_t fieldCount = 0;
 		std::size_t start = 0;
-		while (fieldCount < 14)
+		while (fieldCount < 16)
 		{
 			const std::size_t colon = token.find(':', start);
 			hitFields[fieldCount++] = token.substr(start,
@@ -1283,7 +1291,8 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
 		}
 		PLAYER_PROJECTILE_HIT hit{};
 		std::uint32_t trigger = 0;
-		if (14u != fieldCount ||
+		if ((14u != fieldCount && 15u != fieldCount) ||
+			(15u == fieldCount && (!ParseNumber(hitFields[14], hit.Hit.iResultKind) || hit.Hit.iResultKind > 3u)) ||
 			!ParseNumber(hitFields[0], trigger) || trigger > 1u ||
 			!ParseNumber(hitFields[1], hit.Hit.iTimeMs) ||
 			!ParseNumber(hitFields[2], hit.Hit.iRepeatCount) ||
@@ -1307,6 +1316,12 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
 			return false;
 		}
 		sawTimed = sawTimed || !hit.isContact;
+		if (!hit.isContact) timedCount += hit.Hit.iRepeatCount;
+		if (timedCount > 192u)
+		{
+			m_strStatus = "Skill projectile timed hits exceed the bounded mask";
+			return false;
+		}
 		projectile.Hits.push_back(hit);
 		if (std::string::npos == comma)
 			break;
@@ -1952,7 +1967,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (4u != fields.size() ||
 				!ParseNumber(fields[1], ownerSkillId) ||
 				!ParseNumber(fields[2], hitCount) ||
-				hitCount < 1u || hitCount > 64u)
+				hitCount < 1u || hitCount > 192u)
 			{
 				m_strStatus = "Skill hit row is invalid";
 				return false;
@@ -1984,7 +1999,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[1], ownerSkillId) ||
 				!ParseNumber(fields[2], stageIndex) ||
 				!ParseNumber(fields[3], hitCount) ||
-				hitCount < 1u || hitCount > 64u)
+				hitCount < 1u || hitCount > 192u)
 			{
 				m_strStatus = "Skill stage hit row is invalid";
 				return false;

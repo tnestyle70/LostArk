@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "Animation_Tool_Internal.h"
+#include "KoukuSaydonAnimationBlend.h"
 #include "CharacterPreviewPanel.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
@@ -759,9 +760,37 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 		if (left.iStartOffsetMs != right.iStartOffsetMs) return left.iStartOffsetMs < right.iStartOffsetMs;
 		return left.strOccurrenceId < right.strOccurrenceId;
 	});
+	auto blendWindows = previewPatternId.empty() ? std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>{} :
+        m_PendingKoukuSaydonCompositionPatternPreview.AnimationBlendWindows;
+    std::string blendStatus;
+    if (!CKoukuSaydonAnimationBlend::Validate_ModelWindows(*pModel, blendWindows, blendStatus))
+    { m_Status = m_strKoukuSaydonPatternStatus = "Preview preserved: " + blendStatus; return false; }
+	std::unique_ptr<CKoukuSaydonPreviewRootMotion> rootMotion;
+	const bool koukuTarget = targetAssetName == "MN_RPCZ_00" || targetAssetName == "MN_RPCZ_00-1" ||
+		targetAssetName == "MN_RPCT_00" || targetAssetName == "MN_RPCT_03" ||
+		targetAssetName == "MN_RPCT_05" || targetAssetName == "MN_RPCT_06";
+	if (koukuTarget && (previewPatternId.empty() || !m_PendingKoukuSaydonCompositionPatternPreview.BossMotion))
+	{
+		rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
+		std::string rootStatus;
+		const float verticalScale = previewPatternId.empty() ? 1.f :
+			float(m_PendingKoukuSaydonCompositionPatternPreview.fAnimationRootVerticalScale);
+		if (!rootMotion->Prepare(pModel, rows, verticalScale, rootStatus))
+		{
+			m_Status = m_strKoukuSaydonPatternStatus = "Preview preserved: " + rootStatus;
+			return false;
+		}
+	}
 	Reset_ValtanPatternPreviewState({});
 	Reset_ValtanPatternMasterPreviewState({});
 	Reset_KoukuSaydonPatternPreviewState({});
+	if (rootMotion && !rootMotion->Begin_Suppression())
+	{
+		m_Status = m_strKoukuSaydonPatternStatus = "Preview root-motion owner became unavailable.";
+		return false;
+	}
+	m_KoukuCompositionRootMotion = std::move(rootMotion);
+	m_KoukuCompositionBlendWindows = std::move(blendWindows);
 	m_KoukuCompositionPreviewRows = std::move(rows);
 	std::unordered_map<std::string, KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT> scaleReferences;
 	for (const auto& row : m_KoukuCompositionPreviewRows)
@@ -870,6 +899,16 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 {
 	if (nullptr == pModel)
 		return;
+	if (m_KoukuCompositionRootMotion)
+	{
+		float3_t displacement;
+		if (!m_KoukuCompositionRootMotion->Sample_Displacement(m_fKoukuCompositionPreviewClockMs, {}, displacement) ||
+			!m_pPreviewPanel || !m_pPreviewPanel->Set_PreviewRootMotionOffset(pModel, displacement))
+		{
+			Stop_KoukuSaydonPatternPreview(pModel, "Animation root-motion sample or retained preview target is unavailable.");
+			return;
+		}
+	}
 	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* selected = nullptr;
 	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* previous = nullptr;
 	double previousEndMs = 0.0;
@@ -933,11 +972,17 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 	const std::size_t rowIndex = static_cast<std::size_t>(selected - m_KoukuCompositionPreviewRows.data());
 	Apply_KoukuSaydonPreviewScale(pModel, rowIndex < m_KoukuCompositionPreviewScales.size() ?
 		m_KoukuCompositionPreviewScales[rowIndex] : 1.f);
-	if (m_iKoukuSaydonPatternPreviewClip != rowIndex || pModel->Get_CurrentAnimIndex() != index)
+	if (m_iKoukuSaydonPatternPreviewClip != rowIndex)
 	{
 		if (!Start_PreviewClip(pModel, selected->strRuntimeClip.c_str(), false, 0.f)) return;
 		m_iKoukuSaydonPatternPreviewClip = rowIndex;
 	}
+    else if (pModel->Get_CurrentAnimIndex() != index)
+    {
+        // Restore the semantic row after a pre-boundary blended target without
+        // replaying its clip-entry notifications on every preview frame.
+        pModel->Set_Animation(index, false, 0.f);
+    }
     double sourceMs = 0.0;
     const double ageMs = (std::max)(0.0, sampleClockMs - selected->iStartOffsetMs);
     if (!CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(selected->iSourceStartMs,
@@ -953,7 +998,14 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
     pModel->Set_AnimPaused(true);
     (void)pModel->Set_AnimTrackPosition(index, static_cast<f32_t>(sourceTicks));
     (void)pModel->Play_Animation(0.f);
-    if (rowIndex > 0u && selected->iBlendInMs && ageMs < selected->iBlendInMs)
+    CModel::ANIMATION_TRANSITION_POSE logicPose;
+    bool logicActive = false;
+    std::string blendStatus;
+    if (!CKoukuSaydonAnimationBlend::Sample_Pose(*pModel, m_KoukuCompositionBlendWindows,
+        sampleClockMs, logicPose, logicActive, blendStatus) ||
+        (logicActive && !pModel->Set_AnimationTransitionPose(logicPose)))
+    { Stop_KoukuSaydonPatternPreview(pModel, "Logic animation blend failed: " + blendStatus); return; }
+    if (!logicActive && rowIndex > 0u && selected->iBlendInMs && ageMs < selected->iBlendInMs)
     {
         const auto& blendFrom = m_KoukuCompositionPreviewRows[rowIndex - 1u];
         CModel::ANIMATION_TRANSITION_POSE pose;
@@ -1217,7 +1269,16 @@ void Client::CAnimation_Tool::Stop_KoukuSaydonPatternPreview(
 void Client::CAnimation_Tool::Reset_KoukuSaydonPatternPreviewState(
 	const std::string& strStatus)
 {
+	m_KoukuCompositionBlendWindows.clear();
 	Reset_KoukuCompositionEffects();
+	if (m_KoukuCompositionRootMotion)
+	{
+		const auto model = m_KoukuSaydonPatternPreviewModel.lock();
+		if (m_pPreviewPanel && model && CAnimationTargetService::Resolve_Model() == model &&
+			m_iKoukuSaydonPatternPreviewTargetGeneration == CAnimationTargetService::Resolve_TargetGeneration())
+			(void)m_pPreviewPanel->Set_PreviewRootMotionOffset(model, {});
+		m_KoukuCompositionRootMotion.reset();
+	}
 	Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
 	m_fKoukuSaydonPatternPreviewScale = 1.f;
 	m_KoukuCompositionPreviewScales.clear();

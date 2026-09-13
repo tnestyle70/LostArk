@@ -66,6 +66,8 @@ public:
 	bool_t Has_LocalBounds() const { return m_bHasLocalBounds; }
 	const float3_t& Get_LocalBoundsMin() const { return m_vLocalBoundsMin; }
 	const float3_t& Get_LocalBoundsMax() const { return m_vLocalBoundsMax; }
+    // Reference vertex bounds after asset pretransform; independent of animated culling.
+    bool_t Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) const;
 	bool_t Has_SelfConsistentUnauthenticatedGeometryMetadata() const {
 		return m_bHasSelfConsistentUnauthenticatedGeometryMetadata;
 	}
@@ -131,6 +133,22 @@ public:
 		f32_t fTrackPositionTicks,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
+	// Raw root translation relative to immutable rest, before suppression. The
+	// returned model-space vector already includes ancestor basis and model pre-transform.
+	bool_t Sample_AnimationRootTranslation(const char_t* pAnimationName,
+		f32_t fTrackPositionTicks, uint32_t iRootBoneIndex, int32_t iVerticalAxis,
+		f32_t fVerticalScale, float3_t& OutModelTranslation) const;
+	struct ROOT_MOTION_SUPPRESSION_STATE final
+	{
+		const CModel* owner = nullptr;
+		int32_t boneIndex = -1, verticalAxis = -1;
+		float3_t restTranslation{}, unscaledTranslation{};
+		f32_t verticalScale = 1.f;
+	};
+	ROOT_MOTION_SUPPRESSION_STATE Capture_RootMotionSuppression() const;
+	bool_t Configure_RootMotionSuppressionFromRest(uint32_t iRootBoneIndex,
+		int32_t iVerticalAxis, f32_t fVerticalScale);
+	bool_t Restore_RootMotionSuppression(const ROOT_MOTION_SUPPRESSION_STATE& state);
 	// Explicit clip samples define a transition independently of render history.
 	// UINT32_MAX selects the immutable rest pose (for an unmapped weapon clip).
 	struct ANIMATION_TRANSITION_POSE final
@@ -381,6 +399,8 @@ private:
 	bool_t									m_bHasLocalBounds = { false };
 	float3_t								m_vLocalBoundsMin = {};
 	float3_t								m_vLocalBoundsMax = {};
+    bool_t m_bHasBindGeometryBounds = false;
+    float3_t m_vBindGeometryBoundsMin{}, m_vBindGeometryBoundsMax{};
 	bool_t									m_bHasSelfConsistentUnauthenticatedGeometryMetadata = { false };
 	uint16_t								m_iGeometryFormatVersionMajor = {};
 	uint16_t								m_iGeometryFormatVersionMinor = {};
@@ -418,6 +438,7 @@ private:
 	HRESULT Ready_Bones(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Animations(const MODEL_ASSET_DATA& asset);
 	void Reset_LocalBounds();
+    void Include_BindGeometryPosition(fvector_t position);
 	void Include_LocalPosition(fvector_t vPosition);
 
 public:

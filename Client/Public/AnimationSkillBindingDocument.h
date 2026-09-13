@@ -23,6 +23,8 @@ namespace Client
 		/* Absolute source-track offset.  It is last so existing aggregate
 		initializers keep their source-compatible zero offset. */
 		uint32_t iSourceStartMs = 0u;
+		/* Optional on legacy v3 input; once authored, identity survives reordering. */
+		std::string strClipOccurrenceId;
 
 		bool operator==(const ANIMATION_SKILL_CLIP&) const = default;
 	};
@@ -65,6 +67,14 @@ namespace Client
 			std::string_view text,
 			ANIMATION_SKILL_BINDING_DOCUMENT& outDocument,
 			std::string& outStatus);
+		static bool_t Save_AtomicWithBaseline(
+			const ANIMATION_SKILL_BINDING_DOCUMENT& document,
+			std::string_view expectedAnimationAssetId,
+			LostArk::Shared::CHARACTER_CLASS_ID expectedCharacterClass,
+			const std::vector<PLAYER_SKILL_DEFINITION>& skills,
+			const std::vector<std::string>& availableClips,
+			std::string_view expectedSourceBytes,
+			std::string& outCommittedSourceBytes, std::string& outStatus);
 		static bool_t Validate(
 			const ANIMATION_SKILL_BINDING_DOCUMENT& document,
 			std::string_view expectedAnimationAssetId,
@@ -96,7 +106,8 @@ namespace Client
 			LostArk::Shared::CHARACTER_CLASS_ID expectedCharacterClass,
 			const std::vector<PLAYER_SKILL_DEFINITION>& skills,
 			const std::vector<std::string>& availableClips,
-			std::string& outStatus);
+			std::string& outStatus,
+			const std::string* expectedSourceBytes = nullptr);
 	};
 
 	/* Boss actions are not PlayerSkills. Their authored animation document maps

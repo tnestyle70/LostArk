@@ -3,6 +3,42 @@
 이 문서는 Animation 담당자가 오늘 바로 작업할 범위와 Character Preview, Effect Tool, Server gameplay
 사이의 금지 경계를 고정한다. 세부 구현 전체 코드는 날짜별 PLAN에 두고, 이 문서는 담당 인터페이스만 소유한다.
 
+## Action Workbench의 공통 창과 저장 owner
+
+F1 → Action Workbench의 왼쪽 창은 **Composition Actions**다. 최상단 Boss / Character / Object /
+Sequence 선택 아래 각 owner의 트리가 나온다. Object/Sequence는 이 공통 창에서 편집한다.
+Effect는 F1의 `Open Effect Tool V1`, `Open Effect Tool V2`로 각각 원래 독립 창을 연다.
+두 Effect 창은 함께 표시할 수 있고 Action의 창 닫기·카테고리 변경이 Effect 문서를 바꾸지 않는다.
+Action의 Effect resource 편집 명령은 해당 독립 Effect owner를 연다. Resources, Sequencer, Box Detail,
+Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·초안·선택·저장을 소유한다.
+
+- Boss는 기존 Valtan과 Kouku 관문·Parent·Pattern을 사용한다. Sequence는 독립 저장 문서와 기존
+  Complete Play의 `enterCombatOnFinish`/전투 handoff를 유지한다. Boss와 Sequence의 관문 선택은 독립이다.
+- Character는 `PlayerSkills.json`의 여섯 class와 LMB/SPACE/ALT_V/ACTIVE 입력을 나열한다. action
+  Parent와 combo stage에서 실제 clip, Effect/Sound/Shake cue, Collider → AREA_OVERLAP Logic → Result
+  행을 본다. animation은 source start/length/rate와 순서를 기존 skillbindings에 저장한다.
+  `clipOccurrenceId`가 없는 legacy clip은 편집 세션에서 ID를 받고 저장 시 보존한다.
+- Character의 `Save Animation`은 skillbindings를, `Save Combat`은 기존 HitShapes v4를 저장한다.
+  source cue 편집은 Details에 포함한 기존 Animation Tool owner의 Save를 사용하고, 저장한 cue는
+  `Refresh saved cues`로 action timeline에 다시 읽는다. Effect 내부 모양은 `Edit Effect resource`로
+  같은 공통 창의 실제 V1/V2 owner를 열어 저장한다. Effect Sequence의 Save를 제품 skill Save로 쓰지 않는다.
+- Object Parent는 연결 Motion의 Transform/Animation/Effect overview를 보여 주고 row 선택으로 기존
+  Motion 편집에 들어간다. 저장은 기존 World Sequence atomic save와 Area publish, 열린 Composition의
+  dirty/외부 변경 검사를 유지한다.
+
+카테고리 전환과 창 닫기는 preview만 정리한다. Character class의 변경·재로드는 현재 binding/combat/cue
+초안을 먼저 저장해야 한다. source baseline이 외부에서 바뀌면 Save는 기존 파일·초안을 보존하고 거절한다.
+독립 Effect 문서와 skillbinding, cue, combat의 서로 다른 파일을 하나의 원자 Save라고 표시하지 않는다.
+
+Character Combat은 피해·무력화·카운터의 독립 shape/time을 편집하고 연결된 Result와 PlayerSkills 수치를 조회한다.
+캐릭터 Combat 연결은 DAMAGE / COUNTER / STAGGER 세 종류이며 BURN은 이번 연결 대상이 아니다.
+caster 시간은 action/stage 기준이고 projectile 시간은 생성 이후 기준이다. CONTACT 시작 시각은 0이다. Authoring 저장 후 Gameplay publisher와 Server 재시작이 필요하다. bootstrap v34와 새 Client/Server를
+함께 적용해야 하며 저장 성공을 현재 실행 중 Server 적용 완료로 부르지 않는다. Client의 collider 표시에는
+피해 권위가 없고 기존 Server fixed-tick 판정이 그대로 소비한다.
+
+구현과 실행한 검사, 남은 사용자 화면 확인은
+`../GB/09-13/2026-09-13_ACTION_WORKBENCH_UNIFIED_ACTIONS_RESULT.md`에서 구분한다.
+
 ## World Level 목록과 MAP Effect 배치
 
 F1의 `Open World Level Tool`은 Area별 Map/Deploy/World Sequence/Gameplay/Light와 열린
@@ -56,9 +92,10 @@ preview 수명에는 관여하지 않는다.
 part 선택 UI, anchor slot 목록 열거다. 이 항목들을 채울 때도 preview 생성 경로를 각 Tool 안에
 다시 만들지 않는다.
 
-현재 `.animevents` Save는 destination을 직접 `w` mode로 열며, Reload는 Dirty 확인이 없다. Load는 임시
-vector에 읽은 뒤 교체하지만 owner/count와 malformed row를 엄격히 거부하지 않는다. 오늘 Animation 담당자의
-실제 수정 대상은 이 document safety와, 아직 닫힌 상태로 선언할 EffectAssetId binding 계약이다.
+현재 `.animevents` Save는 임시 파일 작성 → 실제 reader 재파싱·내용 일치 검사 → source baseline 확인 →
+원자 교체를 사용한다. 잘못된 데이터나 외부 변경은 기존 파일과 초안을 보존한다. Character Action의
+class 변경과 Reload는 미저장 binding/combat/cue를 먼저 확인한다. 전면 `.animevents.json` 이관은
+별도 설계 범위이며 현재 제품 cue reader와 저장 형식을 유지한다.
 
 DimensionMaster로 rename된 `Data/Effects/Authored/.../Candidates`의 구형 authoring 문서 459개는 Effect Tool
 재구축과 함께 삭제했다. 원본 추출 증거인 SourceCatalog/SourceExtracted와 Resources payload는 보존하지만
@@ -100,6 +137,13 @@ V1 All Effects는 기존 Product `.unified`와 이름이 대응하는 `.restore`
 복구본은 정상 Player Product source의 class/skill을 참조하는 편집기 문서이며,
 EffectCatalog나 `.animevents`를 자동 변경하지 않는다. 경로·ID 불일치와 원본 누락은
 해당 항목에 표시하고 제품 스킬의 기존 문서를 유지한다.
+
+같은 All Effects 창의 KoukuSaydon 목록은 중간 분류 폴더 없이
+`1관문 | 연출 | 세부 분류 | 이름`, `1관문 | 패턴 | 세부 분류 | 이름`처럼 나열한다.
+관문은 1→2→3→공통 순이며 개별 행을 열면 기존 Open Editor/Play All/Append Group을 사용한다.
+저장된 category metadata를 우선하고 표시명 앞의 동일 관문·분류 접두사는 화면에서만 생략한다.
+원래 이름·asset ID·전체 분류 경로는 tooltip과 검색에 유지한다. EffectResourceTree 원본 및
+별도 Composition Resources의 트리 표시와 저장 계약은 바꾸지 않는다.
 
 워로드·도화가·창술사는 사용자의 전체 full restore 적용 요청에 따라 명시적으로 승격한 예외다.
 현재 EffectCatalog의 full asset92개를 등록하고 `.animevents`의 실제 clip91개가 이를 참조한다.
@@ -1085,12 +1129,21 @@ Physics Y Timeline을 드래그해 같은 Seek로 확인한다. Lifetime을 바�
 Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
 count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
 마지막 생성 시각은 그 창보다 작아야 한다.
+단순 직선 Motion은 Object Detail의 `Travel`에서 Start/End, Move Speed, Initial/Final Base Facing,
+Individual Lifetime과 Despawn at Endpoint를 편집한다. 기존 velocity Motion은 명시적
+`Convert to Travel`로 끝점·emission·자체 회전을 유지하면서 기존 LINEAR Transform keys로 바꾼다.
+Travel은 개별 생성물의 수명을 편집하며 마지막 emission까지 전체 재생 창을 확보한다.
+Effect 첫 추가/마지막 삭제와 emission 지연 변경 때도 개별 수명을 유지한다. 도착 후 유지에서는
+위치를 멈추고 자체 회전은 개별 수명까지 계속된다. 복잡한 곡선을 단순 직선으로 자동 덮어쓰지 않는다.
 같은 섹션의 `Authored Emissions` 표는 seed 분산 대신 사본을 직접 저작한다. 행마다 Offset(m), Yaw(deg),
 Start Delay(ms)를 가지며 행 yaw가 그 사본의 로컬 이동과 공전을 함께 돌린다. 행이 하나라도 있으면
 Count/Creation Interval/Spread는 비활성화되고 Count는 행 수를 따른다. `Distribute on Ring`은 Ring Count와
 Ring Start(deg)로 저장 위치를 중심으로 `Revolution Offset` 반경의 원을 만들며 회전 속도는
 `Revolution (deg/s)`가 소유한다. 레인·방향·시차가 다른 배치는 이 표로 저작하고, 같은 원점에서 무작위로
 흩뿌리는 배치는 기존 Count/Interval/Spread를 그대로 쓴다.
+`Radial Offset (m)`의 Apply는 Revolution Offset과 각 authored emission의 XZ 반경을 같은 거리만큼
+옮긴다. 양수는 중심에서 바깥쪽이며 높이·방향·지연·모델 크기는 유지한다. 반경이 0 이하가 되는
+입력은 거절한다. 앞줄·뒷줄 간격은 해당 Motion을 선택해 이 값으로 조절한다.
 행이 있는 Motion은 `NEXT` 체인에 쓸 수 없다(기존 단일 생성 규칙). Action Workbench의 WORLD Box Detail은
 행이 2개 이상일 때 `Emission index`를 표시하며, Collider는 그 행의 위치·방향·지연을 따라간다.
 Object 하나를 Pattern에 여러 번 Append하는 기존 방식도 그대로 쓸 수 있다. 배치마다 독립 Transform이
@@ -1116,6 +1169,14 @@ Server의 고정 WORLD Object collision/접촉 대상은 계속 고정 WORLD anc
 새 Object 박스의 기본 수명은 커서부터 Pattern 끝까지다. 시간은 Box Detail에서 조절한다.
 커튼·룰렛은 기존 Map group/sequence를 사용하며 독립 모델 카드용 placement로 자동 바꾸지 않는다.
 동반 Effect 연결은 해당 WORLD Box Detail의 `Attached Effect`에 있다.
+
+Parent의 공통 행과 자식 Pattern을 하나의 반복 주기로 묶으려면 `Pattern Details`의
+`Repeat Parent Cycle`에서 `Loop Window ms`를 정하고 `Apply Parent Loop` 후 Save한다.
+기존 확장기로 만든 주기 snapshot을 새 일반 Pattern에 보관하고 Parent는 그 Pattern 한 행을
+repeat=true로 참조한다. WORLD·Effect·Collider·Logic의 상대 시각과 연결을 함께 반복하며 마지막
+미완성 주기는 시간창 끝에서 잘린다. 원래 자식 Pattern은 유지한다. 생성된 행의
+`Open Source Pattern`에서 한 주기를 편집하고 기존 `Apply Pattern Window`로 반복창을 바꾼다.
+전체 반복 확장 검증에 실패하면 기존 draft와 미저장 Effect 배치를 보존한다.
 
 Object Tool Save는 source와 연결 placement의 외부 변경을 검사하고 원자 저장한 뒤, 기존 publisher의
 WorldSequences 전용 scope로 runtime을 비동기 반영한다. 별도 Publish 단계는 없다. 적용 실패는 저장본과
@@ -1303,6 +1364,14 @@ Collider 중심은 실제 Bone의 XZ 위치를 따라가고 offset과 수평 형
 
 Object Tool Save로 목록을 갱신한 뒤 필요한 카드들을 Pattern에 Append하고, 위의 Trigger/Result/Collider 연결을 Composition Save → Publish All Patterns로 저장·게시한다. 기존 재생을 Stop한 뒤 새 Complete Play로 게시된 판정을 확인한다. 구조 구현은 사용자의 기존 Logic과 카드 배치를 자동으로 재작성하지 않는다.
 
+Kouku Workbench의 Collider 여러 개를 선택하면 Box Detail에서 `Set Group`으로 묶는다. 저장된 그룹의 한 박스를 클릭하면 같은 Pattern의 그룹 전체가 선택된다. 공동 중심은 멤버 중심의 평균이고 그룹 위치·Y 회전은 모든 멤버에 같은 이동·회전을 적용한다. 각 박스의 시작 시각·수명·크기·Logic 연결은 유지한다. `Ungroup`은 배치를 유지하며 선택 묶음만 해제하고, 복제본은 별도 그룹 ID를 사용한다.
+
+선택 그룹은 같은 BOSS anchor, bone/boneTarget/follow 기준의 Collider 두 개 이상에만 허용한다. Follow Boss가 꺼진 경우에는 고정되는 기준 시점도 같아야 한다. 그룹 편집은 기존 geometry draft를 사용하고 `Save`로 보존한다. JSON의 optional `selectionGroupId`는 Pattern 안의 편집용 stable ID이며 별도 부모 Transform이나 runtime 충돌 그룹이 아니다. Publisher는 이 필드를 제외하고 각 Collider의 확정 위치·회전을 기존 제품 경로로 전달한다.
+
+Kouku Animation Append의 원본 `b_root` 이동은 `Save → Publish All Patterns → Server Play`에서 Server XYZ 위치로 반영한다. Publisher가 실제 모델의 부모 basis와 BossCatalog 배율, Source In/Out·속도·지연·반복을 적용해 stage 이동 표본을 만든다. 반복은 끝 displacement를 누적하며 왕복이나 점프의 중간 궤적도 보존한다. Server가 navigation과 body collision을 확인한 위치를 기존 snapshot으로 전달하고, 자동 이동 Pattern의 Client 모델과 Bone Collider bake는 이전한 root displacement를 중복 적용하지 않는다. 새 Server 소비 코드는 빌드·재시작이 필요하며 이후 저장 데이터 갱신은 기존 Product admission을 사용한다.
+
+수동 BossMotion, 활성 돌진 또는 REAL_GAZE_TELEPORT가 있는 Pattern은 기존 이동 방식을 유지한다. 원본 root 이동이 0인 in-place clip의 별도 actor/script 이동을 추측하지 않는다. 이 자동 이동은 Server Play 계약이며 독립 local Preview에는 새 이동 runtime을 추가하지 않는다. WModel 분석은 Publish에만 있고 Save는 기존 문서 저장이다. 정수 ms 표본을 최대 512개로 축약할 때 추가 XYZ 오차는 1mm 이하이며, 원본 fractional key의 정수 ms 양자화 오차는 별도다. 밀리초보다 짧은 왕복이 사라지는 등 표현할 수 없는 곡선은 이유와 함께 게시를 거절한다.
+
 
 ### 17.8 Effect Sequencer의 Composition Resources와 여섯 트랙
 
@@ -1340,6 +1409,12 @@ Effect Box Detail의 Anchor는 Boss/World다. World 안의 Fixed position은 고
 Use Player Position/Use Mouse Position으로 생성 위치를 고른다. Follow world object는 World
 트랙의 구체적인 오브젝트·박스·emission에 연결한다. 기존 저장 MAP/WORLD 값은 각각 이 두
 동작으로 호환하며 문서를 일괄 변환하지 않는다. 미저장 위치는 Preview와 Apply/Save가 같은 값을 사용한다.
+
+Sequence에서 새 Effect를 Append하면 고정 World 위치로 시작하며, 명시적으로 선택한 World box가
+있을 때만 그 오브젝트에 연결한다. 기존 Follow world object 박스에도 Player/Mouse 위치 버튼을
+표시한다. Player 위치 복사 또는 Mouse의 유효한 표면 피킹은 고정 위치로 전환하고 본·World
+참조를 함께 해제한다. 피킹 취소는 기존 편집을 유지한다. Resources에서 이미 배치한 Effect를
+재생할 때도 그 박스의 저장 위치와 시각을 유지한다.
 
 상단 시간 눈금의 원하는 지점을 누르거나 drag하면 노란 커서로 여섯 트랙을 함께 seek한다.
 박스 본체는 이동, 양 끝은 trim이며 mouse release 때 유효한 값을 적용한다. 겹치는 박스는 같은
@@ -1387,3 +1462,21 @@ Workbench의 Facing boss outcome에서 선택하며 원본 Save와 Publish가 �
 worldsequences v3의 objectResources는 optional materialProfile(materialName/sourceMaterial/family/parameters/textures)을 저장한다. texture는 expressionIndex와 Resources 상대 assetId, colorSpace를 가지며 publisher와 기존 CModel material override가 같은 계약을 검증한다. 잘못된 입력은 이전 문서를 보존한다. 쿠크 공의 source.character.monster-pbr-masked.v1은 원본41개 parameter·8개 texture와 program21을 사용한다.
 
 ENTER_AREA의 bossChargeDistanceM이 양수일 때 optional chargeYawOffsetDegrees를 저장할 수 있다. Workbench의 Charge Facing Offset은 포착한 이동 벡터와 끝점을 바꾸지 않고 body yaw에만 더한다. 기본값0은 기존 동작을 유지하며, 양수 돌진 거리 없이 offset만 설정하거나 범위[-360,360] 밖/비유한 값은 거부한다. Composition→projector→Gameplay publisher→Server charge가 동일한 값을 소비한다.
+
+
+### Object·Sequence의 Effect 동시 재생 계약
+
+WorldSequence effectTracks는 GROUP/LEAF 외에 V1_EFFECT를 지원하고 optional followObject(false),
+bone(빈 문자열)을 저장한다. bone은 followObject와 함께 실제 Object CModel에서 검증한다.
+기존 MOTION_END 행은 유지한다. Object의 Play Effect는 임시 문서, Append Effect는 검증된 draft에
+TIME 0ms로 모델과 함께 추가한다. V1 리소스 준비 중에는 재생 시간을 진행하지 않는다.
+
+Sequence Effect는 선택된 Animation/World 시작, Sequence 시작, cursor 중 선택한 위치를
+Play와 Append가 함께 사용한다. 명시 WORLD Effect의 worldOccurrenceId는 그 anchor의 ID와
+일치해야 한다. 기존 Boss companion도 유지하며 World alias를 추가할 때 같은 저장 association의
+고유 screen companion을 연결한다. Object Preview는 이 companion의 Play/Seek/Stop도 소유한다.
+
+Effect Resources의 World 배치는 Use Mouse Pos의 한 번 맵 피킹 또는 Use Player Pos의 고정 복사로
+설정한다. Play All/Solo/Append가 같은 위치·yaw를 소비하며 Player-at-play 선택은 시작 시 player를
+다시 읽는다. 피킹 실패·취소는 이전 좌표를 보존하고 클릭은 gameplay command와 공유하지 않는다.
+소스 구현과 설치 여부는 대응 인형·Object/Sequence Effect RESULT에서 구분한다.

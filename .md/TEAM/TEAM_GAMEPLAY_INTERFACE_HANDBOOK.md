@@ -888,6 +888,17 @@ Pattern의 optional `animationRootVerticalScale`은 0~1, 기본 1이며 원본 r
 Preview가 같은 값을 소비하고, bone Collider 투영도 같은 배율을 사용한다. 다음 action/idle은
 자기 Pattern 값 또는 기본 1을 적용하므로 이전 패턴의 높이 설정을 이어받지 않는다.
 Play Bundle과 실제 보스 actor를 소유한 단일 Pattern Play는 같은 actor/weapon preview 경로를 사용한다. Model Reference는 제자리 비교다.
+Local Animation Play도 실제 CModel의 suppression 전 root를 source crop/rate/loop와 Pattern 절대 시각으로
+샘플해 preview actor를 이동한다. 수동 bossMotion/charge/teleport가 이동을 소유하면 자동 root 이동을
+중복 적용하지 않는다. 종료와 실패에서 이전 model suppression 상태를 복원한다.
+TRIGGER Logic의 optional `triggerKind=ANIMATION_BLEND`는 Logic occurrence 구간으로 인접한 두
+animation pose를 혼합한다. 기존 occurrence ID·crop·playRate·endPolicy가 정본이며 실행용
+`animationBlendWindows`는 파생 값이다. Preview, Product action pose와 source-bone bake는 같은
+Pattern 절대 시각을 사용한다. 해당 Product Pattern은 기존 fixedTimeline 경로를 사용하며
+새 Server combat trigger로 투영하지 않는다. 로컬 Save는 Publish를 자동 실행하지 않는다.
+이동하는 자식 Pattern은 정확히 하나의 전체 수명·비반복 occurrence에 한해 부모로 확장한다.
+부모의 독립 animation/이동/reset/retarget와의 동시 소유를 거부하고 child BossMotion의 시각만
+부모 offset만큼 옮긴다. 다른 문서에서 가져온 Pattern은 편집 가능한 복사본이며 자동 동기화 참조가 아니다.
 BOSS_SPAWN World Object는 Product의 `worldEmissionAnchors`와 bossMotion을 사용해 각 emission 시각의 생성점을
 고정한 뒤 개별 objectMotion을 재생한다. 객체가 이동하는 보스를 매 프레임 따라가는 정책은 아니다.
 
@@ -898,7 +909,9 @@ F1 Action Workbench 바로 아래 `Open Sequencer Benchmark`는 동일한 Timeli
 같은 Preview backend의 재생 소유자를 입력 focus와 분리하여 다른 창을 열거나 닫아도 활성 미리보기를
 덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않으며 파티 생성은 후속 Summon/Logic 작업이다.
 Sequence의 `Complete Play`는 선택 Gate에서 `enterCombatOnFinish=true`인 입장 하나를 0ms부터 재생한다.
-Pause/Resume은 현재 연출 시간을 유지하고 Stop/Reset·재생 실패·다른 Preview 소유자 전환은 전투 연결을 취소한다.
+Pause/Resume과 Stop은 현재 연출 시간을 유지하며 Reset·재생 실패·다른 Preview 소유자 전환은 전투 연결을 취소한다.
+F6 free camera에서는 camera track override를 해제하고 현재 pose/FOV를 유지한다. follow로 복귀하면
+현재 연출 시각의 camera track을 다시 적용한다. Complete 종료가 강제로 follow를 켜지 않는다.
 `1관문_통합_시퀀스`는 흡입·팝업북·피날레를 포함하며, 종료 뒤 기존 F1 Gate command로 열린 전투 아레나에 진입한다.
 입장 Pattern의 Play Sequence도 같은 전투 연결을 사용한다. legacy popup/finale·클리어·카드미로의 개별 Preview는
 저작 확인으로 유지하며 자동으로 보스를 생성하거나 Pattern Flow를 시작하지 않는다.
@@ -1030,6 +1043,14 @@ target 필드가 비어 있는 기존 메시지는 WORLD 생성 요청이다. Re
 target/Motion 쌍에 한 번만 송신한다. `OBJECT_OVERLAP`은 player 입력과 무관하게 source Collider와
 고정 target 원의 겹침을 Server fixed tick에서 확인한다. target 반경은 저작 값이며 모델의 bone
 변형을 추적하지 않는다. 기존 player 영역 판정은 계속 별도 Logic 종류로 유지한다.
+칼날처럼 시각적으로 X축 자전하는 WORLD의 중심 CIRCLE은 local offset=0, bone 없음과
+uniform XYZ scale 조건에서 모델 회전과 분리된 수평 원형 판정을 사용한다. 이동은 기존
+Transform keys의 translation/visibility를 사용하며 물리 velocity·가속·공전·무작위 분산을
+서버 경로로 추측 변환하지 않는다. 움직이는 중심 원은 STOP/HOLD와 Parent 반복창을 사용한다.
+Server ENTER_AREA는 일정 반경 원의 이전 tick부터 현재 tick까지 이동 구간도 검사한다.
+생성 지연·숨김 구간·Logic 창·Lifetime을 경계로 잘라 검사하며 숨은 구간을 가로질러 판정하지 않는다.
+피해·즉사는 기존 Logic Result로 설정한다. 이 계약에 맵 끝이나 아이언메이든 접촉 시
+오브젝트를 자동 소멸시키는 동작은 포함되지 않는다.
 `OBJECT_CONTACT`는 같은 Pattern의 stable `targetWorldOccurrenceIds`를 대상으로 판정하며
 `PLAY_CONTACT_WORLD_OBJECT_MOTION`은 접촉한 occurrence의 기존 객체에만 Motion을 적용한다.
 동일 `contactGroupId`의 같은 타격 창은 시간·수명을 일치시키고 서로 다른 `contactPriority`를 사용한다.
@@ -1415,6 +1436,8 @@ Object Tool의 Group Layout은 motion emission의 count·spacing·Delay를 소�
 
 Kouku Animation occurrence의 `sourceStartMs`와 optional `sourceEndMs`는 원본 클립의 선택 구간이며, `sourceEndMs=0` 또는 생략은 원본 끝이다. `startOffsetMs`와 `playMs`는 stage 안의 재생 위치와 길이를 소유한다. `LOOP_TO_WINDOW`는 선택한 source 구간만 반복하며 stage 길이는 별도로 편집한다. Source In/Out은 원본 구간만 바꾸고, 일반 clip 앞 edge는 timeline/source 시작을 함께 자른다. 반복을 켠 뒤 edge 편집은 반복 구간을 유지하며 timeline 길이만 바꾼다. 인접 clip의 Blend In은 이전 clip의 실제 HOLD/LOOP 종료 sample과 보간한다. Preview, 제품 NPC, Server용 bone collider bake는 같은 source 시간 계약을 사용한다. Product는 기존 stage당 animation 하나와 Server action clock을 유지하며 저장 후 기존 publisher를 거쳐 적용한다.
 
+Kouku의 자동 원본 이동은 같은 publisher가 생성한 stage `rootMotionSamples {timeMs, forward, lateral, up}`를 기존 `PATTERNSTAGEROOTMOTION`으로 전달한다. 세 위치 성분은 meter이며 Server의 stage 시작 위치·yaw, navigation·body collision이 실제 XYZ를 확정한다. 기존 세 성분 bootstrap은 up=0으로 호환하고 새 Kouku 출력만 네 성분을 사용한다. snapshot protocol 변경은 없다. 수동 BossMotion·돌진·REAL_GAZE_TELEPORT가 있는 Pattern에는 자동 이동을 겹치지 않는다. 자동 대상 Pattern의 모델 root와 본 궤적에서는 Server에 이전한 이동을 억제한다. 원본 해석·저장·재생 절차와 in-place clip 경계는 `ANIMATION_TOOL_OWNER_HANDOFF.md`의 Kouku 절차를 따른다.
+
 
 ## C++ 공용 선언을 소비할 때의 include 경계
 
@@ -1424,3 +1447,20 @@ Kouku Animation occurrence의 `sourceStartMs`와 optional `sourceEndMs`는 원�
 `GameInstance.h`는 렌더 API의 전방 선언만 제공하므로 반환값을 사용하는 CPP는 해당 정의를
 직접 포함한다. Assimp·DirectXTK·FX11·DirectInput도 실제 구현의 의존성으로 선언한다.
 표준 라이브러리 PCH·대형 CPP 분리·병합 후 Build 확인은 `../../Tools/Build/README.md`를 따른다.
+
+## Character Action의 독립 Collider / Logic / Result
+
+`Data/Animation/HitShapes/<Asset>.hitshapes.json`의 formatVersion 4는 실제 caster/projectile hit마다
+stable `colliderId`, `logic.logicId`, `result.resultId`를 가진다. Logic은 DURATION / AREA_OVERLAP으로
+자기 collider와 RESULT를 참조하며 RESULT kind는 DAMAGE / STAGGER / COUNTER다. 종류별 판정은
+서로 독립된 시간·shape를 사용하고 수치는 기존 PlayerSkills의 damage profile / staggerDamage /
+counterPower를 소비한다. DAMAGE만 기존 HP 예산·part damage·push를 사용한다. trait-only 행이
+HP 피해나 카드미로 즉사를 만들지 않는다. 원본 provenance와 나머지 skill/projectile 필드는 보존한다.
+
+Gameplay publisher는 연결 ID·종류·상한을 검증하고 gameplay bootstrap v34의 기존 SKILLHIT/SKILLPROJ에
+Result kind를 싣는다. Server `CPlayerSkillSystem`은 DAMAGE 행만 HP 예산을 분배하고 각 trait 행은
+기존 `CServerCombatHitRuntime`으로 해당 수치만 전달한다. Client UI는 packet이나 피해 판정을 만들지 않는다.
+저장·적용 경로는 Action Workbench의 Save Combat → 명시 Gameplay Publish → 새 Server 재시작이다.
+기존 v33 실행 파일/부트스트랩과 혼합하지 않으며 네트워크 packet version을 바꾼 계약은 아니다.
+
+통합 창의 사용법과 각 저장 owner는 `ANIMATION_TOOL_OWNER_HANDOFF.md`를 따른다.

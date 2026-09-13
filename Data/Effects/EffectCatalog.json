@@ -2025,6 +2025,76 @@
       "effectAssetId": "effect.kouku.common.spinning.card.throw",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.common.spinning.card.throw.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.circus.circle.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.circus.circle.warning.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.circus.innerdonut.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.circus.innerdonut.warning.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.circus.outerdonut.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.circus.outerdonut.warning.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.blade-dance.innerdonut.warning.expand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.blade-dance.innerdonut.warning.expand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.blade-dance.outerdonut.warning.expand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.blade-dance.outerdonut.warning.expand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.innerdonut.warning.expand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.innerdonut.warning.expand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.showtime.outerdonut.warning.expand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.outerdonut.warning.expand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.circus.innerdonut.warning.expand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.circus.innerdonut.warning.expand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.circus.outerdonut.warning.expand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.circus.outerdonut.warning.expand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.backstep.electric.threeway.authored",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.backstep.electric.threeway.authored.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.circus.ball.drop.split",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.circus.ball.drop.split.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.ritual.hand.trail.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.ritual.hand.trail.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.intro.scene-image-collapse",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.intro.scene-image-collapse.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.intro.portal-suction.scene-collapse",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.intro.portal-suction.scene-collapse.effect.json"
     }
   ]
 }

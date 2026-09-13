@@ -3666,6 +3666,9 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_TransformMasterIndices.clear();
 	m_SourceAnchorWorlds.clear();
 	m_PendingSourceEvents.clear();
+	m_MissedShowtimeBursts.clear();
+	m_PresentedShowtimeBursts.clear();
+	m_bShowtimeBurstPresentation = false;
 	m_Frame = {};
 	m_bFrameInputsDirty = true;
 	m_fSampleTimeSeconds = 0.f;
@@ -3809,6 +3812,13 @@ void Client::CEffectPlayback::Reset()
 		m_bFrameInputsDirty = true;
 		return;
 	}
+    m_MissedShowtimeBursts.clear();
+    m_PresentedShowtimeBursts.clear();
+    const auto& asset = Get_StagedDocument().strEffectAssetId;
+    m_bShowtimeBurstPresentation = asset == "effect.kouku.gate3.showtime.gun.signature" ||
+        asset == "effect.kouku.gate3.showtime.gun.signature.world" ||
+        asset == "effect.kouku.gate3.showtime.gun.muzzle" ||
+        asset == "effect.kouku.gate3.showtime.gun.muzzle.world";
 	m_fSampleTimeSeconds = 0.f;
 	m_fAccumulatorSeconds = 0.0;
 	m_iSimulationStep = 0u;
@@ -3885,6 +3895,11 @@ void Client::CEffectPlayback::Update(
 		return;
 	}
 
+    if (m_bShowtimeBurstPresentation)
+    {
+        m_MissedShowtimeBursts.clear();
+        m_bFrameInputsDirty = true;
+    }
 	m_fAccumulatorSeconds += static_cast<f64_t>(fTimeDelta);
 	uint32_t iSteps = 0u;
 	while (m_fAccumulatorSeconds + FIXED_STEP_EPSILON >=
@@ -3893,11 +3908,13 @@ void Client::CEffectPlayback::Update(
 	{
 		if (!Step(FIXED_STEP_SECONDS, RootWorld))
 			return;
+		Capture_MissedShowtimeBursts(RootWorld);
 		m_fAccumulatorSeconds = (std::max)(0.0,
 			m_fAccumulatorSeconds - FIXED_STEP_SECONDS_EXACT);
 		++iSteps;
 	}
 	Rebuild_Frame(RootWorld);
+	Append_MissedShowtimeBursts();
 }
 
 void Client::CEffectPlayback::Seek(
@@ -3947,6 +3964,7 @@ void Client::CEffectPlayback::Seek(
 		static_cast<f64_t>(iTargetSteps) * FIXED_STEP_SECONDS_EXACT);
 	m_fSampleTimeSeconds = fTarget;
 	Rebuild_Frame(RootWorld);
+	Mark_ShowtimeBurstsPresented();
 }
 
 bool_t Client::CEffectPlayback::Collect_TransformHistorySample(
@@ -4092,6 +4110,11 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 		Samples.push_back(std::move(Sample));
 	}
 
+	if (m_bShowtimeBurstPresentation && fTimeDelta > 0.f)
+    {
+        m_MissedShowtimeBursts.clear();
+        m_bFrameInputsDirty = true;
+    }
 	f64_t fCommittedAccumulator = fPendingAccumulator;
 	float4x4_t FinalRoot = m_Frame.RootWorld;
 	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
@@ -4103,11 +4126,13 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 			strOutError = m_strSourceVisualProgramStatus;
 			return false;
 		}
+		Capture_MissedShowtimeBursts(FinalRoot);
 		fCommittedAccumulator = (std::max)(
 			0.0, fCommittedAccumulator - FIXED_STEP_SECONDS_EXACT);
 	}
 	m_fAccumulatorSeconds = fCommittedAccumulator;
 	Rebuild_Frame(FinalRoot);
+	Append_MissedShowtimeBursts();
 	strOutError.clear();
 	return true;
 }
@@ -4177,6 +4202,7 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 	m_fSampleTimeSeconds = fTarget;
 	m_SourceAnchorWorlds = std::move(FinalSample.SourceAnchorWorlds);
 	Rebuild_Frame(FinalSample.RootWorld);
+	Mark_ShowtimeBurstsPresented();
 	strOutError.clear();
 	return true;
 }
@@ -7680,18 +7706,117 @@ Client::EFFECT_COLOR_DESC Client::CEffectPlayback::Evaluate_Color(
 	return Color;
 }
 
-void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
+bool_t Client::CEffectPlayback::Is_UnpresentedShowtimeBurst(const EFFECT_ELEMENT_DESC& Element) const
+{
+    const auto& recipe = Element.SourceRecipe;
+    if (!m_bShowtimeBurstPresentation || !recipe.bEnabled ||
+        recipe.strRendererShape != "sprite" || recipe.iEmitterLoopCount != 1u ||
+        recipe.Bursts.size() != 1u || recipe.Bursts.front().fTimeSeconds != 0.f ||
+        recipe.Bursts.front().iCountMaximum > 64u ||
+        Element.Detail.Particle.fSpawnRatePerSecond != 0.f ||
+        m_PresentedShowtimeBursts.contains(&Element)) return false;
+    const bool_t source = std::any_of(Element.SourceRecipe.Modules.begin(), Element.SourceRecipe.Modules.end(),
+        [](const EFFECT_SOURCE_MODULE_DESC& module) {
+            return module.strClassName == "particlemodulerequired" &&
+                (module.strObjectPath.starts_with("fx_mn_rpct_07_v.par_v_rpct_signature_01_1_loc_int.") ||
+                 module.strObjectPath.starts_with("fx_mn_rpct_07_v.par_v_rpct_signalshot_01_loc_int."));
+        });
+    const auto state = m_States.find(Element.strElementId);
+    return source && state != m_States.end() && !state->second.Particles.empty() &&
+        state->second.Particles.size() <= 64u &&
+        std::all_of(state->second.Particles.begin(), state->second.Particles.end(), [](const PARTICLE_STATE& particle) {
+            return particle.fLifeTimeSeconds > 0.f && particle.fLifeTimeSeconds <= .075f;
+        });
+}
+
+void Client::CEffectPlayback::Capture_MissedShowtimeBursts(const float4x4_t& RootWorld)
+{
+    if (!m_bShowtimeBurstPresentation) return;
+    std::unordered_set<const EFFECT_ELEMENT_DESC*> selected;
+    for (const auto& element : Get_StagedDocument().Elements)
+        if (Is_UnpresentedShowtimeBurst(element)) selected.insert(&element);
+    if (selected.empty()) return;
+    // Only the selected short bursts evaluate here; smoke, trails, lights and
+    // the rest of the document still rebuild once at the final display clock.
+    Rebuild_Frame(RootWorld, &selected);
+    for (const auto* element : selected)
+    {
+        std::vector<EFFECT_EVALUATED_PARTICLE> candidates;
+        float score = 0.f;
+        for (const auto& particle : m_Frame.Particles)
+            if (particle.pElement == element && particle.Color.w > 0.f)
+            {
+                auto& snapshot = candidates.emplace_back(particle);
+                snapshot.fMaterialSampleTimeSeconds = m_fSampleTimeSeconds;
+                score += particle.Color.w;
+            }
+        if (candidates.empty()) continue;
+        size_t otherRows = 0u;
+        for (const auto& [other, rows] : m_MissedShowtimeBursts)
+            if (other != element) otherRows += rows.size();
+        if (otherRows + candidates.size() > 256u) continue;
+        auto& retained = m_MissedShowtimeBursts[element];
+        float previousScore = 0.f;
+        for (const auto& particle : retained) previousScore += particle.Color.w;
+        if (score > previousScore) retained = std::move(candidates);
+    }
+}
+
+void Client::CEffectPlayback::Mark_ShowtimeBurstsPresented()
+{
+    if (!m_bShowtimeBurstPresentation) return;
+    for (const auto& particle : m_Frame.Particles)
+        if (particle.pElement && particle.Color.w > 0.f && Is_UnpresentedShowtimeBurst(*particle.pElement))
+            m_PresentedShowtimeBursts.insert(particle.pElement);
+}
+
+void Client::CEffectPlayback::Append_MissedShowtimeBursts()
+{
+    if (!m_bShowtimeBurstPresentation) return;
+    for (const auto& source : Get_StagedDocument().Elements)
+    {
+        const auto* element = &source;
+        const auto retained = m_MissedShowtimeBursts.find(element);
+        if (retained == m_MissedShowtimeBursts.end()) continue;
+        const auto& candidates = retained->second;
+        const bool_t visible = std::any_of(m_Frame.Particles.begin(), m_Frame.Particles.end(),
+            [element](const auto& particle) { return particle.pElement == element && particle.Color.w > 0.f; });
+        if (!visible)
+        {
+            // A sprite batch owns one material clock. Replace only invisible
+            // terminal rows, so this element contains a single live snapshot.
+            std::erase_if(m_Frame.Particles,
+                [element](const auto& particle) { return particle.pElement == element; });
+            // All row sources point into this document's contiguous Elements.
+            // The renderer consumes particle ranges in that declaration order.
+            const auto insertion = std::find_if(m_Frame.Particles.begin(), m_Frame.Particles.end(),
+                [element](const auto& particle) { return particle.pElement && particle.pElement > element; });
+            m_Frame.Particles.insert(insertion, candidates.begin(), candidates.end());
+            for (auto& occurrence : m_Frame.GpuOccurrences)
+                if (occurrence.pElement == element)
+                {
+                    occurrence.bActive = true;
+                    occurrence.iCandidateRowCount = static_cast<uint32_t>(candidates.size());
+                }
+        }
+        m_PresentedShowtimeBursts.insert(element);
+    }
+    Mark_ShowtimeBurstsPresented();
+}
+
+void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
+    const std::unordered_set<const EFFECT_ELEMENT_DESC*>* pParticleSelection)
 {
 	Engine::CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FrameRebuild");
 	// A provider may change or reject anchors even at the same effect time.
 	// Always consume that result before deciding whether evaluated rows match.
-	if (!Refresh_ModelCueAnchors(m_fSampleTimeSeconds, RootWorld))
+	if (!pParticleSelection && !Refresh_ModelCueAnchors(m_fSampleTimeSeconds, RootWorld))
 	{
 		m_bFrameInputsDirty = true;
 		return;
 	}
-	if (!m_bFrameInputsDirty &&
+	if (!pParticleSelection && !m_bFrameInputsDirty &&
 		m_Frame.fSampleTimeSeconds == m_fSampleTimeSeconds &&
 		0 == std::memcmp(&m_Frame.RootWorld, &RootWorld, sizeof(RootWorld)))
 		return;
@@ -7713,6 +7838,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 	for (size_t iElement = 0u; iElement < Document.Elements.size(); ++iElement)
 	{
 		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
+        if (pParticleSelection && !pParticleSelection->contains(&Element)) continue;
 		if (!Element.bVisible || Is_EffectSimulationOnlyParticle(Element))
 			continue;
 		/* GPU occurrence denominators describe every visible carrier in document
@@ -8286,7 +8412,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			Occurrence.bActive = Occurrence.bActive || 0u < iCandidateRowCount;
 		}
 	}
-	m_bFrameInputsDirty = false;
+	m_bFrameInputsDirty = pParticleSelection != nullptr;
 }
 
 bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(

@@ -89,6 +89,27 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			if (index != 1u)
 				bytes += "PATTERNSTAGEACTION\t" + encounter + "\t" + retargetId + "\t" + actionId + "\t0\tENTER\tRETARGET_RANDOM_ALIVE\tboss.target.pattern\t1\t0\n";
 		}
+		const std::string rootId = "KAKULSAYDON_G1_ROOT_MOTION_CONTRACT";
+		for (const bool legacy : { false, true })
+		{
+			const auto id = rootId + (legacy ? "_LEGACY" : "");
+			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 3000u);
+			bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + id + "\t0\t4\t" +
+				(legacy ? "0:0:0,1000:0:0,2000:0.6:0.3,3000:0:0\n" :
+				 "0:0:0:0,1000:0:0:0,2000:0.6:0.3:1.25,3000:0:0:0\n");
+		}
+		const std::string rootChainId = rootId + "_CHAIN";
+		appendPattern(rootChainId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1500u);
+		const auto chainHeader = bytes.find("PATTERN\t" + encounter + "\t" + rootChainId + "\t");
+		const auto chainStageCount = bytes.find("\t1\t1\tANY\tANY\t0\n", chainHeader);
+		bytes.replace(chainStageCount, std::string("\t1\t1\tANY\tANY\t0\n").size(), "\t1\t2\tANY\tANY\t0\n");
+		const auto chainBranch = bytes.find(rootChainId + ".stage.1\tTIMEOUT\t-\n", chainHeader);
+		bytes.replace(chainBranch, (rootChainId + ".stage.1\tTIMEOUT\t-\n").size(),
+			rootChainId + ".stage.1\tTIMEOUT\t" + rootChainId + ".stage.2\n");
+		bytes += "PATTERNSTAGE\t" + encounter + "\t" + rootChainId + "\t1\tSTAGE_2\t" + rootChainId + ".stage.2\tACTIVE\t1500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
+		bytes += "PATTERNSTAGEBRANCH\t" + encounter + "\t" + rootChainId + "\t" + rootChainId + ".stage.2\tTIMEOUT\t-\n";
+		bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + rootChainId + "\t0\t2\t0:0:0:0,1500:0.2:0:0.3\n";
+		bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + rootChainId + "\t1\t3\t0:0:0:0,750:0:0.05:0.5,1500:0:0.1:0\n";
 		const std::string motionId = "KAKULSAYDON_G1_MOTION_CONTRACT";
 		for (const bool invalidNavigation : {false, true})
 		{
@@ -152,6 +173,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		tests.Require(loaded, "Bundle loads typed target/member rows through normal catalog admission");
 		if (loaded)
 		{
+			for (const std::string malformedSample : { "2000:0.6:0.3:", "2000:0.6:0.3:NaN", "2000:0.6:0.3:1.25:9" })
+			{
+				auto malformed = bytes;
+				const std::string validSample = "2000:0.6:0.3:1.25";
+				malformed.replace(malformed.find(validSample), validSample.size(), malformedSample);
+				{ std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(malformed.data(), static_cast<std::streamsize>(malformed.size())); }
+				GameplayDataRevision invalidRevision; CGameplayCatalog invalid;
+				tests.Require(CServerApp::Hash_GameplayFileForAdmission(path, invalidRevision, status) &&
+					!invalid.Load_FromBootstrap(fs::canonical(path), invalidRevision, invalidRevision),
+					"Root bootstrap rejects missing nonfinite and extra fourth-component data before admission");
+			}
+			{ std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(bytes.data(), static_cast<std::streamsize>(bytes.size())); }
 			const auto* reentry = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, reentryId, status);
 			tests.Require(reentry && reentry->LogicWindows.size() == 1u && reentry->LogicWindows.front().bRearmOnExit &&
 				reentry->LogicWindows.front().OnSuccess.front().fPushRangeM == 2.f &&
@@ -196,6 +229,107 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				request.strBundleId = "kakulsaydon.bundle.contract." + std::to_string(offset); return request;
 			};
 			const auto tick = [](CGameRoom& room) { room.Update_WorldEntities(1.f / 30.f); ++room.m_iServerTick; };
+			{
+				const auto* root = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, rootId, status);
+				const auto* legacy = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, rootId + "_LEGACY", status);
+				const auto close = [](const float a, const float b) { return std::abs(a - b) < .001f; };
+				tests.Require(root && legacy && root->Stages.front().Motion.RootMotion[2u].fUp == 1.25f &&
+					legacy->Stages.front().Motion.RootMotion[2u].fUp == 0.f,
+					"Stage root motion admits full XYZ and preserves legacy three-component samples");
+				if (root)
+				{
+					const auto& curve = root->Stages.front().Motion.RootMotion;
+					const auto delay = CKoukuSaydonBrain::Sample_StageRootMotion(curve, 999.0);
+					const auto middle = CKoukuSaydonBrain::Sample_StageRootMotion(curve, 1500.0);
+					const auto terminal = CKoukuSaydonBrain::Sample_StageRootMotion(curve, 4000.0);
+					tests.Require(delay.fForward == 0.f && close(middle.fForward, .3f) &&
+						close(middle.fLateral, .15f) && close(middle.fUp, .625f) &&
+						terminal.fForward == 0.f && terminal.fLateral == 0.f && terminal.fUp == 0.f,
+						"Cumulative root sampling retains delayed XYZ travel and a moving curve whose endpoint returns to zero");
+					for (unsigned invalidKind = 0u; invalidKind < 5u; ++invalidKind)
+					{
+						auto invalid = *root;
+						if (invalidKind == 0u) invalid.Stages.front().Motion.RootMotion.front().fUp = 1.f;
+						if (invalidKind == 1u) invalid.Stages.front().Motion.RootMotion.back().iTimeMs = 2999u;
+						if (invalidKind == 2u) invalid.Stages.front().Motion.RootMotion[2u].fUp = (std::numeric_limits<float>::infinity)();
+						if (invalidKind == 3u) invalid.BossMotion.emplace();
+						if (invalidKind == 4u) { invalid.LogicWindows.emplace_back(); invalid.LogicWindows.back().fBossChargeDistanceM = 1.f; }
+						tests.Require(!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(invalid, status),
+							"Root admission rejects invalid curves and a second authored movement authority");
+					}
+					auto rootRoom = makeRoom(); auto rootRequest = requestFor(*rootRoom, 0u);
+					rootRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+					rootRequest.strBundleId.clear(); rootRequest.strPatternId = rootId;
+					rootRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
+					rootRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+					auto* moving = getBoss(*rootRoom, false);
+					moving->fYawDegrees = 90.f;
+					const std::array<float, 3u> origin{moving->fSpawnPositionX, moving->fSpawnPositionY, moving->fSpawnPositionZ};
+					// The pre-admission pose differs: the curve must capture the committed spawn reset.
+					moving->fPositionX += 1.f;
+					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT rootResult;
+					const bool queued = rootRoom->Evaluate_KoukuSaydonPatternAudition(919u, rootRequest, rootResult) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+					for (unsigned index = 0u; index < 30u; ++index) tick(*rootRoom);
+					tests.Require(queued && moving->bPatternStageRootOriginCaptured &&
+						close(moving->fPositionX, origin[0]) && close(moving->fPositionY, origin[1]) && close(moving->fPositionZ, origin[2]),
+						"Room root motion captures after spawn reset and holds through the authored delay");
+					for (unsigned index = 30u; index < 45u; ++index) tick(*rootRoom);
+					tests.Require(close(moving->fPositionX, origin[0] + .3f) && close(moving->fPositionY, origin[1] + .625f) &&
+						close(moving->fPositionZ, origin[2] - .15f),
+						"Room applies lateral forward and up once in the captured yaw basis before Logic");
+					const auto beforeRepeat = *moving;
+					const bool repeated = CKoukuSaydonBrain::Apply_StageRootMotion(*moving, *root, moving->iPatternStageRootLastTick,
+						rootRoom->m_ServerNavigation, rootRoom->m_ServerCollisionSystem, status);
+					tests.Require(repeated && moving->fPositionX == beforeRepeat.fPositionX && moving->fPositionY == beforeRepeat.fPositionY &&
+						moving->fPositionZ == beforeRepeat.fPositionZ, "Repeated root evaluation on one fixed tick cannot move the actor twice");
+					auto blocked = *moving;
+					blocked.PatternStageRootMotion.back().fForward = 100000.f;
+					blocked.iPatternStageRootLastTick = 0u;
+					const bool held = CKoukuSaydonBrain::Apply_StageRootMotion(blocked, *root, 120u,
+						rootRoom->m_ServerNavigation, rootRoom->m_ServerCollisionSystem, status);
+					tests.Require(held && blocked.fPositionX == moving->fPositionX && blocked.fPositionY == moving->fPositionY &&
+						blocked.fPositionZ == moving->fPositionZ, "Navigation rejects an off-grid root destination without a partial XYZ commit");
+					auto failed = *moving; failed.fCollisionRadius = 0.f; failed.iPatternStageRootLastTick = 0u;
+					const bool rejected = !CKoukuSaydonBrain::Apply_StageRootMotion(failed, *root, 46u,
+						rootRoom->m_ServerNavigation, rootRoom->m_ServerCollisionSystem, status);
+					tests.Require(rejected && failed.fPositionX == moving->fPositionX && failed.fPositionY == moving->fPositionY &&
+						failed.fPositionZ == moving->fPositionZ, "A root collision failure preserves the complete previous transform");
+					CKoukuSaydonBrain{}.Abort_Pattern(failed, 47u);
+					tests.Require(failed.PatternStageRootMotion.empty() && !failed.bPatternStageRootOriginCaptured &&
+						failed.iPatternStageRootLastTick == 0u, "Abort clears every active stage root origin and sampling state");
+					for (unsigned index = 45u; index < 100u; ++index) tick(*rootRoom);
+					tests.Require(moving->strPatternId.empty() && moving->PatternStageRootMotion.empty() &&
+						!moving->bPatternStageRootOriginCaptured && close(moving->fPositionX, origin[0]) &&
+						close(moving->fPositionY, origin[1]) && close(moving->fPositionZ, origin[2]),
+						"Natural completion commits the return endpoint and releases stage root state without cumulative drift");
+				}
+			}
+			{
+				auto chainRoom = makeRoom(); auto chainRequest = requestFor(*chainRoom, 0u);
+				chainRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				chainRequest.strBundleId.clear(); chainRequest.strPatternId = rootChainId;
+				chainRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
+				chainRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				auto* moving = getBoss(*chainRoom, false); moving->fYawDegrees = 0.f;
+				const std::array<float, 3u> origin{moving->fSpawnPositionX, moving->fSpawnPositionY, moving->fSpawnPositionZ};
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+				const bool queued = chainRoom->Evaluate_KoukuSaydonPatternAudition(918u, chainRequest, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+				for (unsigned index = 0u; index < 45u; ++index) tick(*chainRoom);
+				const auto close = [](float a, float b) { return std::abs(a - b) < .001f; };
+				tests.Require(queued && moving->iPatternStageIndex == 1u && !moving->bPatternStageRootOriginCaptured &&
+					close(moving->fPositionZ, origin[2] + .2f) && close(moving->fPositionY, origin[1] + .3f),
+					"Stage transition commits the first root endpoint before resetting its curve origin");
+				tick(*chainRoom);
+				auto dead = *moving; dead.iCurrentHp = 0u;
+				tests.Require(CKoukuSaydonBrain{}.Update(dead, *generation, chainRoom->m_iServerTick, status) ==
+					KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD && dead.PatternStageRootMotion.empty() &&
+					!dead.bPatternStageRootOriginCaptured && dead.iPatternStageRootLastTick == 0u,
+					"Death releases a sampled stage root curve and its origin through the existing brain termination");
+				for (unsigned index = 46u; index < 95u; ++index) tick(*chainRoom);
+				tests.Require(moving->strPatternId.empty() && close(moving->fPositionX, origin[0] + .1f) &&
+					close(moving->fPositionZ, origin[2] + .2f) && close(moving->fPositionY, origin[1] + .3f),
+					"Following root stages accumulate from committed XYZ instead of reusing the previous stage origin");
+			}
 			{
 				auto contactRoom = makeRoom(); auto contactRequest = requestFor(*contactRoom, 0u);
 				contactRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;

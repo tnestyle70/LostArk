@@ -205,6 +205,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 			float4x4_t& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
 			XMStoreFloat4x4(&root, XMMatrixTranslation(placement.x, placement.y, placement.z));
 			m_PreviewUnscaledParentMatrix = root;
+			m_PreviewRootMotionOffset = {};
 			CAnimationTargetService::Bind_Preview(body->Get_Model(), asset->pAssetName, root);
 		}
 		m_Status = "Target=LOCAL ARENA PREVIEW | anchor=" + placementSource +
@@ -237,9 +238,13 @@ bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
 		CAnimationTargetService::Resolve_Model() != expectedModel)
 		return false;
 	auto& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
+	m_fPreviewScaleMultiplier = multiplier;
 	const f32_t currentMultiplier = Resolve_KoukuPreviewBodyMultiplier(m_pPreviewAsset, multiplier);
 	XMStoreFloat4x4(&root, XMMatrixScaling(currentMultiplier, currentMultiplier, currentMultiplier) *
 		XMLoadFloat4x4(&m_PreviewUnscaledParentMatrix));
+	float3_t worldOffset;
+	XMStoreFloat3(&worldOffset, XMVector3TransformNormal(XMLoadFloat3(&m_PreviewRootMotionOffset), XMLoadFloat4x4(&root)));
+	root._41 += worldOffset.x; root._42 += worldOffset.y; root._43 += worldOffset.z;
 	CAnimationTargetService::Bind_Preview(expectedModel, m_pPreviewAsset->pAssetName, root);
 	// ImGui can seek after the level update; refresh the existing part's cached
 	// combined matrix immediately without advancing its animation clock.
@@ -247,6 +252,18 @@ bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
 	if (const auto weapon = m_pPreviewWeaponObject.lock()) weapon->Update(0.f);
 	Synchronize_PreviewWeapon();
 	return true;
+}
+
+bool_t Client::CCharacterPreviewPanel::Set_PreviewRootMotionOffset(
+	const shared_ptr<Engine::CModel>& expectedModel, const float3_t& modelOffset)
+{
+	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
+	if (!expectedModel || !body || body->Get_Model() != expectedModel ||
+		CAnimationTargetService::Resolve_Model() != expectedModel ||
+		m_iPreviewLevelIndex != CGameInstance::Get().Get_CurrentLevelID() ||
+		!std::isfinite(modelOffset.x) || !std::isfinite(modelOffset.y) || !std::isfinite(modelOffset.z)) return false;
+	m_PreviewRootMotionOffset = modelOffset;
+	return Set_PreviewScaleMultiplier(expectedModel, m_fPreviewScaleMultiplier);
 }
 
 void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
@@ -258,10 +275,13 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 	if (nullptr != body && nullptr != body->Get_Model() &&
 		nullptr != Resolve_KoukuPreviewArchetype(m_pPreviewAsset->pAssetName))
 	{
-		const f32_t scale = Resolve_KoukuPreviewBodyMultiplier(m_pPreviewAsset, 1.f);
+		const f32_t scale = Resolve_KoukuPreviewBodyMultiplier(m_pPreviewAsset, m_fPreviewScaleMultiplier);
 		auto& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
 		XMStoreFloat4x4(&root, XMMatrixScaling(scale, scale, scale) *
 			XMLoadFloat4x4(&m_PreviewUnscaledParentMatrix));
+		float3_t worldOffset;
+		XMStoreFloat3(&worldOffset, XMVector3TransformNormal(XMLoadFloat3(&m_PreviewRootMotionOffset), XMLoadFloat4x4(&root)));
+		root._41 += worldOffset.x; root._42 += worldOffset.y; root._43 += worldOffset.z;
 		CAnimationTargetService::Bind_Preview(body->Get_Model(), m_pPreviewAsset->pAssetName, root);
 		body->Update(0.f);
 	}
@@ -318,6 +338,8 @@ Client::EFFECT_V2_TARGET Client::CCharacterPreviewPanel::Get_PreviewEffectTarget
 
 void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 {
+	m_PreviewRootMotionOffset = {};
+	m_fPreviewScaleMultiplier = 1.f;
 	const shared_ptr<CGameObject> previewObject = m_pPreviewObject.lock();
 	const shared_ptr<CGameObject> previewWeapon =
 		m_pPreviewWeaponObject.lock();

@@ -870,6 +870,27 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					Is_Finite(D.Light.vAmbient) &&
 					std::isfinite(D.Light.fFalloffExponent) &&
 					D.Light.fFalloffExponent > 0.f));
+        const bool_t bCaptureProfile = D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
+            D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+        if (!std::isfinite(D.ScreenPost.fCaptureShrinkSeconds) || D.ScreenPost.fCaptureShrinkSeconds < 0.f ||
+            D.ScreenPost.fCaptureShrinkSeconds > D.Timing.fLifeTimeSeconds ||
+            (!bCaptureProfile && D.ScreenPost.fCaptureShrinkSeconds != 0.f))
+        { strOutError = "Screen capture shrink duration must fit its enabled capture window."; return false; }
+		const auto& CaptureTarget = D.ScreenPost.strCaptureTargetModelCueId;
+		const bool_t bCubeCapture = D.ScreenPost.bEnabled &&
+			D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+		if (bCubeCapture)
+		{
+			const auto Cue = std::find_if(Document.ModelCues.begin(), Document.ModelCues.end(),
+				[&](const auto& Value) { return Value.strCueId == CaptureTarget && Value.bVisible; });
+			if ((D.ScreenPost.fCaptureShrinkSeconds != 0.f &&
+                D.ScreenPost.fCaptureShrinkSeconds != D.Timing.fLifeTimeSeconds) ||
+                CaptureTarget.empty() || Cue == Document.ModelCues.end() ||
+				std::abs(D.Timing.fStartDelaySeconds + D.Timing.fLifeTimeSeconds - Cue->fStartDelaySeconds) > 1.e-4f)
+			{ strOutError = "Screen cube capture must end at its visible ModelCue's first pose: " + Element.strElementId; return false; }
+		}
+		else if (!CaptureTarget.empty())
+		{ strOutError = "Only the screen cube capture profile accepts a ModelCue target."; return false; }
 		const bool_t bScreenPostValid =
 			(EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind ||
 				!D.ScreenPost.bEnabled) &&

@@ -1259,11 +1259,15 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 	/* 34120 is official rate 361 at project-tuned attack power 1000, split across its three
 	authored hit shapes so the sum stays exact. */
 	const PLAYER_SKILL_DEFINITION* talonStrike = catalog.Find_Skill(34120);
+	std::vector<const PLAYER_SKILL_HIT*> talonDamageColliders;
+	if (nullptr != talonStrike)
+		for (const auto& hit : talonStrike->Hits)
+			if (hit.iResultKind == 1u) talonDamageColliders.push_back(&hit);
 	tests.Require(
-		nullptr != talonStrike && 3u == talonStrike->Hits.size() &&
-		talonStrike->Hits[0].iTimeMs < talonStrike->Hits[1].iTimeMs &&
-		3u == talonStrike->Hits[0].iAreaType &&
-		2u == talonStrike->Hits[2].iAreaType,
+		3u == talonDamageColliders.size() &&
+		talonDamageColliders[0]->iTimeMs < talonDamageColliders[1]->iTimeMs &&
+		3u == talonDamageColliders[0]->iAreaType &&
+		2u == talonDamageColliders[2]->iAreaType,
 		"Load authored hit shapes for the skill from the gameplay bootstrap");
 	tests.Require(6390u == entities[0].iCurrentHp,
 		"Apply server-authoritative player damage across authored hits");

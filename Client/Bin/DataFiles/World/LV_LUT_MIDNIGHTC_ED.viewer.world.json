@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_MIDNIGHTC_ED",
-    "revision":  8792,
+    "revision":  8793,
     "placements":  [
                        {
                            "placementId":  "1Stage_Final",
@@ -2109,7 +2109,7 @@
                            "position":  [
                                             -0.0700000003,
                                             1.32000005,
-                                            942.330017
+                                            737.530017
                                         ],
                            "yawDegrees":  237,
                            "enabled":  false

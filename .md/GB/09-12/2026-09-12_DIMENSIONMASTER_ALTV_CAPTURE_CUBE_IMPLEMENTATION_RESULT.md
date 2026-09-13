@@ -2,9 +2,11 @@
 
 ## G00. 현재 소스와 후보 범위
 
-현재 두 Authored 문서는 기존 실행 Client와의 호환을 위해 작업 전 사용자 원본으로 복귀했다.
-아래 데이터 변경은 out 후보에만 보존되어 있으며 설치되지 않았다. Codec/Renderer/Shader 소스
-구현과 out 검증은 유지한다.
+09-13 현재 파일을 다시 확인한 결과 두 Authored 문서는 full311/tuning26으로 설치되어 있고,
+두 notify036 cube 모두 ALT178 material을 사용한다. 실제 Resources WModel도 아래 retime
+후보와 SHA256이 같다. full의 추가 사용자 bloomIntensity는 보존했다. 아래 G04는 당시
+구형 Client 보호를 위한 보류 이력이며 현재 설치 상태는 아니다. 현재 Codec 재검증과 제품
+빌드 경계는 [연출 Workbench 결과 G05](../09-13/2026-09-13_KOUKU_CINEMATIC_WORKBENCH_IMPLEMENTATION_RESULT.md#g05-차원술사-장면-이미지-큐브의-현재-연결)를 따른다.
 
 실제 입력은 `2050540 -> pc_sp_m_00_sk_sk_super_timewave ->
 effect.dimensionmaster.skill.2050540.full.restore`다. 사용자 편집 이후 full 309행은 그대로
@@ -56,9 +58,9 @@ front depth로 시작 화면을 채운다. 공통 root elapsed는 현재 .029999
 
 `out/DimensionMasterALTV20260912/sk_swp_cub_00_sk.wmodel`
 
-사용자 Server/Client가 실행 중이므로 Resources의 원본과 EngineSDK/DLL/제품 CSO는
-교체하지 않았다. 이 후보를 실제 Resources에 반영하는 작업과 제품 빌드는 root가 사용자
-실행 상태를 확인한 뒤 연결해야 한다. 현재 실행 중인 Client에 적용됐다고 기록하지 않는다.
+당시 사용자 Server/Client가 실행 중이어서 Resources와 제품 실행 파일의 교체를 보류했다.
+09-13 재확인에서는 실제 Resources가 이 retime 후보와 동일했다. 이 파일 확인만으로
+새 Codec/Renderer/Shader의 제품 빌드나 사용자 화면 확인까지 완료했다고 기록하지 않는다.
 
 ## G03. 실행한 검증
 
@@ -83,7 +85,7 @@ Client/UI 실행·조작·GPU draw·화면 캡처는 하지 않았다. 사용자
 안착, 색/가림/카메라 추종, 시작 화면과 주변 큐브의 시각적 일치는 아직 사용자 확인 전이다.
 
 
-## G04. 기존 실행 Client 보호와 데이터 설치 보류
+## G04. 당시 기존 실행 Client 보호와 데이터 설치 보류 이력
 
 기존 Client Codec은 ModelCue material을 Artist/Lance 계약에만 허용한다. 이번 ALT178 cue
 material은 기존 `Validate`에서 문서 전체를 거부한다. Effect Catalog는 Data/Effects/Authored의
@@ -99,4 +101,4 @@ bytes가 일치했다. 추가 사용자 값 편집은 없었다. 완전한 후�
 - 기준·후보 SHA/현재 상태: 같은 경로의 `altv_deferred_data_manifest.json`
 - 설치는 기존 Client 종료 뒤 새 Codec/Renderer/Shader와 retimed WModel 준비 시 두 문서를
   함께 수행한다. 두 source가 manifest의 baseline과 달라졌다면 새 사용자 편집을 먼저 합치며
-  후보 파일로 덮어쓰지 않는다. 현재 상태는 `DEFERRED_NOT_INSTALLED`다.
+  후보 파일로 덮어쓰지 않는다. 당시 상태는 `DEFERRED_NOT_INSTALLED`였으며 현재 상태는 G00을 따른다.

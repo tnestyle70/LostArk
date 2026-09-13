@@ -132,7 +132,8 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		return distance(a)<distance(b);
 	});
 	const size_t used=presentation.Get_TransientLights().size();
-	const size_t budget=used<376u?376u-used:0u;
+	constexpr size_t mapCapacity = CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY - 8u;
+	const size_t budget=used<mapCapacity?mapCapacity-used:0u;
 	const size_t count=(std::min)(lights.size(),budget);
 	presentation.Register_ProviderSubmissionExpectation(count,count,0u,0u);
 	for(size_t i=0;i<count;++i)

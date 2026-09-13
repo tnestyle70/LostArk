@@ -1,9 +1,9 @@
 {
   "schema": "lostark.kouku-saydon-pattern-bindings",
   "formatVersion": 1,
-  "lightResourceRevision": 8,
+  "lightResourceRevision": 10,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 423,
+  "sourceRevision": 516,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -13,7 +13,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -23,7 +24,8 @@
       "sourceStartMs": 0,
       "playMs": 2267,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.51",
@@ -33,7 +35,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.53",
@@ -43,7 +46,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.54",
@@ -53,7 +57,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.55",
@@ -63,7 +68,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.52",
@@ -73,7 +79,8 @@
       "sourceStartMs": 0,
       "playMs": 2200,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.1",
@@ -213,7 +220,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_4.stage.3",
@@ -223,7 +231,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_4.stage.4",
@@ -233,7 +242,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.38",
@@ -243,7 +253,8 @@
       "sourceStartMs": 0,
       "playMs": 1833,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.25",
@@ -253,7 +264,8 @@
       "sourceStartMs": 0,
       "playMs": 867,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.26",
@@ -263,7 +275,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.27",
@@ -273,7 +286,8 @@
       "sourceStartMs": 0,
       "playMs": 2400,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.28",
@@ -283,7 +297,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.29",
@@ -293,7 +308,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.30",
@@ -303,7 +319,8 @@
       "sourceStartMs": 0,
       "playMs": 2400,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.31",
@@ -313,7 +330,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.32",
@@ -323,7 +341,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.33",
@@ -333,7 +352,8 @@
       "sourceStartMs": 0,
       "playMs": 2400,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.34",
@@ -343,7 +363,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.35",
@@ -353,7 +374,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.36",
@@ -363,7 +385,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.503",
@@ -373,7 +396,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.584",
@@ -383,7 +407,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.570",
@@ -393,7 +418,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.571",
@@ -403,7 +429,8 @@
       "sourceStartMs": 0,
       "playMs": 500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.572",
@@ -413,7 +440,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.573",
@@ -423,7 +451,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.585",
@@ -433,7 +462,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.586",
@@ -443,7 +473,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.574",
@@ -453,7 +484,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.576",
@@ -463,7 +495,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.582",
@@ -473,7 +506,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.581",
@@ -483,7 +517,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.577",
@@ -493,7 +528,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.578",
@@ -503,7 +539,8 @@
       "sourceStartMs": 0,
       "playMs": 800,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.579",
@@ -513,7 +550,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.583",
@@ -523,7 +561,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.589",
@@ -533,7 +572,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.590",
@@ -543,7 +583,8 @@
       "sourceStartMs": 0,
       "playMs": 500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.591",
@@ -553,7 +594,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.587",
@@ -563,7 +605,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.580",
@@ -573,7 +616,8 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.1",
@@ -583,7 +627,8 @@
       "sourceStartMs": 0,
       "playMs": 4333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.3",
@@ -593,7 +638,8 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.4",
@@ -603,7 +649,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.10",
@@ -613,7 +660,8 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.11",
@@ -623,7 +671,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.12",
@@ -633,7 +682,8 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.13",
@@ -643,7 +693,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.14",
@@ -653,7 +704,8 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.15",
@@ -663,7 +715,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_8.stage.3",
@@ -714,7 +767,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_10.stage.2",
@@ -724,7 +778,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_10.stage.3",
@@ -734,7 +789,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_10.stage.4",
@@ -744,7 +800,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_10.stage.5",
@@ -754,7 +811,8 @@
       "sourceStartMs": 0,
       "playMs": 2233,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_11.stage.1",
@@ -764,7 +822,8 @@
       "sourceStartMs": 0,
       "playMs": 4000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_11.stage.3",
@@ -774,7 +833,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_11.stage.2",
@@ -784,7 +844,8 @@
       "sourceStartMs": 0,
       "playMs": 4000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_11.stage.4",
@@ -794,7 +855,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_11.stage.5",
@@ -804,7 +866,8 @@
       "sourceStartMs": 0,
       "playMs": 4000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_11.stage.6",
@@ -814,7 +877,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_12.stage.1",
@@ -845,7 +909,8 @@
       "playMs": 2667,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.7",
@@ -859,7 +924,8 @@
       "playMs": 997,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.3",
@@ -873,7 +939,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.5",
@@ -887,7 +954,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.13",
@@ -901,7 +969,8 @@
       "playMs": 602,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.6",
@@ -915,7 +984,8 @@
       "playMs": 2667,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.15",
@@ -929,7 +999,8 @@
       "playMs": 997,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.8",
@@ -943,7 +1014,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.9",
@@ -957,7 +1029,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.11",
@@ -971,7 +1044,8 @@
       "playMs": 630,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.14",
@@ -985,7 +1059,8 @@
       "playMs": 2667,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.20",
@@ -999,7 +1074,8 @@
       "playMs": 2667,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.21",
@@ -1013,7 +1089,8 @@
       "playMs": 997,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.22",
@@ -1027,7 +1104,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.23",
@@ -1041,7 +1119,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.24",
@@ -1055,7 +1134,8 @@
       "playMs": 630,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.25",
@@ -1069,7 +1149,8 @@
       "playMs": 2667,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.2",
@@ -1083,7 +1164,8 @@
       "playMs": 997,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.16",
@@ -1097,7 +1179,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.17",
@@ -1111,7 +1194,8 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_13.stage.18",
@@ -1126,7 +1210,8 @@
       "playRate": 1,
       "endPolicy": "EXACT",
       "holdAtWindowEnd": true,
-      "unblendedBoneContact": true
+      "unblendedBoneContact": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_14.stage.1",
@@ -1136,7 +1221,8 @@
       "sourceStartMs": 0,
       "playMs": 2333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_15.stage.1",
@@ -1296,7 +1382,8 @@
       "sourceStartMs": 0,
       "playMs": 4000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_17.stage.2",
@@ -1306,7 +1393,8 @@
       "sourceStartMs": 0,
       "playMs": 1500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_17.stage.3",
@@ -1316,7 +1404,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.1",
@@ -1326,7 +1415,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.64",
@@ -1336,7 +1426,8 @@
       "sourceStartMs": 0,
       "playMs": 1500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.4",
@@ -1346,7 +1437,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.6",
@@ -1356,7 +1448,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.19",
@@ -1366,7 +1459,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.20",
@@ -1376,7 +1470,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.21",
@@ -1386,7 +1481,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.22",
@@ -1396,7 +1492,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.23",
@@ -1406,7 +1503,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.24",
@@ -1416,7 +1514,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.25",
@@ -1426,7 +1525,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.99",
@@ -1436,7 +1536,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.100",
@@ -1446,7 +1547,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.101",
@@ -1456,7 +1558,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.102",
@@ -1466,7 +1569,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.60",
@@ -1476,7 +1580,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.2",
@@ -1486,7 +1591,8 @@
       "sourceStartMs": 0,
       "playMs": 2333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.3",
@@ -1496,7 +1602,8 @@
       "sourceStartMs": 0,
       "playMs": 2500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_21.stage.4",
@@ -1506,7 +1613,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_22.stage.1",
@@ -1516,7 +1624,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_22.stage.2",
@@ -1526,7 +1635,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_22.stage.3",
@@ -1536,7 +1646,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_23.stage.1",
@@ -1546,7 +1657,8 @@
       "sourceStartMs": 0,
       "playMs": 2500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_23.stage.2",
@@ -1556,7 +1668,8 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_23.stage.3",
@@ -1566,7 +1679,8 @@
       "sourceStartMs": 0,
       "playMs": 1000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_23.stage.4",
@@ -1576,7 +1690,8 @@
       "sourceStartMs": 0,
       "playMs": 2500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_24.stage.1",
@@ -1976,7 +2091,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.2",
@@ -1986,7 +2102,8 @@
       "sourceStartMs": 0,
       "playMs": 5500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.3",
@@ -1996,7 +2113,8 @@
       "sourceStartMs": 0,
       "playMs": 2667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_27.stage.4",
@@ -2006,7 +2124,8 @@
       "sourceStartMs": 0,
       "playMs": 5500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.27",
@@ -2016,7 +2135,8 @@
       "sourceStartMs": 0,
       "playMs": 2500,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.28",
@@ -2026,7 +2146,8 @@
       "sourceStartMs": 0,
       "playMs": 2467,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_28.stage.29",
@@ -2036,7 +2157,8 @@
       "sourceStartMs": 0,
       "playMs": 382,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_29.stage.1",
@@ -2046,7 +2168,8 @@
       "sourceStartMs": 0,
       "playMs": 2000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_29.stage.2",
@@ -2057,7 +2180,8 @@
       "playMs": 3000,
       "playRate": 1,
       "endPolicy": "LOOP_TO_WINDOW",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_30.stage.1",
@@ -2067,7 +2191,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_30.stage.2",
@@ -2077,7 +2202,8 @@
       "sourceStartMs": 0,
       "playMs": 3167,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_30.stage.3",
@@ -2088,7 +2214,8 @@
       "playMs": 3000,
       "playRate": 1,
       "endPolicy": "LOOP_TO_WINDOW",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_31.stage.1",
@@ -2118,7 +2245,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.21",
@@ -2128,7 +2256,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.22",
@@ -2138,7 +2267,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.23",
@@ -2148,7 +2278,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.24",
@@ -2158,7 +2289,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.25",
@@ -2168,7 +2300,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.26",
@@ -2178,7 +2311,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.27",
@@ -2188,7 +2322,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.28",
@@ -2198,7 +2333,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.29",
@@ -2208,7 +2344,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.30",
@@ -2218,7 +2355,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.31",
@@ -2228,7 +2366,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.32",
@@ -2238,7 +2377,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.33",
@@ -2248,7 +2388,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.34",
@@ -2258,7 +2399,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_33.stage.35",
@@ -2268,7 +2410,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_34.stage.19",
@@ -2278,7 +2421,186 @@
       "sourceStartMs": 0,
       "playMs": 4667,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.1",
+      "clip": "rpct00_att_battle_28_05_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 933,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.2",
+      "clip": "rpct00_att_battle_28_05_loop_a",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3167,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.13",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.13",
+      "clip": "rpct00_att_battle_28_05_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1400,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.22",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.22",
+      "clip": "rpct00_att_battle_28_08",
+      "startOffsetMs": 0,
+      "sourceStartMs": 1024,
+      "sourceEndMs": 4833,
+      "playMs": 3809,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.4",
+      "clip": "rpct00_att_battle_28_06",
+      "startOffsetMs": 0,
+      "sourceStartMs": 1011,
+      "sourceEndMs": 9733,
+      "playMs": 8722,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.14",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.14",
+      "clip": "rpct00_att_battle_28_08",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4833,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.52",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.51",
+      "clip": "rpct00_att_battle_28_08",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4833,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.7",
+      "clip": "rpct00_att_battle_28_09",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2233,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.8",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.9",
+      "clip": "rpct00_att_battle_28_10_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.10",
+      "clip": "rpct00_att_battle_28_10_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3333,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.54",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.53",
+      "clip": "rpct00_att_battle_28_10_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3333,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.55",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.54",
+      "clip": "rpct00_att_battle_28_10_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3333,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.56",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.55",
+      "clip": "rpct00_att_battle_28_10_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3333,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.11",
+      "clip": "rpct00_att_battle_28_10_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1133,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_35.stage.12",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.animation.12",
+      "clip": "rpct00_att_battle_28_11",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2400,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.1",
@@ -2288,7 +2610,8 @@
       "sourceStartMs": 0,
       "playMs": 4997,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.2",
@@ -2298,7 +2621,8 @@
       "sourceStartMs": 0,
       "playMs": 4275,
       "playRate": 0.699999988079071,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.3",
@@ -2309,7 +2633,8 @@
       "playMs": 2447,
       "playRate": 0.800000011920929,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.4",
@@ -2320,7 +2645,8 @@
       "playMs": 3161,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.5",
@@ -2331,7 +2657,8 @@
       "playMs": 2093,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.6",
@@ -2341,29 +2668,34 @@
       "sourceStartMs": 0,
       "playMs": 2697,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.7",
       "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.7",
       "clip": "rpct00_evt2_blk6",
       "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 534,
+      "sourceStartMs": 248,
+      "sourceEndMs": 534,
+      "playMs": 286,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.8",
       "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.8",
       "clip": "rpct00_evt2_rpct_talk_01",
       "startOffsetMs": 0,
-      "sourceStartMs": 800,
-      "playMs": 1157,
+      "sourceStartMs": 933,
+      "sourceEndMs": 1957,
+      "playMs": 1024,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.9",
@@ -2371,9 +2703,11 @@
       "clip": "rpct00_walk_normal_1",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 2006,
+      "playMs": 1598,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.10",
@@ -2384,29 +2718,33 @@
       "playMs": 899,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.11",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.11",
+      "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.14",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.14",
       "clip": "rpct00_att_battle_13_01",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 4058,
       "playRate": 0.8999999761581421,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.12",
       "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.animation.12",
       "clip": "rpct00_att_battle_13_02",
       "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 877,
+      "sourceStartMs": 74,
+      "sourceEndMs": 877,
+      "playMs": 803,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_36.stage.13",
@@ -2417,17 +2755,504 @@
       "playMs": 2010,
       "playRate": 1,
       "endPolicy": "HOLD_LAST_POSE",
-      "holdAtWindowEnd": true
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_1",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.idle.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.1.r0.animation.1",
+      "clip": "rpct00_att_battle_27_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.idle.2",
       "clip": "rpct00_idle_battle_1",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 15000,
+      "playMs": 115,
       "playRate": 1.0,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.1",
+      "clip": "rpct00_att_battle_24_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.2",
+      "clip": "rpct00_att_battle_24_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.3",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.4",
+      "clip": "rpct00_att_battle_24_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.5",
+      "clip": "rpct00_att_battle_24_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.6",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.7",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.2.r0.animation.8",
+      "clip": "rpct00_att_battle_24_05",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 718,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.3.r0.animation.1",
+      "clip": "rpct00_att_battle_34_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_12",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.3.r0.animation.2",
+      "clip": "rpct00_att_battle_9_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_13",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.3.r0.animation.3",
+      "clip": "rpct00_att_battle_9_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_14",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.3.r0.animation.4",
+      "clip": "rpct00_att_battle_9_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_15",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.idle.15",
+      "clip": "rpct00_idle_battle_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 70,
+      "playRate": 1.0,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_16",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.4.r0.animation.1",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_17",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.4.r0.animation.2",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_18",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.4.r0.animation.3",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_19",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.4.r0.animation.4",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_20",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.4.r0.animation.5",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_21",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.4.r0.animation.6",
+      "clip": "rpct00_att_battle_29_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 328,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.1",
+      "clip": "rpct00_att_phase1_1_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2067,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.2",
+      "clip": "rpct00_att_phase1_1_06",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1833,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.13",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.13",
+      "clip": "rpct00_att_battle_25_04_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.14",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.14",
+      "clip": "rpct00_att_battle_25_04_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 500,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.15",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.15",
+      "clip": "rpct00_att_battle_25_04_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.41",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.41",
+      "clip": "rpct00_att_battle_25_05_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.42",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.42",
+      "clip": "rpct00_att_battle_25_05_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 500,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.43",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.43",
+      "clip": "rpct00_att_battle_25_05_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.44",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.44",
+      "clip": "rpct00_att_battle_25_07",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.25",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.25",
+      "clip": "rpct00_att_battle_25_06_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.26",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.26",
+      "clip": "rpct00_att_battle_25_06_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 800,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.27",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.27",
+      "clip": "rpct00_att_battle_25_06_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.16",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.16",
+      "clip": "rpct00_att_battle_25_07",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.57",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.57",
+      "clip": "rpct00_att_battle_25_04_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.58",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.58",
+      "clip": "rpct00_att_battle_25_04_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 500,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_38.stage.59",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.animation.59",
+      "clip": "rpct00_att_battle_25_04_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.4",
+      "clip": "rpct00_att_battle_24_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.5",
+      "clip": "rpct00_att_battle_24_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.6",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.7",
+      "clip": "rpct00_att_battle_24_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.8",
+      "clip": "rpct00_att_battle_24_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.9",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.10",
+      "clip": "rpct00_att_battle_24_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_39.animation.11",
+      "clip": "rpct00_att_battle_24_05",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_42.stage.2",
@@ -2437,7 +3262,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_42.stage.3",
@@ -2447,7 +3273,8 @@
       "sourceStartMs": 0,
       "playMs": 1667,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_42.stage.4",
@@ -2457,7 +3284,96 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_43.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_43.animation.5",
+      "clip": "rpct00_att_battle_34_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_43.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_43.animation.2",
+      "clip": "rpct00_att_battle_9_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_43.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_43.animation.3",
+      "clip": "rpct00_att_battle_9_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_43.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_43.animation.4",
+      "clip": "rpct00_att_battle_9_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_44.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_44.animation.1",
+      "clip": "rpct00_att_battle_34_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_44.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_44.animation.2",
+      "clip": "rpct00_att_battle_34_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_44.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_44.animation.3",
+      "clip": "rpct00_att_battle_34_04",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_44.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_44.animation.4",
+      "clip": "rpct00_att_battle_34_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_46.stage.1",
@@ -2467,7 +3383,42 @@
       "sourceStartMs": 0,
       "playMs": 1600,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_46.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_46.animation.2",
+      "clip": "rpct00_idle_battle_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_46.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_46.animation.3",
+      "clip": "rpct00_att_battle_34_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_46.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_46.animation.4",
+      "clip": "rpct00_att_battle_24_06",
+      "startOffsetMs": 0,
+      "sourceStartMs": 310,
+      "sourceEndMs": 2500,
+      "playMs": 2190,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.1",
@@ -2477,7 +3428,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.2",
@@ -2487,7 +3439,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.3",
@@ -2497,7 +3450,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.4",
@@ -2507,7 +3461,8 @@
       "sourceStartMs": 0,
       "playMs": 1533,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.5",
@@ -2517,7 +3472,8 @@
       "sourceStartMs": 0,
       "playMs": 1533,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.6",
@@ -2527,7 +3483,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.7",
@@ -2537,7 +3494,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.8",
@@ -2547,7 +3505,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.9",
@@ -2557,7 +3516,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.10",
@@ -2567,7 +3527,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.11",
@@ -2577,7 +3538,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.12",
@@ -2587,7 +3549,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.13",
@@ -2597,7 +3560,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.14",
@@ -2607,7 +3571,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.15",
@@ -2617,7 +3582,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.16",
@@ -2627,7 +3593,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.17",
@@ -2637,7 +3604,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.18",
@@ -2647,7 +3615,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.19",
@@ -2657,7 +3626,8 @@
       "sourceStartMs": 0,
       "playMs": 1533,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.20",
@@ -2667,7 +3637,8 @@
       "sourceStartMs": 0,
       "playMs": 1533,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.21",
@@ -2677,7 +3648,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.22",
@@ -2687,7 +3659,8 @@
       "sourceStartMs": 0,
       "playMs": 3000,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.23",
@@ -2697,7 +3670,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.24",
@@ -2707,7 +3681,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.25",
@@ -2717,7 +3692,8 @@
       "sourceStartMs": 0,
       "playMs": 1167,
       "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW"
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.26",
@@ -2727,7 +3703,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.27",
@@ -2737,7 +3714,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.28",
@@ -2747,7 +3725,8 @@
       "sourceStartMs": 0,
       "playMs": 1033,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.29",
@@ -2757,7 +3736,8 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     },
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.30",
@@ -2767,7 +3747,62 @@
       "sourceStartMs": 0,
       "playMs": 1333,
       "playRate": 1,
-      "endPolicy": "EXACT"
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_49.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_49.animation.1",
+      "clip": "rpct00_att_battle_34_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_49.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_49.animation.2",
+      "clip": "rpct00_att_battle_10_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4267,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_49.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_49.animation.3",
+      "clip": "rpct00_idle_battle_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_50.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_50.animation.1",
+      "clip": "rpct00_att_battle_34_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1600,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_52_ACTION_1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_52.idle.1",
+      "clip": "rpct00_idle_battle_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 15000,
+      "playRate": 1.0,
+      "endPolicy": "LOOP_TO_WINDOW"
     }
   ],
   "fearPresentations": [
@@ -2884,6 +3919,11 @@
       "displayName": "대형세이튼_불뿜기"
     },
     {
+      "folderId": "kakulsaydon.folder.12",
+      "gateId": "GATE3",
+      "displayName": "세이튼_쇼타임"
+    },
+    {
       "folderId": "kakulsaydon.folder.13",
       "gateId": "GATE3",
       "displayName": "세이튼_마리오_1페이즈"
@@ -2898,6 +3938,12 @@
       "gateId": "GATE3",
       "displayName": "3관문_쿠크세이튼_마리오",
       "timelinePatternId": "KAKULSAYDON_G1_PATTERN_37"
+    },
+    {
+      "folderId": "kakulsaydon.folder.17",
+      "gateId": "GATE3",
+      "displayName": "쿠크세이튼_분신소환_기분나빠",
+      "timelinePatternId": "KAKULSAYDON_G1_PATTERN_52"
     }
   ],
   "bundles": [
@@ -3121,6 +4167,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 18135,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "LEAF",
@@ -4757,6 +5804,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 4167,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -4765,6 +5813,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 26900,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -4990,6 +6039,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 31467,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "LEAF",
@@ -6023,6 +7073,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 33669,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -7807,6 +8858,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 9900,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -7815,6 +8867,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
       "durationMs": 20001,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -8210,6 +9263,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
       "durationMs": 30353,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "",
@@ -8921,6 +9975,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
       "durationMs": 2333,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -9885,6 +10940,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
       "durationMs": 7500,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -10164,6 +11220,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 20167,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -11091,6 +12148,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 5833,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -11478,6 +12536,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 3500,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -11486,6 +12545,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 10667,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -13736,6 +14796,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
       "durationMs": 16334,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -13799,6 +14860,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 5349,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -14024,6 +15086,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 6582,
+      "animationRootVerticalScale": 0.0,
       "sourceAnchorAnimations": [
         {
           "runtimeClip": "rpct00_att_battle_1_01",
@@ -14107,6 +15170,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 11075,
+      "animationRootVerticalScale": 0.0,
       "sourceAnchorAnimations": [
         {
           "runtimeClip": "rpct00_att_battle_14_01",
@@ -14207,6 +15271,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 26672,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -14215,30 +15280,1194 @@
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 4667,
-      "presentationOccurrences": []
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_27_01",
+          "sourceStartMs": 0,
+          "playMs": 4667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.7e765b32937e215a2fef",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_34.presentation.1",
+          "startMs": 0,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_35",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 50128,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_28_05_start",
+          "sourceStartMs": 0,
+          "playMs": 933,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_05_loop_a",
+          "sourceStartMs": 0,
+          "playMs": 3167,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 933,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_05_end",
+          "sourceStartMs": 0,
+          "playMs": 1400,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4100,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_08",
+          "sourceStartMs": 1024,
+          "playMs": 3809,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5500,
+          "blendInMs": 0,
+          "sourceEndMs": 4833
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_06",
+          "sourceStartMs": 1011,
+          "playMs": 8722,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 9309,
+          "blendInMs": 0,
+          "sourceEndMs": 9733
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_08",
+          "sourceStartMs": 0,
+          "playMs": 4833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 18031,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_08",
+          "sourceStartMs": 0,
+          "playMs": 4833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 22864,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_09",
+          "sourceStartMs": 0,
+          "playMs": 2233,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 27697,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 29930,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_10_start",
+          "sourceStartMs": 0,
+          "playMs": 2333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 30930,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_10_loop",
+          "sourceStartMs": 0,
+          "playMs": 3333,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 33263,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_10_loop",
+          "sourceStartMs": 0,
+          "playMs": 3333,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 36596,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_10_loop",
+          "sourceStartMs": 0,
+          "playMs": 3333,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 39929,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_10_loop",
+          "sourceStartMs": 0,
+          "playMs": 3333,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 43262,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_10_end",
+          "sourceStartMs": 0,
+          "playMs": 1133,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 46595,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_28_11",
+          "sourceStartMs": 0,
+          "playMs": 2400,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 47728,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8e127a5a40f87f2a4798",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.gun.muzzle.world",
+          "resourceDurationMs": 11000,
+          "positionOffset": [
+            0.01913988293459018,
+            -0.024699029340667443,
+            0.9825197505950928
+          ],
+          "rotationDegrees": [
+            0,
+            -89.3295806803671,
+            -0.8004327658390026
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "WORLD",
+          "worldId": "kakulsaydon.g1.world.16",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "KAKULSAYDON_G1_PATTERN_35.world.1",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.2",
+          "startMs": 8956,
+          "durationMs": 11000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": "world.object.instance.kouku.saydon_showtime_gun_left"
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.57eb9e2c4e7edc4f4119",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.gun.signature.world",
+          "resourceDurationMs": 3601,
+          "positionOffset": [
+            0.01913988293459018,
+            -0.024699029340667443,
+            0.9825197505950928
+          ],
+          "rotationDegrees": [
+            0,
+            -89.3295806803671,
+            -0.8004327658390026
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "WORLD",
+          "worldId": "kakulsaydon.g1.world.16",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "KAKULSAYDON_G1_PATTERN_35.world.1",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.3",
+          "startMs": 8956,
+          "durationMs": 3601,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": "world.object.instance.kouku.saydon_showtime_gun_left"
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.686e23c131f4c97b7820",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.fire.impact",
+          "resourceDurationMs": 4301,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.4",
+          "startMs": 20883,
+          "durationMs": 4301,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.47d0d770e203955ee140",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.circle.warning.impact",
+          "resourceDurationMs": 5800,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.5",
+          "startMs": 25757,
+          "durationMs": 5800,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.206b6fbcc26ef7be16d4",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.sector.warning.shot",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.6",
+          "startMs": 33762,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.a6092d71e8a16fa72981",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.target.fixed.ground",
+          "resourceDurationMs": 12000,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.7",
+          "startMs": 11730,
+          "durationMs": 12000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8e127a5a40f87f2a4798",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.gun.muzzle.world",
+          "resourceDurationMs": 11000,
+          "positionOffset": [
+            0.01913988293459018,
+            -0.024699029340667443,
+            0.9825197505950928
+          ],
+          "rotationDegrees": [
+            0,
+            -89.3295806803671,
+            -0.8004327658390026
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "WORLD",
+          "worldId": "kakulsaydon.g1.world.17",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "KAKULSAYDON_G1_PATTERN_35.world.2",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.8",
+          "startMs": 8956,
+          "durationMs": 11000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": "world.object.instance.kouku.saydon_showtime_gun_right"
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.57eb9e2c4e7edc4f4119",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.gun.signature.world",
+          "resourceDurationMs": 3601,
+          "positionOffset": [
+            0.01913988293459018,
+            -0.024699029340667443,
+            0.9825197505950928
+          ],
+          "rotationDegrees": [
+            0,
+            -89.3295806803671,
+            -0.8004327658390026
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "WORLD",
+          "worldId": "kakulsaydon.g1.world.17",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "KAKULSAYDON_G1_PATTERN_35.world.2",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.9",
+          "startMs": 8956,
+          "durationMs": 3601,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": "world.object.instance.kouku.saydon_showtime_gun_right"
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8b184f1341da3361ae9f",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.target.tracking.ground",
+          "resourceDurationMs": 17000,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.10",
+          "startMs": 11730,
+          "durationMs": 9500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.3237708ec4a5306657e5",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.target.end.ground",
+          "resourceDurationMs": 7801,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.11",
+          "startMs": 21230,
+          "durationMs": 1200,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.61b3f5097dad6724e815",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.bullet",
+          "resourceDurationMs": 11501,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.12",
+          "startMs": 11730,
+          "durationMs": 10000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.3609032ae0ef0ed291e5",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.donut.warning.impact",
+          "resourceDurationMs": 6500,
+          "positionOffset": [
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.13",
+          "startMs": 31557,
+          "durationMs": 6500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.647ef3486dd8881c244a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.gun.signature",
+          "resourceDurationMs": 3601,
+          "positionOffset": [
+            -0.75,
+            0.6499999761581421,
+            -0.800000011920929
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.presentation.14",
+          "startMs": 474,
+          "durationMs": 3601,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_36",
       "gateId": "GATE1",
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 41488,
-      "presentationOccurrences": []
+      "durationMs": 40652,
+      "animationRootVerticalScale": 0.0,
+      "presentationOccurrences": [
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.28",
+          "kind": "LIGHT",
+          "assetId": "light.runtime.3",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_36.presentation.1",
+          "startMs": 10451,
+          "durationMs": 11923,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_37",
       "gateId": "GATE3",
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 15000,
+      "durationMs": 30000,
+      "animationRootVerticalScale": 0.0,
       "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_27_01",
+          "sourceStartMs": 0,
+          "playMs": 4667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
         {
           "runtimeClip": "rpct00_idle_battle_1",
           "sourceStartMs": 0,
-          "playMs": 15000,
+          "playMs": 115,
           "playRate": 1.0,
           "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 0,
+          "startOffsetMs": 4667,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_01",
+          "sourceStartMs": 0,
+          "playMs": 2500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4782,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_02",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 7282,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8282,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_04",
+          "sourceStartMs": 0,
+          "playMs": 1500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 9282,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_04",
+          "sourceStartMs": 0,
+          "playMs": 1500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 10782,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 12282,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 13282,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_24_05",
+          "sourceStartMs": 0,
+          "playMs": 718,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 14282,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_34_04",
+          "sourceStartMs": 0,
+          "playMs": 1600,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 15000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_9_01",
+          "sourceStartMs": 0,
+          "playMs": 1667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 16600,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_9_02",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 18267,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_9_03",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 19267,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 70,
+          "playRate": 1.0,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 21267,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_02",
+          "sourceStartMs": 0,
+          "playMs": 1667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 21337,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_02",
+          "sourceStartMs": 0,
+          "playMs": 1667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 23004,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_02",
+          "sourceStartMs": 0,
+          "playMs": 1667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 24671,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_02",
+          "sourceStartMs": 0,
+          "playMs": 1667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 26338,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_02",
+          "sourceStartMs": 0,
+          "playMs": 1667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 28005,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_02",
+          "sourceStartMs": 0,
+          "playMs": 328,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 29672,
           "blendInMs": 0
         }
       ],
@@ -14291,8 +16520,8 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.presentation.1",
-          "startMs": 6047,
-          "durationMs": 8953,
+          "startMs": 3733,
+          "durationMs": 16418,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -14417,60 +16646,6 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.effect.d2a901edb4076ceca264",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.firecross.impact",
-          "resourceDurationMs": 1500,
-          "positionOffset": [
-            -0.07000000029802322,
-            1.3200000524520874,
-            942.3300170898438
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "BOSS",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.presentation.9",
-          "startMs": 971,
-          "durationMs": 1500,
-          "brightnessMultiplier": 1,
-          "boneTarget": "BODY",
-          "worldSequenceInstanceId": ""
-        },
-        {
-          "resourceKind": "V1_EFFECT",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
           "resourceId": "kakulsaydon.effect.b7d8c5f29a2e9f2fd246",
           "kind": "EFFECT",
           "assetId": "effect.kouku.firecross.impact.full",
@@ -14514,7 +16689,7 @@
           "worldSequenceInstanceId": ""
         },
         {
-          "resourceKind": "V1_EFFECT",
+          "resourceKind": "LEAF",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
@@ -14525,14 +16700,14 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.effect.bdeee5b9661d8a9fbe6a",
+          "resourceId": "kakulsaydon.g1.presentation.16",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.outerdonut.impact",
-          "resourceDurationMs": 5000,
+          "assetId": "boss.kouku.curtain_1",
+          "resourceDurationMs": 3500,
           "positionOffset": [
-            -0.07000000029802322,
-            1.3200000524520874,
-            942.3300170898438
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
             0,
@@ -14549,20 +16724,20 @@
           "dissolveStart": 0.85,
           "dissolveEnd": 1,
           "volume": 1,
-          "followBoss": false,
+          "followBoss": true,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "MAP",
+          "anchorKind": "BOSS",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.presentation.11",
-          "startMs": 803,
-          "durationMs": 5000,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.presentation.14",
+          "startMs": 21313,
+          "durationMs": 3500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -14579,10 +16754,10 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.effect.de54db15430fba2447c1",
+          "resourceId": "kakulsaydon.effect.7e765b32937e215a2fef",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.gate3.showtime.napalm",
-          "resourceDurationMs": 37500,
+          "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore",
+          "resourceDurationMs": 3000,
           "positionOffset": [
             -0.07000000029802322,
             1.3200000524520874,
@@ -14614,9 +16789,9 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.presentation.12",
-          "startMs": 553,
-          "durationMs": 14447,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.pattern.1.r0.presentation.1",
+          "startMs": 0,
+          "durationMs": 3000,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -14624,11 +16799,843 @@
       ]
     },
     {
+      "patternId": "KAKULSAYDON_G1_PATTERN_38",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 19485,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_phase1_1_01",
+          "sourceStartMs": 0,
+          "playMs": 2067,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_phase1_1_06",
+          "sourceStartMs": 0,
+          "playMs": 1833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2067,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_04_start",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 3900,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_04_loop",
+          "sourceStartMs": 0,
+          "playMs": 500,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 4900,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_04_end",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5400,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_05_start",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6400,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_05_loop",
+          "sourceStartMs": 0,
+          "playMs": 500,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 7400,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_05_end",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 7900,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_07",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8900,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_06_start",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 9900,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_06_loop",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 10900,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_06_end",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 11700,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_07",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 12700,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_04_start",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 13700,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_04_loop",
+          "sourceStartMs": 0,
+          "playMs": 500,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 14700,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_25_04_end",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 15200,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.58",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.rainbow.grid.full.restore",
+          "resourceDurationMs": 5301,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.2",
+          "startMs": 3359,
+          "durationMs": 5581,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.58",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.rainbow.grid.full.restore",
+          "resourceDurationMs": 5301,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.3",
+          "startMs": 8909,
+          "durationMs": 6753,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            3.450000047683716,
+            0,
+            -5.099999904632568
+          ],
+          "rotationDegrees": [
+            0,
+            43.900001525878906,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.4",
+          "startMs": 5457,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            7,
+            0,
+            -9.25
+          ],
+          "rotationDegrees": [
+            0,
+            43.900001525878906,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.5",
+          "startMs": 5112,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -4.699999809265137,
+            0,
+            3.299999952316284
+          ],
+          "rotationDegrees": [
+            0,
+            43.900001525878906,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.6",
+          "startMs": 6124,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -0.3499999940395355,
+            0,
+            -1.100000023841858
+          ],
+          "rotationDegrees": [
+            0,
+            43.900001525878906,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.7",
+          "startMs": 5763,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -8.300000190734863,
+            0,
+            7.150000095367432
+          ],
+          "rotationDegrees": [
+            0,
+            43.900001525878906,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.8",
+          "startMs": 6451,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -4.721976296347465,
+            0,
+            -4.986844841833905
+          ],
+          "rotationDegrees": [
+            0,
+            134.5,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.29",
+          "startMs": 9796,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -8.9089235843102,
+            0,
+            -8.493192351824435
+          ],
+          "rotationDegrees": [
+            0,
+            134.5,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.30",
+          "startMs": 9451,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            3.762907807635804,
+            0,
+            3.074745386339385
+          ],
+          "rotationDegrees": [
+            0,
+            134.5,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.31",
+          "startMs": 10463,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            -0.6824030580885716,
+            0,
+            -1.2289401841602994
+          ],
+          "rotationDegrees": [
+            0,
+            134.5,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.32",
+          "startMs": 10102,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.4",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            7.650395184754611,
+            0,
+            6.63423211068854
+          ],
+          "rotationDegrees": [
+            0,
+            134.5,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            11.449999809265137
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_38.presentation.33",
+          "startMs": 10790,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_39",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 12000,
+      "animationRootVerticalScale": 0.0,
+      "presentationOccurrences": []
+    },
+    {
       "patternId": "KAKULSAYDON_G1_PATTERN_42",
       "gateId": "GATE3",
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 4167,
+      "animationRootVerticalScale": 0.0,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_43",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 6267,
+      "animationRootVerticalScale": 0.0,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_44",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 6400,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -14636,7 +17643,8 @@
       "gateId": "GATE3",
       "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 1600,
+      "durationMs": 8390,
+      "animationRootVerticalScale": 0.0,
       "presentationOccurrences": []
     },
     {
@@ -14645,6 +17653,7 @@
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 45863,
+      "animationRootVerticalScale": 0.0,
       "sourceAnchorAnimations": [
         {
           "runtimeClip": "rpct00_idle_battle_1",
@@ -14945,9 +17954,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -14959,7 +17968,7 @@
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "WORLD",
+          "anchorKind": "BOSS",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -14973,6 +17982,32 @@
           "worldSequenceInstanceId": ""
         }
       ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_49",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 8867,
+      "animationRootVerticalScale": 0.0,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_50",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 1600,
+      "animationRootVerticalScale": 0.0,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_52",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 15000,
+      "presentationOccurrences": []
     }
   ]
 }

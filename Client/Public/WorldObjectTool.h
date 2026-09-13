@@ -4,6 +4,8 @@
 #include "PhysicalResourceCatalog.h"
 #include "CompositionResourceTree.h"
 #include "EffectV2_Catalog.h"
+#include "EffectAuthoringResourceTree.h"
+#include "CompositionWorkbenchSession.h"
 
 #include <array>
 #include <filesystem>
@@ -14,8 +16,9 @@
 namespace Client
 {
 class CLevel_KakulSaydonArena;
+struct WORLD_OBJECT_TRAVEL_DRAFT;
 
-class CWorldObjectTool final
+class CWorldObjectTool final : public ICompositionWorkbenchSession
 {
 public:
     ~CWorldObjectTool();
@@ -25,6 +28,10 @@ public:
     void Deactivate();
     void Update(f32_t seconds, bool_t active);
     void Render();
+    void Begin_WorkbenchFrame() override;
+    void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
+    void End_WorkbenchFrame() override {}
+    void On_WorkbenchDeactivated() override { Deactivate(); }
     bool_t Is_Open() const { return m_Open; }
     bool Consume_InteractionRequest();
     void Set_LinkedSaveCallbacks(std::function<bool(std::string&)> canSave,
@@ -44,6 +51,10 @@ private:
     std::vector<uint32_t>& Emission_Origins(const WORLD_SEQUENCE_TEMPLATE& sequence);
     void Stop_Preview();
     bool Begin_Preview();
+    const CWorldSequenceDocument& Preview_Document() const;
+    bool Prepare_PreviewEffects(const CWorldSequenceDocument& document, const std::string& targetId);
+    bool Begin_EffectPreview(CWorldSequenceDocument staged, const std::string& instanceId);
+    void Play_Preview();
     const WORLD_SEQUENCE_INSTANCE* Preview_Instance() const;
     void Seek(f32_t clockMs);
     f32_t SpanMs() const;
@@ -58,20 +69,25 @@ private:
     void Change_ResourceAnchor(WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& anchorKind);
     void Render_WindowMenu();
     void Render_Toolbar();
-    void Render_Resources();
+    void Render_Resources(bool fillPane = false);
     void Refresh_AnimationResources();
     void Render_AnimationResources();
     void Render_EffectResources();
     bool Append_SelectedEffect();
+    bool Play_SelectedEffect();
+    bool Build_SelectedEffectCandidate(CWorldSequenceDocument& staged, std::string& instanceId);
+    const WORLD_SEQUENCE_INSTANCE* Effect_TargetInstance() const;
     void Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence);
     bool Append_SelectedAnimation();
     bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
     bool Assign_SelectedModel();
     void Render_Detail();
+    bool Render_TravelEditor(WORLD_SEQUENCE_INSTANCE& instance, WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
     const WORLD_SEQUENCE_OBJECT_RESOURCE* Preview_Group() const;
     void Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
-    void Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
+    void Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, bool parentOverview = false);
+    void Render_SelectedSequence();
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_PhysicalResources();
@@ -92,6 +108,8 @@ private:
     CLevel_KakulSaydonArena* m_PreviewLevel = nullptr;
     f32_t m_ClockMs = 0.f;
     f32_t m_VerticalArcHeight = 2.f;
+    std::shared_ptr<WORLD_OBJECT_TRAVEL_DRAFT> m_TravelDraft;
+    f32_t m_RadialOffset = 0.f;
     // Distribute on Ring preset inputs; rows are the saved truth, not these.
     int m_GroupCount = 1;
     float3_t m_EmissionStep{1.f, 0.f, 0.f};
@@ -102,6 +120,13 @@ private:
     f32_t m_Zoom = 100.f;
     CWorldSequenceDocument m_Document;
     CWorldSequenceDocument m_SavedDocument;
+    // Temporary Play Effect candidate; Append alone commits it to authoring.
+    std::optional<CWorldSequenceDocument> m_EffectPreviewDocument;
+    std::optional<CWorldSequenceDocument> m_PendingEffectPreviewDocument;
+    std::string m_PendingEffectInstance;
+    std::vector<std::string> m_PreviewPreparationTargets;
+    bool m_PreviewPreparationPending = false;
+    bool m_PlayAfterPreparation = false;
     std::map<std::string, std::vector<uint32_t>> m_EmissionOrigins;
     std::set<std::string> m_EditedMotionIds;
     std::function<bool(std::string&)> m_CanSaveLinked;
@@ -148,6 +173,8 @@ private:
     std::string m_SelectedAnimationClip;
     std::array<char, 256> m_AnimationSearch{};
     std::vector<EFFECT_V2_RESOURCE_SUMMARY> m_EffectResources;
+    std::vector<CEffectAuthoringResourceTree::RESOURCE> m_AuthoredEffectResources;
+    bool m_SelectedEffectAuthored = false;
     std::string m_SelectedEffectResource;
     EFFECT_V2_RESOURCE_KIND m_SelectedEffectKind = EFFECT_V2_RESOURCE_KIND::GROUP;
     std::string m_EffectResourceStatus;

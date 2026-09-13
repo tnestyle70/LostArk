@@ -6,6 +6,7 @@
 #include "KoukuSaydonAnimationActionDocument.h"
 #include "KoukuSaydonAnimationPatternDocument.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "KoukuSaydonPreviewRootMotion.h"
 #include "CompositionAnimationResource.h"
 #include "AnimationEffectCueDocument.h"
 #include "EffectV2_Target.h"
@@ -75,6 +76,12 @@ public:
 		bool_t bValtanPatternCompatible = false;
 		std::vector<COMPOSITION_SEQUENCE_CLIP_VIEW> Clips;
 	};
+
+    bool_t Restore_CharacterActionPreview(const std::string& asset, std::string& status);
+    bool_t Render_CharacterActionCueEditor(const std::string& asset,
+        uint64_t expectedGeneration, const std::string& clip, std::string& status,
+        bool_t explicitSourceSelection = false);
+    bool_t Has_CharacterActionCueChanges(const std::string& asset) const;
 
 private:
 	/* One exact occurrence on the admitted split Valtan gameplay/presentation
@@ -997,6 +1004,8 @@ private:
 	bool_t m_bValtanAutoPreviewSuppressedForServerPlayback = false;
 
 	std::vector<ANIM_EVENT> m_Events;
+	std::string m_EventSourceBaseline;
+	bool_t m_bEventSourceBaselineKnown = false;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */
 	std::string m_AssetName;
 	std::string m_Status;
@@ -1031,6 +1040,8 @@ private:
 	bool_t m_bDuplicateScanDone = false;
 
 	ANIMATION_SKILL_BINDING_DOCUMENT m_SkillBindingDocument;
+	std::string m_SkillBindingSourceBaseline;
+	bool_t m_bSkillBindingSourceBaselineKnown = false;
 	bool_t m_bSkillBindingLoadAttempted = false;
 	bool_t m_bSkillBindingDirty = false;
 	bool_t m_bSkillBindingReloadConfirmationRequested = false;
@@ -1064,6 +1075,8 @@ private:
 	std::string m_strPendingCompositionPreviewTargetAssetName;
 	std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> m_KoukuCompositionPreviewRows;
 	std::vector<f32_t> m_KoukuCompositionPreviewScales;
+	std::unique_ptr<CKoukuSaydonPreviewRootMotion> m_KoukuCompositionRootMotion;
+	std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> m_KoukuCompositionBlendWindows;
 	EFFECT_V2_TARGET m_KoukuCompositionEffectTarget;
 	std::string m_strKoukuCompositionEffectOccurrence;
 	f32_t m_fKoukuCompositionEffectSourceSeconds = -1.f;
