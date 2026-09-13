@@ -321,3 +321,47 @@ revision과 비교하지 않고 메모리 catalog 전체를 저장하므로, 외
 최신 catalog를 받아야 이 외부 정리를 유지한다. 이전 저장본은
 out/RenderingBloom20260912/RenderingProfiles.user-saved-31.json에 보존했다.
 C++ stale-save 검출·비동기 publisher·상세 로그 개선은 조사 결과이며 구현한 것으로 기록하지 않는다.
+
+## G10. 통합 암전 미표시: BC1 A coverage 거부 교정 (2026-09-13)
+
+사용자 요청대로 포탈과 카메라는 수정하지 않았다. 실제 작업 위치는 C:/Users/USER/source/졸업팀폴/LostArk, 시작 HEAD 461224f9, 적용 브랜치 codex/kouku-g1-fade-visible이다. 기존 암전 timing 16개(+약0.3초)와 Framework.sln의 다른 변경을 보존했으며 자동 stage/commit/push는 하지 않았다.
+
+원인: CEffectV2Object::Submit_Presentation은 기본 A coverage를 사용한다. 기존 fx_a_blankwhite_01.dds는 DXT1/BC1이며 CPresentation_Manager::HasOverlayCoverageChannel의 A 허용 목록에는 BC1이 없어 Add_ScreenOverlay가 거부한다. 흰색/불투명 픽셀 디코딩 결과만으로 runtime format admission을 검증했다고 볼 수 없다. GPU draw 이전에 발생하는 계약 결함을 소스와 실제 DDS header로 확인했다.
+
+적용: 기존 RGBA8 흰색 Map/LV_BER_BERNCASTLE/SourceMaterials/50c22a2692ed_flat_white.dds를 Effect/KoukuSaydon/Textures/Cutscene/fade_opaque_white.dds로 복사하고 kouku.gate1.authored.fade.black의 slots.base 한 필드만 교체했다. 원본 DDS는 보존했다. 새 파일은 Client/Bin/Resources 아래 168 bytes이며 Git 제외 runtime 입력이다. 다른 PC에 전달할 때 새 상대 asset ID를 포함해야 한다. Drive 업로드는 하지 않았다.
+
+2026-09-13 23:30 사용자 결정으로 이 적용을 되돌렸다: `slots.base`를 원래 `Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds`로 복구하고 `fade_opaque_white.dds`와 빈 `Cutscene` 폴더를 삭제했다. 전달할 새 Resources 파일은 없다. 같은 JSON의 암전 키 +0.299963초 이동(흡입 종료 시점 정렬)은 남아 있다.
+
+검증: 변경 직전 백업과 JSON deep comparison에서 base 외 전부 동일, 47개 intensity/time 키 보존. 새 DDS는 DXGI 28 RGBA8, 2x2+1x1 mip, 모든 texel RGBA=255이며 SRGB loader 선택 후 RGBA8 SRGB도 현재 A coverage 허용 목록에 들어간다. Effect V2 _validate_authored 단계 253문서 PASS. 전체 binding validator PASS나 사용자 화면 PASS로 확대하지 않는다. 독립 검토도 동일 header/기본 coverage/loader/shader 관계를 확인했다.
+
+보존된 밝기 곡선의 예상 alpha: 0초 1.0, 20.7초 약0.999604, 21.01초 약0.998945, 23.2초 약0.000710. 불투명 흰색과 black tint가 이 값을 그대로 검정 합성에 사용한다. C++/HLSL/프로젝트 등록 변경이 없으므로 빌드하지 않았다.
+
+사용자 확인: 새 Client를 실행하거나 기존 Play를 Stop한 뒤 다시 시작하여 leaf snapshot/texture 객체를 새로 생성한다. F1 -> Sequencer Benchmark -> Gate 1 -> 1관문_통합_시퀀스, 0초와20.7초 암전, 23.2초 복귀를 확인한다. Play Sequence의 전투 연결 동작은 기존 그대로다. 실제 Client/UI 조작·캡처/GPU 표시 판정은 수행하지 않았다. 카메라 FOV 전환 결함과 포탈 정렬은 이번 수정 범위 밖이다.
+
+## G12. 세 컷신 제작 계획 검증 — 구현 전 (2026-09-13)
+
+### 확정 범위와 이번 결과
+
+사용자가 계획 대상으로 `2관문_진입`, `3관문_진입`, `빙고_최종엔딩씬`만 지정했다. 추가 확인에서 3관문 진입은 현재 도착 부분만 있는 18,658ms가 아니라 **영상처럼 출발·비행부터 전체**를 포함하도록 확정했다. 대응 PLAN의 G12에 원본 연결 → P3 보완 → P7 전체 확장 → 신규 빙고 엔딩 → 수동 배치 보정 순서를 작성했다. 기존 P1/P2/P4/P5/P6는 수정 대상이 아니다.
+
+전등·암전·재질 복구는 팀장 담당으로 제외했다. P7 앞부분 추가에 따른 기존 EFFECT/profile occurrence 네 박스의 +16,710ms 이동은 내부 문서 변경과 구분해 명시했다. 이번 결과는 **조사와 계획 작성**이며 C++/셰이더/제품 JSON/Resources 변경, publisher 실행, 빌드, Client 실행·조작·화면 캡처는 하지 않았다. G11 포탈/흡입 카메라 후보도 실제 설치하지 않고 보류한 상태다.
+
+### 직접 확인한 근거
+
+- 사용자 제공 영상 세 개를 각각 24개 시점, 총 72개 추출 프레임으로 읽었다. 실제 녹화 길이는 2관문 27.3333초, 3관문 36.4666초, 최종 엔딩 47.3333초이며 모두 30fps / 2160×1440이다. 녹화 컨테이너와 실제 게임 viewport를 구분했다. 이 프레임들은 원본 영상 분석 자료이며 구현 화면의 visual PASS 증거가 아니다.
+- 현재 Sequence revision 14 / 7 Pattern을 확인했다. P3는 WORLD 17 / CAMERA 5 / EFFECT 3, P7은 WORLD 1 / CAMERA 8 / EFFECT 3 / profile 1이다. P5는 같은 SCENE02A 원본 전체의 WORLD 3 / CAMERA 18을 포함하는 읽기 전용 재사용 기준이다. 원본 Director의 13컷과 생성 후 18개 segment를 구분했다.
+- SCENE04A Matinee2는 27,000ms, SCENE02A Matinee10은 35,368ms다. 빙고 공간 SCENE01B Matinee0의 InterpLength는 49.083335876초다. 녹화 길이에 맞추는 일괄 속도 변경은 계획하지 않았다.
+- 원본 UPK에서 `37081_342 → SCENE01B Matinee export 32 → Data 45 → Completed/EndRemoteEvent 31`과 다른 공간의 `37081_341 → SCENE01C Matinee 31 → Data 44 → Completed/EndRemoteEvent 30` 연결을 재확인했다. 01B/01C는 각각 23 group, 동일 InterpLength지만 다른 공간이다. TriggerMapData의 52.13291초를 Matinee 길이로 오인하지 않는다.
+- 빙고 엔딩의 source visibility 28,542 / 30,933 / 41,067ms, 첫 camera preroll, 숨김 중에도 진행되는 후반 배우 clip을 조사했다. A/B/C 슬롯과 무기 clip을 오프라인에서 해석하는 항목을 구현 선행 단계로 두었다. 아직 새 모델 bake나 슬롯 변환의 정확성 검증을 끝낸 것은 아니다.
+- 현재 CameraShot은 up vector / Apply_PresentationPoseWithUp 경로를 지원한다. 이를 지원하지 않는다는 09-10 문서의 옛 설명을 새 계획에 적용하지 않았다. 기존 Object/Camera 편집 경로와 Sequence workspace의 Save 전용 게시 경계도 실제 호출자에서 확인했다.
+- 현재 worldsequences.json 14,387,090 bytes / 16MiB, camerashots.json 1,336,647 bytes / 2MiB와 reader의 key/track/shot 제한을 확인했다. 기존 builder의 P4 41,488ms 설정과 사용자가 저장한 P4 58,810ms의 불일치 때문에 전체 빌더 재설치가 기존 편집을 덮어쓸 위험을 명시했다.
+
+원본/코드 확인은 `C:/Users/USER/source/졸업팀폴/LostArk`의 현재 파일을 기준으로 했다. 이전 문서가 가리키는 out 폴더 중 현재 없는 경로는 새 실행 증거로 사용하지 않았다. 독립 검토의 지적을 재확인해 P3 표시명을 `2관문_진입`으로 맞추는 항목과 P7 기존 EFFECT/profile 박스 시각 이동표를 계획에 반영했다.
+
+분석 스크립트와 영상 프레임, 문서 변경 전 사본은 `C:/Users/USER/.codex/worktrees/7395/LostArk/out/CutscenePlan20260913/`에 있다. 검증용 중간 산출물이며 source commit 대상이 아니다. 문서 적용 전 현재 PLAN/RESULT가 시작 사본과 같은지 검사해 다른 세션의 저장값을 덮어쓰지 않는다.
+
+### 구현 상태·다음 단계
+
+계획 작성과 원본/현재 데이터 대조만 완료했다. 세 컷신 후보 생성, 모델/clip bake, 배치 반영, domain publisher/harness, 재생·저장·재로드와 사용자 화면 확인은 아직 수행하지 않았다. 데이터/오프라인 저작으로 먼저 진행하며 실제 runtime 수정 필요성이 확인되지 않는 한 C++/셰이더 재빌드를 선행 작업으로 잡지 않는다.
+
+다음 구현은 P3의 기존 17 WORLD와 원본 대응을 보완하는 것부터 시작한다. 사용자 육안 확인 뒤 P7 출발·비행 전체, 신규 빙고 엔딩 순서로 진행하며 각 후보 설치 직전에 최신 저장값을 다시 확인한다. 제품 리소스 변경 전에 Save/종료를 조율한다. 자동 stage/commit/push는 하지 않았다.

@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 16,
+  "revision": 21,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -13,7 +13,7 @@
   "nextBundleOrdinal": 1,
   "nextLogicOrdinal": 36,
   "nextSummonOrdinal": 2,
-  "nextWorldOrdinal": 34,
+  "nextWorldOrdinal": 36,
   "nextSceneProfileOrdinal": 4,
   "madnessPolicy": {
     "maximum": 100,
@@ -1332,6 +1332,40 @@
       "worldId": "kakulsaydon.g1.world.33",
       "displayName": "팝업북_책_통합유지",
       "sequenceInstanceId": "world.sequence.instance.kouku.gate1.authored.book",
+      "positionOffset": [
+        0,
+        0,
+        0
+      ],
+      "anchorKind": "NONE",
+      "anchorPosition": [
+        0,
+        0,
+        0
+      ],
+      "companionEffectResourceId": ""
+    },
+    {
+      "worldId": "kakulsaydon.g1.world.34",
+      "displayName": "3관문_진입 / LargeSaydon",
+      "sequenceInstanceId": "world.sequence.instance.kouku.gate3.intro.largesaydon",
+      "positionOffset": [
+        0,
+        0,
+        0
+      ],
+      "anchorKind": "NONE",
+      "anchorPosition": [
+        0,
+        0,
+        0
+      ],
+      "companionEffectResourceId": ""
+    },
+    {
+      "worldId": "kakulsaydon.g1.world.35",
+      "displayName": "3관문_진입 / Kouku",
+      "sequenceInstanceId": "world.sequence.instance.kouku.gate3.intro.kouku",
       "positionOffset": [
         0,
         0,
@@ -4592,10 +4626,10 @@
       "sceneProfileOccurrences": [],
       "resetBossToSpawn": false,
       "enterCombatOnFinish": true,
-      "nextPresentationOccurrenceOrdinal": 23,
+      "nextPresentationOccurrenceOrdinal": 30,
       "presentationOccurrences": [
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.16",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.23",
           "resourceId": "presentation.kouku.gate2.intro.camera.1",
           "startMs": 0,
           "durationMs": 2100,
@@ -4633,7 +4667,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.17",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.24",
           "resourceId": "presentation.kouku.gate2.intro.camera.2",
           "startMs": 2100,
           "durationMs": 11850,
@@ -4671,7 +4705,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.18",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.25",
           "resourceId": "presentation.kouku.gate2.intro.camera.3",
           "startMs": 13950,
           "durationMs": 5540,
@@ -4709,7 +4743,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.19",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.26",
           "resourceId": "presentation.kouku.gate2.intro.camera.4",
           "startMs": 19490,
           "durationMs": 2224,
@@ -4747,7 +4781,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.20",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.27",
           "resourceId": "presentation.kouku.gate2.intro.camera.5",
           "startMs": 21714,
           "durationMs": 1104,
@@ -4785,7 +4819,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.21",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.28",
           "resourceId": "presentation.kouku.gate2.intro.camera.6",
           "startMs": 22818,
           "durationMs": 1132,
@@ -4823,7 +4857,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.22",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_3.presentation.29",
           "resourceId": "presentation.kouku.gate2.intro.camera.7",
           "startMs": 23950,
           "durationMs": 3050,
@@ -6913,14 +6947,14 @@
       "worldOccurrences": [
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.world.2",
-          "worldId": "kakulsaydon.g1.world.28",
+          "worldId": "kakulsaydon.g1.world.34",
           "startMs": 0,
           "durationMs": 35368,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.world.3",
-          "worldId": "kakulsaydon.g1.world.29",
+          "worldId": "kakulsaydon.g1.world.35",
           "startMs": 0,
           "durationMs": 35368,
           "playbackSpeed": 1
@@ -6944,10 +6978,10 @@
       ],
       "resetBossToSpawn": false,
       "enterCombatOnFinish": true,
-      "nextPresentationOccurrenceOrdinal": 48,
+      "nextPresentationOccurrenceOrdinal": 66,
       "presentationOccurrences": [
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.30",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.48",
           "resourceId": "presentation.kouku.gate3.intro.camera.1",
           "startMs": 0,
           "durationMs": 2160,
@@ -6985,7 +7019,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.31",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.49",
           "resourceId": "presentation.kouku.gate3.intro.camera.2",
           "startMs": 2160,
           "durationMs": 1216,
@@ -7023,7 +7057,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.32",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.50",
           "resourceId": "presentation.kouku.gate3.intro.camera.3",
           "startMs": 3376,
           "durationMs": 1354,
@@ -7061,7 +7095,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.33",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.51",
           "resourceId": "presentation.kouku.gate3.intro.camera.4",
           "startMs": 4730,
           "durationMs": 956,
@@ -7099,7 +7133,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.34",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.52",
           "resourceId": "presentation.kouku.gate3.intro.camera.5",
           "startMs": 5686,
           "durationMs": 492,
@@ -7137,7 +7171,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.35",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.53",
           "resourceId": "presentation.kouku.gate3.intro.camera.6",
           "startMs": 6178,
           "durationMs": 421,
@@ -7175,7 +7209,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.36",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.54",
           "resourceId": "presentation.kouku.gate3.intro.camera.7",
           "startMs": 6599,
           "durationMs": 1658,
@@ -7213,7 +7247,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.37",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.55",
           "resourceId": "presentation.kouku.gate3.intro.camera.8",
           "startMs": 8257,
           "durationMs": 3088,
@@ -7251,7 +7285,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.38",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.56",
           "resourceId": "presentation.kouku.gate3.intro.camera.9",
           "startMs": 11345,
           "durationMs": 3030,
@@ -7289,7 +7323,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.39",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.57",
           "resourceId": "presentation.kouku.gate3.intro.camera.10",
           "startMs": 14375,
           "durationMs": 2335,
@@ -7327,7 +7361,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.40",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.58",
           "resourceId": "presentation.kouku.gate3.intro.camera.11",
           "startMs": 16710,
           "durationMs": 3851,
@@ -7365,7 +7399,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.41",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.59",
           "resourceId": "presentation.kouku.gate3.intro.camera.12",
           "startMs": 20561,
           "durationMs": 1509,
@@ -7403,7 +7437,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.42",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.60",
           "resourceId": "presentation.kouku.gate3.intro.camera.13",
           "startMs": 22070,
           "durationMs": 4350,
@@ -7441,7 +7475,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.43",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.61",
           "resourceId": "presentation.kouku.gate3.intro.camera.14",
           "startMs": 26420,
           "durationMs": 2240,
@@ -7479,7 +7513,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.44",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.62",
           "resourceId": "presentation.kouku.gate3.intro.camera.15",
           "startMs": 28660,
           "durationMs": 1088,
@@ -7517,7 +7551,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.45",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.63",
           "resourceId": "presentation.kouku.gate3.intro.camera.16",
           "startMs": 29748,
           "durationMs": 1104,
@@ -7555,7 +7589,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.46",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.64",
           "resourceId": "presentation.kouku.gate3.intro.camera.17",
           "startMs": 30852,
           "durationMs": 2272,
@@ -7593,7 +7627,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.47",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.65",
           "resourceId": "presentation.kouku.gate3.intro.camera.18",
           "startMs": 33124,
           "durationMs": 2244,
@@ -7749,8 +7783,8 @@
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_8",
       "actorProfileId": "MN_RPCT_05",
-      "gateId": "GATE3",
-      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "gateId": "BINGO",
+      "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
       "displayName": "빙고_최종엔딩씬",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
@@ -7761,7 +7795,7 @@
       "nextSummonOccurrenceOrdinal": 1,
       "nextWorldOccurrenceOrdinal": 1,
       "nextSceneProfileOccurrenceOrdinal": 1,
-      "nextPresentationOccurrenceOrdinal": 25,
+      "nextPresentationOccurrenceOrdinal": 37,
       "stages": [
         {
           "stageId": "STAGE_1",
@@ -7778,7 +7812,7 @@
       "resetBossToSpawn": false,
       "presentationOccurrences": [
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.13",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.25",
           "resourceId": "presentation.kouku.bingo.ending.camera.1",
           "startMs": 0,
           "durationMs": 1232,
@@ -7816,7 +7850,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.14",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.26",
           "resourceId": "presentation.kouku.bingo.ending.camera.2",
           "startMs": 1232,
           "durationMs": 1152,
@@ -7854,7 +7888,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.15",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.27",
           "resourceId": "presentation.kouku.bingo.ending.camera.3",
           "startMs": 2384,
           "durationMs": 2549,
@@ -7892,7 +7926,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.16",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.28",
           "resourceId": "presentation.kouku.bingo.ending.camera.4",
           "startMs": 4933,
           "durationMs": 4634,
@@ -7930,7 +7964,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.17",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.29",
           "resourceId": "presentation.kouku.bingo.ending.camera.5",
           "startMs": 9567,
           "durationMs": 3400,
@@ -7968,7 +8002,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.18",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.30",
           "resourceId": "presentation.kouku.bingo.ending.camera.6",
           "startMs": 12967,
           "durationMs": 5833,
@@ -8006,7 +8040,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.19",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.31",
           "resourceId": "presentation.kouku.bingo.ending.camera.7",
           "startMs": 18800,
           "durationMs": 3000,
@@ -8044,7 +8078,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.20",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.32",
           "resourceId": "presentation.kouku.bingo.ending.camera.8",
           "startMs": 21800,
           "durationMs": 3200,
@@ -8082,7 +8116,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.21",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.33",
           "resourceId": "presentation.kouku.bingo.ending.camera.9",
           "startMs": 25000,
           "durationMs": 1875,
@@ -8120,7 +8154,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.22",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.34",
           "resourceId": "presentation.kouku.bingo.ending.camera.10",
           "startMs": 26875,
           "durationMs": 4058,
@@ -8158,7 +8192,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.23",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.35",
           "resourceId": "presentation.kouku.bingo.ending.camera.11",
           "startMs": 30933,
           "durationMs": 6067,
@@ -8196,7 +8230,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.24",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.36",
           "resourceId": "presentation.kouku.bingo.ending.camera.12",
           "startMs": 37000,
           "durationMs": 12083,
