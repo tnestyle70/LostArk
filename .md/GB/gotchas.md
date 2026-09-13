@@ -21,6 +21,7 @@
   이전의 scene player 조회 실패다. 카메라와 이동이 정상이어도 `Resolve_SceneCharacter` 등록은 별개다.
 - 실제 local player의 생성·class replacement commit을 소유한 `CClientReplication`이 scene target도
   연결한다. remote actor나 실패한 교체로 target을 덮지 않고 despawn/reset/destructor는 자기 캐릭터만 해제한다.
+  destructor가 이미 제거됐을 수 있는 Layer를 다시 조작하지 않게 한다.
 - 오류를 숨기려고 임의 world origin, preview 캐릭터, 첫 Layer 오브젝트를 플레이어로 대신 선택하지 않는다.
   Effect의 root attachment·shader·월드 좌표를 바꾸기 전에 실제 호출자가 어느 단계에서 거절됐는지 구분한다.
 - 원본 독립 festival과 시퀀스용 authored festival은 시작 시각이 다르다. 전자는 0초, 후자는 현재

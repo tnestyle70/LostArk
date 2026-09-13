@@ -25,6 +25,29 @@ def read(relative: str) -> str:
 class WorldSequenceAuthoringContractTests(unittest.TestCase):
     """Fast source/project integration guards; the Product build compiles behavior."""
 
+    def test_combined_object_selection_retains_full_motion_editor(self) -> None:
+        code = read("Client/Private/WorldObjectTool.cpp")
+        header = read("Client/Public/WorldObjectTool.h")
+        self.assertIn("std::string m_SelectedGroup;", header)
+        group_scope = code.split("CWorldObjectTool::Preview_Group() const", 1)[1].split("bool CWorldObjectTool::Begin_Preview", 1)[0]
+        self.assertIn("Find_ObjectResource(m_SelectedGroup)", group_scope)
+        self.assertNotIn("m_SelectedInstance.empty()", group_scope)
+        select = code.split("void CWorldObjectTool::Select_State", 1)[1]
+        grouped = select.split("const auto* resource =", 1)[0]
+        self.assertIn("m_SelectedObject = instance->bindings.front().targetId", grouped)
+        self.assertIn("m_SelectedInstance = id", grouped)
+        self.assertNotIn("Stop_Preview()", grouped)
+        self.assertNotIn("m_ClockMs =", grouped)
+        detail = code.split("void CWorldObjectTool::Render_Detail()", 1)[1].split("void CWorldObjectTool::Render_GroupDetail", 1)[0]
+        self.assertIn("Render_GroupDetail(*group);", detail)
+        self.assertNotIn("Render_GroupDetail(*resource); return;", detail)
+        for control in ("Physics / Motion / Emission", "Authored Emissions", "Revolution Offset (m)", "Render_KeyEditor(*sequence)"):
+            self.assertIn(control, detail)
+        timeline = code.split("void CWorldObjectTool::Render_GroupSequence", 1)[1].split("void CWorldObjectTool::Render_Sequence", 1)[0]
+        for component in ("resource.motionInstanceIds", "DrawRuler", "track.keys", "Select_State(id)", "Mark_Dirty()", "sequence->animationTracks", "sequence->effectTracks"):
+            self.assertIn(component, timeline)
+        self.assertNotIn("Orbit Radius", timeline)
+
     def setUp(self) -> None:
         self.document_h = read("Client/Public/WorldSequenceDocument.h")
         self.document_cpp = read("Client/Private/WorldSequenceDocument.cpp")
@@ -101,6 +124,30 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         with_default = copy.deepcopy(source)
         with_default["objectResources"][-1]["defaultMotionInstanceId"] = "test.world.instance"
         cases.append(("default_motion_valid", with_default, True))
+        grouped = copy.deepcopy(source)
+        grouped["instances"][-1]["anchorKind"] = "WORLD"
+        grouped["objectResources"].append({
+            "objectId": "test.world.group", "displayName": "Combined motions", "modelAssetId": "",
+            "modelPreScale": .01, "animated": False, "scale": [1, 1, 1], "anchorKind": "WORLD",
+            "motionInstanceIds": ["test.world.instance"],
+        })
+        cases.append(("object_group_valid", grouped, True))
+        empty_materials = copy.deepcopy(grouped)
+        empty_materials["objectResources"][-1]["mapMaterialBindings"] = []
+        cases.append(("object_group_empty_material_bindings", empty_materials, True))
+        for name, mutate in (
+            ("missing", lambda d: d["objectResources"][-1].update(motionInstanceIds=["missing.motion"])),
+            ("duplicate", lambda d: d["objectResources"][-1].update(motionInstanceIds=["test.world.instance"] * 2)),
+            ("empty", lambda d: d["objectResources"][-1].update(motionInstanceIds=[])),
+            ("model", lambda d: d["objectResources"][-1].update(modelAssetId="Map/Test/test.wmodel")),
+            ("default", lambda d: d["objectResources"][-1].update(defaultMotionInstanceId="test.world.instance")),
+            ("loop", lambda d: d["instances"][-1].update(motionEnd="LOOP")),
+            ("player", lambda d: d["instances"][-1].update(anchorKind="PLAYER")),
+            ("nested", lambda d: d["instances"][-1]["bindings"][0].update(targetId="test.world.group")),
+        ):
+            candidate = copy.deepcopy(grouped)
+            mutate(candidate)
+            cases.append(("object_group_invalid_" + name, candidate, False))
         with_effect = copy.deepcopy(source)
         with_effect["templates"][-1]["effectTracks"] = [{
             "effectTrackId": "effect.smoke", "slotId": "object", "resourceKind": "GROUP",

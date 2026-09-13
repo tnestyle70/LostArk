@@ -74,4 +74,20 @@ ResourceBrowser, Workspace, Sequencer, CompositionModelPreview, CharacterPreview
 
 기존 편집을 저장하고 Client/Server를 종료한 뒤 `Tools/Build/Invoke-BuildAndRegression.ps1 -Profile Product -Configuration Debug`의 정상 증분 빌드를 수행해야 새 코드가 실행파일에 반영된다. 이 종료·빌드 단계와 최종 시각 확인은 아직 남아 있다.
 
-사용자의 마지막 요청은 반영 여부만 확인하고 마무리하는 것이었다. 현재 변경은 로컬 작업 트리의 소스·데이터에 있으며, git pull·commit·push와 원격 반영은 수행하지 않았다. 작업 중 공유 브랜치의 기존 미커밋 변경을 정리하거나 되돌리지 않았다.
+위 소스·데이터 변경은 이후 사용자 커밋 `2e2f62be`와 PR #375에 포함됐다. 아래 G07은 사용자가 요청한 main 병합 충돌 해결과 마지막 편집 보존 결과다. 제품 EXE 재빌드와 사용자 화면 확인 경계는 그대로 남아 있다.
+
+
+## G07. PR #375 병합 충돌과 마지막 편집 보존
+
+`kouku-pattern3-sequence`의 `2e2f62be`와 main `461224f9`는 같은 기준점에서 별도로 진행됐고 Composition·Sequence·World Sequences의 원본/생성물 4개 경로가 충돌했다. 마지막 push 이후 main에 별도 변경이 들어와 생긴 충돌이며, 사용자의 마지막 push가 누락된 상태는 아니었다.
+
+처음 원래 작업 폴더에서 수행한 병합이 실행 중 도구의 저장 기준본을 바꿔 Save freshness 거절을 유발했다. 그 병합을 abort하고 안전 stash 및 원시 바이트 백업으로 복구했다. 이후 격리 worktree에서만 충돌을 정리했다. 원본/미저장 편집 보호 검사를 제거하거나 도구를 Reload·종료하지 않았다.
+
+- Pattern Composition은 사용자의 마지막 저장 revision 433을 바이트 그대로 보존했다. `쿠크세이튼_무지개댄스` P38의 최신 18개 stage, 다른 47개 패턴과 150개 리소스를 보존했다. main 쪽 차이는 revision뿐임을 3way로 확인했다. native parse·validate·정확한 typed roundtrip이 통과했다.
+- Sequence는 같은 stable ID의 폭죽 항목을 중복 생성하지 않았다. main에 추가된 항목과 기존 stage·animation을 유지하면서, 후속 원본 복원 근거와 사용자 편집이 있는 World 고정 앵커, 12,239ms 원본 tail, 24,785ms 박스 및 최신 배치를 선택했다. 113개 내부 참조와 기존 ID 보존 검사가 통과했다.
+- World Sequences는 main의 오브젝트 그룹·갈고리/칼날·재질 변경을 유지하고 이 브랜치의 `세이튼_1관문_연출` 오브젝트 별칭과 template 이름을 함께 반영했다. revision은 1737이다. runtime 문서는 canonical publisher의 WorldSequences 범위로 생성하고 `Mode Check` 바이트 일치 검사를 통과했다. 격리 worktree의 긴 Windows 경로는 짧은 junction으로 접근했으며, 리소스 검사를 생략하지 않았다.
+- 변경 JSON/XML 22개 parse, source/runtime 내용 일치, unmerged path 0개와 `git diff --cached --check`를 확인했다. 자동 병합 C++ 호출부·프로젝트 등록 검사에서 기존 이펙트 도구/지팡이 변경과 main 기능의 등록·선언이 함께 보존됨을 확인했다.
+
+안전 branch는 `codex/pr375-safety-20260913`, 사용자 최종 편집 안전 stash는 `0039a14c`다. 원시 백업과 의미 비교는 원래 작업 폴더의 `out/PR375Merge20260913/`, native 및 최종 parse 증거는 격리 worktree의 같은 out 경로에 보존했다. 실행 중 Client/Server와 사용자 UI는 조작하지 않았다.
+
+병합된 `MainApp.cpp`와 `WorldObjectTool.cpp`를 새 worktree의 헤더로 Debug x64 개별 컴파일했고 exit 0, error 0으로 통과했다. 기존 헤더 인코딩 C4828 경고는 남았다. 증거는 격리 worktree의 `out/PR375Merge20260913/Compile/compile.log`다. 이 검사는 제품 EXE 링크·재빌드나 화면 확인을 대신하지 않는다.

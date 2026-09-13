@@ -642,6 +642,14 @@
         "esther.allied": ["npc_att_battle_1_01", "npc_att_battle_1_02", "npc_att_battle_1_03"]
       },
       "shaderProfile": "esther"
+    },
+    {
+      "archetypeId": "VEHICLE_TERPEION_GOLD",
+      "clientPresentationId": "vehicle.terpeion.gold.client.v1",
+      "modelAssetId": "Character/Vehicle/Terpeion/Terpeion.wmodel",
+      "animationSetId": null,
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported"
     }
   ]
 }

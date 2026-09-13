@@ -115,10 +115,16 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTitleText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5";
 		m_strTipText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5\xC5D0\xC11C \xC9D0\xC2B9\xB4E4\xC758 \xC6B8\xBD80\xC9D6\xC74C\xC774 \xB4E4\xB824\xC635\xB2C8\xB2E4.";
 	}
+	else if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+	{
+		m_strTitleText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4";
+		m_strTipText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4\xB294 \xB2F9\xC2E0\xC744 \xC9C4\xC2EC\xC73C\xB85C \xD658\xC601\xD569\xB2C8\xB2E4.";
+	}
 	else
 	{
 		m_strTitleText = L"\xBCA0\xB978 \xC131";
-		m_strTipText = L"\xBCA0\xB978 \xC131\xC740 \xC5EC\xB7EC \xC885\xC871\xC774 \xD568\xAED8 \xC11E\xC5EC \xC788\xB294, \xBCA0\xB978\xC758 \xC218\xB3C4\xC785\xB2C8\xB2E4.";
+		m_strScenarioLabel = L"\xC815\xBCF4";
+		m_strTipText = L"\xC81C 1\xB300 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC790\xB294 \xADF9\xC2EC\xD55C \xC6B0\xC6B8\xC99D\xC744 \xD638\xC18C\xD558\xBA70 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC9C1\xC744 \xC0AC\xD1F4\xD588\xC2B5\xB2C8\xB2E4";
 	}
 
 	if (FAILED(Ready_Layer_Chrome()))
@@ -1014,6 +1020,12 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		/* Character Select (creation) shows retail's prologue nebula ("시작되는 운명"). */
 		if ("Background" == strId && LEVEL::CHARACTER_SELECT == m_eNextLevelID)
 			strTexturePath = "UI/Loading/Loading_Background_Prologue.png";
+		/* KoukuSaydon Arena. The raid names itself \xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4 in
+		   EFTable_GameMsg sys.commander.dungeon_name_koukusaton, which is also what
+		   the map id LV_LUT_MIDNIGHTC_ED spells out, and the loading hint is that
+		   zone's own sys.hint.zone_commanderraid_011. */
+		if ("Background" == strId && LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+			strTexturePath = "UI/Loading/Loading_Background_Kouku.png";
 
 		/* Texture-less slots (empty "layers") are position-only markers the HUD Layout Tool
 		can still drag -- pull text draw positions from them instead of creating a sprite. */

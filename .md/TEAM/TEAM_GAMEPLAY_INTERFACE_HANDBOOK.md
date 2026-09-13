@@ -916,8 +916,10 @@ MAP을 선택하면 고정 월드 위치·회전·크기를 사용한다. MAP은
 않으며 `Use Player Position`은 현재 플레이어 위치를 occurrence에 복사한다. 같은 규칙은 독립
 Sequencer Benchmark에도 적용된다. Effect Tool의 Kouku `Play All`은 현재 플레이어의 위치·방향을
 임시 기준으로 사용한다. Append한 occurrence의 앵커와 저장된 Sequence는 이 임시 재생으로 바뀌지 않는다.
-이 scene player 등록은 `CClientReplication`이 local spawn/class 교체를 commit한 뒤 갱신하고
-local despawn/reset/destructor에서 자기 캐릭터만 해제한다. 원격 player나 실패한 교체는 기존 target을 보존한다.
+이 scene player 등록은 `CClientReplication`이 local spawn/class 교체를 commit한 뒤
+`CAnimationTargetService`에 Bind하고 local despawn/reset/destructor에서 자기 캐릭터만 Unbind한다.
+원격 player나 실패한 교체는 기존 target을 보존하며, 카메라·입력 연결로 이 등록을 대신하지 않는다.
+destructor가 이미 제거된 Layer를 다시 조작하지 않는 종료 계약도 유지한다.
 관측한 anchor 기록으로 외부 시계 재생·seek를 처리하며 과거 기록이 없는 구간을 임의 포즈로 보충하지 않는다.
 
 Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effectResourceId/effectDelayMs를
@@ -986,6 +988,16 @@ Kouku의 독립 V1 Effect/Element Resource에 `sourceModelPreview`가 있으면 
 기존 CNpc/CModel Preview에서 함께 준비한다. Effect의 마지막 입자까지 마지막 pose를 유지하며
 빈 Resource용 Stage에서 본 애니메이션을 조회하지 않는다. 이 독립 Preview 정책은 제품 Pattern의
 저장된 animation/history 계약을 변경하지 않는다.
+
+쿠크 금빛 이동 축포 `effect.kouku.gate1.intro.gold-trails.full.restore`는 기존 V1 문서의
+4경로·24행, tail 포함 9413ms resource다. Effect Tool의 독립 Play All과 Composition의 명시적
+Append에서 사용한다. 원본 `.matinee_0.1/.2` source와 사용자 `authored.portal-arrival.1/.2`는
+같은 Move·loop 교정을 소비하며, 현재 P4 `.presentation.20/.21`은 authored 문서를 저장된
+시각·MAP 위치로 참조한다. 독립 문서의 0초 시작과 floor 기준을 기존 P4에 덮지 않는다.
+Matinee Move는 SourceTransformTrack, 거리 방출은 SpawnPerUnit, 잔광은 기존 world particle·cascadeRibbonV1가
+소유한다. 새 gameplay 이동 권위나 별도 렌더 경로를 만들지 않는다. 원본 camera cut 시점의
+위치 도약과 사용자 화면 미확인 범위는
+[금빛 이동 축포 결과 G07](../GB/09-11/2026-09-11_KOUKU_PLAYER_ANCHOR_RAINBOW_FIREWORKS_IMPLEMENTATION_RESULT.md)을 따른다.
 
 World Object category는 Area 저작 `objectResources`의 model/base texture/pre-scale과 자식 Motion을 읽어 현재 Effect draft에 적용한다. 원본 Object/Motion은 수정하지 않는다. 공의 `objectMotion` velocity/acceleration/count/interval/lifetime은 기존 Mesh Particle로 옮기며 실제 충돌 물리를 추가하지 않는다. 모델 참고는 기존 Kouku preview actor/CModel을 재사용하고 root motion·WORLD gameplay는 실행하지 않는다. 실제 Product 이동 입자는 Server presentation root의 birth 시각 표본을 사용하며 과거 표본이 없으면 해당 Effect 오류를 표시한다.
 

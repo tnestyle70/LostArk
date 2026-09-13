@@ -518,13 +518,25 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
 {
     if (m_SequencePlayer.Has_ActiveInstances() || !m_CompositionWorldPreviewCues.empty())
     { status = "Stop the active pattern/world preview before previewing this object."; return false; }
-    if (!Can_StartCompositionWorld(instanceId, status, &document)) return false;
+    const auto* group = document.Find_ObjectResource(instanceId);
+    const bool isGroup = group && !group->motionInstanceIds.empty();
+    std::vector<std::string> ids = isGroup ? group->motionInstanceIds : std::vector<std::string>{instanceId};
+    if (isGroup)
+        std::erase_if(ids, [&document](const auto& id) {
+            const auto* motion = document.Find_Instance(id); return motion && !motion->enabled;
+        });
+    if (ids.empty()) { status = "Object group has no enabled motions."; return false; }
+    for (const auto& id : ids)
+        if (!Can_StartCompositionWorld(id, status, &document)) return false;
     const auto targets = Make_WorldSequenceTargets();
     auto staged = std::make_unique<CWorldSequencePlayer>();
-    if (!staged->Set_Document(document, targets, status) || !staged->Prepare_InstanceResources(instanceId, targets))
+    if (!staged->Set_Document(document, targets, status))
     { status = staged->Get_Status(); return false; }
+    for (const auto& id : ids)
+        if (!staged->Prepare_InstanceResources(id, targets))
+        { status = staged->Get_Status(); return false; }
     float3_t previewOffset{};
-    const auto* instance = document.Find_Instance(instanceId);
+    const auto* instance = document.Find_Instance(ids.front());
     if (previewAtCharacter && instance && instance->anchorKind == "WORLD")
     {
         float3_t previewPosition{}, baseline{};
@@ -536,10 +548,15 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     }
     // The preview offset never edits the saved map anchor or placed curtain/roulette.
     // All resources and the preview placement are admitted before releasing the old presentation.
-    Debug_StopWorldObjectPreview();
-    if (!staged->Play(instanceId, targets, 1.f, previewOffset)) { status = staged->Get_Status(); return false; }
+    // Model-only groups stage independent instances before replacing the old
+    // preview. A shared offset preserves every member's relative placement.
+    if (!isGroup) Debug_StopWorldObjectPreview();
+    for (const auto& id : ids)
+        if (!staged->Play(id, targets, 1.f, previewOffset))
+        { status = staged->Get_Status(); staged->Stop_All(targets, true); return false; }
+    if (isGroup) Debug_StopWorldObjectPreview();
     m_pWorldObjectPreview = std::move(staged);
-    m_WorldObjectPreviewInstance = instanceId;
+    m_WorldObjectPreviewInstances = std::move(ids);
     return Debug_SampleWorldObjectPreview(0.f, status);
 }
 
@@ -547,13 +564,17 @@ bool_t CLevel_KakulSaydonArena::Debug_SampleWorldObjectPreview(const f32_t clock
 {
     if (!m_pWorldObjectPreview || !std::isfinite(clockMs) || clockMs < 0.f)
     { status = "World Object preview is not active."; return false; }
-    if (!m_pWorldObjectPreview->Seek_InstanceToMs(m_WorldObjectPreviewInstance, clockMs, Make_WorldSequenceTargets()))
+    for (const auto& id : m_WorldObjectPreviewInstances)
     {
-        status = m_pWorldObjectPreview->Get_Status();
-        Debug_StopWorldObjectPreview();
-        return false;
+        if (!m_pWorldObjectPreview->Seek_InstanceToMs(id, clockMs, Make_WorldSequenceTargets()))
+        {
+            status = m_pWorldObjectPreview->Get_Status();
+            Debug_StopWorldObjectPreview();
+            return false;
+        }
     }
-    status = m_pWorldObjectPreview->Get_ObjectSampleStatus(m_WorldObjectPreviewInstance);
+    status = std::to_string(m_WorldObjectPreviewInstances.size()) + " motion(s). " +
+        m_pWorldObjectPreview->Get_ObjectSampleStatus(m_WorldObjectPreviewInstances.front());
     return true;
 }
 
@@ -561,6 +582,6 @@ void CLevel_KakulSaydonArena::Debug_StopWorldObjectPreview()
 {
     if (m_pWorldObjectPreview) m_pWorldObjectPreview->Stop_All(Make_WorldSequenceTargets(), true);
     m_pWorldObjectPreview.reset();
-    m_WorldObjectPreviewInstance.clear();
+    m_WorldObjectPreviewInstances.clear();
 }
 #endif

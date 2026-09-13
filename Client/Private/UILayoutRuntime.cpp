@@ -396,6 +396,19 @@ Client::CUILayoutRuntime::Get_Or_Load_KeyframeAnimation(const string& strPath)
 							if (const DATA_JSON_VALUE* pAlpha = KeyValue.Find("alpha"))
 								if (pAlpha->Is_Number())
 									Key.fAlpha = static_cast<f32_t>(pAlpha->Get_Number());
+							if (const DATA_JSON_VALUE* pTint = KeyValue.Find("tint"))
+							{
+								if (pTint->Is_Array() && 3 <= pTint->Get_Array().size())
+								{
+									const auto& Tint = pTint->Get_Array();
+									if (Tint[0].Is_Number())
+										Key.fTintR = static_cast<f32_t>(Tint[0].Get_Number());
+									if (Tint[1].Is_Number())
+										Key.fTintG = static_cast<f32_t>(Tint[1].Get_Number());
+									if (Tint[2].Is_Number())
+										Key.fTintB = static_cast<f32_t>(Tint[2].Get_Number());
+								}
+							}
 							if (const DATA_JSON_VALUE* pAdditive = KeyValue.Find("additive"))
 								if (pAdditive->Is_Boolean())
 									Key.bAdditive = pAdditive->Get_Boolean();
@@ -813,7 +826,8 @@ void Client::CUILayoutRuntime::Update_KeyframeSlot(RUNTIME_SLOT& Slot, f32_t fTi
 			fKeyWidth * m_fScaleX, fKeyHeight * m_fScaleY);
 		pKeySprite->Set_Rotation(pActiveKey->fRotationDeg);
 		pKeySprite->Set_Texture(pKeySRV);
-		pKeySprite->Set_Tint(float4_t(1.f, 1.f, 1.f, pActiveKey->fAlpha));
+		pKeySprite->Set_Tint(float4_t(
+			pActiveKey->fTintR, pActiveKey->fTintG, pActiveKey->fTintB, pActiveKey->fAlpha));
 		pKeySprite->Set_Additive(pActiveKey->bAdditive);
 		pKeySprite->Set_FlipX(pActiveKey->bFlipX);
 		pKeySprite->Set_Visible(true);

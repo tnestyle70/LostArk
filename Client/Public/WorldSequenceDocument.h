@@ -93,6 +93,8 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string sequenceInstanceId;
 	// Empty means no initial Motion has been chosen; never infer vector order.
 	std::string defaultMotionInstanceId;
+	// A model-less Object Resources group references existing map motions.
+	std::vector<std::string> motionInstanceIds;
 };
 
 /* One authored emission of an Object motion. Offset and yaw sit in the motion's

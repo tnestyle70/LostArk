@@ -57,7 +57,7 @@
     "billboard": true,
     "depthTest": true,
     "softFadeDistance": 0.0,
-    "lifetime": 1.0,
+    "lifetime": 2.5,
     "loop": false,
     "playRate": 1.0,
     "meshPreScale": 0.01,

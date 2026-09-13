@@ -244,6 +244,15 @@ private:
 	bool_t Save_Group();
 	bool_t Play_GroupPreview();
 	void Stop_GroupPreview();
+	/* Total authored span the timeline draws and the clock clamps to. */
+	uint32_t Group_TimelineEndMs() const;
+	/* Resolved end of one child. Duration 0 falls back to the resource's own
+	   lifetime; a looping or infinite resource ends at its start. */
+	uint32_t Group_ChildEndMs(const EFFECT_V2_GROUP_CHILD& Child) const;
+	/* Moves the held clock and resamples the live lane at once so a paused
+	   frame shows the edit. No-op without a preview handle. */
+	void Seek_GroupPreview(f64_t fClockMs);
+	void Render_GroupTimeline(uint32_t iEndMs);
 	bool_t Resolve_GroupPreviewBasePivot(float4x4_t& OutPivot);
 	float4x4_t Composed_GroupPreviewPivot(const float4x4_t& BasePivot) const;
 	static bool_t Collect_BoneNames(
@@ -344,6 +353,19 @@ private:
 	float4x4_t m_GroupPreviewBasePivot = {
 		1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f };
 	bool_t m_bGroupPreviewLoop = false;
+	/* The tool owns the group clock so a paused frame survives edits. The
+	   runtime only samples it; render never advances an externally clocked
+	   lane. Milliseconds keep the authored child Start/Duration units. */
+	f64_t m_fGroupClockMs = 0.0;
+	bool_t m_bGroupPreviewPaused = false;
+	/* Set for the frame an edit or a scrub happened so Update() resamples the
+	   held clock once instead of every frame. */
+	bool_t m_bGroupPreviewResample = false;
+	/* Timeline bar grab: index of the dragged child and which edge, kept only
+	   while the mouse button is down. */
+	size_t m_iGroupDragChild = static_cast<size_t>(-1);
+	int32_t m_iGroupDragEdge = 0;
+	int32_t m_iGroupDragGrabMs = 0;
 	std::string m_strGroupStatus;
 
 	VALTAN_PATTERN_TREE_VIEW m_ValtanTree;

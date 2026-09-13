@@ -1,0 +1,79 @@
+{
+ "schema": "lostark.ui-layout",
+ "formatVersion": 1,
+ "resolution": {
+  "width": 1280,
+  "height": 720
+ },
+ "classes": [
+  "Default"
+ ],
+ "slots": [
+  {
+   "id": "RaidClear_Kouku_Frame",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "width": 1280,
+    "height": 720
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 0
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 40,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": false,
+    "additive": false
+   },
+   "keyframeAnimationPath": "UI/RaidClear/RaidClear_Kouku.keyframes.json",
+   "keyframeAnimationScale": 1
+  },
+  {
+   "id": "RaidClear_Kouku_TitleTextBox",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 306.6667,
+    "y": 392.6667,
+    "width": 666.6667,
+    "height": 61.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 0
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  }
+ ]
+}

@@ -1,0 +1,140 @@
+{
+  "formatVersion": 1,
+  "source": "EFTable_GameMsg sys.mvp.difficulty_* / sys.mvp.gate_num_* / sys.preset.combined_list_commander_<GroupId>; the GroupId is EFTable_ZoneEpicGate.GroupId",
+  "fieldColor": "#ffffff",
+  "difficulties": [
+    {
+      "id": "catastrophe",
+      "text": "[호겁]",
+      "color": "#FF6000"
+    },
+    {
+      "id": "challenge",
+      "text": "[도전]",
+      "color": "#F5CA00"
+    },
+    {
+      "id": "challenge_hard",
+      "text": "[시련]",
+      "color": "#FF6000"
+    },
+    {
+      "id": "extreme_1",
+      "text": "[EX 노말]",
+      "color": "#CE43FC"
+    },
+    {
+      "id": "extreme_2",
+      "text": "[EX 하드]",
+      "color": "#CE43FC"
+    },
+    {
+      "id": "hard",
+      "text": "[하드]",
+      "color": "#F5CA00"
+    },
+    {
+      "id": "hard_1",
+      "text": "[하드 I]",
+      "color": "#F5CA00"
+    },
+    {
+      "id": "hard_2",
+      "text": "[하드 II]",
+      "color": "#F5CA00"
+    },
+    {
+      "id": "hard_3",
+      "text": "[하드 III]",
+      "color": "#F5CA00"
+    },
+    {
+      "id": "hellchaos",
+      "text": "[나이트메어]",
+      "color": "#BB8EFF"
+    },
+    {
+      "id": "normal",
+      "text": "[노말]",
+      "color": null
+    },
+    {
+      "id": "special_disease",
+      "text": "[에피데믹]",
+      "color": "#99E100"
+    },
+    {
+      "id": "special_madness",
+      "text": "[리허설]",
+      "color": "#99E100"
+    },
+    {
+      "id": "special_phantasm",
+      "text": "[데자뷰]",
+      "color": "#99E100"
+    },
+    {
+      "id": "the_first",
+      "text": "[The FIRST]",
+      "color": "#807DFF"
+    }
+  ],
+  "gates": [
+    {
+      "gate": 1,
+      "text": "1관문",
+      "color": "#A9D0F5"
+    },
+    {
+      "gate": 2,
+      "text": "2관문",
+      "color": "#A9D0F5"
+    },
+    {
+      "gate": 3,
+      "text": "3관문",
+      "color": "#A9D0F5"
+    },
+    {
+      "gate": 4,
+      "text": "4관문",
+      "color": "#A9D0F5"
+    },
+    {
+      "gate": 5,
+      "text": "5관문",
+      "color": "#A9D0F5"
+    },
+    {
+      "gate": 6,
+      "text": "6관문",
+      "color": "#A9D0F5"
+    }
+  ],
+  "raids": [
+    {
+      "groupId": 101,
+      "name": "부활한 마수의 심장"
+    },
+    {
+      "groupId": 102,
+      "name": "목마른 쾌락의 정원"
+    },
+    {
+      "groupId": 103,
+      "name": "한밤중의 서커스"
+    },
+    {
+      "groupId": 104,
+      "name": "몽환의 아스탤지어"
+    },
+    {
+      "groupId": 105,
+      "name": "부패한 군주의 판데모니움"
+    },
+    {
+      "groupId": 106,
+      "name": "어둠의 바라트론"
+    }
+  ]
+}
