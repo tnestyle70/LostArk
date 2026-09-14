@@ -123,6 +123,28 @@ namespace Client
 		LostArk::Shared::DAMAGE_EVENT Event;
 	};
 
+	/* Combat analyzer read model (CCombatAnalysisFrameView, later the MVP award): the local
+	player's own hits totalled from DAMAGE_EVENT.iSourcePlayerId from the first hit after
+	entering the level until the level is left (Reset_RuntimeState) -- one raid, one total; a
+	quiet pattern phase does not reset anything. Elapsed time is Server ticks from that first
+	hit, so DPS is Server truth / wall clock, not a Client estimate. */
+	struct HUD_COMBAT_ANALYSIS
+	{
+		bool isActive = false;
+		std::uint32_t iStartTick = 0;
+		std::uint32_t iLastHitTick = 0;
+		std::uint64_t iTotalDamage = 0;
+		std::uint64_t iTotalStagger = 0;
+		std::uint32_t iCounterSuccesses = 0;
+		/* Ticks since the first own hit; >= 1 while active. */
+		std::uint32_t Get_ElapsedTicks(std::uint32_t iServerTick) const
+		{
+			if (!isActive || iServerTick < iStartTick)
+				return 0u;
+			return iServerTick - iStartTick + 1u;
+		}
+	};
+
 	/* One raid Esther strike -> one full-screen cutin movie. iGeneration bumps
 	per request so the presentation consumer replays even the same archetype. */
 	struct HUD_ESTHER_CUTIN_REQUEST
@@ -283,9 +305,12 @@ namespace Client
 		/* Despawn edge of a non-Valtan primary boss: drops the bar only when the
 		bar currently shows that archetype. */
 		void Clear_BossIfArchetype(const std::string& archetypeId);
+		/* localPlayerId picks the events the combat analyzer totals (the caller's own
+		PLAYER_ID; INVALID totals nothing). */
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
-			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
+			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events,
+			LostArk::Shared::PLAYER_ID localPlayerId = LostArk::Shared::INVALID_PLAYER_ID);
 		/* Room-shared raid Esther gauge straight from the world snapshot. A
 		maximum of 0 means this world has no Esther and the HUD draws nothing. */
 		/* Room state, not per player: the bingo board as the Server owns it. */
@@ -453,6 +478,10 @@ namespace Client
 		{
 			return m_DamageEvents;
 		}
+		const HUD_COMBAT_ANALYSIS& Get_CombatAnalysis() const { return m_CombatAnalysis; }
+		/* New encounter inside the same level (a KoukuSaydon gate change): the raid total
+		starts over. Level exit resets through Reset_RuntimeState. */
+		void Reset_CombatAnalysis() { m_CombatAnalysis = {}; }
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
@@ -494,6 +523,7 @@ namespace Client
 		std::string m_strBossFocusArchetype;
 		bool m_bBossHidden = false;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
+		HUD_COMBAT_ANALYSIS m_CombatAnalysis;
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;
 		HUD_ESTHER_CUTIN_REQUEST m_EstherCutinRequest;

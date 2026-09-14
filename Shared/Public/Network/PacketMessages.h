@@ -1591,6 +1591,14 @@ namespace LostArk::Shared
 		hunter was dealt and carries their running count in iAmount, because the
 		entity snapshot has no archetype for the Client to read the suit from. */
 		MECHANIC_CARD_SYMBOL eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
+		/* Combat analyzer inputs (protocol 84). The player whose hit this is, so a
+		Client can total its own damage in a party (INVALID for world->player and
+		gimmick events); stagger the hit put on a boss; true when this hit was the one
+		that triggered a boss counter. A counter can land with no health damage, so a
+		zero-amount event is admitted when it carries stagger or a counter. */
+		PLAYER_ID iSourcePlayerId = INVALID_PLAYER_ID;
+		std::uint32_t iStaggerAmount = 0;
+		bool isCounterSuccess = false;
 	};
 
 	enum class BOSS_COMBAT_EVENT_KIND : std::uint8_t
