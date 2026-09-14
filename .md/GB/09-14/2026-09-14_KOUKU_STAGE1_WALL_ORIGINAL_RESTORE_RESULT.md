@@ -96,3 +96,18 @@
 재생하는 `playSequence` 트리거 17개를 빼고, 플레이어를 옮기는 `movePlayer` 트리거 18개만 남겼다. 팀장의 원래 5개
 (`jump.1~3` movePlayer, `paper.1~2` playSequence)는 그대로다. 배열 40 → 23. 파일 UTF-8 BOM·CRLF 보존, `git diff --check` 통과.
 C++ 컴파일은 사용자 VS 빌드로 확인한다(미실행).
+
+## W-R6. PR #384에서 누락된 `피날레_맵` 움직임만 재반영 (2026-09-14)
+
+사용자는 화면의 책 근처에서 재생하는 `피날레_맵` row 하나를 지정했고, 최종 확인에서 벽이 아래로 넘어가도록 수정한 움직임을 받으라는 뜻으로 확정했다. Sequence Composition의 `kakulsaydon.g1.world.14` → `world.sequence.instance.circusfinale`가 대상이다. 별도 Boss Composition에서 같은 worldId는 쿠크 트럼펫이므로 수정하지 않았다.
+
+누락 원인은 PR #384 충돌 해결에서 완성 Sequence·Effect 튜닝 보존을 World 문서 전체에도 적용한 것이다. main `904303a9`의 MAP placement 3·419는 수정 PR과 이미 같지만, `circus_finale`에는 이전 90도 앞판 키만 있고 뒤판 연결은 없었다. Composition과 instance의 위치 offset 자체는 양쪽 모두 `[0,0,0]`이다. 첨부 이미지에서 보이는 거대한 책의 원인까지 이 비교로 확정하지는 않는다.
+
+- 원본 수정 `fb9a8bb99e7b2c0ed8ed4aaed90aad5098bed4c2`의 W-R5 변경만 선택했다. `circus_finale.obj01`의 기존 6키를 62키로 교체하고 같은 키의 `obj24`와 `obj24 → MAP_PLACEMENT 419` 바인딩을 추가했다. 0~3000ms에 180도 회전하고 3000ms부터 숨긴다. 전체 template 길이는 21010ms 그대로다.
+- 다른 22개 트랙·기존 23개 바인딩, resource 448개·다른 template 250개·다른 instance 306개의 원문 바이트가 모두 유지됐다. revision만 1847 → 1848로 증가했다. 별도 `Stage1_wall`, MAP 배치, 카메라, 두 Composition 및 이펙트·UV 파일은 편집하지 않았다. P4의 사용자 저작 길이 19959ms도 그대로다.
+- 설치 직전 원문 일치를 확인했다. JSON 전체가 기대한 선택 변경과 동일하고 donor 키·바인딩도 동일하다. 키 시간은 0~3000ms 50ms 간격과 21010ms, quaternion 길이 검증도 통과했다. authoring 13,238,360 bytes로 16MiB 한도 이내이며 SHA-256은 `0a6b08b99852d5db30094a30e83a464b82da27deb61af2b64348684e2a7a1975`다.
+- `Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences` Validate → Publish → Check가 모두 exit 0으로 끝났고 해당 runtime 파일 1개를 게시했다. runtime SHA-256은 `ee2d913eff3fe194f3de968841caf96edf478e4fe6d0359724bbd58cbb55c991`이다. authoring/runtime JSON과 줄바꿈을 정규화한 바이트가 동일하고 `git diff --check`도 통과했다. 선택 반영 helper·백업·receipt와 게시 로그는 `out/FinaleMapRestore20260914/`에 있다.
+
+C++·셰이더·Resources 변경이 없어 재컴파일하지 않았다. 실행 중 Client PID 3948과 Server PID 46360은 유지했다. 별도 Gate1 Composition은 사용자 저장이 계속 들어오고 있어 커밋에서 제외하며, 기존의 Composition 생성물 3개도 그대로 남긴다. Client/UI를 실행·조작하거나 화면을 캡처하지 않았다.
+
+사용자 확인: 미저장 맵·시퀀스 편집을 먼저 보존한 상태에서 F1 → Map Tool → World Sequence → Reload 후 `circus_finale` 또는 기존 Sequence의 `피날레_맵`을 재생한다. Reload는 미저장 맵·시퀀스 편집을 버리므로 편집 중이면 먼저 보존해야 한다. 기대 움직임은 앞판·뒤판이 함께 1.5초에 평평해지고 3초에 아래로 사라지는 것이다. 실제 화면과 책 잔존 여부는 아직 사용자 판정 전이다.
