@@ -1385,3 +1385,11 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 - 화면 큐브 수축은 cinematic camera 적용 전에 Stage가 저장한 HDR/bloom pair를 첫 ScreenPost에 전달한다. 첫 Render에서 비어 있는 capture에 다시 live scene을 채우면 이미 움직인 카메라를 캡처한다. 중앙 수축은 destinationUV를 화면 중앙으로 유지하고 target model은 끝 크기만 제공한다. 포탈의 전환 시점 캡처와 혼동하지 않는다.
 - Effect mesh가 useModelMaterial=false여도 CModel 생성은 WModel에 기록된 material texture를 읽는다. 파생 WModel을 Effect/Meshes에 옮길 때 embedded relative DDS도 hash와 함께 닫아야 한다. 뒤 Queued 성공 메시지로 앞선 실패 원인을 덮지 않으며 capture 실패는 해당 occurrence에서 판정한다.
 - 재현·검증과 남은 화면 경계는 [캐릭터/아레나 결과](09-14/2026-09-14_CHARACTER_EFFECT_AND_ARENA_RECOVERY_IMPLEMENTATION_RESULT.md), [쿠크 재생 결과](09-14/2026-09-14_KOUKU_SEQUENCE_PLAYBACK_EDITOR_IMPLEMENTATION_RESULT.md)를 따른다.
+
+## 쿠크 SCENE 소품 부모와 Composition·카메라 병합 (2026-09-14)
+
+- `build_gate2_intro_composition.world_pose(rows, None, actor, t)`는 group이 None이라 그 액터의 Matinee Move 트랙을 하나도 적용하지 않는다. 카메라 더미에 hard attach된 소품의 부모를 샘플할 때는 `parent_pose_sampler(rows)`처럼 부모 자신의 group을 찾아 넘긴다. 이걸 빠뜨려 2관문 floor16 판이 세워진 채 남고 카드가 테이블 위에 떠 있었다(G13-R6).
+- floor16a~d, DECO19 같은 SCENE 소품은 두께 0의 세로 판 메쉬다. "판이 서 있다"를 회전 부호 오류로 단정하기 전에 메쉬 bounds와 부모 트랙 시각을 먼저 본다.
+- 한 템플릿의 256키 한도는 트랙별이다. 묶음 전체 키 합집합으로 구간을 나누면 이음매와 템플릿이 늘어 World 문서 템플릿 한도 256을 넘길 수 있다.
+- `KoukuSaydonSequenceComposition.json`의 CAMERA 박스와 `camerashots.json` 샷 분할은 서로 다른 파일이다. 병합에서 한쪽만 되돌리면 박스가 엉뚱한 샷을 재생해도 로드 오류가 나지 않는다. 병합 뒤에는 패턴별 CAMERA 박스 구간이 샷 `defaultHoldMs`와 1:1인지 확인한다(2026-09-14 `400439b2`에서 P3·P7·P8이 G13 이전으로 돌아감).
+- 현재 World 문서에는 `mapMaterialBindings.unlit`이 있어 G13 `world_document_bytes` 전체 재직렬화가 동등성 검사에서 멈춘다. 새 행 추가는 기존 바이트를 두고 배열 끝에 툴 형식 행만 끼운 뒤 재파싱 동등성을 증명한다. Composition도 C++ Save 형식(CRLF, %.17g)이라 python `json.dumps` 재작성 금지다.

@@ -873,3 +873,307 @@ P7 WORLD 3개는 기존 P5와 공유하는 `.world.28`, `.world.29`, `.world.30`
 수정은 한 원인 단위로 한다. 예를 들어 P7 비행 구도에서는 시간·부모를 확인한 뒤 거리/FOV를 분리해 보정하고, 가까운 얼굴 장면과 종료 장면에 부작용이 없는지 같은 회차에 확인한다. 다음 회차에 같은 값이 덮어써지지 않도록 원본 생성값과 승인된 수동 보정의 대상 ID·값·사유를 남긴다. 공용 P5 배우를 바꾸는 방식은 사용하지 않는다.
 
 최종 인계에는 컷별 최대 수치 오차와 발생 시각, 누락/중복 검사, 사용자 녹화 기준 장면 판정, Save→Reload 후 유지 여부, 비대상 연출 회귀, 남은 제약을 포함한다. G13-07의 크기·Save 문제와 G13-08의 실제 reader/publisher 검사도 계속 필수다. **이 모든 단계가 닫혀야 카메라·맵 연출 검증 완료이며, 그 전에는 “설명서대로 하면 완벽하다”라고 약속하지 않는다.**
+
+## G15. 2관문 진입 카메라·책/테이블·무대 소품 복구 및 편집 인계 (2026-09-14)
+
+### G15-00. 이번 실행 범위와 문서 상태
+
+이번 사용자 요청의 실행 정본은 **G15만**이다. 앞의 G12/G13은 조사 이력과 재사용 근거이며 그곳의 3관문·빙고·조명 작업을 함께 실행하지 않는다. 기존 계획서를 유지하기 위해 이 절에 후속 범위를 추가했다.
+
+목표: 사용자가 `Lobby → KoukuSaydon → F1 → Action Workbench → Composition Actions → Sequence → Gate 2 → 2관문_진입컷씬` 하나를 선택하면 27초 동안 카메라와 책·도박판·주변 무대가 함께 재생되고, 각 소품을 기존 편집기로 수정·저장한 뒤 다시 열어도 같은 결과가 유지된다. 팀장에게는 이 단일 진입점과 소품별 편집/저장 위치를 전달한다.
+
+이 절은 **확인된 연결과 실패 이력을 바탕으로 한 조사·조건부 수정 실행계획**이다. 원인이 확정되지 않은 좌표나 C++ 정답 패치를 만들어 넣지 않는다. 이번 문서 작성에서 제품 데이터·C++·WModel을 수정하거나 빌드하지 않았다. 구현자는 아래 비교로 최초 불일치를 확정하고, 수정 직전에 이 절의 해당 파일 항목에 실제 교체 블록을 기록한다. H/CPP가 필요해지면 저장소 계획 규칙에 따른 전체 반영 코드와 호출자·실패 소비자를 먼저 보강한다. 이 문서 자체를 복원 완료 증거로 사용하지 않는다.
+
+포함: P3의 카메라 시간·구도·이동·전환, Book/Table/HandBook과 의자·촛대 등 소품의 모델 동작·TRS·표시, 원본 근거가 있는 주변 무대 구성, 기존 편집/저장/재로드 연결.
+
+제외: P1/P2/P4 팝업북·피날레, P5/P7 및 3관문, 빙고, 카드미로, 마리오, 전투 로직·보상·서버 자동 컷신 트리거, 새로운 플레이어 연출. 전등·암전·안개·환경광·SSAO·Bloom·재질·셰이더·카드/연기/빛 링 FX 복구는 팀장 담당으로 변경하지 않는다. 촛대의 메시 배치와 광원은 구분한다. 기존 재질/텍스처 연결 보존은 필수지만 재질 계산을 고치는 작업으로 확장하지 않는다.
+
+세이튼/쿠크 배우의 골격·클립·AnimTree 재제작은 이번 기본 범위에 넣지 않는다. 배우 포즈가 카메라 불일치의 원인임이 확인되면 해당 장면의 증거와 필요한 좁은 수정 범위를 보고해 별도 승인을 받는다. 정상 카메라를 뒤집어 배우 문제를 숨기지 않는다. 독립적으로 가능한 책·테이블·배경 작업은 계속한다.
+
+### G15-01. 현재 파일과 사실의 등급
+
+실제 작업 저장소는 `C:/Users/USER/source/졸업팀폴/LostArk`다. `C:/Users/USER/.codex/worktrees/7395/LostArk`의 오래된 제품 소스로 현재 동작을 판단하지 않는다. 2026-09-14 재확인 시 실제 저장소는 `feature/kouku-cardmaze-visual-fix`이며 World 문서와 여러 C++/runtime 파일에 다른 작업의 미커밋 변경이 있다. 자동 checkout/stash/reset/stage/commit하지 않는다. 수정 전 최신 파일과 사용자의 툴 draft를 보존하고, 작업 브랜치 충돌은 사용자와 조정한다. 이번 `git fetch`는 FETCH_HEAD 권한 문제로 실패했으므로 원격 최신 상태 확인 완료로 적지 않는다.
+
+| 사실 등급 | 확인 내용 | 해석 제한 |
+|---|---|---|
+| 현재 JSON 확인 | P3 stable ID `KAKULSAYDON_G1_PATTERN_3`, 표시명 `2관문_진입컷씬`, Gate `GATE2`, 길이 27,000ms, WORLD 17개 | ID의 G1 문자열을 G2로 바꾸지 않는다. 표시명도 이번에 불필요하게 바꾸지 않는다 |
+| 현재 JSON 확인 | Table → `world.object.kouku.gate2.intro.table`, Motion instance → `world.sequence.instance.kouku.gate2.intro.table`, template → `sequence.kouku.gate2.intro.table` | 존재만으로 전체 동작 정확성을 증명하지 않는다 |
+| 현재 연결/생성기 확인 | Table의 clip은 `gate2_intro_27s`, 시작 0ms, rate 1, loop false, holdLastFrame true. `bake_actor`는 30Hz 811개 표본으로 27초 클립을 만드는 경로 | 현재 설치 바이너리의 골격/샘플 정확성은 별도 대조한다 |
+| 원본 추출 JSON 확인 | table 그룹 500의 활성 anim track: `evt2_table_open01`을 11.0초 reverse, 15.659999847초 forward, rate 1, non-loop | 원본 시각이다. 녹화 시작 시각과 혼동하지 않는다 |
+| 첨부 영상 관찰 | 현재 녹화에도 초록색 테이블이 펼쳐진다. 무대/인물 구도와 주변 구성은 참고 영상과 다르다 | 이번 재확인은 접촉 시트 관찰이며 프레임 정합 후 전 구간 일치 판정이 아니다 |
+| 결과 기록 및 현재 검색 | 165개 backdrop 후보를 설치했다가 수직 바닥 띠·공중 카드 문제로 제거한 이력. 현재 World에서 `kouku.gate2.intro.backdrop` 연결을 찾지 못함 | 165를 맞추기 위한 임의 소품 추가 금지. 다른 ID/배치 경로 존재 여부도 원본 actor별로 대조 |
+| 과거 결과의 주장 | 쿠크 등 노출은 배우 bake가 원인이라는 기록, parent 회전/ignore-base가 backdrop 의심 지점이라는 기록 | 기록만으로 현재 확정 원인으로 승격하지 않는다. 같은 시각의 실제 pose/행렬로 재검증 |
+
+현재 Composition CAMERA는 5개이며 시작/길이는 `(0,2100), (2100,11850), (13950,5540), (19490,4460), (23950,3050)`ms다. 과거 G13의 7개 CAMERA와 다르다. 생성기의 키 제한 분할 결과와 현재 설치 샷/박스 연결을 다시 읽고 **현재 5개인 이유를 먼저 확인**한다. 5개/7개라는 개수 자체로 누락이나 정상 여부를 판정하지 않는다. 이번에 확인한 `make_cameras`는 64키 제한 분할과 위치 0.005m·방향 0.1도·FOV 0.02도 기준으로 축약한다. 앞 절의 FOV 0.05도 표보다 현재 더 엄격한 기준을 느슨하게 만들지 않는다.
+
+원본 모델/패키지 이름은 사용자 전달 Claude 조사에서 다음과 같이 제시됐다. 이를 추출 manifest/원본 참조로 다시 연결하며 이름 유사 검색만으로 대체하지 않는다.
+
+- SkeletalMesh: `cine_prob_09_s2_2012.mesh.bg_rad_koukusaton_table`
+- AnimSet: `cine_prob_09_s2_2012.ani.bg_rad_koukusaton_table_evt2_ani`
+- Clip: `evt2_table_open01`
+- Package: `CINE_PROB_09_S2_2012`, 물리 파일 `CIHQ2CV9O52N0R2NGE2NE07E.upk`
+- 패키지 45 frames / 1.5333초, PSA 47 frames / 30fps라는 전달값은 서로 다른 시간 표기일 수 있다. 단순히 프레임 개수로 길이를 덮어쓰지 말고 converter의 duration/ticks 및 표본 끝점 처리와 함께 읽는다.
+
+### G15-02. 실제 수정 지점과 저장 소유권
+
+아래 경로는 모두 실제 저장소 기준이다. 기존 생성기를 **통째로 재실행**하는 허가 목록이 아니다.
+
+| 절대 경로 | 역할 / 이번 수정 경계 |
+|---|---|
+| `C:/Users/USER/source/졸업팀폴/LostArk/Tools/KoukuSaydonPipeline/build_gate2_intro_composition.py` | `anim_at` 원본 clip 시간 선택, `bake_actor` 골격 표본, `world_pose` 부모/이동 평가, `make_cameras` 활성 Director/샷 생성. 최초 불일치가 입증된 함수만 수정 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Tools/KoukuSaydonPipeline/build_gate2_intro_backdrops.py` | 원본 actor/부모에 대응한 무대 소품 후보. 되돌린 165개를 그대로 재설치하지 않음 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py` | 후보 생성/병합 및 `tool_document` 직렬화 재사용. 3관문/빙고를 함께 설치하지 않음 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json` | P3만의 WORLD/CAMERA 박스와 참조 등록. Sequence Save의 정본 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json` | Object Resource, template, instance, TRS/visibility/animationTracks. Object Tool Save의 정본 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json` | P3 카메라 eye/lookAt/up/FOV/키. Save Camera 정본 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/Resources/Map/KakulSaydon/Gate2Intro/Table/Table.wmodel` | Table의 geometry/골격/구운 clip. Object/Sequence Save로 내부 골격 클립을 다시 굽지 않음 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Client/Private/WorldObjectTool.cpp` | `Save_Source`가 검증된 World와 필요한 linked 참조를 저장하고 `Start_Publish`가 WorldSequences scope 적용. 저장 충돌 우회 금지 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Client/Private/KoukuSaydonActionWorkbench.cpp` | `Save`, `Request_PatternPreview`, 카메라 편집의 `Save Camera`. 기존 UI 재사용; 설명만 나오는 대체 창을 만들지 않음 |
+| `C:/Users/USER/source/졸업팀폴/LostArk/Tools/MapPipeline/Publish-MapAuthoring.ps1` | Area 또는 WorldSequences scope로 생성/검증. runtime DataFiles 직접 편집 금지 |
+
+정적 배치가 실제로 빠졌을 때에만 해당 Area `.mapplacements`와 Imported catalog의 정확한 원본 actor/asset 행을 추가한다. 같은 소품을 MAP 배치와 OBJECT_RESOURCE 양쪽에 만들어 두 번 그리지 않는다. 새 모델을 만들면 CModel→CMaterial 경로, 기존 material binding 및 모델 상대 DDS 경로를 유지한다. 모델 전체를 합친 하나의 mesh로 만들어 개별 소품 편집을 잃지 않는다.
+
+현재 Table은 OBJECT_RESOURCE다. `Map Tool → Animated Props → Save Animated Props`를 이 Table의 저장 버튼으로 안내하지 않는다. 그 버튼은 별도 Deploy placement 저장 경로다. 모델 내부 접힘 동작, World 이동 키, Composition 박스 시계를 각각 구분한다. Object Save는 경우에 따라 linked 참조도 갱신하므로 완전히 서로 무관한 저장이라고 설명하지 않으며, Save 성공과 뒤의 적용 성공을 따로 확인한다.
+
+### G15-03. 먼저 고정할 비교 입력과 시계
+
+원본 영상: `C:/Users/USER/OneDrive/바탕 화면/2관문 컷신 .mp4`
+
+현재 녹화: `C:/Users/USER/OneDrive/바탕 화면/2관문 진입(프레임워크1).mp4`
+
+확인된 원본 추출 JSON: `C:/Users/USER/OneDrive/바탕 화면/쿠크1관문_연출_원본_20260913/01_컷신별_타임라인/1관문클리어_221_SCENE04A_matinee2_전체.json`
+
+이름은 1관문 클리어지만 이번 2관문 진입 P3에 대응하는 SCENE04A Matinee2다. `tmp/gate2/pkg` 등 다른 세션의 scratch는 존재와 입력 identity를 다시 확인하고 정본으로 가정하지 않는다.
+
+1. 첨부 영상만 오프라인으로 읽어 실제 게임 viewport를 고정한다. 창 테두리/유튜브 바/HUD를 aspect 기준으로 쓰지 않는다. 프레임마다 임의 crop/zoom으로 구도를 맞추지 않는다.
+2. 첫 카메라 전환, 책/테이블 등장, 펼침 시작, 후퇴, 마지막 컷의 복수 사건으로 `참고 녹화 PTS → Matinee 시간`, `작업 녹화 PTS → Sequence 시간`을 따로 만든다. 기록 길이 비율로 27초 전체를 늘이거나 0.5초 지연을 임의 적용하지 않는다.
+3. 각 문제는 `원본 actor/group/track → 변환 후보 → 저장 JSON/WModel → 로드 후 값 → 재생 시각의 최종 값 → 사용자 영상` 순서로 추적한다. 같은 생성기 함수를 두 번 호출한 0오차만으로 원본 의미가 정확하다고 결론 내리지 않는다.
+4. 현재 5개 샷의 key 개수/구간/내용을 과거 7개 분할과 대조한다. 과거 로그의 0오차/최대 65cm를 이번 설치본의 측정값으로 재사용하지 않는다.
+
+기존 read-only 파서/모델 검사/후보 스크립트를 우선 사용한다. 새로운 범용 oracle, 전용 런타임, 대규모 하네스 프로젝트를 자동으로 추가하지 않는다. 제품 UI를 자동 실행/조작/녹화하지 않는다. 최종 runtime 측정에 사용자 실행이 필요하면 정확한 구간과 기존 로그 수집 방법을 전달한다.
+
+### G15-04. Book/Table의 기존 동작 검증과 조건부 재생성
+
+이 작업의 시작은 원본 clip을 또 Append하는 것이 아니다. 현재 27초 baked clip이 원본을 올바르게 표현하는지 검사한다.
+
+입력: 원본 table 그룹의 이동/회전/scale/visibility/anim control, 원본 모델/클립과 설치 WModel, World template 및 instance, Composition `.world.3` 박스.
+
+검사 순서:
+
+1. 원본의 11.0초 역재생과 15.66초 정재생, trim/rate/non-loop/weight/root 옵션을 읽는다. 첫 anim key 이전 pose, 역재생 끝의 hold, 두 키 사이 pose를 확인한다. 첫 키를 무조건 0초 시작으로 바꾸지 않는다.
+2. `anim_at` → `bake_actor` → 설치 clip의 같은 source 시간에서 힌지 뼈/테이블 모서리/밑면의 위치·방향을 대조한다. clip이 811개 표본이라는 이유만으로 15.66초 같은 off-grid 사건이 정확히 처리됐다고 하지 않는다. 30Hz bake 오차와 ms 경계의 원본 의미를 따로 기록한다.
+3. WModel의 bind/inverse-bind, geometry basis/preScale와 World TRS를 연결해 루트 이동/회전/scale이 중복 적용되는지 확인한다. 뼈 애니메이션과 물체 전체 이동은 별도다.
+4. 원본 `cim_constant` 이동은 의도한 순간이동으로 유지한다. 두 키 사이 임의 Linear/SmoothStep 이동으로 책이 무대를 가로질러 날아가지 않게 한다. 현재 샘플/직전 ms 키 방식이 최종 evaluator에서 어떻게 보이는지 검사한다.
+5. `holdLastFrame`과 WORLD 표시 종료를 구분한다. 필요한 끝 pose가 27초 이전에 초기화되지 않으며, 원본 의도된 HIDE는 유지되어야 한다. 순방향 재생과 Seek 결과가 같은지 검사한다.
+
+결정: 설치 clip/변환이 맞으면 재쿠킹 없이 보존한다. 골격 샘플이 틀리면 해당 소품의 bake만 고쳐 별도 candidate에 만들고 검증 후 교체한다. World 키/시계만 틀리면 JSON만 고친다. 임의 시작/끝 scale 보정으로 중간에 작아지는 현상을 만들지 않는다. Book/HandBook도 원본 연결을 각각 확인하고 Table과 같은 모델/시간으로 간주하지 않는다.
+
+새 raw clip 재쿠킹은 기존 baked 경로로 표현할 수 없는 실제 저작 요구가 확인될 때만 별도 제안한다. Table/Book을 통째로 재생성하는 명령이 Saydon/Kouku·재질·FX도 덮어쓰면 사용하지 않는다.
+
+### G15-05. 되돌린 주변 무대 소품의 원인별 복구
+
+근거: `C:/Users/USER/source/졸업팀폴/LostArk/.md/GB/09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md`의 G13-R3~R6. 이 기록에는 개수 설명의 산술 불일치도 있으므로 문장의 숫자를 그대로 조립 목표로 쓰지 말고 source actor identity의 실제 집합으로 재계산한다.
+
+원본 actor 하나마다 모델·parent/base·relative TRS·초기 world TRS·active Move/Scale/Toggle·현재 resource/placement를 연결한다. 새 안정 ID는 기존 발급/reader 규칙을 사용하고 포인터나 vector index로 발급하지 않는다. 원본 export 번호는 provenance로 보존하되 런타임 임시 인덱스를 저장 ID로 쓰지 않는다.
+
+먼저 floor16 받침 한 조각, 기둥 한 개, 매달린 카드 한 개를 골라 원본 공간에서 점 3개와 법선/전방, 부모 회전 전후 값을 검사한다. `Base`, `bHardAttach`, `RelativeLocation/Rotation`, `bIgnoreBaseRotation`, initial-relative Move, drawscale/drawscale3d의 의미를 확인한다. 사진만 보고 일괄 90도 눕히거나 부모 회전을 무조건 제거하지 않는다.
+
+대표 소품의 변환을 확인한 뒤 **같은 원본 부착 규칙을 가진 묶음**에 적용한다. 이미 있는 의자 4개·촛대 2개 및 Book/Table과 중복되지 않도록 현재 17개 WORLD와 원본 actor로 join한다. 정적인 구조물도 시퀀스에서 표시/수명이 필요하면 기존 WORLD 소품 경로를 사용하고, 화면에 움직여 보인다는 이유만으로 모두 골격 애니메이션을 만들지 않는다.
+
+매달린 카드의 프로그램 흔들림은 원본 키 복사와 구분한다. 과거 후보의 zero-phase sine를 원본 위상으로 선언하지 않는다. 원본 seed/phase/초기 조건이 복구되지 않는 경우 실제 알려진 진폭·주기와 남는 위상 제약을 기록하고, 사용자의 수동 조정으로 바꾼 값은 원본 복원값과 분리한다.
+
+목표 증거: 책 밑 받침이 수직 띠로 서지 않음, 기둥/의자/촛대의 접촉점이 분리되지 않음, 카드가 잘못된 위치에 줄지어 떠 있지 않음, 마지막 포즈에서 임의 초기화 없음. 수치와 사용자 영상 확인을 별도로 남긴다. 원본에 없는 보충 배치는 자동 설치하지 않고 필요한 위치/이유를 사용자에게 제시한다.
+
+### G15-06. 카메라와 세트를 같은 기준으로 수정
+
+활성 Director의 0/2.10/13.95/19.49/23.95초와 총 27초를 우선 보존한다. 내부 64키 분할은 새 연출 컷이 아니다. 새 ID가 필요하면 다른 샷을 덮지 않는 현재 등록 방식으로 발급한다.
+
+| Sequence 구간 | 검사 대상 | 원인 분리 |
+|---|---|---|
+| 0–2.10초 | 도입 무대와 배우의 실제 위치, 표시 범위, 첫 camera pose | 무대 객체 미생성과 조명 부족을 분리. 새 검은/불투명 배경으로 가리지 않음 |
+| 2.10–13.95초 | 큰/작은 배우, 손과 책의 상대 구도 | actor pose가 틀리면 정상 camera를 임의 회전하지 않음 |
+| 13.95–19.49초 | 책·테이블 펼침과 주변 세트 | 안개로 가려지는 차이는 FX 담당으로 구분하되 geometry/시계 오류는 검사 |
+| 19.49–23.95초 | 쿠크 클로즈업과 빠른 후퇴 | 원본 cam4 전체 곡선, 실제 재생 clock 및 내부 segment 연속성 |
+| 23.95–27초 | 마무리 구도와 소품 마지막 pose | 카드 FX 양과 소품 누락을 분리하고 끝나기 전 카메라 복귀 방지 |
+
+수정 순서: 활성 트랙/원본 시간 → parent/기준 좌표 → eye/forward/up/roll → FOV와 실제 viewport → 구간 내부 곡선 → 최종 runtime camera 소유권/블렌드. 수평→수직 FOV 변환은 기존 생성기에 이미 있으므로 중복 추가하지 않는다. 모델 silhouette 차이와 near clipping, 프레임 밖 잘림을 구분한다.
+
+원본 공간과 프로젝트 공간을 옮겨야 하면 관련 세트와 camera에 공통 rigid transform을 한 번만 적용한다. eye/lookAt은 회전+이동, up은 회전만 적용한다. 기준 배우 위치를 제외 범위라며 고정해 둔 채 카메라만 억지 이동하는 대신 필요한 좌표 보정 범위를 제시한다.
+
+활성 원본 데이터와 참고 영상이 실제로 다른 버전이면 두 결과를 보여 주고 해당 컷의 기준 선택을 사용자에게 요청한다. 비활성 트랙을 몰래 활성화하거나 영상에 맞춘 수동 키를 원본 추출이라고 기록하지 않는다.
+
+### G15-07. 팀장에게 보일 단일 항목과 편집 동선
+
+기존 `2관문_진입컷씬` P3를 유지한다. 새로운 별도 Demo/Benchmark 목록을 만들지 않는다. 하나의 Play로 모든 대상 WORLD/CAMERA가 같이 재생되어야 한다. 전체를 하나의 WModel이나 하나의 편집 불가 안내문으로 합치지 않는다.
+
+팀장용 목록은 기존 UI가 제공하는 표시명/그룹으로 `책`, `도박판`, `의자`, `촛대`, `무대 받침`, `매달린 카드`, `카메라`를 알아보기 쉽게 한다. 표시명은 바꿀 수 있지만 stable ID와 기존 참조는 유지한다. 165개를 개별 클릭해야 전체가 보이는 방식으로 끝내지 않는다. 그룹을 쓰더라도 개별 target의 원본 identity·Transform 편집이 가능해야 한다. UI 기능이 부족하면 새 창을 먼저 만들지 말고 기존 Box Detail → Edit This Motion/Edit Object 호출과 multi-target 편집 지원부터 확인한다.
+
+사용자 편집 위치:
+
+1. 전체 재생/박스 시각: Action Workbench의 P3 Sequence 및 Box Detail.
+2. 소품 전체 위치·회전·이동 키·재생 clip: WORLD 박스에서 기존 Edit This Motion/Edit Object로 World Object Tool의 해당 Motion을 연다. Object Resources에서 직접 선택해도 동일 source여야 한다.
+3. 카메라: CAMERA 박스의 Open Composition Camera로 키를 편집하고 Save Camera. `Set Camera Pos / Capture view`는 원본 track을 정지 pose로 바꾸므로 원본 궤적 편집에서 사용하지 않는다.
+4. 모델 내부의 접힘/펼침: 현재 baked WModel의 영역. Object UI에 없는 골격 키 편집을 가능하다고 안내하지 않는다. bake 변경은 구현자가 처리한다.
+
+현재 코드에서 버튼/연결이 있는지 확인하고, 런타임에서 활성 여부는 사용자가 확인한다. 문서에 메뉴 이름을 적었다는 이유로 실행 확인 완료로 처리하지 않는다.
+
+### G15-08. 안전한 설치·저장·게시
+
+먼저 원본과 현재 정본을 읽어 후보를 별도 out 폴더에 만든다. `build_source_sequences.py`나 G12 전체 `--install`을 실행해 정상 컷신을 다시 생성하지 않는다. 현재 대상 파일 baseline과 draft 보존을 확인한 뒤에만 설치한다. 사용자가 툴을 열어둔 상태라면 Save/종료 여부를 묻고, 외부 수정 중 다시 Save해서 후보를 덮어쓰지 않게 안내한다.
+
+설치 직전 대상 원문이 달라졌으면 중단하고 최신본으로 병합한다. 새 candidate의 검증을 모두 통과하기 전 정본/모델을 부분 교체하지 않는다. 여러 파일 적용의 중간 실패에는 이번 작업으로 바뀐 대상만 복구하고, 다른 사람의 이후 Save나 미커밋 변경은 덮어쓰지 않는다. 복구가 안전하지 않으면 남은 recovery 파일과 충돌 대상을 보고한다.
+
+한도를 설치 직전에 실제 reader로 재확인한다. 과거 World 16MiB/32 target/256 key, Camera 2MiB/128 shot/64 key는 역사적 기준이며 현재 코드와 대조한다. `tool_document`의 툴 호환 직렬화와 Save→Load 왕복을 검사한다. 설치 때만 minify하거나 비대상 키 삭제/상한 증대로 실패를 숨기지 않는다. 동일 World instance에서 같은 Object Resource target을 중복 바인딩하지 않는 기존 규칙도 유지한다.
+
+저장 순서: 소품 Motion Save 및 적용 결과 확인 → Save Camera → 현재 Composition draft와 외부 변경을 재조정 → Sequence Save → 사용자 재로드/재생. Object Save가 linked 문서를 바꿨을 때 freshness 검사를 해제하지 않는다. 시퀀스 Save는 독립 저작 저장이며 전투 Pattern Publish를 대신하지 않는다.
+
+World만 변경하면 기존 Object Save의 WorldSequences 게시를 확인한다. 카메라/배치도 바뀌면 아래 Area 게시를 사용한다. 같은 Area에서 진행 중인 카드미로·조명 작업의 draft/저장값을 먼저 조정하고 대상 밖 authoring은 건드리지 않는다. Area Publish는 다른 저장된 layer도 반영할 수 있으므로 출력 diff를 확인하고, 예상하지 않은 타 작업 반영이 있으면 조정 없이 덮어쓰지 않는다.
+
+실제 저장소 루트에서 사용하는 명령(구현자가 후보 적용 뒤 실행):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope Area -Mode Validate
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope Area -Mode Publish
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope Area -Mode Check
+```
+
+기존 잘못된 ID 하나로 전체 MapTool이 비는 회귀를 막도록 후보의 모든 참조와 실제 reader 허용 ID를 검사한다. validator를 삭제하거나 잘못된 바인딩을 아무 객체로 대체하지 않는다. Sequence 문서는 해당 `CKoukuSaydonCompositionDocument`의 Sequence 경로로 검증한다. 다른 형식의 범용 Composition publisher나 전투 Publish를 대신 실행하지 않는다.
+
+### G15-09. 최소 검증과 완료 판정
+
+구조 검사: 변경 JSON parse, stable ID/clip/asset/target 참조, 유한 TRS/정규화 quaternion, 올바른 시간 순서, P3 CAMERA 빈틈/의도치 않은 겹침 없음, source actor 누락/중복 대조, 실제 저장기 왕복, 비대상 P1/P2/P4/P5/P7/빙고 및 팀장 source 보존, 변경 파일 `git diff --check`.
+
+동작 검사: 0ms; 모든 원본 anim/Move/Toggle/camera/box 경계의 직전·해당·직후; 펼침 중간과 완료; cam4 빠른 후퇴 내부; 27초 직전. 테이블 11.0/15.66초를 포함한다. 카메라 곡선은 기존 생성기의 16ms 간격 표본과 원본 key를 사용하고, 골격 bake는 30Hz 표본 사이 보간까지 대조한다. 최대 오차와 발생 ID/시각을 남기고 평균만 보고하지 않는다. 과거 G13 제안 허용치와 현재 생성기의 더 엄격한 값을 혼동하지 않는다. 표본 검사는 연속시간 완전 동일의 증명이 아니다.
+
+사용자 확인: 처음부터 연속 Play, Pause/Resume, 같은 시각 Seek, 역방향 Seek, Stop/Reset/Restore의 해당 UI, 두 번째 Play, Save 후 재로드, Client 재실행 후 같은 메뉴에서 P3 재생. 각 경우 책·테이블 포즈/표시와 소품 수가 유지되고 중복 생성/누적 회전/중도 초기화가 없어야 한다. Seek 기능이 지원되지 않는 경계는 정상으로 가장하지 말고 제한/필요 수정으로 구분한다.
+
+정본 데이터/모델만 바뀌면 C++/셰이더 전체 빌드를 요구하지 않는다. 실제 C++ 수정이 필요한 경우에만 저장소의 현재 Product 증분 Build를 사용한다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product
+```
+
+현재 계획은 신규 C++/HLSL 파일·프로젝트 등록을 제안하지 않는다. 필요가 입증되어 추가할 때는 실제 `.vcxproj`/`.filters` 등록과 영향받는 컴파일을 같은 변경에 포함한다. Rebuild/Clean/OBJ/PCH/tlog 삭제, CSO 타임스탬프 조작, 전체 FxCompile 강제 해제는 하지 않는다. F5/Ctrl+F5 모두 VS 설정에 따라 Build하므로 무빌드라고 안내하지 않는다.
+
+Client/UI는 사용자가 실행한다. 에이전트는 직접 실행/조작/화면 캡처하거나 visual PASS를 기록하지 않는다. 기존 자동 검사를 수정 데이터와 함수 범위로 실행하며 광역 하네스 자동 추가/반복은 하지 않는다.
+
+### G15-10. Claude 결과물과 팀장 인계
+
+구현 결과는 기존 `C:/Users/USER/source/졸업팀폴/LostArk/.md/GB/09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md`에 G15 결과로 추가하고 역사적 기록을 지우지 않는다. 결과는 다음을 구분한다.
+
+- 최초 불일치: 해당 원본 actor/track, 현재 resource/clip/camera, 시각, 기대값과 실측값, 실제 고친 파일/함수.
+- 변경한 카메라/소품: 원본 직접 복원, 변환 오류 수정, 사용자 승인 수동 보정, 범위 밖 제약을 각각 표시.
+- 코드·데이터 적용, 자동 검사, 사용자 실행/화면 확인의 상태를 따로 기록. 실행하지 않은 검사는 PASS로 적지 않음.
+- 모델이 이미 정확해 유지한 것과 실제 재쿠킹한 것을 구분. 설치된 clip 이름만으로 복원 완료 선언 금지.
+- 팀장용 한 장 안내: 위 단일 P3 메뉴, 소품별 표시명/stable ID/편집 버튼/Save 위치, 대표 확인 시각, 재로드 방법, 현재 EXE/작업 디렉터리.
+- Git/DataFiles 전달 범위와 Drive Resources 전달을 구분. Table의 상대 ID `Map/KakulSaydon/Gate2Intro/Table/Table.wmodel`과 실제 물리 경로, 함께 필요한 DDS/모델의 실제 목록, 전달 준비 여부를 기록. Resources를 force-add하거나 전체 pack/hash manifest를 새 완료 조건으로 만들지 않음.
+- 배우 bake·전등·안개·암전·재질·FX가 남긴 화면 차이는 시각과 원본 ID/근거를 붙여 팀장에게 인계. 그 차이를 포함해 전체가 원작과 완전히 같다고 보증하지 않음.
+
+완료는 이름 추가나 애니메이션 연결 존재가 아니라, **P3 하나에서 대상 소품과 카메라가 맞게 재생되고 개별 편집·저장·재로드가 유지된 것을 사용자와 확인한 상태**다. 사용자 실행 전에는 `적용·자동 검사 완료 / 사용자 확인 대기`까지만 보고한다.
+
+### G15-11. 측정으로 확정한 원인과 적용 교체 블록 (2026-09-14 Claude 실행)
+
+G15-00~10의 비교를 실제로 수행한 결과다. 원인이 코드·데이터로 확정된 두 가지만 아래 블록으로 적용하고, 확정하지 못한 항목은 G15-11-4에 남긴다.
+
+#### G15-11-1. 확정 1 — P3 카메라 박스가 병합으로 5개로 되돌아감
+
+- 원본 Director 활성 컷: cam1 −1.01초, cam2 2.10, cam3 13.95, cam4 19.49, cam6 23.95. 카메라 액터에 부모 부착 없음.
+- `LV_LUT_MIDNIGHTC_ED.camerashots.json` revision 84의 `kouku.gate2.intro.camera.1~7`은 `make_cameras` 재생성과 키 수·시각·eye·lookAt·FOV가 모두 0.0 차이다(같은 생성기 비교이므로 원본 의미 증명은 아님). 구간은 1 [0,2100], 2 [2100,13950], 3 [13950,19490], 4 [19490,21714], 5 [21714,22818], 6 [22818,23950], 7 [23950,27000]이다. cam4는 64키 제한으로 4·5·6 세 샷으로 나뉜다.
+- `git show 31936830`(G13)의 Composition P3는 박스 7개였고, 병합 `400439b2 Merge main into Kouku branch and preserve authored sequences`에서 Composition만 이전 5박스(revision 41)로 돌아갔다. camerashots는 7분할 그대로다.
+- 결과: 현재 박스 4(19490, 4460ms)는 샷 4의 2224ms 뒤 마지막 키를 붙잡고, 박스 5(23950, 3050ms)는 cam6가 아니라 cam4 중간 샷 5를 재생한다. 샷 6·7은 쓰이지 않는다. 투영 계산으로 박스 5 구간은 촛대 두 개가 화면 안에 들어오는 넓은 후퇴 구도이고, 샷 7(cam6)은 테이블 위 근접 구도다.
+
+교체(`Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`, C++ 저장 형식 CRLF 유지, 텍스트 앵커 교체):
+
+```text
+presentationResources
+  presentation.kouku.gate2.intro.camera.4  durationMs 4460 -> 2224 (displayName 유지 "... / cam4")
+  presentation.kouku.gate2.intro.camera.5  durationMs 3050 -> 1104, displayName "... / cam6" -> "... / cam4"
+  + presentation.kouku.gate2.intro.camera.6  CAMERA assetId kouku.gate2.intro.camera.6 durationMs 1132 "... / cam4"
+  + presentation.kouku.gate2.intro.camera.7  CAMERA assetId kouku.gate2.intro.camera.7 durationMs 3050 "... / cam6"
+patterns[KAKULSAYDON_G1_PATTERN_3].presentationOccurrences
+  .presentation.4  startMs 19490 durationMs 4460 -> 2224
+  .presentation.5  startMs 23950 -> 21714, durationMs 3050 -> 1104
+  + .presentation.9   resourceId camera.6 startMs 22818 durationMs 1132 (다른 필드는 .presentation.5와 동일)
+  + .presentation.10  resourceId camera.7 startMs 23950 durationMs 3050
+  nextPresentationOccurrenceOrdinal 9 -> 11
+revision +1
+```
+
+같은 병합에서 P7(3관문_진입 전체 35,368ms)과 G12 빙고 엔딩도 이전 상태로 돌아간 사실을 확인했다. G15 범위 밖이므로 수정하지 않고 결과에 보고한다.
+
+#### G15-11-2. 확정 2 — 무대 소품 165개 되돌림의 원인은 부모 Matinee 트랙 누락
+
+- 소품 165개 모두 `bHardAttach`이고, 부모 저장 Transform × `RelativeLocation/RelativeRotation`이 자식 저장 월드 Transform과 최대 0.013cm·0.039°로 일치한다. 즉 부모-상대 합성 규칙 자체는 맞다.
+- 회전 변환은 맵 importer `convert_rotation`과 backdrop의 `BASIS @ R @ BASIS.T`가 무작위 200개 rotator에서 8.9e-16 차이로 같다.
+- 원인: `build_gate_cutscenes_g12.install_backdrops`와 `build_gate2_intro_composition.build`가 부모를 `world_pose(rows, None, actor, t)`로 샘플한다. group이 None이면 `active_tracks`가 빈 목록이라 부모 더미의 Move 트랙이 전혀 적용되지 않았다. G13-R3의 "부모 더미가 움직이지 않음"은 이 호출 결과였고 원본 데이터와 다르다.
+- 원본 부모 그룹(모두 활성 Move 트랙, `imf_relativetoinitial`):
+  - `d1~d8`(cameraactor_3~10, 카드 80장): 0.62초에 약 92m 위로 올라가 23.0~25.5초에 원래 자리로 내려온다. 원본 영상 22~26초의 카드 비와 시각이 맞다.
+  - `기둥1~5`(cameraactor_11~15, floor16 판 25장): 11.2~16.5초에 접혔다 펴지고, 23.5초에 판 25장이 Y −107.8~−101.7로 책 페이지(−108.5)와 테이블 윗면(−101.4) 사이, 테이블 가장자리(X −309~−289, Z 439~459)를 두른다. 원본 23~24초 테이블 아래 받침 구조와 같은 자리다.
+  - `데스크기둥`(cameraactor_1, floor16 판 25장): 0.88초에 멀리 이동했다가 24.56~25.4초에 테이블 자리로 돌아온다.
+  - `tabetcdum`(cameraactor_37, 35장): 세이튼 `bip001-l-hand` 뼈 부착. 이 경로는 bake된 세이튼 손 포즈에 의존한다.
+- floor16a~d 메쉬는 두께 0의 YZ 평면(아래로 약 11m)이고 DECO19 촛대도 두께 0 판이다. 부모 트랙이 빠진 저장 자세에서는 판이 세워진 채 테이블 주변에 보였고, 카드는 저장 위치(테이블 위 12m)에 줄지어 떠 있었다. G13-R6 화면과 같다.
+
+교체 블록:
+
+`Tools/KoukuSaydonPipeline/build_gate2_intro_composition.py` — `group_actor` 뒤에 추가하고 `build()`의 호출을 교체한다.
+
+```python
+def parent_pose_sampler(rows, matinee=329, interp_data=394):
+    """Pose of a set-piece parent including its own Matinee group.
+
+    world_pose(rows, None, ...) skips every Move track, which left the SCENE04A
+    camera dummies (pillars, desk legs, cards) at their editor placement."""
+    groups = rows[interp_data]["p"]["interpgroups"]
+    def sample(actor, seconds):
+        group = next((g for g in groups if actor in group_actor(rows, g, matinee)), None)
+        return world_pose(rows, group, actor, seconds, matinee, interp_data)
+    return sample
+```
+
+```python
+# build()
+backdrops=build_backdrops(rows,imports,parent_pose_sampler(rows),exclude_bone_attached=True)
+```
+
+`Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py` — `install_backdrops`:
+
+```python
+result = bd.build_backdrops(rows, cache['imports'], base.parent_pose_sampler(rows), exclude_bone_attached=True)
+```
+
+`Tools/KoukuSaydonPipeline/build_gate2_intro_backdrops.py` — `build_backdrops(rows, imports, pose_sampler, exclude_bone_attached=False)`:
+- 165개 확인 뒤, `exclude_bone_attached`이면 부모에 `basebonename`이 있는 자식을 제외하고 receipt에 `excludedBoneAttached`(actor·부모·뼈·제외 사유)를 남긴다.
+- 부모 그룹 이름을 표시명에 넣는다: `d1~d8` → "매달린 카드 dN", `기둥N` → "테이블 받침 기둥N", `데스크기둥` → "책상 다리 데스크기둥". stable ID 규칙은 기존 그대로다.
+
+설치(`--backdrops --install` 모드만, 전체 생성기 `--install` 금지):
+- World 문서는 G13 전체 writer가 현재 문서의 `mapMaterialBindings.unlit`에서 동등성 검사를 통과하지 못하므로 전체 재직렬화하지 않는다. 기존 바이트를 그대로 두고 세 배열 끝에 `tool_object_resource/tool_template/tool_instance` 형식의 새 행만 끼워 넣는다. 재파싱 결과가 "기존 문서 + 새 행"과 float32로 같고, 새 행 앞뒤 기존 바이트가 변하지 않았음을 확인한 뒤 쓴다. revision +1.
+- Composition은 G15-11-1과 같은 텍스트 앵커 방식으로 `worlds` 등록과 P3 `worldOccurrences`(0~27000ms)만 추가한다.
+- 설치 직전 두 파일 바이트가 읽은 baseline과 같지 않으면 중단한다.
+- 이후 `Publish-MapAuthoring.ps1 -Scope Area` Validate → Publish → Check.
+
+추가 교체(후보 측정 후, 2026-09-14): 부모 트랙을 적용하자 카드 부모 8개가 묶음 전체 키 합집합 기준으로 두 구간씩 나뉘어 템플릿이 22개가 됐다. 현재 문서 템플릿 237개에 더하면 한도 256을 넘는다. 트랙별 키는 최대 185개라 한 구간에 들어가므로, `build_backdrops`의 구간 분할을 "모든 트랙이 256키 이하이면 한 구간"으로 바꾼다(초과할 때만 기존 합집합 분할). 결과는 부모당 템플릿 1개, 모든 박스 0~27000ms, 이음매 없음이다.
+
+```python
+            indices = sorted(set(i for actor in chunk for i in sampled[actor][4]))
+            # The 256-key bound is per track. Keep one window when every track fits;
+            # splitting on the union adds seams and templates the document cannot spare.
+            if all(len(sampled[actor][4]) <= 256 for actor in chunk):
+                segment_lists = [indices]
+            else:
+                segment_lists = [indices[start:start + 256] for start in range(0, len(indices) - 1, 255)]
+            for segment, segment_indices in enumerate(segment_lists):
+                if segment_indices[-1] != indices[-1] and len(segment_indices) < 256:
+                    raise AssertionError("incomplete backdrop segment")
+```
+
+#### G15-11-3. 확인했고 바꾸지 않는 것
+
+- Table: 설치된 `gate2_intro_27s`의 움직임 구간이 11.27~12.533초(역재생 닫힘, 11.0 + 46/30초)와 15.667~16.967초(정재생 펼침)이고, 그 사이와 17초 이후는 정지 포즈를 유지한다. 원본 키(11.0 reverse, 15.66 forward)와 PSA 47프레임 길이에 맞는다. 15.66초는 30Hz bake로 7ms 늦다. 원본 비bake 모델(`out/KoukuGate2Restore20260911`)이 이 PC에 없어 뼈 단위 정확도 비교는 하지 못했다.
+- Book: 15.20~17.20초 펼침(원본 15.19초 시작), 이후 유지.
+- 촛대 두 개: visible 키 전 구간 true, scale 1, 넓은 후퇴 구도에서 화면 안·카메라를 향함(`|n·v|` 0.85~0.91), 재질 family `bg-source-opaque-masked`. 녹화에서 안 보인 원인은 데이터 배치가 아니라 재질·렌더 쪽 후보이며 확정하지 않았다(팀장 영역).
+
+#### G15-11-4. 확정하지 못해 적용하지 않는 것
+
+- 손에 든 책(5~11초): 원본은 쟁반처럼 눕고 위에 미니 세트가 있으며, 현재는 세워져 있다. 저장 키는 원본 Move 트랙 평가와 최대 2.4°로 같고, bake는 AnimTree `evt2_animblending_mix_scale`의 `dummy001` SkelControl(`scale` bone scale 0·강도 0.99, `b_up` +100·강도 1→0.5)을 이미 적용한다. 차이의 원인은 찾지 못했다.
+- 손 부착 미니 세트 35장(`tabetcdum`): 부모가 bake된 세이튼 손에 붙는데, 6.8~9.8초 부모 위쪽 축이 수직에서 약 80° 기울어 원본 화면과 다르게 옆으로 누운 세트가 된다. 세이튼 bake 문제일 가능성이 있어 설치하지 않는다.
+- 0~2.1초 검은 무대, 쿠크 클로즈업의 등 노출: G13-R4 기록(조명/씬 프로필, 배우 bake) 이후 새 증거를 만들지 않았다.
