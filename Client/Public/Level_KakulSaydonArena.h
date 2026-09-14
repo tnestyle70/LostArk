@@ -372,6 +372,12 @@ private:
 	std::uint32_t m_iCardMazeLastSnapshotTick = 0u;
 	f32_t m_fCardMazeSnapshotSeconds = 0.f;
 	bool m_bCardMazeMarchPlaying = false;
+	/* The telescope deploy stays hidden until the Server's clown box is seen
+	   gone or a maze role is dealt; the alive flag also picks the HUD prompt. */
+	std::vector<KOUKU_MAZE_TARGET_VIEW> m_CardMazeTargetScratch;
+	bool m_bCardMazeClownBoxAlive = false;
+	bool m_bCardMazeClownBoxDefeated = false;
+	bool m_bCardMazeTelescopeShown = false;
 	void Update_DeadScene(f32_t fTimeDelta);
 	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
 		const float3_t& vPosition) const;

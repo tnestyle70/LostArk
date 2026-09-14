@@ -83,6 +83,8 @@ bool LostArk::Server::CGameRoom::Begin_CardMaze(
 		m_KoukuCardMaze.Register_Target(spawnedId, request.eSuit);
 	}
 	m_KoukuCardMaze.Commit(m_Players);
+	/* A Debug start can bypass the box; a run never keeps one standing. */
+	Clear_CardMazeClownBox();
 	m_strStatus = "Card maze started with " + std::to_string(spawns.size()) + " targets";
 	return true;
 }
@@ -90,6 +92,7 @@ bool LostArk::Server::CGameRoom::Begin_CardMaze(
 void LostArk::Server::CGameRoom::Reset_CardMaze()
 {
 	Despawn_CardMazeTargets();
+	Clear_CardMazeClownBox();
 	m_KoukuCardMaze.Reset(m_Players);
 	m_iCardMazeMarchStartTick = m_iCardMazeCycleMs = 0u;
 	m_CardMazePreviousPositions.clear();
@@ -193,6 +196,51 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 	const float yawRadians = player.fYawDegrees * DEGREES_TO_RADIANS;
 	const float forwardX = std::sin(yawRadians);
 	const float forwardZ = std::cos(yawRadians);
+	/* Before the run the clown box stands on the telescope. The swing damages
+	it like any monster, and the telescope stays shut until it is destroyed. */
+	if (CKoukuCardMazeRuntime::PHASE::INACTIVE == m_KoukuCardMaze.Get_Phase() &&
+		!m_bCardMazeClownBoxDestroyed)
+	{
+		const auto box = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+			[id = m_iCardMazeClownBoxId](const SERVER_WORLD_ENTITY& entity)
+			{
+				return INVALID_NET_ENTITY_ID != id && entity.iNetEntityId == id;
+			});
+		if (m_WorldEntities.end() == box || 0u == box->iCurrentHp ||
+			SERVER_ENTITY_ACTION::DEAD == box->eAction ||
+			std::abs(box->fPositionY - player.fPositionY) > .8f)
+		{
+			return;
+		}
+		const float deltaX = box->fPositionX - player.fPositionX;
+		const float deltaZ = box->fPositionZ - player.fPositionZ;
+		const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+		// Inside the body any facing lands, as it does inside the telescope box.
+		if (distance > box->fCollisionRadius &&
+			(distance > CKoukuCardMazeRuntime::HAMMER_RANGE_M + box->fCollisionRadius ||
+			 (deltaX * forwardX + deltaZ * forwardZ) / distance <
+				CKoukuCardMazeRuntime::HAMMER_HALF_ANGLE_COS))
+		{
+			return;
+		}
+		SERVER_PLAYER_TO_WORLD_HIT hit{};
+		hit.iSourcePlayerId = player.iPlayerId;
+		hit.iSkillId = CKoukuCardMazeRuntime::HAMMER_SKILL_ID;
+		hit.iRawDamage = CKoukuCardMazeRuntime::HAMMER_RAW_DAMAGE;
+		hit.fSourceX = player.fPositionX;
+		hit.fSourceZ = player.fPositionZ;
+		hit.fFallbackDirectionX = forwardX;
+		hit.fFallbackDirectionZ = forwardZ;
+		hit.iServerTick = updateTick;
+		if (SERVER_COMBAT_HIT_RESULT::KILLED ==
+			CServerCombatHitRuntime::Apply_PlayerToWorld(*box, hit, m_TickDamageEvents))
+		{
+			m_bCardMazeClownBoxDestroyed = true;
+			m_iCardMazeClownBoxId = INVALID_NET_ENTITY_ID;
+			m_strStatus = "Card maze clown box destroyed; strike the telescope with Q to begin";
+		}
+		return;
+	}
 	// Q strikes the authored box; subsequent owner hits toggle observation.
 	const bool telescopeOpen = !player.CardMaze.transferStartTick;
 	const WORLD_BOOTSTRAP_PLACEMENT* telescope = telescopeOpen ?
@@ -345,7 +393,8 @@ void LostArk::Server::CGameRoom::Update_CardMaze(std::uint32_t tick)
 {
 	using namespace LostArk::Shared;
 	using Maze = CKoukuCardMazeRuntime;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE) return;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return;
+	if (m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE) { Update_CardMazeClownBox(tick); return; }
 	const bool anyLiving = std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
 		return entry.second.eCardMazeRole != CARD_MAZE_ROLE::NONE && entry.second.iCurrentHp > 0u;
 	});
@@ -492,4 +541,102 @@ void LostArk::Server::CGameRoom::Update_CardMaze(std::uint32_t tick)
 			if (player.eCardMazeRole != CARD_MAZE_ROLE::NONE && player.iCurrentHp)
 			{ (void)id; (void)Begin_CardMazeTransfer(player, move.fTargetX, move.fTargetY, move.fTargetZ, tick, true); }
 	}
+}
+
+void LostArk::Server::CGameRoom::Update_CardMazeClownBox(const std::uint32_t tick)
+{
+	using namespace LostArk::Shared;
+	using Maze = CKoukuCardMazeRuntime;
+	const bool anyEntered = std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
+		const SERVER_PLAYER& player = entry.second;
+		return KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode && player.iCurrentHp > 0u &&
+			player.fPositionX >= Maze::MAZE_MIN_X && player.fPositionX <= Maze::MAZE_MAX_X &&
+			player.fPositionZ >= Maze::MAZE_MIN_Z && player.fPositionZ <= Maze::MAZE_MAX_Z;
+	});
+	if (!anyEntered)
+	{
+		Clear_CardMazeClownBox();
+		return;
+	}
+	if (m_bCardMazeClownBoxDestroyed)
+		return;
+	if (INVALID_NET_ENTITY_ID != m_iCardMazeClownBoxId)
+	{
+		const auto box = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+			[id = m_iCardMazeClownBoxId](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == id; });
+		if (m_WorldEntities.end() == box)
+		{
+			/* Removed without dying (a Debug despawn): raise it again. */
+			m_iCardMazeClownBoxId = INVALID_NET_ENTITY_ID;
+			m_iCardMazeClownBoxDueTick = 0u;
+		}
+		else if (0u == box->iCurrentHp || SERVER_ENTITY_ACTION::DEAD == box->eAction)
+		{
+			/* Any killing blow opens the telescope; the world update keeps the
+			body for its death clip and removes it afterwards. */
+			m_bCardMazeClownBoxDestroyed = true;
+			m_iCardMazeClownBoxId = INVALID_NET_ENTITY_ID;
+			m_strStatus = "Card maze clown box destroyed; strike the telescope with Q to begin";
+		}
+		return;
+	}
+	if (0u == m_iCardMazeClownBoxDueTick)
+	{
+		m_iCardMazeClownBoxDueTick = (std::max)(1u, tick + Maze::CLOWN_BOX_SPAWN_DELAY_TICKS);
+		return;
+	}
+	if (static_cast<std::int32_t>(tick - m_iCardMazeClownBoxDueTick) < 0)
+		return;
+	const WORLD_BOOTSTRAP_PLACEMENT* telescope = Find_Placement(Maze::TELESCOPE_PLACEMENT_ID);
+	const MONSTER_RUNTIME_PROFILE* profile = m_SpawnGroupBootstrap.Find_Profile(Maze::CLOWN_BOX_ARCHETYPE_ID);
+	// A failed raise retries once a second and never opens the telescope.
+	m_iCardMazeClownBoxDueTick = (std::max)(1u, tick + Maze::CLOWN_BOX_SPAWN_DELAY_TICKS);
+	if (nullptr == telescope || nullptr == profile)
+	{
+		m_strStatus = nullptr == profile ?
+			"Card maze clown box profile is not published: " + std::string(Maze::CLOWN_BOX_ARCHETYPE_ID) :
+			"Card maze clown box needs the cardmaze.telescope placement";
+		return;
+	}
+	SPAWN_GROUP_ANCHOR anchor{};
+	anchor.strAnchorId = Maze::CLOWN_BOX_SPAWN_GROUP_TAG;
+	anchor.fPositionX = telescope->fPositionX;
+	anchor.fPositionY = telescope->fPositionY;
+	anchor.fPositionZ = telescope->fPositionZ;
+	anchor.fYawDegrees = telescope->fYawDegrees;
+	SPAWN_GROUP_ENTRY entry{};
+	entry.strArchetypeId = profile->strArchetypeId;
+	entry.strAnchorId = anchor.strAnchorId;
+	entry.iCount = 1u;
+	const NET_ENTITY_ID spawnedId = m_iNextNetEntityId;
+	if (!Spawn_Monster(Maze::CLOWN_BOX_SPAWN_GROUP_TAG, entry, anchor, *profile, 0u))
+	{
+		m_strStatus = "Card maze clown box could not be spawned at the telescope placement";
+		return;
+	}
+	m_iCardMazeClownBoxId = spawnedId;
+	m_iCardMazeClownBoxDueTick = 0u;
+	m_strStatus = "Card maze clown box raised; break it with Q to open the telescope";
+}
+
+void LostArk::Server::CGameRoom::Clear_CardMazeClownBox()
+{
+	const LostArk::Shared::NET_ENTITY_ID id = m_iCardMazeClownBoxId;
+	m_iCardMazeClownBoxId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_iCardMazeClownBoxDueTick = 0u;
+	m_bCardMazeClownBoxDestroyed = false;
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == id)
+		return;
+	const auto box = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+		[id](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == id; });
+	/* A living box leaves with the run; a dead one finishes its death clip
+	under the generic world update. */
+	if (m_WorldEntities.end() == box || 0u == box->iCurrentHp ||
+		SERVER_ENTITY_ACTION::DEAD == box->eAction)
+		return;
+	m_CombatObjectRuntime.Cancel_Source(id);
+	if (!Broadcast_CombatObjectLifecycle())
+		Mark_RuntimeFailure("card-maze.clown-box-despawn");
+	Broadcast_WorldEntityDespawned(id);
+	m_WorldEntities.erase(box);
 }

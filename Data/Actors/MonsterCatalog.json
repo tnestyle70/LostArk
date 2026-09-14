@@ -177,6 +177,24 @@
       "runtimeStatus": "supported"
     },
     {
+      "archetypeId": "MONSTER_KOUKU_CLOWN_BOX",
+      "clientPresentationId": "monster.kouku.clownbox.client.v1",
+      "modelAssetId": "Character/KoukuSaton/MN_RPPB_01/MN_RPPB_01.wmodel",
+      "modelScale": 0.01,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        { "clip": "att_battle_1", "playbackRate": 1.0 }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "idle_normal_1",
+        "chase": "idle_normal_1",
+        "hit": "dmg_idle_1",
+        "dead": "dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
       "modelAssetId": "Character/Monster/MarioOriginal/CDMD/CDMD.wmodel",
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
