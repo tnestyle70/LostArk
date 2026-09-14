@@ -1,0 +1,46 @@
+{
+ "schema": "lostark.combat-analysis-ui",
+ "formatVersion": 1,
+ "source": {
+  "strings": "EFTable_GameMsg sys.analyzer.* / sys.trainingmode.*",
+  "layout": "combatanalysisframe.gfx CombatAnalysisFrame (470x114 stage px)",
+  "categoryColours": "CombatAnalysisCategoryMc_16 frames 1..5"
+ },
+ "strings": {
+  "title": "전투 분석기",
+  "time": "<FONT COLOR='#FFD200'>{0} : {1}</FONT>",
+  "valueNull": "-",
+  "units": [
+   "만",
+   "억",
+   "조",
+   "경"
+  ]
+ },
+ "stats": [
+  {
+   "id": "damage",
+   "title": "피해량",
+   "categoryType": 1,
+   "format": "amount"
+  },
+  {
+   "id": "dps",
+   "title": "DPS",
+   "categoryType": 2,
+   "format": "amount"
+  },
+  {
+   "id": "stagger",
+   "title": "준 무력화",
+   "categoryType": 3,
+   "format": "amount"
+  },
+  {
+   "id": "counter",
+   "title": "카운터 성공",
+   "categoryType": 4,
+   "format": "count"
+  }
+ ]
+}
