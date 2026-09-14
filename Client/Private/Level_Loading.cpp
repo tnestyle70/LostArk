@@ -118,7 +118,9 @@ HRESULT CLevel_Loading::Initialize(
 	else if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
 	{
 		m_strTitleText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4";
-		m_strTipText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4\xB294 \xB2F9\xC2E0\xC744 \xC9C4\xC2EC\xC73C\xB85C \xD658\xC601\xD569\xB2C8\xB2E4.";
+		/* "Info": the four developers tried the raid for four hours to learn its patterns. */
+		m_strScenarioLabel = L"\xC815\xBCF4";
+		m_strTipText = L"\xAC1C\xBC1C\xC790 4\xC778\xC740 \xCFE0\xD06C\xC138\xC774\xD2BC \xD328\xD134\xD30C\xC545\xC744 \xC704\xD574 4\xC2DC\xAC04\xB3D9\xC548 \xB808\xC774\xB4DC\xB97C \xD2B8\xB77C\xC774 \xD588\xC2B5\xB2C8\xB2E4.";
 	}
 	else
 	{
