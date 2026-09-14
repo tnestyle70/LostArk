@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "CardMazeVisualPolicy.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "KoukuSaydonPreviewRootMotion.h"
 #include "Network/PacketMessages.h"
@@ -77,10 +78,15 @@ public:
         const CWorldSequenceDocument* sourceDocument = nullptr, bool automaticRootMotion = true,
         bool externalWorldPreview = false);
     // Optional Effect Workbench reference: existing actors and model sampler,
-    // with all Pattern presentation/WORLD disabled and an external master clock.
+    // with Pattern presentation disabled and an external master clock. Only an
+    // explicit source document enables validated actor-bound WORLD props.
     bool Begin_ModelReferencePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
-        const std::string& selectionId, bool bundle, std::uint32_t clockMs, bool paused, std::string& status);
+        const std::string& selectionId, bool bundle, std::uint32_t clockMs, bool paused, std::string& status,
+        const CWorldSequenceDocument* propSequences = nullptr);
     void Sample_ModelReferencePreview(std::uint32_t clockMs, bool paused);
+    bool Place_ModelReferenceRoot(const float4x4_t& root);
+    bool Resolve_ModelReferenceWorldPivot(const std::string& memberId,
+        const std::string& occurrenceId, float4x4_t& out) const;
     bool Resolve_ModelReferenceTarget(const std::string& memberId,
         EFFECT_V2_TARGET& target, EFFECT_V2_TARGET_VIEW& view) const;
     // Source sockets use the same CNpc/CModel as the selected animation target.
@@ -204,7 +210,13 @@ private:
     bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
-    struct CARD final { std::string assetId; std::uint32_t handle = 0; };
+    struct CARD final
+    {
+        std::string assetId;
+        std::uint32_t handle = 0;
+        // Used only by the eight cardmaze mark/exit groups.
+        CARD_MAZE_MARK_RETRY mazeRetry;
+    };
     void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
     void Update_FearPresentation(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);

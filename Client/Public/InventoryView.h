@@ -55,6 +55,10 @@ public:
 	outMouseX/Y are the screen-space release position, for the caller to hit-test against
 	Item_1..4's own rects; this class has no idea those slots exist. */
 	bool_t Try_Consume_ItemDrop(string& outItemId, float& outMouseX, float& outMouseY);
+	/* One-shot: true exactly once after a plain click on a filled slot (press and release on the
+	same Inventory_Slot_N) -- the item is picked up for the click-to-carry quick-slot binding
+	(CQuickSlotDragView; CMainApp decides where it lands). */
+	bool_t Try_Consume_ItemPick(string& outItemId, string& outIconPath);
 
 	/* Forces every owned CUI_Sprite invisible without touching m_bOpen -- the panel reappears on
 	its own, still at whatever m_bOpen/category/position state it had, the next time Update()
@@ -108,6 +112,10 @@ private:
 	string m_strPendingDropItemId;
 	float m_fPendingDropMouseX = 0.f;
 	float m_fPendingDropMouseY = 0.f;
+	/* Set by Update_Items on a plain-click release, consumed by Try_Consume_ItemPick. */
+	bool_t m_bHasPendingItemPick = false;
+	string m_strPendingPickItemId;
+	string m_strPendingPickIconPath;
 };
 
 NS_END

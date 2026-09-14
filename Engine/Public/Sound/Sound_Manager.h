@@ -44,12 +44,15 @@ public:
 
 private:
 	HRESULT Initialize();
+	bool_t Update_ApplicationFocusMute();
 	FMOD::Sound* Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop);
 	HRESULT Play_TrackedSound(const wstring_t& strSoundFilePath, f32_t fVolume,
 		bool_t bLoop, CTrackedSoundChannel<FMOD::Channel>& channel);
 
 private:
 	FMOD::System* m_pSystem = { nullptr };
+	bool_t m_bFocusMuteInitialized = false;
+	bool_t m_bFocusMuted = true;
 	/* FMOD loop mode belongs to the Sound, not the Channel. Keep one cached
 	instance per (asset, mode) so an SFX and a music cue cannot mutate each
 	other when they happen to reference the same WAV. */

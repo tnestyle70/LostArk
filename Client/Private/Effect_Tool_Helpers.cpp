@@ -52,6 +52,126 @@
 namespace EffectToolDetail
 {
 
+    std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document)
+    {
+        using namespace Client;
+        std::vector<ATTACHMENT_ELEMENT_GROUP> groups;
+        std::map<std::string, size_t> indices;
+        for (const auto& element : document.Elements)
+        {
+            const auto& attachment = element.ActionCueAttachment;
+            std::ostringstream key;
+            key << std::hexfloat;
+            const auto vectorKey = [&](const auto& v) { key << '|' << v.x << '|' << v.y << '|' << v.z; };
+            std::string label;
+            if (!attachment.bEnabled)
+            { key << "unattached"; label = "Unattached / Effect root"; }
+            else
+            {
+                key << "attachment|" << attachment.bFollow << '|' << static_cast<unsigned>(attachment.eOrientation)
+                    << '|' << std::quoted(attachment.strModelCueId) << '|' << std::quoted(attachment.strRuntimeBoneName)
+                    << '|' << std::quoted(attachment.strRuntimeAnchorSlotId) << '|' << attachment.fSnapshotRootSourceBasisYawDegrees;
+                vectorKey(attachment.SocketLocalTransform.vPosition);
+                vectorKey(attachment.SocketLocalTransform.vRotationDegrees);
+                vectorKey(attachment.SocketLocalTransform.vScale);
+                vectorKey(attachment.SocketLocalTransform.vVelocityPerSecond);
+                vectorKey(attachment.SocketLocalTransform.vRevolutionDegreesPerSecond);
+                const std::string owner = attachment.strModelCueId.empty() ? "Source model" : "Model " + attachment.strModelCueId;
+                label = attachment.bFollow ?
+                    ((attachment.strRuntimeBoneName.empty() ? "Root" : attachment.strRuntimeBoneName) + " / " + owner) :
+                    "Captured root / " + owner;
+                if (document.SourceModelPreview && document.SourceModelPreview->strActorProfileId == "MN_RPCT_05" &&
+                    attachment.bFollow && attachment.strModelCueId.empty())
+                {
+                    if (attachment.strRuntimeBoneName == "b_wp_2") label = "Left hand / " + label;
+                    else if (attachment.strRuntimeBoneName == "b_wp_1") label = "Right hand / " + label;
+                }
+                if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW) label += " / Owner yaw";
+                if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW) label += " / Camera view";
+            }
+            key << "|inherit|" << element.TransformInheritance.bEnabled << '|' << std::quoted(element.TransformInheritance.strMasterElementId);
+            const auto groupKey = key.str();
+            auto [found, inserted] = indices.emplace(groupKey, groups.size());
+            if (inserted)
+            {
+                ATTACHMENT_ELEMENT_GROUP group;
+                group.key = groupKey; group.label = std::move(label);
+                group.rootLocal = !attachment.bEnabled;
+                group.editable = !document.bSourceContract && (group.rootLocal || (attachment.bFollow &&
+                    !attachment.strRuntimeBoneName.empty() && attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW));
+                if (!group.editable) group.editReason = document.bSourceContract ? "SourceContract documents are read-only." :
+                    "Group position editing requires an independent effect root or a following bone attachment.";
+                groups.push_back(std::move(group));
+            }
+            auto& group = groups[found->second];
+            group.elementIds.push_back(element.strElementId);
+            if (!element.RuntimeCarrier.Is_Empty() || element.SourceTransformTrack || element.TransformInheritance.bEnabled)
+            {
+                group.editable = false;
+                group.editReason = "This group uses a runtime carrier, source transform track or master transform. Edit that transform owner instead.";
+            }
+        }
+        for (auto& group : groups)
+        {
+            double x = 0., y = 0., z = 0.;
+            const EFFECT_ELEMENT_DESC* first = nullptr;
+            for (const auto& id : group.elementIds)
+            {
+                const auto found = std::find_if(document.Elements.begin(), document.Elements.end(),
+                    [&](const auto& element) { return element.strElementId == id; });
+                if (!first) first = &*found;
+                const auto& position = found->Detail.Transform.vPosition;
+                x += position.x; y += position.y; z += position.z;
+                if ((document.ParticleSystem.fUniformScaleMultiplier != 1.f || document.ParticleSystem.fYawOffsetDegrees != 0.f) &&
+                    (first->eKind != found->eKind || first->SourceRecipe.bEnabled != found->SourceRecipe.bEnabled))
+                {
+                    group.editable = false;
+                    group.editReason = "Mixed carriers use different particle-system parent transforms. Edit their positions separately.";
+                }
+            }
+            const double count = static_cast<double>(group.elementIds.size());
+            group.center = float3_t(static_cast<float>(x / count), static_cast<float>(y / count), static_cast<float>(z / count));
+        }
+        return groups;
+    }
+
+    bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, const float3_t& delta, std::string& error)
+    {
+        const auto reject = [&](const std::string& reason) { error = reason; return false; };
+        const auto finite = [](const float3_t& value) { return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z); };
+        if (!finite(delta)) return reject("Group translation must be finite; all Elements are unchanged.");
+        const auto groups = Build_AttachmentElementGroups(document);
+        const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& item) { return item.key == groupKey; });
+        if (group == groups.end()) return reject("The attachment group changed. Select its current anchor group again.");
+        if (!group->editable) return reject(group->editReason);
+        struct POSITION_EDIT { size_t index; float3_t start, end; bool hasEnd; };
+        std::vector<POSITION_EDIT> edits;
+        for (const auto& id : group->elementIds)
+        {
+            const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
+                [&](const auto& element) { return element.strElementId == id; });
+            if (member == document.Elements.end()) return reject("A group member is unavailable; all Elements are unchanged.");
+            const auto add = [&](const float3_t& p) { return float3_t(p.x + delta.x, p.y + delta.y, p.z + delta.z); };
+            const auto inRange = [&](const float3_t& p) { return finite(p) && std::abs(p.x) <= 100000.f && std::abs(p.y) <= 100000.f && std::abs(p.z) <= 100000.f; };
+            POSITION_EDIT edit{static_cast<size_t>(member - document.Elements.begin()), add(member->Detail.Transform.vPosition),
+                add(member->Detail.LinearLerp.vEndPosition), member->Detail.LinearLerp.bPosition};
+            if (!inRange(edit.start) || (edit.hasEnd && !inRange(edit.end)))
+                return reject("Group translation exceeds an Element position range; all Elements are unchanged.");
+            edits.push_back(edit);
+        }
+        // Validate the entire batch before changing any Element. S/R, attachment IDs,
+        // native recipes and world-space particle policy remain on their original owner.
+        for (const auto& edit : edits)
+        {
+            auto& detail = document.Elements[edit.index].Detail;
+            detail.Transform.vPosition = edit.start;
+            if (edit.hasEnd) detail.LinearLerp.vEndPosition = edit.end;
+        }
+        error.clear();
+        return true;
+    }
+
 	bool Is_ValtanExactHistoryPreviewEffectAssetId(
 		const std::string_view strEffectAssetId)
 	{

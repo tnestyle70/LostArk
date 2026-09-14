@@ -69,3 +69,64 @@ anchor 의미를 소비한다. Map placement와 Server world-collider는 기존 
 경로에 등록한다. P24 WORLD occurrence 추가는 통합 writer가 수행한다.
 새 C++ 파일과 project/filter 등록은 없다. 필요한 파일만 컴파일하고 JSON/publisher 검사와
 실제 matrix 합성 수치 확인을 수행한다. 화면 판정은 사용자가 한다.
+
+## G06. 09-14 쇼타임 Play의 실제 actor와 총 본 연결
+
+P35의 양손 총과 사용자 placement는 저장돼 있다. single actor preview의 WORLD를 Level에
+위임한 뒤 Bundle member.actor 대신 별도 Model View의 전역 본을 조회하는 회귀가 있다.
+외부 WORLD sample에 해당 단일 actor의 현재 본 resolver를 명시 전달한다. actor의 애니메이션과
+무기 pose를 먼저 갱신하고 WORLD, Effect 순서로 같은 시각을 소비한다. 기존 다중 member와
+일반 Model View, Level의 팝업북 visibility·조명 정리 경로를 보존한다.
+
+WORLD Resource/박스 Preview도 BOSS anchor가 있으면 선택 Pattern의 정확한 actor 문맥을
+사용해 같은 단일 Bundle 경로를 시작한다. 부착 대상이 다르면 이유를 표시하며 다른 모델을
+임의 사용하지 않는다. 회복 가능한 anchor 대기와 실제 WORLD 준비 실패가 애니메이션 정리
+메시지에 가려지지 않도록 기존 preview 상태 전달을 연결한다. 총의 저작 본·위치·회전은 바꾸지 않는다.
+
+검증은 실제 호출 순서·동일 actor BODY·양쪽 source bone 샘플·Preview 실패 상태 보존과 관련
+최소 TU 컴파일이다. 새 C++ 파일이 없으므로 project/filter 추가는 없다. 실행 중 EXE가 모르는
+새 데이터 필드는 제품 빌드 이후 활성화하며 구 parser의 전체 문서 로드도 확인한다.
+Client/UI 실행·입력·캡처 및 최종 화면 판정은 사용자가 수행한다.
+
+## G07. 09-14 발사 섬광의 양손·한 손 구분과 총구 연결
+
+사용자는 총 Play/Preview가 동작함을 확인한 뒤 양손 섬광을 총 WORLD에 연결하면 위로 뜨고
+회전 중 총구와 벌어진다고 보고했다. 현재 저장 revision576의 P35.presentation.48/49/50은
+오른 총 WORLD에 원본 gun.signature를 연결하고 위치 [.4,-2.7,-2.65]m로 보정한다.
+원본은 양손 b_wp_1/2 각각11개, 총22개 element의 source attachment와 notify 위치
+[1.5,.5,0]m를 포함한다. 총 WORLD에 직접 붙일 기존 gun.signature.world는 한 손11개이며
+source attachment를 끄고 element의 위치·회전을0으로 정리한 별도 리소스다.
+
+기존 stable asset/resource ID를 유지하며 원본을 `발사 섬광 양 손`, WORLD용을
+`발사 섬광 한 손`으로 이름 붙인다. Authored header, EffectResourceTree와 Composition
+별칭을 일치시키고 같은 기관총 분류에서 찾게 한다. 새 asset, shader, binary Resources나
+project/filter 항목은 필요하지 않다. 원본 양손의 입자와 한 손의 기존11개 발생기는 보존한다.
+
+사용자가 편집을 저장하고 종료한 뒤 최신 JSON에 다시 기준을 맞춘다. P35에서 양손 리소스를
+명시적으로 총 WORLD에 연결한 박스만 한 손 리소스로 변경한다. 해당 총의 정확한 World box를
+연결하고 실제 설치 WModel의 총구 중심과 법선에서 구한 local position/rotation을 사용한다.
+사용자 발사 시각·길이·scale과 BOSS용 양손 박스, WORLD 총의 본·placement는 유지한다.
+단순 anchor 변경만으로 원본 Effect 내부 attachment가 제거된다고 가정하지 않는다.
+
+JSON parse, 변경 필드 외 deep equality, 실제 설치 총구 기하와 WORLD pivot 합성, 기존
+Composition projector 검증·게시를 확인한다. Effect 그룹 UI 구현은 기존 Collider 그룹
+계획서의 후속 G에서 별도로 관리하며 최종 관련 Client 빌드를 함께 수행한다.
+실행 중 draft와 디스크 기준이 충돌하지 않도록 외부 이름 변경은 저장·종료 전까지 stage만 한다.
+
+## G08. V1 WORLD 기본 리소스의 Boss Workbench Append
+
+한 손 섬광의 resource defaultAnchorKind=WORLD에는 특정 Object occurrence ID가 없다.
+Append_PresentationCandidate는 이 값을 새 박스에 그대로 복사해 필수 worldId 검사에서
+거절된다. Sequence workspace에는 이미 고정 MAP으로 시작한 뒤 명시 선택한 Object만
+연결하는 처리가 있지만 Boss Pattern 경로에 적용되지 않았다.
+
+기존 Set_FixedWorldEffectPlacement를 WORLD 기본값의 Effect Append에도 사용한다.
+Boss Pattern에서는 현재 cursor와 수명을 유지하고 기존 보스 spawn의 고정 위치에 추가한 뒤
+Box Detail에서 총을 선택한다. Sequence의 선택 Object·시작 시각 정책은 그대로 유지한다.
+BOSS/MAP 기본 Effect, Light와 이미 배치한 WORLD 박스는 변경하지 않는다. resource 기본값과
+사용자 JSON을 수정하거나 필수 worldId 검사를 완화하지 않는다.
+
+기존 native editor contract에서 실제 Append의 이전 거절과 수정 후 추가·저장·재로드,
+명시 WORLD 연결, 없는 worldId의 계속된 거절을 확인한다. 테스트 전용 접근은 기존 harness
+매크로에 한정하며 제품 API나 객체 layout을 바꾸지 않는다. 관련 최소 컴파일 뒤 사용자의
+저장·종료를 확인하고 정규 제품 빌드를 수행한다. Client/UI 입력은 사용자가 확인한다.

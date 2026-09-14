@@ -1,4 +1,5 @@
 #include "MapAssetObject.h"
+#include "CardMazeVisualPolicy.h"
 
 #include "GameInstance.h"
 #include "Model.h"
@@ -170,6 +171,15 @@ HRESULT CMapAssetObject::Render()
     for (const auto group : { RENDERGROUP::PRIORITY, RENDERGROUP::NONBLEND, RENDERGROUP::BLEND })
         if (FAILED(Render_Group(group))) return E_FAIL;
     return S_OK;
+}
+
+int32_t CMapAssetObject::Get_BlendSortPriority() const
+{
+    // This single translucent receiver must precede ordinary world sprites.
+    // Do not promote every marker above transparent walls or alter materials.
+    if (Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId))
+        return -1;
+    return 0;
 }
 
 HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)

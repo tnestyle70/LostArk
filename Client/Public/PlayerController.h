@@ -453,6 +453,10 @@ namespace Client
 		/* Death-screen revive button. Not polled input, so it is a direct call
 		instead of something Update() discovers each frame. */
 		bool_t Request_Revive();
+		/* Vehicle window's mount / dismount button (vehicleId 0 = dismount): the same Server
+		round trip and pending sequence as the H key. False while a request is outstanding or
+		the local player can't ride right now. */
+		bool_t Request_VehicleRiding(std::uint32_t vehicleId);
 		/* Debug F1 choice of the vehicle H mounts. Zero, or a vehicle without a
 		rider pose for the class, falls back to the first catalog vehicle that has one. */
 		static void Set_PreferredVehicleId(std::uint32_t vehicleId) { s_iPreferredVehicleId = vehicleId; }
@@ -491,6 +495,7 @@ namespace Client
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }
 		void Set_DebugMarioJumpEnabled(bool_t enabled) { m_debugMarioJumpEnabled = enabled; }
 		const std::string& Get_DebugMarioJumpStatus() const { return m_debugMarioJumpStatus; }
+		const std::string& Get_MarioReturnStatus() const { return m_MarioReturnStatus; }
 #endif
 
 		/* One-shot: consumed (cleared) by the next Update() regardless of
@@ -570,6 +575,7 @@ namespace Client
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard,
 			const shared_ptr<CCharacter>& character);
+		bool_t Send_VehicleRidingRequest(std::uint32_t vehicleId);
 		/* True on the frame G goes down. The controller does not know whether
 		   an offer is standing -- Update checks that before submitting. */
 		bool_t Poll_InteractKey(
@@ -593,6 +599,13 @@ namespace Client
 		std::int8_t m_iLastMarioMoveDirection = 0;
 		std::uint32_t m_iNextMarioMoveSequence = 1u;
 		std::chrono::steady_clock::time_point m_MarioMoveSentAt{};
+
+		bool_t Update_MarioReturn(bool_t gameplayCommandsEnabled);
+		bool_t m_wasMarioReturnDown = false;
+		std::uint32_t m_nextMarioReturnSequence = 1u;
+		std::uint32_t m_pendingMarioReturnSequence = 0u;
+		std::chrono::steady_clock::time_point m_MarioReturnSentAt{};
+		std::string m_MarioReturnStatus;
 
 		bool_t m_wasInteractKeyDown = false;
 		inline static std::uint32_t s_iPreferredVehicleId = 0u;

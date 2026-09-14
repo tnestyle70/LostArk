@@ -170,7 +170,8 @@ public:
 	bool_t Debug_SetCompositionWorldPlacement(const std::string& occurrenceId,
 		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement, std::string& status);
 	bool_t Debug_SampleCompositionWorldPreview(const std::string& patternId,
-		bool_t playing, uint32_t clockMs, std::string& status);
+		bool_t playing, uint32_t clockMs, std::string& status,
+		const decltype(CWorldSequencePlayer::TARGET_SET::bossAnchor)& bossAnchorOverride = {});
 	void Debug_StopCompositionWorldPreview();
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
@@ -201,6 +202,7 @@ public:
 	   spawned or moved. */
 	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus);
 	bool_t Debug_DespawnArenaBosses(std::string& outStatus);
+	bool_t Debug_DespawnFireObjects(std::string& outStatus);
 	bool_t Debug_ReturnToStart(std::string& outStatus);
 	bool_t Consume_DebugReturnToStartSucceeded() { return std::exchange(m_bDebugStartSucceeded, false); }
 	void Debug_SetSequenceCombatPending(bool_t pending);
@@ -235,6 +237,8 @@ public:
 	{
 		return m_StageMarkers;
 	}
+	// MainApp calls once after the final camera, before Render.World.
+	void Submit_EntranceTriggerMarkers();
 	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
@@ -298,11 +302,6 @@ public:
 
 private:
 	CWorldSequencePlayer::TARGET_SET Make_WorldSequenceTargets();
-	/* The cutscene is one show spread over several instances. Starting the
-	   named one starts them all and swaps the arena for the cutscene copy. */
-	bool_t Start_PopupBookCutscene(
-		const CWorldSequencePlayer::TARGET_SET& targets,
-		std::string& outStatus);
 	void Apply_CutsceneSetVisible(bool_t cutsceneVisible);
 	/* The cutscene boss is presentation only, so it is taken off the arena
 	   as soon as its sequence stops playing. */
@@ -325,7 +324,7 @@ private:
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
 	bool_t Load_EntranceTriggerMarkers();
 	void Clear_EntranceTriggerMarkers();
-	void Update_EntranceTriggerMarkers(f32_t deltaSeconds);
+	void Update_EntranceTriggerMarkerClocks(f32_t deltaSeconds);
 	void Retire_EntranceTriggerMarker(const std::string& sequenceInstanceId);
 	/* Turns replicated player state into floating status words. Reads the
 	   snapshots only; it never decides that a status is on. */
@@ -372,6 +371,12 @@ private:
 	std::uint32_t m_iCardMazeLastSnapshotTick = 0u;
 	f32_t m_fCardMazeSnapshotSeconds = 0.f;
 	bool m_bCardMazeMarchPlaying = false;
+	/* The telescope deploy stays hidden until the Server's clown box is seen
+	   gone or a maze role is dealt; the alive flag also picks the HUD prompt. */
+	std::vector<KOUKU_MAZE_TARGET_VIEW> m_CardMazeTargetScratch;
+	bool m_bCardMazeClownBoxAlive = false;
+	bool m_bCardMazeClownBoxDefeated = false;
+	bool m_bCardMazeTelescopeShown = false;
 	void Update_DeadScene(f32_t fTimeDelta);
 	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
 		const float3_t& vPosition) const;
@@ -448,6 +453,7 @@ private:
 	};
 	unique_ptr<GATE_OBJECT_PRESENTATION> m_pPendingGateObjects;
 	unique_ptr<GATE_OBJECT_PRESENTATION> m_pGateObjects;
+	GATE_OBJECT_PRESENTATION* m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
 	bool_t m_bCompositionWorldPreviewBorrowsGateObjects = false;
 	bool_t Debug_PrepareGateObjects(size_t gateIndex, std::string& status);
 	bool_t Debug_CommitGateObjects(size_t gateIndex, std::string& status);
@@ -599,6 +605,8 @@ private:
 		float4x4_t rootWorld{};
 		f32_t seconds = 0.f;
 		bool_t started = false;
+		bool_t clockStarted = false;
+		bool_t active = false;
 		bool_t retired = false;
 	};
 	std::vector<ENTRANCE_TRIGGER_MARKER> m_EntranceTriggerMarkers;

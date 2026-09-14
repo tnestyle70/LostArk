@@ -869,6 +869,11 @@ void Client::CEffectObject::Set_ScreenPostCaptureAllowed(const bool_t allowed)
 	if (m_pRenderer) m_pRenderer->Set_ScreenPostCaptureAllowed(allowed);
 }
 
+void Client::CEffectObject::Set_ScreenPostPlaybackEnd(const f32_t endSeconds)
+{
+	if (m_pRenderer) m_pRenderer->Set_ScreenPostPlaybackEnd(endSeconds);
+}
+
 void Client::CEffectObject::Set_Visible(const bool_t bVisible)
 {
 	if (m_bRenderFailureIsolated && bVisible)
@@ -914,36 +919,43 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 {
+	UNREFERENCED_PARAMETER(fTimeDelta);
+	if (m_bExplicitRenderSubmission)
+		return;
+	(void)Submit_RenderGroups();
+}
+
+HRESULT Client::CEffectObject::Submit_RenderGroups()
+{
 	CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Occurrence.LateUpdate");
-	UNREFERENCED_PARAMETER(fTimeDelta);
 	m_bNonBlendModelCuePassPending = false;
 	m_bWorldMarkPassPending = false;
 	++m_iRenderSubmissionSerial;
 	if (0u == m_iRenderSubmissionSerial)
 		++m_iRenderSubmissionSerial;
 	if (m_bRenderFailureIsolated)
-		return;
+		return m_hRenderFailure;
 	if (m_bReconstructedDiagnosticActive)
 	{
 		if (!m_bVisible)
-			return;
+			return S_FALSE;
 		const shared_ptr<CEffectObject> Self =
 			static_pointer_cast<CEffectObject>(shared_from_this());
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::BLEND,
 			static_pointer_cast<CGameObject>(Self));
-		return;
+		return S_OK;
 	}
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_strStatus = std::move(GateStatus);
-		return;
+		return E_FAIL;
 	}
 	if (!m_bVisible)
-		return;
+		return S_FALSE;
 	const shared_ptr<CEffectObject> Self =
 		static_pointer_cast<CEffectObject>(shared_from_this());
 	const auto& Particles = m_Playback.Get_Frame().Particles;
@@ -975,7 +987,7 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 	if (FAILED(hProviderResult))
 	{
 		m_strStatus = "Effect presentation provider budget exceeded.";
-		return;
+		return hProviderResult;
 	}
     // A local authored backdrop replaces the map/sky for exactly its evaluated
     // lifetime. Player/Effect draws keep their ordinary depth and lighting path.
@@ -1004,6 +1016,7 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::BLEND,
 		static_pointer_cast<CGameObject>(Self));
+	return S_OK;
 }
 
 void Client::CEffectObject::Begin_PresentationSubmission()

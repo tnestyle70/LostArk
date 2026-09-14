@@ -271,6 +271,21 @@ void Client::CMainApp::RenderLightingWorkbench()
         if (ImGui::Button("Reload Published Map Lights")) ReloadPublishedMapLights();
         ImGui::Checkbox("Preview authored map lights", &m_bPreviewMapLightDraft);
     }
+    if (areaReady)
+    {
+        ImGui::BeginDisabled(m_AreaLightSession.Is_ReadOnly());
+        if (ImGui::Button("Save Map Lights"))
+            if (m_AreaLightSession.Save_Authored(m_strLightingStatus))
+            {
+                string refreshed;
+                if (!m_LightResources.Refresh_MapResources(areaId, refreshed)) m_strLightingStatus += " Resource list: " + refreshed;
+            }
+        ImGui::SameLine();
+        if (ImGui::Button("Publish Map Lights"))
+            if (m_AreaLightSession.Publish_Runtime(m_strLightingStatus)) ReloadPublishedMapLights();
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Save Map Lights stores all changes for this map, including deleted lights.");
+    }
     ImGui::SeparatorText("Create Light");
     const char* usages[] = { "Map Profile (persistent)", "Scene Profile (mood)", "Anchor Light (pattern)" };
     const char* anchors[] = { "Map (fixed world)", "Character", "Boss" };
@@ -295,7 +310,7 @@ void Client::CMainApp::RenderLightingWorkbench()
             if (m_iRenderingLightCreateAnchor == 0)
                 ImGui::TextWrapped("Map: fixed World position during the pattern.");
         }
-        else ImGui::TextWrapped("Persistent map placement. Create near the player, tune its World position, then Save Light and Publish Light.");
+        else ImGui::TextWrapped("Persistent map placement. Create near the player, tune its World position, then Save Map Lights and Publish Map Lights.");
         ImGui::TextUnformatted("Light type");
         ImGui::SetNextItemWidth(-1.f);
         ImGui::Combo("##CreateLightType", &m_iRenderingLightCreateType, types, 3);
@@ -497,14 +512,15 @@ void Client::CMainApp::RenderLightDetail()
         const string id = m_strSelectedRenderingLightId.substr(4u);
         const auto& lights = m_AreaLightSession.Get_Document().Get_Lights();
         const auto found = std::find_if(lights.begin(), lights.end(), [&](const auto& row) { return row.lightId == id; });
-        if (found != lights.end())
+        const bool hasSelectedLight = found != lights.end();
+        ImGui::Text("Map placement: %s", id.c_str());
+        if (hasSelectedLight)
         {
             MAP_POINT_LIGHT_RECORD record = *found;
             LIGHT_RESOURCE resource = Lighting_MapResource(record);
             float4x4_t player{};
             const float floorY = Lighting_PlayerPivot(player) ? player._42 : record.position.y - 8.f;
-            ImGui::Text("Map placement: %s", id.c_str());
-            ImGui::TextWrapped("Persistent map light. Save Light stores this placement; Publish Light applies it on map entry.");
+            ImGui::TextWrapped("Persistent map light. Save Map Lights stores this placement; Publish Map Lights applies it on map entry.");
             ImGui::BeginDisabled(m_AreaLightSession.Is_ReadOnly());
             bool changed = ImGui::Checkbox("Enabled##MapLight", &record.enabled);
             changed |= Lighting_EditResource(resource, true, floorY);
@@ -516,22 +532,7 @@ void Client::CMainApp::RenderLightDetail()
                 record.outerConeDegrees = resource.fOuterConeDegrees; record.color = resource.vColor; record.brightness = resource.fBrightness;
                 if (m_AreaLightSession.Update(record, m_strLightingStatus)) m_bPreviewMapLightDraft = true;
             }
-            if (ImGui::Button("Save Light"))
-                if (m_AreaLightSession.Save_Authored(m_strLightingStatus))
-                {
-                    string refreshed;
-                    if (!m_LightResources.Refresh_MapResources(areaId, refreshed)) m_strLightingStatus += " Resource list: " + refreshed;
-                }
-            ImGui::SameLine();
-            if (ImGui::Button("Publish Light"))
-                if (m_AreaLightSession.Publish_Runtime(m_strLightingStatus)) ReloadPublishedMapLights();
-            ImGui::SameLine();
-            if (ImGui::Button("Delete Light"))
-                if (m_AreaLightSession.Delete(id, m_strLightingStatus)) SelectRenderingLight("@default-directional");
             ImGui::EndDisabled();
-            if (ImGui::Button("Reload Authored Light"))
-                if (m_AreaLightSession.Reload(m_strLightingStatus)) m_bPreviewMapLightDraft = true;
-            if (m_AreaLightSession.Is_ReadOnly()) ImGui::TextDisabled("Imported v1 map light data is read-only.");
             if (m_bLightingDebugWire && currentMap && record.enabled)
             {
                 float4x4_t identity{}; XMStoreFloat4x4(&identity, XMMatrixIdentity());
@@ -539,6 +540,33 @@ void Client::CMainApp::RenderLightDetail()
                 if (CLightResourceCatalog::Try_BuildLightDesc(resource, identity, 1.f, light, ignored)) Lighting_DrawWire(light);
             }
         }
+        else
+            ImGui::TextWrapped("This map light has been removed from the draft. Save Map Lights stores the removal; Publish Map Lights applies it on map entry.");
+        ImGui::BeginDisabled(m_AreaLightSession.Is_ReadOnly());
+        if (ImGui::Button("Save Map Lights"))
+            if (m_AreaLightSession.Save_Authored(m_strLightingStatus))
+            {
+                string refreshed;
+                if (!m_LightResources.Refresh_MapResources(areaId, refreshed)) m_strLightingStatus += " Resource list: " + refreshed;
+            }
+        ImGui::SameLine();
+        if (ImGui::Button("Publish Map Lights"))
+            if (m_AreaLightSession.Publish_Runtime(m_strLightingStatus)) ReloadPublishedMapLights();
+        if (hasSelectedLight)
+        {
+            ImGui::SameLine();
+            if (ImGui::Button("Delete Light"))
+                if (m_AreaLightSession.Delete(id, m_strLightingStatus))
+                {
+                    StopLightingPreview();
+                    m_bPreviewMapLightDraft = true;
+                    m_strLightingStatus = "Map light deleted from draft. Save Map Lights, then Publish Map Lights to persist the removal.";
+                }
+        }
+        ImGui::EndDisabled();
+        if (ImGui::Button("Reload Authored Light"))
+            if (m_AreaLightSession.Reload(m_strLightingStatus)) m_bPreviewMapLightDraft = true;
+        if (m_AreaLightSession.Is_ReadOnly()) ImGui::TextDisabled("Imported v1 map light data is read-only.");
     }
     else if (m_strSelectedRenderingLightId.rfind("resource:", 0u) == 0u)
     {

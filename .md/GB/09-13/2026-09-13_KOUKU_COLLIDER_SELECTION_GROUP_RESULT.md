@@ -35,3 +35,48 @@ Kouku Action Workbench에 Set Group/Ungroup, 그룹 전체 선택과 공통 중�
 사용자가 직접 컴파일 중이고 Client/Server도 실행 중이므로 에이전트는 종료·Reload·제품 출력 교체를 하지 않았다. 새 제품 빌드 실행 후 `F1 → Action Composition Workbench → KoukuSaydon → 무지개댄스 → Collider 5개 Ctrl/마키 선택 → Box Detail → Set Group → 한 멤버 클릭 → Group center offset / Group Y rotation → Save`로 확인한다. 다시 열었을 때 그룹 선택이 유지되고 개별 시작 시각과 간격·크기가 유지되는지 확인한다.
 
 이번 회전 입력은 기존 Box Detail 숫자 드래그 방식이다. 별도 화면 회전 gizmo는 추가하지 않았다. 최종 시각·입력 판정은 사용자 확인 전으로 남긴다.
+
+## G05. Effect 선택 그룹과 시간 이동 (2026-09-14)
+
+`selectionGroupId`를 Effect에 확장했다. Box Detail의 `Set Group`/`Ungroup`, 한 멤버 클릭·Ctrl/마키의 전체 그룹 선택, Save/Reopen, 복제 그룹 ID 분리와 삭제 후 singleton 정리를 기존 presentation 계약으로 사용한다. Effect는 서로 다른 왼 총·오른 총 anchor, bone/follow, offset/rotation/scale을 유지한다. Collider의 BOSS 공통 기준과 공간 변환 제약은 바꾸지 않았다.
+
+Effect 그룹 및 임시 Effect 다중 선택의 가운데 드래그는 모든 시작 시각에 같은 delta를 더한다. 전체 멤버를 기준으로 Pattern 시작·끝에 clamp하고 상대 간격·수명·geometry를 보존한다. 그룹 ID와 selection/draft generation이 바뀌면 원래 시각을 유지한다. Effect 이동은 부모 World와 Logic을 이동시키지 않는다. Collider의 연결 Logic 동시 이동·외부 공유 거절은 기존대로 유지한다.
+
+WORLD Effect의 `worldOccurrenceId`는 참조이므로 Effect만 복제할 때 총/Object를 자동 복제하던 ownership 확장을 수정했다. Effect 그룹 복제는 각 기존 총 anchor를 그대로 사용한다. World 박스를 명시 선택하면 World와 부착 Effect를 함께 복제하고 새 World occurrence로 remap한다. WORLD anchor가 아닌 companion의 owner 포함 복제는 유지한다.
+
+자동 검증:
+
+- Workbench·Document·확장 native test의 Debug 컴파일과 격리 native EXE 링크 성공. `out/KoukuEffectGroups20260914/build-ready.log`에 기록했다. 링크의 기존 live UI/catalog 의존성 7개는 같은 테스트 파일의 기존 CPU guard 방식처럼 호출 시 실패하도록 명시했다. 제품 runtime을 대체하지 않으며 실제 editor draft API를 호출한다.
+- 기존 `--kouku-collider-group-contract` 확장 실행 성공. 서로 다른 좌우 WORLD anchor와 follow의 Effect Set Group, invalid/singleton 실패 보존, Save/Reopen, 한 멤버 입력으로 전체 그룹 복제, 총 개수 불변과 새 group ID, Ungroup, singleton 정리, 명시 World 복제의 부착 Effect remap을 확인했다. 기존 Collider의 공통 중심 회전·Save CAS 보존도 같은 실행에서 성공했다. `native-group.log`가 증거다.
+- 실제 `Prepare_PresentationTimelineMove`, `Move_PresentationTimelineSelection`, row layout과 기존 Collider 공간 변환 함수 본문을 사용한 CPU 검증 95개 성공. grouped/ungrouped/multiple-group Effect 이동, 다른 총 anchor/TRS 보존, 부모 World/Logic 불변, 혼합 선택 거절, 양끝 clamp와 stale/partial/shared-Logic 실패를 확인했다. Commit/preview I/O만 stub이며 GPU/ImGui 입력 검증은 아니다. `group_timeline_probe.receipt.json`과 `.run.log`에 기록했다.
+- Python 6개 성공: Effect 독립 총 anchor Save/reparse, runtime projection 동일, singleton/mixed-kind/invalid ID 거절, 기존 Collider 공통 frame/frozen-time 제약과 parent clipping metadata 제거. `selectionGroupId`는 sparse optional 상태를 유지한다.
+- 변경 파일의 `git diff --check` 성공. 기존 파일의 UTF-8/BOM/줄바꿈을 유지하고 C++/project 항목을 추가하지 않았다. 사용자 Composition JSON과 실행 중 Client/Server는 조작하지 않았다.
+
+제품 링크/재실행은 상위 작업의 Product 빌드와 사용자 조작에 연결한다. 사용자 확인 경로는 Effect 박스 둘 이상 Ctrl/마키 선택 → Box Detail → Set Group → 멤버 가운데 드래그 → Save → Reload이며, Effect 반복 복제 뒤 World 총 박스가 증가하지 않는지도 확인한다. 최종 화면/실제 ImGui 드래그 판정은 사용자 확인 전이다.
+
+추가 회귀 확인: 기존 `--kouku-preview-transport-contract` 전체도 성공했다(`out/KoukuEffectGroups20260914/native-preview.log`). All-lane segment copy, World companion ownership, pending placement, parent 반복/잘림, Save/Reload와 실패 rollback 경로를 함께 확인했다. 최종 소스 hash와 검증 요약은 `effect-group-receipt.json`에 있다.
+
+상위 작업에서 사용자의 Save 및 Server/Client 종료를 확인한 뒤 정규 Debug Product의
+Engine/Shared/Server/Client 빌드·링크·배포를 완료했다. 최종 빌드 근거는
+`out/BuildPipeline/runs/20260914T061704289Z-debug-product.json`이며 OBJ80개와 Client binary1개를
+작성했다. 이 기록은 위 제품 링크 대기를 갱신하며 실제 ImGui 입력·화면 판정은 사용자에게 남긴다.
+
+## G06. Shift 클릭 다중 선택 지원 (2026-09-14)
+
+Composition Sequencer에서 Shift+박스 클릭을 기존 Ctrl+클릭과 같은 toggle 선택으로 연결했다. Stage/Animation/Logic/Summon/World/Scene Profile/child Pattern/Effect 8개 클릭 입력과 modifier 중 drag 차단, Effect 선택 유지, 빈 공간 marquee의 선택 초기화가 같은 `additiveSelection = io.KeyCtrl || io.KeyShift`를 사용한다. Ctrl/Shift+빈 영역 drag는 기존 선택에 박스를 추가한다. Collider/Effect Box Detail과 Timeline 안내 문구를 갱신했다. 여러 Effect를 Shift로 선택한 뒤 기존 `Set Group` → `Duplicate`/Ctrl+D 경로를 사용한다.
+
+`KoukuSaydonActionWorkbench.cpp` 한 파일을 VS18 Insiders/VC14.44/SDK10.0.26100.0 Debug x64로 out에 격리 컴파일하여 성공했다. `out/CompositionShiftSelection20260914/compile.log`, `receipt.json`, `selection-only.diff`가 근거다. 18개 modifier 소비 지점과 8개 lane click 연결을 확인했고 Ctrl+D/방향키 분기부터 파일 끝까지 원래 바이트와 동일하여 기존 WORLD-default Append 수정과 다른 작업 변경은 보존했다. Set Group/복제/저장 구현은 이번 변경에서 수정하지 않았으므로 이미 기록한 native group 회귀를 반복하거나 별도 테스트 framework를 추가하지 않았다. BOM 없음/CRLF와 `git diff --check`를 확인했다.
+
+위 이전 Product 빌드 기록에는 이 Shift 별칭이 포함되지 않는다. Client/Server가 실행 중이어서 이번 작업은 소스·TU 컴파일까지 완료했고 새 EXE 반영은 상위 작업의 저장·종료 후 빌드에 연결한다. 사용자 JSON과 Client/UI는 조작하지 않았다. 사용자가 새 빌드에서 Shift로 두 Effect를 선택 → Box Detail Set Group → Duplicate를 확인하며 실제 ImGui 입력 판정은 남아 있다.
+
+
+### 2026-09-14 후속 실행파일 확인
+
+앞선 제품 빌드 대기는 사용자 Visual Studio 빌드로 해소됐다.16:54:34 Client.exe의 실제
+compiler dependency·OBJ·link 입력을 현재9개 관련TU와 대조했고 현재 Shift 선택,
+Effect anchor 그룹, saved prop preview, WORLD Append 변경 포함을 확인했다.
+17:18:47 사용자 증분 Build 로그도 성공이다. 에이전트의17:19 Product 재빌드는 사용자
+재실행으로 output guard가 거절했으므로 그 실행을 PASS로 기록하지 않는다.
+증거는 `out/KoukuFlameUnification20260914/user-build-verification.json`과
+09-12 KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT의G15-02다.
+사용자는 시퀀스 재생을 확인했으며 각 이펙트의 최종 시각 판정은 별도 사용자 확인 범위다.

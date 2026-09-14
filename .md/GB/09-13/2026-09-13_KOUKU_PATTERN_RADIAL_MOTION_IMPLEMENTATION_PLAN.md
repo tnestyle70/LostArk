@@ -70,3 +70,59 @@ RGB 수식, fade, distortion,2811 mesh와2812 sprite carrier, drawing8 및 실�
 변경 소유자는 기존 `build_kouku_expanding_warning_groups.py` 및 관련 warning Authored 문서다. 쇼타임의 실제 합성 warning/impact와 같은 계열의 현재 소비 문서를 대조해 고정된 예고가 남지 않게 한다. 새로운 Effect ID나 C++/shader는 기존 계약으로 처리할 수 없는 경우에만 추가하고, 새 JSON이 필요하면 Catalog/Tree 및 Client의 `96.DataFiles` None 등록을 함께 연결한다.
 
 실제 codec의 Load/Save/Reload와 production CPU playback으로 시작·중간·성장 종료의 고정 경계/성장 반경·중심·깊이·alpha를 확인한다. 기존 폭발 블록과 무관한 사용자 편집은 보존 비교한다. 변경 JSON/XML parse와 `git diff --check`를 실행하며 Client/UI 실행과 최종 시각 판정은 사용자가 직접 한다.
+
+
+## G09. 쇼타임 공 낙하의 원본 크기·경로 상속 (2026-09-14)
+
+사용자가 지정한 `effect.kouku.gate3.showtime.ball.drop`의5요소는 원본 MissileDrop이다.
+그 가운데 숨김 provider38의 LocationDirect.ScaleFactor와 공 mesh4의 StartSize는 원본에
+Distribution=None만 저장돼 Engine CDO의 dimensionless1을 상속해야 하지만 현재 빈 lookup이다.
+기존 서커스공 G03과 같은 원인인지 실제 두 source module/CDO를 먼저 대조한다.
+
+`build_kouku_showtime_restore.py`의 해당 leaf 생성에 이 두 nested default만 복구하고,
+별도 stage-only 옵션은 현재 저작본의 ID·TRS·원본 material·clock·provider 링크를 보존한다.
+사용자의 meshY0/나머지Y1과1.25배는 원본 복구와 분리하고 임의 원복하지 않는다.
+원본 낙하 curve가 실제 실행되면 새 속도나 smoke를 합성하지 않는다. 실제 Codec/Playback의
+시간별 공 위치·크기와 이전 시각에 방출된 smoke의 위치를 비교하고 native WModel 정점의
+전후 bounds와 cm→m·scale의 1회 적용을 기록한다. 후보 검증 뒤 최신 저장 SHA와 종료 상태를 확인한 CAS로 Authored에 적용한다. Client/UI 실행과 최종 화면 판정은 사용자가 한다.
+
+
+## G10. 저주의식 왼손 trail과 원본 UV1 전달
+
+사용자 요청은 저주의식의 흰 손 궤적과 무지개 별을 원본 재질로 재생하고 쿠크세이튼 왼손에 붙이는 것이다. 현재 세 요소 중 ribbon 두 개는 원본 PS `59a22eeec5a51f439595f929dddfe8bf`/distortion `e924ddbcfb7336408af5883ef3ddbf89`를 이미 사용한다. 원본 beam/trail VS는 입력 TEXCOORD0 네 성분을 그대로 넘기지만 현재 번역 adapter가 zw를 0으로 채운다. PS의 폭 방향 중앙 마스크가 z=0에서 항상 0이므로 CPU point 수만으로 표시 성공을 판정할 수 없다.
+
+기존 generator에서 검증된 두 VS의 TEXCOORD0 전달을 `input.uv + input.uv1`로 연결한다. 기존 Trail carrier의 runtimeUV는 (거리/tilingDistance, 폭 0~1)이므로 해당 UV1은 (폭, 거리/tilingDistance)로 전달하여 원본 폭 마스크와 세로 타일 축을 충족한다. 기존 pixel 식/재질 scalar/texture/sampler와 다른 VF는 보존한다. 설치된 두 material program 2836/3007의 본문과 distortion 전달만 동일하게 갱신하고 shader를 정상 Product 증분 빌드한다.
+
+원본 hand notify의 b_wp_1/startcontrol은 근거로 보존하고 사용자 지정 왼손은 원본에 존재하는 fx_l_hand_01 socket과 실제 설치 모델 bip001-l-hand에 연결한다. 원본 왼손 socket의 15cm X offset과 설치 bone frame Rx(-90)을 사용한다. 실제 CModel 27_01 clip과 왼손 본의 궤적을 수치 검증한다. 독립 저주의식 Pattern에 clip과 source notify 시각을 함께 등록한다. 새 C++ 파일이나 project 소스 등록은 없으며 새 resource가 생기는 경우 Catalog/Tree/Composition 및 Data None 등록을 함께 stage한다.
+
+검증은 원본 VS/PS 입력과 두 셰이더 generated body 일치, 변경 JSON codec/actual CModel playback, 마지막 저장 SHA를 기준으로 한 설치, 해당 domain publish, Product shader build이다. 실제 화면은 사용자가 판정한다.
+
+
+## G11. 기분나빠·쇼타임 폭탄·앵콜 블랙홀빔의 원본 연결
+
+기분나빠 브레스는 공유 화염으로 교체하지 않고 action4219917/31_01/notify008의 원본15요소를 보존한다. Distribution=None만 저장된 정확 module instance의 누락된 nested CDO lookup10곳을 복구한다. 기존 분신 이동 Pattern들은 보존하고 새 독립 Pattern에 5167ms clip과 1989ms부터3000ms 브레스를 연결한다. 단독 EffectTool sourceModelPreview는 같은 clip의 sourceStart1989ms부터 시작한다.
+
+앵콜 블랙홀빔은 action4219983의35_01/35_04 한 번 준비·발사, 원본5notify를 사용한다. 양눈 빔 notify를 실제 좌우 눈 본에 적용하고 slot별 group을 유지한다. 요청 이름은 빙고 | 앵콜세이튼 | 블랙홀빔이다. 새 effectAssetId를 Catalog/Tree/Composition과 Client Data None에 등록하고 실제 clip과 Effect를 가진 독립 Pattern을 추가한다. 기존 광역 source leaf나 전역 본 basis는 수정하지 않는다. emitter 자체 기간이 원본 notify보다 길어 spawning이 넘어가거나 원본 nested CDO lookup이 빠진 경우 신규 asset occurrence에만 근거가 있는 투영을 적용한다.
+
+### G11-01. 쇼타임 해골 폭탄의 원본 심지 연결
+
+대상은 기존 `world.object.kouku.bingo_bomb`가 사용하는 MN_RHCN_01 animated 모델과
+기본 idle/Respawn 모션 두 개다. 실제 WModel의 D/N/S와 BossCatalog의 원본 native
+program30/7 texture 입력을 검사하며, 현재 사용자의 scale2와 모든 인스턴스 TRS를 보존한다.
+원본 NPC480712 -> SpawnAction4223107 -> Spark notify -> FX_01 socket 연결을 재사용한다.
+
+기존 `build_kouku_showtime_restore.py`에 stage-only `--stage-bomb-fuse` 모드를 추가한다.
+원본 SaprkLoop source leaf 3요소를 복사해 별도 `effect.kouku.gate3.showtime.bomb.fuse`를
+만들고, 원본 notify의 2초 창 동안 심지 불꽃을 반복시키는 저작 정책을 명시한다. 원본 leaf,
+material/source recipe의 분포/색/크기/velocity와 다른 리소스는 바꾸지 않는다.
+
+FX_01은 b_body+[20,0,52.1496]cm다. 이 설치 FBX bone의 X/Z basis와 실제 PSK/스킨
+정점의 대응을 확인해, World effectTrack의 bone=b_body, position=[.2,0,-.521496],
+rotation=[-90,0,0]으로 좌표 변환을 한 번만 적용한다. 실제 CModel pose에서 심지 중심,
+owner scale/회전과 연기/불꽃의 상하축을 검사한다. Source 본 복구나 모델 전체 회전 변경으로
+기존 사용자의 폭탄 외형/애니메이션을 바꾸지 않는다.
+
+generator는 현재 원본 bytes/hash와 baseline, 후보, 정확히 두 template의 국소 변경을 out에
+기록한다. live Data/Resources/Catalog/Tree/Composition은 통합 담당자의 CAS 대상으로 남긴다.
+검증은 원본·설치 mesh/재질 입력, 실제 CModel 및 Codec/Playback, JSON parse와 diff check다.
+Client/UI 실행·캡처와 원본 전체 frame 시각 일치 판정은 하지 않는다.

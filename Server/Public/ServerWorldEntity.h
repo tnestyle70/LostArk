@@ -149,6 +149,7 @@ namespace LostArk::Server
 		BOSS_PATTERN_SEQUENCE_DEFINITION GhostPhasePatternSequence;
 		bool bGhostPhasePatternLoopActive = false;
 		bool bKoukuGazeClone = false;
+		bool bKoukuSummonClone = false;
 		std::uint32_t iKoukuCloneOwnerSequence = 0u;
 		std::uint32_t iKoukuCloneEndTick = 0u;
 		/* Auxiliary ghosts use their own deterministic occurrence identity and

@@ -63,11 +63,46 @@ HRESULT CSound_Manager::Initialize()
 		return E_FAIL;
 	}
 
-	return S_OK;
+	return Update_ApplicationFocusMute() ? S_OK : E_FAIL;
+}
+
+bool_t CSound_Manager::Update_ApplicationFocusMute()
+{
+	if (!m_pSystem)
+		return false;
+
+	// Match Winters: detached editor windows still belong to this application,
+	// while another Client process must never share its audible output.
+	DWORD foregroundProcessId = 0u;
+	if (const HWND foreground = GetForegroundWindow())
+		GetWindowThreadProcessId(foreground, &foregroundProcessId);
+	const bool_t muted = foregroundProcessId != GetCurrentProcessId();
+	if (m_bFocusMuteInitialized && muted == m_bFocusMuted)
+		return true;
+
+	FMOD::ChannelGroup* master = nullptr;
+	FMOD_RESULT result = m_pSystem->getMasterChannelGroup(&master);
+	if (FMOD_OK != result || !master)
+	{
+		Write_FMOD_Error("System::getMasterChannelGroup (focus)", result);
+		return false;
+	}
+	// Mute output only: keep authored volume, cue time, and explicit pause intact.
+	result = master->setMute(muted);
+	if (FMOD_OK != result)
+	{
+		Write_FMOD_Error("ChannelGroup::setMute (focus)", result);
+		return false;
+	}
+	m_bFocusMuted = muted;
+	m_bFocusMuteInitialized = true;
+	return true;
 }
 
 HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume)
 {
+	if (!Update_ApplicationFocusMute())
+		return E_FAIL;
 	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, false);
 	if (nullptr == pSound)
 		return E_FAIL;
@@ -92,7 +127,8 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 
 uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused)
 {
-	if (!std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem) return 0u;
+	if (!std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem ||
+		!Update_ApplicationFocusMute()) return 0u;
 	auto* sound = Find_Or_LoadSound(path, false);
 	if (!sound) return 0u;
 	unsigned int length = 0;
@@ -153,6 +189,8 @@ HRESULT CSound_Manager::Play_LoopingSound(const wstring_t& strSoundFilePath,
 HRESULT CSound_Manager::Play_TrackedSound(const wstring_t& strSoundFilePath,
 	f32_t fVolume, const bool_t bLoop, CTrackedSoundChannel<FMOD::Channel>& channel)
 {
+	if (!Update_ApplicationFocusMute())
+		return E_FAIL;
 	FMOD::Sound* pSound = Find_Or_LoadSound(strSoundFilePath, bLoop);
 	if (nullptr == pSound)
 		return E_FAIL;
@@ -195,6 +233,8 @@ void CSound_Manager::Update()
 {
 	if (nullptr == m_pSystem)
 		return;
+
+	(void)Update_ApplicationFocusMute();
 
 	for (auto it = m_CueChannels.begin(); it != m_CueChannels.end();)
 	{

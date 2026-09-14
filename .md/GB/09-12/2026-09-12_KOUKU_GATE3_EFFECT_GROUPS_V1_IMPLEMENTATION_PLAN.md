@@ -309,3 +309,264 @@ navigation·높이·collision과 session/world를 검증한 후 이동·트리�
 수정한 translation unit을 격리 컴파일하고 기존 요청·Server 결과 경로에서 정본 spawn 선택과
 실패 보존을 확인한다. 실행 중 Client의 미저장 복구를 먼저 완료하며 Client/UI 실행·화면 판정은
 사용자가 직접 한다.
+## G14. 공통 불뿜기와 화염링 2배 구성 후보 (2026-09-14)
+
+현재 지팡이 불뿜기 원본의 Fire_01/02 25요소를 공통 neutral 문서로 추출하는 기존 작업의 `copy_shared_firebreath_elements` 계약을 재사용한다. backstep.flame과 full, ring.flame의 기존 Sk_01 sprite11을 이 25요소로 교체하며 full의 ground decal3은 보존한다. 내부 본 attachment가 없는 shared yaw0/scale1.7을 그대로 사용하고 이전 화염의 yaw-90/scale2를 중복 적용하지 않는다.
+
+ring과 ring.flame의 실제 FireRing_01 본체10요소만 바닥 원점 기준2배로 확대한다. 기존 중심1.1m와 source225cm 편심을 함께 확대하므로 Element position [0,1.1,1.575]는 [0,2.2,3.15], scale .7은1.4가 된다. 링 분출25의 origin은 [0,2.2,0]으로 함께 올리며 백스탭 분출은 기존 [0,1.1,0]이다. 별도 ring.end와 원본 추출 archive, 사용자 Composition/WorldSequence는 이 후보 생성기에서 수정하지 않는다.
+
+기존 `build_kouku_backstep_flame_groups.py`에 `--shared-firebreath` current-authored 후보 경로를 추가한다. 기본 생성과 new-or-equal 설치 경로는 보존하며 새 경로는 out의 baseline/candidate/manifest만 작성한다. 기존 멤버/owner/transform이 기대와 다르면 현재 사용자 편집을 덮지 않고 거절한다. manifest는 실제 입력 hash와 asset별 destination/candidate/name/duration/default anchor를 전달하고 최종 guarded 설치는 상위 작업이 담당한다.
+
+실제 Codec/Playback 저장·재로드·수명/finite·deterministic seek 및 설치된822개 hoop 정점의 전후 bounds/중심/바닥 접점을 대조한다. 그룹 구성과 공통25 payload, ground3/별도end/다른field 불변을 검사한다. 새 C++/프로젝트 항목, Client/UI 실행·캡처는 없다. 공굴리기 sourceaction4219866/4219910의 별도 FireBreath_01 library9는 사용자가 지정한 같은 stable asset ID로 공통25를 교체하고 `공굴리기_공통 불뿜기`로 표시한다. 기존 tree parent와 원본 archive/baseline은 보존한다. 이는 원본9의 재질 복원이 아닌 요청된 공통 외형 교체이며, 전체 공 탑승 동작이나24회 발사를 새로 구성하지 않는다.
+
+## G15. 공통 불뿜기와 1·2·3·4 화염 파동 — 2026-09-14
+
+현재 `staff.flame.full.restore`는 이름과 달리 action4219951의 백스텝 브레스 합성이다.
+42요소 중 Fire_01/02 sprite25개가 사용자가 공통으로 쓰려는 화염이며, 나머지 지팡이·오라·
+조명은 별개다. 현재 사용자 저장본은 보존하고 원본 표시명만 `불뿜기`로 바꾼다.
+원본 lookupTable의 앞2개는 range header이며 XYZ 속도로 해석하지 않는다.
+25개를 별도 root 이펙트 `effect.kouku.gate3.firebreath.shared`로 파생해 준비 지연을 제거한다.
+실제 Playback이 이미 +Z로 변환한 분사 방향을 유지하고 head 기저의1.7배 크기를 별도 기록한다.
+같은 파생 입력을 백스텝·화염링이 재사용하며 본체2배 확대는 G14의 링 중심 기준 변환이다.
+
+화염 파동의 요청 입력은 Light `Par_M_Light_001`, 불기둥 `Par_L_RPCT_05_Sk_04_11_LOC_INT`,
+폭발 바닥 `Par_G_RPCT_05_Wand_Decal_LOC_INT`다. 불기둥만 전체1.5배 확대한다.
+원본 action4219820/4219948의 `rpct00_att_battle_10_02` 활성 WandDecal notify3104ms를
+첫 폭발 기준으로 사용한다. 전조1904/2204/2504/2804ms 후 폭발3104/3404/3704/4004ms다.
+삼각형10지점·행간300ms·전조1200ms는 원본 복원이 아니라 사용자 요청에 따른 저작 구성이다.
+지점 간격은 확대 후 실제 입자/geometry 수치를 확인한 뒤 후보 manifest에 수치와 근거를 남긴다.
+
+`Tools/EffectPipeline/build_kouku_flame_wave_groups.py`는 원점 전조·불기둥·바닥3종과
+10지점 전체 미리보기를 out에 생성한다. 전체는 동일 BOSS 시작 pivot을 한 번 잡아 각 행의
+전조와 폭발이 같은 바닥 지점을 공유한다. 편집용30box 후보는 별도 제공하되 서로 다른
+시각의 BOSS pivot을 각자 고정하는 구성을 기본 패턴에 설치하지 않는다.
+
+`Tools/KoukuSaydonPipeline/prepare_flame_unification.py`는 최신 저장본을 읽어 Catalog,
+ResourceTree, Composition, Client project/filter 등록을 한 후보에 모은다. 기존P49의 이동·
+애니메이션을 보존하고 새 화염 파동을 동작 시각에 맞춘다. P49 전체 수명은 바닥 잔광을 포함해11154ms로 늘린다. 같은 단일 동작을 세이튼·쿠크세이튼
+각각 바로 재생할 수 있는 패턴을 추가한다. 기존P43은 백스텝 동작에 공통 불뿜기를 연결한다.
+공굴리기는 정확한 원본/기존 소비자를 조사해 그 화염 부분만 교체한다. 이름이 유사하지만
+다른 P40 십자화염폭발, 다른 세션의 화염 재질 수정과 사용자 타임라인은 보존한다.
+
+후보 준비는 live Data를 쓰지 않는다. 저장·종료 확인 뒤 최신 입력 hash를 재검사하고,
+대상 파일의 CAS가 모두 통과한 경우에만 백업을 남겨 적용한다. 실패하면 이미 교체한 파일을
+원본으로 복구하고 오류를 보고한다. 변경한 Authoring을 정본 publisher로 검증·게시하며,
+최종 Product 빌드에는 앞서 준비한 Shift 선택·앵커 그룹·Object preview 수정을 함께 포함한다.
+JSON/XML parse, 실제 Codec/Playback, 회전·크기·동시 타이밍 수치와 보존 범위를 확인한다.
+Client/UI는 실행하지 않는다. 사용자의 화면 확인과 원작 외형 승인은 RESULT에서 미검증으로
+분리한다. 새 C++ 파일과 런타임 schema는 추가하지 않는다.
+
+
+## G16. 십자 화염 폭발·3갈래 불뿜기의 공통 화염 적용
+
+기존 공통 불뿜기25요소를 네 개의 현재 리소스에 파생해 적용한다. 십자 한 줄은 정·역방향50요소, 십자는 네 방향100요소, 전체는 여기에 기존 조명5요소를 유지한다. 3갈래는 기존 세 socket의 본 화염42요소를75요소로 교체하고 준비·예고·조명35요소를 보존한다. 각 요소의 시작 시각, 저장 박스, ID와 리소스 기본 수명은 유지한다. 빈 Pattern에 새로운 animation을 임의로 채우지 않는다.
+
+`Tools/EffectPipeline/build_kouku_directional_shared_firebreath.py`는 stage만 수행하며, 현재 Authored와 공통 화염의 hash를 설치 manifest에 기록한다. 원본 `build_kouku_albion_cross_groups.py`의 선택된 십자3문서와 `build_kouku_threeway_breath_group.py`의 최종 출력에도 같은 교체 함수를 연결한다. 원본 복구 자료와 사용자가 요청한 화염 통합 정책을 구분하고 기존 저작 수정 보호 검사를 유지한다.
+
+3갈래의 원본 main velocity는 socket-local +X이고 공통 화염은 +Z다. 복사한 세 그룹에만 Detail yaw90을 적용한다. 설치 모델의 본 basis1.7과 Detail scale1을 사용해1.7을 두 번 곱하지 않는다. 실제 모델·본과 현재 Codec/Playback으로 방향·크기·시각을 확인하고 기존 ID의 Authored 네 파일에 CAS 적용한 뒤 공식 publisher를 실행한다. 새 C++ 파일·shader·리소스 ID가 없어 프로젝트 등록 변경은 필요 없다. 화면 판정은 사용자가 한다.
+
+### G16-01. 신규 파생 생성기 전체 코드
+
+```python
+"""Stage common firebreath in the existing cross and three-socket resources.
+
+This is an appearance replacement, not a reconstruction of the source effects.
+Existing resource identities, warning/preparation/light elements and authored
+occurrence windows remain owned by the saved documents and their installer.
+"""
+import argparse
+import collections
+import copy
+import hashlib
+import json
+from pathlib import Path
+
+from build_kouku_shared_firebreath import SHARED_ASSET, copy_shared_firebreath_elements
+
+ROOT = Path(__file__).resolve().parents[2]
+AUTHORED = ROOT / 'Data/Effects/Authored'
+CROSS_ASSETS = ('effect.kouku.firecross.impact.line',
+                'effect.kouku.firecross.impact', 'effect.kouku.firecross.impact.full')
+THREEWAY = 'effect.kouku.gate3.threeway.breath.full.restore'
+CROSS_SOURCE = 'fx_mn_istm_00-4.par_d_istm_00-4_sk02_02'
+THREEWAY_SOURCE = 'fx_mn_rpct_05_l.par_l_rpct_05_sk_01_loc_int'
+REGENERATION_BUILDERS = ('build_kouku_albion_cross_groups.py', 'build_kouku_threeway_breath_group.py')
+IDENTITY_PS = dict(uniformScaleMultiplier=1, yawOffsetDegrees=0,
+                   directionYawDegrees=0, initialSpeedMultiplier=1)
+
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+
+def write(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def system(element):
+    return element['sourceNode'].split('|')[-1].split('.particles')[0]
+
+
+def strings(value):
+    if isinstance(value, dict):
+        for item in value.values():
+            yield from strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings(item)
+    elif isinstance(value, str):
+        yield value
+
+
+def assert_independent(element):
+    assert not element.get('runtimeCarrier') and not element.get('sourceTransformTrack')
+    assert not element.get('transformInheritance', {}).get('enabled')
+
+
+def replace_cross(document, shared):
+    assert document['particleSystem'] == IDENTITY_PS
+    selected = [e for e in document['elements'] if system(e) == CROSS_SOURCE]
+    expected = 10 if document['effectAssetId'].endswith('.line') else 20
+    assert len(selected) == expected
+    groups = collections.defaultdict(list)
+    for element in selected:
+        assert_independent(element)
+        assert not element['actionCueAttachment']['enabled']
+        transform = element['detail']['transform']
+        assert transform['rotationDegrees'][0] == transform['rotationDegrees'][2] == 0
+        key = json.dumps([transform, element['detail']['timing']['startDelaySeconds']], sort_keys=True)
+        groups[key].append(element)
+    assert len(groups) == expected // 10 and all(len(g) == 10 for g in groups.values())
+    result = copy.deepcopy(document)
+    replaced_ids = {e['id'] for e in selected}
+    result['elements'] = [copy.deepcopy(e) for e in document['elements'] if e['id'] not in replaced_ids]
+    assert not replaced_ids.intersection(strings(result)), 'Retained element references a replaced impact'
+    branches = []
+    for ordinal, group in enumerate(groups.values()):
+        source = group[0]
+        transform = source['detail']['transform']
+        start = source['detail']['timing']['startDelaySeconds']
+        for opposite in (0, 180):
+            key = document['effectAssetId'] + f'.shared.arm.{ordinal}.{opposite}'
+            elements = copy_shared_firebreath_elements(shared, key, transform['position'])
+            yaw = transform['rotationDegrees'][1] + opposite
+            for element in elements:
+                detail = element['detail']
+                detail['transform']['rotationDegrees'] = [0, yaw, 0]
+                detail['transform']['scale'] = [a * b for a, b in zip(
+                    detail['transform']['scale'], transform['scale'])]
+                detail['transform']['velocityPerSecond'] = copy.deepcopy(transform['velocityPerSecond'])
+                detail['transform']['revolutionDegreesPerSecond'] = copy.deepcopy(transform['revolutionDegreesPerSecond'])
+                detail['timing']['startDelaySeconds'] += start
+            result['elements'].extend(elements)
+            branches.append(dict(groupId=key, yawDegrees=yaw, startSeconds=start,
+                                 position=transform['position'], elementIds=[e['id'] for e in elements]))
+    return result, dict(replaced=len(selected), retained=len(document['elements']) - len(selected), branches=branches)
+
+
+def replace_threeway(document, shared):
+    assert document['particleSystem'] == IDENTITY_PS
+    assert document['sourceModelPreview']['actorProfileId'] == 'MN_RPCT_05'
+    selected = [e for e in document['elements'] if system(e) == THREEWAY_SOURCE]
+    groups = collections.defaultdict(list)
+    for element in selected:
+        assert_independent(element)
+        attachment = element['actionCueAttachment']
+        assert attachment['enabled'] and attachment['follow']
+        groups[attachment['runtimeAnchorSlotId']].append(element)
+    assert set(groups) == {'FX_Prj_01', 'FX_Prj_02', 'FX_Prj_03'}
+    assert all(len(g) == 14 for g in groups.values())
+    result = copy.deepcopy(document)
+    replaced_ids = {e['id'] for e in selected}
+    result['elements'] = [copy.deepcopy(e) for e in document['elements'] if e['id'] not in replaced_ids]
+    assert not replaced_ids.intersection(strings(result)), 'Retained element references a replaced breath'
+    branches = []
+    for slot, group in groups.items():
+        source = group[0]
+        transform, attachment = source['detail']['transform'], source['actionCueAttachment']
+        start = source['detail']['timing']['startDelaySeconds']
+        assert transform['rotationDegrees'] == [0, 0, 0]
+        assert all(e['detail']['transform'] == transform and e['actionCueAttachment'] == attachment and
+                   e['detail']['timing']['startDelaySeconds'] == start for e in group)
+        key = document['effectAssetId'] + '.shared.' + slot.lower()
+        elements = copy_shared_firebreath_elements(shared, key, transform['position'])
+        for element in elements:
+            element['actionCueAttachment'] = copy.deepcopy(attachment)
+            detail = element['detail']
+            # Old Sk_01's velocity payload is UE +X, hence Client +X. The
+            # shared template is +Z: align it with that existing socket axis.
+            detail['transform']['rotationDegrees'] = [0, 90, 0]
+            # Actual installed RPCT05 bones already contribute scale1.7.
+            # Keep the authored main scale instead of multiplying 1.7 twice.
+            detail['transform']['scale'] = copy.deepcopy(transform['scale'])
+            detail['transform']['velocityPerSecond'] = copy.deepcopy(transform['velocityPerSecond'])
+            detail['transform']['revolutionDegreesPerSecond'] = copy.deepcopy(transform['revolutionDegreesPerSecond'])
+            detail['timing']['startDelaySeconds'] += start
+        result['elements'].extend(elements)
+        branches.append(dict(groupId=key, sourceAnchorSlot=slot, bone=attachment['runtimeBoneName'],
+                             attachment=attachment, sourceLocalForward=[1, 0, 0], sharedLocalYawDegrees=90,
+                             startSeconds=start, position=transform['position'],
+                             elementIds=[e['id'] for e in elements]))
+    assert len(result['elements']) == 110
+    return result, dict(replaced=42, retained=35, branches=branches)
+
+
+def stage(output):
+    output = output.resolve()
+    assert output.is_relative_to(ROOT / 'out'), 'Stage output must remain under out/'
+    shared_path = AUTHORED / (SHARED_ASSET + '.effect.json')
+    shared = read(shared_path)
+    composition_path = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
+    tree_path = ROOT / 'Data/Effects/EffectResourceTree.json'
+    composition, tree = read(composition_path), read(tree_path)
+    resources = {r['assetId']: r for r in composition['presentationResources']
+                 if r['kind'] == 'EFFECT' and r['resourceKind'] == 'V1_EFFECT'}
+    parents = {r['assetId']: r['parentId'] for r in tree['references'] if r['kind'] == 'V1'}
+    scripts = [Path(__file__), Path(__file__).with_name('build_kouku_shared_firebreath.py')]
+    scripts.extend(Path(__file__).with_name(name) for name in REGENERATION_BUILDERS)
+    inputs = {p.relative_to(ROOT).as_posix(): sha(p) for p in (shared_path, composition_path, tree_path, *scripts)}
+    documents, diagnostics = [], []
+    for asset in (*CROSS_ASSETS, THREEWAY):
+        path = AUTHORED / (asset + '.effect.json')
+        before = path.read_bytes()
+        original = json.loads(before)
+        candidate, info = replace_threeway(original, shared) if asset == THREEWAY else replace_cross(original, shared)
+        assert len({e['id'] for e in candidate['elements']}) == len(candidate['elements'])
+        candidate_path = output / 'candidate' / path.name
+        write(candidate_path, candidate)
+        backup = output / 'baseline' / path.name
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        backup.write_bytes(before)
+        resource = resources[asset]
+        consumers = [dict(patternId=p['patternId'], occurrenceId=o['occurrenceId'])
+                     for p in composition['patterns'] for o in p['presentationOccurrences']
+                     if o['resourceId'] == resource['resourceId']]
+        relative = path.relative_to(ROOT).as_posix()
+        inputs[relative] = hashlib.sha256(before).hexdigest()
+        documents.append(dict(effectAssetId=asset, candidatePath=candidate_path.relative_to(ROOT).as_posix(),
+            path=relative, displayName=original['displayName'], durationMs=resource['durationMs'],
+            defaultAnchorKind=resource['defaultAnchorKind'], parentId=parents[asset],
+            resourceId=resource['resourceId'], beforeSha256=inputs[relative],
+            candidateSha256=sha(candidate_path), changeKind='REPLACE_DIRECTIONAL_FLAME_APPEARANCE'))
+        diagnostics.append(dict(effectAssetId=asset, beforeElements=len(original['elements']),
+            afterElements=len(candidate['elements']), existingResourceDurationMs=resource['durationMs'],
+            savedConsumers=consumers, **info))
+    write(output / 'installation.json', dict(installed=False, stageOnly=True, documents=documents,
+        inputHashes=inputs, diagnostics=diagnostics, sharedAssetId=SHARED_ASSET,
+        sharedNativeDurationSeconds=5.5, authoredOccurrenceWindowsChanged=False,
+        emptyPatternAnimationsCreated=False, compositionRevision=composition['revision'],
+        manualVisualValidation='USER_PENDING'))
+    print(json.dumps(dict(staged=len(documents), output=str(output), liveDataWritten=False)))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT / 'out/KoukuDirectionalFlame20260914')
+    stage(parser.parse_args().output)
+
+```

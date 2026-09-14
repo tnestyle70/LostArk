@@ -1,0 +1,54 @@
+{
+  "schema": "lostark.effect-v2",
+  "formatVersion": 1,
+  "effectId": "kouku.gate1.authored.p4.popup.transition.fade",
+  "displayName": "1관문_캡처 암전·팝업북 페이드인",
+  "effectType": "ScreenPost",
+  "slots": {
+    "mesh": "",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+    "noise": "",
+    "mask": "",
+    "emissive": "",
+    "dissolve": ""
+  },
+  "params": {
+    "lifetime": 0.44,
+    "loop": false,
+    "playRate": 1.0,
+    "alphaInEnd": 0.0,
+    "alphaOutStart": 1.0,
+    "screenPost": {
+      "profile": "TexturedOverlay",
+      "intensityStart": 1.0,
+      "intensityEnd": 1.0,
+      "intensityLerp": false,
+      "intensitySmoothstep": false,
+      "intensityKeys": [{"timeSeconds": 0.0, "intensity": 0.0}, {"timeSeconds": 0.14, "intensity": 1.0}, {"timeSeconds": 0.44, "intensity": 0.0}],
+      "tint": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "overlayPositionStart": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionHold": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionEnd": [
+        0.5,
+        0.5
+      ],
+      "overlayScale": [
+        1,
+        1
+      ],
+      "displaySpace": true
+    }
+  },
+  "parts": []
+}

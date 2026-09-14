@@ -113,6 +113,9 @@ namespace
 			eFormat == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB ||
 			eFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ||
 			eFormat == DXGI_FORMAT_R32G32B32A32_FLOAT ||
+			// BC1 supplies alpha too: opaque blocks return 1, transparent mode 0/1.
+			eFormat == DXGI_FORMAT_BC1_UNORM ||
+			eFormat == DXGI_FORMAT_BC1_UNORM_SRGB ||
 			eFormat == DXGI_FORMAT_BC2_UNORM ||
 			eFormat == DXGI_FORMAT_BC2_UNORM_SRGB ||
 			eFormat == DXGI_FORMAT_BC3_UNORM ||
@@ -234,6 +237,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 	vector<shared_ptr<IPresentationProvider>> Providers =
 		std::move(m_FrameProviders);
 	m_FrameProviders.clear();
+	bool_t bIsolatedProviderFailureSeen = false;
 	const auto FinalizeProviders =
 		[&Providers](const bool_t bCommitted)
 		{
@@ -260,7 +264,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 		Clear_Frame();
 		return hPendingProviderFailure;
 	}
-	for (const shared_ptr<IPresentationProvider>& Provider : Providers)
+	for (shared_ptr<IPresentationProvider>& Provider : Providers)
 	{
 		if (nullptr == Provider)
 		{
@@ -273,6 +277,12 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 			Clear_Frame();
 			return E_FAIL;
 		}
+		// Each provider stages one contribution. An isolated local rejection must
+		// not discard a healthy capture, light or overlay from another owner.
+		const size_t iLightCheckpoint = m_TransientLights.size();
+		const size_t iPostCheckpoint = m_ScreenPosts.size();
+		const size_t iOverlayCheckpoint = m_ScreenOverlays.size();
+		const PRESENTATION_SUBMISSION_STATS StatsCheckpoint = m_LastSubmissionStats;
 		const HRESULT hProviderResult = Provider->Submit_Presentation();
 		if (FAILED(hProviderResult))
 		{
@@ -286,13 +296,26 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 				Provider->Is_PresentationFailureIsolated() &&
 				eFailureScope ==
 					PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
+			if (bIsolatedProviderFailure)
+			{
+				m_TransientLights.resize(iLightCheckpoint);
+				m_ScreenPosts.resize(iPostCheckpoint);
+				m_ScreenOverlays.resize(iOverlayCheckpoint);
+				m_LastSubmissionStats = StatsCheckpoint;
+				++m_LastSubmissionStats.iProviderFailures;
+				bIsolatedProviderFailureSeen = true;
+				Provider->Finalize_PresentationSubmission(false);
+				// Already finalized: later global rollback must not finalize it twice.
+				Provider.reset();
+				continue;
+			}
 			++m_LastSubmissionStats.iProviderFailures;
 			m_LastSubmissionStats.bCompleted = true;
 			m_LastSubmissionStats.bCommitted = false;
 			m_bSubmissionTransactionActive = false;
 			FinalizeProviders(false);
 			Clear_Frame();
-			return bIsolatedProviderFailure ? S_FALSE : hProviderResult;
+			return hProviderResult;
 		}
 	}
 	if (!Is_CompleteChannelSubmission(m_LastSubmissionStats.Lights) ||
@@ -322,7 +345,9 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 	m_LastSubmissionStats.bCommitted = true;
 	m_bSubmissionTransactionActive = false;
 	FinalizeProviders(true);
-	return 0u < m_LastSubmissionStats.Lights.iSuppressed ||
+	if (bIsolatedProviderFailureSeen)
+		m_eLastFailureScope = PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
+	return bIsolatedProviderFailureSeen || 0u < m_LastSubmissionStats.Lights.iSuppressed ||
 		0u < m_LastSubmissionStats.ScreenPosts.iSuppressed ||
 		0u < m_LastSubmissionStats.ScreenOverlays.iSuppressed ? S_FALSE : S_OK;
 }

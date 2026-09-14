@@ -6,6 +6,7 @@
 namespace Client
 {
 class CKoukuSaydonPresentationPlayer;
+class CWorldSequenceDocument;
 struct EFFECT_DOCUMENT_DESC;
 
 struct EFFECT_COMPOSITION_MODEL_ACTOR final
@@ -25,6 +26,12 @@ struct EFFECT_COMPOSITION_MODEL_CLIP final
     std::string status;
 };
 
+struct EFFECT_COMPOSITION_MODEL_PROP final
+{
+    std::string occurrenceId, worldId, instanceId, displayName, bone;
+    std::uint32_t startMs = 0u, durationMs = 0u;
+};
+
 // Read-only view of saved Composition model rows. No authoring writer, product
 // admission or second model runtime: the existing arena presentation owner is borrowed.
 class CEffectCompositionModelPreview final
@@ -32,7 +39,15 @@ class CEffectCompositionModelPreview final
 public:
     void Set_Player(CKoukuSaydonPresentationPlayer* player);
     bool Reload();
-    bool Select_SourceEffect(const EFFECT_DOCUMENT_DESC& effect);
+    bool Select_SourceEffect(const EFFECT_DOCUMENT_DESC& effect,
+        const std::string& worldContextPatternId = {});
+    static bool Resolve_SourcePropPattern(const EFFECT_DOCUMENT_DESC& effect,
+        std::string& patternId, std::string& status);
+    bool Select_WorldEffectContext(const std::string& patternId);
+    bool Resolve_WorldPropPivot(const std::string& occurrenceId, float4x4_t& out) const;
+    static bool Stage_ActorWorldProps(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const CWorldSequenceDocument& sequences,
+        std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE>& props, std::string& status);
     bool Select_Pattern(const std::string& patternId);
     bool Select_Bundle(const std::string& bundleId);
     void Clear_Selection();
@@ -47,6 +62,7 @@ public:
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& Get_Document() const { return m_Document; }
     const std::vector<EFFECT_COMPOSITION_MODEL_ACTOR>& Actors() const { return m_Actors; }
     const std::vector<EFFECT_COMPOSITION_MODEL_CLIP>& Rows() const { return m_Rows; }
+    const std::vector<EFFECT_COMPOSITION_MODEL_PROP>& Props() const { return m_Props; }
     const std::string& Selected_Id() const { return m_SelectedId; }
     bool Selected_IsBundle() const { return m_IsBundle; }
     std::uint32_t DurationMs() const { return m_DurationMs; }
@@ -59,8 +75,10 @@ private:
         const std::string& patternId, const std::string& memberId, std::uint32_t offsetMs);
     CKoukuSaydonPresentationPlayer* m_Player = nullptr;
     KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Document;
+    std::shared_ptr<const CWorldSequenceDocument> m_ReferenceWorldSequences;
     std::vector<EFFECT_COMPOSITION_MODEL_ACTOR> m_Actors;
     std::vector<EFFECT_COMPOSITION_MODEL_CLIP> m_Rows;
+    std::vector<EFFECT_COMPOSITION_MODEL_PROP> m_Props;
     std::string m_SelectedId, m_Status;
     bool m_IsBundle = false, m_Loaded = false;
     std::uint32_t m_DurationMs = 0u;

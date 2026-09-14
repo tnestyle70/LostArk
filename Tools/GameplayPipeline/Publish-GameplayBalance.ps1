@@ -3984,15 +3984,18 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	}
 	$triggerIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	foreach ($trigger in @($koukuPattern.mechanicTriggers)) {
-		Assert-ExactProperties $trigger @('triggerId','kind','startMs','durationMs',
-			'hudMode','teleportPosition','clonePatternId','clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs') 'KoukuSaydon mechanic trigger'
+		$triggerOptionalProperties = @()
+		if ($null -ne $trigger.PSObject.Properties['patternSpawns']) { $triggerOptionalProperties += 'patternSpawns' }
+		Assert-ExactProperties $trigger (@('triggerId','kind','startMs','durationMs',
+			'hudMode','teleportPosition','clonePatternId','clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs',
+			'arenaRandomCount','arenaRandomRadiusM','arenaHeightToleranceM','arenaMinimumSpacingM','randomPlayerOnly') + $triggerOptionalProperties) 'KoukuSaydon mechanic trigger'
 		Assert-StableId $trigger.triggerId 'KoukuSaydon mechanic trigger ID'
 		Assert-JsonInteger $trigger.startMs 'KoukuSaydon trigger startMs' 0 600000
 		Assert-JsonInteger $trigger.durationMs 'KoukuSaydon trigger durationMs' 1 600000
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -4008,6 +4011,19 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8
 		Assert-JsonInteger $trigger.effectLifetimeMs 'KoukuSaydon effect lifetime' 0 600000
 		Assert-JsonNumber $trigger.radiusM 'KoukuSaydon player effect radius'
+		Assert-JsonInteger $trigger.arenaRandomCount 'KoukuSaydon arena random count' 0 32
+		Assert-JsonNumber $trigger.arenaRandomRadiusM 'KoukuSaydon arena random radius'
+		Assert-JsonNumber $trigger.arenaHeightToleranceM 'KoukuSaydon arena height tolerance'
+		Assert-JsonNumber $trigger.arenaMinimumSpacingM 'KoukuSaydon arena minimum spacing'
+		if ($trigger.randomPlayerOnly -isnot [bool] -or
+			$trigger.arenaRandomRadiusM -lt 0 -or $trigger.arenaRandomRadiusM -gt 100 -or
+			$trigger.arenaHeightToleranceM -lt 0 -or $trigger.arenaHeightToleranceM -gt 10 -or
+			$trigger.arenaMinimumSpacingM -lt 0 -or $trigger.arenaMinimumSpacingM -gt 20 -or
+			($trigger.arenaRandomCount -gt 0 -and ($trigger.arenaRandomRadiusM -le 0 -or $trigger.arenaHeightToleranceM -le 0 -or $trigger.arenaMinimumSpacingM -le 0)) -or
+			($trigger.arenaRandomCount -eq 0 -and ($trigger.arenaRandomRadiusM -ne 0 -or $trigger.arenaHeightToleranceM -ne 0 -or $trigger.arenaMinimumSpacingM -ne 0)) -or
+			($trigger.randomPlayerOnly -and ($trigger.countPerPlayer -ne 1 -or $trigger.radiusM -ne 0))) {
+			throw 'KoukuSaydon arena random layout is invalid'
+		}
 		if ($trigger.kind -ceq 'ALBION_BLUE_CIRCLE') {
 			if ($trigger.countPerPlayer -lt 1 -or $trigger.radiusM -lt 0 -or $trigger.radiusM -gt 20 -or
 				(($trigger.countPerPlayer -eq 1) -ne ($trigger.radiusM -eq 0)) -or $trigger.effectLifetimeMs -lt 1 -or
@@ -4015,7 +4031,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				throw 'KoukuSaydon Albion player effect layout is invalid'
 			}
 		}
-		elseif ($trigger.countPerPlayer -ne 0 -or $trigger.radiusM -ne 0 -or $trigger.effectLifetimeMs -ne 0) {
+		elseif ($trigger.countPerPlayer -ne 0 -or $trigger.radiusM -ne 0 -or $trigger.effectLifetimeMs -ne 0 -or $trigger.arenaRandomCount -ne 0 -or $trigger.randomPlayerOnly) {
 			throw 'Non-Albion mechanic trigger carries player effect values'
 		}
 		$hours = @(0,0,0)
@@ -4033,6 +4049,49 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		elseif (@($trigger.clockHours).Count -ne 0 -or -not [string]::IsNullOrEmpty($trigger.clonePatternId)) {
 			throw "KoukuSaydon HUD trigger carries clone values"
 		}
+		$spawnRows = [Collections.Generic.List[string]]::new()
+		if ($trigger.kind -ceq 'SUMMON_PATTERNS') {
+			if ($trigger.patternSpawns -isnot [Array] -or @($trigger.patternSpawns).Count -lt 1 -or
+				@($trigger.patternSpawns).Count -gt 4 -or $triggerHudMode -ne 0 -or
+				$trigger.faceCenterYawOffsetDegrees -ne 0 -or @($position | Where-Object { $_ -ne 0 }).Count -ne 0) {
+				throw 'Summon requires one to four Pattern spawns and no owner teleport'
+			}
+			$spawnIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			foreach ($spawn in @($trigger.patternSpawns)) {
+				Assert-ExactProperties $spawn @('spawnId','patternId','positionOffset','yawOffsetDegrees') 'Summon Pattern spawn'
+				Assert-StableId $spawn.spawnId 'Summon spawnId'
+				Assert-StableId $spawn.patternId 'Summon patternId'
+				Assert-JsonNumber $spawn.yawOffsetDegrees 'Summon yaw offset'
+				if (-not $spawnIds.Add([string]$spawn.spawnId) -or $spawn.patternId -ceq $koukuPattern.patternId -or
+					$spawn.positionOffset -isnot [Array] -or @($spawn.positionOffset).Count -ne 3 -or
+					[math]::Abs([double]$spawn.yawOffsetDegrees) -gt 360) { throw 'Summon Pattern spawn identity or transform is invalid' }
+				foreach ($coordinate in $spawn.positionOffset) {
+					Assert-JsonNumber $coordinate 'Summon position offset'
+					if ([math]::Abs([double]$coordinate) -gt 1000) { throw 'Summon position offset exceeds 1000m' }
+				}
+				$children = @($koukuEncounterDocument.patterns | Where-Object { $_.patternId -ceq $spawn.patternId })
+				if ($children.Count -ne 1) { throw 'Summon child Pattern is unavailable' }
+				$child = $children[0]
+				$childDuration = [uint64]0
+				foreach ($stage in @($child.stages)) { $childDuration += [uint64]$stage.durationMs }
+				if ($child.gateId -cne $koukuPattern.gateId -or $child.actorProfileId -cne $koukuPattern.actorProfileId -or
+					$child.targetBossPlacementId -cne $koukuPattern.targetBossPlacementId -or $child.category -cne 'MECHANIC' -or
+					$childDuration -eq 0 -or $childDuration -gt [uint64]$trigger.durationMs -or
+					@($child.logicWindows).Count -ne 0 -or @($child.mechanicTriggers).Count -ne 0 -or
+					@($child.worldSequences).Count -ne 0 -or @($child.sceneProfiles).Count -ne 0 -or
+					$null -ne $child.PSObject.Properties['bossMotion'] -or $child.resetBossToSpawn) {
+					throw 'Summon child must be an animation-only same-Gate Pattern within the Summon lifetime'
+				}
+				$koukuFollowupTargets.Add([string]$spawn.patternId)
+				$spawnRows.Add((@('PATTERNSUMMONSPAWN', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
+					$trigger.triggerId, $spawn.spawnId, $spawn.patternId,
+					(Format-InvariantSignedFloat $spawn.positionOffset[0] 'Summon offset X'),
+					(Format-InvariantSignedFloat $spawn.positionOffset[1] 'Summon offset Y'),
+					(Format-InvariantSignedFloat $spawn.positionOffset[2] 'Summon offset Z'),
+					(Format-InvariantSignedFloat $spawn.yawOffsetDegrees 'Summon yaw offset')) -join "`t"))
+			}
+		}
+		elseif ($triggerOptionalProperties.Count -ne 0) { throw 'Only a Summon trigger can carry patternSpawns' }
 		$patternRows.Add((@('PATTERNMECHANICTRIGGER', $koukuEncounterDocument.encounterId,
 			$koukuPattern.patternId, $trigger.triggerId, $trigger.kind,
 			[uint32]$trigger.startMs, [uint32]$trigger.durationMs, $triggerHudMode,
@@ -4040,7 +4099,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $position[1] 'KoukuSaydon teleport Y'),
 			(Format-InvariantSignedFloat $position[2] 'KoukuSaydon teleport Z'),
 			$clone, $hours[0], $hours[1], $hours[2], 1, (Format-InvariantSignedFloat $trigger.faceCenterYawOffsetDegrees 'KoukuSaydon face-center offset'),
-			[uint32]$trigger.countPerPlayer, (Format-InvariantSignedFloat $trigger.radiusM 'KoukuSaydon player effect radius'), [uint32]$trigger.effectLifetimeMs) -join "`t"))
+			[uint32]$trigger.countPerPlayer, (Format-InvariantSignedFloat $trigger.radiusM 'KoukuSaydon player effect radius'), [uint32]$trigger.effectLifetimeMs,
+			[uint32]$trigger.arenaRandomCount,
+			(Format-InvariantSignedFloat $trigger.arenaRandomRadiusM 'KoukuSaydon arena random radius'),
+			(Format-InvariantSignedFloat $trigger.arenaHeightToleranceM 'KoukuSaydon arena height tolerance'),
+			(Format-InvariantSignedFloat $trigger.arenaMinimumSpacingM 'KoukuSaydon arena minimum spacing'), [int]$trigger.randomPlayerOnly) -join "`t"))
+		foreach ($spawnRow in $spawnRows) { $patternRows.Add($spawnRow) }
 	}
 	foreach ($worldSequence in @($koukuPattern.worldSequences)) {
 		$worldSequenceProperties = @('sequenceInstanceId','occurrenceId','startMs','durationMs','playbackSpeed','positionOffset','anchorKind','anchorPosition')

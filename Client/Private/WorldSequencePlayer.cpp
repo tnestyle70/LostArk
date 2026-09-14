@@ -1180,20 +1180,34 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 				}
 				if (!std::isfinite(clipSeconds) || clipSeconds <= 0.f)
 					return APPLY_RESULT::FAILED;
-				const f32_t windowMs = (std::max)(0.f,
-					localMs - static_cast<f32_t>(animationTrack->startMs));
-				normalized = windowMs * animationTrack->playbackRate /
-					(clipSeconds * 1000.f);
-				/* holdLastFrame wins at the end even for a looping clip. A
-				   sequence whose duration rounds a hair past the clip would
-				   otherwise wrap to frame 0 on its very last sample and snap
-				   an unfolded prop shut. */
-				if (localMs >= windowEndMs && animationTrack->holdLastFrame)
-					normalized = 1.f;
-				else if (animationTrack->loop)
-					normalized = std::fmod(normalized, 1.f);
-				else if (normalized > 1.f)
-					normalized = animationTrack->holdLastFrame ? 1.f : 0.f;
+				if (animationTrack->sourceStartMs == 0u)
+				{
+					const f32_t windowMs = (std::max)(0.f,
+						localMs - static_cast<f32_t>(animationTrack->startMs));
+					normalized = windowMs * animationTrack->playbackRate /
+						(clipSeconds * 1000.f);
+					/* holdLastFrame wins at the end even for a looping clip. A
+					   sequence whose duration rounds a hair past the clip would
+					   otherwise wrap to frame 0 on its very last sample and snap
+					   an unfolded prop shut. */
+					if (localMs >= windowEndMs && animationTrack->holdLastFrame)
+						normalized = 1.f;
+					else if (animationTrack->loop)
+						normalized = std::fmod(normalized, 1.f);
+					else if (normalized > 1.f)
+						normalized = animationTrack->holdLastFrame ? 1.f : 0.f;
+				}
+				else
+				{
+					f32_t sampleSeconds = 0.f;
+					if (!CWorldSequenceDocument::Try_SampleAnimationTicks(*animationTrack, localMs, windowEndMs,
+						1.f, clipSeconds, sampleSeconds))
+					{
+						m_Status = "World sequence Deploy animation source range is invalid: " + animationTrack->clipName;
+						return APPLY_RESULT::FAILED;
+					}
+					normalized = sampleSeconds / clipSeconds;
+				}
 			}
 			/* The sampler rewinds a looping clip to frame 0 the moment it is
 			   asked for 1.0, so the settled frame must be requested as a

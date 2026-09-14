@@ -176,6 +176,8 @@ struct WORLD_SEQUENCE_ANIMATION_TRACK
 	bool_t holdLastFrame = true;
 	// Authoring label only; clipName remains the model animation lookup key.
 	std::string displayName;
+	// Native clip milliseconds before playbackRate; independent of timeline startMs.
+	uint32_t sourceStartMs = 0;
 };
 
 struct WORLD_SEQUENCE_EFFECT_TRACK
@@ -324,6 +326,11 @@ public:
 
     static bool_t Build_MaterialOverride(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,
         const std::filesystem::path& resourceRoot, Engine::MODEL_MATERIAL_OVERRIDE& out);
+
+	// Shared by visible Object pose, Effect socket history and Deploy pose.
+	// Native-range or non-finite failure leaves outTicks unchanged.
+	static bool_t Try_SampleAnimationTicks(const WORLD_SEQUENCE_ANIMATION_TRACK& track,
+		f32_t localMs, f32_t windowEndMs, f32_t ticksPerSecond, f32_t durationTicks, f32_t& outTicks);
 
 	static const char_t* Interpolation_ToString(
 		WORLD_SEQUENCE_INTERPOLATION interpolation);

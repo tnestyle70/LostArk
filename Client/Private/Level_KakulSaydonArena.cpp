@@ -28,6 +28,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
+#include "MapAssetRenderUtils.h"
 #include "ValtanCinematicCameraController.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -135,6 +136,10 @@ namespace
 		"world.sequence.instance.original_kouku";
 	constexpr uint64_t KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID = 5ull;
 	constexpr uint64_t KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID = 7ull;
+	/* The card maze telescope visual and the Server clown box archetype that
+	   must be broken before it appears (original triggers 2201/2202). */
+	constexpr uint64_t KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID = 8ull;
+	constexpr const char* CARD_MAZE_CLOWN_BOX_ARCHETYPE_ID = "MONSTER_KOUKU_CLOWN_BOX";
 	/* Every instance whose id starts with this belongs to the same show. */
 	constexpr const char* KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX =
 		"world.sequence.instance.original_";
@@ -939,7 +944,8 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
-	const std::string& patternId, const bool_t playing, const uint32_t clockMs, std::string& status)
+	const std::string& patternId, const bool_t playing, const uint32_t clockMs, std::string& status,
+	const decltype(CWorldSequencePlayer::TARGET_SET::bossAnchor)& bossAnchorOverride)
 {
 	status.clear();
 	if (!m_strCompositionWorldPreviewFailure.empty())
@@ -960,6 +966,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	}
 	m_bCompositionWorldPreviewClockBound = true;
 	auto targets = Make_WorldSequenceTargets();
+	const auto replicatedBossAnchor = targets.bossAnchor;
+	std::string pendingAnchorStatus;
 	bool_t cutsceneMapPending = false;
 	bool_t popupBookActive = false;
 	bool_t gateBorrowPending = false;
@@ -990,7 +998,9 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		const auto& cue = playback.cue;
 		auto& player = *playback.player;
 		targets.objectEmissionAnchor = cue.emissionAnchor;
-		if (!cue.actorProfileId.empty())
+		// Each cue selects its own actor; a previous Model View resolver cannot leak.
+		targets.bossAnchor = bossAnchorOverride ? bossAnchorOverride : replicatedBossAnchor;
+		if (!bossAnchorOverride && !cue.actorProfileId.empty())
 			targets.bossAnchor = [&cue](const std::string& archetype, const std::string& bone,
 				CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
 			{
@@ -1001,6 +1011,15 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 				{ status = "World Object Boss anchor is waiting for its matching Model View actor: " + archetype; return false; }
 				return CWorldSequencePlayer::Resolve_BossBoneAnchor(view.Model, view.BoneRoot, bone, out, status);
 			};
+		bool_t bossAnchorPending = false;
+		const auto resolveBossAnchor = targets.bossAnchor;
+		targets.bossAnchor = [resolveBossAnchor, &bossAnchorPending](const std::string& archetype,
+			const std::string& bone, CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& reason)
+		{
+			const bool_t resolved = resolveBossAnchor && resolveBossAnchor(archetype, bone, out, reason);
+			bossAnchorPending |= !resolved;
+			return resolved;
+		};
 		const auto span = player.Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
 		const auto* instance = player.Get_Document().Find_Instance(cue.instanceId);
 		if (instance && Is_PopupBookHoldInstance(*instance) &&
@@ -1036,6 +1055,11 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 			Debug_StopCompositionWorldPreview();
 			return false;
 		}
+		if (bossAnchorPending)
+		{
+			if (!pendingAnchorStatus.empty()) pendingAnchorStatus += " | ";
+			pendingAnchorStatus += "WORLD preview " + cue.occurrenceId + ": " + player.Get_ObjectSampleStatus(cue.instanceId);
+		}
 	}
 	// Finished unfold boxes release their animated copies before the real arena
 	// (including its placement lighting) is shown. Scrubbing reverses the swap.
@@ -1063,6 +1087,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	if (m_bCompositionWorldPreviewBorrowsGateObjects && !gateBorrowPending &&
 		!Debug_SetGateObjectsSuspended(false, status))
 	{ Debug_StopCompositionWorldPreview(); return false; }
+	if (!pendingAnchorStatus.empty()) status = std::move(pendingAnchorStatus);
 	return true;
 }
 #endif
@@ -1117,12 +1142,15 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		   only exists once its lever is pulled, so suppress it here rather than
 		   waiting for the first sequence frame and flashing an unfolded bridge. */
 		std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> hiddenBridges;
-		hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size() + 2u);
+		hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size() + 3u);
 		for (const uint64_t placementId : KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS)
 			hiddenBridges.emplace_back(placementId, DEPLOY_PROP_STATE::DESPAWNED);
 		// The Sequence owns these cinematic copies; no idle duplicate is placed in the arena.
 		hiddenBridges.emplace_back(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
 		hiddenBridges.emplace_back(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
+		// The telescope appears only after the clown box is broken.
+		if (m_DeployRuntime.Find(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID))
+			hiddenBridges.emplace_back(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
 		if (!m_DeployRuntime.Set_States(hiddenBridges))
 		{
 			OutputDebugStringA((
@@ -1527,6 +1555,16 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			continue;
 		}
 		const std::string& instanceId = play.strSequenceInstanceId;
+		// Reject stale legacy cues before they cancel an active Pattern preview
+		// or take the exact-motion branch around normal sequence admission.
+		if ((play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY ||
+			play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::REPLAY) &&
+			(instanceId == KAKULSAYDON_CUTSCENE_SEQUENCE_ID ||
+			 play.strTargetSequenceInstanceId == KAKULSAYDON_CUTSCENE_SEQUENCE_ID))
+		{
+			OutputDebugStringA("[Level_KakulSaydonArena] Retired Saydon cutscene cue rejected; use the authored Sequence Pattern.\n");
+			continue;
+		}
 #ifdef _DEBUG
 		Debug_StopWorldObjectPreview();
 		Debug_StopCompositionWorldPreview();
@@ -1645,7 +1683,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
-	Update_EntranceTriggerMarkers(fTimeDelta);
+	Update_EntranceTriggerMarkerClocks(fTimeDelta);
 #ifdef _DEBUG
 	if (!m_bMapAuthoringActive)
 #endif
@@ -1712,71 +1750,6 @@ void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeD
 #endif
 
 	m_StatusEffectTextView.Update(fTimeDelta);
-}
-
-bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
-	const CWorldSequencePlayer::TARGET_SET& targets,
-	std::string& outStatus)
-{
-	if (!targets.Is_Complete())
-	{
-		outStatus = "Cutscene targets are not ready";
-		return false;
-	}
-	// Older documents borrow Deploy 7. Recovered documents clone the same
-    // book through an explicit material-bound World Object; keep only its owner visible.
-    bool borrowsBook = false;
-    for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
-        if (instance.instanceId.starts_with(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
-            for (const auto& binding : instance.bindings)
-                if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT &&
-                    binding.targetId == std::to_string(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID)) borrowsBook = true;
-	if (!targets.pDeployRuntime->Set_State(
-		KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, borrowsBook ? DEPLOY_PROP_STATE::INTACT : DEPLOY_PROP_STATE::DESPAWNED))
-	{
-		outStatus = "Cutscene book could not be revealed: " +
-			targets.pDeployRuntime->Get_Status();
-		return false;
-	}
-	Apply_CutsceneSetVisible(true);
-	if (!targets.pDeployRuntime->Set_State(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::INTACT))
-	{
-		Apply_CutsceneSetVisible(false);
-		outStatus = "Cutscene boss could not be revealed: " + targets.pDeployRuntime->Get_Status();
-		return false;
-	}
-
-	const size_t prefixLength = strlen(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX);
-	size_t started = 0u;
-	std::string rejected;
-	for (const WORLD_SEQUENCE_INSTANCE& instance :
-		m_SequencePlayer.Get_Document().Get_Instances())
-	{
-		if (instance.instanceId.size() < prefixLength ||
-			0 != instance.instanceId.compare(0, prefixLength,
-				KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
-		{
-			continue;
-		}
-		if (m_SequencePlayer.Play(instance.instanceId, targets))
-		{
-			++started;
-			continue;
-		}
-		if (!rejected.empty())
-			rejected += ", ";
-		rejected += instance.instanceId.substr(prefixLength);
-	}
-	if (0u == started)
-	{
-		Apply_CutsceneSetVisible(false);
-		outStatus = "Cutscene could not start: " + rejected;
-		return false;
-	}
-	m_bCutsceneBossVisible = true;
-	outStatus = rejected.empty() ? "Cutscene started" :
-		"Cutscene started without " + rejected;
-	return true;
 }
 
 void Client::CLevel_KakulSaydonArena::Apply_CutsceneSetVisible(
@@ -1860,10 +1833,13 @@ bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
 	if (KAKULSAYDON_PAPER_BRIDGE_LINKS.end() != link)
 		return Request_PaperBridgeUnfold(link->leverPlacementId, outStatus);
 
-	/* The pop-up book show is authored as several instances but the Server
-	   names only one of them, so that name starts the whole show. */
+	// Saydon is owned by a Composition Pattern. Old saved trigger messages
+	// must not resurrect the separate Deploy actor or start every original_* map.
 	if (KAKULSAYDON_CUTSCENE_SEQUENCE_ID == instanceId)
-		return Start_PopupBookCutscene(targets, outStatus);
+	{
+		outStatus = "Legacy Saydon cutscene is retired; play the authored Sequence Pattern.";
+		return false;
+	}
 
 	if (!m_SequencePlayer.Play(instanceId, targets, playbackSpeed, positionOffset, durationMs, placement))
 	{
@@ -2042,7 +2018,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 		CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE)
 	{
 		std::wstring text;
-		if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole)
+		if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole && m_bCardMazeClownBoxAlive)
+			text = L"[ Q ] Break the clown box at the maze center";
+		else if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole && m_bCardMazeTelescopeShown)
 			text = L"[ Q ] Strike the telescope at the maze center (G is not used)";
 		if (maze.CardMaze.flags & 1u) text = L"[ TELESCOPE ON ]";
 		else if (maze.CardMaze.flags & 2u) text = L"[ ESCAPED / HAMMER TELESCOPE TO VIEW ]";
@@ -3540,6 +3518,35 @@ void Client::CLevel_KakulSaydonArena::Release_CameraShot()
 
 void Client::CLevel_KakulSaydonArena::Update_CardMazePresentation(f32_t dt)
 {
+	/* Telescope visibility from replicated truth only: a clown box seen alive and
+	   then gone, or a dealt maze role, shows it; leaving MAZE mode forgets it. */
+	{
+		const bool localMaze = LostArk::Shared::KOUKU_HUD_MODE::MAZE ==
+			CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode;
+		const bool running = LostArk::Shared::CARD_MAZE_ROLE::NONE !=
+			CCombatHUDViewModel::Get().Get_KoukuGimmick().eCardMazeRole;
+		bool boxAlive = false;
+		if (localMaze || running)
+		{
+			m_Replication.Collect_KoukuMazeTargets(m_CardMazeTargetScratch);
+			boxAlive = std::any_of(m_CardMazeTargetScratch.begin(), m_CardMazeTargetScratch.end(),
+				[](const KOUKU_MAZE_TARGET_VIEW& target)
+				{ return target.archetypeId == CARD_MAZE_CLOWN_BOX_ARCHETYPE_ID; });
+		}
+		if (m_bCardMazeClownBoxAlive && !boxAlive) m_bCardMazeClownBoxDefeated = true;
+		if (boxAlive || (!localMaze && !running)) m_bCardMazeClownBoxDefeated = false;
+		m_bCardMazeClownBoxAlive = boxAlive;
+		const bool showTelescope = running || (localMaze && m_bCardMazeClownBoxDefeated);
+		if (showTelescope != m_bCardMazeTelescopeShown)
+		{
+			// One attempt per change: a missing row or rejected state is logged, not retried per frame.
+			m_bCardMazeTelescopeShown = showTelescope;
+			if (m_DeployRuntime.Find(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID) &&
+				!m_DeployRuntime.Set_State(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID,
+					showTelescope ? DEPLOY_PROP_STATE::INTACT : DEPLOY_PROP_STATE::DESPAWNED))
+				OutputDebugStringA(("[CardMaze][Telescope] " + m_DeployRuntime.Get_Status() + "\n").c_str());
+		}
+	}
 	const auto tick = m_Replication.Get_LastServerTick();
 	if (m_iCardMazeLastSnapshotTick != tick)
 	{ m_iCardMazeLastSnapshotTick = tick; m_fCardMazeSnapshotSeconds = 0.f; }
@@ -3575,8 +3582,12 @@ bool_t Client::CLevel_KakulSaydonArena::Load_EntranceTriggerMarkers()
 		OutputDebugStringA(("[KoukuEntranceMarker] " + status + "\n").c_str());
 		return false;
 	}
-	static constexpr std::array<std::string_view, 5> triggerIds = {
-		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2" };
+	static constexpr std::array<std::string_view, 23> triggerIds = {
+		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2",
+		"Mario1_Trigger_1", "Mario1_Trigger_3", "Mario1_Trigger_5", "Mario2_Trigger_2", "Mario2_Trigger_4",
+		"Mario2_Trigger_7", "Mario3_Trigger_4", "Mario3_Trigger_5", "Mario3_Trigger_6", "Mario3_Trigger_8",
+		"Mario3_Trigger_10", "Mario3_Trigger_12", "Mario4_Tigger_2", "Mario4_Tigger_3", "Mario4_Tigger_5",
+		"Mario4_Tigger_6", "Mario4_Tigger_7", "Mario4_Tigger_13" };
 	std::vector<ENTRANCE_TRIGGER_MARKER> staged;
 	for (const std::string_view id : triggerIds)
 	{
@@ -3628,23 +3639,51 @@ void Client::CLevel_KakulSaydonArena::Retire_EntranceTriggerMarker(
 	}
 }
 
-void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t deltaSeconds)
+void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkerClocks(const f32_t deltaSeconds)
 {
 	if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f) return;
-	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
-	{
-		Clear_EntranceTriggerMarkers();
-		return;
-	}
 	for (auto& marker : m_EntranceTriggerMarkers)
 	{
 		if (marker.retired) continue;
+		if (marker.clockStarted)
+			marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
+		marker.clockStarted = true;
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Submit_EntranceTriggerMarkers()
+{
+	CProfilerScope profile(CGameInstance::Get().Get_Profiler(), "Level.Kouku.Markers.Prepare");
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		return;
+	MAP_CAMERA_CULL_SNAPSHOT camera;
+	const bool_t cameraValid = CMapAssetRenderUtils::Capture_CameraCullSnapshot(camera);
+	for (auto& marker : m_EntranceTriggerMarkers)
+	{
+		if (marker.retired) continue;
+		// The fixed move_destination asset fits an 8m sphere, including its
+		// source velocity/lifetime, billboard size, camera offset and mesh.
+		// The outer band retains live history during small camera reversals.
+		MAP_FRUSTUM_CULLING_POLICY policy;
+		policy.baseMargin = marker.active ? 32.f : 16.f;
+		MAP_FRUSTUM_RUNTIME_STATE cullState;
+		MAP_FRUSTUM_CULL_DECISION decision;
+		const float3_t center{ marker.rootWorld._41, marker.rootWorld._42, marker.rootWorld._43 };
+		const bool_t visible = !cameraValid ||
+			!CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, camera, {}, {},
+				0u, center, 8.f, cullState, decision) || decision.shouldRender;
+		if (!visible)
+		{
+			if (marker.active && marker.handle.Is_Valid())
+				(void)CEffectPresentationService::Submit_LevelPlacementSample(marker.handle, false);
+			marker.active = false;
+			continue;
+		}
 		const bool_t firstSample = !marker.started;
 		if (firstSample)
 		{
-			// Defer creation until the Level is current; Loader already prepared
-			// the shared World target. Optional failures are isolated once.
-			marker.started = true;
+			// Object iteration has finished. Reuse the Loader's prepared target
+			// and commit only this marker, never unrelated pending gameplay cues.
 			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
 			desc.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
 			desc.strPlacementId = "kouku.entrance.trigger." + marker.placementId;
@@ -3659,8 +3698,9 @@ void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t 
 					": " + status + "\n").c_str());
 				continue;
 			}
+			CEffectPresentationService::Commit_PendingWorldRootSpawns({ marker.handle });
+			marker.started = true;
 		}
-		else marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
 			[root = marker.rootWorld](f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample,
 				std::string& status)
@@ -3670,15 +3710,21 @@ void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t 
 				status.clear();
 				return true;
 			};
-		if (!CEffectPresentationService::Seek_WorldRoot(marker.handle,
-			marker.seconds, provider, firstSample))
+		const bool_t sampled = CEffectPresentationService::Seek_WorldRoot(marker.handle,
+			marker.seconds, provider, firstSample || !marker.active);
+		const HRESULT submitted = sampled ?
+			CEffectPresentationService::Submit_LevelPlacementSample(marker.handle, true) : E_FAIL;
+		if (S_OK != submitted)
 		{
 			CEffectPresentationService::Stop_WorldRoot(marker.handle);
 			marker.handle = {};
 			marker.retired = true;
-			OutputDebugStringA(("[KoukuEntranceMarker] Sample failed: " +
-				marker.placementId + "\n").c_str());
+			marker.active = false;
+			OutputDebugStringA(("[KoukuEntranceMarker] Sample/submission failed: " +
+				marker.placementId + ": " + CEffectPresentationService::Get_Status() + "\n").c_str());
+			continue;
 		}
+		marker.active = true;
 	}
 }
 

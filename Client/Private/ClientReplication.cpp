@@ -68,16 +68,21 @@ namespace
 	constexpr std::string_view KOUKU_SAYDON_ENCOUNTER =
 		"ENCOUNTER_KAKULSAYDON_G1";
 
-	/* Every primary boss of the KoukuSaydon arena: the Gate 1 Kouku and the
-	Debug gate bosses. They share the Gate 1 encounter and the catalog family
-	the presentation service owns; all of them present on a CNpc body. */
+	bool Is_KoukuSaydonDependentArchetype(const std::string_view archetypeId)
+	{
+		return archetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+			archetypeId == "BOSS_KAKULSAYDON_G3_SAYDON";
+	}
+
+	/* Arena bosses and their supported same-body clones share the catalog
+	family and present on independent CNpc bodies keyed by NetEntityId. */
 	bool Is_KoukuSaydonArenaBoss(
 		const std::string_view archetypeId,
 		const std::string_view encounterId,
 		const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId)
 	{
 		return (LostArk::Shared::INVALID_NET_ENTITY_ID == ownerBossNetEntityId ||
-			archetypeId == "BOSS_KAKULSAYDON_G1_SAYDON") &&
+			Is_KoukuSaydonDependentArchetype(archetypeId)) &&
 			encounterId == KOUKU_SAYDON_ENCOUNTER &&
 			Client::CKoukuSaydonPresentationAssetService::Is_ArenaBossArchetype(
 				archetypeId);
@@ -2279,7 +2284,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	if (!Is_Valid_WorldEntitySpawnOwner(spawned, owner) ||
 		(("BOSS_VALTAN_GHOST" == spawned.strArchetypeId && INVALID_NET_ENTITY_ID == spawned.iOwnerBossNetEntityId) ||
 		 (INVALID_NET_ENTITY_ID != spawned.iOwnerBossNetEntityId && "BOSS_VALTAN_GHOST" != spawned.strArchetypeId &&
-		  "BOSS_KAKULSAYDON_G1_SAYDON" != spawned.strArchetypeId)))
+		  !Is_KoukuSaydonDependentArchetype(spawned.strArchetypeId))))
 	{
 		m_strPendingPresentationFailure = "Invalid dependent boss ownership graph.";
 		return false;
@@ -2931,6 +2936,7 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 			npc);
 	}
 	if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId &&
 		Is_KoukuSaydonArenaBoss(
 			iter->second.strArchetypeId,
 			iter->second.strEncounterId,

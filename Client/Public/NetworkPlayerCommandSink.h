@@ -27,6 +27,9 @@ public:
 	bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) override;
 	bool Request_DebugMarioJump(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction) override;
+	bool Request_MarioReturn(std::uint32_t clientSequence) override;
+	bool Consume_MarioReturnResult(
+		LostArk::Shared::S2C_MARIO_RETURN_RESULT& result) override;
 	bool Request_MarioMove(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction) override;
 	bool Consume_DebugMarioJumpResult(
 		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result) override;

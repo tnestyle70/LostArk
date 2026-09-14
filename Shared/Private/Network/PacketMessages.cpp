@@ -2355,6 +2355,60 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_MARIO_RETURN& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId))
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_MARIO_RETURN& message)
+{
+	C2S_MARIO_RETURN decoded{};
+	std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_MARIO_RETURN_RESULT& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= MARIO_RETURN_RESULT::END)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_MARIO_RETURN_RESULT& message)
+{
+	S2C_MARIO_RETURN_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<MARIO_RETURN_RESULT>(result);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= MARIO_RETURN_RESULT::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_BINGO_FILL& message)
 {
 	if (0u == message.iRequestSequence ||

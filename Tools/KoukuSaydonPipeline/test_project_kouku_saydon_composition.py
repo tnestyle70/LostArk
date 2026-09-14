@@ -86,7 +86,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 subject._validate_presentation_occurrences(pattern, resources, 8000, {})
             self.assertEqual(before, pattern)
-        for kind in ("EFFECT", "SOUND", "CAMERA", "LIGHT"):
+        for kind in ("SOUND", "CAMERA", "LIGHT"):
             resources, pattern = self.collider_selection_group_fixture()
             resources["collider.group.fixture"]["kind"] = kind
             with self.subTest(kind=kind), self.assertRaisesRegex(subject.CompositionError, "Collider"):
@@ -104,7 +104,46 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         for row in pattern["presentationOccurrences"]:
             row["anchorKind"] = "WORLD"
         with self.assertRaisesRegex(subject.CompositionError, "WORLD"):
-            subject._validate_collider_selection_groups(pattern, resources)
+            subject._validate_presentation_selection_groups(pattern, resources)
+
+    def test_effect_selection_group_keeps_independent_gun_anchors_and_runtime_projection(self):
+        resources, pattern = self.collider_selection_group_fixture()
+        resources["collider.group.fixture"]["kind"] = "EFFECT"
+        resources["collider.group.fixture"]["assetId"] = "effect.group.fixture"
+        worlds = {"gun.left": {}, "gun.right": {}}
+        pattern["worldOccurrences"] = [
+            {"occurrenceId": f"pattern.group.world.{index + 1}", "worldId": world,
+             "startMs": 0, "durationMs": 8000} for index, world in enumerate(worlds)]
+        for index, row in enumerate(pattern["presentationOccurrences"]):
+            row.update(anchorKind="WORLD", worldId=("gun.left", "gun.right")[index % 2],
+                       worldOccurrenceId=f"pattern.group.world.{index % 2 + 1}",
+                       rotationDegrees=[index * 10., index * 30., -index * 7.])
+        before = copy.deepcopy(pattern)
+        reopened = json.loads(subject.serialize_json(pattern))
+        subject._validate_presentation_occurrences(reopened, resources, 8000, worlds)
+        self.assertEqual(before, reopened)
+        document = {"presentationResources": list(resources.values())}
+        grouped = subject._project_pattern_presentation(document, reopened)
+        for row in reopened["presentationOccurrences"]:
+            row.pop("selectionGroupId")
+        self.assertEqual(grouped, subject._project_pattern_presentation(document, reopened))
+        self.assertNotIn("selectionGroupId", subject.serialize_json(grouped).decode("utf-8"))
+
+    def test_effect_selection_group_rejects_singleton_mixed_kind_and_invalid_id(self):
+        for invalid in ("singleton", "mixed", "bad_id"):
+            resources, pattern = self.collider_selection_group_fixture()
+            resources["collider.group.fixture"]["kind"] = "EFFECT"
+            if invalid == "singleton":
+                pattern["presentationOccurrences"] = pattern["presentationOccurrences"][:1]
+            elif invalid == "mixed":
+                resources["other"] = {"kind": "COLLIDER"}
+                pattern["presentationOccurrences"][0]["resourceId"] = "other"
+            else:
+                pattern["presentationOccurrences"][0]["selectionGroupId"] = "../bad"
+            before = copy.deepcopy(pattern)
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                subject._validate_presentation_selection_groups(pattern, resources)
+            self.assertEqual(pattern, before)
 
     def test_parent_repeat_and_clipping_remove_derived_selection_groups_only(self):
         document, parent, child = self.parent_fixture()
@@ -3524,6 +3563,72 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.assertRaisesRegex(subject.CompositionError,"increasing"):
                 subject.project_encounter(document)
 
+    def test_world_presentation_requires_a_known_world_before_product_projection(self):
+        world = {"worldId": "world.doll", "sequenceInstanceId": "motion.doll"}
+        for kind, resource_kind in (("EFFECT", "V1_EFFECT"), ("EFFECT", "V1_ELEMENT"),
+                                    ("EFFECT", "LEAF"), ("EFFECT", "GROUP")):
+            resource = {"resourceId": "presentation.test", "kind": kind,
+                        "resourceKind": resource_kind, "assetId": "effect.test"}
+            box = {"occurrenceId": "pattern.world.presentation.1", "resourceId": resource["resourceId"],
+                   "anchorKind": "WORLD", "worldId": world["worldId"], "startMs": 0, "durationMs": 500}
+            pattern = {"patternId": "pattern.world", "actorProfileId": "MN_RPCZ_00", "gateId": "GATE1",
+                       "nextPresentationOccurrenceOrdinal": 2,
+                       "stages": [{"durationMs": 1000, "animationOccurrences": []}],
+                       "presentationOccurrences": [box]}
+            resources, worlds = {resource["resourceId"]: resource}, {world["worldId"]: world}
+            subject._validate_presentation_occurrences(pattern, resources, 1000, worlds)
+            projected = subject._project_pattern_presentation(
+                {"presentationResources": [resource], "worlds": [world]}, pattern)
+            self.assertEqual(world["sequenceInstanceId"],
+                             projected["presentationOccurrences"][0]["worldSequenceInstanceId"])
+            for invalid_id in (None, "", "world.missing"):
+                invalid = copy.deepcopy(pattern)
+                if invalid_id is None:
+                    invalid["presentationOccurrences"][0].pop("worldId")
+                else:
+                    invalid["presentationOccurrences"][0]["worldId"] = invalid_id
+                before = copy.deepcopy(invalid)
+                with self.subTest(kind=kind, resource_kind=resource_kind, world_id=invalid_id):
+                    with self.assertRaisesRegex(subject.CompositionError, "WORLD presentation.*worldId"):
+                        subject._validate_presentation_occurrences(invalid, resources, 1000, worlds)
+                    self.assertEqual(before, invalid)
+
+    def test_global_camera_and_sound_keep_legacy_world_coordinates_without_object(self):
+        for kind in ("CAMERA", "SOUND"):
+            resource = {"resourceId": "presentation.global", "kind": kind, "assetId": "asset.global"}
+            pattern = {"patternId": "pattern.global", "actorProfileId": "MN_RPCZ_00", "gateId": "GATE1",
+                       "nextPresentationOccurrenceOrdinal": 2, "stages": [{"durationMs": 1000, "animationOccurrences": []}],
+                       "presentationOccurrences": [{"occurrenceId": "pattern.global.presentation.1",
+                            "resourceId": resource["resourceId"], "anchorKind": "WORLD", "worldId": "",
+                            "followBoss": False, "positionOffset": [3, 4, 5], "startMs": 100, "durationMs": 500}]}
+            before = copy.deepcopy(pattern)
+            subject._validate_presentation_occurrences(pattern, {resource["resourceId"]: resource}, 1000, {})
+            projected = subject._project_pattern_presentation({"presentationResources": [resource]}, pattern)
+            row = projected["presentationOccurrences"][0]
+            self.assertEqual(("WORLD", "", "", [3, 4, 5], 100, 500),
+                             (row["anchorKind"], row["worldId"], row["worldSequenceInstanceId"], row["positionOffset"], row["startMs"], row["durationMs"]))
+            self.assertEqual(before, pattern)
+            pattern["presentationOccurrences"][0]["worldId"] = "world.missing"
+            with self.assertRaisesRegex(subject.CompositionError, "WORLD presentation.*worldId"):
+                subject._validate_presentation_occurrences(pattern, {resource["resourceId"]: resource}, 1000, {})
+
+    def test_saved_gate1_sequence_camera_rows_survive_shared_anchor_validation(self):
+        source = subject.load_json(ROOT / "Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json")
+        pattern = copy.deepcopy(self.find(source, "KAKULSAYDON_G1_PATTERN_4"))
+        resources = {row["resourceId"]: row for row in source["presentationResources"]}
+        cameras = [row for row in pattern["presentationOccurrences"] if resources[row["resourceId"]]["kind"] == "CAMERA"]
+        self.assertTrue(any(row["occurrenceId"] == "KAKULSAYDON_G1_PATTERN_4.presentation.23" for row in cameras))
+        pattern["presentationOccurrences"] = cameras
+        before = copy.deepcopy(pattern)
+        subject._validate_presentation_occurrences(pattern, resources, subject._pattern_duration(pattern),
+            {row["worldId"]: row for row in source.get("worlds", [])})
+        projected = [row for row in subject._project_pattern_presentation(source, pattern)["presentationOccurrences"]
+                     if row["kind"] == "CAMERA"]
+        fields = ("occurrenceId", "anchorKind", "worldId", "positionOffset", "startMs", "durationMs")
+        self.assertEqual([tuple(row.get(k, "") for k in fields) for row in cameras],
+                         [tuple(row.get(k, "") for k in fields) for row in projected])
+        self.assertEqual(before, pattern)
+
     def test_world_effect_exact_anchor_is_independent_of_legacy_companion(self):
         resource = {"resourceId": "effect.fire", "displayName": "Fire", "kind": "EFFECT",
                     "assetId": "effect.fire", "resourceKind": "LEAF"}
@@ -3679,6 +3784,32 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 self.validate(invalid)
             self.assertEqual(before, invalid)
+
+    def test_albion_nav_supplement_and_one_random_player_are_preserved_and_validated(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
+            trigger.pop(key, None)
+        trigger.update(triggerKind="ALBION_BLUE_CIRCLE", countPerPlayer=1, radiusM=0.0, effectLifetimeMs=7000,
+                       arenaRandomCount=5, arenaRandomRadiusM=14.0, arenaHeightToleranceM=1.0,
+                       arenaMinimumSpacingM=3.2, randomPlayerOnly=True)
+        product = self.strip_lanes(self.first_product(document))
+        product["nextLogicOccurrenceOrdinal"] = 2
+        product["logicOccurrences"] = [{"occurrenceId": product["patternId"] + ".logic.1",
+            "logicId": trigger["logicId"], "startMs": 250, "durationMs": 100}]
+        self.validate(document)
+        row = next(p for p in subject.project_encounter(document)["patterns"]
+                   if p["patternId"] == product["patternId"])["mechanicTriggers"][0]
+        for key in ("arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly"):
+            self.assertEqual(trigger[key], row[key])
+        for change in ({"arenaRandomCount": 33}, {"arenaRandomCount": 0}, {"arenaRandomRadiusM": 0},
+                       {"arenaRandomRadiusM": 101}, {"arenaHeightToleranceM": 0}, {"arenaHeightToleranceM": 11},
+                       {"arenaMinimumSpacingM": 0}, {"arenaMinimumSpacingM": 21},
+                       {"randomPlayerOnly": 1}, {"countPerPlayer": 2, "radiusM": 2}):
+            invalid = copy.deepcopy(document)
+            next(r for r in invalid["logics"] if r["logicId"] == trigger["logicId"]).update(change)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                self.validate(invalid)
 
     def test_typed_trigger_projects_exact_target_and_rejects_missing_clone(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))

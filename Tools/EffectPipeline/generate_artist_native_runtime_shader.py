@@ -189,6 +189,7 @@ prefix = '''// Artist native RT0 material programs, generated from exact source 
 
 float4 g_ArtistSourceMaterialParameters[32];
 float g_ArtistSourceMaterialTime = 0.f;
+float4 g_ArtistSourceWorldToLocal[3];
 
 float4 ArtistNativeAppend(float4 a, float4 b, uint n)
 {
@@ -406,12 +407,60 @@ for ordinal, selection in enumerate(selections):
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 1, 2, 3]
         if decal and not kouku_decal and not kouku_ground and sid not in ('be9bb8ea52a06b40bc25b550e349b5b9','316b66ee3867964da197becf270077f0','aacf33d926f3884493fb98d76d43506c','92378d29e44d7046b15b6af899336298','cd75326f74ef024d827113811196cae2'):
             raise ValueError(('Unreviewed source decal prefix',sid))
+        # These masked LocalVF permutations pack mesh particle color in row 0,
+        # including opacity in W. The translucent X prefix zeros their mask.
+        # Qualify the native ABI, not an effect name or allocated profile ID.
+        masked_color_vertex_shader = {
+            '3c21c37113be6c4789b61eb3f68c3e7d': 'd17daa101dec2b4493fce2f510407f32',
+            '7b434a175bf676488b2d4d9c19e752fa': 'd17daa101dec2b4493fce2f510407f32',
+            'e4a5f3955ef7e64d8f78f5e46deba267': '7025758b7227e342a3118ce0b01b81b2',
+            '3b3eb9ea0d75844688479bb8f82cf8fc': 'd17daa101dec2b4493fce2f510407f32',
+            'cb42fe675cadf94aac44e861c822207d': 'd17daa101dec2b4493fce2f510407f32',
+            '496aee5a3382744d97f9dcdb89b6ae6c': 'd17daa101dec2b4493fce2f510407f32',
+            '4ab03586b8ab06498e9d56b87dce4fee': 'd17daa101dec2b4493fce2f510407f32',
+            '653bac92bfa279408665fa859b7765f6': 'd17daa101dec2b4493fce2f510407f32',
+            'b0aebbf53cbd8249b28cd0b8fc7da17c': 'd17daa101dec2b4493fce2f510407f32',
+        }.get(sid) if arguments.profile_domain == 'kouku' else None
+        opacity_prefix = '    source[0].x=1.f; // Project engine opacity multiplier.'
+        if masked_color_vertex_shader:
+            assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == masked_color_vertex_shader, 'Masked particle color vertex shader mismatch'
+            assert r['parentProperties']['blendmode']['value'] == 'blend_masked'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+            assert 'w' in ''.join(re.findall(r'cb0\[0\]\.([xyzw]+)', '\n'.join(instructions)))
+            opacity_prefix = '    source[0]=input.color; // Native masked LocalVF binds particle RGB and opacity in row 0.'
+        # These source fire programs consume absolute position at TEXCOORD5,
+        # not projected position. The world-offset variant also consumes the
+        # same emitter inverse already used by the native spider material.
+        kouku_fire_world = {
+            '2cce8741b31d5049ab2b10e26293372d': (
+                ('c7afe261ee6b2342b612cebb098b1933', '1933037c8b482b47b9c7f17238734ad2'),
+                [0, 1, 2, 3]),
+            '05daa4c5d7a8e44bbd81c654399ddd09': (
+                ('1933037c8b482b47b9c7f17238734ad2',), [0]),
+        }.get(sid) if arguments.profile_domain == 'kouku' else None
+        if kouku_fire_world:
+            assert selection['rendererShape'] == 'sprite'
+            assert selection['sourceVS'] in kouku_fire_world[0]
+            assert r['parentProperties']['blendmode']['value'] == 'blend_translucent'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_fire_world[1]
+            assert all(r['materialMap']['uniformExpressionCounts'][name] == 0 for name in (
+                'vertexVectorExpressions', 'vertexScalarExpressions', 'vertexTexture2DExpressions'))
+            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text())
+            assert not vertex['disassembly']['sampleInstructions']
+            assert 'mov o7.xyzw, r3.xyzw' in vertex['disassembly']['instructions']
+            assert 'mul o0.w, r0.x, cb0[0].w' in instructions
+            opacity_prefix = '    source[0]=float4(0.f,0.f,0.f,1.f); // Absolute source world position and neutral engine opacity.'
         source_cb_count = bindings["constantBufferClosure"]["declaredConstantBuffer0Float4Count"]
         lines=[f'// {name}: {sid}; selected map {r["mapKey"]}.',
                f'float4 ArtistNative{program}(ARTIST_NATIVE_INPUT input)', '{',
                f'    float4 source[{max(3, source_cb_count)}]; [unroll] for (uint i=0u; i<{max(3, source_cb_count)}u; ++i) source[i]=0.f;',
-               '    source[0].x=1.f; // Project engine opacity multiplier.',
+               opacity_prefix,
                '    float4 output=0.f;']
+        if kouku_fire_world and len(kouku_fire_world[1]) == 4:
+            lines += ['    source[1]=g_ArtistSourceWorldToLocal[0];',
+                      '    source[2]=g_ArtistSourceWorldToLocal[1];',
+                      '    source[3]=g_ArtistSourceWorldToLocal[2];']
         if model:
             lines += ['    // Existing scene adapter: source world origin is absolute; camera is converted to source cm.', '    source[0]=0.f;', '    source[1]=float4(input.sourceCameraPosition,1.f);', '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
             if 'tig_00' in r['sourceMaterial']:
@@ -492,6 +541,18 @@ for ordinal, selection in enumerate(selections):
             lines += ['    uint viewportWidth, viewportHeight; g_EffectSceneDepthTexture.GetDimensions(viewportWidth,viewportHeight);',
                       '    passValues[6]=float4(max(float2(viewportWidth,viewportHeight),1.f),0.f,0.f);']
         dynamic='dynamicparameter' in selection['sourceVF'];subuv='subuv' in selection['sourceVF']
+        # Water-ribbon PSs consume the second UV pair at TEXCOORD0.zw.
+        # Both original beam/trail VSs pass all four input components through.
+        # Zero-filling zw makes the transverse edge mask zero everywhere.
+        ribbon_uv1_vs = {
+            '59a22eeec5a51f439595f929dddfe8bf': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            'e924ddbcfb7336408af5883ef3ddbf89': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+        }.get(sid) if arguments.profile_domain == 'kouku' and selection['rendererShape'] == 'ribbon' else None
+        if ribbon_uv1_vs:
+            assert selection['sourceVF'] == 'fparticlebeamtraildynamicparametervertexfactory'
+            assert selection['sourceVS'] == ribbon_uv1_vs[0], 'Unreviewed ribbon UV1 vertex shader'
+            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text())
+            assert ribbon_uv1_vs[1] in vertex['disassembly']['instructions']
         for sig in p['inputSignature']:
             semantic=sig['semanticName'].lower();index=sig['semanticIndex'];reg=sig['register']
             if semantic=='texcoord':
@@ -500,9 +561,11 @@ for ordinal, selection in enumerate(selections):
                     values.update({0:'float4(input.uv,0.f,0.f)',4:'float4(0.f,0.f,0.f,1.f)',5:'float4(input.sourceWorldPosition,1.f)',6:'float4(input.tangentView,1.f)',7:'float4(input.tangentUp,0.f)'})
                 if decal:
                     values.update({0:'float4(input.uv,input.uv1)',7:'float4(input.tangentUp,0.f)'})
+                if ribbon_uv1_vs:
+                    values[0]='float4(input.uv,input.uv1)'
                 if kouku_ground:
                     values[5]='float4(input.sourceWorldPosition,1.f)'
-                if kouku_ice_distortion or kouku_world_distortion:
+                if kouku_ice_distortion or kouku_world_distortion or kouku_fire_world:
                     values[5]='float4(input.sourceWorldPosition,1.f)'
                 if kouku_lit:
                     values[7]='float4(input.tangentUp,0.f)'

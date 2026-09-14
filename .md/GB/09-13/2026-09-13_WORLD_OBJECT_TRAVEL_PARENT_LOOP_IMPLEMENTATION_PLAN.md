@@ -81,3 +81,24 @@ Lifetime 이후와 Parent 반복 경계에서 이전 판정이 남지 않도록 
 현재 제품 호출자와 데이터 계약에 맞춘다. 실패 assertion을 삭제하거나 결과를 무조건 통과시키지 않는다.
 제품 런타임 수정 없이 검사 입력·절차를 바로잡아 집중 검사로 원인을 검증하고, 정상 Product 빌드 후
 새 Server.exe의 전체 `--contract-test` 결과를 확인한다. Client/UI는 실행하지 않는다.
+
+## G06. 09-14 원형 반경 직접 편집과 즉시 Preview
+
+사용자는 중심에서 바깥으로 이동하는 배치를 원하며, 누적 Apply로 혼동한 반경/배치만
+복원하도록 지정했다. 현재 여섯 외곽불의 authoring/runtime은 HEAD와 동일하고 57m는 없다.
+미저장 실행 중 draft를 디스크에서 복원했다고 기록하지 않는다.
+
+Circular Spacing은 실제 `Orbit Radius (m)`와 `Radial Offset from Saved (m)`를 제공한다.
+Offset은 마지막 Save/Reload 반경 대비 차이이며 버튼을 반복 눌러 누적하는 입력을 제거한다.
+드래그·숫자 입력·hover wheel 변경을 기존 ApplyRadialOffset과 전체 문서 validate로 stage하고,
+성공하면 현재 clock의 Object Preview를 즉시 시작/갱신한다. `Restore Saved Radius`는
+현재 Motion 반경만 마지막 저장값으로 되돌리고 다른 저작 필드는 유지한다.
+
+Gate 3 기본 외곽불과 같은 Motion을 편집 Preview할 때는 기존 Gate Object presentation을
+잠시 빌려 중복 표시를 막는다. Preview Stop은 숨긴 기본불을 복원하지만 사용자가
+Despawn Fire Object로 없앤 owner나 교체된 Gate는 다시 생성하지 않는다. 저장·게시와
+실행 중 preview를 구분해 표시하며 실패한 draft 검증은 이전 값을 유지한다.
+
+실제 D/E/F 저장 fixture의 반경 증가·감소·같은 값 재적용·저장값 복귀와 각도별 runtime
+위치 식을 확인한다. 기존 source 인코딩을 유지하고 변경 TU의 Debug 컴파일 및 diff를
+확인한다. 최종 Product Build는 실행 중 EXE 종료 후이며 화면 판정은 사용자가 수행한다.

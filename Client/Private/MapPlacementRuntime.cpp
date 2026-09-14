@@ -1013,6 +1013,10 @@ void Client::CMapPlacementRuntime::Sample_SelfMotions(
 		}
 		else if (nullptr != placed.batch)
 		{
+			// Motion owns the transform, while a Sequence or arena owns visibility.
+			// Rebuilding from the authored record must not reveal a hidden batch.
+			if (!Try_GetRuntimeVisible(placed, sampled.visible))
+				continue;
 			const MAP_ASSET_ENTRY* asset = catalog.Find(sampled.assetId);
 			if (nullptr == asset)
 				continue;

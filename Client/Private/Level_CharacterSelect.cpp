@@ -247,9 +247,6 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
 			lights->Get_Status() + "\n").c_str());
 	}
-#ifdef _DEBUG
-	Update_RaidEntryDebugPreviewKey();
-#endif
 	switch (m_eMode)
 	{
 	case MODE::CONNECTING:
@@ -3239,25 +3236,6 @@ void CLevel_CharacterSelect::Render_CreateCharacterModalText()
 
 
 #ifdef _DEBUG
-void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()
-{
-	if (nullptr == m_pDebugRaidEntryPreviewView ||
-		m_pDebugRaidEntryPreviewView->Is_Open() || ImGui::GetIO().WantTextInput ||
-		CUIInputRouter::Get().Is_TextInputActive())
-	{
-		return;
-	}
-	/* Raw, not the blocked accessor: the ImGui debug panels this level keeps open grab the
-	   keyboard and zero Get_DIKeyState, which ate this debug key entirely. The text-input
-	   gate above still keeps a typed 'O' from opening the popup. */
-	const bool_t isODown =
-		0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_O) & 0x80);
-	const bool_t wasOPressed = isODown && !m_wasODownForRaidEntryDebugPreview;
-	m_wasODownForRaidEntryDebugPreview = isODown;
-	if (wasOPressed)
-		m_pDebugRaidEntryPreviewView->Open();
-}
-
 void CLevel_CharacterSelect::Render_RaidEntryDebugPreview()
 {
 	if (nullptr == m_pDebugRaidEntryPreviewView)

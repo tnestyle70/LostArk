@@ -37,3 +37,15 @@
 정상 Product 빌드는 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`다. Client/Server가 실행 중이면 out에 컴파일 산출물을 격리하고 제품 링크 완료와 구분한다. 실행 중 편집 보존 후 종료할 시점은 사용자에게 맡긴다.
 
 사용자 확인 경로는 `F1 → Action Composition Workbench → KoukuSaydon → 무지개댄스 → Collider 다중 선택 → Box Detail → Set Group → 한 멤버 선택 → Group center / Y rotation → Save → Reopen`이다. 최종 화면과 입력 조작은 사용자가 직접 확인하며 에이전트는 Client/UI를 실행·조작·캡처하지 않는다.
+
+## G04. Effect 선택 그룹과 시간 이동 확장 (2026-09-14)
+
+기존 `selectionGroupId`를 Effect에도 허용한다. Effect 그룹은 같은 Pattern의 Effect 두 개 이상이며 각 멤버의 Boss/World/Map anchor, bone, worldOccurrenceId, offset과 회전을 그대로 보존한다. 왼 총과 오른 총처럼 서로 다른 anchor를 묶을 수 있다. Collider의 공통 BOSS 좌표계와 공간 변환 제약은 유지한다.
+
+Workbench의 기존 선택 확장·그룹 ID 발급·복제·singleton 정리·timeline drag를 공동 presentation 선택 계약으로 확장한다. Effect 다중 선택에 Set Group/Ungroup을 표시하며 그룹 또는 임시 다중 선택을 가운데 드래그하면 시간 간격을 유지한 채 이동한다. 범위 경계는 멤버 전체에 같은 delta를 clamp하고, 세대나 선택이 바뀌면 기존 timing을 보존한다. Effect의 부모 World 박스나 anchor transform은 이동하지 않는다.
+
+Document와 Python projector는 같은 종류 그룹과 두 개 이상 멤버를 검증한다. Effect에는 Collider의 공간 anchor 동등성 제약을 적용하지 않으며 runtime projection에서는 기존처럼 metadata를 제거한다. 기존 Data는 자동 그룹화하지 않고 사용자가 새 빌드에서 선택한 그룹만 Save한다. 변경 C++의 최소 컴파일, native editor Save/Reopen·복제·해제·실패 보존과 시간 이동 검증, Python 계약 검증을 수행한다. 새 소스 파일이나 프로젝트 항목은 추가하지 않는다.
+
+## G06. Shift 클릭 추가 선택 별칭 (2026-09-14)
+
+Composition Sequencer의 기존 Ctrl-click/빈 영역 Ctrl-drag 선택 modifier에 Shift를 같은 별칭으로 추가한다. Render_Timeline 시작에서 `additiveSelection = io.KeyCtrl || io.KeyShift`를 한 번 계산하고 Stage/Animation/Logic/Summon/World/Scene Profile/child Pattern/Effect의 8개 클릭 경로, modifier 중 drag 차단, Effect 기존 선택 유지와 마키 clear에 동일하게 사용한다. Set Group·Duplicate의 데이터 및 anchor/ID 동작, Ctrl+D와 방향키 분기는 바꾸지 않는다. 안내 문구에 Ctrl/Shift를 표시한다. 기존 Workbench.cpp 한 파일만 수정하고 해당 TU를 out에서 최소 컴파일한다. JSON과 Client/UI는 조작하지 않는다.

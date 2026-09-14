@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 15,
   "effectAssetId": "effect.kouku.gate3.ritual.hand.trail.full.restore",
-  "displayName": "제물 의식_손 궤적",
+  "displayName": "저주의식 | 왼손 트레일",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -236,11 +236,11 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "startcontrol",
-        "runtimeAnchorSlotId": "startcontrol",
-        "runtimeBoneName": "b_wp_1",
+        "runtimeAnchorSlotId": "fx_l_hand_01",
+        "runtimeBoneName": "bip001-l-hand",
         "socketLocalTransform": {
           "position": [
-            0.75,
+            0.15,
             0,
             0
           ],
@@ -1918,11 +1918,11 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "startcontrol",
-        "runtimeAnchorSlotId": "startcontrol",
-        "runtimeBoneName": "b_wp_1",
+        "runtimeAnchorSlotId": "fx_l_hand_01",
+        "runtimeBoneName": "bip001-l-hand",
         "socketLocalTransform": {
           "position": [
-            0.75,
+            0.15,
             0,
             0
           ],
@@ -3810,11 +3810,11 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "startcontrol",
-        "runtimeAnchorSlotId": "startcontrol",
-        "runtimeBoneName": "b_wp_1",
+        "runtimeAnchorSlotId": "fx_l_hand_01",
+        "runtimeBoneName": "bip001-l-hand",
         "socketLocalTransform": {
           "position": [
-            0.75,
+            0.15,
             0,
             0
           ],

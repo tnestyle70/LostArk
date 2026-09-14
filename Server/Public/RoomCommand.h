@@ -28,6 +28,7 @@ namespace LostArk::Server
 		DEBUG_TELEPORT_TO_POSITION,
 		DEBUG_MARIO_JUMP,
 		MARIO_MOVE,
+		MARIO_RETURN,
 		DEBUG_SET_MADNESS_FORM,
 		SET_VEHICLE_RIDING,
 		DEBUG_BINGO_FILL,
@@ -91,6 +92,7 @@ namespace LostArk::Server
 			DebugTeleportToPlacement;
 		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION DebugTeleportToPosition;
 		LostArk::Shared::C2S_DEBUG_MARIO_JUMP DebugMarioJump;
+		LostArk::Shared::C2S_MARIO_RETURN MarioReturn;
 		LostArk::Shared::C2S_MARIO_MOVE MarioMove;
 		LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM DebugSetMadnessForm;
 		LostArk::Shared::C2S_SET_VEHICLE_RIDING SetVehicleRiding;

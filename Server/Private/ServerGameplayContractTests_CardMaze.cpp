@@ -78,6 +78,41 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		const auto hitTick = entrant.iActionStartTick + Maze::HAMMER_HIT_TICK_OFFSET;
 		room->m_iServerTick = hitTick - 1u;
 		room->Update_Players(1.f / 30.f);
+		tests.Require(room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE &&
+			room->m_KoukuCardMaze.Get_Targets().empty(),
+			"Center Q hit before the clown box is broken leaves the telescope shut");
+		// Original triggers 2201/2202: the box rises one second after entry.
+		std::uint32_t tick = hitTick + 1u;
+		for (std::uint32_t step = 0u; step <= Maze::CLOWN_BOX_SPAWN_DELAY_TICKS &&
+			INVALID_NET_ENTITY_ID == room->m_iCardMazeClownBoxId; ++step)
+			room->Update_CardMaze(tick++);
+		const NET_ENTITY_ID boxId = room->m_iCardMazeClownBoxId;
+		const auto findBox = [&]() {
+			return std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+				[boxId](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == boxId; });
+		};
+		tests.Require(INVALID_NET_ENTITY_ID != boxId && findBox() != room->m_WorldEntities.end() &&
+			findBox()->strArchetypeId == Maze::CLOWN_BOX_ARCHETYPE_ID &&
+			findBox()->strSpawnGroupId == Maze::CLOWN_BOX_SPAWN_GROUP_TAG,
+			"Clown box rises on the telescope one second after maze entry");
+		// The hammer damages it like any monster; each landed swing reports a damage event.
+		std::uint32_t swings = 0u;
+		bool shutWhileStanding = true;
+		while (INVALID_NET_ENTITY_ID != boxId && !room->m_bCardMazeClownBoxDestroyed && swings < 64u)
+		{
+			room->m_TickDamageEvents.clear();
+			room->Resolve_CardMazeHammerHit(entrant, tick++);
+			++swings;
+			const bool reported = std::any_of(room->m_TickDamageEvents.begin(), room->m_TickDamageEvents.end(),
+				[boxId](const DAMAGE_EVENT& event) { return event.iTargetNetEntityId == boxId; });
+			shutWhileStanding = shutWhileStanding && reported &&
+				room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE;
+		}
+		tests.Require(room->m_bCardMazeClownBoxDestroyed && swings > 1u && shutWhileStanding &&
+			findBox() != room->m_WorldEntities.end() && 0u == findBox()->iCurrentHp &&
+			findBox()->eAction == SERVER_ENTITY_ACTION::DEAD,
+			"Hammer swings damage the clown box until it dies while the telescope stays shut");
+		room->Resolve_CardMazeHammerHit(entrant, tick++);
 		tests.Require(room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING &&
 			room->m_KoukuCardMaze.Get_Targets().size() == 1u && (entrant.CardMaze.flags & 1u),
 			"Center Q hit facing away starts solo telescope and actually spawns a target");

@@ -689,7 +689,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				if (!Is_ObjectShape(trackValue,
 						{ "slotId", "clipName", "playbackRate", "loop",
-						  "holdLastFrame" }, { "startMs", "displayName" }))
+						  "holdLastFrame" }, { "startMs", "displayName", "sourceStartMs" }))
 				{
 					outStatus = "World sequence animation track shape is invalid";
 					return false;
@@ -718,6 +718,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 				{
 					outStatus = "World sequence animation track start is invalid";
 					return false;
+				}
+				if (const auto* sourceStart = trackValue.Find("sourceStartMs"))
+				{
+					if (!Read_Uint32(sourceStart, parsedTrack.sourceStartMs, MAX_DURATION_MS))
+					{ outStatus = "World sequence animation source start is invalid"; return false; }
 				}
 				parsedTrack.slotId = slotId->Get_String();
 				parsedTrack.clipName = clipName->Get_String();
@@ -1069,6 +1074,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< "\"";
 			if (!track.displayName.empty())
 				output << ", \"displayName\": \"" << CDataJson::Escape(track.displayName) << "\"";
+			if (track.sourceStartMs != 0u)
+				output << ", \"sourceStartMs\": " << track.sourceStartMs;
 			output << ", \"startMs\": " << track.startMs
 					<< ", \"playbackRate\": " << track.playbackRate
 				<< ", \"loop\": " << (track.loop ? "true" : "false")
@@ -1339,7 +1346,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				!Is_ValidUtf8DisplayText(track.displayName) ||
 				!std::isfinite(track.playbackRate) || track.playbackRate < 0.05f ||
 				track.playbackRate > 8.f ||
-				track.startMs >= value.durationMs ||
+				track.startMs >= value.durationMs || track.sourceStartMs > MAX_DURATION_MS ||
 				(firstOfSlot && 0u != track.startMs) ||
 				(!firstOfSlot && track.startMs <= chained->second))
 			{
@@ -1760,6 +1767,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 				right.animationTracks[trackIndex];
 			if (leftTrack.slotId != rightTrack.slotId ||
 				leftTrack.startMs != rightTrack.startMs ||
+				leftTrack.sourceStartMs != rightTrack.sourceStartMs ||
 				leftTrack.clipName != rightTrack.clipName ||
 				leftTrack.displayName != rightTrack.displayName ||
 				!sameFloat(leftTrack.playbackRate, rightTrack.playbackRate) ||
@@ -1803,6 +1811,32 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		}
 	}
 	return true;
+}
+
+bool_t Client::CWorldSequenceDocument::Try_SampleAnimationTicks(
+    const WORLD_SEQUENCE_ANIMATION_TRACK& track, const f32_t localMs, const f32_t windowEndMs,
+    const f32_t ticksPerSecond, const f32_t durationTicks, f32_t& outTicks)
+{
+    if (!std::isfinite(localMs) || !std::isfinite(windowEndMs) ||
+        !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f ||
+        !std::isfinite(durationTicks) || durationTicks <= 0.f ||
+        !std::isfinite(track.playbackRate) || track.playbackRate <= 0.f)
+        return false;
+    const f32_t sourceTicks = static_cast<f32_t>(static_cast<double>(track.sourceStartMs) *
+        .001 * static_cast<double>(ticksPerSecond));
+    if (!std::isfinite(sourceTicks) || sourceTicks > durationTicks ||
+        (track.loop && sourceTicks >= durationTicks)) return false;
+    const f32_t elapsedTicks = (std::max)(0.f, localMs - track.startMs) * .001f *
+        track.playbackRate * ticksPerSecond;
+    if (!std::isfinite(elapsedTicks)) return false;
+    f32_t ticks = sourceTicks + elapsedTicks;
+    // Hold wins at the timeline end, including looped clips, as before.
+    if (localMs >= windowEndMs && track.holdLastFrame) ticks = durationTicks;
+    else if (track.loop) ticks = sourceTicks + std::fmod(elapsedTicks, durationTicks - sourceTicks);
+    else if (ticks > durationTicks) ticks = track.holdLastFrame ? durationTicks : sourceTicks;
+    if (!std::isfinite(ticks)) return false;
+    outTicks = ticks;
+    return true;
 }
 
 const char_t* Client::CWorldSequenceDocument::Interpolation_ToString(

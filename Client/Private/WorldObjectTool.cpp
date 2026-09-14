@@ -2498,25 +2498,54 @@ void CWorldObjectTool::Render_Detail()
         }
         ImGui::EndDisabled();
         ImGui::SeparatorText("Circular Spacing");
-        ImGui::TextDisabled("Current orbit radius: %.3f m",std::hypot(motion.revolutionOffset.x,motion.revolutionOffset.z));
-        ImGui::DragFloat("Radial Offset (m)",&m_RadialOffset,.05f);
-        ImGui::TextWrapped("Adds the same metres to the orbit and each row radius. Height, row yaw, delay, self rotation and model size stay unchanged. Apply separately to each circular Motion.");
-        if (ImGui::Button("Apply Radial Offset"))
+        const float currentRadius = std::hypot(motion.revolutionOffset.x, motion.revolutionOffset.z);
+        const auto* savedSequence = m_SavedDocument.Find_Template(sequence->sequenceId);
+        const float savedRadius = savedSequence ? std::hypot(savedSequence->objectMotion.revolutionOffset.x,
+            savedSequence->objectMotion.revolutionOffset.z) : 0.f;
+        const bool hasSavedRadius = savedSequence && std::isfinite(savedRadius) && savedRadius > .000001f;
+        float radius = currentRadius;
+        const auto editMetres = [](const char* label, float& value) {
+            bool edited = ImGui::DragFloat(label, &value, .05f, 0.f, 0.f, "%.3f");
+            ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+            if (ImGui::IsItemHovered() && ImGui::GetIO().MouseWheel != 0.f)
+            { value += ImGui::GetIO().MouseWheel * .05f; edited = true; }
+            return edited;
+        };
+        bool radiusChanged = editMetres("Orbit Radius (m)", radius);
+        ImGui::BeginDisabled(!hasSavedRadius);
+        float offsetFromSaved = radius - savedRadius;
+        if (editMetres("Radial Offset from Saved (m)", offsetFromSaved))
+        { radius = savedRadius + offsetFromSaved; radiusChanged = true; }
+        if (ImGui::Button("Restore Saved Radius"))
+        { radius = savedRadius; radiusChanged = true; }
+        ImGui::EndDisabled();
+        if (hasSavedRadius) ImGui::TextDisabled("Saved radius: %.3f m | Current radius: %.3f m", savedRadius, currentRadius);
+        if (instance->anchorKind == "WORLD")
+            ImGui::TextDisabled("Motion center (Map Position): (%.3f, %.3f, %.3f) m", instance->position.x, instance->position.y, instance->position.z);
+        ImGui::TextWrapped("For a ring, radius is the distance from the Motion center to each object pivot. Larger moves outward. Offset is measured from the last Save / Reload, not added repeatedly.");
+        ImGui::TextWrapped("Drag or hover and scroll to update the runtime preview immediately (0.05 m per wheel step). Preview at Character uses that preview center. Save keeps the edit. Model size and rotation speed stay unchanged.");
+        if (radiusChanged)
         {
-            auto candidate=m_Document;
-            auto* target=candidate.Find_Template(sequence->sequenceId);
+            auto candidate = m_Document;
+            auto* target = candidate.Find_Template(sequence->sequenceId);
             WORLD_SEQUENCE_OBJECT_MOTION shifted;
             std::string reason;
-            if (!target || !ObjectTravel::ApplyRadialOffset(motion,m_RadialOffset,shifted,reason))
-                m_Status="Radial offset refused: "+reason;
+            if (!target || !ObjectTravel::ApplyRadialOffset(motion, radius - currentRadius, shifted, reason))
+                m_Status = "Radius edit refused: " + reason;
             else
             {
-                target->objectMotion=std::move(shifted);
-                if (!candidate.Validate(m_MapTargets,m_DeployTargets,reason)) m_Status="Radial offset refused: "+reason+" Existing draft preserved.";
+                target->objectMotion = std::move(shifted);
+                if (!candidate.Validate(m_MapTargets, m_DeployTargets, reason))
+                    m_Status = "Radius edit refused: " + reason + " Existing draft preserved.";
                 else
                 {
-                    m_Document=std::move(candidate); Mark_Dirty();
-                    m_Status="Orbit and emission radii changed by the same metres. Save keeps the circular spacing.";
+                    m_Document = std::move(candidate);
+                    Mark_Dirty();
+                    // Seek starts a preview even when the user has not pressed Play.
+                    // An active preview keeps its clock and Play/Pause state.
+                    Seek(m_ClockMs);
+                    if (m_PreviewActive && !m_PreviewDirty)
+                        m_Status = "Radius updated in the runtime preview. Save keeps this Motion's circular spacing.";
                     return;
                 }
             }
@@ -3026,6 +3055,8 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
                 if (next.startMs > clip.startMs) maximum = (std::min)(maximum, next.startMs - 1);
             }
             ImGui::BeginDisabled(first); changed |= EditUInt("Clip Start (ms)", clip.startMs, maximum, minimum); ImGui::EndDisabled();
+            changed |= EditUInt("Source Start (ms)", clip.sourceStartMs, CWorldSequenceDocument::MAX_DURATION_MS);
+            ImGui::TextDisabled("Source Start skips native clip time; Clip Start places this box on the Motion timeline.");
             changed |= ImGui::DragFloat("Clip Speed", &clip.playbackRate, .01f, .05f, 8.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             changed |= ImGui::Checkbox("Clip Loop", &clip.loop); changed |= ImGui::Checkbox("Hold Last Pose", &clip.holdLastFrame);
             if (changed) Mark_Dirty();

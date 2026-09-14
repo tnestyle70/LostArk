@@ -758,6 +758,32 @@ void CLevel_KakulSaydonArena::Debug_CancelGateObjects()
     m_pPendingGateObjects.reset();
 }
 
+bool_t CLevel_KakulSaydonArena::Debug_DespawnFireObjects(std::string& outStatus)
+{
+    if (Is_DebugGatePending() || m_PlayerController.Is_DebugPlayerPlacementPending())
+    {
+        outStatus = m_strDebugGateStatus = "Wait for the pending gate request before despawning fire.";
+        return false;
+    }
+    // Boss despawn clears the active gate index while the gate's fire owner remains.
+    if (!m_pGateObjects || m_pGateObjects->gateIndex != 2u)
+    {
+        outStatus = m_strDebugGateStatus = "No gate-entry outer fire objects are active.";
+        return true;
+    }
+    if (!Debug_ReleaseGateObjectPresentation(*m_pGateObjects, outStatus))
+    {
+        m_strDebugGateStatus = outStatus;
+        return false;
+    }
+    // Retire the owner so a later gate activation rollback cannot restart this fire.
+    m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
+    m_pGateObjects.reset();
+    outStatus = m_strDebugGateStatus =
+        "Gate 3 outer fire despawned. Activate Gate 3 again to restore it.";
+    return true;
+}
+
 void CLevel_KakulSaydonArena::Debug_StopGateObjects()
 {
     Debug_CancelGateObjects();
@@ -765,6 +791,7 @@ void CLevel_KakulSaydonArena::Debug_StopGateObjects()
     std::string status;
     if (m_pGateObjects && !Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status))
     { OutputDebugStringA(("[KoukuGateObjects] " + status + "\n").c_str()); return; }
+    m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
     m_pGateObjects.reset();
 }
 
@@ -887,7 +914,33 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
         for (const auto& id : ids)
             if (!staged->Seek_InstanceToMs(id, 0.f, targets))
             { status = staged->Get_Status(); rollback(); return false; }
+    GATE_OBJECT_PRESENTATION* borrowedGateObjects = nullptr;
+    if (m_pGateObjects && m_pGateObjects->gateIndex == 2u && m_pGateObjects->player &&
+        (!m_pGateObjects->suspended || m_pWorldObjectPreviewBorrowedGateObjects == m_pGateObjects.get()))
+    {
+        const auto& gateDocument = m_pGateObjects->player->Get_Document();
+        const bool previewsGateFire = std::any_of(ids.begin(), ids.end(), [&](const auto& id) {
+            const auto* previewInstance = document.Find_Instance(id);
+            return previewInstance && std::any_of(m_pGateObjects->instances.begin(), m_pGateObjects->instances.end(),
+                [&](const auto& gateMotion) {
+                    const auto* gateInstance = gateDocument.Find_Instance(gateMotion.first);
+                    return gateMotion.first == id ||
+                        (gateInstance && gateInstance->templateId == previewInstance->templateId);
+                });
+        });
+        if (previewsGateFire) borrowedGateObjects = m_pGateObjects.get();
+    }
+    // Transfer the same suspended owner across edits without restarting its clones.
+    // A failed staged preview above leaves the previous preview and its borrow intact.
+    if (borrowedGateObjects && m_pWorldObjectPreviewBorrowedGateObjects == borrowedGateObjects)
+        m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
     if (isGroup || isolatedObjects) Debug_StopWorldObjectPreview();
+    if (borrowedGateObjects)
+    {
+        if (!Debug_ReleaseGateObjectPresentation(*borrowedGateObjects, status))
+        { rollback(); return false; }
+        m_pWorldObjectPreviewBorrowedGateObjects = borrowedGateObjects;
+    }
     m_pWorldObjectPreview = std::move(staged);
     m_WorldObjectPreviewInstances = std::move(ids);
     m_WorldObjectPreviewScreenEffects = std::move(stagedEffects);
@@ -935,5 +988,17 @@ void CLevel_KakulSaydonArena::Debug_StopWorldObjectPreview()
     for (const auto& effect : m_WorldObjectPreviewScreenEffects) CEffectV2Runtime::Stop_Group(effect.handle);
     m_WorldObjectPreviewScreenEffects.clear();
     m_strWorldObjectPreviewNotice.clear();
+    auto* borrowedGateObjects = m_pWorldObjectPreviewBorrowedGateObjects;
+    m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
+    // Despawn and gate replacement invalidate this identity before retiring its owner.
+    if (borrowedGateObjects && m_pGateObjects.get() == borrowedGateObjects && borrowedGateObjects->gateIndex == 2u)
+    {
+        std::string restore;
+        if (!Debug_StartGateObjectPresentation(*borrowedGateObjects, restore))
+        {
+            m_strDebugGateStatus = "Gate 3 outer fire restore after object preview failed: " + restore;
+            OutputDebugStringA(("[KoukuGateObjects] " + m_strDebugGateStatus + "\n").c_str());
+        }
+    }
 }
 #endif

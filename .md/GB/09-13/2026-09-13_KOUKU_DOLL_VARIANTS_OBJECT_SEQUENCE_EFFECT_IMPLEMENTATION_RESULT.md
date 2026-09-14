@@ -235,3 +235,75 @@ Gaze의 나머지 1개는 예전 X=-6.36/Z=937.92를 기대하는 fixture와 현
 `Box Detail → Use Mouse Position → UI 밖 맵 표면 클릭`은 현재 제품 코드에 있다. 성공하면 선택한 MAP Effect 박스 XYZ와 임시 미리보기 배치가 즉시 이동한다. 현재 cursor/paused 상태는 유지하므로 수명 밖에 있다면 박스 `Preview`로 시작부터 재생한다. 위치만 바꿨을 때는 `Save`가 staged placement를 검증·병합해 저장하며 `Apply`는 시간·수명·fade 등 나머지 Detail 변경을 적용할 때 사용한다. 빈 공간은 이전 위치를 유지하고 재클릭을 기다리며 Esc/우클릭과 선택 변경은 취소한다. Effect Resources의 별도 `Use Mouse Pos`는 다음 Play All/Append 원점 선택이므로 기존 Box 이동과 구분한다.
 
 현재 코드의 `Complete_MapEffectPlacementRequest`, `Request_PresentationGeometryPreview`, `Save`, MainApp 표면 picking 호출과 기존 Product 반영 기록을 대조했다. 이 변경은 JSON뿐이므로 EXE/CSO를 재빌드하지 않았다. 기존 네이티브 Workbench probe로 변경된 Sequence를 읽어 Box Preview 및 MAP placement 67검사와 source 불변을 확인했다. 로그는 `out/KoukuWarningPortalFollowup20260913/portal_native_read.log`다. JSON parse·대상 외 보존은 통과했으며 실제 Client/UI 실행·피킹 조작·화면 판정은 수행하지 않았다.
+
+## G12. 09-14 Object 인형의 실제 불뿜기 15초
+
+사용자는 준비 동작을 제외한 불뿜기 구간을 15초로 확정했다. 작은/큰 인형의 기존
+`att_battle_2_01` Motion 두 개만 17314ms로 늘리고 준비 0–1539ms, 유지 1539–16539ms,
+종료 16539–17314ms의 animationTracks로 연결했다. 원본 시작은 각각 0/1539/10559ms이며
+준비·종료 속도는 1, 유지 속도만 9020/15000이다. 저장 단위가 정수 ms이므로 원본 notify와의
+경계 차이는 1ms 미만이다. 위치·크기·큰 인형 Effect Y 회전 90도, 모든 다른 template와
+instance를 보존했다. 사용자 외곽불 저장은 확인했으며 해당 반경/캐시 코드는 수정하지 않았다.
+
+`effect.kouku.gate3.doll.flame.object-sustain15`는 Object용 파생 문서다. 원본 공유 Effect는
+변경하지 않았다. 2개 준비 요소와 입자 속도·입자 lifetime·크기·재질은 보존하고, 28개 sustained
+요소를 1.539113–16.539113초 동안 배출한다. 원본 Required CDO 전체 체인에서 emitterloops의
+zero 기본값을 확인해 임시 1회 배출을 0으로 연결했다. 6개 종료 요소의 시작은 5.980195초 뒤로
+옮겼다. 별도 visible ModelCue를 숨기고 기존 Object 모델과 그 실제 source bone history를 쓴다.
+새 문서는 EffectCatalog와 Client의 96.DataFiles project/filter에 등록했다.
+
+optional `sourceStartMs`는 parse/validate/save/equivalent/복제, Object Animation Detail,
+Object pose·Effect socket history·Deploy, Map publisher에 연결됐다. native 범위 밖은 교체 전에
+거부한다. Deploy의 기본 0 계산을 공용 초 단위로 바꾸면 loop 끝 반올림이 달라지는 것을 발견해
+기존 normalized 계산을 보존했다. 새 offset만 공용 helper를 사용한다. 새 C++ 파일은 없다.
+
+관련 5개 C++ TU의 Debug 격리 컴파일 PASS. 실제 설치 MN_CDMD_00 WModel의 att_battle_2_01은
+340ticks/30Hz이며 codec·저장 재로드·실패 보존·3구간 source 샘플 69385검사에서 실패 0,
+최대 시각 오차 0.00203451ms였다. Deploy 기존 계산 비교의 차이는 0이다.
+Map publisher optional 입력 11검사가 통과했으며 실제 Area의 WorldSequences 범위 Publish로
+revision1842→1843을 게시했다. 대상 외 필드/바이트와 원본 Effect 보존 근거는
+`out/DollSustain15_20260914/wire-receipt.json`과 변경 전 사본이다.
+
+실제 Product codec/staging과 CEffectPlayback의 CPU 검사에서 원본 sustained 입자는 5/10/15초에
+0개였고 새 문서는 같은 시각에 164/169/171개, 양수 alpha는 160/165/167개였다. 60Hz 검사에서
+최대 177개, 비유한 값과 유지 중 배출 단절 및 capacity 실패 0이다. 새 배출이 끝난 뒤 입자 tail은
+17.5833초까지 남을 수 있고 독립 Effect 전체 duration은 18.6391초다. Object는 자기 Motion 끝인
+17.314초에 닫히므로 독립 Effect의 잔여 tail 전체를 보장하는 계약은 아니다.
+
+증거는 `out/DollSustain15_20260914/receipt.json`, `source_start_result.log`, `native_result.json`,
+`particle-sweep.csv`, `map-publish.log`다. CPU 입자 검사의 anchor는 정적 synthetic 입력이며,
+실제 모델 시각 샘플과 별도로 수행했다. 실제 본 부착 화면/GPU fidelity의 성공 증거가 아니다.
+최종 Product 링크와 사용자 Client 화면 검증은 아직 미완료다. 현재 Client/Server는 사용자가
+실행 중이므로 저장·종료를 요청했으며 자동 종료·Reload·Client 실행·화면 캡처는 하지 않았다.
+
+### G12 제품 적용과 구버전 문서 호환 교정
+
+첫 revision1843 게시 시 실행 중인 구 Client가 새 sourceStartMs를 지원하지 않는 점을 놓쳤다.
+총 template에는 새 필드가 없어도 WorldSequence 전체의 strict Load가 인형 행에서 실패해 다른
+WORLD 리소스까지 로드되지 않을 수 있다. 실제 구 Document.cpp/header의 native reader는
+1842를 237templates/293instances로 읽었고 1843은 animation track shape 오류로 거부했다.
+실패 시 이전 문서 보존도 확인했다. 이 게시 순서 오류를 사용자에게 알렸다.
+
+사용자 변경을 건드리지 않고 두 인형 template만 기존 형태로 복구한 revision1844를 scoped
+publisher로 게시했다. 구 parser가 authoring/runtime1844 모두 읽는 것을 확인한 뒤,
+Client/Server 종료 상태에서 정규 Product Build PASS를 확인했다. 그 뒤에만 준비한 두 template를
+최신 문서에 적용해 revision1845로 활성화했다. 초기 1843 게시가 최종 적용 증거를 대신하지 않는다.
+원본 Effect와 모든 다른 template/instance·외곽불 반경을 보존했다.
+
+Product 근거는 `out/BuildPipeline/runs/20260914T040700948Z-debug-product.json`, native 구버전
+근거는 `out/DollSustain15_20260914/old-parser/compat-result.log`, 최종 source 적용 근거는
+`activation-receipt.json`이다. Map 최종 게시·확인과 실제 사용자 화면 결과는 각각 별도로 기록한다.
+
+Composition Python 검사의 sourceStartMs optional/범위도 동기화했고 집중3검사가 통과했다.
+이 구형 전체 Composition 검사는 이전부터 bone/followObject를 지원하지 않아 같은 위치에서
+중단한다. 새 필드를 제거한 비교본도 동일하므로 이번 회귀와 구분한다. 실제 제품 Map publisher와
+native WorldSequence reader의 지원 경로를 사용한다. 근거는 `composition-receipt.json`이다.
+
+### G12 최종 게시 확인
+
+최종 authoring/runtime revision1845의 바이트·SHA256이 일치하고 scoped Map Publish/Check가
+통과했다(`map-final-publish.log`, `map-final-check.log`). 새 네이티브 WorldSequence reader도
+전체237templates/293instances 로드 및 equivalent를 확인했다.
+`out/ShowtimePreviewActor20260914/latest-load.result.log`와 `final-receipt.json`에 근거를 남겼다.
+Product 링크·배포와 데이터 활성화는 완료됐으며, 준비 속도·15초 화염·종료 및 실제 손 부착의
+최종 화면 판정만 사용자 확인으로 남는다.

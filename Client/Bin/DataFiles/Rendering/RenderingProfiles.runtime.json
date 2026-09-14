@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  38,
+    "revision":  41,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -1999,6 +1999,93 @@
                                                 ]
                      },
                      {
+                         "displayName":  "쿠크 1관문 책 펼침 / 원본 무대 분위기",
+                         "profileId":  "scene.kakulsaydon.g1.book-open.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.509803951,
+                                                       0.563725471,
+                                                       0.588235319,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.134901956,
+                                                   0.174117655,
+                                                   0.200000003,
+                                                   1
+                                               ],
+                                     "density":  0.100000001,
+                                     "heightFalloff":  0.200000003,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  16,
+                                     "maximumOpacity":  0.300000012,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0.480392158,
+                                                                                         0.249019608,
+                                                                                         0,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      0.707106769
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
                          "displayName":  "1관문 팝업북 환경",
                          "profileId":  "scene.kakulsaydon.g1.popup.v1",
                          "exposureMultiplier":  1,
@@ -2081,6 +2168,93 @@
                                                                                       0.767138898,
                                                                                       0.425893813,
                                                                                       0.707106769
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
+                         "displayName":  "쿠크 3관문 어두운 무대 / 파란 스포트라이트",
+                         "profileId":  "scene.kakulsaydon.g3.dark.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.464313745,
+                                                   0.65882355,
+                                                   0.800000012,
+                                                   1
+                                               ],
+                                     "density":  0.150000006,
+                                     "heightFalloff":  0.0199999996,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  17,
+                                     "maximumOpacity":  0.0500000007,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0,
+                                                                                         0,
+                                                                                         0,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      -0.5
                                                                                   ]
                                                            }
                                  }
@@ -2375,103 +2549,17 @@
                                  }
                      },
                      {
-                         "profileId":  "scene.kakulsaydon.g1.book-open.v1",
+                         "displayName":  "1관문_스포트라이트 무대",
+                         "profileId":  "scene.kakulsaydon.g1.spotlight-stage.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
-                         "mapLightIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  0,
                          "light":  {
                                        "type":  "directional",
                                        "direction":  [
-                                                         0.479700267,
-                                                         -0.767138898,
-                                                         -0.425893813,
-                                                         0
-                                                     ],
-                                       "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       1
-                                                   ],
-                                       "ambient":  [
-                                                       0.509803951,
-                                                       0.563725471,
-                                                       0.588235319,
-                                                       1
-                                                   ],
-                                       "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
-                                                        1
-                                                    ]
-                                   },
-                         "shadow":  {
-                                        "enabled":  false,
-                                        "focus":  [
-                                                      0,
-                                                      0,
-                                                      0
-                                                  ],
-                                        "distance":  80,
-                                        "orthographicWidth":  64,
-                                        "orthographicHeight":  64,
-                                        "near":  0.100000001,
-                                        "far":  180,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0250000004,
-                                        "strength":  0.699999988
-                                    },
-                         "fog":  {
-                                     "enabled":  true,
-                                     "color":  [
-                                                   0.134901956,
-                                                   0.174117655,
-                                                   0.200000003,
-                                                   1
-                                               ],
-                                     "density":  0.100000001,
-                                     "heightFalloff":  0.200000003,
-                                     "topHeight":  129.023163,
-                                     "startDistance":  16,
-                                     "maximumOpacity":  0.300000012,
-                                     "driftSpeed":  0,
-                                     "driftHeightAmplitude":  0,
-                                     "driftDensityAmplitude":  0,
-                                     "coveragePercent":  1,
-                                     "windDirectionX":  1,
-                                     "windDirectionZ":  0,
-                                     "windSpeed":  0,
-                                     "patchScale":  0.00999999978,
-                                     "patchSoftness":  0.150000006,
-                                     "sourceExponential":  {
-                                                               "inscatteringColor":  [
-                                                                                         0.480392158,
-                                                                                         0.249019608,
-                                                                                         0,
-                                                                                         1
-                                                                                     ],
-                                                               "lightDirection":  [
-                                                                                      -0.479700267,
-                                                                                      0.767138898,
-                                                                                      0.425893813,
-                                                                                      0.707106769
-                                                                                  ]
-                                                           }
-                                 },
-                         "displayName":  "쿠크 1관문 책 펼침 / 원본 무대 분위기"
-                     },
-                     {
-                         "profileId":  "scene.kakulsaydon.g3.dark.v1",
-                         "exposureMultiplier":  1,
-                         "bloomIntensityMultiplier":  1,
-                         "mapLightIntensityMultiplier":  1,
-                         "light":  {
-                                       "type":  "directional",
-                                       "direction":  [
-                                                         0.479700267,
-                                                         -0.767138898,
-                                                         -0.425893813,
+                                                         0.5,
+                                                         -1,
+                                                         0.5,
                                                          0
                                                      ],
                                        "diffuse":  [
@@ -2510,18 +2598,18 @@
                                         "strength":  0.699999988
                                     },
                          "fog":  {
-                                     "enabled":  true,
+                                     "enabled":  false,
                                      "color":  [
-                                                   0.464313745,
-                                                   0.65882355,
-                                                   0.800000012,
+                                                   0,
+                                                   0,
+                                                   0,
                                                    1
                                                ],
-                                     "density":  0.150000006,
-                                     "heightFalloff":  0.0199999996,
-                                     "topHeight":  129.023163,
-                                     "startDistance":  17,
-                                     "maximumOpacity":  0.0500000007,
+                                     "density":  8,
+                                     "heightFalloff":  9.99999975E-05,
+                                     "topHeight":  1000,
+                                     "startDistance":  0,
+                                     "maximumOpacity":  1,
                                      "driftSpeed":  0,
                                      "driftHeightAmplitude":  0,
                                      "driftDensityAmplitude":  0,
@@ -2530,23 +2618,8 @@
                                      "windDirectionZ":  0,
                                      "windSpeed":  0,
                                      "patchScale":  0.00999999978,
-                                     "patchSoftness":  0.150000006,
-                                     "sourceExponential":  {
-                                                               "inscatteringColor":  [
-                                                                                         0,
-                                                                                         0,
-                                                                                         0,
-                                                                                         1
-                                                                                     ],
-                                                               "lightDirection":  [
-                                                                                      -0.479700267,
-                                                                                      0.767138898,
-                                                                                      0.425893813,
-                                                                                      -0.5
-                                                                                  ]
-                                                           }
-                                 },
-                         "displayName":  "쿠크 3관문 어두운 무대 / 파란 스포트라이트"
+                                     "patchSoftness":  0.150000006
+                                 }
                      }
                  ]
 }

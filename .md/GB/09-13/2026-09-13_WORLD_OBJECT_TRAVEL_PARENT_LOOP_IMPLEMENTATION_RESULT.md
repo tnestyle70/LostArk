@@ -170,3 +170,49 @@ Boss 문서는 revision과 Gaze target Z, 기존 커튼 offset Z만 바뀌어 re
 증거: `out/ServerFixtureVerification20260913/receipt.json`, `server-contract.log`.
 전체 git diff --check도 통과했다. 사용자가 정상 Server와 Client를 실행한 것을 확인했으며,
 에이전트는 Client/UI를 실행·조작하지 않았다. 실제 시각 판정은 사용자의 진행 중 검증으로 남긴다.
+
+## G08. 09-14 반경 기준 명확화와 즉시 런타임 Preview
+
+기존 Radial Offset은 매 Apply마다 현재 반경에 더하는 값이며 Apply 후나 다른 Motion 선택
+뒤에도 입력값이 남았다. DragFloat 반환값도 사용하지 않아 조절 중에는 draft가 바뀌지 않았다.
+Apply 뒤 기존 Object Preview가 없으면 기본 Gate 3 외곽불은 별도 player의 저장값으로 남았다.
+
+`Orbit Radius (m)`는 현재 반경을 직접 입력하고, `Radial Offset from Saved (m)`는 마지막
+Save/Reload 반경 대비 증감량을 입력한다. 두 입력은 매번 현재 문서에서 다시 계산하므로
+같은 목표를 반복 입력해도 누적되지 않는다. 큰 반경은 중심에서 바깥쪽이며, 중심의 Map
+Position과 저장/현재 반경을 함께 표시한다. 불꽃의 메시 외곽이 아닌 object pivot 반경이다.
+`Restore Saved Radius`는 선택 Motion의 반경만 저장값으로 돌린다. 높이·yaw·지연·회전
+속도·모델 크기와 다른 저작 필드는 유지한다.
+
+드래그·직접 입력·hover wheel(한 단계 0.05m)은 candidate Validate 성공 후
+기존 Seek(current clock)를 호출해 Object Preview를 즉시 시작하거나 갱신한다.
+활성 Preview의 시각과 Play/Pause 상태를 유지하고 실패 이유를 표시한다. Save 전 변경은
+미저장 draft/Preview이며 기존 Save와 연결 publisher가 영구 저장과 게시를 소유한다.
+
+같은 instance/template의 3관문 불을 Preview하면 준비·Play·초기 Seek 성공 뒤 기본 Gate
+Object owner만 suspend한다. 연속 편집은 borrow identity를 다음 Preview에 넘겨 기본불
+clone을 매번 복원하지 않는다. Stop은 자신이 빌린 현재 owner만 복원하며 Despawn Fire
+Object나 Gate 종료가 이 identity를 해제하므로 제거한 불이 다시 나타나지 않는다.
+준비 실패, 기존 Preview 교체, sample 실패, 관문 전환, Despawn 뒤 Stop의 수명을 검토했다.
+
+복원 요청 범위는 사용자가 ‘방금 조절한 외곽불 반경/배치 값’으로 확정했다. 현재 source와
+runtime의 여섯 template/instance/resource는 HEAD와 동일하다. 반경은
+D_CW 12.6, D_CCW 13.6, E_CW 12.7, E_CCW 11.7, F_CW/F_CCW 각10.8m다.
+57m 저장값은 없고 원본 JSON을 쓰지 않았다. 실행 중 툴의 미저장 draft는 에이전트가
+초기화하지 않았다. 전체 Reload로 다른 사용자 편집을 버리는 방식도 사용하지 않았다.
+
+실제 ApplyRadialOffset, Find_Track/Sample_Track, Sample_ObjectWorld 함수 본문과 실제
+D/E/F 여섯 저장 fixture로 집중 CPU 검증을 실행했다. 각 emission의 24개 시각과 두 중심,
++1m/−0.5m/저장값 복귀, 13.6m 목표 100회 재입력, 잘못된 반경 거절과 원본 보존을
+확인했다. 14,400개 실제 World sample 비교에서 최대 반경 오차는 약0.0000611m,
+scale/rotation basis 차이는 0이었다. 총95,911 assertion, failure 0이다.
+이는 수치 검증이며 실제 Client 화면 확인은 아니다.
+
+증거는 `out/RadialLivePreview20260914/result.json`, `disk-baseline.json`,
+`source-inputs.json`, 실제 함수 추출 및 fixture를 기록한 `prepare.py`와 `radial_probe.cpp`다.
+검증은 out 아래에서만 수행했고 원본/게시 데이터 쓰기와 UI 조작은 0회다.
+MainApp, WorldObjectTool, Level_KakulSaydonArena_WorldObjects 현재 3 TU Debug 컴파일과
+`git diff --check`를 통과했다. 컴파일 로그는
+`out/SequenceCaptureFocus20260914/fire-radial-compile.log`다. 기존 C++ BOM/인코딩/CRLF를
+보존했고 새 C++ 파일·project/filter 변경은 없다. 사용자의 Client/Server는 실행 중이므로
+최종 Product Build와 실제 EXE 적용, 사용자의 화면 확인은 남아 있다.

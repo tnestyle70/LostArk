@@ -486,12 +486,31 @@ def sector_fill_candidate(document):
         sourceTimeCurve='No serialized source curve found; timing is a project authoring choice')
 
 
-def stage_sector_fill(evidence):
+def sector_warning_only_candidate(document):
+    """Keep the authored Fan warning and its inner fill, without shot sprites."""
+    candidate, policy = sector_fill_candidate(document)
+    removed_ids = {
+        'kouku.207274005.bb19206744ae8c60c97f': 'particlespriteemitter_0',
+        'kouku.207274005.7ec0d88461ee250102b5': 'particlespriteemitter_17',
+        'kouku.207274005.206ba6a1771800befa31': 'particlespriteemitter_19',
+    }
+    removed = [element for element in candidate['elements'] if element['id'] in removed_ids]
+    assert len(removed) in (0, 3), 'Expected all three original shot SpriteEmitters or none'
+    for element in removed:
+        assert element['kind'] == 'particle' and element['displayName'].endswith(removed_ids[element['id']])
+    candidate['elements'] = [element for element in candidate['elements'] if element['id'] not in removed_ids]
+    assert len(candidate['elements']) == 1 and candidate['elements'][0]['id'] == 'kouku.showtime.warning.sector', \
+        'Preserve and review additional user-authored elements before removing the shot group'
+    policy['removedElementIds'] = [element['id'] for element in removed]
+    return candidate, policy
+
+
+def stage_sector_fill(evidence, warning_only=False):
     """Write a reviewable candidate and freshness receipt, never live Authored."""
     target = ROOT / 'Data/Effects/Authored/effect.kouku.gate3.showtime.sector.warning.shot.effect.json'
     original = target.read_bytes()
     document = json.loads(original)
-    candidate, policy = sector_fill_candidate(document)
+    candidate, policy = (sector_warning_only_candidate(document) if warning_only else sector_fill_candidate(document))
     path = evidence / 'candidate' / target.name
     source.write(path, candidate)
     receipt = dict(target=target.relative_to(ROOT).as_posix(),
@@ -499,7 +518,7 @@ def stage_sector_fill(evidence):
         candidate=path.resolve().as_posix(),
         candidateSha256=hashlib.sha256(path.read_bytes()).hexdigest(),
         changedElementId='kouku.showtime.warning.sector',
-        preservedElementIds=[e['id'] for e in document['elements'] if e['id'] != 'kouku.showtime.warning.sector'],
+        preservedElementIds=[e['id'] for e in candidate['elements'] if e['id'] != 'kouku.showtime.warning.sector'],
         policy=policy, applied=False)
     source.write(evidence / 'sector_fill_candidate.json', receipt)
     return receipt
@@ -544,8 +563,11 @@ if __name__ == '__main__':
     parser.add_argument('--build-groups', action='store_true')
     parser.add_argument('--register-groups', action='store_true')
     parser.add_argument('--stage-sector-fill', action='store_true')
+    parser.add_argument('--stage-sector-warning-only', action='store_true')
     args = parser.parse_args()
-    if args.stage_sector_fill:
+    if args.stage_sector_warning_only:
+        stage_sector_fill(args.evidence_root.resolve(), warning_only=True)
+    elif args.stage_sector_fill:
         stage_sector_fill(args.evidence_root.resolve())
     elif args.prepare_native:
         prepare_native(args.evidence_root.resolve())

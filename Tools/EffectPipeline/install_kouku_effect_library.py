@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 NAMES = {
-    'staff.flame.full.restore': ('지팡이 내려찍기', '바닥 예고 후 화염기둥'),
+    'staff.flame.full.restore': ('불뿜기', '불뿜기'),
     'doll.flame.full.restore': ('마리오', '기괴한 인형 양쪽 화염'),
     'mario.center.pentagram.full.restore': ('마리오', '중앙 오망성'),
     'mario.center.portal.full.restore': ('마리오', '중앙 진입 포탈'),
@@ -145,7 +145,14 @@ def register(manifests, organization, output, install, library_only=False):
                 else:
                     labels = ['KoukuSaydon', '공통', '개별 이펙트', row.get('sourceParticleSystem', asset).split('.')[0]]
         assert len(name.encode('utf8')) <= 256
-        references[('V1', asset)] = dict(kind='V1', assetId=asset, displayName=name, parentId=category(labels))
+        if suffix == 'staff.flame.full.restore':
+            name = '불뿜기'
+            previous = references.get(('V1', asset))
+            parent = previous['parentId'] if previous else category(labels)
+            nodes[parent]['displayName'] = '불뿜기'
+        else:
+            parent = category(labels)
+        references[('V1', asset)] = dict(kind='V1', assetId=asset, displayName=name, parentId=parent)
         if doc['displayName'] != name:
             snapshots[path] = path.read_bytes()
             doc['displayName'] = name

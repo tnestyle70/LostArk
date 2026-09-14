@@ -93,6 +93,12 @@ def build(evidence, install):
     shoulder = [e for e in document['elements'] if e['actionCueAttachment']['sourceAnchorSlotId'] == 'FX_Prj_03']
     assert all(e['actionCueAttachment']['runtimeBoneName'] == 'bip001-spine2' for e in shoulder)
     assert len(shoulder) == 20 and len(document['elements']) == 77
+    # Keep the source preparation and socket clocks; authored main flames use
+    # the shared appearance after the source-basis projection is complete.
+    from build_kouku_directional_shared_firebreath import SHARED_ASSET, replace_threeway
+    shared_path = ROOT / 'Data/Effects/Authored' / (SHARED_ASSET + '.effect.json')
+    document, _ = replace_threeway(document, source.read(shared_path))
+    by_anchor = collections.Counter(e['actionCueAttachment']['sourceAnchorSlotId'] for e in document['elements'])
     candidate = evidence / 'candidate' / (ASSET + '.effect.json')
     source.write(candidate, document)
     target = ROOT / 'Data/Effects/Authored' / candidate.name
@@ -112,8 +118,9 @@ def build(evidence, install):
         categoryPath=['KoukuSaydon', '3관문', '패턴', '세이튼', '3방향 불뿜기'])
     source.write(evidence / 'installation.json', dict(installed=install, documents=[row],
         sourceActionId=4219940, sourceStageIndices=[0, 1], elementsByAnchor=dict(by_anchor),
+        sharedFirebreathAssetId=SHARED_ASSET,
         sourceInputs=[dict(path=str(p), sha256=hashlib.sha256(p.read_bytes()).hexdigest())
-                      for p in (ACTION, SOCKETS, TEMPLATE)], manualVisualValidation='USER_PENDING'))
+                      for p in (ACTION, SOCKETS, TEMPLATE, shared_path)], manualVisualValidation='USER_PENDING'))
     print(json.dumps(dict(installed=install, elements=len(document['elements']), anchors=dict(by_anchor))))
 
 

@@ -910,6 +910,67 @@ class CompositionPipelineTests(unittest.TestCase):
             self.assertFalse((output_root / pipeline.PUBLISH_JOURNAL_NAME).exists())
 
 
+class WorldSequenceAnimationSourceStartContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.document = {
+            "schema": "lostark.world-sequences", "formatVersion": 2,
+            "areaId": "LV_LUT_MIDNIGHTC_ED", "revision": 1,
+            "templates": [{
+                "sequenceId": "sequence.source-start", "displayName": "Trimmed clip",
+                "category": "World", "durationMs": 17314, "interpolation": "LINEAR",
+                "tracks": [], "animationTracks": [{
+                    "slotId": "object", "clipName": "att_battle_2_01",
+                    "playbackRate": 1.0, "loop": False, "holdLastFrame": True,
+                }],
+            }],
+            "instances": [{
+                "instanceId": "instance.source-start", "templateId": "sequence.source-start",
+                "enabled": True, "startDelayMs": 0, "playbackSpeed": 1.0,
+                "bindings": [{"slotId": "object", "targetKind": "DEPLOY_PLACEMENT", "targetId": "1"}],
+            }],
+        }
+
+    def validate(self, document: dict) -> set[str]:
+        return pipeline._validate_world_sequence_source(document, document["areaId"])
+
+    def test_omitted_zero_and_bounded_source_offsets_preserve_the_document(self) -> None:
+        for source_start in (None, 0, 1539, 10559, 600000):
+            candidate = copy.deepcopy(self.document)
+            if source_start is not None:
+                candidate["templates"][0]["animationTracks"][0]["sourceStartMs"] = source_start
+            before = copy.deepcopy(candidate)
+            with self.subTest(source_start=source_start):
+                self.assertEqual({"instance.source-start"}, self.validate(candidate))
+                self.assertEqual(before, candidate)
+
+    def test_invalid_source_offsets_fail_without_changing_source(self) -> None:
+        for invalid in (-1, 1.5, 600001, "1539", True, None, [], {}):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["animationTracks"][0]["sourceStartMs"] = invalid
+            before = copy.deepcopy(candidate)
+            with self.subTest(source_start=invalid), self.assertRaisesRegex(
+                pipeline.CompositionError, "sourceStartMs"
+            ):
+                self.validate(candidate)
+            self.assertEqual(before, candidate)
+
+    def test_three_windows_preserve_native_source_and_timeline_separately(self) -> None:
+        template = self.document["templates"][0]
+        clip = template["animationTracks"][0]
+        template["animationTracks"] = [
+            dict(clip, startMs=0),
+            dict(clip, startMs=1539, sourceStartMs=1539, playbackRate=9020 / 15000),
+            dict(clip, startMs=16539, sourceStartMs=10559),
+        ]
+        before = copy.deepcopy(self.document)
+        self.assertEqual({"instance.source-start"}, self.validate(self.document))
+        self.assertEqual(before, self.document)
+        # This extension does not admit an unimplemented source-end contract.
+        template["animationTracks"][1]["sourceEndMs"] = 10559
+        with self.assertRaisesRegex(pipeline.CompositionError, "sourceEndMs"):
+            self.validate(self.document)
+
+
 class WorldSequenceEffectContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.document = pipeline.read_json(
@@ -931,11 +992,52 @@ class WorldSequenceEffectContractTests(unittest.TestCase):
         self.assertEqual(expected, self.validate(self.document))
         self.assertEqual(before, self.document)
         template = self.document["templates"][0]
-        for resource_kind in ("LEAF", "GROUP"):
+        for resource_kind in ("LEAF", "GROUP", "V1_EFFECT"):
             template["effectTracks"][0].update(
                 resourceKind=resource_kind, timing="TIME", startMs=template["durationMs"]
             )
             self.assertEqual(expected, self.validate(self.document))
+
+    def test_effect_object_follow_and_bone_preserve_owner_fields(self) -> None:
+        for follow in (False, True):
+            for bone in ("", "Bip001 Head", "a" * 256, "뼈" * 85):
+                candidate = copy.deepcopy(self.document)
+                candidate["templates"][0]["effectTracks"][0].update(
+                    resourceKind="V1_EFFECT", followObject=follow, bone=bone
+                )
+                before = copy.deepcopy(candidate)
+                with self.subTest(follow=follow, bone=bone):
+                    self.validate(candidate)
+                    self.assertEqual(before, candidate)
+        legacy = copy.deepcopy(self.document)
+        legacy["templates"][0]["effectTracks"][0].pop("followObject", None)
+        legacy["templates"][0]["effectTracks"][0].pop("bone", None)
+        before = copy.deepcopy(legacy)
+        self.validate(legacy)
+        self.assertEqual(before, legacy)
+
+    def test_effect_object_follow_and_bone_reject_invalid_types_and_utf8(self) -> None:
+        cases = [dict(followObject=value) for value in (0, 1, "true", None)]
+        cases += [dict(bone=value) for value in (
+            True, 0, None, "a" * 257, "뼈" * 86, "head\x00", "head\n", "head\x7f", "\ud800"
+        )]
+        for fields in cases:
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["effectTracks"][0].update(fields)
+            before = copy.deepcopy(candidate)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+            self.assertEqual(before, candidate)
+
+    def test_complete_current_world_owner_supports_object_effect_fields(self) -> None:
+        document = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
+        )
+        before = copy.deepcopy(document)
+        self.assertEqual(
+            {row["instanceId"] for row in document["instances"]}, self.validate(document)
+        )
+        self.assertEqual(before, document)
 
     def test_effect_tracks_reject_malformed_fields_and_keep_source_unchanged(self) -> None:
         cases = (
@@ -1016,6 +1118,36 @@ class CameraShotOptionalContractTests(unittest.TestCase):
 
     def validate(self, document: dict) -> set[str]:
         return pipeline._validate_camera_shot_source(document, document["areaId"], set())
+
+    def test_camera_shot_count_matches_product_owner_limit(self) -> None:
+        shot = self.document["shots"][0]
+        self.document["shots"] = [
+            dict(copy.deepcopy(shot), shotId=f"camera.cap.{ordinal}")
+            for ordinal in range(128)
+        ]
+        before = copy.deepcopy(self.document)
+        self.assertEqual(128, len(self.validate(self.document)))
+        self.assertEqual(before, self.document)
+        self.document["shots"].append(dict(copy.deepcopy(shot), shotId="camera.cap.128"))
+        with self.assertRaisesRegex(pipeline.CompositionError, "128 rows"):
+            self.validate(self.document)
+
+    def test_complete_current_camera_owner_preserves_all_shots(self) -> None:
+        document = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["CAMERA_SHOTS"]
+        )
+        world = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
+        )
+        before = copy.deepcopy(document)
+        self.assertEqual(
+            {row["shotId"] for row in document["shots"]},
+            pipeline._validate_camera_shot_source(
+                document, document["areaId"],
+                {row["instanceId"] for row in world["instances"]},
+            ),
+        )
+        self.assertEqual(before, document)
 
     def test_optional_camera_fields_preserve_source_and_support_legacy_absence(self) -> None:
         shot = self.document["shots"][0]

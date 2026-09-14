@@ -250,6 +250,9 @@ private:
     struct KOUKU_EFFECT_PREVIEW_TARGET final
     {
         std::string assetId;
+        std::string worldContextPatternId; // Preview-only saved hand props.
+        std::string worldOccurrenceId; // Empty uses source bones; otherwise the exact gun supplies the root.
+        std::uint64_t propReferenceRevision = 0u;
         float4x4_t playerRoot{};
         std::uint64_t placementRevision = 0u;
         std::optional<CEffectCompositionModelPreview> model;
@@ -285,6 +288,10 @@ private:
     bool m_PreviousPaused = true, m_PreviousLoop = false;
     std::string m_SourceModelEffectId;
     std::string m_ExplicitKoukuPatternId;
+    bool m_PreviewSavedHandProps = false; // Model View reference only; not saved in a sequence.
+    std::vector<EFFECT_COMPOSITION_MODEL_PROP> m_PreviewPropChoices;
+    std::string m_PreviewPropPatternId, m_PreviewWorldOccurrenceId;
+    std::uint64_t m_PreviewPropReferenceRevision = 0u;
     float4x4_t m_WorldRoot{};
     // Explicit Play All placement is session state; Append stores it in its own occurrence.
     std::optional<float4x4_t> m_ScenePreviewWorldRoot;

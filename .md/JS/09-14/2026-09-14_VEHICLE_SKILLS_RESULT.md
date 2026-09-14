@@ -10,7 +10,7 @@
 | 루트 이동 bake·catalog/profile v2 기록 `build_vehicle_skills.py` | 완료 |
 | 탑승자 애니셋 28개 스킬 클립 재쿠킹 | 완료 (Resources, Drive 전달 필요) |
 | bootstrap v2 `VEHICLESKILL` publish | 완료 (랩터 제외 후 6 vehicles, 21 skills) |
-| Shared protocol 84 `PLAYER_ACTION_STATE::VEHICLE_SKILL` | 완료 |
+| Shared protocol 85 `PLAYER_ACTION_STATE::VEHICLE_SKILL` (main의 Mario 84와 병합하며 85로 올림) | 완료 |
 | Server 쿨타임·이동 잠금·루트 이동(navigation clamp·collision)·하차 시 종료 | 완료 |
 | Client Space/Q/W/E 요청, R 하차 | 완료 |
 | Client 탑승자·탈것 클립 체인 seek, 종료 시 locomotion 복귀 | 완료 |

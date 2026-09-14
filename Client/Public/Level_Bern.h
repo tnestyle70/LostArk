@@ -88,6 +88,9 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
+	/* The level's own input controller: the vehicle window submits its mount request through
+	   it so the Server round trip has one owner (CPlayerController::Request_VehicleRiding). */
+	CPlayerController& Get_PlayerController() { return m_PlayerController; }
 
 private:
 	HRESULT Ready_Layer_Camera(

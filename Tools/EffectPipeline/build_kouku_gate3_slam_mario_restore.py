@@ -23,7 +23,7 @@ LIBRARIES = {
     102: ('mario.center.portal', 'Mario central portal loop', 'fx_mn_rpct_07_v.par_v_rpct_atk_09_03_loop_loc_int', 20),
     103: ('mario.boss.pentagram', 'Mario boss pentagram cast', 'fx_mn_rpct_07_v.par_v_rpct_star_cast_01_loc_int', 2),
 }
-ASSETS = {4219951: ('staff.flame', 'Staff ground then flame'),
+ASSETS = {4219951: ('staff.flame', '불뿜기'),
           4222305: ('doll.flame', 'Odd Doll dual flame')}
 
 

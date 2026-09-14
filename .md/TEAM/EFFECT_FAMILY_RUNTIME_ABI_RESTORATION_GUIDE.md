@@ -691,3 +691,22 @@ descriptor의 차이는 데이터와 translated HLSL로 보존하는 방향이�
 `detail.screenPost.profileId=screen.scene-collapse.capture.v1`은 시작 시점의 resolved HDR/bloom pair를 고정하고 바깥을 검정으로 그린다. optional `captureShrinkSeconds`의0은 기존 Timing 수명을 사용하며, 양수는 Timing 수명 이하의 수축 구간이다. 나머지 구간은 끝 상태를 유지한다.
 
 `screen.scene-capture.cube.v1`은 live scene 위에서 고정 이미지를 축소하며 `captureTargetModelCueId`가 필수다. target은 같은 문서의 visible ModelCue이고 ScreenPost 끝은 그 cue 시작과 일치해야 한다. 현재 endpoint는 실제 설치 CModel의 첫 pose bounds만 지원한다. 다른 profile의 target ID, 잘못된 끝 시간과 잘못된 수축 구간은 Codec이 거절한다. Tool profile 전환은 이전 target과 별도 수축 시간을 정리하며 저장·재로드가 같은 계약을 사용한다. 원본 SourceMaterial ID와 renderer carrier는 새 profile ID로 위장하지 않는다.
+
+### Presentation provider의 실패 격리와 texture coverage
+
+`Submit_FrameProviders`에서 provider가 `LOCAL_PROVIDER_CONTRACT`와 isolated failure를
+명시하면 그 provider가 이번 제출에 추가한 light/post/overlay 및 channel 통계만 rollback한다.
+실패 provider는 `Finalize_PresentationSubmission(false)`를 한 번 받고, 다른 정상 provider는
+채널 검증 후 `true`를 받는다. frame의 `bCommitted=true`와 `iProviderFailures>0`는 함께
+가능하며 반환 `S_FALSE`는 일부 provider 격리를 표시한다. 전역 실패·budget 초과·불명확한
+failure scope는 전체 frame rollback과 실패 HRESULT를 유지한다.
+
+Overlay coverage 검증은 실제 GPU SRV 형식을 기준으로 한다. BC1/BC1_SRGB는 불투명 또는
+1-bit alpha를 공급하므로 A coverage를 지원한다. 색 공간 일치, 다른 형식의 channel 존재,
+양수 footprint와 alpha 범위 검사는 그대로 유지한다. 정상 capture의 소비 여부는 다른
+provider와 함께 제출한 프레임으로 검증한다.
+
+
+### External Composition capture window
+
+The existing `CEffectPresentationService::Seek_WorldRoot` accepts an optional playback end age in seconds (zero preserves the authored duration). Only externally sampled occurrences may supply a positive end. Pending spawns retain it in their descriptor; active objects forward it to their renderer. Scene-collapse clamps its authored shrink interval to the remaining owning box time. Frozen Color/Bloom and authored particle clocks remain unchanged; cube/model-cue capture keeps its original contract. Both ordinary sequence sampling and live geometry sampling supply the owning box duration. Non-finite/negative values fail without mutating the occurrence.

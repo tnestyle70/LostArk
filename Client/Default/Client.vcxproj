@@ -149,6 +149,7 @@
     <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
+    <ClInclude Include="..\Public\QuickSlotDragView.h" />
     <ClInclude Include="..\Public\CharacterInfoWindowView.h" />
     <ClInclude Include="..\Public\CharacterPortraitRenderer.h" />
     <ClInclude Include="..\Public\AvatarBookWindowView.h" />
@@ -161,10 +162,12 @@
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
     <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
     <ClInclude Include="..\Public\PartyInteractionView.h" />
+    <ClInclude Include="..\Public\VehicleWindowView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UILayoutRuntime.h" />
     <ClInclude Include="..\Public\UIInputRouter.h" />
+    <ClInclude Include="..\Public\UIWindowDrag.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_KakulSaydonArena.h" />
@@ -396,6 +399,7 @@
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
+    <ClCompile Include="..\Private\QuickSlotDragView.cpp" />
     <ClCompile Include="..\Private\CharacterInfoWindowView.cpp" />
     <ClCompile Include="..\Private\CharacterPortraitRenderer.cpp" />
     <ClCompile Include="..\Private\AvatarBookWindowView.cpp" />
@@ -405,10 +409,12 @@
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
+    <ClCompile Include="..\Private\VehicleWindowView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UILayoutRuntime.cpp" />
     <ClCompile Include="..\Private\UIInputRouter.cpp" />
+    <ClCompile Include="..\Private\UIWindowDrag.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp" />
@@ -1693,6 +1699,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bullet.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.staff.flame.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.object-sustain15.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.pentagram.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"></None>
@@ -1714,6 +1721,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene04a.efseqact_matinee_2.1.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.full.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.authored.fade.black.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.authored.p4.popup.transition.fade.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.clear.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.maze.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate3.intro.fade.black.effectv2.json" />
@@ -2171,6 +2179,7 @@
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.centered.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.context.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.context.p4-late.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.movable-lights.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.source-material-carriers.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.gun.muzzle.world.effect.json" />
@@ -2201,6 +2210,7 @@
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.scene-image-collapse.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.scene-collapse.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.p4.scene-image-collapse.effect.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup001.hlsli" />
@@ -2283,5 +2293,18 @@
     </FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_EffectSceneColorInput.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectSceneDepthInput.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.firebreath.shared.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_firebreath_breath_01_loc_int.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.pillar.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.decal.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.full.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.full.koukusaydon.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.fuse.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.blackhole.beam.full.restore.effect.json"></None>
   </ItemGroup>
 </Project>
