@@ -65,21 +65,46 @@ def reduced_indices(times, positions, quaternions):
     return sorted(keep)
 
 
-def build_backdrops(rows, imports, pose_sampler):
+def set_label(group_name):
+    """Readable set name from the source Matinee group of a parent dummy."""
+    name = str(group_name or "")
+    if len(name) > 1 and name[0] == "d" and name[1:].isdigit():
+        return "매달린 카드 " + name
+    if name == "데스크기둥":
+        return "책상 다리 " + name
+    if name.startswith("기둥"):
+        return "테이블 받침 " + name
+    return name
+
+
+def build_backdrops(rows, imports, pose_sampler, exclude_bone_attached=False):
     """Return resources/templates/instances/worlds/windows and a source receipt.
 
     pose_sampler(actor_index, seconds) returns the source hierarchy's client-space
-    position and 3x3 rotation. It must include the existing baked skeletal parents.
+    position and 3x3 rotation, including the parent's own Matinee Move track.
+    exclude_bone_attached leaves out pieces whose parent hangs on a baked actor bone;
+    the receipt lists them.
     """
     groups = rows[394]["p"]["interpgroups"]
     links = rows[329]["p"]["variablelinks"]
     directly_bound = set()
+    group_names = {}
     for group in groups:
         name = rows[group]["p"].get("groupname", "")
         link = next((r for r in links if r["linkdesc"].casefold() == str(name).casefold()), {})
-        directly_bound.update(rows[v]["p"]["objvalue"] for v in link.get("linkedvariables", []) if rows[v]["p"].get("objvalue"))
+        linked = [rows[v]["p"]["objvalue"] for v in link.get("linkedvariables", []) if rows[v]["p"].get("objvalue")]
+        directly_bound.update(linked)
+        group_names.update((actor, name) for actor in linked)
     children = [r for r in rows.values() if "staticmeshcomponent" in r.get("p", {}) and r["index"] not in directly_bound]
     assert len(children) == 165 and all(r["p"].get("base") in rows for r in children)
+    excluded = []
+    if exclude_bone_attached:
+        excluded = [dict(actorIndex=r["index"], sourceName=r["name"], parentIndex=r["p"]["base"],
+                         parentBone=rows[r["p"]["base"]]["p"]["basebonename"],
+                         reason="parent follows a baked actor bone; orientation not verified against the source")
+                    for r in children if rows[r["p"]["base"]]["p"].get("basebonename")]
+        skipped = {e["actorIndex"] for e in excluded}
+        children = [r for r in children if r["index"] not in skipped]
     catalog_path = ROOT / "Client/Bin/DataFiles/Map" / f"{AREA}.mapassets"
     catalog = [shlex.split(line) for line in catalog_path.read_text(encoding="utf-8-sig").splitlines()[1:]]
     materials = json.loads((ROOT / "Data/Maps/Authoring" / AREA / f"{AREA}.mapmaterials.json").read_text(encoding="utf-8-sig"))["materials"]
@@ -124,7 +149,7 @@ def build_backdrops(rows, imports, pose_sampler):
         # resource only once (WorldSequenceDocument Validate / publisher boundTargets),
         # and one parent set holds several pieces of the same mesh.
         object_id = f"world.object.{PREFIX}.{asset.lower()}.actor{actor}"
-        resources[actor] = dict(objectId=object_id, displayName=f"{source_mesh.rsplit('.', 1)[-1]} / {row['name'].rsplit('.', 1)[-1]}",
+        resources[actor] = dict(objectId=object_id, displayName=f"{set_label(group_names.get(parent))} / {source_mesh.rsplit('.', 1)[-1]} / {row['name'].rsplit('.', 1)[-1]}",
             modelAssetId=model, anchorKind="WORLD", diffuseTextureAssetId="", modelPreScale=.01,
             animated=False, scale=[1, 1, 1], sequenceInstanceId="", defaultMotionInstanceId="",
             mapMaterialBindings=[dict(materialName=m["materialName"], sourceAssetId=asset,
@@ -170,8 +195,13 @@ def build_backdrops(rows, imports, pose_sampler):
         for chunk_start in range(0, len(actors), 32):
             chunk = actors[chunk_start:chunk_start + 32]
             indices = sorted(set(i for actor in chunk for i in sampled[actor][4]))
-            for segment, start in enumerate(range(0, len(indices) - 1, 255)):
-                segment_indices = indices[start:start + 256]
+            # The 256-key bound is per track. Keep one window when every track fits;
+            # splitting on the union adds seams and templates the document cannot spare.
+            if all(len(sampled[actor][4]) <= 256 for actor in chunk):
+                segment_lists = [indices]
+            else:
+                segment_lists = [indices[start:start + 256] for start in range(0, len(indices) - 1, 255)]
+            for segment, segment_indices in enumerate(segment_lists):
                 if segment_indices[-1] != indices[-1] and len(segment_indices) < 256:
                     raise AssertionError("incomplete backdrop segment")
                 first, last = segment_indices[0], segment_indices[-1]
@@ -190,7 +220,7 @@ def build_backdrops(rows, imports, pose_sampler):
                         visible=not rows[actor]["p"].get("bhidden", False)) for i in selected]
                     assert len(keys) <= 256
                     tracks.append(dict(slotId=slot, keys=keys))
-                label = "2관문 진입 촬영 세트 / " + rows[parent]["name"].rsplit(".", 1)[-1]
+                label = "2관문 진입 무대 / " + set_label(group_names.get(parent)) + " / " + rows[parent]["name"].rsplit(".", 1)[-1]
                 templates.append(dict(sequenceId=sequence_id, displayName=label, category="World",
                     durationMs=end - begin, interpolation="LINEAR", tracks=tracks, animationTracks=[]))
                 instances.append(dict(instanceId=instance_id, templateId=sequence_id, enabled=True, startDelayMs=0,
@@ -200,6 +230,7 @@ def build_backdrops(rows, imports, pose_sampler):
                 windows.append((begin, end))
     return dict(resources=list(resources.values()), templates=templates, instances=instances, worlds=worlds,
                 windows=windows, receipt=dict(sourceStaticActorCount=172, alreadyDirectlyBoundCount=7,
-                    restoredAttachedCount=len(children), parentCount=len(by_parent), modelCount=len(resources),
+                    restoredAttachedCount=len(children), excludedBoneAttached=excluded,
+                    parentCount=len(by_parent), modelCount=len(resources),
                     positionToleranceM=POSITION_TOLERANCE, rotationToleranceDegrees=ROTATION_TOLERANCE_DEGREES,
                     reconstructedCyclicCount=sum(bool(r["motionPrograms"]) for r in source_receipt), actors=source_receipt))

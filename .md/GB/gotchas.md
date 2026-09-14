@@ -1365,6 +1365,13 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 - Composition(`KoukuSaydonSequenceComposition.json`)의 `worlds` 등록 ID는 reader가 `kakulsaydon.g1.world.<n>`(n < `nextWorldOrdinal`) 또는 `world.kouku.gate2.intro.<x>`(인스턴스 `world.sequence.instance.kouku.gate2.intro.<x>`와 짝)만 받는다(`KoukuSaydonCompositionDocument.cpp` 1165행). 다른 이름을 등록하면 Composition 전체가 "not admitted"로 로드되지 않으므로 생성기는 `nextWorldOrdinal`을 소비해 ID를 발급한다.
 - 원본 Matinee의 배우 `drawscale` float 트랙은 `build_source_sequences.actor_world`가 굽지 않는다. 배우가 커지거나 작아지는 컷(3관문 비행 6→2, 1→0.3)은 template `scaleMultiplier` 키로 따로 넣어야 한다. 근거는 09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md G13-R3/R4.
 
+### 원작 컷신의 움직이는 맵 오브젝트를 찾을 때
+
+- SCENE 레벨(`LV_LUT_MIDNIGHTC_ED_SCENE03A` 등)의 배우는 Imported baseline placement에 들어오지 않는다. 광장 줄무늬 벽처럼 "컷신에서 움직이는 맵 물체"는 Deploy 프롭이나 정적 배치가 아니라 SCENE 마티니의 interpactor다. 배치 전에 `01_컷신별_타임라인/*_전체.json`의 `interptrackmove.eulertrack`에서 첫·끝 키 차이가 30도 이상인 그룹을 먼저 훑는다. 위치·회전·drawscale·drawscale3d·hard attach 자식(material override 포함)까지 그 행이 정본이다.
+- `EFTable_Prop`의 `공용` 프롭 중 `sys.battle_station.*` 이름을 가진 것(ITR_10175 + ITR_00279 쌍)은 관문마다 반복되는 집합 대기 마커/볼륨이며 파티클(`par_g_waiting_01`)만 가진다. 위치가 가깝다고 벽·문으로 단정하지 않는다.
+- UE3 이동 트랙의 `cim_curveautoclamped` + 양끝 tangent 0은 hermite ease(3u²−2u³)다. 회전 트랙은 로컬 축 회전 키로 굽고, `CWorldSequencePlayer`는 `XMQuaternionMultiply(key, baseline)`이므로 키는 placement 로컬 프레임이다(로컬 −X 회전이 UE roll 증가). 마지막 키 quat w가 0에 가까우면 `%.9g`가 `6.1e-17`로 나오지만 reader의 길이 검사(±0.001)는 통과한다.
+- 세부 값과 검증은 [09-14 Stage1_wall 결과](09-14/2026-09-14_KOUKU_STAGE1_WALL_ORIGINAL_RESTORE_RESULT.md)를 따른다.
+
 ### 탈것·NPC 재질의 UV와 shader cache 해석
 
 - NPC 파이프라인으로 쿠킹한 skinned `.wmodel`은 1.0이라 UV1이 없다. 원본 MIC가 program 5/7/18/19를 쓰면 `CModel`이 "source character requires native extra UV channels"로 모델 전체를 거부하고, 탈것·NPC 표현이 소리 없이 격리된다. 원본 PSK의 EXTRAUVS 유무를 확인하고, set이 1개면 UE3 clamp 규칙대로 해당 submesh UV1=UV0를 `Tools/VehiclePipeline/cook_single_set_uv1.py`로 추가한다. extra set이 있으면 `cook_ocular_uv_channels.py`처럼 원본 채널을 join한다.
@@ -1378,3 +1385,11 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 - 화면 큐브 수축은 cinematic camera 적용 전에 Stage가 저장한 HDR/bloom pair를 첫 ScreenPost에 전달한다. 첫 Render에서 비어 있는 capture에 다시 live scene을 채우면 이미 움직인 카메라를 캡처한다. 중앙 수축은 destinationUV를 화면 중앙으로 유지하고 target model은 끝 크기만 제공한다. 포탈의 전환 시점 캡처와 혼동하지 않는다.
 - Effect mesh가 useModelMaterial=false여도 CModel 생성은 WModel에 기록된 material texture를 읽는다. 파생 WModel을 Effect/Meshes에 옮길 때 embedded relative DDS도 hash와 함께 닫아야 한다. 뒤 Queued 성공 메시지로 앞선 실패 원인을 덮지 않으며 capture 실패는 해당 occurrence에서 판정한다.
 - 재현·검증과 남은 화면 경계는 [캐릭터/아레나 결과](09-14/2026-09-14_CHARACTER_EFFECT_AND_ARENA_RECOVERY_IMPLEMENTATION_RESULT.md), [쿠크 재생 결과](09-14/2026-09-14_KOUKU_SEQUENCE_PLAYBACK_EDITOR_IMPLEMENTATION_RESULT.md)를 따른다.
+
+## 쿠크 SCENE 소품 부모와 Composition·카메라 병합 (2026-09-14)
+
+- `build_gate2_intro_composition.world_pose(rows, None, actor, t)`는 group이 None이라 그 액터의 Matinee Move 트랙을 하나도 적용하지 않는다. 카메라 더미에 hard attach된 소품의 부모를 샘플할 때는 `parent_pose_sampler(rows)`처럼 부모 자신의 group을 찾아 넘긴다. 이걸 빠뜨려 2관문 floor16 판이 세워진 채 남고 카드가 테이블 위에 떠 있었다(G13-R6).
+- floor16a~d, DECO19 같은 SCENE 소품은 두께 0의 세로 판 메쉬다. "판이 서 있다"를 회전 부호 오류로 단정하기 전에 메쉬 bounds와 부모 트랙 시각을 먼저 본다.
+- 한 템플릿의 256키 한도는 트랙별이다. 묶음 전체 키 합집합으로 구간을 나누면 이음매와 템플릿이 늘어 World 문서 템플릿 한도 256을 넘길 수 있다.
+- `KoukuSaydonSequenceComposition.json`의 CAMERA 박스와 `camerashots.json` 샷 분할은 서로 다른 파일이다. 병합에서 한쪽만 되돌리면 박스가 엉뚱한 샷을 재생해도 로드 오류가 나지 않는다. 병합 뒤에는 패턴별 CAMERA 박스 구간이 샷 `defaultHoldMs`와 1:1인지 확인한다(2026-09-14 `400439b2`에서 P3·P7·P8이 G13 이전으로 돌아감).
+- 현재 World 문서에는 `mapMaterialBindings.unlit`이 있어 G13 `world_document_bytes` 전체 재직렬화가 동등성 검사에서 멈춘다. 새 행 추가는 기존 바이트를 두고 배열 끝에 툴 형식 행만 끼운 뒤 재파싱 동등성을 증명한다. Composition도 C++ Save 형식(CRLF, %.17g)이라 python `json.dumps` 재작성 금지다.

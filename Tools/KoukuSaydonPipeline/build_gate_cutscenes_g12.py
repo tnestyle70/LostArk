@@ -394,7 +394,7 @@ def install_backdrops(install):
     assert pattern['stages'][0]['durationMs'] == config['duration']
     cache = base.read(bss.OUT / ('LV_LUT_MIDNIGHTC_ED_' + config['scene'] + '.json'))
     rows = {int(k): v for k, v in cache['rows'].items()}
-    result = bd.build_backdrops(rows, cache['imports'], lambda actor, seconds: base.world_pose(rows, None, actor, seconds))
+    result = bd.build_backdrops(rows, cache['imports'], base.parent_pose_sampler(rows), exclude_bone_attached=True)
     assert all(window == (0, config['duration']) for window in result['windows']), result['windows']
     placed = {o['worldId'] for o in pattern['worldOccurrences']}
     already = [w['worldId'] for w in result['worlds'] if w['worldId'] in placed]

@@ -510,7 +510,7 @@ Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모
 `cardmaze.exit.heart/spade/club/diamond`는 서버 개인 출구 위치에 같은 네 문양 Decal을 표시한다. 기존 춤 연출의 문양 DDS를 재사용하되
 전용 `cardmaze.symbol.*` leaf를 쓰며 기존 춤 group은 변경하지 않는다. 런타임 표시는 상태 수명 동안 유지하고 탈출·사망·despawn·초기화 때 제거한다.
 
-F1 카드미로 MAZE 진입은 선택한 일반 플레이어 몸체를 유지한다. 기본 `cardmaze.follow` eyeOffset은 [0,8.4,-6]이며 망원경 전체 시점과 별도다. `cardmaze.telescope`는 아직 시각 모델 없는 triggerBox다. 중앙 OBB 내부에서는 방향과 무관하게 Q의 망치 판정을 받고, 외부는 높이·거리·전방 조건을 검사한다. G는 이 획득 경로에 사용하지 않는다. 시작 전 Q 안내를 HUD에 표시한다. 일반 플레이어의 망치 애니메이션 바인딩은 광대 전용 binding을 임의 재사용하지 않는다.
+F1 카드미로 MAZE 진입은 선택한 일반 플레이어 몸체를 유지한다. 기본 `cardmaze.follow` eyeOffset은 [0,8.4,-6]이며 망원경 전체 시점과 별도다. `cardmaze.telescope`는 triggerBox이고 같은 XZ의 STATIC Deploy 배치 8(`DEPLOY_ITR_10073`)이 망원경 메쉬만 표시한다. 원작 트리거 2201/2202처럼 살아 있는 MAZE 모드 플레이어가 CardMiro 영역에 있으면 30tick 뒤 Server가 망원경 자리에 `MONSTER_KOUKU_CLOWN_BOX`(NPC 480720 삐에로 상자, spawn tag `cardmaze.clownbox`, 잠자는 `spawn.kouku.cardmaze.profiles`가 profile 배포)를 `Spawn_Monster`한다. 시작 전 MAZE 망치는 이 상자를 일반 몬스터 데미지로 먼저 때리고(몸통 안에서는 방향 무관), 상자가 죽기 전에는 망원경 획득을 막는다. 영역에 MAZE 생존자가 없거나 카드미로가 초기화되면 살아 있는 상자를 제거한다. Client는 살아 있던 상자가 사라졌거나 역할이 배정된 뒤에만 Deploy 8을 표시하고 HUD 안내를 상자/망원경으로 바꾼다. 이 흐름은 protocol을 바꾸지 않는다. 중앙 OBB 내부에서는 방향과 무관하게 Q의 망치 판정을 받고, 외부는 높이·거리·전방 조건을 검사한다. G는 이 획득 경로에 사용하지 않는다. 시작 전 Q 안내를 HUD에 표시한다. 일반 플레이어의 망치 애니메이션 바인딩은 광대 전용 binding을 임의 재사용하지 않는다.
 
 `Data/Compositions/Bosses/*.bosscomposition.json`은 Effect, Sound, collider 값을 다시 소유하는 거대
 JSON이 아니다. 기존 typed owner의 경로와 coverage, stable Pattern index를 묶는 source manifest다.
