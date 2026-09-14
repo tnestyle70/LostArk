@@ -11,6 +11,7 @@ namespace
 {
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
 	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
+	constexpr f32_t LOCOMOTION_BLEND_SECONDS = 0.12f;
 
 	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
@@ -69,7 +70,7 @@ bool_t CPart_Vehicle::Set_Moving(const bool_t isMoving)
 		return true;
 	m_isMoving = isMoving;
 	return m_pModelCom->Set_Animation(
-		(isMoving ? m_strRunClip : m_strIdleClip).c_str(), true);
+		(isMoving ? m_strRunClip : m_strIdleClip).c_str(), true, LOCOMOTION_BLEND_SECONDS);
 }
 
 bool_t CPart_Vehicle::Try_Get_SeatWorldPosition(float3_t& outPosition) const
