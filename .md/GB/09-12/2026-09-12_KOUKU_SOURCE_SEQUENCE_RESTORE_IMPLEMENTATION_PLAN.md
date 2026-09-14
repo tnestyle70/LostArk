@@ -1185,3 +1185,9 @@ result = bd.build_backdrops(rows, cache['imports'], base.parent_pose_sampler(row
 World의 세 배열과 Composition worlds/P3 worldOccurrences 끝에 donor 원문 행만 삽입하며 전체 JSON을 재직렬화하지 않는다. revision은 각각+1, P3 nextWorldOccurrenceOrdinal은32로 갱신한다. 기존 행의 의미·원문 보존, donor 행 동등성, ID 충돌0, 참조 모델 존재, template251/256 및 문서16MiB 한도를 검사한다. 설치 직전 원문 일치 검사를 수행하고 두 authoring 파일을 갱신한다.
 
 `Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences`의 Validate → Publish → Check로 해당 runtime 문서만 게시한다. 변경 JSON parse·`git diff --check`를 확인하고 feature branch/PR로 main에 병합한 뒤 pull한다. C++·셰이더·Resources 변경이 없어 재빌드는 하지 않으며 Client/UI 실행과 화면 판정은 사용자에게 남긴다. 실제 결과는 기존 카메라·맵 RESULT의 G16에 기록한다.
+
+## G17. `피날레_맵`의 누락된 벽 움직임만 선택 반영
+
+2026-09-14 사용자가 확정한 대상은 Sequence Composition의 `피날레_맵` → `world.sequence.instance.circusfinale`이다. main `904303a9`에는 수정된 MAP 3·419 배치가 있으나, PR #384의 World 문서 충돌에서 이전 애니메이션이 유지됐다. W-R5의 원본 수정 commit `fb9a8bb9`에서 `sequence.LV_LUT_MIDNIGHTC_ED.circus_finale`의 `obj01` 키를 가져오고, 뒤판용 `obj24` 트랙과 해당 instance의 `obj24 → MAP_PLACEMENT 419` 바인딩을 추가한다. 전체 21010ms, 다른 22개 트랙과 기존 바인딩, 다른 모든 World 행 및 Composition의 타이밍·이펙트·UV는 그대로 둔다. 별도 `Stage1_wall` 시퀀스는 수정하지 않는다.
+
+기존 원문에서 해당 두 트랙·바인딩과 revision(+1)만 치환·추가한다. 설치 직전 원문 일치, 나머지 행의 바이트 일치, donor 동등성 및 참조 배치를 확인한다. WorldSequences Validate → Publish → Check와 JSON parse·`git diff --check` 후 PR merge/pull한다. C++·셰이더 빌드는 필요 없다. 결과와 사용자 화면 확인 경계는 기존 `2026-09-14_KOUKU_STAGE1_WALL_ORIGINAL_RESTORE_RESULT.md` W-R6에 기록한다.
