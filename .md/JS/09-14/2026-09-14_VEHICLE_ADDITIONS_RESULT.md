@@ -90,6 +90,24 @@
 - 사용자 관찰: "다 잘 나와".
 - Drive 전달: `Character/Vehicle/{Aufstehen,SeaUnicornTube}/`, 4직업 `AnimSets/<Class>_Ride{HeavywalkerBm9,Tube}AnimSet.wmodel`.
 
+## 탈것 본체 locomotion 블렌딩
+
+`CPart_Vehicle::Set_Moving`이 blend 0으로 idle/run을 바꿔 탈것만 뚝 끊겼다. 탑승자 `CLIP_BLEND_SECONDS`와 같은 0.12초를 넘긴다. Product 빌드 PASS, 사용자 관찰 "잘돼".
+
+## 고대의 신화 추가
+
+| 항목 | 내용 |
+|---|---|
+| EFTable_Vehicle | 9524 `MN_PMSDZ_00-1`, RidingMode 47(`DRAGON` 세 번째 → `ride_dragon_2`, 탈것 클립 dash/breath_01/02/roar/look과 1:1), MoveSpeed 500 |
+| 재질 | 슬롯 5개 `mn_pmsdz_00-1_0{1..5}_mi` 모두 `monster_base_msk_high_realpbr` Base/Light PS `a5a8f750…`/`ec8973cb…` → 신규 program 89 `source.vehicle.ancient-myth-realpbr.v1`(verify EXACT, 85 재검증 EXACT) |
+| CSO 그룹 | 마지막 그룹 84~88을 84~89로 확장: `Shader.cpp` 변형 범위, `native_shader_dispatch.py`, `SourceCharacterShaderVariantProbe.cpp` 반복 범위, 그룹 테스트의 미등록 예시 90. 테스트 3개 OK |
+| 모델 | self-rigged, 서브메시 5, 본 91, 클립 9, validate OK, 원본 TGA 27장 |
+| 탑승자 | `pc_*_vehicle_ani`의 `ride_dragon_2_idle/run_normal_1` 4개, attach OK. 차원술사 `pc_sp_m_00_sk_ride_dragon_2_idle_normal` / `…_run_normal_` |
+| 빌드·실행 | Product Debug PASS(Engine OBJ 2·CSO 7, Client OBJ 4·CSO 21), Vehicles.bootstrap 7종 |
+
+- 사용자 관찰: "잘 나와".
+- Drive 전달: `Character/Vehicle/AncientMyth/`, 4직업 `AnimSets/<Class>_RideDragon2AnimSet.wmodel`.
+
 ## 다른 PC 준비
 
 - Server PC는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server`(또는 `Publish-VehicleProfiles.ps1 -Mode Publish`) 후 재시작한다.

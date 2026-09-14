@@ -29,7 +29,8 @@
         "Character/LanceMaster/AnimSets/LanceMaster_RideSwingAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_RideHoverboardAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_RideHeavywalkerBm9AnimSet.wmodel",
-        "Character/LanceMaster/AnimSets/LanceMaster_RideTubeAnimSet.wmodel"
+        "Character/LanceMaster/AnimSets/LanceMaster_RideTubeAnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported",
@@ -1544,7 +1545,8 @@
         "Character/Artist/AnimSets/Artist_RideSwingAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_RideHoverboardAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_RideHeavywalkerBm9AnimSet.wmodel",
-        "Character/Artist/AnimSets/Artist_RideTubeAnimSet.wmodel"
+        "Character/Artist/AnimSets/Artist_RideTubeAnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_ARTIST",
       "runtimeStatus": "supported",
@@ -4732,7 +4734,8 @@
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideSwingAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideHoverboardAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideHeavywalkerBm9AnimSet.wmodel",
-        "Character/DimensionMaster/AnimSets/DimensionMaster_RideTubeAnimSet.wmodel"
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideTubeAnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported",
@@ -7318,7 +7321,8 @@
         "Character/Warlord/AnimSets/Warlord_RideSwingAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_RideHoverboardAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_RideHeavywalkerBm9AnimSet.wmodel",
-        "Character/Warlord/AnimSets/Warlord_RideTubeAnimSet.wmodel"
+        "Character/Warlord/AnimSets/Warlord_RideTubeAnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_WARLORD",
       "runtimeStatus": "supported",

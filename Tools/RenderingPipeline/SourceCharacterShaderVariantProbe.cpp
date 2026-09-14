@@ -120,7 +120,7 @@ int wmain(int argc, wchar_t** argv)
                 Require(SUCCEEDED(first->Bind_Matrices("g_BoneMatrices", bones.data(), static_cast<uint32_t>(bones.size()))), "bone matrix array bind failed");
             }
             ComPtr<ID3D11PixelShader> cohortShader;
-            for (uint32_t program = 1u; program <= 88u; ++program)
+            for (uint32_t program = 1u; program <= 89u; ++program)
             {
                 if (program > 32u && program < 80u) continue;
                 for (size_t i = 0; i < constants.size(); ++i) constants[i] = 1000.125f + static_cast<float>(program * 300u + i);
