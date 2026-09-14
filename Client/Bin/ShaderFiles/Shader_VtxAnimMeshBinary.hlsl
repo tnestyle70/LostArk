@@ -527,44 +527,61 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     return light;
 }
 
+float SourceCharacterForwardLightAttenuation(uint index, float3 worldPosition, float3 normal,
+    out float3 direction)
+{
+    const float4 directionType = g_SourceMapForwardLightDirectionType[index];
+    direction = -directionType.xyz;
+    if (directionType.w <= 1.f)
+        return 1.f;
+    const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
+    const float3 delta = positionRange.xyz - worldPosition;
+    const float distance = length(delta);
+    direction = distance > 1e-6f ? delta / distance : normal;
+    float attenuation = pow(saturate((positionRange.w - distance) /
+        max(positionRange.w, 1e-6f)), g_SourceMapForwardLightColorExponent[index].w);
+    if (directionType.w > 2.f)
+    {
+        const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
+        const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
+            coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
+        attenuation *= cone * cone;
+    }
+    return attenuation;
+}
+
 SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     if (18u != g_SourceCharacterProgram && 88u != g_SourceCharacterProgram) discard;
     const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    float3 ambient = 0.f;
+    [loop] for (uint ambientIndex = 0u; ambientIndex < g_SourceMapForwardLightCount; ++ambientIndex)
+    {
+        float3 unusedDirection;
+        const float attenuation = SourceCharacterForwardLightAttenuation(ambientIndex,
+            input.vWorldPos.xyz, input.vNormal.xyz, unusedDirection);
+        if (attenuation > 0.f)
+            ambient += g_SourceMapForwardLightColorExponent[ambientIndex].rgb *
+                g_SourceMapForwardLightAmbient[ambientIndex].rgb * attenuation;
+    }
+    // Base programs never read lightColor; program 88 takes the scene ambient
+    // through it as its unbound engine sky-light rows.
     const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
         input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
         input.vNormal.xyz, camera, input.vProjPos, mul(g_ViewMatrix, g_ProjMatrix),
-        float3(0.f, 1.f, 0.f), 0.f, 1.f, frontFace);
+        float3(0.f, 1.f, 0.f), ambient, 1.f, frontFace);
     const SOURCE_CHARACTER_NATIVE_OUTPUT base = EvaluateSourceCharacterBase(baseInput);
     const float opacity = saturate(base.targets[0].a);
     if (base.discarded || opacity <= 1e-4f) discard;
 
     float3 direct = 0.f;
-    float3 ambient = 0.f;
     [loop] for (uint index = 0u; index < g_SourceMapForwardLightCount; ++index)
     {
-        const float4 directionType = g_SourceMapForwardLightDirectionType[index];
         const float4 colorExponent = g_SourceMapForwardLightColorExponent[index];
-        float3 direction = -directionType.xyz;
-        float attenuation = 1.f;
-        if (directionType.w > 1.f)
-        {
-            const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
-            const float3 delta = positionRange.xyz - input.vWorldPos.xyz;
-            const float distance = length(delta);
-            direction = distance > 1e-6f ? delta / distance : input.vNormal.xyz;
-            attenuation = pow(saturate((positionRange.w - distance) /
-                max(positionRange.w, 1e-6f)), colorExponent.w);
-            if (directionType.w > 2.f)
-            {
-                const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
-                const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
-                    coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
-                attenuation *= cone * cone;
-            }
-        }
+        float3 direction;
+        const float attenuation = SourceCharacterForwardLightAttenuation(index,
+            input.vWorldPos.xyz, input.vNormal.xyz, direction);
         if (attenuation <= 0.f) continue;
-        ambient += colorExponent.rgb * g_SourceMapForwardLightAmbient[index].rgb * attenuation;
         const SOURCE_CHARACTER_NATIVE_INPUT lightInput =
             MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb);
         SOURCE_CHARACTER_NATIVE_OUTPUT lit = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;

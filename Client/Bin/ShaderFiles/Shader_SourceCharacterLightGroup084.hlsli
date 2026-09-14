@@ -2078,6 +2078,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight88(SOURCE_CHARACTER_NATIVE_IN
     source[10].w=(g_SourceCharacterTime.xxxx).x;
     source[12]=float4(input.lightColor,1.0);
     source[13].x=1.0;
+    // Existing source draw uses full material coverage and identity colour scale.
+    source[0].w = 1.f;
     float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];
     float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0 = input.values[0], v1 = input.values[1], v2 = input.values[2], v3 = input.values[3], v4 = input.values[4], v5 = input.values[5], v6 = input.values[6], v7 = input.values[7], v8 = input.values[8], v9 = input.values[9];
