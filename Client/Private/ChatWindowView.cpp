@@ -73,6 +73,7 @@ Client::CChatWindowView::CChatWindowView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Chat/ChatWindow_Layout.json") }
 {
+	m_SlotIds = m_pView->Get_SlotIds();
 	/* A CUI_Sprite is visible from construction; this window starts faded out. */
 	Hide_AllSlots();
 }
@@ -127,7 +128,17 @@ void Client::CChatWindowView::Render(
 		Hide_AllSlots();
 		if (m_bInputOpen)
 			Close_Input();
+		m_Drag.Reset();
 		return;
+	}
+
+	/* Drag by the log panel whenever the window is shown (focused or not); a drag keeps the
+	window alive the same way typing does. */
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pView->Get_SlotRect("Chat_LogPanelBg", fX, fY, fWidth, fHeight) &&
+			m_Drag.Update(*m_pView, m_SlotIds, fX, fY, fWidth, fHeight))
+			m_HideDeadline = std::chrono::steady_clock::now() + HIDE_AFTER;
 	}
 
 	m_pView->Set_SlotTint("Chat_LogPanelBg", LOG_PANEL_TINT);

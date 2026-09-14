@@ -792,6 +792,9 @@
     <ClCompile Include="..\Private\InventoryView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\QuickSlotDragView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\CharacterInfoWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -814,6 +817,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\PartyInteractionView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\VehicleWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp">
@@ -850,6 +856,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\UIInputRouter.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\UIWindowDrag.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\UI_Sprite.cpp">
@@ -1423,6 +1432,9 @@
     <ClInclude Include="..\Public\InventoryView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\QuickSlotDragView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\CharacterInfoWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
@@ -1454,6 +1466,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PartyInteractionView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\VehicleWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RaidEntryPreviewView.h">
@@ -1490,6 +1505,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UIInputRouter.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UIWindowDrag.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UI_Sprite.h">

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "UIWindowDrag.h"
 #include "Engine_Defines.h"
 #include "Network/PacketMessages.h"
 
@@ -57,6 +58,9 @@ private:
 
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
+	vector<string> m_SlotIds;
+	/* The roster moves by its title bar (PartyWindow_TitleBg). */
+	CUIWindowDrag m_Drag;
 	string m_strPartyTitle;
 	vector<PARTY_MEMBER> m_Members;
 	/* Max rows the layout document authors (PartyWindow_*_0..3) -- the same 4-player party cap

@@ -53,7 +53,9 @@
 #include "AvatarBookWindowView.h"
 #include "UILabelFont.h"
 #include "CharacterInfoWindowView.h"
+#include "VehicleWindowView.h"
 #include "InventoryView.h"
+#include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
 #include "SkillGroundTargetPreview.h"
 #include "ClickMoveEffect.h"
@@ -905,6 +907,10 @@ HRESULT CMainApp::Initialize()
 	m_pCharacterInfoView = std::make_unique<CCharacterInfoWindowView>(m_pDevice, m_pContext);
 	/* Opened from the character info window's avatar page, drawn over it: constructed last. */
 	m_pAvatarBookView = std::make_unique<CAvatarBookWindowView>(m_pDevice, m_pContext);
+	/* Vehicle window (N): a separate panel on the right, drawn over the windows above. */
+	m_pVehicleWindowView = std::make_unique<CVehicleWindowView>(m_pDevice, m_pContext);
+	/* Last of all: the carried quick-slot icon must ride over every window above. */
+	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -1129,6 +1135,26 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bCharacterInfoKeyDown = keyDown;
 	}
 
+	/* N is the vehicle window keybind (same gating as I / P above). */
+	if (nullptr != m_pVehicleWindowView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
+	{
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t keyDown = windowFocused &&
+			0 != (GetAsyncKeyState(0x4E /* VK_N */) & 0x8000);
+		if (keyDown && !m_bVehicleWindowKeyDown)
+		{
+			m_pVehicleWindowView->Toggle();
+			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+				m_pVehicleWindowView->Is_Open() ?
+				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
+				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
+			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+		}
+		m_bVehicleWindowKeyDown = keyDown;
+	}
+
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
@@ -1168,6 +1194,30 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					m_iNextUseItemSequence++, m_strItemQuickSlot[i]);
 			}
 			m_bItemKeyDown[i] = keyDown;
+		}
+	}
+
+	/* 5/6/7/8/9/0 ride whatever vehicle is registered on SpecialSkill_1..6 (click-carried from
+	the vehicle window, see Update_QuickSlotDrag); the mounted vehicle's own key dismounts. Same
+	Server round trip as the window's button and the H key. */
+	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
+	{
+		constexpr int SPECIAL_VIRTUAL_KEYS[6] = { 0x35, 0x36, 0x37, 0x38, 0x39, 0x30 }; // VK_5..VK_9, VK_0
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		for (int32_t i = 0; i < 6; ++i)
+		{
+			const bool_t keyDown = windowFocused &&
+				0 != (GetAsyncKeyState(SPECIAL_VIRTUAL_KEYS[i]) & 0x8000);
+			if (keyDown && !m_bSpecialKeyDown[i] && 0u != m_iSpecialQuickSlotVehicle[i])
+			{
+				const HUD_PLAYER_STATE& quickSlotPlayer = CCombatHUDViewModel::Get().Get_Player();
+				const uint32_t iRequest = quickSlotPlayer.iVehicleId == m_iSpecialQuickSlotVehicle[i] ?
+					0u : m_iSpecialQuickSlotVehicle[i];
+				if (CPlayerController* pController = Find_ActivePlayerController())
+					(void)pController->Request_VehicleRiding(iRequest);
+			}
+			m_bSpecialKeyDown[i] = keyDown;
 		}
 	}
 
@@ -2721,6 +2771,8 @@ HRESULT CMainApp::Render()
 		m_pCharacterInfoView->Render_Text();
 	if (nullptr != m_pAvatarBookView)
 		m_pAvatarBookView->Render_Text();
+	if (nullptr != m_pVehicleWindowView)
+		m_pVehicleWindowView->Render_Text();
 
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
@@ -2788,6 +2840,13 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pCharacterInfoView->Hide();
 		if (nullptr != m_pAvatarBookView)
 			m_pAvatarBookView->Hide();
+		if (nullptr != m_pVehicleWindowView)
+			m_pVehicleWindowView->Hide();
+		if (nullptr != m_pQuickSlotDragView)
+		{
+			m_pQuickSlotDragView->Cancel();
+			m_pQuickSlotDragView->Hide();
+		}
 		return;
 	}
 
@@ -3140,7 +3199,9 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_SkillCooldowns();
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
+	Update_SpecialQuickSlots();
 	Update_KoukuHudMode();
+	Update_VehicleHud();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
 	if (nullptr != m_pCharacterInfoView)
@@ -3185,7 +3246,22 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pCharacterInfoView->Set_Covered(m_pAvatarBookView->Is_Open());
 			m_pAvatarBookView->Update(fTimeDelta, pLocalCharacter, player, *m_pCharacterInfoView);
 		}
+		if (nullptr != m_pVehicleWindowView)
+		{
+			m_pVehicleWindowView->Update(fTimeDelta, pLocalCharacter, player);
+			/* The window only names the vehicle; the level's CPlayerController owns the Server
+			round trip (pending sequence, result log) exactly as for its own H key. Arena levels
+			get the request too -- the Server answers REJECTED_WORLD_NOT_ALLOWED there. */
+			uint32_t iVehicleId = 0u;
+			if (m_pVehicleWindowView->Take_RidingRequest(iVehicleId))
+			{
+				CPlayerController* pController = Find_ActivePlayerController();
+				if (nullptr == pController || !pController->Request_VehicleRiding(iVehicleId))
+					OutputDebugStringA("[Client][VehicleWindow] Riding request not sent (no controller, or one is still pending).\n");
+			}
+		}
 	}
+	Update_QuickSlotDrag();
 
 	/* Advances every keyframe-animation slot the per-class blocks above played (and any
 	flipbooks, though this document has none) -- must run after them so a Play call issued this
@@ -3215,8 +3291,8 @@ void CMainApp::RenderQuickSlotKeyLabels()
 		{ "Skill_Q", L"Q" }, { "Skill_W", L"W" }, { "Skill_E", L"E" }, { "Skill_R", L"R" },
 		{ "Skill_A", L"A" }, { "Skill_S", L"S" }, { "Skill_D", L"D" }, { "Skill_F", L"F" },
 		{ "Skill_T", L"T" }, { "Skill_V", L"V" },
-		{ "SpecialSkill_1", L"6" }, { "SpecialSkill_2", L"7" }, { "SpecialSkill_3", L"8" },
-		{ "SpecialSkill_4", L"9" }, { "SpecialSkill_5", L"0" },
+		{ "SpecialSkill_1", L"5" }, { "SpecialSkill_2", L"6" }, { "SpecialSkill_3", L"7" },
+		{ "SpecialSkill_4", L"8" }, { "SpecialSkill_5", L"9" }, { "SpecialSkill_6", L"0" },
 		{ "Item_1", L"1" }, { "Item_2", L"2" }, { "Item_3", L"3" }, { "Item_4", L"4" },
 	};
 
@@ -3256,9 +3332,11 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	const bool_t bKoukuModeLabels = koukuLabelState.isValid &&
 		HUD_KOUKU_HUD_MODE::NONE != koukuLabelState.eHudMode &&
 		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
+	/* The mounted-vehicle HUD (Update_VehicleHud) drops the T/V column the same way. */
+	const bool_t bMountedLabels = 0u != keyLabelPlayer.iVehicleId;
 	for (const KEY_LABEL& Label : LABELS)
 	{
-		if (bKoukuModeLabels &&
+		if ((bKoukuModeLabels || bMountedLabels) &&
 			(0 == std::strcmp(Label.pSlotId, "Skill_T") || 0 == std::strcmp(Label.pSlotId, "Skill_V")))
 		{
 			continue;
@@ -3298,6 +3376,140 @@ namespace
 		case HUD_KOUKU_HUD_MODE::MAZE: return "MAZE";
 		default: return nullptr;
 		}
+	}
+}
+
+CPlayerController* CMainApp::Find_ActivePlayerController() const
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (ETOUI(LEVEL::BERN) == currentLevel)
+	{
+		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+			return &pBern->Get_PlayerController();
+	}
+	else if (ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel)
+	{
+		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+			return &pCharacterSelect->Get_DebugPlayerController();
+	}
+	else if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
+	{
+		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+			return &pValtanArena->Get_DebugPlayerController();
+	}
+	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+	{
+		if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
+			return &pKoukuArena->Get_DebugPlayerController();
+	}
+	return nullptr;
+}
+
+void CMainApp::Update_QuickSlotDrag()
+{
+	if (nullptr == m_pQuickSlotDragView || nullptr == m_pHUDRuntimeView)
+		return;
+	string strItemId, strIconPath;
+	if (nullptr != m_pInventoryView && m_pInventoryView->Try_Consume_ItemPick(strItemId, strIconPath))
+		m_pQuickSlotDragView->Begin_ItemCarry(strItemId, strIconPath);
+	uint32_t iVehicleId = 0u;
+	if (nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Take_IconPick(iVehicleId, strIconPath))
+		m_pQuickSlotDragView->Begin_VehicleCarry(iVehicleId, strIconPath);
+	if (!m_pQuickSlotDragView->Update())
+		return;
+
+	/* Drop click: a quick slot of the payload's kind takes it, anywhere else lets go. */
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pHUDRuntimeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pHUDRuntimeView->Get_ResolutionHeight();
+	const auto Hovered = [&](const char* pSlotId)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		return m_pHUDRuntimeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight) &&
+			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+	};
+	if (CQuickSlotDragView::PAYLOAD::ITEM == m_pQuickSlotDragView->Get_Payload())
+	{
+		constexpr const char* ITEM_SLOT_IDS[4] = { "Item_1", "Item_2", "Item_3", "Item_4" };
+		for (int32_t i = 0; i < 4; ++i)
+		{
+			if (!Hovered(ITEM_SLOT_IDS[i]))
+				continue;
+			m_strItemQuickSlot[i] = m_pQuickSlotDragView->Get_ItemId();
+			Play_UIButtonClickSound();
+			break;
+		}
+	}
+	else if (CQuickSlotDragView::PAYLOAD::VEHICLE == m_pQuickSlotDragView->Get_Payload())
+	{
+		constexpr const char* SPECIAL_SLOT_IDS[6] = {
+			"SpecialSkill_1", "SpecialSkill_2", "SpecialSkill_3",
+			"SpecialSkill_4", "SpecialSkill_5", "SpecialSkill_6" };
+		for (int32_t i = 0; i < 6; ++i)
+		{
+			if (!Hovered(SPECIAL_SLOT_IDS[i]))
+				continue;
+			m_iSpecialQuickSlotVehicle[i] = m_pQuickSlotDragView->Get_VehicleId();
+			Play_UIButtonClickSound();
+			break;
+		}
+	}
+	m_pQuickSlotDragView->Cancel();
+}
+
+void CMainApp::Update_SpecialQuickSlots()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+	constexpr const char* SPECIAL_ICON_SLOT_IDS[6] = {
+		"SpecialSkill_1_Icon", "SpecialSkill_2_Icon", "SpecialSkill_3_Icon",
+		"SpecialSkill_4_Icon", "SpecialSkill_5_Icon", "SpecialSkill_6_Icon" };
+	for (int32_t i = 0; i < 6; ++i)
+	{
+		const string* pIcon = (0u != m_iSpecialQuickSlotVehicle[i] && nullptr != m_pVehicleWindowView) ?
+			m_pVehicleWindowView->Find_IconAsset(m_iSpecialQuickSlotVehicle[i]) : nullptr;
+		if (nullptr == pIcon || pIcon->empty())
+		{
+			m_pHUDRuntimeView->Set_SlotVisible(SPECIAL_ICON_SLOT_IDS[i], false);
+			continue;
+		}
+		m_pHUDRuntimeView->Set_SlotTexture(SPECIAL_ICON_SLOT_IDS[i], *pIcon);
+		m_pHUDRuntimeView->Set_SlotVisible(SPECIAL_ICON_SLOT_IDS[i], true);
+	}
+}
+
+void CMainApp::Update_VehicleHud()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	/* Not mounted: the base ownerClass pass in Update_CombatHUD already hid the
+	VehicleRiding-owned emblem (no class owns that name), nothing to undo. */
+	if (0u == player.iVehicleId)
+		return;
+	const std::array<string, 4>* pSkillIcons = nullptr != m_pVehicleWindowView ?
+		m_pVehicleWindowView->Find_SkillIcons(player.iVehicleId) : nullptr;
+
+	/* Same shape as the KoukuSaydon interaction mode: identity block off (no class owns this
+	name), no T/V column, the vehicle emblem in the centre. */
+	m_pHUDRuntimeView->Set_ActiveOwnerClass("VehicleRiding");
+	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
+	m_pHUDRuntimeView->Set_SlotVisible("Vehicle_Hud_Emblem", true);
+
+	/* Q/W/E/R: the vehicle's own actions (EFTable_Vehicle SkillId0/1/2 + MovingSkill, cut by
+	build_vehicle_ui.py); a key with no action and the whole A/S/D/F row show the retail
+	locked-slot icon. Class cooldown pies mean nothing here. */
+	for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
+	{
+		const string strKey = KOUKU_SLOT_KEYS[i];
+		const string strIconSlot = "Skill_" + strKey + "_Icon";
+		const string* pIcon = (nullptr != pSkillIcons && i < pSkillIcons->size() &&
+			!(*pSkillIcons)[i].empty()) ? &(*pSkillIcons)[i] : nullptr;
+		m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
+			nullptr != pIcon ? *pIcon : string("UI/Vehicle/Vehicle_LockIcon.png"));
+		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
+		m_pHUDRuntimeView->Set_SlotVisible("Skill_" + strKey + "_Cooldown", false);
 	}
 }
 
