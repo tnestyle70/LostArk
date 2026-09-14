@@ -1,6 +1,6 @@
 # 쿠크 2관문 진입·3관문 진입 전체·빙고 최종 엔딩 — 카메라·맵 애니메이션 1차 결과
 
-2026-09-14 PR #384 병합에서는 사용자가 완성본으로 지정한 `codex/sequence-capture-focus`의 Sequence/World 정본을 보존했다. 아래 G15의 추가130소품·14 WORLD 및 P3 카메라7컷 설치는 해당 작업 당시 기록이며 현재 통합본의 설치 상태가 아니다. 현재 P3는 WORLD17개·CAMERA5개다. 병합 기준과 검증은 [PR384 동기화 결과](../09-14/2026-09-14_PR384_CANONICAL_SEQUENCE_SYNC_RESULT.md)를 따른다.
+2026-09-14 PR #384에서는 우리 Sequence/World 정본을 보존했다. 이후 사용자가 G15의 배경 소품130개·14 WORLD 추가를 승인하여 아래 G16에서 선택 반영했다. 현재 P3는 WORLD31개·CAMERA5개다. G15의 카메라7박스 변경은 반영하지 않았다. 최초 병합 기준은 [PR384 동기화 결과](../09-14/2026-09-14_PR384_CANONICAL_SEQUENCE_SYNC_RESULT.md), 후속 추가 범위는 이 문서의 G16을 따른다.
 
 계획은 `.md/GB/09-12/2026-09-12_KOUKU_SOURCE_SEQUENCE_RESTORE_IMPLEMENTATION_PLAN.md`의 G12다.
 이번 결과는 그 계획의 **카메라·맵 애니메이션 부분**만 다룬다. 배우(세이튼·쿠크·무기·부착) 저작, 조명·암전·재질·FX는
@@ -243,3 +243,22 @@ C++·셰이더 변경이 없어 빌드하지 않았다. Client/UI 실행과 화�
 - Git 대상: 위 Data 2파일, 도구 3파일, 계획서 G15-11, 이 결과. Area 게시 출력 `Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json`(LFS)도 같은 변경 단위다.
 - 새 Resources 파일은 없다. 소품은 기존 `Map/LV_LUT_MIDNIGHTC_ED/MAP_*_BG_RAD_KOUKUSATON_{FLOOR16A~D,CARD01*}_SM*` 모델을 쓴다.
 - 커밋·푸시는 하지 않았다.
+
+## G16. 우리 완성 시퀀스에 배경 14 WORLD 선택 반영 (2026-09-14)
+
+사용자의 후속 요청으로 main `6307ad2a`에 `c4dc51b0`의 부모 Matinee 이동이 반영된 배경만 선택 반영했다. 작업 브랜치는 `codex/gate2-backdrop-restore`다. 이는 기존165개 정지 부모 소품 전체를 다시 설치하는 변경이 아니다.
+
+- 추가: Object Resource130, Template14, Instance14, Composition WORLD 등록14, P3 발생14. P3는17→31 WORLD다.
+- 기존 World/Composition 행은 원문 byte를 유지하며 배열 끝에 donor 행을 삽입했다. 새 행의 재파싱 결과도 donor와 동일하다. P3의 기존17발생과 카메라5박스, presentationResources, 다른7개 Pattern 전체 원문을 보존했다.
+- World revision1846→1847, Sequence revision58→59, P3 nextWorldOccurrenceOrdinal18→32. nextWorldOrdinal34는 그대로다.
+- 손 부착 미니 세트35개, 카메라7박스 변경, 다른 관문·패턴 변경은 포함하지 않았다. 새 Resources·C++·셰이더·프로젝트 항목은 없다.
+- 안정 ID 충돌·누락 모델·중복 binding target0. 최종 resource448/template251/instance307, 파일13,208,275bytes로 한도 안이다. 새 트랙의 최대 키185개, 총16,112키, 모두27초다.
+- SourceTransform의 위치·회전·스케일은 donor 원문이다. 카드80장과 받침·다리 판50장은 이미 수정된 부모 Matinee 트랙을 사용한다. 새로운 임의 회전이나 배율 보정은 넣지 않았다.
+
+WorldSequences 전용 publisher의 Validate → Publish → Check가 모두 exit0으로 완료됐다. 게시 파일은12,893,053bytes, SHA256 `535ab07ee4ba9049cf3bb5909f41e7cfaa2a8d4a941f81791d594065c68b186a`다. publisher가 CRLF를 LF로 정규화하므로 authoring과 raw SHA는 다르지만 줄바꿈 정규화 후 전체 byte 및 JSON 의미가 동일하다. 변경 JSON parse와 `git diff --check`도 통과했다. 제품 코드 변경이 없어 재빌드는 하지 않았다.
+
+시작 시 실행 중 Client는 없었고 Client/UI 실행·조작·캡처는 하지 않았다. 사용자는 기존 `2관문_진입컷씬`에서11~16.5초 받침 펼침,23~25.5초 카드 하강을 확인한다. 이번 승인 범위에서 카메라는 기존5박스를 유지했다.
+
+작업 도중 보인 별도 SHADOW Composition 생성물3개(`Valtan.bosscomposition.json`, `Composition.publish.receipt.json`, `KoukuSaydonArena.sequencer.json`)의 변경은 이번 배경 데이터 추가와 분리해 커밋에 넣지 않고 작업 파일에 보존했다.
+
+선택 반영과 원문 보존 근거: `out/Gate2BackdropRestore20260914/restore.py`, `receipt.json`, 두 authoring `.before` 사본. runtime 문서는 WorldSequences 전용 publisher로 게시한다.

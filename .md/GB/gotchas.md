@@ -1050,6 +1050,7 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 
 ### 쿠크 컷신의 모델·재질·조명·곡선 연결
 
+- 부모 더미에 부착된 배경은 부모 자신의 Matinee group으로 샘플한다. `world_pose(..., None, parent, t)`는 Move 트랙을 누락시켜 움직이는 카드·받침을 저장 자세에 고정할 수 있다. 모델130개를 WORLD14묶음으로 연결한 경우 모델 수와 타임라인 항목 수를 구별하고, 완성 시퀀스에 추가할 때 기존 카메라·발생·다른 패턴을 보존한다. [2관문 배경 선택 반영 G16](09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md).
 - 보스 무기에서 정적 World Object를 만들면 같은 mesh/slot/D/N/S여도 새 modelAssetId에는 원래 catalog의 native 재질이 자동 적용되지 않을 수 있다. 실제 원본 MIC가 같은지 확인해 `materialSourceModelAssetId`를 전달하고 IBL/BRDF까지 검사한다. 재생성 때 이 참조를 버리지 않는다. geometry의 반전 bake는 환경 반사 복구가 아니다. 상세 절차는 복원 V2의 오브젝트 공통 절차를 따른다.
 - 같은 mesh와 diffuse가 있어도 움직이는 BG8 모델은 static shader와 다른 skinned shader를 쓴다. 공유 MapMaterialSurface 평가와 모든 바인딩을 실제 skinned draw까지 연결하고, 정적 RNM/static shadow를 움직이는 모델에 복사하지 않는다. UNBAKED receiver는 기존 baked bit로 정적 맵 중복 조명을 제외한다.
 - Matinee InterpGroup만 세면 부모에 부착된 맵 소품을 빠뜨린다. source actor의 base/basebonename/relative pose와 component material override까지 조사한다. source transparent override를 범용 diffuse 슬롯으로 표시하지 않는다.

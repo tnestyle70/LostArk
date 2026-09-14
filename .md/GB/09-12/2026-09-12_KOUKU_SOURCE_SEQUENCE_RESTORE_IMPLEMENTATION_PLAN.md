@@ -1177,3 +1177,11 @@ result = bd.build_backdrops(rows, cache['imports'], base.parent_pose_sampler(row
 - 손에 든 책(5~11초): 원본은 쟁반처럼 눕고 위에 미니 세트가 있으며, 현재는 세워져 있다. 저장 키는 원본 Move 트랙 평가와 최대 2.4°로 같고, bake는 AnimTree `evt2_animblending_mix_scale`의 `dummy001` SkelControl(`scale` bone scale 0·강도 0.99, `b_up` +100·강도 1→0.5)을 이미 적용한다. 차이의 원인은 찾지 못했다.
 - 손 부착 미니 세트 35장(`tabetcdum`): 부모가 bake된 세이튼 손에 붙는데, 6.8~9.8초 부모 위쪽 축이 수직에서 약 80° 기울어 원본 화면과 다르게 옆으로 누운 세트가 된다. 세이튼 bake 문제일 가능성이 있어 설치하지 않는다.
 - 0~2.1초 검은 무대, 쿠크 클로즈업의 등 노출: G13-R4 기록(조명/씬 프로필, 배우 bake) 이후 새 증거를 만들지 않았다.
+
+## G16. 완성 시퀀스에 2관문 무대 14 WORLD만 선택 반영
+
+2026-09-14 PR #384 뒤 사용자는 G15의 무대 소품130개/14 WORLD를 반영하고 PR merge까지 진행하도록 승인했다. 기준은 main `6307ad2a`의 Sequence revision58, World revision1846이다. `c4dc51b0`에서 부모 Matinee 이동이 반영된 backdrop resource130/template14/instance14와 WORLD 등록·발생14개만 선택한다. 우리 기존 행과 P3 CAMERA5개, 다른 패턴·타이밍·재질·튜닝은 보존한다. 손 부착 미니 세트35개는 추가하지 않는다.
+
+World의 세 배열과 Composition worlds/P3 worldOccurrences 끝에 donor 원문 행만 삽입하며 전체 JSON을 재직렬화하지 않는다. revision은 각각+1, P3 nextWorldOccurrenceOrdinal은32로 갱신한다. 기존 행의 의미·원문 보존, donor 행 동등성, ID 충돌0, 참조 모델 존재, template251/256 및 문서16MiB 한도를 검사한다. 설치 직전 원문 일치 검사를 수행하고 두 authoring 파일을 갱신한다.
+
+`Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences`의 Validate → Publish → Check로 해당 runtime 문서만 게시한다. 변경 JSON parse·`git diff --check`를 확인하고 feature branch/PR로 main에 병합한 뒤 pull한다. C++·셰이더·Resources 변경이 없어 재빌드는 하지 않으며 Client/UI 실행과 화면 판정은 사용자에게 남긴다. 실제 결과는 기존 카메라·맵 RESULT의 G16에 기록한다.
