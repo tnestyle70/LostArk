@@ -237,6 +237,8 @@ public:
 	{
 		return m_StageMarkers;
 	}
+	// MainApp calls once after the final camera, before Render.World.
+	void Submit_EntranceTriggerMarkers();
 	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
@@ -322,7 +324,7 @@ private:
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
 	bool_t Load_EntranceTriggerMarkers();
 	void Clear_EntranceTriggerMarkers();
-	void Update_EntranceTriggerMarkers(f32_t deltaSeconds);
+	void Update_EntranceTriggerMarkerClocks(f32_t deltaSeconds);
 	void Retire_EntranceTriggerMarker(const std::string& sequenceInstanceId);
 	/* Turns replicated player state into floating status words. Reads the
 	   snapshots only; it never decides that a status is on. */
@@ -603,6 +605,8 @@ private:
 		float4x4_t rootWorld{};
 		f32_t seconds = 0.f;
 		bool_t started = false;
+		bool_t clockStarted = false;
+		bool_t active = false;
 		bool_t retired = false;
 	};
 	std::vector<ENTRANCE_TRIGGER_MARKER> m_EntranceTriggerMarkers;

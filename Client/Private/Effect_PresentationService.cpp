@@ -4999,6 +4999,67 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	return false;
 }
 
+HRESULT Client::CEffectPresentationService::Submit_LevelPlacementSample(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const bool_t visible)
+{
+	if (!Handle.Is_Valid())
+	{
+		g_strStatus = "Level placement sample needs a valid Effect handle.";
+		return E_INVALIDARG;
+	}
+	const auto effect = std::find_if(g_ActiveEffects.begin(), g_ActiveEffects.end(),
+		[Handle](const ACTIVE_EFFECT& value) { return value.iWorldRootHandle == Handle.iValue; });
+	if (effect == g_ActiveEffects.end())
+	{
+		const bool_t pending = std::any_of(g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+			[Handle](const PENDING_EFFECT_SPAWN& value) { return value.Desc.iWorldRootHandle == Handle.iValue; });
+		g_strStatus = pending ? "Level placement Effect is waiting for spawn commit." :
+			"Level placement Effect handle is no longer active.";
+		return pending ? S_FALSE : E_FAIL;
+	}
+	// Reject other Effect owners without changing their visibility or submission.
+	if (!effect->pObject || !effect->bLevelOwned || !effect->bExternallySampled ||
+		effect->iLevelIndex != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		g_strStatus = "Level placement sample needs a current Level-owned externally sampled Effect.";
+		return E_INVALIDARG;
+	}
+	effect->pObject->Use_ExplicitRenderSubmission();
+	if (!visible)
+	{
+		effect->pObject->Set_Visible(false);
+		effect->bPendingInitialSeek = false;
+		return S_OK;
+	}
+	const auto fail = [&](const HRESULT result, std::string reason)
+	{
+		effect->pObject->Set_Visible(false);
+		effect->bPendingInitialSeek = false;
+		g_strStatus = std::move(reason);
+		return result;
+	};
+	if (effect->bFollowAnchorMissing)
+		return fail(E_FAIL, "Level placement Effect lost its world root.");
+	if (effect->pObject->Is_RenderFailureIsolated())
+		return fail(effect->pObject->Get_IsolatedRenderFailure(), effect->pObject->Get_Status());
+	if (effect->bPendingInitialSeek)
+	{
+		if (!effect->ExternalTransformProvider)
+			return fail(E_INVALIDARG, "Level placement sample needs its transform-history provider.");
+		std::string historyError;
+		if (!Commit_ExternalTransformHistorySample(*effect, historyError))
+		{
+			effect->bExternalHistorySampled = false;
+			return fail(E_FAIL, "Level placement transform-history sample failed: " + historyError);
+		}
+	}
+	effect->pObject->Set_Visible(true);
+	const HRESULT result = effect->pObject->Submit_RenderGroups();
+	if (FAILED(result))
+		return fail(result, effect->pObject->Get_Status());
+	return result;
+}
+
 HRESULT Client::CEffectPresentationService::Commit_WorldRootCaptureSample(
 	const EFFECT_WORLD_ROOT_HANDLE Handle)
 {

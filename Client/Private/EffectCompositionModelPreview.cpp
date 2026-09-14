@@ -192,9 +192,7 @@ bool Read_ModelProjection(const std::string& bytes,
 
 namespace
 {
-bool Read_SavedPropContext(const std::string& patternId,
-    KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::shared_ptr<CWorldSequenceDocument>& sequences,
-    std::string& status)
+bool Read_SavedPropText(std::string& text, std::string& status)
 {
     const auto path = CKoukuSaydonCompositionDocument::Resolve_Path();
     std::error_code fileError;
@@ -202,25 +200,82 @@ bool Read_SavedPropContext(const std::string& patternId,
     if (fileError || !bytes || bytes > 16u * 1024u * 1024u)
     { status = "Saved WORLD prop context is unavailable; previous model preserved."; return false; }
     std::ifstream input(path, std::ios::binary);
-    std::string text(static_cast<std::size_t>(bytes), '\0');
+    std::string staged(static_cast<std::size_t>(bytes), '\0');
+    if (!input.read(staged.data(), static_cast<std::streamsize>(staged.size())))
+    { status = "Saved WORLD prop context could not be read."; return false; }
+    text = std::move(staged);
+    return true;
+}
+
+bool Parse_SavedPropDocument(const std::string& text,
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::string& status)
+{
     KOUKU_SAYDON_COMPOSITION_DOCUMENT staged;
-    if (!input.read(text.data(), static_cast<std::streamsize>(text.size())) ||
-        !CKoukuSaydonCompositionDocument::Parse_Text(text, staged, status))
+    if (!CKoukuSaydonCompositionDocument::Parse_Text(text, staged, status))
     { status = "Saved WORLD prop context could not be read: " + status; return false; }
-    const auto selected = std::find_if(staged.Patterns.begin(), staged.Patterns.end(),
-        [&](const auto& row) { return row.strPatternId == patternId; });
-    if (selected == staged.Patterns.end() || !selected->strLoadError.empty())
+    document = std::move(staged);
+    return true;
+}
+
+bool Has_SourcePropCandidate(const std::string& text, const EFFECT_DOCUMENT_DESC& effect,
+    bool& hasCandidate, std::string& status)
+{
+    DATA_JSON_VALUE root;
+    if (!CDataJson::Parse(text, root, status)) return false;
+    if (!root.Is_Object())
+    { status = "Source prop lookup requires a Composition object."; return false; }
+    std::string schema;
+    std::uint32_t version = 0u, revision = 0u, tickHz = 0u;
+    const auto* resources = root.Find("presentationResources");
+    const auto* patterns = root.Find("patterns");
+    if (!Text(root, "schema", schema) || schema != "lostark.kouku-saydon-composition" ||
+        !Unsigned(root, "formatVersion", version, 3u) || version != 3u ||
+        !Unsigned(root, "revision", revision, (std::numeric_limits<std::uint32_t>::max)() - 1u) || !revision ||
+        !Unsigned(root, "fixedTickHz", tickHz, 30u) || tickHz != 30u ||
+        !resources || !resources->Is_Array() || !patterns || !patterns->Is_Array() || patterns->Get_Array().size() > 4096u)
+    { status = "Source prop lookup requires a valid v3 Composition header, presentationResources and patterns."; return false; }
+    // Inspect only the saved join first. Unrelated authoring errors must not
+    // make source-only Effect playback depend on the complete Composition.
+    std::set<std::string> resourceIds;
+    for (const auto& resource : resources->Get_Array())
     {
-        status = "Selected WORLD prop Pattern is missing or invalid: " + patternId;
-        if (selected != staged.Patterns.end()) status += "; " + selected->strLoadError;
-        return false;
+        std::string assetId, id, kind, resourceKind;
+        if (!Text(resource, "assetId", assetId) || assetId != effect.strEffectAssetId) continue;
+        if (!Text(resource, "resourceId", id) || id.empty() || !Text(resource, "kind", kind) ||
+            !Text(resource, "resourceKind", resourceKind))
+        { status = "Source Effect resource identity is invalid: " + effect.strEffectAssetId; return false; }
+        if (kind == "EFFECT" && (resourceKind == "V1_EFFECT" || resourceKind == "V1_ELEMENT")) resourceIds.insert(id);
     }
-    if (selected->WorldOccurrences.empty())
-    { status = "Selected Pattern has no saved WORLD props: " + patternId; return false; }
+    const auto& source = *effect.SourceModelPreview;
+    for (const auto& pattern : patterns->Get_Array())
+    {
+        std::string gate, actor, target;
+        if (!Text(pattern, "gateId", gate) || gate != source.strGateId ||
+            !Text(pattern, "actorProfileId", actor) || actor != source.strActorProfileId ||
+            !Text(pattern, "targetBossPlacementId", target) || target != source.strTargetBossPlacementId) continue;
+        const auto* occurrences = pattern.Find("presentationOccurrences");
+        if (!occurrences || !occurrences->Is_Array()) continue;
+        const bool usesEffect = std::any_of(occurrences->Get_Array().begin(), occurrences->Get_Array().end(),
+            [&](const auto& row) { std::string id; return Text(row, "resourceId", id) && resourceIds.contains(id); });
+        if (!usesEffect) continue;
+        const auto* props = pattern.Find("worldOccurrences");
+        if (!props) continue;
+        if (!props->Is_Array())
+        { status = "Source Effect Pattern worldOccurrences must be an array."; return false; }
+        if (!props->Get_Array().empty())
+        { hasCandidate = true; return true; }
+    }
+    hasCandidate = false;
+    return true;
+}
+
+bool Load_SavedPropSequences(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    std::shared_ptr<CWorldSequenceDocument>& sequences, std::string& status)
+{
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     if (!level)
     { status = "Enter the KoukuSaydon arena before previewing saved WORLD props."; return false; }
-    const auto& area = staged.strAreaId;
+    const auto& area = document.strAreaId;
     if (!CWorldSequenceDocument::Is_ValidStableId(area) || area.find_first_of("/\\:") != std::string::npos)
     { status = "Saved WORLD prop Area ID is invalid."; return false; }
     const auto sequencesPath = CProjectDataRoot::Resolve(std::filesystem::path("Maps/Authoring") /
@@ -231,8 +286,29 @@ bool Read_SavedPropContext(const std::string& patternId,
     auto stagedSequences = std::make_shared<CWorldSequenceDocument>();
     if (!stagedSequences->Load(sequencesPath, area, placements, deploy, status))
     { status = "Saved WORLD prop definitions could not be admitted: " + status; return false; }
-    document = std::move(staged);
     sequences = std::move(stagedSequences);
+    return true;
+}
+
+bool Read_SavedPropContext(const std::string& patternId,
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::shared_ptr<CWorldSequenceDocument>& sequences,
+    std::string& status)
+{
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT staged;
+    std::string text;
+    if (!Read_SavedPropText(text, status) || !Parse_SavedPropDocument(text, staged, status)) return false;
+    const auto selected = std::find_if(staged.Patterns.begin(), staged.Patterns.end(),
+        [&](const auto& row) { return row.strPatternId == patternId; });
+    if (selected == staged.Patterns.end() || !selected->strLoadError.empty())
+    {
+        status = "Selected WORLD prop Pattern is missing or invalid: " + patternId;
+        if (selected != staged.Patterns.end()) status += "; " + selected->strLoadError;
+        return false;
+    }
+    if (selected->WorldOccurrences.empty())
+    { status = "Selected Pattern has no saved WORLD props: " + patternId; return false; }
+    if (!Load_SavedPropSequences(staged, sequences, status)) return false;
+    document = std::move(staged);
     return true;
 }
 
@@ -251,9 +327,7 @@ std::vector<EFFECT_COMPOSITION_MODEL_PROP> Prop_Views(const KOUKU_SAYDON_COMPOSI
     }
     return result;
 }
-}
-
-bool Client::CEffectCompositionModelPreview::Stage_ActorWorldProps(
+bool Collect_ActorWorldProps(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
     const CWorldSequenceDocument& sequences, std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE>& props,
     std::string& status)
@@ -283,9 +357,76 @@ bool Client::CEffectCompositionModelPreview::Stage_ActorWorldProps(
                 pattern.strTargetBossPlacementId)) continue;
         staged.push_back(box);
     }
+    props = std::move(staged);
+    status.clear();
+    return true;
+}
+}
+
+bool Client::CEffectCompositionModelPreview::Stage_ActorWorldProps(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+    const CWorldSequenceDocument& sequences, std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE>& props,
+    std::string& status)
+{
+    std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> staged;
+    if (!Collect_ActorWorldProps(document, pattern, sequences, staged, status)) return false;
     if (staged.empty())
     { status = "Selected Pattern has no supported actor-bound WORLD props: " + pattern.strPatternId; return false; }
     props = std::move(staged);
+    return true;
+}
+
+bool Client::CEffectCompositionModelPreview::Resolve_SourcePropPattern(
+    const EFFECT_DOCUMENT_DESC& effect, std::string& patternId, std::string& status)
+{
+    if (!effect.SourceModelPreview)
+    { patternId.clear(); status.clear(); return true; }
+    const auto& source = *effect.SourceModelPreview;
+    std::string text;
+    bool hasCandidate = false;
+    if (!Read_SavedPropText(text, status) || !Has_SourcePropCandidate(text, effect, hasCandidate, status)) return false;
+    if (!hasCandidate)
+    { patternId.clear(); status.clear(); return true; }
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
+    if (!Parse_SavedPropDocument(text, document, status)) return false;
+    std::set<std::string> resources;
+    for (const auto& resource : document.PresentationResources)
+        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+            resource.strAssetId == effect.strEffectAssetId &&
+            (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
+            resources.insert(resource.strResourceId);
+    std::vector<const KOUKU_SAYDON_COMPOSITION_PATTERN*> candidates;
+    for (const auto& pattern : document.Patterns)
+    {
+        if (pattern.strGateId != source.strGateId || pattern.strActorProfileId != source.strActorProfileId ||
+            pattern.strTargetBossPlacementId != source.strTargetBossPlacementId || pattern.WorldOccurrences.empty() ||
+            std::none_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                [&](const auto& row) { return resources.contains(row.strResourceId); })) continue;
+        if (!pattern.strLoadError.empty())
+        { status = "Saved source prop Pattern is invalid: " + pattern.strPatternId + "; " + pattern.strLoadError; return false; }
+        candidates.push_back(&pattern);
+    }
+    if (candidates.empty())
+    { patternId.clear(); status.clear(); return true; }
+    // Unplaced source Effects do not depend on an active arena or WORLD data.
+    // A candidate's saved references must be admitted before it can be chosen.
+    std::shared_ptr<CWorldSequenceDocument> sequences;
+    if (!Load_SavedPropSequences(document, sequences, status)) return false;
+    std::string selected;
+    for (const auto* candidate : candidates)
+    {
+        std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> props;
+        if (!Collect_ActorWorldProps(document, *candidate, *sequences, props, status)) return false;
+        if (props.empty()) continue;
+        if (!selected.empty())
+        {
+            status = "This Effect has multiple saved prop Patterns (" + selected + ", " + candidate->strPatternId +
+                "). In Model View, choose one KoukuSaydon Pattern and enable Use selected Pattern props before Play All or Play Group.";
+            return false;
+        }
+        selected = candidate->strPatternId;
+    }
+    patternId = std::move(selected);
     status.clear();
     return true;
 }

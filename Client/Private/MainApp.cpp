@@ -2414,7 +2414,10 @@ HRESULT CMainApp::Render()
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	{
 		arena->Submit_MapLightFrame();
+		arena->Submit_EntranceTriggerMarkers();
+	}
 	HRESULT hWorldResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");

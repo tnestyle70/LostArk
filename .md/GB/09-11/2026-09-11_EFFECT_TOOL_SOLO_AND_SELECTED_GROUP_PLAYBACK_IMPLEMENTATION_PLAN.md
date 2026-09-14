@@ -78,3 +78,32 @@ EffectCompositionModelPreview::Select_SourceEffect는 명시 Pattern ID가 있�
 Model View의 명시 Pattern에서 저장 Object anchor 목록을 읽고 정확한 World occurrence를 선택한다. 중립 Effect의 임시 preview target은 해당 Pattern의 기존 모델·총을 준비하고, Resolve_Root가 실제 생성된 총의 sampled pivot를 소비한다. 기존 history가 과거 총 pose를 기록해 world-space 방출도 유지한다. 내부 본 부착이 있는 양손 원본을 이 총 root에 다시 붙이려는 선택은 거절한다. 원본은 Source model 선택에서 내부 본 그룹을 편집한다.
 
 Current Effect의 root 그룹은 기존 Element 위치 전체를 공통 delta로 이동한다. 위치는 Effect JSON의 기존 local transform에만 저장하고 미리보기의 특정 총 선택은 세션 상태다. 제품에서는 Append한 Box Detail이 어떤 총 WORLD에 붙는지 소유한다. Effect 자체에 이미 반영한 총구 위치를 Box offset으로 중복 적용하지 않는다. 기존 사용자 박스 offset은 외부에서 자동 변경하지 않는다.
+
+## G07. 양손 Play All의 저장 총 자동 참조 (2026-09-14)
+
+사용자는 양손 원본의 본 부착을 유지하고 Effect Tool에서 Left/Right 그룹의 위치만 각각
+조절하는 흐름을 최종 선택했다. 이 방식은 현재 그룹 편집과 Save Changes로 지원한다.
+한 손으로 분리해야만 가능한 구조가 아니다. 기존 그룹 중심·본·회전·크기·저장 Composition은
+그대로 유지하며 Play All이 총을 함께 준비하는 연결을 완성한다.
+
+`EffectCompositionModelPreview.h/.cpp`의 `Resolve_SourcePropPattern`은 원본 typed Composition에서
+정확한 Effect asset을 참조하고 source actor/Gate/target이 일치하는 Pattern만 조사한다.
+기존 WorldSequence reader와 actor-bound prop 검사로 지원 소품이 있는 후보를 확인한다.
+현재 양손 참조 P32에는 WORLD가 없고 P35만 좌우 총을 가지므로 P35가 선택된다.
+후보 없음은 기존 source model만 재생하며, 여러 유효 후보나 잘못된 참조는 이유를 표시하고
+기존 미리보기를 보존한다. 이름·asset·P35 ID 하드코딩과 별도 모델 런타임은 추가하지 않는다.
+
+`EffectAuthoringSequencer.cpp`의 `Select_SceneEffectTarget`은 source model Effect의 자동
+소품 문맥을 위 함수로 준비한 뒤 기존 `Select_SourceEffect`에 전달한다. 명시 Pattern 소품
+선택은 우선한다. 내부 본 Effect는 앞서 한 손 미리보기에서 선택한 단일 총 WORLD root를
+상속하지 않는다. source animation과 양손 부착은 계속 Effect 원본이 소유한다.
+Model View 문구는 자동 source props와 명시 Pattern 선택의 차이를 표시하고, 재생 중
+참조하는 Pattern 및 소품 수를 기존 미리보기 패널에서 확인할 수 있게 한다.
+
+현재 `Group Center`는 입력값 변경 시 반영되므로 Enter로만 적용한다는 이전 안내를 교정한다.
+신규 C++ 파일·JSON 필드·project/filter 등록은 없으며 기존 등록과 인코딩을 유지한다.
+실제 선택 함수의 양손 자동 문맥, 이전 한 손 선택 잔여값, 한 손 수동 경로, 후보 없음·중복·
+실패의 기존 상태 보존을 집중 검사한다. 관련 TU 컴파일 후 정규 Debug Product Build로
+EXE를 반영한다. 실행 중 Client의 사용자 편집을 보존하며 화면 조작·최종 총구 정렬은
+사용자가 `발사 섬광 양 손 → Play All → Current Effect → Group by anchor → Left/Right
+Group Center → Save Changes`에서 확인한다.

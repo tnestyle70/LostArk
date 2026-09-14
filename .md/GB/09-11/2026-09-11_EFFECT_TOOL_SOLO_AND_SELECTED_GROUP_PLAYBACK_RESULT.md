@@ -208,3 +208,55 @@ Effect anchor 그룹, saved prop preview, WORLD Append 변경 포함을 확인�
 증거는 `out/KoukuFlameUnification20260914/user-build-verification.json`과
 09-12 KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT의G15-02다.
 사용자는 시퀀스 재생을 확인했으며 각 이펙트의 최종 시각 판정은 별도 사용자 확인 범위다.
+
+## G07. 양손 Play All의 총 자동 참조와 최종 편집 경로 (2026-09-14)
+
+사용자는 양손 원본을 유지하고 Effect Tool의 Left/Right 그룹 위치를 각각 맞추는 방식을
+선택했다. 양손을 한 손으로 분리할 구조적 필요는 없다. 기존 좌우 각11개 본 부착과
+Group Center 편집·Save Changes를 유지하고 Play All/Play Group의 소품 연결을 보완했다.
+사용자의 Effect JSON, Composition, 총 배치·발사 박스와 그룹 위치값은 수정하지 않았다.
+
+`EffectCompositionModelPreview::Resolve_SourcePropPattern`은 source Effect의 정확한 asset
+사용 관계와 actor/Gate/target이 일치하는 Pattern 중 실제 지원 본 소품이 있는 유일한
+문맥을 찾는다. 현재 양손은 P32/P35에서 참조하지만 P35만 두 총을 가지므로 P35를 선택한다.
+기존 `Select_SourceEffect`가 원본3167ms animation과 저장된 두 총을 함께 준비한다.
+단일 총을 골랐던 한 손 미리보기 상태는 양손 내부 본의 root로 상속하지 않는다.
+명시 Pattern props 선택은 자동 탐색보다 우선하며, 복수 후보와 잘못된 연결은 실패를
+표시하고 기존 active preview를 유지한다. 소품의 실제 생성·본 샘플은 기존 경로를 사용한다.
+
+독립 검토에서 소품 없는 source Effect까지 무관한 Composition 오류로 막는 의존성을
+발견해 교정했다. 원문 JSON의 exact join으로 관련 WORLD 후보 존재를 먼저 검사하고,
+후보 없으면 전체 canonical 검증·아레나·WORLD 로드 전에 source-only 경로를 유지한다.
+후보가 있으면 같은 원문 bytes의 기존 typed parser와 소품 검증을 그대로 사용한다.
+Model View의 명시 옵션은 `Use selected Pattern props (Play All / Play Group)`이며,
+단일 총 선택은 `Neutral Effect preview anchor`로 표시한다. 현재 미리보기의 참조 Pattern과
+소품 수 및 그룹 편집 경로도 기존 위치 패널에 표시한다. 앞선 G05의 Enter 전용 적용 안내는
+최신 코드와 달랐으며, 실제 Group Center는 입력값 변경 시 반영하는 것으로 교정했다.
+
+검증은 `out/DualHandPreview20260914/verify_selection_receipt.json`과 `probe_run.log`에 있다.
+변경한 선택·resolver·raw 후보·소품 수집 함수 본문, 실제 CDataJson과 기존 WorldSequence
+codec을 사용한39검사에서 실패0이다. Composition typed projection·model lifecycle·Level load는
+통제한 seam이며 Client/GPU 표시 검사는 아니다. 자동 P35/내부 본, 이전 한 손 선택 격리,
+명시·중립 경로, 후보 없음·중복·누락·실패 시 기존 preview 보존, 무관 resource 오류 격리를
+확인했다. 원본 clip, 좌우11+11, 기존 그룹 helper 본문 및 저장 총 fixture의 현재값 일치와
+최종 source/input hash를 확인했다. 초기 연결 수정2TU의 out 격리 컴파일은 PASS이며,
+그 뒤 추가한 raw 후보 필터는 최종 focused probe에서 컴파일·검사했다. 최종 제품 전체
+컴파일·링크는 사용자가 직접 수행하겠다고 지정하여 실행하지 않았다. UTF-8/BOM/CRLF 보존,
+JSON 입력 해독과 git diff --check는 확인했으며 신규 파일/project 등록은 없다.
+
+사용자는 직접 빌드하고 Client를 다시 실행한 뒤 `F1 → Effect Tool → 발사 섬광 양 손 →
+Open Editor → Play All`에서 총 든 세이튼을 확인한다. `Current Effect → Group by anchor`의
+`Left hand / b_wp_2`와 `Right hand / b_wp_1`의 `Group Center (bone-local m)`를 각각 바꾸고
+한쪽 수정이 다른 손을 움직이지 않는지 확인한 뒤 `Save Changes`로 저장·재열람한다.
+Append는 이 위치 편집의 선행조건이 아니다. 나중에 양손 Effect를 패턴에 Append할 때는
+Boss root를 사용하고 단일 총 WORLD/bone을 외부 앵커로 다시 겹치지 않는다.
+Client/UI 실행·조작·캡처와 최종 총구 정렬 판정은 수행하지 않았으며 사용자 확인 범위다.
+
+### G07 사용자 빌드·실행파일 반영 확인
+
+사용자가 직접 빌드한 `Client/Bin/Debug/Client.exe`의20:16:56 출력과20:16:57 시작된
+Client PID6392를 확인했다. 두 수정 CPP와 헤더가 실제 compiler dependency에 기록됐고,
+최신 소스→제품 OBJ→EXE 시각 및 link 입력이 일치한다. EXE의 새 자동 소품 안내와
+raw 후보 검사 문자열도 확인했다. 근거는 `out/DualHandPreview20260914/user-build-verification.json`과
+`Client/Default/x64/Debug/Client.log`다. 에이전트가 빌드·재실행한 것은 아니며 최종 화면과
+사용자의 그룹 위치·저장 조작은 아직 확인되지 않았다.

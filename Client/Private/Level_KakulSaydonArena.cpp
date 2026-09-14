@@ -28,6 +28,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
+#include "MapAssetRenderUtils.h"
 #include "ValtanCinematicCameraController.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -1682,7 +1683,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
-	Update_EntranceTriggerMarkers(fTimeDelta);
+	Update_EntranceTriggerMarkerClocks(fTimeDelta);
 #ifdef _DEBUG
 	if (!m_bMapAuthoringActive)
 #endif
@@ -3638,23 +3639,51 @@ void Client::CLevel_KakulSaydonArena::Retire_EntranceTriggerMarker(
 	}
 }
 
-void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t deltaSeconds)
+void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkerClocks(const f32_t deltaSeconds)
 {
 	if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f) return;
-	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
-	{
-		Clear_EntranceTriggerMarkers();
-		return;
-	}
 	for (auto& marker : m_EntranceTriggerMarkers)
 	{
 		if (marker.retired) continue;
+		if (marker.clockStarted)
+			marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
+		marker.clockStarted = true;
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Submit_EntranceTriggerMarkers()
+{
+	CProfilerScope profile(CGameInstance::Get().Get_Profiler(), "Level.Kouku.Markers.Prepare");
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		return;
+	MAP_CAMERA_CULL_SNAPSHOT camera;
+	const bool_t cameraValid = CMapAssetRenderUtils::Capture_CameraCullSnapshot(camera);
+	for (auto& marker : m_EntranceTriggerMarkers)
+	{
+		if (marker.retired) continue;
+		// The fixed move_destination asset fits an 8m sphere, including its
+		// source velocity/lifetime, billboard size, camera offset and mesh.
+		// The outer band retains live history during small camera reversals.
+		MAP_FRUSTUM_CULLING_POLICY policy;
+		policy.baseMargin = marker.active ? 32.f : 16.f;
+		MAP_FRUSTUM_RUNTIME_STATE cullState;
+		MAP_FRUSTUM_CULL_DECISION decision;
+		const float3_t center{ marker.rootWorld._41, marker.rootWorld._42, marker.rootWorld._43 };
+		const bool_t visible = !cameraValid ||
+			!CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, camera, {}, {},
+				0u, center, 8.f, cullState, decision) || decision.shouldRender;
+		if (!visible)
+		{
+			if (marker.active && marker.handle.Is_Valid())
+				(void)CEffectPresentationService::Submit_LevelPlacementSample(marker.handle, false);
+			marker.active = false;
+			continue;
+		}
 		const bool_t firstSample = !marker.started;
 		if (firstSample)
 		{
-			// Defer creation until the Level is current; Loader already prepared
-			// the shared World target. Optional failures are isolated once.
-			marker.started = true;
+			// Object iteration has finished. Reuse the Loader's prepared target
+			// and commit only this marker, never unrelated pending gameplay cues.
 			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
 			desc.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
 			desc.strPlacementId = "kouku.entrance.trigger." + marker.placementId;
@@ -3669,8 +3698,9 @@ void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t 
 					": " + status + "\n").c_str());
 				continue;
 			}
+			CEffectPresentationService::Commit_PendingWorldRootSpawns({ marker.handle });
+			marker.started = true;
 		}
-		else marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
 			[root = marker.rootWorld](f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample,
 				std::string& status)
@@ -3680,15 +3710,21 @@ void Client::CLevel_KakulSaydonArena::Update_EntranceTriggerMarkers(const f32_t 
 				status.clear();
 				return true;
 			};
-		if (!CEffectPresentationService::Seek_WorldRoot(marker.handle,
-			marker.seconds, provider, firstSample))
+		const bool_t sampled = CEffectPresentationService::Seek_WorldRoot(marker.handle,
+			marker.seconds, provider, firstSample || !marker.active);
+		const HRESULT submitted = sampled ?
+			CEffectPresentationService::Submit_LevelPlacementSample(marker.handle, true) : E_FAIL;
+		if (S_OK != submitted)
 		{
 			CEffectPresentationService::Stop_WorldRoot(marker.handle);
 			marker.handle = {};
 			marker.retired = true;
-			OutputDebugStringA(("[KoukuEntranceMarker] Sample failed: " +
-				marker.placementId + "\n").c_str());
+			marker.active = false;
+			OutputDebugStringA(("[KoukuEntranceMarker] Sample/submission failed: " +
+				marker.placementId + ": " + CEffectPresentationService::Get_Status() + "\n").c_str());
+			continue;
 		}
+		marker.active = true;
 	}
 }
 
