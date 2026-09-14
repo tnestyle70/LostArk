@@ -494,6 +494,18 @@ void Client::CInventoryView::Update_Items(
 		{
 			std::swap(m_DisplayOrder[iHoveredSlot], m_DisplayOrder[m_iDragFromSlot]);
 		}
+		else if (iHoveredSlot == m_iDragFromSlot &&
+			static_cast<size_t>(m_iDragFromSlot) < m_DisplayOrder.size() &&
+			m_DisplayOrder[m_iDragFromSlot] < filteredIndices.size() &&
+			filteredIndices[m_DisplayOrder[m_iDragFromSlot]] < items.size())
+		{
+			/* Plain click (no move): pick the item up for the quick-slot carry. */
+			const string& strPickedId = items[filteredIndices[m_DisplayOrder[m_iDragFromSlot]]].strItemId;
+			const ITEM_DEFINITION* pPicked = CItemCatalog::Find_ById(strPickedId);
+			m_bHasPendingItemPick = true;
+			m_strPendingPickItemId = strPickedId;
+			m_strPendingPickIconPath = nullptr != pPicked ? pPicked->strIconPath : string();
+		}
 		else if (-1 == iHoveredSlot &&
 			static_cast<size_t>(m_iDragFromSlot) < m_DisplayOrder.size() &&
 			m_DisplayOrder[m_iDragFromSlot] < filteredIndices.size() &&
@@ -523,5 +535,17 @@ bool_t Client::CInventoryView::Try_Consume_ItemDrop(
 	outMouseY = m_fPendingDropMouseY;
 	m_bHasPendingItemDrop = false;
 	m_strPendingDropItemId.clear();
+	return true;
+}
+
+bool_t Client::CInventoryView::Try_Consume_ItemPick(string& outItemId, string& outIconPath)
+{
+	if (!m_bHasPendingItemPick)
+		return false;
+	outItemId = m_strPendingPickItemId;
+	outIconPath = m_strPendingPickIconPath;
+	m_bHasPendingItemPick = false;
+	m_strPendingPickItemId.clear();
+	m_strPendingPickIconPath.clear();
 	return true;
 }

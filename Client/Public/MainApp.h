@@ -50,6 +50,9 @@ class CSkillWindowView;
 class CInventoryView;
 class CCharacterInfoWindowView;
 class CAvatarBookWindowView;
+class CVehicleWindowView;
+class CQuickSlotDragView;
+class CPlayerController;
 class CChatWindowView;
 class CPartyWindowView;
 class CCharacterSelectWindowView;
@@ -185,6 +188,22 @@ private:
 	Update_SkillIcons/Update_SkillCooldowns so it overrides their Q..F results; with
 	no mode it only re-hides the appended emblem slots every frame. */
 	void Update_KoukuHudMode();
+	/* Mounted-state HUD, the same shape as the KoukuSaydon interaction mode: the HUD frame
+	stays, the class identity block gives way to the vehicle emblem (appended
+	Vehicle_Hud_Emblem slot), T/V hide, Q/W/E/R carry the vehicle's own skill icons
+	(VehicleUiCatalog.json skills[]) and A/S/D/F show the locked-slot icon. Runs after
+	Update_KoukuHudMode; with no vehicle the base ownerClass pass already hid the emblem. */
+	void Update_VehicleHud();
+	/* Inventory / vehicle-window icon picks start a CQuickSlotDragView carry; the drop click
+	binds the payload to Item_1..4 (items) or SpecialSkill_1..6 (vehicles), anywhere else
+	lets go. Runs after the windows' own Update so this frame's picks are seen. */
+	void Update_QuickSlotDrag();
+	/* Appended SpecialSkill_1..6_Icon slots show the vehicle bound to 5/6/7/8/9/0. */
+	void Update_SpecialQuickSlots();
+	/* The active level's input controller -- the vehicle window and the 5..0 quick slots submit
+	their riding request through it (CPlayerController::Request_VehicleRiding). nullptr on
+	levels without one. */
+	CPlayerController* Find_ActivePlayerController() const;
 	/* Data/UI/KoukuSaydon/KoukuHudModes.json -> m_KoukuHudModes (fail-closed: a
 	missing/invalid file leaves the list empty, so no mode can ever show). */
 	void Load_KoukuHudModes();
@@ -691,6 +710,17 @@ private:
 	unique_ptr<CCharacterInfoWindowView> m_pCharacterInfoView = { nullptr };
 	unique_ptr<CAvatarBookWindowView> m_pAvatarBookView = { nullptr };
 	bool_t m_bCharacterInfoKeyDown = false;
+	/* Not _DEBUG-gated: N opens the retail vehicle window during real gameplay (the retail
+	Alt+V is the ALT_V skill slot here). Constructed after the avatar book so it draws over
+	every other runtime window while open. */
+	unique_ptr<CVehicleWindowView> m_pVehicleWindowView = { nullptr };
+	bool_t m_bVehicleWindowKeyDown = false;
+	/* Click-to-carry icon for the quick slots, constructed last of all runtime UI so it rides
+	over every window. Item_1..4 (1/2/3/4) take inventory items, SpecialSkill_1..6 (5/6/7/8/9/0)
+	take vehicles; both bindings are Client-local like m_strItemQuickSlot. */
+	unique_ptr<CQuickSlotDragView> m_pQuickSlotDragView = { nullptr };
+	uint32_t m_iSpecialQuickSlotVehicle[6] = {};
+	bool_t m_bSpecialKeyDown[6] = {};
 	/* Combat HUD's Item_1..4 quick slots (HUD_Layout.json). Which itemId each one holds is a
 	Client-local binding only, set by dragging an item out of CInventoryView and dropping it on
 	one of these four rects -- the Server has no concept of a quick slot, only an inventory by

@@ -149,6 +149,7 @@
     <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
+    <ClInclude Include="..\Public\QuickSlotDragView.h" />
     <ClInclude Include="..\Public\CharacterInfoWindowView.h" />
     <ClInclude Include="..\Public\CharacterPortraitRenderer.h" />
     <ClInclude Include="..\Public\AvatarBookWindowView.h" />
@@ -161,10 +162,12 @@
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
     <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
     <ClInclude Include="..\Public\PartyInteractionView.h" />
+    <ClInclude Include="..\Public\VehicleWindowView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UILayoutRuntime.h" />
     <ClInclude Include="..\Public\UIInputRouter.h" />
+    <ClInclude Include="..\Public\UIWindowDrag.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_KakulSaydonArena.h" />
@@ -396,6 +399,7 @@
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
+    <ClCompile Include="..\Private\QuickSlotDragView.cpp" />
     <ClCompile Include="..\Private\CharacterInfoWindowView.cpp" />
     <ClCompile Include="..\Private\CharacterPortraitRenderer.cpp" />
     <ClCompile Include="..\Private\AvatarBookWindowView.cpp" />
@@ -405,10 +409,12 @@
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
+    <ClCompile Include="..\Private\VehicleWindowView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UILayoutRuntime.cpp" />
     <ClCompile Include="..\Private\UIInputRouter.cpp" />
+    <ClCompile Include="..\Private\UIWindowDrag.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp" />

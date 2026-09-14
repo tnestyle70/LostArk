@@ -1,0 +1,212 @@
+{
+ "schema": "lostark.vehicle-ui-catalog",
+ "formatVersion": 1,
+ "source": {
+  "names": "EFTable_GameMsg tip.name/desc.vehicle_<id>",
+  "icons": "EFTable_Vehicle Icon/IconIndex -> IconInfo.loa -> EFUI_ICONATLAS_{V,N}",
+  "strings": "EFTable_GameMsg sys.vehicle.* / sys.common.*",
+  "skills": "EFTable_Vehicle SkillId0/1/2 + MovingSkill -> EFTable_Skill Icon/IconIndex -> IconInfo.loa",
+  "hudEmblem": "quickslot.gfx quickSlotTypeMc vehicle frame (UI/KoukuSaydon/Hud/emblem_interaction_vehicle_saddle.png, cut for the Kouku HUD modes)"
+ },
+ "strings": {
+  "title": "탈 것",
+  "mount": "탑승",
+  "dismount": "탑승 해제",
+  "close": "닫기",
+  "mountedSuffix": "<FONT COLOR='#23C9FF'> (탑승중)</FONT>",
+  "moveSpeed": "이동속도 {0}",
+  "quickslotHint": "탈것을 퀵슬롯에 등록하여 탑승할 수 있습니다.",
+  "cannotHere": "탈것을 탑승할 수 없는 지역입니다.",
+  "cannotNow": "탈것을 소환할 수 없는 상태입니다."
+ },
+ "vehicles": [
+  {
+   "vehicleId": 6705,
+   "archetypeId": "VEHICLE_TERPEION_GOLD",
+   "name": "황금 테르페이온",
+   "description": "하늘의 말이라 불리는 명마.\n황금색의 영롱한 날개를 가지고 있다.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_6705.png",
+   "iconSource": {
+    "page": "Vehicle_1",
+    "x": 192,
+    "y": 832,
+    "width": 64,
+    "height": 64
+   },
+   "skills": [
+    {
+     "slot": "Q",
+     "skillId": 96000,
+     "iconAsset": "UI/Vehicle/Skills/skill_96000.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "W",
+     "skillId": 96010,
+     "iconAsset": "UI/Vehicle/Skills/skill_96010.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "E",
+     "skillId": 96020,
+     "iconAsset": "UI/Vehicle/Skills/skill_96020.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "R",
+     "skillId": 96030,
+     "iconAsset": "UI/Vehicle/Skills/skill_96030.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  },
+  {
+   "vehicleId": 7104,
+   "archetypeId": "VEHICLE_RAPTOR_SILVER_BATTLE",
+   "name": "은색 전투 랩터",
+   "description": "전투에 알맞게 개량된 민첩한 은색 랩터",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_7104.png",
+   "iconSource": {
+    "page": "Vehicle_1",
+    "x": 256,
+    "y": 384,
+    "width": 64,
+    "height": 64
+   },
+   "skills": [
+    {
+     "slot": "Q",
+     "skillId": 95750,
+     "iconAsset": "UI/Vehicle/Skills/skill_95750.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 832,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  },
+  {
+   "vehicleId": 9370,
+   "archetypeId": "VEHICLE_STARLIGHT_BLESSING_SERENE",
+   "name": "고요한 별빛의 가호",
+   "description": "카단 서버 '<FONT COLOR='#FFBF00'>깃랑</FONT>'이 발견한 별빛의 가호.<br>별이 남겨준 은혜가 느껴진다.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_9370.png",
+   "iconSource": {
+    "page": "NewVehicle_0",
+    "x": 768,
+    "y": 640,
+    "width": 128,
+    "height": 128
+   },
+   "skills": [
+    {
+     "slot": "Q",
+     "skillId": 98381,
+     "iconAsset": "UI/Vehicle/Skills/skill_98381.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "W",
+     "skillId": 98382,
+     "iconAsset": "UI/Vehicle/Skills/skill_98382.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "E",
+     "skillId": 98383,
+     "iconAsset": "UI/Vehicle/Skills/skill_98383.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "R",
+     "skillId": 98380,
+     "iconAsset": "UI/Vehicle/Skills/skill_98380.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  },
+  {
+   "vehicleId": 7209,
+   "archetypeId": "VEHICLE_MOKOBOARD_RAINBOW",
+   "name": "레인보우 모코보드",
+   "description": "신바람을 내며 질주하는 모코보드.\n기분좋은 향기가 솔솔 피어난다.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_7209.png",
+   "iconSource": {
+    "page": "Vehicle_2",
+    "x": 704,
+    "y": 256,
+    "width": 64,
+    "height": 64
+   },
+   "skills": [
+    {
+     "slot": "R",
+     "skillId": 95722,
+     "iconAsset": "UI/Vehicle/Skills/skill_95722.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  }
+ ]
+}
