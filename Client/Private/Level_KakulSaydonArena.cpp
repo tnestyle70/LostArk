@@ -3575,8 +3575,12 @@ bool_t Client::CLevel_KakulSaydonArena::Load_EntranceTriggerMarkers()
 		OutputDebugStringA(("[KoukuEntranceMarker] " + status + "\n").c_str());
 		return false;
 	}
-	static constexpr std::array<std::string_view, 5> triggerIds = {
-		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2" };
+	static constexpr std::array<std::string_view, 23> triggerIds = {
+		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2",
+		"Mario1_Trigger_1", "Mario1_Trigger_3", "Mario1_Trigger_5", "Mario2_Trigger_2", "Mario2_Trigger_4",
+		"Mario2_Trigger_7", "Mario3_Trigger_4", "Mario3_Trigger_5", "Mario3_Trigger_6", "Mario3_Trigger_8",
+		"Mario3_Trigger_10", "Mario3_Trigger_12", "Mario4_Tigger_2", "Mario4_Tigger_3", "Mario4_Tigger_5",
+		"Mario4_Tigger_6", "Mario4_Tigger_7", "Mario4_Tigger_13" };
 	std::vector<ENTRANCE_TRIGGER_MARKER> staged;
 	for (const std::string_view id : triggerIds)
 	{

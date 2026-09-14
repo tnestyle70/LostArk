@@ -1365,6 +1365,13 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 - Composition(`KoukuSaydonSequenceComposition.json`)의 `worlds` 등록 ID는 reader가 `kakulsaydon.g1.world.<n>`(n < `nextWorldOrdinal`) 또는 `world.kouku.gate2.intro.<x>`(인스턴스 `world.sequence.instance.kouku.gate2.intro.<x>`와 짝)만 받는다(`KoukuSaydonCompositionDocument.cpp` 1165행). 다른 이름을 등록하면 Composition 전체가 "not admitted"로 로드되지 않으므로 생성기는 `nextWorldOrdinal`을 소비해 ID를 발급한다.
 - 원본 Matinee의 배우 `drawscale` float 트랙은 `build_source_sequences.actor_world`가 굽지 않는다. 배우가 커지거나 작아지는 컷(3관문 비행 6→2, 1→0.3)은 template `scaleMultiplier` 키로 따로 넣어야 한다. 근거는 09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md G13-R3/R4.
 
+### 원작 컷신의 움직이는 맵 오브젝트를 찾을 때
+
+- SCENE 레벨(`LV_LUT_MIDNIGHTC_ED_SCENE03A` 등)의 배우는 Imported baseline placement에 들어오지 않는다. 광장 줄무늬 벽처럼 "컷신에서 움직이는 맵 물체"는 Deploy 프롭이나 정적 배치가 아니라 SCENE 마티니의 interpactor다. 배치 전에 `01_컷신별_타임라인/*_전체.json`의 `interptrackmove.eulertrack`에서 첫·끝 키 차이가 30도 이상인 그룹을 먼저 훑는다. 위치·회전·drawscale·drawscale3d·hard attach 자식(material override 포함)까지 그 행이 정본이다.
+- `EFTable_Prop`의 `공용` 프롭 중 `sys.battle_station.*` 이름을 가진 것(ITR_10175 + ITR_00279 쌍)은 관문마다 반복되는 집합 대기 마커/볼륨이며 파티클(`par_g_waiting_01`)만 가진다. 위치가 가깝다고 벽·문으로 단정하지 않는다.
+- UE3 이동 트랙의 `cim_curveautoclamped` + 양끝 tangent 0은 hermite ease(3u²−2u³)다. 회전 트랙은 로컬 축 회전 키로 굽고, `CWorldSequencePlayer`는 `XMQuaternionMultiply(key, baseline)`이므로 키는 placement 로컬 프레임이다(로컬 −X 회전이 UE roll 증가). 마지막 키 quat w가 0에 가까우면 `%.9g`가 `6.1e-17`로 나오지만 reader의 길이 검사(±0.001)는 통과한다.
+- 세부 값과 검증은 [09-14 Stage1_wall 결과](09-14/2026-09-14_KOUKU_STAGE1_WALL_ORIGINAL_RESTORE_RESULT.md)를 따른다.
+
 ### 탈것·NPC 재질의 UV와 shader cache 해석
 
 - NPC 파이프라인으로 쿠킹한 skinned `.wmodel`은 1.0이라 UV1이 없다. 원본 MIC가 program 5/7/18/19를 쓰면 `CModel`이 "source character requires native extra UV channels"로 모델 전체를 거부하고, 탈것·NPC 표현이 소리 없이 격리된다. 원본 PSK의 EXTRAUVS 유무를 확인하고, set이 1개면 UE3 clamp 규칙대로 해당 submesh UV1=UV0를 `Tools/VehiclePipeline/cook_single_set_uv1.py`로 추가한다. extra set이 있으면 `cook_ocular_uv_channels.py`처럼 원본 채널을 join한다.
