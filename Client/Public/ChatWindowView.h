@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "UIWindowDrag.h"
 #include "Engine_Defines.h"
 
 #include <chrono>
@@ -76,6 +77,9 @@ private:
 
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
+	vector<string> m_SlotIds;
+	/* The log panel is the drag handle (the retail chat window moves by its frame). */
+	CUIWindowDrag m_Drag;
 
 	bool_t m_bInputOpen = false;
 	bool_t m_bFocusPending = false;

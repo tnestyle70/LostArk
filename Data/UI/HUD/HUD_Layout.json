@@ -12,7 +12,8 @@
     "Gunslinger",
     "LanceMaster",
     "DimensionMaster",
-    "Warlord"
+    "Warlord",
+    "VehicleRiding"
   ],
   "slots": [
     {
@@ -6410,6 +6411,321 @@
       "layers": [
         {
           "path": "UI/KoukuSaydon/Hud/emblem_interaction_pickup_gear.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Vehicle_Hud_Emblem",
+      "ownerClass": "VehicleRiding",
+      "type": 0,
+      "rect": {
+        "x": 626.1,
+        "y": 630.733333,
+        "width": 94.8,
+        "height": 91.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/KoukuSaydon/Hud/emblem_interaction_vehicle_saddle.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "SpecialSkill_1_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 739.924011,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "SpecialSkill_2_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 774.209534,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "SpecialSkill_3_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 808.495728,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "SpecialSkill_4_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 841.709534,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "SpecialSkill_5_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 874.924011,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "SpecialSkill_6_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 909.209534,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
           "hoverPath": null,
           "tint": [
             1,
