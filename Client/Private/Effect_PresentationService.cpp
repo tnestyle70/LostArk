@@ -2833,6 +2833,13 @@ Client::CEffectPresentationService::Get_ProductCuePreparationProbe(
 		EffectAssetIds, CEffectCatalog::Get_RuntimeRevision());
 }
 
+std::string Client::CEffectPresentationService::Get_ProductCuePreparationFailure(
+	const std::string& EffectAssetId)
+{
+	const auto* failure = g_ProductPrewarmQueue.Find_FailureReceipt(EffectAssetId);
+	return failure ? failure->strRootMessage : std::string{};
+}
+
 bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContextIdentity,

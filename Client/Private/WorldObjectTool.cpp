@@ -1614,8 +1614,10 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     {
         const auto& row = sequence.effectTracks[index];
         const auto label = row.resourceId + "##" + row.effectTrackId;
-        if (ImGui::Selectable(label.c_str(), m_SelectedEffectRow == index)) m_SelectedEffectRow = index;
+        if (ImGui::Selectable(label.c_str(), m_SelectedBoxKind == 2 && m_SelectedEffectRow == index)) { m_SelectedEffectRow = index; m_SelectedBoxKind = 2; }
     }
+    if (ImGui::Button("Duplicate Selected Effect"))
+    { Duplicate_TimelineBox(sequence, false, m_SelectedEffectRow); return; }
     auto& row = sequence.effectTracks[m_SelectedEffectRow];
     bool changed = false;
     int timing = row.timing == "MOTION_END" ? 0 : 1;
@@ -1665,6 +1667,18 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     if (changed) Mark_Dirty();
 }
 
+
+bool CWorldObjectTool::Duplicate_TimelineBox(WORLD_SEQUENCE_TEMPLATE& sequence, bool animation, size_t index)
+{
+    size_t selected = 0u;
+    if (!m_Document.Duplicate_TimelineBox(sequence.sequenceId, animation, index,
+        m_MapTargets, m_DeployTargets, selected, m_Status)) return false;
+    m_SelectedBoxKind = animation ? 1 : 2;
+    if (animation) m_SelectedAnimationRow = selected; else m_SelectedEffectRow = selected;
+    Mark_Dirty();
+    m_Status += " Save commits the draft.";
+    return true;
+}
 
 void CWorldObjectTool::Refresh_AnimationResources()
 {
@@ -2706,16 +2720,18 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
                 ImGui::PopID();
                 y += 32.f;
             }
-            for (const auto& clip : sequence->animationTracks)
+            for (size_t clipIndex = 0; clipIndex < sequence->animationTracks.size(); ++clipIndex)
             {
+                const auto& clip = sequence->animationTracks[clipIndex];
                 uint32_t end = sequence->durationMs;
                 for (const auto& next : sequence->animationTracks)
                     if (next.slotId == clip.slotId && next.startMs > clip.startMs) end = (std::min)(end, next.startMs);
                 const ImVec2 first(timeX(static_cast<float>(clip.startMs)), y);
                 const ImVec2 last(timeX(static_cast<float>(end)), y + 25.f);
-                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(113, 82, 147, 255), id == m_SelectedInstance,
+                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(113, 82, 147, 255), id == m_SelectedInstance && m_SelectedBoxKind == 1 && m_SelectedAnimationRow == clipIndex,
                     clip.displayName.empty() ? clip.clipName.c_str() : clip.displayName.c_str());
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0)) Select_State(id);
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
+                { if (m_SelectedInstance != id) Select_State(id); m_SelectedAnimationRow = clipIndex; m_SelectedBoxKind = 1; m_DetailOpen = true; }
                 y += 32.f;
             }
             for (size_t index = 0; index < sequence->effectTracks.size(); ++index)
@@ -2726,7 +2742,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
                 CompositionTimeline::DrawBox(draw, first, last, IM_COL32(167, 95, 51, 255),
                     id == m_SelectedInstance && m_SelectedEffectRow == index, effect.resourceId.c_str());
                 if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
-                { if (m_SelectedInstance != id) Select_State(id); m_SelectedEffectRow = index; }
+                { if (m_SelectedInstance != id) Select_State(id); m_SelectedEffectRow = index; m_SelectedBoxKind = 2; m_DetailOpen = true; }
                 y += 32.f;
             }
             ImGui::PopID();
@@ -2771,16 +2787,30 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
     ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
     ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
+    ImGui::BeginDisabled((m_SelectedBoxKind != 1 && m_SelectedBoxKind != 2) ||
+        (m_SelectedBoxKind == 1 && m_SelectedAnimationRow >= sequence.animationTracks.size()) ||
+        (m_SelectedBoxKind == 2 && m_SelectedEffectRow >= sequence.effectTracks.size()));
+    if (ImGui::Button("Duplicate Selected Box")) Duplicate_TimelineBox(sequence, m_SelectedBoxKind == 1,
+        m_SelectedBoxKind == 1 ? m_SelectedAnimationRow : m_SelectedEffectRow);
+    ImGui::EndDisabled();
     const float rowHeight = 32.f;
+    const float labelWidth = 110.f;
+    std::vector<std::string> animationSlots;
+    for (const auto& animation : sequence.animationTracks)
+        if (std::find(animationSlots.begin(), animationSlots.end(), animation.slotId) == animationSlots.end()) animationSlots.push_back(animation.slotId);
     const uint32_t timelineDuration = sequence.PresentationSpanMs();
     const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, timelineDuration * m_Zoom * .001f);
     const float pixelsPerMs = width / timelineDuration;
     const bool showPhysics = resource && resource->sequenceInstanceId.empty();
-    const float tracksHeight = rowHeight * static_cast<float>(sequence.tracks.size() + sequence.animationTracks.size() + sequence.effectTracks.size());
+    const float tracksHeight = rowHeight * static_cast<float>(1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size());
     const float height = 28.f + tracksHeight + (showPhysics ? 64.f : 0.f);
     if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
+        const auto labelOrigin = ImGui::GetCursorScreenPos();
+        const ImVec2 origin(labelOrigin.x + labelWidth, labelOrigin.y);
+        auto* draw = ImGui::GetWindowDrawList();
+        const auto label = [&](const char* text, float y) { draw->AddText(ImVec2(labelOrigin.x + 4.f, y + 4.f), IM_COL32_WHITE, text); };
+        ImGui::SetCursorScreenPos(origin);
         CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), timelineDuration, pixelsPerMs * 1000.f);
         ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
         if (ImGui::IsItemActive())
@@ -2789,14 +2819,19 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(timelineDuration));
             if (instance) Seek(instance->startDelayMs + local / instance->playbackSpeed);
         }
+        label("Stage", origin.y + 28.f);
+        CompositionTimeline::DrawBox(draw, ImVec2(origin.x, origin.y + 28.f),
+            ImVec2(origin.x + sequence.durationMs * pixelsPerMs, origin.y + 53.f),
+            IM_COL32(96, 96, 112, 255), false, sequence.displayName.c_str());
         for (size_t index = 0; index < sequence.tracks.size(); ++index)
         {
             auto& track = sequence.tracks[index]; ImGui::PushID(track.slotId.c_str());
-            const auto row = ImVec2(origin.x, origin.y + 28.f + rowHeight * index);
+            const auto row = ImVec2(origin.x, origin.y + 28.f + rowHeight * (1u + index));
+            label("Transform", row.y);
             CompositionTimeline::DrawBox(draw, row, ImVec2(row.x + sequence.durationMs * pixelsPerMs, row.y + 25.f),
                 IM_COL32(61, 107, 141, 255), m_SelectedTrack == index, track.slotId.c_str(), false, false);
             if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, ImVec2(row.x + width, row.y + 25.f)) && ImGui::IsMouseClicked(0))
-            { m_SelectedTrack = index; m_SelectedKey = 0; }
+            { m_SelectedTrack = index; m_SelectedKey = 0; m_SelectedBoxKind = 0; }
             for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
             {
                 auto& key = track.keys[keyIndex]; const float x = row.x + key.timeMs * pixelsPerMs;
@@ -2805,7 +2840,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
                 draw->AddQuadFilled(ImVec2(x, y - 6), ImVec2(x + 6, y), ImVec2(x, y + 6), ImVec2(x - 6, y), color);
                 ImGui::PushID(static_cast<int>(keyIndex)); ImGui::SetCursorScreenPos(ImVec2((std::clamp)(x - 7.f, row.x, row.x + width - 14.f), row.y + 4.f));
                 ImGui::InvisibleButton("Key", ImVec2(14, 18));
-                if (ImGui::IsItemClicked()) { m_SelectedTrack = index; m_SelectedKey = keyIndex; }
+                if (ImGui::IsItemClicked()) { m_SelectedTrack = index; m_SelectedKey = keyIndex; m_SelectedBoxKind = 0; }
                 if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
                 {
                     const auto moved = static_cast<int>((ImGui::GetIO().MousePos.x - row.x) / pixelsPerMs);
@@ -2817,26 +2852,42 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             }
             ImGui::PopID();
         }
+        for (size_t slot = 0; slot < animationSlots.size(); ++slot)
+            label("Animation", origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + slot));
         for (size_t index = 0; index < sequence.animationTracks.size(); ++index)
         {
             const auto& track = sequence.animationTracks[index];
             uint32_t end = sequence.durationMs;
             for (const auto& next : sequence.animationTracks) if (next.slotId == track.slotId && next.startMs > track.startMs) end = (std::min)(end, next.startMs);
-            const float y = origin.y + 28.f + rowHeight * (sequence.tracks.size() + index);
-            CompositionTimeline::DrawBox(draw, ImVec2(origin.x + track.startMs * pixelsPerMs, y),
-                ImVec2(origin.x + end * pixelsPerMs, y + 25.f), IM_COL32(113, 82, 147, 255), false,
-                track.displayName.empty() ? track.clipName.c_str() : track.displayName.c_str());
+            const auto slot = std::find(animationSlots.begin(), animationSlots.end(), track.slotId) - animationSlots.begin();
+            const float y = origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + slot);
+            const float x = origin.x + track.startMs * pixelsPerMs;
+            const float endX = origin.x + end * pixelsPerMs;
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::SetCursorScreenPos(ImVec2(x, y));
+            ImGui::InvisibleButton("AnimationBox", ImVec2((std::max)(8.f, endX - x), 25.f));
+            if (ImGui::IsItemClicked()) { m_SelectedAnimationRow = index; m_SelectedBoxKind = 1; m_DetailOpen = true; }
+            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f), IM_COL32(113, 82, 147, 255),
+                m_SelectedBoxKind == 1 && m_SelectedAnimationRow == index, track.displayName.empty() ? track.clipName.c_str() : track.displayName.c_str());
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Animation: %s / %u..%u ms\nSelect to edit or duplicate in Box Detail.", track.clipName.c_str(), track.startMs, end);
+            ImGui::PopID();
         }
         for (size_t index = 0; index < sequence.effectTracks.size(); ++index)
         {
             const auto& effect = sequence.effectTracks[index];
-            const float y = origin.y + 28.f + rowHeight * (sequence.tracks.size() + sequence.animationTracks.size() + index);
+            const float y = origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + animationSlots.size() + index);
+            label("Effect", y);
             const float x = origin.x + sequence.EffectStartMs(effect) * pixelsPerMs;
             const float endX = x + effect.durationMs * pixelsPerMs;
+            ImGui::PushID(effect.effectTrackId.c_str());
+            ImGui::SetCursorScreenPos(ImVec2(x, y));
+            ImGui::InvisibleButton("EffectBox", ImVec2((std::max)(8.f, endX - x), 25.f));
+            if (ImGui::IsItemClicked()) { m_SelectedEffectRow = index; m_SelectedBoxKind = 2; m_DetailOpen = true; }
             CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f),
-                IM_COL32(167, 95, 51, 255), m_SelectedEffectRow == index, effect.resourceId.c_str());
-            if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(ImVec2(x, y), ImVec2(endX, y + 25.f)) && ImGui::IsMouseClicked(0))
-                m_SelectedEffectRow = index;
+                IM_COL32(167, 95, 51, 255), m_SelectedBoxKind == 2 && m_SelectedEffectRow == index, effect.resourceId.c_str());
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Effect: %s / %u..%u ms\nSelect to edit or duplicate in Box Detail.",
+                effect.resourceId.c_str(), sequence.EffectStartMs(effect), sequence.EffectStartMs(effect) + effect.durationMs);
+            ImGui::PopID();
         }
         if (showPhysics)
         {
@@ -2878,7 +2929,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         const float local = instance ? (m_ClockMs - instance->startDelayMs) * instance->playbackSpeed : 0.f;
         const float cursorX = origin.x + (std::clamp)(local, 0.f, static_cast<float>(timelineDuration)) * pixelsPerMs;
         draw->AddLine(ImVec2(cursorX, origin.y), ImVec2(cursorX, origin.y + height), IM_COL32(255, 217, 68, 255), 2.f);
-        ImGui::SetCursorScreenPos(origin); ImGui::Dummy(ImVec2(width, height));
+        ImGui::SetCursorScreenPos(labelOrigin); ImGui::Dummy(ImVec2(width + labelWidth, height));
     }
     ImGui::EndChild();
 }
@@ -2891,7 +2942,7 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
         if (ImGui::BeginCombo("Target Track", sequence.tracks[m_SelectedTrack].slotId.c_str()))
         {
             for (size_t index = 0; index < sequence.tracks.size(); ++index)
-                if (ImGui::Selectable(sequence.tracks[index].slotId.c_str(), index == m_SelectedTrack)) { m_SelectedTrack = index; m_SelectedKey = 0; }
+                if (ImGui::Selectable(sequence.tracks[index].slotId.c_str(), index == m_SelectedTrack)) { m_SelectedTrack = index; m_SelectedKey = 0; m_SelectedBoxKind = 0; }
             ImGui::EndCombo();
         }
         auto& track = sequence.tracks[m_SelectedTrack];
@@ -2956,7 +3007,12 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
             for (const auto& next : sequence.animationTracks)
                 if (next.slotId == clip.slotId && next.startMs > clip.startMs) endMs = (std::min)(endMs, next.startMs);
             ImGui::Separator();
-            ImGui::Text("%zu. %u - %u ms", index + 1u, clip.startMs, endMs);
+            const auto clipLabel = std::to_string(index + 1u) + ". " + clip.clipName;
+            if (ImGui::Selectable(clipLabel.c_str(), m_SelectedBoxKind == 1 && m_SelectedAnimationRow == index))
+            { m_SelectedAnimationRow = index; m_SelectedBoxKind = 1; }
+            ImGui::Text("%u - %u ms", clip.startMs, endMs);
+            if (ImGui::SmallButton("Duplicate Clip"))
+            { Duplicate_TimelineBox(sequence, true, index); ImGui::PopID(); break; }
             ImGui::Text("Slot: %s", clip.slotId.c_str());
             bool changed = EditText("Clip display name", clip.displayName);
             ImGui::TextWrapped("Native clip: %s", clip.clipName.c_str());

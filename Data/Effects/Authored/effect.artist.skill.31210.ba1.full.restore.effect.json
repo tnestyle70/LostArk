@@ -432,7 +432,7 @@
             6.020000267028809,
             0.02150000095367432
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -2403,7 +2403,7 @@
             6.551907062530518,
             6.551907062530518
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -4498,7 +4498,7 @@
             7.228083610534668,
             0.011120128631591798
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -6427,7 +6427,7 @@
             7.228083610534668,
             0.011120128631591798
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -8291,7 +8291,7 @@
             0.032240624427795406,
             0.010746874809265138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -10805,7 +10805,7 @@
             2.2,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -13410,7 +13410,7 @@
             2.2,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -15762,7 +15762,7 @@
             0.72,
             1.5
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -17706,7 +17706,7 @@
             0.72,
             1.5
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -19531,7 +19531,7 @@
             2.0736531615257263,
             0.013824354410171508
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,

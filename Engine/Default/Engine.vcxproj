@@ -468,4 +468,48 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBasePrograms.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightPrograms.hlsli" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup001.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup009.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup017.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup025.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup080.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup084.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup001.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup009.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup017.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup025.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup080.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup084.hlsli" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup001.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup009.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup017.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup025.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup080.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup084.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+  </ItemGroup>
 </Project>

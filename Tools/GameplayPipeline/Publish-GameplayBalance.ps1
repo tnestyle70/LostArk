@@ -3519,6 +3519,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$windowProperties += 'cancelAtEnd'
 			if ($window.cancelAtEnd -isnot [bool]) { throw 'Logic cancelAtEnd must be boolean' }
 		}
+		if ($window.kind -ceq 'PATTERN_COMPLETION_COUNT') { $windowProperties += @('patternIds','completionCount') }
 		if ($window.kind -ceq 'OBJECT_OVERLAP') { $windowProperties += @('targetWorldInstanceId','targetWorldX','targetWorldZ','targetRadiusM') }
 		if ($window.kind -ceq 'OBJECT_CONTACT') { $windowProperties += @('contactTargets','contactGroupId','contactPriority') }
 		Assert-ExactProperties $window $windowProperties 'KoukuSaydon logic window'
@@ -3558,7 +3559,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
-				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD') -or
+				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT') -or
 			-not $koukuWindowIds.Add([string]$window.windowId) -or
 			[uint32]$window.durationMs -eq 0 -or
 			$windowEndMs -gt $koukuPatternDurationMs -or
@@ -3580,6 +3581,18 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			@($window.onSuccess).Count -gt 4 -or @($window.onFail).Count -gt 4 -or
 			@($window.onTimeout).Count -gt 4) {
 			throw "KoukuSaydon logic window is invalid: $($koukuPattern.patternId)/$($window.windowId)"
+		}
+		if ($windowKind -ceq 'PATTERN_COMPLETION_COUNT') {
+			Assert-JsonInteger $window.completionCount 'Pattern completionCount' 1 16
+			if ($window.patternIds -isnot [Array] -or @($window.patternIds).Count -lt $window.completionCount -or
+				@($window.patternIds).Count -gt 16 -or @($window.onSuccess).Count -ne 1 -or $window.onSuccess[0].kind -cne 'FOLLOWUP_PATTERN' -or
+				@($window.onFail).Count -ne 0 -or @($window.onTimeout).Count -ne 0 -or @($window.cardRegions).Count -ne 0) { throw 'Pattern completion chain requires candidates, Success followup, and no Collider/Fail/Timeout' }
+			$chainIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			foreach ($candidate in $window.patternIds) {
+				Assert-StableId $candidate 'Pattern completion candidate'
+				if ($candidate -ceq $koukuPattern.patternId -or -not $chainIds.Add($candidate)) { throw 'Pattern chain self reference or duplicate' }
+				$koukuFollowupTargets.Add($candidate)
+			}
 		}
 		# Kind rules mirror CKoukuSaydonBrain::Validate_AnimationOnlyPattern.
 		if ($windowKind -ceq 'ATTACHMENT_HOLD' -and (@($window.onSuccess).Count -ne 0 -or
@@ -3607,7 +3620,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		if ($windowKind -ceq 'OBJECT_CONTACT' -and @($window.onTimeout).Count -ne 0) { throw 'OBJECT_CONTACT has no Timeout results' }
 		if ($windowKind -ceq 'OBJECT_CONTACT' -and @($window.onSuccess | Where-Object { $_.kind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION' }).Count -gt 1) { throw 'OBJECT_CONTACT takes at most one contact motion result' }
-		if ($windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL') -and $window.endsPatternOnSuccess) { throw 'Only stagger or external signal may end the pattern on success' }
+		if ($windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL','PATTERN_COMPLETION_COUNT') -and $window.endsPatternOnSuccess) { throw 'Only stagger or external signal may end the pattern on success' }
 		if ($windowKind -ceq 'ROULETTE_CARD_MATCH' -and @($window.cardRegions).Count -ne 8) {
 			throw "KoukuSaydon roulette window needs eight explicit regions: $($window.windowId)"
 		}
@@ -3650,6 +3663,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			[uint32]$window.poseIndex, [uint32]$window.threshold,
 			(Format-InvariantFloat $window.shieldArcDegrees 'KoukuSaydon logic window shieldArcDegrees'),
 			$endsPatternFlag, $symbolText, (Format-InvariantSignedFloat $window.normalYawOffsetDegrees 'KoukuSaydon shield normal offset'), $insideFail) + $objectTargetFields -join "`t"))
+		if ($windowKind -ceq 'PATTERN_COMPLETION_COUNT') {
+			$patternRows.Add((@('PATTERNLOGICCHAIN', $koukuEncounterDocument.encounterId,
+				$koukuPattern.patternId, $window.windowId, $window.completionCount) + @($window.patternIds) -join "`t"))
+		}
 		if ($null -ne $window.PSObject.Properties['cancelAtEnd'] -and $window.cancelAtEnd) {
 			$patternRows.Add((@('PATTERNLOGICCANCEL', $koukuEncounterDocument.encounterId,
 				$koukuPattern.patternId, $window.windowId) -join "`t"))
@@ -3867,9 +3884,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$hasFollowup = -not [string]::IsNullOrEmpty($followup)
 				if ($outcomeKind -cnotin @(
 						'INSTANT_DEATH','MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT',
-						'CLOWN_TRANSFORM','FEAR','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW','CAPTURE_PLAYER','GRAB_TO_WORLD_OBJECT') -or
+						'CLOWN_TRANSFORM','FEAR','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW','CAPTURE_PLAYER','GRAB_TO_WORLD_OBJECT','MARIO_ENTER') -or
 					$isFollowup -ne $hasFollowup -or
-					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL')) -or
+					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL','PATTERN_COMPLETION_COUNT')) -or
 					($outcomeKind -cin @('MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT') -and
 						[uint32]$outcome.percent -eq 0)) {
 					throw "KoukuSaydon logic outcome is invalid: $($window.windowId)/$slotName/$ordinal"
@@ -3892,7 +3909,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
                     if ($outcome.durationMs -eq 0 -or $outcome.percent -ne 0) { throw 'Fear needs a positive duration and no percent' }
                     $motionIds = @($outcome.presentationId)
                 }
-				if ($outcomeKind -ceq 'GRAB_TO_WORLD_OBJECT') {
+				if ($outcomeKind -ceq 'GRAB_TO_WORLD_OBJECT' -or $outcomeKind -ceq 'MARIO_ENTER') {
 					if ($windowKind -cne 'ENTER_AREA' -or $slotName -cne 'SUCCESS' -or
 						$outcome.percent -ne 0 -or $outcome.durationMs -ne 0) {
 						throw 'A world-object grab only answers an ENTER_AREA success and carries no value'

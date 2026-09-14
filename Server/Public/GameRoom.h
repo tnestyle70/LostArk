@@ -527,6 +527,17 @@ namespace LostArk::Server
 			bool bCompleted = false;
 			bool bOwnsPlayerMode = false;
 			KOUKUSAYDON_LOGIC_LEDGER LogicLedger;
+			// The entry root owns its portal across the completion-driven children.
+			std::optional<SERVER_WORLD_ENTITY> MarioEntryAnchor;
+			std::string strMarioEntryPatternId;
+			std::uint32_t iMarioEntryStartTick = 0u;
+			std::uint8_t iMarioEntryStage = 0u;
+			bool bMarioEntryConsumed = false;
+			std::size_t iCompletionChainFirstIndex = 0u;
+			std::uint32_t iCompletionChainCount = 0u;
+			std::uint32_t iCompletionChainCompleted = 0u;
+			std::string strCompletionChainSuccessPatternId;
+			bool bCompletionChainStarted = false;
 			std::uint32_t iNextWorldCue = 1u;
 			std::unordered_map<std::string, std::string> WorldCueByInstance;
 			std::unordered_map<std::string, std::string> WorldCueByOccurrence;
@@ -558,6 +569,13 @@ namespace LostArk::Server
 		KOUKUSAYDON_LOGIC_LEDGER* Active_KoukuPlayerLedger();
 		[[nodiscard]] const CGameplayCatalog* Resolve_KoukuProductCatalog() const noexcept;
 		void Prepare_KoukuAuditionTick(std::uint32_t serverTick);
+		bool Start_KoukuCompletionChain(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
+			SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
+		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);
+		void Commit_KoukuMarioEntries();
+		struct KOUKU_PENDING_MARIO_ENTRY final { std::string strMemberId; LostArk::Shared::PLAYER_ID iPlayerId; std::uint32_t iRootStartTick; };
+		std::vector<KOUKU_PENDING_MARIO_ENTRY> m_PendingKoukuMarioEntries;
+		bool Enter_MarioFromPattern(SERVER_PLAYER& player, std::uint8_t stage);
 		bool Refresh_KoukuSupportSurfaces(std::uint32_t serverTick);
 		bool Build_KoukuBundleState(LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& message) const;
 		void Broadcast_KoukuBundleState(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state);
@@ -1399,6 +1417,7 @@ namespace LostArk::Server
 		std::mt19937 m_MarioLayoutRandom{std::random_device{}()};
 		// Popped source-ball slots per Mario stage (index 1..4), bit = bootstrap slot.
 		std::uint16_t m_MarioPoppedBalls[5] = {};
+		std::uint8_t m_iNextMarioEntryStage = 1u;
 		CKoukuCardMazeRuntime m_KoukuCardMaze;
 		CKoukuBingoRuntime m_KoukuBingo;
 		std::uint32_t m_iCardMazeMarchStartTick = 0u;

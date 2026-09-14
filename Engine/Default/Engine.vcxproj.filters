@@ -782,4 +782,60 @@
       <Filter>03.ShaderFiles</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup001.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup009.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup017.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup025.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup080.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup084.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup001.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup009.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup017.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup025.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup080.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup084.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup001.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup009.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup017.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup025.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup080.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup084.hlsl">
+      <Filter>03.ShaderFiles</Filter>
+    </FxCompile>
+  </ItemGroup>
 </Project>

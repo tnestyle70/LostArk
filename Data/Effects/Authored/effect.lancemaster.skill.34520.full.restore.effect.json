@@ -276,7 +276,7 @@
             2.5401351928710936,
             1.999999761581421
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {

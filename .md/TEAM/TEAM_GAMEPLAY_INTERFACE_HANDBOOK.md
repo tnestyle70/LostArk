@@ -866,10 +866,22 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 82로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol 83으로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
 `iMarioCurseReleasedMask`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다. 두 기능이 별도 branch에서
 각각 79를 사용했으므로 두 종류의 v79 및 이전73/77/78 실행 파일과 혼용하지 않는다.
+마리오 진행 횟수는 Server 방 상태가 소유한다. 시작·초기화는1이며, `ENTER_AREA`의 단일
+`MARIO_ENTER` 결과가 실제 입장 commit에 성공했을 때만1..4단계를 소비한다. UI 이름이나
+Client collider가 횟수를 증가시키지 않는다. `PATTERN_COMPLETION_COUNT` duration은 같은
+관문의1..16개 패턴 pool과 완료 개수를 저장하고, 선택된 실제 패턴의 `COMPLETED`만 세어
+Success 결과를 실행한다. Timeout·취소·실패를 성공으로 바꾸지 않는다.
+마리오 시작 root의 entry collider·anchor·시계는 child 패턴이 바뀌는 동안 Server가 유지하고,
+기존 Bundle member state를 통해 Client의 retained entry presentation에 전달한다. 늦은 입장도
+같은 root 시계를 소비하며, 입장 소비·chain 종료·취소에는 해당 owner의 상태를 정리한다.
+F1 단독 Test의 Mario stage0은 현재 Server 횟수,1..4는 해당 요청 한 번의 재현 시작값이다.
+seed를 함께 지정하면 같은 후보 순서를 재현한다. Saved Pattern Flow는 테스트 강제값을 사용하지
+않고 실제 Server 진행 횟수를 소비한다. 입력은 기존 typed audition request이며 별도 local 실행을 만들지 않는다.
+
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
 함께 지정하는 optional `resetBossYawDegrees`는 유한한 -360~360도의 절대 yaw로, 매 재생 같은 방향을 snapshot에 반영한다.
 누락하면 기존 yaw를 유지한다. 이 필드를 배포할 때는 확장된 PATTERNSPAWNRESET을 읽는 Server도 함께 빌드·재시작한다.

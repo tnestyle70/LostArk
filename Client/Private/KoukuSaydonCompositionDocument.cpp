@@ -317,7 +317,7 @@ namespace
 		const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
 		std::string& outStatus)
 	{
-		const bool_t hasDurationValues = !logic.strJudgementKind.empty() ||
+		const bool_t hasDurationValues = !logic.PatternIds.empty() || logic.iCompletionCount != 0u || !logic.strJudgementKind.empty() ||
 			0u != logic.iSectorCount || !logic.SectorSymbols.empty() || !logic.RegionIds.empty() ||
 			0.0 != logic.fCenterX || 0.0 != logic.fCenterZ || 0.0 != logic.fOuterRadiusM ||
 			!logic.strWorldSequenceInstanceId.empty() || 0.0 != logic.fHalfAngleDegrees ||
@@ -383,6 +383,13 @@ namespace
 				return false;
 			}
 			const std::string_view kind = logic.strJudgementKind;
+			const bool_t chain = kind == "PATTERN_COMPLETION_COUNT";
+			std::unordered_set<std::string> chainIds;
+			if ((chain && (logic.PatternIds.empty() || logic.PatternIds.size() > 16u || logic.iCompletionCount < 1u ||
+				logic.iCompletionCount > logic.PatternIds.size() || !std::all_of(logic.PatternIds.begin(), logic.PatternIds.end(),
+				[&](const auto& id) { return Is_StableId(id) && chainIds.insert(id).second; }))) ||
+				(!chain && (!logic.PatternIds.empty() || logic.iCompletionCount)))
+			{ outStatus = "Pattern completion count requires 1..16 unique candidate IDs and count within the pool."; return false; }
 			const bool_t roulette = "ROULETTE_CARD_MATCH" == kind;
 			const bool_t gaze = "GAZE_REAL_BOSS" == kind;
 			const bool_t pose = "POSE_INPUT" == kind;
@@ -1773,7 +1780,7 @@ namespace
 						}
 						if ("FOLLOWUP_PATTERN" == result.strOutcomeKind)
 						{
-							if ("STAGGER_WINDOW" != owner.strJudgementKind && "COUNTER_WINDOW" != owner.strJudgementKind && "EXTERNAL_SIGNAL" != owner.strJudgementKind)
+							if ("STAGGER_WINDOW" != owner.strJudgementKind && "COUNTER_WINDOW" != owner.strJudgementKind && "EXTERNAL_SIGNAL" != owner.strJudgementKind && "PATTERN_COMPLETION_COUNT" != owner.strJudgementKind)
 							{
 								outStatus = "A follow-up Pattern outcome belongs to a stagger or external-signal window: " +
 									box.strOccurrenceId;
@@ -1913,6 +1920,56 @@ namespace
             std::unordered_set<std::string> folders, bundles;
             for (const auto& folder : document.Folders)
                 if (!folders.insert(folder.strFolderId).second || !Validate_Folder(document, folder, outStatus)) return false;
+            for (const auto& pattern : document.Patterns)
+            {
+                const auto chainCount = std::count_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
+                    const auto* logic = findLogic(box.strLogicId);
+                    return box.bEnabled && logic && logic->strJudgementKind == "PATTERN_COMPLETION_COUNT";
+                });
+                if (chainCount > 1) { outStatus = "One Pattern may own only one completion chain."; return false; }
+                for (const auto& box : pattern.LogicOccurrences)
+                {
+                    if (!box.bEnabled) continue;
+                    const auto* owner = findLogic(box.strLogicId);
+                    if (!owner) continue;
+                    if (owner->strJudgementKind == "PATTERN_COMPLETION_COUNT")
+                    {
+                        const auto* result = box.OnSuccessLogicIds.size() == 1u ? findLogic(box.OnSuccessLogicIds.front()) : nullptr;
+                        if (!result || result->strOutcomeKind != "FOLLOWUP_PATTERN" || !box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
+                        { outStatus = "Completion count requires exactly one Success followup and no Fail/Timeout."; return false; }
+                        for (const auto& id : owner->PatternIds)
+                        {
+                            const auto child = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == id; });
+                            if (child == document.Patterns.end() || id == pattern.strPatternId || child->Stages.empty() ||
+                                child->strGateId != pattern.strGateId || child->strTargetBossPlacementId != pattern.strTargetBossPlacementId || child->strActorProfileId != pattern.strActorProfileId)
+                            { outStatus = "Completion candidate must be a distinct playable Pattern for the same Gate and boss."; return false; }
+                            for (const auto& childBox : child->LogicOccurrences)
+                            {
+                                if (!childBox.bEnabled) continue;
+                                const auto* childLogic = findLogic(childBox.strLogicId);
+                                if (childLogic && childLogic->strJudgementKind == "PATTERN_COMPLETION_COUNT")
+                                { outStatus = "Completion candidates cannot contain another chain."; return false; }
+                                for (const auto slot : {KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS, KOUKU_SAYDON_OUTCOME_SLOT::FAIL, KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT})
+                                    for (const auto& outcomeId : childBox.Outcomes(slot))
+                                    {
+                                        const auto* outcome = findLogic(outcomeId);
+                                        if (outcome && (outcome->strOutcomeKind == "FOLLOWUP_PATTERN" || outcome->strOutcomeKind == "MARIO_ENTER"))
+                                        { outStatus = "Completion candidates cannot insert another Pattern or Mario entry."; return false; }
+                                    }
+                            }
+                        }
+                    }
+                    for (const auto slot : {KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS, KOUKU_SAYDON_OUTCOME_SLOT::FAIL, KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT})
+                        for (const auto& id : box.Outcomes(slot))
+                        {
+                            const auto* result = findLogic(id);
+                            if (result && result->strOutcomeKind == "MARIO_ENTER" &&
+                                (chainCount != 1 || pattern.strGateId != "GATE3" || owner->strTriggerKind != "ENTER_AREA" ||
+                                 slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS || box.OnSuccessLogicIds.size() != 1u))
+                            { outStatus = "Mario entry is the sole ENTER_AREA Success owned by a Gate 3 completion chain."; return false; }
+                        }
+                }
+            }
             for (const auto& pattern : document.Patterns)
                 if (!Validate_PatternFolder(document, pattern, outStatus) ||
                     !Validate_PatternChildren(document, pattern, outStatus)) return false;
@@ -2227,7 +2284,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "patternIds", "completionCount", "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -2282,6 +2339,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("worldSequenceInstanceId", stagedLogic.strWorldSequenceInstanceId) ||
 				!optionalFinite("halfAngleDegrees", 0.0, 180.0, stagedLogic.fHalfAngleDegrees) ||
 				!optionalFinite("maxDistanceM", 0.0, 1000.0, stagedLogic.fMaxDistanceM) ||
+				!Try_ParseTextList(logicValue.Find("patternIds"), 16u, stagedLogic.PatternIds) ||
+				!optionalUnsigned("completionCount", 16u, stagedLogic.iCompletionCount) ||
 				!optionalUnsigned("poseIndex", 7u, stagedLogic.iPoseIndex) ||
 				!optionalUnsigned("threshold", (std::numeric_limits<std::uint32_t>::max)(), stagedLogic.iThreshold) ||
 				!optionalFinite("shieldArcDegrees", 0.0, 360.0, stagedLogic.fShieldArcDegrees) ||
@@ -3366,7 +3425,12 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		if ("DURATION" == logic.strLogicType && !logic.strJudgementKind.empty())
 		{
 			output << ",\n      \"judgementKind\": \"" << CDataJson::Escape(logic.strJudgementKind) << "\"";
-			if ("ROULETTE_CARD_MATCH" == logic.strJudgementKind)
+			if ("PATTERN_COMPLETION_COUNT" == logic.strJudgementKind)
+			{
+				output << ",\n      \"completionCount\": " << logic.iCompletionCount << ",\n";
+				textList("patternIds", logic.PatternIds, "      ", true);
+			}
+			else if ("ROULETTE_CARD_MATCH" == logic.strJudgementKind)
 			{
 				output << ",\n";
 				textList("regionIds", logic.RegionIds, "      ", true);

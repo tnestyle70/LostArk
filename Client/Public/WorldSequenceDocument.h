@@ -294,6 +294,10 @@ public:
 	const WORLD_SEQUENCE_INSTANCE* Find_Instance(
 		const std::string& instanceId) const;
 	bool_t Is_Equivalent(const CWorldSequenceDocument& other) const;
+    // Stage and validate before replacing one template. Failure preserves the document.
+    bool_t Duplicate_TimelineBox(const std::string& sequenceId, bool animation, size_t index,
+        const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+        const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus);
 	WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId);
 	const WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId) const;
 	std::vector<WORLD_SEQUENCE_OBJECT_RESOURCE>& Get_ObjectResources() noexcept { return m_ObjectResources; }

@@ -956,6 +956,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 		m_strStatus = "KoukuSaydon real boss teleported; three inward-facing clones started";
 	}
 	m_PendingKoukuMechanicTriggers.clear();
+	Commit_KoukuMarioEntries();
 }
 #endif
 

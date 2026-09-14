@@ -5,6 +5,7 @@
 #include "GameRoom.h"
 #include "KoukuSaydonBrain.h"
 #include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include "ServerNavigation.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -38,6 +39,106 @@ using namespace LostArk::Shared;
 
 void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tests, CGameplayCatalog& catalog)
 {
+#ifdef _DEBUG
+    // These use the published composition, real room and the same command
+    // admission/terminal receipts consumed by Complete Play and its F1 test.
+    const auto marioScenario = [&](const bool enterPortal) {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
+        SERVER_WORLD_ENTITY boss{};
+        if (!room->Is_Ready() || !placement || !room->Build_WorldEntity(*placement, room->m_iNextNetEntityId++, boss)) {
+            tests.Require(false, "Load Mario scenario from the published Gate 3 placement"); return std::vector<std::string>{};
+        }
+        const auto bossId = boss.iNetEntityId;
+        room->m_WorldEntities.push_back(boss);
+        SERVER_PLAYER player{};
+        player.iPlayerId = 923u; player.iNetEntityId = 924u; player.iSessionId = 925u;
+        player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+        player.fPositionX = boss.fPositionX; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
+        if (enterPortal) room->m_Players.emplace(player.iPlayerId, player);
+        C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+        request.iRequestSequence = 1u;
+        request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+        request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        request.Scope.strGateId = "GATE3"; request.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+        request.Scope.strBossPlacementId = "boss.kakulsaydon.g3.saydon";
+        request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+        request.Scope.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+        request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog.Active());
+        request.strPatternId = "KAKULSAYDON_G1_PATTERN_34";
+        request.iMarioTestStartStage = 3u; request.iMarioTestSeed = 71023u;
+        CPacketWriter requestWriter;
+        C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST decoded{};
+        bool codec = Write_Message(requestWriter, request);
+        CPacketReader requestReader(requestWriter.Get_Buffer());
+        codec = codec && Read_Message(requestReader, decoded) && decoded.iMarioTestStartStage == 3u && decoded.iMarioTestSeed == 71023u;
+        auto oldPayload = requestWriter.Get_Buffer(); oldPayload.erase(oldPayload.begin(), oldPayload.begin() + 5u);
+        CPacketReader oldReader(oldPayload);
+        codec = codec && !Read_Message(oldReader, decoded) && decoded.iMarioTestStartStage == 3u;
+        auto invalid = request; invalid.iMarioTestStartStage = 5u; CPacketWriter invalidWriter;
+        tests.Require(codec && !Write_Message(invalidWriter, invalid), "Round-trip Mario test state and reject old or invalid request payload transactionally");
+        S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+        const bool queued = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED == room->Evaluate_KoukuSaydonPatternAudition(925u, request, result);
+        if (!queued) { std::cerr << "Mario admission: " << result.strReason << '\n'; tests.Require(false, "Admit actual Mario phase 1 with its dependency closure"); return std::vector<std::string>{}; }
+        std::vector<std::string> selected;
+        std::uint32_t completed = 0u, phase2Tick = 0u;
+        bool bounded = true, retained = false, wire = false;
+        for (std::uint32_t tick = 1u; tick < 2200u; ++tick) {
+            room->m_iServerTick = tick;
+            room->Prepare_KoukuAuditionTick(tick);
+            auto* live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
+            if (!live || !room->Update_KoukuSaydonBoss(*live, tick) || room->m_KoukuSaydonPatternAudition.Members.empty()) { bounded = false; break; }
+            room->Commit_KoukuMarioEntries();
+            const auto& member = room->m_KoukuSaydonPatternAudition.Members.front();
+            if (member.bCompletionChainStarted && selected.empty())
+                selected.assign(member.PatternIds.begin() + member.iCompletionChainFirstIndex,
+                    member.PatternIds.begin() + member.iCompletionChainFirstIndex + member.iCompletionChainCount);
+            bounded = bounded && member.iCompletionChainCompleted >= completed && member.iCompletionChainCompleted <= completed + 1u;
+            completed = member.iCompletionChainCompleted;
+            if (completed < 3u && member.bCompletionChainStarted) {
+                bounded = bounded && std::find(member.PatternIds.begin(), member.PatternIds.end(), "KAKULSAYDON_G1_PATTERN_33") == member.PatternIds.end();
+                retained = retained || member.MarioEntryAnchor.has_value();
+                S2C_KOUKUSAYDON_BUNDLE_STATE state{}, decodedState{};
+                CPacketWriter writer;
+                if (room->Build_KoukuBundleState(state) && Write_Message(writer, state)) {
+                    CPacketReader reader(writer.Get_Buffer());
+                    wire = Read_Message(reader, decodedState) && decodedState.Members.front().iBossNetEntityId == bossId &&
+                        (enterPortal ? decodedState.Members.front().strMarioEntryPatternId.empty() :
+                            decodedState.Members.front().strMarioEntryPatternId == request.strPatternId && decodedState.Members.front().iMarioEntryStage == 3u);
+                    auto truncated = writer.Get_Buffer(); truncated.pop_back(); CPacketReader shortReader(truncated);
+                    wire = wire && !Read_Message(shortReader, decodedState) && decodedState.iRunEpoch == state.iRunEpoch;
+                    auto oldState = writer.Get_Buffer();
+                    oldState.resize(oldState.size() - (27u + state.Members.front().strMarioEntryPatternId.size()));
+                    CPacketReader oldStateReader(oldState);
+                    auto invalidState = state; invalidState.Members.front().iMarioEntryStage = 5u;
+                    CPacketWriter invalidStateWriter;
+                    wire = wire && !Read_Message(oldStateReader, decodedState) && !Write_Message(invalidStateWriter, invalidState);
+                }
+            }
+            if (member.PatternIds[member.iPatternIndex] == "KAKULSAYDON_G1_PATTERN_33") { phase2Tick = tick; break; }
+        }
+        tests.Require(bounded && retained && wire && selected.size() == 3u && std::set<std::string>(selected.begin(), selected.end()).size() == 3u &&
+            completed == 3u && phase2Tick > 610u, "Complete three distinct real patterns before Mario phase 2 without the former fixed timeout");
+        tests.Require(enterPortal ? room->m_Players.at(player.iPlayerId).iMarioStage == 3u && room->m_iNextMarioEntryStage == 4u :
+            room->m_iNextMarioEntryStage == 3u, "Consume typed Mario entry once and advance only the authoritative successful-entry count");
+        return selected;
+    };
+    const auto firstMarioOrder = marioScenario(false);
+    const auto secondMarioOrder = marioScenario(true);
+    tests.Require(!firstMarioOrder.empty() && firstMarioOrder == secondMarioOrder, "Replay the same Mario test seed through the same Server completion path");
+    for (std::uint8_t stage = 1u; stage <= 4u; ++stage) {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        SERVER_PLAYER player{}; player.iPlayerId = 930u; player.iNetEntityId = 931u;
+        player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+        const bool entered = room->Enter_MarioFromPattern(player, stage);
+        const auto after = player;
+        const bool duplicateRejected = !room->Enter_MarioFromPattern(player, stage) && player.iMarioStage == after.iMarioStage && player.fPositionX == after.fPositionX;
+        if (!entered) std::cerr << "Mario stage " << unsigned(stage) << ": " << room->Get_Status() << '\n';
+        tests.Require(entered && duplicateRejected && player.iMarioStage == stage,
+            "Enter each published Mario Intro through existing mode/layout setup and reject duplicate entry");
+    }
+#endif
+
 
 
 	{

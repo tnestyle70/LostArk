@@ -203,6 +203,78 @@ def write_partitioned_dispatch(path, text=None):
     return tuple(files)
 
 
+SOURCE_CHARACTER_PROGRAM_GROUPS = ((1, 8), (9, 16), (17, 24), (25, 32), (80, 83), (84, 88))
+_SOURCE_GROUP_INCLUDE = re.compile(r'#include "(Shader_SourceCharacter(?:Base|Light)Group\d+\.hlsli)"\n')
+_SOURCE_GROUP_GUARD = re.compile(
+    r'^#if !defined\(SOURCE_CHARACTER_PROGRAM_GROUP\) \|\| SOURCE_CHARACTER_PROGRAM_GROUP == \d+\n'
+    r'|^#endif // SOURCE_CHARACTER_PROGRAM_GROUP\n', re.M)
+
+
+def expand_source_character_stage(text, shader_dir):
+    """Recover the authored function/case text before a generator edits it."""
+    expanded = _SOURCE_GROUP_INCLUDE.sub(
+        lambda match: (Path(shader_dir) / match[1]).read_text(encoding='utf8'), text)
+    return _SOURCE_GROUP_GUARD.sub('', expanded)
+
+
+def partition_source_character_stage(text, stage, shader_dir):
+    """Place exact native functions in independently compiled program cohorts."""
+    expanded = expand_source_character_stage(text, shader_dir)
+    prefix = f'SourceCharacter{stage}'
+    dispatcher = expanded.index(f'SOURCE_CHARACTER_NATIVE_OUTPUT Evaluate{prefix}(')
+    functions, tail = expanded[:dispatcher], expanded[dispatcher:]
+    starts = list(re.finditer(
+        r'^SOURCE_CHARACTER_NATIVE_OUTPUT (?:SourceCharacter(?:Base|Light)|SourceMapMonsterBaked)(\d+)\(',
+        functions, re.M))
+    if not starts:
+        raise ValueError(f'No SourceCharacter {stage} functions')
+
+    def group(number):
+        for first, last in SOURCE_CHARACTER_PROGRAM_GROUPS:
+            if first <= number <= last:
+                return first
+        raise ValueError(f'SourceCharacter program {number} needs a registered CSO cohort')
+
+    output, files = [], {}
+    # Preserve complete text in its original order, including source comments.
+    cursor = 0
+    for index, match in enumerate(starts):
+        end = starts[index + 1].start() if index + 1 < len(starts) else len(functions)
+        cohort = group(int(match[1]))
+        name = f'Shader_SourceCharacter{stage}Group{cohort:03d}.hlsli'
+        body = functions[cursor:end]
+        cursor = end
+        if name not in files:
+            output.append(f'#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == {cohort}\n'
+                          f'#include "{name}"\n#endif // SOURCE_CHARACTER_PROGRAM_GROUP\n')
+            files[name] = body
+        else:
+            files[name] += body
+    # Stable cohorts must be contiguous, otherwise reconstruction would reorder source.
+    reconstructed = _SOURCE_GROUP_INCLUDE.sub(lambda match: files[match[1]], ''.join(output))
+    if _SOURCE_GROUP_GUARD.sub('', reconstructed) != functions:
+        raise ValueError(f'Non-contiguous SourceCharacter {stage} function cohort')
+    tail = re.sub(r'^(    case (\d+)u:.*\n)',
+                  lambda match: f'#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == {group(int(match[2]))}\n'
+                  + match[1] + '#endif // SOURCE_CHARACTER_PROGRAM_GROUP\n', tail, flags=re.M)
+    result = ''.join(output) + tail
+    restored = _SOURCE_GROUP_INCLUDE.sub(lambda match: files[match[1]], result)
+    if _SOURCE_GROUP_GUARD.sub('', restored) != expanded:
+        raise ValueError(f'SourceCharacter {stage} partition changed authored source')
+    return result, files
+
+
+def write_partitioned_source_character_stage(path, text=None):
+    path = Path(path)
+    stage = 'Light' if 'Light' in path.name else 'Base'
+    result, files = partition_source_character_stage(
+        path.read_text(encoding='utf8') if text is None else text, stage, path.parent)
+    for name, body in files.items():
+        write_if_changed(path.parent / name, body)
+    write_if_changed(path, result)
+    return tuple(files)
+
+
 def write_partitioned_source_character_programs(path, text=None):
     """Separate the existing Base/Light preprocessor branches physically.
 
@@ -213,7 +285,8 @@ def write_partitioned_source_character_programs(path, text=None):
     if text is None:
         text = path.read_text(encoding='utf8')
     include = re.compile(r'#include "(Shader_SourceCharacter(?:Base|Light)Programs.hlsli)"\n')
-    expanded = include.sub(lambda match: (path.parent / match[1]).read_text(encoding='utf8'), text)
+    expanded = include.sub(lambda match: expand_source_character_stage(
+        (path.parent / match[1]).read_text(encoding='utf8'), path.parent), text)
     marker = '#ifdef SOURCE_CHARACTER_LIGHT_PASS\n'
     begin = expanded.rindex(marker)
     start = begin + len(marker)
@@ -245,10 +318,11 @@ def write_partitioned_source_character_programs(path, text=None):
               + expanded[finish:])
     if include.sub(lambda match: files[match[1]], result) != expanded:
         raise ValueError('Native character source changed while separating passes')
+    leaves = []
     for name, body in files.items():
-        write_if_changed(path.parent / name, body)
+        leaves.extend(write_partitioned_source_character_stage(path.parent / name, body))
     write_if_changed(path, result)
-    return tuple(files)
+    return tuple(files) + tuple(leaves)
 
 
 if __name__ == '__main__':

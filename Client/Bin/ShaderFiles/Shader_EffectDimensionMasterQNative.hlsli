@@ -2,7 +2,7 @@
 // Existing Product and grouped material programs never select these IDs.
 #ifndef EFFECT_DIMENSIONMASTER_Q_NATIVE_HLSLI
 #define EFFECT_DIMENSIONMASTER_Q_NATIVE_HLSLI
-#include "Shader_EffectSliceSceneDepth.hlsli"
+#include "Shader_EffectSceneDepthInput.hlsli"
 
 float4 g_QSourceMaterialParameters[32];
 float g_QSourceMaterialTime = 0.f;

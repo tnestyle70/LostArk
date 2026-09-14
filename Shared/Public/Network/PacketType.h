@@ -78,7 +78,7 @@ namespace LostArk::Shared
 	the next authoritative waypoint to player snapshots.
 	82 appends the ridden vehicle to player snapshots and the riding toggle
 	request/verdict. Both peers need 82. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 82;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 83;
 
 	enum class WORLD_ID : std::uint16_t
 	{

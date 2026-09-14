@@ -1914,3 +1914,73 @@ bool_t Client::CWorldSequenceDocument::Build_MaterialOverride(const WORLD_SEQUEN
     out = std::move(staged);
     return true;
 }
+
+bool_t CWorldSequenceDocument::Duplicate_TimelineBox(const std::string& sequenceId,
+    const bool animation, const size_t index, const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+    const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus)
+{
+    auto* current = Find_Template(sequenceId);
+    if (!current) { outStatus = "Motion is unavailable: " + sequenceId; return false; }
+    auto& sequence = *current;
+    if ((animation && index >= sequence.animationTracks.size()) ||
+        (!animation && index >= sequence.effectTracks.size())) return false;
+    auto candidate = *this;
+    auto* staged = candidate.Find_Template(sequence.sequenceId);
+    if (!staged) return false;
+    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    { outStatus = "Duplicate refused: Motion track limit reached. Existing draft preserved."; return false; }
+    const uint32_t oldDuration = staged->durationMs;
+    uint32_t duration = oldDuration;
+    size_t selected = 0u;
+    if (animation)
+    {
+        auto duplicate = staged->animationTracks[index];
+        uint32_t end = oldDuration;
+        for (const auto& next : staged->animationTracks)
+            if (next.slotId == duplicate.slotId && next.startMs > duplicate.startMs) end = (std::min)(end, next.startMs);
+        const uint32_t span = end - duplicate.startMs;
+        if (oldDuration > CWorldSequenceDocument::MAX_DURATION_MS - span)
+        { outStatus = "Duplicate refused: Animation exceeds the 600-second Motion limit."; return false; }
+        for (auto& next : staged->animationTracks)
+            if (next.slotId == duplicate.slotId && next.startMs >= end) next.startMs += span;
+        duplicate.startMs = end;
+        staged->animationTracks.insert(staged->animationTracks.begin() + index + 1u, duplicate);
+        selected = index + 1u;
+        duration += span;
+    }
+    else
+    {
+        auto duplicate = staged->effectTracks[index];
+        const uint64_t start = uint64_t(staged->EffectStartMs(duplicate)) + duplicate.durationMs;
+        if (start + duplicate.durationMs > CWorldSequenceDocument::MAX_DURATION_MS)
+        { outStatus = "Duplicate refused: Effect exceeds the 600-second presentation limit."; return false; }
+        uint32_t serial = 1u;
+        do { duplicate.effectTrackId = "effect." + std::to_string(serial++); }
+        while (std::any_of(staged->effectTracks.begin(), staged->effectTracks.end(),
+            [&](const auto& row) { return row.effectTrackId == duplicate.effectTrackId; }));
+        duplicate.timing = "TIME";
+        duplicate.startMs = static_cast<uint32_t>(start);
+        duration = (std::max)(duration, duplicate.startMs);
+        staged->effectTracks.insert(staged->effectTracks.begin() + index + 1u, duplicate);
+        selected = index + 1u;
+    }
+    if (duration > oldDuration)
+    {
+        for (auto& track : staged->tracks)
+        {
+            if (track.keys.empty() || track.keys.size() >= CWorldSequenceDocument::MAX_KEY_COUNT)
+            { outStatus = "Duplicate refused: Motion endpoint cannot be extended. Existing draft preserved."; return false; }
+            auto endpoint = track.keys.back(); endpoint.timeMs = duration;
+            track.keys.push_back(endpoint);
+        }
+        staged->durationMs = duration;
+    }
+    std::string status;
+    if (!candidate.Validate(mapPlacements, deployPlacements, status))
+    { outStatus = "Duplicate refused: " + status + ". Existing draft preserved."; return false; }
+    // Preserve references held by the open Detail/Sequencer pane.
+    sequence = std::move(*staged);
+    outIndex = selected;
+    outStatus = "Duplicated the selected box after its window.";
+    return true;
+}

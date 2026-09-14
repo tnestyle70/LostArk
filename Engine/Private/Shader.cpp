@@ -171,6 +171,28 @@ namespace
 	}
 }
 
+struct CShader::PROGRAM_VARIANTS final
+{
+	struct VARIABLE_COPY final
+	{
+		VARIABLE_BINDING* pSource = nullptr;
+		VARIABLE_BINDING* pDestination = nullptr;
+		uint64_t iCopiedRevision = 0u;
+		std::vector<uint8_t> Bytes;
+		std::vector<ID3D11ShaderResourceView*> Resources;
+	};
+	struct VARIANT final
+	{
+		uint32_t iFirstProgram = 0u;
+		uint32_t iLastProgram = 0u;
+		std::shared_ptr<CShader> pShader;
+		std::vector<VARIABLE_COPY> Variables;
+		uint64_t iCopiedRevision = 0u;
+	};
+	VARIABLE_BINDING* pProgram = nullptr;
+	std::vector<VARIANT> Groups;
+};
+
 CShader::CShader(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CComponent { pDevice, pContext }
 {
@@ -357,9 +379,15 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		}
 	}
 
+	std::shared_ptr<PROGRAM_VARIANTS> ProgramVariants;
+	Result = Stage_ProgramVariants(pShaderFilePath, pElements, iNumElements, Bindings, ProgramVariants);
+	if (FAILED(Result))
+		return Fail(L"program-variants", Result);
+
 	m_pEffect = std::move(Effect);
 	m_InputLayouts = std::move(InputLayouts);
 	m_pBindings = std::move(Bindings);
+	m_pProgramVariants = std::move(ProgramVariants);
 	m_iNumPasses = TechniqueDesc.Passes;
 
 	TraceCompiledEffectLoad(
@@ -378,6 +406,124 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 HRESULT CShader::Initialize(void* pArg)
 {
 	return S_OK;
+}
+
+HRESULT CShader::Stage_ProgramVariants(const tchar_t* pShaderFilePath,
+	const D3D11_INPUT_ELEMENT_DESC* pElements, uint32_t iNumElements,
+	const std::shared_ptr<EFFECT_BINDINGS>& pBindings,
+	std::shared_ptr<PROGRAM_VARIANTS>& pVariants)
+{
+	const std::wstring path = pShaderFilePath;
+	const size_t separator = path.find_last_of(L"\\/");
+	const std::wstring filename = path.substr(separator == std::wstring::npos ? 0u : separator + 1u);
+	if (0 != _wcsicmp(filename.c_str(), L"Shader_VtxAnimMeshBinary.hlsl") &&
+		0 != _wcsicmp(filename.c_str(), L"Shader_VtxMeshBinary.hlsl") &&
+		0 != _wcsicmp(filename.c_str(), L"Shader_Deferred.hlsl"))
+		return S_OK;
+	try
+	{
+		auto staged = std::make_shared<PROGRAM_VARIANTS>();
+		for (auto& variable : pBindings->Variables)
+			if (variable.strName == "g_SourceCharacterProgram") staged->pProgram = &variable;
+		if (nullptr == staged->pProgram) return E_FAIL;
+		constexpr uint32_t ranges[][2] = { {1u,8u}, {9u,16u}, {17u,24u}, {25u,32u}, {80u,83u}, {84u,88u} };
+		staged->Groups.reserve(std::size(ranges));
+		for (const auto& range : ranges)
+		{
+			wchar_t suffix[40]{};
+			swprintf_s(suffix, L"_SourceGroup%03u.hlsl", range[0]);
+			const std::wstring variantPath = path.substr(0u, path.size() - 5u) + suffix;
+			PROGRAM_VARIANTS::VARIANT variant;
+			variant.iFirstProgram = range[0];
+			variant.iLastProgram = range[1];
+			variant.pShader = CShader::Create(m_pDevice, m_pContext, variantPath.c_str(), pElements, iNumElements);
+			if (!variant.pShader || variant.pShader->m_iNumPasses != pBindings->Passes.size()) return E_FAIL;
+			for (size_t pass = 0u; pass < pBindings->Passes.size(); ++pass)
+			{
+				D3DX11_PASS_DESC source{}, destination{};
+				if (FAILED(pBindings->Passes[pass]->GetDesc(&source)) ||
+					FAILED(variant.pShader->m_pBindings->Passes[pass]->GetDesc(&destination)) ||
+					nullptr == source.Name || nullptr == destination.Name ||
+					0 != std::strcmp(source.Name, destination.Name) ||
+					nullptr == source.pIAInputSignature || nullptr == destination.pIAInputSignature ||
+					0u == source.IAInputSignatureSize || source.IAInputSignatureSize != destination.IAInputSignatureSize ||
+					0 != std::memcmp(source.pIAInputSignature, destination.pIAInputSignature, source.IAInputSignatureSize))
+					return E_FAIL;
+			}
+			variant.Variables.reserve(pBindings->Variables.size() / 2u);
+			for (auto& source : pBindings->Variables)
+			{
+				if (nullptr == source.pVariable) continue;
+				D3DX11_EFFECT_TYPE_DESC sourceType{};
+				if (FAILED(source.pVariable->GetType()->GetDesc(&sourceType))) return E_FAIL;
+				// Shader and state objects belong to each compiled variant. Only caller
+				// controlled constants and shader resources cross the FX boundary.
+				if (nullptr == source.pResource && sourceType.Class == D3D_SVC_OBJECT) continue;
+				auto* destination = variant.pShader->Find_Variable(source.strName.c_str());
+				D3DX11_EFFECT_TYPE_DESC destinationType{};
+				if (nullptr == destination || FAILED(destination->pVariable->GetType()->GetDesc(&destinationType)) ||
+					sourceType.Class != destinationType.Class || sourceType.Type != destinationType.Type ||
+					sourceType.Elements != destinationType.Elements || sourceType.Rows != destinationType.Rows ||
+					sourceType.Columns != destinationType.Columns || sourceType.Members != destinationType.Members ||
+					sourceType.UnpackedSize != destinationType.UnpackedSize ||
+					(nullptr != source.pResource) != (nullptr != destination->pResource)) return E_FAIL;
+				PROGRAM_VARIANTS::VARIABLE_COPY copy;
+				copy.pSource = &source;
+				copy.pDestination = destination;
+				if (source.pResource) copy.Resources.resize(std::max(1u, sourceType.Elements));
+				else copy.Bytes.resize(sourceType.UnpackedSize);
+				variant.Variables.push_back(std::move(copy));
+			}
+			staged->Groups.push_back(std::move(variant));
+		}
+		pVariants = std::move(staged);
+	}
+	catch (const std::bad_alloc&)
+	{
+		return E_OUTOFMEMORY;
+	}
+	return S_OK;
+}
+
+HRESULT CShader::Apply_ProgramVariant(uint32_t iProgram, uint32_t iPassIndex)
+{
+	for (auto& variant : m_pProgramVariants->Groups)
+	{
+		if (iProgram < variant.iFirstProgram || iProgram > variant.iLastProgram) continue;
+		if (variant.iCopiedRevision == m_pBindings->iRevision)
+			return variant.pShader->Begin(iPassIndex);
+		auto* copies = variant.Variables.data();
+		for (size_t variableIndex = 0u; variableIndex < variant.Variables.size(); ++variableIndex)
+		{
+			auto& copy = copies[variableIndex];
+			if (copy.iCopiedRevision == copy.pSource->iRevision) continue;
+			HRESULT result = S_OK;
+			if (!copy.Resources.empty())
+			{
+				const uint32_t count = static_cast<uint32_t>(copy.Resources.size());
+				result = copy.pSource->pResource->GetResourceArray(copy.Resources.data(), 0u, count);
+				if (SUCCEEDED(result)) result = copy.pDestination->pResource->SetResourceArray(copy.Resources.data(), 0u, count);
+				for (auto*& resource : copy.Resources)
+				{
+					if (resource) resource->Release();
+					resource = nullptr;
+				}
+				copy.pDestination->bHasLastResource = false;
+			}
+			else if (!copy.Bytes.empty())
+			{
+				const uint32_t count = static_cast<uint32_t>(copy.Bytes.size());
+				result = copy.pSource->pVariable->GetRawValue(copy.Bytes.data(), 0u, count);
+				if (SUCCEEDED(result)) result = copy.pDestination->pVariable->SetRawValue(copy.Bytes.data(), 0u, count);
+				copy.pDestination->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
+			}
+			if (FAILED(result)) return result;
+			copy.iCopiedRevision = copy.pSource->iRevision;
+		}
+		variant.iCopiedRevision = m_pBindings->iRevision;
+		return variant.pShader->Begin(iPassIndex);
+	}
+	return E_INVALIDARG;
 }
 
 CShader::VARIABLE_BINDING* CShader::Find_Variable(const char_t* pConstantName) const
@@ -422,6 +568,7 @@ HRESULT CShader::Bind_RawValue(const char_t* pConstantName, const void* pData, u
 		return S_OK;
 	pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
 	const HRESULT result = pBinding->pVariable->SetRawValue(pData, 0, iLength);
+	if (SUCCEEDED(result)) pBinding->iRevision = ++m_pBindings->iRevision;
 	if (SUCCEEDED(result) && cacheable)
 	{
 		std::memcpy(pBinding->LastValue, pData, iLength);
@@ -442,6 +589,7 @@ HRESULT CShader::Bind_Matrix(const char_t* pConstantName, const float4x4_t* pMat
 		return S_OK;
 	pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
 	const HRESULT result = pBinding->pMatrix->SetMatrix(reinterpret_cast<const float_t*>(pMatrix));
+	if (SUCCEEDED(result)) pBinding->iRevision = ++m_pBindings->iRevision;
 	if (SUCCEEDED(result) && pMatrix)
 	{
 		std::memcpy(pBinding->LastValue, pMatrix, sizeof(*pMatrix));
@@ -458,7 +606,9 @@ HRESULT CShader::Bind_Matrices(const char_t* pConstantName, const float4x4_t* pM
 		return E_FAIL;
 
 	pBinding->eLastValueKind = VARIABLE_BINDING::VALUE_KIND::NONE;
-	return pBinding->pMatrix->SetMatrixArray(reinterpret_cast<const float_t*>(pMatrices), 0, iNumMatrices);
+	const HRESULT result = pBinding->pMatrix->SetMatrixArray(reinterpret_cast<const float_t*>(pMatrices), 0, iNumMatrices);
+	if (SUCCEEDED(result)) pBinding->iRevision = ++m_pBindings->iRevision;
+	return result;
 }
 
 HRESULT CShader::Bind_Texture(const char_t* pConstantName, const ComPtr<ID3D11ShaderResourceView>& pSRV)
@@ -471,6 +621,7 @@ HRESULT CShader::Bind_Texture(const char_t* pConstantName, const ComPtr<ID3D11Sh
 		return S_OK;
 	pBinding->bHasLastResource = false;
 	const HRESULT result = pBinding->pResource->SetResource(pSRV.Get());
+	if (SUCCEEDED(result)) pBinding->iRevision = ++m_pBindings->iRevision;
 	if (SUCCEEDED(result))
 	{
 		// The Effect owns the SRV reference until another resource setter replaces it.
@@ -487,7 +638,9 @@ HRESULT CShader::Bind_Textures(const char_t* pConstantName, ID3D11ShaderResource
 		return E_FAIL;
 
 	pBinding->bHasLastResource = false;
-	return pBinding->pResource->SetResourceArray(ppSRV, 0, iNumSRVs);
+	const HRESULT result = pBinding->pResource->SetResourceArray(ppSRV, 0, iNumSRVs);
+	if (SUCCEEDED(result)) pBinding->iRevision = ++m_pBindings->iRevision;
+	return result;
 }
 
 
@@ -510,6 +663,14 @@ HRESULT CShader::Begin(uint32_t iPassIndex)
 			FAILED(Bind_RawValue("g_fEffectBloomSoftKnee",
 				&quality.fBloomSoftKnee, sizeof(quality.fBloomSoftKnee))))
 			return E_FAIL;
+	}
+	if (m_pProgramVariants)
+	{
+		uint32_t program = 0u;
+		if (FAILED(m_pProgramVariants->pProgram->pVariable->GetRawValue(&program, 0u, sizeof(program)))) return E_FAIL;
+		// Forward-only map/vehicle programs retain their existing independent evaluator.
+		if (program != 0u && !(program >= 33u && program <= 65u))
+			return Apply_ProgramVariant(program, iPassIndex);
 	}
 	m_pContext->IASetInputLayout(m_InputLayouts[iPassIndex].Get());
 

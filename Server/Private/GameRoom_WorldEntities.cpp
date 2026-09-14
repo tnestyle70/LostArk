@@ -335,6 +335,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 
 #ifdef _DEBUG
 	Clear_KoukuSaydonPatternAudition();
+	m_iNextMarioEntryStage = 1u;
 #endif
 	std::string resetStatus;
 	if (!m_ServerTriggerSystem.Initialize(

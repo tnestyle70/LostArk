@@ -112759,3 +112759,13 @@ else {
 3. 기존 NetworkProtocolHarness와 Server `--world-playback-contract-test`로 이번 계약을 검사한다. 전체 gameplay regression 실행을 선행조건으로 추가하지 않는다.
 4. Client는 사용자가 Ctrl+F5로 시작하고 F1 > Sequence Viewer > 쿠크/발탄 탭에서 Test 미리보기 또는 승인된 해당 아레나 실행을 확인한다.
 5. JSON/XML parse, allowlist 일치, git diff --check, 실제 실행한 빌드와 미검증 화면 항목은 대응 RESULT에 구분한다. Server protocol 66과 worldbootstrap v9 배포가 필요하다.
+
+## G7. 2026-09-14 F1 메뉴 위치와 기본 접힘
+
+`CMainApp::RenderDeveloperTools`의 `RenderSequenceViewer()` 호출을 최상단에서
+`Vehicle Riding (Debug)` 블록 직후, `Esther Cutin (Debug)` 직전으로 옮긴다.
+`RenderSequenceViewer`의 `ImGuiTreeNodeFlags_DefaultOpen`을 제거해 기본 접힘으로
+시작하고 사용자가 헤더를 눌러 펼치는 기존 동작을 유지한다. 항목이 접혀 있으면
+기존 early return이 목록의 최초 로드를 지연한다. 시퀀스 재생·서버 응답 처리는 변경하지 않는다.
+기존 CPP 두 파일만 수정하므로 프로젝트 등록은 필요 없다. UTF-8 BOM 없음과 CRLF를
+보존하며 정상 증분 Product Build 및 diff를 확인하고 화면은 사용자가 확인한다.

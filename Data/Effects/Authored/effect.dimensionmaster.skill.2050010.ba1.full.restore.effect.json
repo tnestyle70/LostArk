@@ -232,7 +232,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -1688,7 +1688,7 @@
             0.01100000023841858,
             0.01100000023841858
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -4063,7 +4063,7 @@
             0.013999999761581422,
             0.015
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -6224,7 +6224,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -8247,7 +8247,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -9797,7 +9797,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -11749,7 +11749,7 @@
             1.7,
             2.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -13698,7 +13698,7 @@
             1.3800000548362734,
             1.2000000476837158
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -15786,7 +15786,7 @@
             0.0033000001311302186,
             0.015
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -17597,7 +17597,7 @@
             1.9200000286102294,
             0.01600000023841858
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -19381,7 +19381,7 @@
             1.4000000000000001,
             0.07
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -21037,7 +21037,7 @@
             1.5,
             1.5
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -22370,7 +22370,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -23953,7 +23953,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,

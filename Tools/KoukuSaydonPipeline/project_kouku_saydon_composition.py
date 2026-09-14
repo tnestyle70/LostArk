@@ -153,6 +153,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "EXTERNAL_SIGNAL": {"endsPatternOnSuccess"},
     "COUNTER_WINDOW": {"endsPatternOnSuccess"},
     "ATTACHMENT_HOLD": set(),
+    "PATTERN_COMPLETION_COUNT": {"patternIds", "completionCount"},
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
@@ -169,7 +170,7 @@ OUTCOME_KINDS = {
     "CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
     "PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER",
     # Hangs the player on the region that judged them and drags them with it.
-    "GRAB_TO_WORLD_OBJECT",
+    "GRAB_TO_WORLD_OBJECT", "MARIO_ENTER",
 }
 PERCENT_OUTCOME_KINDS = {"MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT"}
 CARD_SYMBOLS = ("HEART", "SPADE", "CLUB", "DIAMOND")
@@ -577,6 +578,12 @@ def _validate_logic_definition(
         elif kind in {"EXTERNAL_SIGNAL", "COUNTER_WINDOW"}:
             definition["endsPatternOnSuccess"] = _boolean(
                 logic.get("endsPatternOnSuccess", False), f"{context} endsPatternOnSuccess")
+        elif kind == "PATTERN_COMPLETION_COUNT":
+            candidates = _array(logic.get("patternIds", []), f"{context} patternIds", 16)
+            if not candidates or len(candidates) != len(set(candidates)):
+                raise CompositionError(f"{context} requires 1..16 unique candidate patterns")
+            definition["patternIds"] = [_stable_id(item, f"{context} candidate") for item in candidates]
+            definition["completionCount"] = _integer(logic.get("completionCount", 0), f"{context} completionCount", 1, len(candidates))
         elif kind == "STAGGER_WINDOW":
             definition["normalYawOffsetDegrees"] = _number(logic.get("normalYawOffsetDegrees", 0), f"{context} normalYawOffsetDegrees", -360, 360)
             definition["threshold"] = _integer(
@@ -1664,6 +1671,11 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 raise CompositionError(
                     f"{box_context} {kind} has no wrong answer and no Fail slot"
                 )
+            if kind == "PATTERN_COMPLETION_COUNT":
+                if outcomes["Fail"] or outcomes["Timeout"] or len(outcomes["Success"]) != 1 or logic_defs[outcomes["Success"][0]].get("kind") != "FOLLOWUP_PATTERN":
+                    raise CompositionError(f"{box_context} completion chain requires exactly one Success followup and no Fail/Timeout")
+                for candidate in owner["patternIds"]:
+                    followup_targets.append((box_id, candidate))
             if kind == "OBJECT_CONTACT" and outcomes["Timeout"]:
                 raise CompositionError(f"{box_context} OBJECT_CONTACT has no Timeout results")
             if kind == "OBJECT_CONTACT" and sum(logic_defs[target].get("kind") == "PLAY_CONTACT_WORLD_OBJECT_MOTION"
@@ -1672,6 +1684,8 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             for slot, targets in outcomes.items():
                 for target in targets:
                     result_kind = logic_defs[target].get("kind")
+                    if result_kind == "MARIO_ENTER" and (kind != "ENTER_AREA" or slot != "Success" or len(targets) != 1):
+                        raise CompositionError(f"{box_context} MARIO_ENTER is the sole ENTER_AREA Success")
                     if result_kind == "CAPTURE_PLAYER":
                         if kind != "ENTER_AREA" or slot != "Success":
                             raise CompositionError(f"{box_context} CAPTURE_PLAYER belongs to ENTER_AREA Success only")
@@ -1694,7 +1708,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                             "whose regions ride a World Object transform track"
                         )
                     if result_kind == "FOLLOWUP_PATTERN":
-                        if kind not in {"STAGGER_WINDOW", "COUNTER_WINDOW", "EXTERNAL_SIGNAL"}:
+                        if kind not in {"STAGGER_WINDOW", "COUNTER_WINDOW", "EXTERNAL_SIGNAL", "PATTERN_COMPLETION_COUNT"}:
                             raise CompositionError(
                                 f"{box_context} FOLLOWUP_PATTERN is only valid on a STAGGER_WINDOW, COUNTER_WINDOW or EXTERNAL_SIGNAL box"
                             )
@@ -1984,6 +1998,32 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 f"FOLLOWUP_PATTERN names an unknown pattern: {box_id} -> {target}"
             )
 
+    by_pattern = {row["patternId"]: row for row in patterns}
+    for pattern in patterns:
+        boxes = [row for row in pattern.get("logicOccurrences", []) if row.get("enabled", True)]
+        chains = [row for row in boxes if logic_defs[row["logicId"]].get("kind") == "PATTERN_COMPLETION_COUNT"]
+        if len(chains) > 1:
+            raise CompositionError("A pattern can own only one completion chain")
+        for box in boxes:
+            for slot in OUTCOME_SLOTS:
+                for target in outcome_logic_ids(box, slot):
+                    if logic_defs[target].get("kind") == "MARIO_ENTER" and (len(chains) != 1 or pattern.get("gateId") != "GATE3"):
+                        raise CompositionError("Mario entry requires one owning Gate 3 completion chain")
+        for chain in chains:
+            for candidate_id in logic_defs[chain["logicId"]]["patternIds"]:
+                candidate = by_pattern[candidate_id]
+                if candidate is pattern or not candidate.get("stages") or any(candidate.get(key) != pattern.get(key) for key in ("gateId", "targetBossPlacementId", "actorProfileId")):
+                    raise CompositionError("Completion candidates must be distinct playable patterns for the same Gate and boss")
+                for box in candidate.get("logicOccurrences", []):
+                    if not box.get("enabled", True):
+                        continue
+                    if logic_defs[box["logicId"]].get("kind") == "PATTERN_COMPLETION_COUNT":
+                        raise CompositionError("Completion candidates cannot contain a nested chain")
+                    for slot in OUTCOME_SLOTS:
+                        for target in outcome_logic_ids(box, slot):
+                            if logic_defs[target].get("kind") in {"FOLLOWUP_PATTERN", "MARIO_ENTER"}:
+                                raise CompositionError("Completion candidates cannot insert another pattern or Mario entry")
+
 
 def validate_pattern_flows(document: dict[str, Any]) -> None:
     """Flow order is authoring metadata; every row reuses a saved execution ID."""
@@ -2140,6 +2180,7 @@ def _pattern_dependencies(source: dict[str, Any], pattern: dict[str, Any]) -> se
                 if target:
                     result.add(target)
         if box.get("enabled", True):
+            result.update(definitions.get(box.get("logicId"), {}).get("patternIds", []))
             target = definitions.get(box.get("logicId"), {}).get("clonePatternId", "")
             if target:
                 result.add(target)
@@ -3701,6 +3742,7 @@ def _project_logic_window(
     kind = logic.get("judgementKind", logic.get("triggerKind"))
     return {
         "windowId": box["occurrenceId"],
+        **({"patternIds": list(logic["patternIds"]), "completionCount": logic["completionCount"]} if kind == "PATTERN_COMPLETION_COUNT" else {}),
         **({"cancelAtEnd": True} if box.get("cancelAtEnd", False) else {}),
         **({"holdLogicOccurrenceId": box["holdLogicOccurrenceId"]} if box.get("holdLogicOccurrenceId") else {}),
         **({"bossChargeDistanceM": logic["bossChargeDistanceM"]} if logic.get("bossChargeDistanceM", 0) else {}),

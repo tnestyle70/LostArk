@@ -2464,6 +2464,11 @@ const VEHICLE_RIDER_ENTRY* CCharacter::Find_VehicleRider() const
 void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 {
 	static const wstring_t VEHICLE_PART_TAG = TEXT("Part_Vehicle");
+#ifdef _DEBUG
+	// A changed Server state ends the failed attempt; repeated snapshots do not retry I/O.
+	if (vehicleId != m_iRejectedVehicleId)
+		m_iRejectedVehicleId = 0u;
+#endif
 	if (vehicleId == m_iVehicleId || (0u != vehicleId && vehicleId == m_iRejectedVehicleId))
 		return;
 	const auto reject = [this, vehicleId](const std::string& reason)
@@ -2481,7 +2486,18 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 		if (nullptr == pVehicle || nullptr == pVehicle->Find_Rider(m_eCharacterClass))
 			return reject("no rider pose for this class");
 		if (!CVehiclePresentationAssetService::Is_Ready(m_iPrototypeLevelIndex, vehicleId))
+		{
+#ifdef _DEBUG
+			// Admit only the Server-selected vehicle on first use; the level owns its cache.
+			if (FAILED(CVehiclePresentationAssetService::Ensure_Prototypes(
+				m_pDevice, m_pContext, m_iPrototypeLevelIndex, vehicleId)))
+			{
+				return reject(CVehiclePresentationAssetService::Get_Status());
+			}
+#else
 			return reject("vehicle prototypes are not admitted in this level");
+#endif
+		}
 		CPart_Vehicle::PART_VEHICLE_DESC desc{};
 		desc.pParentMatrix = &m_VehicleRootMatrix;
 		desc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;

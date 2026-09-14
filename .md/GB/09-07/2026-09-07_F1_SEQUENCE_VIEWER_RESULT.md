@@ -80,3 +80,13 @@
 - 마지막 전체 Client 재빌드 도중 사용자가 실행한 별도 Visual Studio 빌드와 FXC tlog가 겹쳐 FTK1011이 발생했다. 사용자 빌드는 건드리지 않고 명령줄로 확인한 에이전트 빌드 tree만 종료했다. 외부 컴파일 종료를 확인한 후 셰이더 재컴파일 없는 최소 C++ 타깃으로 재검증했다. 이를 C++ 코드 오류나 성공한 전체 재빌드로 바꾸어 기록하지 않는다.
 - 종료 프로세스 확인에서 Client/Server/CL/Link/FXC 실행 프로세스 없음. 테스트 전용 Server는 결과를 반환하고 종료했으며 공유 서버 listener를 시작하지 않았다.
 - 실제 Test/아레나 입력과 한글·카메라 화면, 네 명 공동 관찰은 사용자 확인 대기다.
+
+## 2026-09-14 F1 메뉴 위치와 기본 접힘
+
+`RenderSequenceViewer()`를 `Vehicle Riding (Debug)` 직후로 이동하고 헤더의
+`ImGuiTreeNodeFlags_DefaultOpen`을 제거했다. 처음에는 접혀 있고 같은 실행에서 사용자가
+여닫은 상태는 유지된다. 최초 목록 읽기는 펼친 뒤에 하며 서버 응답/Area 준비 Update는 유지한다.
+MainApp/MainApp_SequenceViewer는 기존 VS18 x64 Debug 옵션으로 out 격리 컴파일에 성공했다.
+사용자가 Client/Server 실행 유지를 요청해 Product 링크·배포와 화면 검증은 하지 않았다.
+함께 요청한 Debug 탈것 지연 로딩 및 검증 증거는
+`../09-14/2026-09-14_DEBUG_VEHICLE_LAZY_LOADING_RESULT.md`에 기록했다.

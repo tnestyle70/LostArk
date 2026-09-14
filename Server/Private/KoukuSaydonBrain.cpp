@@ -274,6 +274,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		{ status = "Repeat after knockback requires one damage Success with positive knockback"; return false; }
 		switch (window.eKind)
 		{
+		case BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT:
+			valuesValid = !window.PatternIds.empty() && window.PatternIds.size() <= 16u && window.iCompletionCount > 0u &&
+				window.iCompletionCount <= window.PatternIds.size() && window.CardRegions.empty() && window.OnFail.empty() &&
+				window.OnTimeout.empty() && window.OnSuccess.size() == 1u && window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+			break;
 		case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
 			valuesValid = window.CardRegions.size() == 8u || (window.iSectorCount >= 2u &&
 				window.SectorSymbols.size() == window.iSectorCount && window.fOuterRadiusM > 0.f);
@@ -389,7 +394,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				/* Boss-level completion may hand the audition a follow-up;
 				a per-player verdict cannot move the boss. */
 				if (BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind &&
-					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL != window.eKind)
+					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL != window.eKind && BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT != window.eKind)
 					return false;
 			}
 			return true;
@@ -719,7 +724,7 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 		static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
 	for (const auto& window : pattern->LogicWindows)
 	{
-		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL &&
+		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL && window.eKind != BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT &&
             window.eKind != BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW && window.eKind != BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD &&
             window.fBossChargeDistanceM <= 0.f) continue;
 		const std::uint64_t endMs = std::uint64_t(window.iStartMs) + window.iDurationMs;

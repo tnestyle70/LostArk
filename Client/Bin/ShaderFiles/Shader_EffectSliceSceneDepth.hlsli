@@ -1,13 +1,6 @@
 #ifndef EFFECT_SLICE_SCENE_DEPTH_HLSLI
 #define EFFECT_SLICE_SCENE_DEPTH_HLSLI
-
-Texture2D g_EffectSceneDepthTexture;
-SamplerState EffectSliceDepthSampler
-{
-    Filter = MIN_MAG_MIP_POINT;
-    AddressU = Clamp;
-    AddressV = Clamp;
-};
+#include "Shader_EffectSceneDepthInput.hlsli"
 
 float Slice_SourcePow(float value, float exponent)
 {

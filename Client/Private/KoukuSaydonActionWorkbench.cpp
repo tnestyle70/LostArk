@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "KoukuSaydonActionWorkbench.h"
+#include "KoukuSaydonPatternAuditionService.h"
 #include "CompositionTimeline.h"
 #include "Level_KakulSaydonArena.h"
 #include "CameraTool.h"
@@ -3953,6 +3954,17 @@ void Client::CKoukuSaydonActionWorkbench::Render_Toolbar()
 		const bool executionSelected = bundleSelected ? bundle->strLoadError.empty() :
 			(m_ePatternSelection == KOUKU_PATTERN_SELECTION::PATTERN && selectedPattern && selectedPattern->strLoadError.empty());
 		ImGui::BeginDisabled(publishing || Is_Dirty() || !m_Document.Is_Fresh() || !executionSelected);
+		if (selectedPattern && selectedPattern->strGateId == "GATE3")
+		{
+			auto& audition = CKoukuSaydonPatternAuditionService::Get();
+			int testStage = audition.Get_MarioTestStage(), testSeed = static_cast<int>(audition.Get_MarioTestSeed());
+			ImGui::SetNextItemWidth(100.f);
+			bool changed = ImGui::SliderInt("Mario test stage (0 = live)", &testStage, 0, 4);
+			ImGui::SetNextItemWidth(100.f);
+			changed = ImGui::InputInt("Mario test seed", &testSeed) || changed;
+			if (changed) audition.Set_MarioTest(static_cast<std::uint8_t>(testStage), static_cast<std::uint32_t>((std::max)(0, testSeed)));
+			ImGui::TextDisabled("Test fixture applies only to an entry pattern. Enter its collider to test the same Server route.");
+		}
 		if (ImGui::Button("Complete Play (Server)"))
 		{
 			if (bundleSelected) { m_strPendingBundleServerId = bundle->strBundleId; m_iPendingBundleServerRevision = m_Draft.iRevision; }
@@ -6727,8 +6739,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		lane.firstRow = nextRow;
 		nextRow += lane.rowCount;
 	}
-	const auto childFirstRow = nextRow;
-	if (m_bShowPatternChildRows) nextRow += m_PatternChildRows.size();
+    std::vector<std::size_t> childDisplayRows(m_PatternChildRows.size());
+    std::map<std::string, std::size_t> childAnimationLanes;
+    if (m_bShowPatternChildRows)
+        for (std::size_t i = 0; i < m_PatternChildRows.size(); ++i)
+        {
+            const auto& row = m_PatternChildRows[i];
+            if (row.stageId.empty()) { childDisplayRows[i] = nextRow++; continue; }
+            // Expanded animation clips share their parent occurrence's lane.
+            // Keep source box IDs and click-through editing independent.
+            const auto repeatAt = row.runtimeId.rfind(".r");
+            const auto key = row.runtimeId.substr(0, repeatAt) + ":" + row.patternId;
+            const auto [lane, inserted] = childAnimationLanes.try_emplace(key, nextRow);
+            if (inserted) ++nextRow;
+            childDisplayRows[i] = lane->second;
+        }
 	const f32_t height = rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(nextRow);
 	if (!ImGui::BeginChild("##KoukuTimeline", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
 		ImGuiWindowFlags_HorizontalScrollbar))
@@ -7150,8 +7175,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
         for (std::size_t i = 0u; i < m_PatternChildRows.size(); ++i)
         {
             const auto& row = m_PatternChildRows[i];
-            const float y = origin.y + rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<float>(childFirstRow + i);
-            draw->AddText(ImVec2(origin.x + 12.f, y + 4.f), IM_COL32(180, 160, 220, 255), "  > Child");
+            const float y = origin.y + rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<float>(childDisplayRows[i]);
+            if (i == 0u || std::find(childDisplayRows.begin(), childDisplayRows.begin() + i, childDisplayRows[i]) == childDisplayRows.begin() + i)
+                draw->AddText(ImVec2(origin.x + 12.f, y + 4.f), IM_COL32(180, 160, 220, 255),
+                    row.stageId.empty() ? "  > Child" : "  > Animation");
             const float x = origin.x + labelWidth + row.startMs * scale;
             const float width = (std::max)(8.f, row.durationMs * scale);
             ImGui::PushID(row.runtimeId.c_str());
@@ -11131,6 +11158,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 						draft.fMaxDistanceM = 30.0;
 					}
 					else if ("EXTERNAL_SIGNAL" == draft.strJudgementKind || "COUNTER_WINDOW" == draft.strJudgementKind) draft.bEndsPatternOnSuccess = true;
+					else if ("PATTERN_COMPLETION_COUNT" == draft.strJudgementKind) draft.iCompletionCount = 1u;
 					else if ("STAGGER_WINDOW" == draft.strJudgementKind)
 					{
 						draft.iThreshold = 1000u;
@@ -11240,6 +11268,26 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				ImGui::EndCombo();
 			}
 			ImGui::TextDisabled("The boss pose the window shows; players answer through their shuffled Q/W/E/R slots.");
+		}
+		else if ("PATTERN_COMPLETION_COUNT" == draft.strJudgementKind)
+		{
+			int count = static_cast<int>(draft.iCompletionCount);
+			if (ImGui::SliderInt("Completed patterns", &count, 1, (std::max)(1, static_cast<int>(draft.PatternIds.size()))))
+				draft.iCompletionCount = static_cast<std::uint32_t>(count);
+			for (const auto& pattern : m_Draft.Patterns)
+			{
+				auto selected = std::find(draft.PatternIds.begin(), draft.PatternIds.end(), pattern.strPatternId);
+				bool included = selected != draft.PatternIds.end();
+				ImGui::PushID(pattern.strPatternId.c_str());
+				if (ImGui::Checkbox(pattern.strDisplayName.c_str(), &included))
+				{
+					if (included && draft.PatternIds.size() < 16u) draft.PatternIds.push_back(pattern.strPatternId);
+					else if (!included) draft.PatternIds.erase(selected);
+					draft.iCompletionCount = (std::min)(draft.iCompletionCount, static_cast<std::uint32_t>(draft.PatternIds.size()));
+				}
+				ImGui::PopID();
+			}
+			ImGui::TextWrapped("Success fires after this many actual Server pattern completions. Duration does not advance the phase.");
 		}
 		else if ("STAGGER_WINDOW" == draft.strJudgementKind)
 		{

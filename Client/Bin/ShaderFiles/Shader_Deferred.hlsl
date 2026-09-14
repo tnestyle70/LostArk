@@ -1,3 +1,6 @@
+#ifndef SOURCE_CHARACTER_PROGRAM_GROUP
+#define SOURCE_CHARACTER_PROGRAM_GROUP 0
+#endif
 
 #include "Engine_Shader_Defines.hlsli"
 #include "Shader_SourceStoneSurface.hlsli"
