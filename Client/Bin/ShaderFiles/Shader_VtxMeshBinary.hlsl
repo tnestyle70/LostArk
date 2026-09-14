@@ -1,3 +1,6 @@
+#ifndef SOURCE_CHARACTER_PROGRAM_GROUP
+#define SOURCE_CHARACTER_PROGRAM_GROUP 0
+#endif
 #include "Engine_Shader_Defines.hlsli"
 
 float4x4 g_WorldMatrix, g_WorldInvTransposeMatrix, g_ViewMatrix, g_ProjMatrix;
@@ -434,6 +437,7 @@ float PresentationVortexRadialEdgeMask(float2 rawTexcoord)
 PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
 {
     PS_OUT_FORWARD output;
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
     if (IsSourceMapForward())
     {
         output.vColor = EvaluateSourceMapForward(input.vRawTexcoord, input.vWorldPos.xyz,
@@ -442,6 +446,7 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
         output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
     }
+#endif
     const float4 textureColor =
         g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
     float4 color = textureColor;
@@ -655,6 +660,7 @@ PS_OUT_WATER PS_MAIN_WATER(VS_OUT input)
 PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
 {
     PS_OUT_FORWARD output;
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
     if (IsSourceMapForward())
     {
         output.vColor = EvaluateSourceMapForward(input.vRawTexcoord, input.vWorldPos.xyz,
@@ -663,6 +669,7 @@ PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
         output.vBloomContribution = Write_SceneBloom(output.vColor);
     return output;
     }
+#endif
     float4 color = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
     output.vColor = float4(color.rgb * g_ColorTint.rgb, 1.f);
     output.vBloomContribution = Write_SceneBloom(output.vColor);

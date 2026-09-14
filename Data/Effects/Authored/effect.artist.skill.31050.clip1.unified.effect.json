@@ -401,7 +401,7 @@
             1.5,
             0.015
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {

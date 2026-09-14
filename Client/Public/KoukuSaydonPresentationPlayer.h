@@ -74,7 +74,8 @@ public:
         std::uint32_t clockMs, bool paused, std::string& status);
     bool Begin_BundlePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const std::string& bundleId, std::uint32_t clockMs, bool paused, std::string& status,
-        const CWorldSequenceDocument* sourceDocument = nullptr, bool automaticRootMotion = true);
+        const CWorldSequenceDocument* sourceDocument = nullptr, bool automaticRootMotion = true,
+        bool externalWorldPreview = false);
     // Optional Effect Workbench reference: existing actors and model sampler,
     // with all Pattern presentation/WORLD disabled and an external master clock.
     bool Begin_ModelReferencePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
@@ -144,6 +145,7 @@ private:
         KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE lightBox;
         float lightWeight = 1.f;
         bool failed = false;
+        std::string failureStatus;
         bool waitingForAnchor = false;
         bool debugRender = true;
     };
@@ -197,6 +199,7 @@ private:
         std::map<std::string, float> stageFacingYawDegrees;
     };
     void Sample_BundlePreview();
+    bool Prepare_PreviewEffects();
     void Fail_Preview(std::string status);
     bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
@@ -243,6 +246,7 @@ private:
     std::uint32_t m_iProductReloadRunEpoch = 0u;
     std::set<std::string> m_MissingProductPatterns;
     std::map<std::uint32_t, SESSION> m_BossSessions;
+    std::map<std::uint32_t, SESSION> m_MarioEntrySessions;
     std::map<std::uint32_t, CARD> m_Cards;
     std::map<std::uint32_t, CARD> m_MazeExits;
     std::map<std::uint32_t, CARD> m_MazePlayerMarks;
@@ -268,6 +272,8 @@ private:
     std::string m_strFailedPreviewPatternId, m_strFailedPreviewStatus;
     bool m_bOwnPreviewClock = false, m_bPreviewPlaying = false, m_bPreviewPaused = false;
     bool m_bPreviewClockAwaitingFirstUpdate = false;
+    bool m_bPreviewPreparationQueued = false;
+    std::vector<std::string> m_PreviewPreparationTargets;
     bool m_bPreviewCaptureClockHeld = false;
     bool m_bPreviewCaptureBoundarySampled = false, m_bPreviewCaptureAllowed = true;
     std::uint32_t m_iPreviewCaptureResumeMs = 0u, m_iPreviewCaptureBoundaryMs = 0u;
@@ -275,6 +281,7 @@ private:
     bool m_bPreviewPivotReady = false;
     bool m_bColliderResourcePreview = false;
     bool m_bModelReferencePreview = false;
+    bool m_bBundleWorldExternal = false;
     std::uint64_t m_iPreviewGeneration = 0u;
     double m_fPreviewClockMs = 0;
     std::uint32_t m_iPreviewDurationMs = 0;

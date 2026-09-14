@@ -376,7 +376,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -1624,7 +1624,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -2776,7 +2776,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -3928,7 +3928,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -5080,7 +5080,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -6232,7 +6232,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -7384,7 +7384,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -8624,7 +8624,7 @@
             0.0,
             0.02500000037252903
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -10545,7 +10545,7 @@
             10.0,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -12486,7 +12486,7 @@
             8.0,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -14465,7 +14465,7 @@
             0.01,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -16033,7 +16033,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -17562,7 +17562,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -18578,7 +18578,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -19594,7 +19594,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -20610,7 +20610,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -21626,7 +21626,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -22490,7 +22490,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -23289,7 +23289,7 @@
             0.013499999642372132,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -25632,7 +25632,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -26706,7 +26706,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -27780,7 +27780,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -28854,7 +28854,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -29928,7 +29928,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {

@@ -231,7 +231,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -1422,7 +1422,7 @@
             2.08,
             2.4
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -3653,7 +3653,7 @@
             1.7999999999999998,
             1.7999999999999998
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
@@ -5803,7 +5803,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {

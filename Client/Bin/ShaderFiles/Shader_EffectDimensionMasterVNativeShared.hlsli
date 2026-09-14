@@ -2,8 +2,8 @@
 // Existing Product and grouped material programs never select these IDs.
 #ifndef EFFECT_DIMENSIONMASTER_V_NATIVE_SHARED_HLSLI
 #define EFFECT_DIMENSIONMASTER_V_NATIVE_SHARED_HLSLI
-#include "Shader_EffectSliceSceneDepth.hlsli"
-#include "Shader_EffectCubeSampleScene.hlsli"
+#include "Shader_EffectSceneDepthInput.hlsli"
+#include "Shader_EffectSceneColorInput.hlsli"
 #include "Shader_EffectNativeScreenUV.hlsli"
 
 float4 g_VSourceMaterialParameters[32];

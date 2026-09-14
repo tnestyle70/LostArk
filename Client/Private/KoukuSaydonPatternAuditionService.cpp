@@ -312,6 +312,11 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 		m_strTargetBossPlacementId, m_strTargetBossArchetypeId,
 		expectedGameplayRevision, expectedSourceRevision);
 	request.strPatternId = patternId;
+	if (!control && !m_bSubmittingFlowEntry && operation == KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED)
+	{
+		request.iMarioTestStartStage = m_iMarioTestStartStage;
+		request.iMarioTestSeed = m_iMarioTestSeed;
+	}
 	request.strBundleId = bundleId;
 	request.iExpectedRunEpoch = expectedEpoch;
 	request.Scope.strGateId = gateId;
@@ -322,6 +327,8 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 		return false;
 	}
 
+	// A test override belongs to this explicit request, never to subsequent Flow entries.
+	if (request.iMarioTestStartStage) Set_MarioTest(0u, 0u);
 	m_ControlPreviousSnapshot = m_Snapshot;
 	m_bControlRequest = control;
 	m_RequestScope = request.Scope;

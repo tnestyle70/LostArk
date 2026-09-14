@@ -877,6 +877,7 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
         }
     };
     for (const auto& [id, session] : m_BossSessions) collect(session, false, id);
+    for (const auto& [id, session] : m_MarioEntrySessions) collect(session, false, id);
     if (m_bPreviewPlaying) collect(m_PreviewSession, true);
     for (const auto& member : m_BundlePreviewMembers) collect(member.session, true);
     collect(m_FearSession, false);
@@ -1285,6 +1286,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
         // Only a fully staged replacement may stop the old running presentation.
         for (auto& [id, session] : m_BossSessions) Stop_Session(session);
         m_BossSessions.clear();
+        for (auto& [id, session] : m_MarioEntrySessions) Stop_Session(session);
+        m_MarioEntrySessions.clear();
         m_Product = std::move(staged);
         Stop_Session(m_FearSession);
         m_FearSession.key.clear();
@@ -1470,6 +1473,12 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         auto [found, inserted] = session.rows.try_emplace(box.strOccurrenceId);
         PLAYING_ROW& row = found->second;
         if (row.failed) return;
+        struct ROW_FAILURE_GUARD
+        {
+            PLAYING_ROW& row;
+            const std::string& status;
+            ~ROW_FAILURE_GUARD() { if (row.failed && row.failureStatus.empty()) row.failureStatus = status; }
+        } failureGuard{row, m_strStatus};
         const float age = (clockMs - box.iStartMs) / 1000.f;
         row.kind = resource.eKind;
         row.debugRender = box.bDebugRender;
@@ -1561,7 +1570,12 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     }
                     const auto preparation = CEffectPresentationService::Get_ProductCuePreparationProbe(targets);
                     if (preparation.iFailedCount || preparation.iUnavailableCount)
-                    { row.failed = true; m_strStatus = "V1 Effect preparation failed: " + resource.strAssetId; break; }
+                    {
+                        row.failed = true;
+                        m_strStatus = "V1 Effect preparation failed: " + resource.strAssetId + "; " +
+                            CEffectPresentationService::Get_ProductCuePreparationFailure(resource.strAssetId);
+                        break;
+                    }
                     if (!preparation.bCatalogRevisionCurrent || !preparation.bSettled) break;
                     row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
@@ -1659,7 +1673,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         }
         if (row.v1EffectHandle)
         {
-            const bool captureSample = &session == &m_PreviewSession && m_bPreviewCaptureClockHeld;
+            const bool previewSession = &session == &m_PreviewSession || std::any_of(
+                m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+                [&](const auto& member) { return &session == &member.session; });
+            const bool captureSample = previewSession && m_bPreviewCaptureClockHeld;
             CEffectPresentationService::Set_ScreenPostCaptureAllowed({row.v1EffectHandle},
                 !captureSample || m_bPreviewCaptureAllowed);
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
@@ -1958,6 +1975,33 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         else Stop_Session(m_ProductBundleSession);
     }
     else Stop_Session(m_ProductBundleSession);
+    std::set<std::uint32_t> liveMarioEntries;
+    if (runLive && run->iPinnedSourceRevision == m_iProductSourceRevision)
+        for (const auto& member : run->Members)
+        {
+            if (member.strMarioEntryPatternId.empty()) continue;
+            const auto root = m_Product.find(member.strMarioEntryPatternId);
+            if (root == m_Product.end()) continue;
+            float seconds = 0.f;
+            if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+                (std::max)(run->iServerTick, arena->Get_PresentationServerTick()), member.iMarioEntryStartTick, 30.f, seconds)) continue;
+            liveMarioEntries.insert(member.iBossNetEntityId);
+            auto& session = m_MarioEntrySessions[member.iBossNetEntityId];
+            const auto key = std::to_string(run->iRunEpoch) + ":" + member.strMemberId + ":" + std::to_string(member.iMarioEntryStartTick);
+            if (session.key != key) { Stop_Session(session); session.key = key; }
+            session.runEpoch = run->iRunEpoch; session.memberId = member.strMemberId;
+            const auto pivot = XMMatrixRotationY(XMConvertToRadians(member.fMarioEntryYawDegrees)) *
+                XMMatrixTranslation(member.fMarioEntryX, member.fMarioEntryY, member.fMarioEntryZ);
+            float4x4_t storedPivot; XMStoreFloat4x4(&storedPivot, pivot);
+            // Keep the authored entry frame while child animations run. Its
+            // lifetime and terminal stop come only from persistent Server state.
+            const float clock = (std::min)(seconds * 1000.f, float(member.iMarioEntryHoldMs));
+            Sample(session, root->second.document, root->second.pattern, clock,
+                seconds * 1000.f >= member.iMarioEntryHoldMs, storedPivot, nullptr);
+        }
+    for (auto it = m_MarioEntrySessions.begin(); it != m_MarioEntrySessions.end();)
+        if (liveMarioEntries.contains(it->first)) ++it;
+        else { Stop_Session(it->second); it = m_MarioEntrySessions.erase(it); }
     std::set<std::uint32_t> liveBosses;
     for (const auto& view : bosses)
     {
@@ -1975,6 +2019,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(view.iServerTick,
             view.Snapshot.iPatternStartTick, 30.f, seconds)) continue;
         const auto id = view.Snapshot.iNetEntityId;
+        if (liveMarioEntries.contains(id) && std::any_of(run->Members.begin(), run->Members.end(), [&](const auto& member) {
+            return member.iBossNetEntityId == id && member.strMarioEntryPatternId == view.Snapshot.strPatternId;
+        })) continue;
         liveBosses.insert(id);
         SESSION& session = m_BossSessions[id];
         session.runEpoch = 0u; session.memberId.clear();
@@ -2071,6 +2118,8 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     {
         // Begin runs after this Update; the next delta includes synchronous WORLD
         // preparation. Arm the new clock once without charging that setup time.
+        if (!Prepare_PreviewEffects())
+        { m_bPreviewClockAwaitingFirstUpdate = true; Refresh_SharedPresentation(); return; }
         const bool advanceClock = !m_bPreviewClockAwaitingFirstUpdate;
         m_bPreviewClockAwaitingFirstUpdate = false;
         if (advanceClock && !m_bPreviewPaused && !m_bModelReferencePreview && !m_bPreviewCaptureClockHeld)
@@ -2242,7 +2291,7 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
 bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const std::string& bundleId,
     std::uint32_t clockMs, bool paused, std::string& status, const CWorldSequenceDocument* sourceDocument,
-    const bool automaticRootMotion)
+    const bool automaticRootMotion, bool externalWorldPreview)
 {
     const auto bundle = std::find_if(document.Bundles.begin(), document.Bundles.end(),
         [&](const auto& value) { return value.strBundleId == bundleId; });
@@ -2250,6 +2299,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     if (!level || bundle == document.Bundles.end() || !bundle->strLoadError.empty() ||
         bundle->Members.empty() || bundle->Members.size() > LostArk::Shared::MAX_KOUKUSAYDON_BUNDLE_MEMBERS)
     { status = "Bundle preview requires an active arena and a valid nonempty bundle."; return false; }
+    if (externalWorldPreview && (bundle->Members.size() != 1u || bundle->Members.front().iStartOffsetMs))
+    { status = "Level WORLD preview requires one Pattern on the common clock."; return false; }
     std::vector<BUNDLE_PREVIEW_MEMBER> staged;
     std::vector<CWorldSequencePlayer*> stagedWorldPlayers;
     KOUKU_SAYDON_COMPOSITION_PATTERN common;
@@ -2355,6 +2406,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         }
         for (const auto& box : source->WorldOccurrences)
         {
+            if (externalWorldPreview) continue;
             const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
                 [&](const auto& value) { return value.strWorldId == box.strWorldId; });
             if (world == document.Worlds.end()) return fail("Bundle child WORLD resource is missing.");
@@ -2386,6 +2438,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     for (auto& member : staged)
         for (const auto& box : member.pattern.WorldOccurrences)
         {
+            if (externalWorldPreview) continue;
             const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
                 [&](const auto& value) { return value.strWorldId == box.strWorldId; });
             auto& player = *member.session.previewWorlds.at(box.strOccurrenceId);
@@ -2406,6 +2459,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     m_PreviewDocument = std::move(stagedDocument);
     m_PreviewPattern = std::move(common);
     m_PreviewBundleId = bundleId;
+    m_bBundleWorldExternal = externalWorldPreview;
     m_BundlePreviewMembers = std::move(staged);
     m_PreviewSession.key = "bundle-preview:" + bundleId + ":common";
     m_iPreviewDurationMs = static_cast<std::uint32_t>(duration);
@@ -2414,7 +2468,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     m_bPreviewClockAwaitingFirstUpdate = true;
     m_bPreviewPaused = paused;
     XMStoreFloat4x4(&m_PreviewPivot, XMMatrixIdentity());
-    Sample_BundlePreview();
+    if (!externalWorldPreview) Sample_BundlePreview();
     if (!m_bPreviewPlaying) { status = m_strStatus; return false; }
     Refresh_SharedPresentation();
     status = m_strStatus = "Bundle preview ready: " + bundleId;
@@ -2566,10 +2620,55 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
     return member.actor->Apply_NetworkState(position, yaw);
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Prepare_PreviewEffects()
+{
+    if (!m_bPreviewPreparationQueued)
+    {
+        std::set<std::string> targets;
+        const auto collect = [&](const auto& pattern) {
+            for (const auto& box : pattern.PresentationOccurrences)
+                for (const auto& resource : m_PreviewDocument.PresentationResources)
+                    if (resource.strResourceId == box.strResourceId && resource.eKind == KIND::EFFECT &&
+                        (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
+                        targets.insert(resource.strAssetId);
+        };
+        collect(m_PreviewPattern);
+        for (const auto& member : m_BundlePreviewMembers) collect(member.pattern);
+        m_PreviewPreparationTargets.assign(targets.begin(), targets.end());
+        if (!m_PreviewPreparationTargets.empty())
+        {
+            std::vector<std::string> admitted;
+            std::string status;
+            if (!CEffectPresentationService::Queue_ProductTargets_Priority(m_PreviewPreparationTargets, admitted, status))
+            { Fail_Preview("Preview Effect preparation could not queue: " + status); return false; }
+        }
+        m_bPreviewPreparationQueued = true;
+    }
+    if (m_PreviewPreparationTargets.empty()) return true;
+    const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(m_PreviewPreparationTargets);
+    // Failed targets are reported by their own occurrence. Preparation time
+    // never consumes a short Effect window on the authoring clock.
+    if (probe.bCatalogRevisionCurrent && probe.bSettled) return true;
+    m_strStatus = "Preparing preview Effects; timeline is held at " + std::to_string(Preview_ClockMs()) + " ms.";
+    return false;
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
 {
     auto* level = CLevel_KakulSaydonArena::Get_Active();
-    if (!level || !m_bPreviewPlaying) return;
+    if (!level || !m_bPreviewPlaying || !Prepare_PreviewEffects()) return;
+    std::uint32_t effectiveMs = Preview_ClockMs();
+    if (!Resolve_PreviewCaptureClock(effectiveMs, effectiveMs))
+    { const auto error = m_strStatus; Fail_Preview(error); return; }
+    m_fPreviewClockMs = effectiveMs;
+#ifdef _DEBUG
+    if (m_bBundleWorldExternal)
+    {
+        std::string worldStatus;
+        if (!level->Debug_SampleCompositionWorldPreview(m_PreviewBundleId, true, effectiveMs, worldStatus))
+        { Fail_Preview(worldStatus); return; }
+    }
+#endif
     const auto targets = level->Get_CompositionWorldTargets();
     for (auto& member : m_BundlePreviewMembers)
     {
@@ -2646,6 +2745,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         }
         for (const auto& box : member.pattern.WorldOccurrences)
         {
+            if (m_bBundleWorldExternal) continue;
             const auto world = std::find_if(m_PreviewDocument.Worlds.begin(), m_PreviewDocument.Worlds.end(),
                 [&](const auto& value) { return value.strWorldId == box.strWorldId; });
             auto& player = member.session.previewWorlds.at(box.strOccurrenceId);
@@ -2686,6 +2786,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     }
     Sample(m_PreviewSession, m_PreviewDocument, m_PreviewPattern,
         float(m_fPreviewClockMs), m_bPreviewPaused, m_PreviewPivot, nullptr);
+    if (m_bPreviewCaptureClockHeld && Preview_ClockMs() == m_iPreviewCaptureBoundaryMs)
+        m_bPreviewCaptureBoundarySampled = true;
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Set_PreviewPivot(
@@ -2700,7 +2802,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
     std::uint32_t requestedMs, std::uint32_t& effectiveMs)
 {
     effectiveMs = requestedMs;
-    if (!m_bPreviewPlaying || Preview_IsBundle()) return true;
+    if (!m_bPreviewPlaying) return true;
+    if (!Prepare_PreviewEffects()) { effectiveMs = Preview_ClockMs(); return m_bPreviewPlaying; }
     const bool wasHeld = m_bPreviewCaptureClockHeld;
     if (wasHeld) requestedMs = m_iPreviewCaptureResumeMs;
     if (!CPresentation_Manager::Get().Are_ScreenPostsEnabled())
@@ -2714,10 +2817,17 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
         return true;
     }
     std::optional<std::uint32_t> firstCaptureMs;
-    for (const auto& box : m_PreviewPattern.PresentationOccurrences)
+    struct CAPTURE_OWNER { const KOUKU_SAYDON_COMPOSITION_PATTERN* pattern; SESSION* session; std::uint32_t offsetMs; };
+    std::vector<CAPTURE_OWNER> owners{{&m_PreviewPattern, &m_PreviewSession, 0u}};
+    for (auto& member : m_BundlePreviewMembers)
+        owners.push_back({&member.pattern, &member.session,
+            static_cast<std::uint32_t>((std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u)});
+    for (const auto& owner : owners)
+    for (const auto& box : owner.pattern->PresentationOccurrences)
     {
-        if (requestedMs < box.iStartMs ||
-            double(requestedMs) >= double(box.iStartMs) + box.iDurationMs) continue;
+        const auto boxStartMs = owner.offsetMs + box.iStartMs;
+        if (requestedMs < boxStartMs ||
+            double(requestedMs) >= double(boxStartMs) + box.iDurationMs) continue;
         const auto resource = std::find_if(m_PreviewDocument.PresentationResources.begin(),
             m_PreviewDocument.PresentationResources.end(), [&](const auto& value) {
                 return value.strResourceId == box.strResourceId; });
@@ -2736,14 +2846,18 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
             if (!std::isfinite(delayMs) || delayMs < 0.0 || delayMs >= box.iDurationMs) continue;
             // Float seconds can put an authored integer millisecond a fraction
             // of a microsecond above itself; retain that cursor before rounding up.
-            const auto captureMs = static_cast<std::uint32_t>(box.iStartMs + std::ceil(delayMs - 0.001));
-            const double captureEndMs = double(box.iStartMs) + delayMs +
+            const auto captureMs = static_cast<std::uint32_t>(boxStartMs + std::ceil(delayMs - 0.001));
+            const double captureEndMs = double(boxStartMs) + delayMs +
                 double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0;
             if (captureMs > requestedMs || double(requestedMs) >= captureEndMs) continue;
-            const auto row = m_PreviewSession.rows.find(box.strOccurrenceId);
-            if (row != m_PreviewSession.rows.end())
+            const auto row = owner.session->rows.find(box.strOccurrenceId);
+            if (row != owner.session->rows.end())
             {
-                if (row->second.failed) return false;
+                if (row->second.failed)
+                {
+                    m_strStatus = row->second.failureStatus;
+                    return false;
+                }
                 const HRESULT captureResult = CEffectPresentationService::Get_ScreenPostCaptureResult(
                     {row->second.v1EffectHandle}, element.strElementId);
                 if (FAILED(captureResult))
@@ -2791,6 +2905,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
         // A render boundary is one continuing occurrence, not a new playback.
         // Keep its capture and observed anchors across the deferred cursor jump.
         m_PreviewSession.lastClockMs = -1.f;
+        for (auto& member : m_BundlePreviewMembers) member.session.lastClockMs = -1.f;
         m_strCompletedPreviewPatternId.clear();
     }
     return true;
@@ -2809,13 +2924,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_Preview(std::uint32_t clockM
         CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
     Sample(m_PreviewSession, m_PreviewDocument, m_PreviewPattern, float(m_fPreviewClockMs),
         paused, pivot, model, hasWeapon ? &weaponView : nullptr);
-    if (m_bPreviewCaptureClockHeld && std::any_of(m_PreviewSession.rows.begin(), m_PreviewSession.rows.end(),
-        [](const auto& value) { return value.second.failed; }))
-    {
-        // A failed companion occurrence must not be frozen as a complete scene.
-        Fail_Preview(m_strStatus);
-        return;
-    }
+    // Resolve_PreviewCaptureClock checks the actual active capture occurrence.
+    // Unrelated failed rows remain isolated, just as they do during ordinary
+    // playback; a later scene capture must not turn them into a sequence stop.
     Refresh_SharedPresentation();
     // The next Engine Late_Update can now cull and submit this WORLD/camera.
     // The first boundary render is pass-through; only the next may latch it.
@@ -2903,6 +3014,11 @@ bool Client::CKoukuSaydonPresentationPlayer::Consume_CompletedPreview(std::strin
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
 {
+#ifdef _DEBUG
+    if (m_bBundleWorldExternal)
+        if (auto* level = CLevel_KakulSaydonArena::Get_Active()) level->Debug_StopCompositionWorldPreview();
+#endif
+    m_bBundleWorldExternal = false;
     m_strCompletedPreviewPatternId.clear();
     m_strFailedPreviewPatternId.clear();
     m_strFailedPreviewStatus.clear();
@@ -2914,6 +3030,8 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
     m_bPreviewPlaying = false;
     m_bOwnPreviewClock = false;
     m_bPreviewClockAwaitingFirstUpdate = false;
+    m_bPreviewPreparationQueued = false;
+    m_PreviewPreparationTargets.clear();
     m_bPreviewCaptureClockHeld = false;
     m_bPreviewCaptureBoundarySampled = false;
     m_bPreviewCaptureAllowed = true;
@@ -3117,6 +3235,8 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     m_QueuedV1Effects.clear();
     for (auto& [id, session] : m_BossSessions) Stop_Session(session);
     m_BossSessions.clear();
+    for (auto& [id, session] : m_MarioEntrySessions) Stop_Session(session);
+    m_MarioEntrySessions.clear();
     Stop_Session(m_ProductBundleSession);
     for (const auto& [id, card] : m_Cards)
         if (card.handle) CEffectV2Runtime::Stop_Group(card.handle);
@@ -3430,6 +3550,7 @@ void Client::CKoukuSaydonPresentationPlayer::Render_Debug() const
             }
     };
     for (const auto& [id, session] : m_BossSessions) draw(session, false);
+    for (const auto& [id, session] : m_MarioEntrySessions) draw(session, false);
     if (m_bPreviewPlaying) draw(m_PreviewSession, true);
     for (const auto& member : m_BundlePreviewMembers) draw(member.session, true);
 #endif

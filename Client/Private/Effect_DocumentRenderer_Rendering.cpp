@@ -288,9 +288,20 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
                 timing.fStartDelaySeconds + timing.fLifeTimeSeconds,
                 snapshot.vCaptureDestinationUV, snapshot.vCaptureDestinationSizeUV))
             { strOutError = "Screen capture cube first-pose bounds could not be projected."; return E_FAIL; }
-            // The later cube material consumes the very same image as the screen rectangle.
-            if (capture->pColor && capture->pBloom)
-            { m_pStartingSceneCapture = capture->pColor; m_pStartingSceneBloomCapture = capture->pBloom; }
+            // Stage froze the completed world frame before the action camera moved.
+            // Recapturing here would replace it with the cinematic camera's first frame.
+            if (!capture->pColor || !capture->pBloom)
+            {
+                if (!m_pStartingSceneCapture || !m_pStartingSceneBloomCapture)
+                { strOutError = "Screen capture cube has no completed starting scene pair."; return E_FAIL; }
+                capture->pColor = m_pStartingSceneCapture;
+                capture->pBloom = m_pStartingSceneBloomCapture;
+                capture->hLastResult = S_OK;
+            }
+            // Keep the requested screen-centered shrink independent of camera/root motion.
+            // The target model supplies the ending size, not a drifting screen position.
+            snapshot.vCaptureDestinationUV = {.5f, .5f};
+            capture->vDestinationUV = snapshot.vCaptureDestinationUV;
         }
         OutMaterial = std::make_shared<CEffectNativeScreenPostMaterial>(std::move(snapshot));
         return S_OK;

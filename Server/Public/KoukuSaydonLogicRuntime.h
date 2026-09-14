@@ -131,6 +131,10 @@ namespace LostArk::Server
 		static void Assign_EncounterCard(SERVER_PLAYER& player,
 			LostArk::Shared::NET_ENTITY_ID encounterOwnerId, std::uint32_t serverTick);
 
+		// Root geometry stays pinned while its completion-driven child patterns run.
+		static bool Is_InsideMarioEntry(const BOSS_PATTERN_DEFINITION& root,
+			const SERVER_WORLD_ENTITY& anchor, const SERVER_PLAYER& player,
+			std::uint32_t elapsedTicks);
 		static void Build(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			const SERVER_WORLD_ENTITY& boss,

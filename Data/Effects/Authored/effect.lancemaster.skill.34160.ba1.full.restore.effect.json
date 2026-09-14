@@ -232,7 +232,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -1596,7 +1596,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -2960,7 +2960,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -4324,7 +4324,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -5688,7 +5688,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -7052,7 +7052,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -8461,7 +8461,7 @@
             1.6,
             1.6
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -10493,7 +10493,7 @@
             3.3999206066131595,
             0.012142573595046998
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -12290,7 +12290,7 @@
             6.0,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -14042,7 +14042,7 @@
             2.8749999403953552,
             0.022999999523162843
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -15933,7 +15933,7 @@
             2.9899999380111697,
             0.022999999523162843
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -17776,7 +17776,7 @@
             4.8,
             0.02
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -19462,7 +19462,7 @@
             3.0,
             0.06
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -21622,7 +21622,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -23341,7 +23341,7 @@
             0.8999999999999999,
             3.5000000000000004
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -24900,7 +24900,7 @@
             1.7500000000000002,
             0.8750000000000001
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -26786,7 +26786,7 @@
             1.7500000000000002,
             0.8750000000000001
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -28672,7 +28672,7 @@
             1.7500000000000002,
             0.8750000000000001
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -30558,7 +30558,7 @@
             1.7500000000000002,
             0.8750000000000001
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -32444,7 +32444,7 @@
             1.7500000000000002,
             0.8750000000000001
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -34586,7 +34586,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -36869,7 +36869,7 @@
             0.03,
             0.03
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -38813,7 +38813,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -41081,7 +41081,7 @@
             0.045,
             0.045
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -43428,7 +43428,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -45711,7 +45711,7 @@
             0.03,
             0.03
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -47655,7 +47655,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -49923,7 +49923,7 @@
             0.045,
             0.045
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -52270,7 +52270,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -54553,7 +54553,7 @@
             0.03,
             0.03
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -56497,7 +56497,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -58765,7 +58765,7 @@
             0.045,
             0.045
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -61112,7 +61112,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -63395,7 +63395,7 @@
             0.03,
             0.03
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -65339,7 +65339,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -67607,7 +67607,7 @@
             0.045,
             0.045
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -69954,7 +69954,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -72237,7 +72237,7 @@
             0.03,
             0.03
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -74181,7 +74181,7 @@
             0.030800000143051138,
             0.030800000143051138
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -76449,7 +76449,7 @@
             0.045,
             0.045
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {

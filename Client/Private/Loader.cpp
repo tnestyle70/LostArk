@@ -420,8 +420,9 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 					"); the arena loads without it.\n").c_str());
 		}
 	}
-	Set_Status(TEXT("CHARACTER SELECT: vehicle presentation"));
 	CVehiclePresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::CHARACTER_SELECT));
+#ifndef _DEBUG
+	Set_Status(TEXT("CHARACTER SELECT: vehicle presentation"));
 	for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
 	{
 		if (FAILED(CVehiclePresentationAssetService::Ensure_Prototypes(
@@ -431,6 +432,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 				std::to_string(vehicle.vehicleId) + " is unavailable; the level loads on foot.\n").c_str());
 		}
 	}
+#endif
 	Set_Status(TEXT("Character Select loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -470,8 +472,9 @@ HRESULT CLoader::Ready_For_Bern()
 		selectedClass)))
 		return E_FAIL;
 
-	Set_Status(TEXT("BERN: vehicle presentation"));
 	CVehiclePresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::BERN));
+#ifndef _DEBUG
+	Set_Status(TEXT("BERN: vehicle presentation"));
 	for (const VEHICLE_ACTOR_ENTRY& vehicle : CActorCatalog::Get_Vehicles())
 	{
 		if (FAILED(CVehiclePresentationAssetService::Ensure_Prototypes(
@@ -481,6 +484,7 @@ HRESULT CLoader::Ready_For_Bern()
 				std::to_string(vehicle.vehicleId) + " is unavailable; the level loads on foot.\n").c_str());
 		}
 	}
+#endif
 	Set_Status(TEXT("Bern loading complete"));
 	rollback.Commit();
 	return S_OK;

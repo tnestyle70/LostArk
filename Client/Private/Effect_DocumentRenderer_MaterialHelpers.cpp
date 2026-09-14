@@ -30,7 +30,9 @@ namespace EffectDocumentRendererDetail
     {
         return std::ranges::any_of(Document.Elements, [](const auto& Element) {
             return Element.bVisible && (Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
-                "effect.ue3.altv-178-native.v1");
+                "effect.ue3.altv-178-native.v1" ||
+                (Element.Detail.ScreenPost.bEnabled && Element.Detail.ScreenPost.eProfile ==
+                    Client::EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1));
         }) || std::ranges::any_of(Document.ModelCues, [](const auto& Cue) {
             return Cue.bVisible && Client::Has_DimensionMasterALTVModelCueMaterialContract(Cue);
         });

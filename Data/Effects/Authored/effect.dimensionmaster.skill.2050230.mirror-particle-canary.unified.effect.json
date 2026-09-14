@@ -217,7 +217,7 @@
           "acceleration": [0, 0, 0],
           "startSize": [0.55, 0.55],
           "endSize": [1.1, 1.1],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {

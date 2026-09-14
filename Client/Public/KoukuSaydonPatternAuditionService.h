@@ -95,6 +95,10 @@ namespace Client
 	{
 	public:
 		static CKoukuSaydonPatternAuditionService& Get();
+		void Set_MarioTest(std::uint8_t stage, std::uint32_t seed) noexcept
+		{ m_iMarioTestStartStage = stage <= 4u ? stage : 0u; m_iMarioTestSeed = stage ? seed : 0u; }
+		std::uint8_t Get_MarioTestStage() const noexcept { return m_iMarioTestStartStage; }
+		std::uint32_t Get_MarioTestSeed() const noexcept { return m_iMarioTestSeed; }
 
 		bool Play_Selected(
 			std::string_view patternId,
@@ -169,6 +173,8 @@ namespace Client
 		[[nodiscard]] std::uint64_t Now_Milliseconds() const noexcept;
 
 	private:
+		std::uint8_t m_iMarioTestStartStage = 0u;
+		std::uint32_t m_iMarioTestSeed = 0u;
 		KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT m_Snapshot;
 		KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT m_ControlPreviousSnapshot;
 		bool m_bControlRequest = false;

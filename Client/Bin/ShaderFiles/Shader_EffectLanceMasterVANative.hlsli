@@ -3,8 +3,8 @@
 #ifndef EFFECT_LANCE_VA_NATIVE_HLSLI
 #define EFFECT_LANCE_VA_NATIVE_HLSLI
 #ifndef LANCE_VA_NATIVE_MODEL_ONLY
-#include "Shader_EffectSliceSceneDepth.hlsli"
-#include "Shader_EffectCubeSampleScene.hlsli"
+#include "Shader_EffectSceneDepthInput.hlsli"
+#include "Shader_EffectSceneColorInput.hlsli"
 #include "Shader_EffectNativeScreenUV.hlsli"
 #endif
 

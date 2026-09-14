@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 516,
+  "sourceRevision": 550,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -42,7 +42,6 @@
     "KAKULSAYDON_G1_PATTERN_34",
     "KAKULSAYDON_G1_PATTERN_35",
     "KAKULSAYDON_G1_PATTERN_36",
-    "KAKULSAYDON_G1_PATTERN_37",
     "KAKULSAYDON_G1_PATTERN_38",
     "KAKULSAYDON_G1_PATTERN_39",
     "KAKULSAYDON_G1_PATTERN_42",
@@ -52,7 +51,9 @@
     "KAKULSAYDON_G1_PATTERN_47",
     "KAKULSAYDON_G1_PATTERN_49",
     "KAKULSAYDON_G1_PATTERN_50",
-    "KAKULSAYDON_G1_PATTERN_52"
+    "KAKULSAYDON_G1_PATTERN_52",
+    "KAKULSAYDON_G1_PATTERN_56",
+    "KAKULSAYDON_G1_PATTERN_57"
   ],
   "patterns": [
     {
@@ -49373,7 +49374,39 @@
         }
       ],
       "resetBossToSpawn": false,
-      "logicWindows": [],
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_33.logic.1",
+          "kind": "STAGGER_WINDOW",
+          "startMs": 0,
+          "durationMs": 19313,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 1000,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": true,
+          "onSuccess": [
+            {
+              "kind": "FOLLOWUP_PATTERN",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": "KAKULSAYDON_G1_PATTERN_42"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        }
+      ],
       "mechanicTriggers": [],
       "worldSequences": [],
       "sceneProfiles": []
@@ -49416,7 +49449,7 @@
           "stageId": "STAGE_19",
           "actionId": "KAKULSAYDON_G1_PATTERN_34.stage.19",
           "stageKind": "ACTIVE",
-          "durationMs": 4667,
+          "durationMs": 20227,
           "rootMotionSamples": [
             {
               "timeMs": 0,
@@ -49707,10 +49740,10 @@
               "up": -0.003718907661133101
             },
             {
-              "timeMs": 3734,
-              "forward": 2.9792012444694726e-08,
-              "lateral": -0.18043567783994202,
-              "up": -0.0037201275381057546
+              "timeMs": 3733,
+              "forward": 2.981807481262647e-08,
+              "lateral": -0.18058905009562728,
+              "up": -0.003718907661132995
             },
             {
               "timeMs": 3768,
@@ -49719,28 +49752,22 @@
               "up": -0.003779967213126293
             },
             {
-              "timeMs": 3802,
-              "forward": 2.7555792842273332e-08,
-              "lateral": -0.1664774205245996,
-              "up": -0.0030263335177575603
+              "timeMs": 3837,
+              "forward": 2.6060339702257456e-08,
+              "lateral": -0.1565834889216143,
+              "up": -0.0020028670491475313
             },
             {
-              "timeMs": 3871,
-              "forward": 2.436649212170006e-08,
-              "lateral": -0.14558831893632584,
-              "up": -0.0010550068302815846
+              "timeMs": 3907,
+              "forward": 2.2222425524216844e-08,
+              "lateral": -0.13282680821657383,
+              "up": -0.0010113131835288937
             },
             {
-              "timeMs": 3906,
-              "forward": 2.2274261153322058e-08,
-              "lateral": -0.133199553377824,
-              "up": -0.0010765876525787397
-            },
-            {
-              "timeMs": 3940,
-              "forward": 2.0567809153758918e-08,
-              "lateral": -0.12040045223148416,
-              "up": 0.001600435183071331
+              "timeMs": 3941,
+              "forward": 2.0522251104310927e-08,
+              "lateral": -0.12002051653703086,
+              "up": 0.0017101365235993372
             },
             {
               "timeMs": 3975,
@@ -49749,10 +49776,10 @@
               "up": 0.008407846511228783
             },
             {
-              "timeMs": 4009,
-              "forward": 1.7879210017495097e-08,
-              "lateral": -0.09339276720382032,
-              "up": 0.012660311749965103
+              "timeMs": 4010,
+              "forward": 1.7831906038751986e-08,
+              "lateral": -0.092999766356133,
+              "up": 0.012772722209954368
             },
             {
               "timeMs": 4044,
@@ -49779,16 +49806,16 @@
               "up": 0.004066472441831441
             },
             {
-              "timeMs": 4183,
-              "forward": 4.0130966613587245e-09,
-              "lateral": -0.024084324033127293,
-              "up": -0.0002800697395471414
+              "timeMs": 4182,
+              "forward": 4.1095239431647184e-09,
+              "lateral": -0.024568987626824523,
+              "up": -0.00019276122370677105
             },
             {
-              "timeMs": 4286,
-              "forward": -4.543619755235866e-09,
-              "lateral": 0.026940190031983734,
-              "up": -1.093966393540596e-05
+              "timeMs": 4287,
+              "forward": -4.614808921477433e-09,
+              "lateral": 0.02736268519536306,
+              "up": -1.0713232307782254e-05
             },
             {
               "timeMs": 4321,
@@ -49797,10 +49824,10 @@
               "up": 7.915740006542854e-06
             },
             {
-              "timeMs": 4356,
-              "forward": -8.441934015477867e-09,
-              "lateral": 0.0500841538145887,
-              "up": 9.617537272620883e-06
+              "timeMs": 4355,
+              "forward": -8.406890438649645e-09,
+              "lateral": 0.049876469604784354,
+              "up": 9.799219081950937e-06
             },
             {
               "timeMs": 4391,
@@ -49821,10 +49848,10 @@
               "up": 1.5534626502497224e-05
             },
             {
-              "timeMs": 4528,
-              "forward": -6.241221667469094e-09,
-              "lateral": 0.03701216432769181,
-              "up": -8.531894344761e-06
+              "timeMs": 4494,
+              "forward": -7.546806332999288e-09,
+              "lateral": 0.044756579276585565,
+              "up": -8.375781258734491e-06
             },
             {
               "timeMs": 4632,
@@ -49834,6 +49861,12 @@
             },
             {
               "timeMs": 4667,
+              "forward": -3.8890156875520835e-10,
+              "lateral": 0.0023068296955898408,
+              "up": 4.749744833554281e-09
+            },
+            {
+              "timeMs": 20227,
               "forward": -3.8890156875520835e-10,
               "lateral": 0.0023068296955898408,
               "up": 4.749744833554281e-09
@@ -49856,9 +49889,135 @@
         }
       ],
       "resetBossToSpawn": false,
-      "logicWindows": [],
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_34.logic.1",
+          "patternIds": [
+            "KAKULSAYDON_G1_PATTERN_38",
+            "KAKULSAYDON_G1_PATTERN_39",
+            "KAKULSAYDON_G1_PATTERN_43"
+          ],
+          "completionCount": 3,
+          "kind": "PATTERN_COMPLETION_COUNT",
+          "startMs": 4650,
+          "durationMs": 15577,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "FOLLOWUP_PATTERN",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": "KAKULSAYDON_G1_PATTERN_33"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_34.logic.3",
+          "kind": "ENTER_AREA",
+          "startMs": 4635,
+          "durationMs": 11435,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_34.presentation.3",
+              "shape": "BOX",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 0,
+              "halfExtents": [
+                1,
+                1,
+                1
+              ],
+              "radiusM": 3,
+              "halfAngleDegrees": 45,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [
+            {
+              "kind": "MARIO_ENTER",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onFail": [],
+          "onTimeout": []
+        }
+      ],
       "mechanicTriggers": [],
-      "worldSequences": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_34.world.1",
+          "startMs": 3138,
+          "durationMs": 14413,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              4.554999828338623,
+              1.317625641822815,
+              942.9967041015625
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ],
       "sceneProfiles": []
     },
     {
@@ -59129,2888 +59288,10 @@
         }
       ],
       "resetBossToSpawn": false,
-      "logicWindows": [],
-      "mechanicTriggers": [],
-      "worldSequences": [],
-      "sceneProfiles": []
-    },
-    {
-      "patternId": "KAKULSAYDON_G1_PATTERN_37",
-      "gateId": "GATE3",
-      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
-      "actorProfileId": "MN_RPCT_05",
-      "folderId": "kakulsaydon.folder.15",
-      "category": "MECHANIC",
-      "minimumPhase": 1,
-      "maximumPhase": 1,
-      "targetPolicy": "NONE",
-      "aimPolicy": "NONE",
-      "displayName": "3관문_쿠크세이튼_마리오",
-      "actionId": "kakulsaydon.g1.pattern.37",
-      "sourceActionIds": [
-        4219911,
-        4219903,
-        4219951,
-        4219993
-      ],
-      "bossArchetypeIds": [
-        "BOSS_KAKULSAYDON_BINGO_SAYDON",
-        "BOSS_KAKULSAYDON_G1_SAYDON",
-        "BOSS_KAKULSAYDON_G3_SAYDON"
-      ],
-      "selectionMode": "AUDITION_ONLY",
-      "minimumHealthBar": 0,
-      "maximumHealthBar": 0,
-      "triggerHealthBar": 0,
-      "triggerOrder": 0,
-      "armorRequirement": "ANY",
-      "phaseRequirement": "ANY",
-      "invulnerableWhileRunning": false,
-      "selectionWeight": 0,
-      "maximumConsecutiveUses": 0,
-      "minimumRange": 0.0,
-      "maximumRange": 1.0,
-      "stages": [
-        {
-          "stageId": "STAGE_1",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_1",
-          "stageKind": "ACTIVE",
-          "durationMs": 4667,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 69,
-              "forward": -1.2388395177847748e-08,
-              "lateral": 0.07348259773848795,
-              "up": -9.319398033484465e-07
-            },
-            {
-              "timeMs": 103,
-              "forward": -1.5800368266506212e-08,
-              "lateral": 0.09372124817994434,
-              "up": -8.73271246609568e-07
-            },
-            {
-              "timeMs": 138,
-              "forward": -1.6665492449950432e-08,
-              "lateral": 0.09887206978647861,
-              "up": 1.8335087055661257e-05
-            },
-            {
-              "timeMs": 172,
-              "forward": -1.6549078862193745e-08,
-              "lateral": 0.09789768639136265,
-              "up": -0.00026551967287205503
-            },
-            {
-              "timeMs": 208,
-              "forward": -1.588099399269816e-08,
-              "lateral": 0.09150514029808539,
-              "up": -0.002695223964098439
-            },
-            {
-              "timeMs": 242,
-              "forward": -1.4362967548311289e-08,
-              "lateral": 0.0813786422139084,
-              "up": -0.0038173353351108113
-            },
-            {
-              "timeMs": 277,
-              "forward": -1.1987718160089228e-08,
-              "lateral": 0.06738776577596667,
-              "up": -0.0037190875970203345
-            },
-            {
-              "timeMs": 311,
-              "forward": -8.981822376287667e-09,
-              "lateral": 0.049544476290736605,
-              "up": -0.0037324805869509013
-            },
-            {
-              "timeMs": 346,
-              "forward": -5.236465191035762e-09,
-              "lateral": 0.02706288020803604,
-              "up": -0.003997959392805912
-            },
-            {
-              "timeMs": 380,
-              "forward": -4.1968513512940896e-10,
-              "lateral": 0.0032343624939276568,
-              "up": 0.000744940029716441
-            },
-            {
-              "timeMs": 415,
-              "forward": 5.166453568554777e-09,
-              "lateral": -0.02142799346112405,
-              "up": 0.009217558340071619
-            },
-            {
-              "timeMs": 449,
-              "forward": 8.619980285228524e-09,
-              "lateral": -0.04367934376234692,
-              "up": 0.007451287879683978
-            },
-            {
-              "timeMs": 484,
-              "forward": 1.1577458633125666e-08,
-              "lateral": -0.06289349603253705,
-              "up": 0.005779851364582903
-            },
-            {
-              "timeMs": 519,
-              "forward": 1.2952633511245712e-08,
-              "lateral": -0.07665984530086965,
-              "up": 0.0001705405397305483
-            },
-            {
-              "timeMs": 553,
-              "forward": 1.3601310986866457e-08,
-              "lateral": -0.08485330848002702,
-              "up": -0.004175191303808914
-            },
-            {
-              "timeMs": 587,
-              "forward": 1.4327038313345324e-08,
-              "lateral": -0.08871062278469768,
-              "up": -0.0037277534524454764
-            },
-            {
-              "timeMs": 622,
-              "forward": 1.4395714584882598e-08,
-              "lateral": -0.08910912923275675,
-              "up": -0.0037189076611303953
-            },
-            {
-              "timeMs": 656,
-              "forward": 1.4021690917811242e-08,
-              "lateral": -0.08689055999085983,
-              "up": -0.003718907661130332
-            },
-            {
-              "timeMs": 691,
-              "forward": 1.3079427295773097e-08,
-              "lateral": -0.08130138320886653,
-              "up": -0.003718907661130173
-            },
-            {
-              "timeMs": 726,
-              "forward": 1.1388840435372848e-08,
-              "lateral": -0.0712734312874618,
-              "up": -0.0037189076611298883
-            },
-            {
-              "timeMs": 795,
-              "forward": 7.047211618456134e-09,
-              "lateral": -0.04552044386134001,
-              "up": -0.0037189076611291562
-            },
-            {
-              "timeMs": 830,
-              "forward": 5.13898838059908e-09,
-              "lateral": -0.034201550084375136,
-              "up": -0.0037189076611288344
-            },
-            {
-              "timeMs": 864,
-              "forward": 3.9872828934162135e-09,
-              "lateral": -0.02737004404274658,
-              "up": -0.0037189076611286406
-            },
-            {
-              "timeMs": 898,
-              "forward": 3.566934269215612e-09,
-              "lateral": -0.0248766856382151,
-              "up": -0.0037189076611285695
-            },
-            {
-              "timeMs": 968,
-              "forward": 3.817577999489987e-09,
-              "lateral": -0.02636341223692109,
-              "up": -0.003718907661128612
-            },
-            {
-              "timeMs": 1072,
-              "forward": 5.417202876444147e-09,
-              "lateral": -0.03585181664095192,
-              "up": -0.0037189076611288817
-            },
-            {
-              "timeMs": 1141,
-              "forward": 6.163838550757698e-09,
-              "lateral": -0.040280596297798385,
-              "up": -0.003718907660416516
-            },
-            {
-              "timeMs": 1245,
-              "forward": 6.3972624231679635e-09,
-              "lateral": -0.041665175636162226,
-              "up": -0.0037189075661341535
-            },
-            {
-              "timeMs": 1556,
-              "forward": 6.191541787599515e-09,
-              "lateral": -0.04044492154333318,
-              "up": -0.0037189075661341188
-            },
-            {
-              "timeMs": 1694,
-              "forward": 5.516713110136658e-09,
-              "lateral": -0.03644207265580341,
-              "up": -0.003718907566134005
-            },
-            {
-              "timeMs": 1797,
-              "forward": 4.4548349332044065e-09,
-              "lateral": -0.030143398240227635,
-              "up": -0.003718907661128719
-            },
-            {
-              "timeMs": 1832,
-              "forward": 3.7415301253134246e-09,
-              "lateral": -0.025912327384350616,
-              "up": -0.003718907661128599
-            },
-            {
-              "timeMs": 1936,
-              "forward": 3.984701836368849e-10,
-              "lateral": -0.0060824905446796775,
-              "up": -0.0037189076611280356
-            },
-            {
-              "timeMs": 1970,
-              "forward": -3.746831675298185e-10,
-              "lateral": -0.0014964216716875263,
-              "up": -0.003718907661127905
-            },
-            {
-              "timeMs": 2005,
-              "forward": -6.26612040378944e-10,
-              "lateral": -2.069678343325082e-06,
-              "up": -0.0037189076611278626
-            },
-            {
-              "timeMs": 2074,
-              "forward": -6.55855476387962e-11,
-              "lateral": -0.0033298782103293465,
-              "up": -0.003718907661127957
-            },
-            {
-              "timeMs": 2178,
-              "forward": 1.8327608738972637e-09,
-              "lateral": -0.014590191402547125,
-              "up": -0.003718907661128277
-            },
-            {
-              "timeMs": 2351,
-              "forward": 6.242739155278839e-09,
-              "lateral": -0.04074860544375437,
-              "up": -0.003718907661129021
-            },
-            {
-              "timeMs": 2386,
-              "forward": 7.3621952280300674e-09,
-              "lateral": -0.047388817344856546,
-              "up": -0.0037189076611292096
-            },
-            {
-              "timeMs": 2489,
-              "forward": 1.1364226483954454e-08,
-              "lateral": -0.071127441073043,
-              "up": -0.003718907661129884
-            },
-            {
-              "timeMs": 2558,
-              "forward": 1.351843987177595e-08,
-              "lateral": -0.0839054637423943,
-              "up": -0.0037189076611302474
-            },
-            {
-              "timeMs": 3111,
-              "forward": 2.4986814022847537e-08,
-              "lateral": -0.15193173938210885,
-              "up": -0.0037189076611321807
-            },
-            {
-              "timeMs": 3250,
-              "forward": 2.7452601762958687e-08,
-              "lateral": -0.16655791751605734,
-              "up": -0.0037189076611325966
-            },
-            {
-              "timeMs": 3388,
-              "forward": 2.9342850910605472e-08,
-              "lateral": -0.17777020187819367,
-              "up": -0.003718907661132915
-            },
-            {
-              "timeMs": 3526,
-              "forward": 3.0478828711266704e-08,
-              "lateral": -0.18450839443452408,
-              "up": -0.0037189076611331066
-            },
-            {
-              "timeMs": 3629,
-              "forward": 3.0716370054513195e-08,
-              "lateral": -0.1859174205598689,
-              "up": -0.0037189076611331465
-            },
-            {
-              "timeMs": 3698,
-              "forward": 3.0445798432347376e-08,
-              "lateral": -0.18431246716403388,
-              "up": -0.003718907661133101
-            },
-            {
-              "timeMs": 3734,
-              "forward": 2.9792012444694726e-08,
-              "lateral": -0.18043567783994202,
-              "up": -0.0037201275381057546
-            },
-            {
-              "timeMs": 3768,
-              "forward": 2.8771413523305517e-08,
-              "lateral": -0.17444170811907025,
-              "up": -0.003779967213126293
-            },
-            {
-              "timeMs": 3802,
-              "forward": 2.7555792842273332e-08,
-              "lateral": -0.1664774205245996,
-              "up": -0.0030263335177575603
-            },
-            {
-              "timeMs": 3871,
-              "forward": 2.436649212170006e-08,
-              "lateral": -0.14558831893632584,
-              "up": -0.0010550068302815846
-            },
-            {
-              "timeMs": 3906,
-              "forward": 2.2274261153322058e-08,
-              "lateral": -0.133199553377824,
-              "up": -0.0010765876525787397
-            },
-            {
-              "timeMs": 3940,
-              "forward": 2.0567809153758918e-08,
-              "lateral": -0.12040045223148416,
-              "up": 0.001600435183071331
-            },
-            {
-              "timeMs": 3975,
-              "forward": 1.941828449223884e-08,
-              "lateral": -0.10677447669813431,
-              "up": 0.008407846511228783
-            },
-            {
-              "timeMs": 4009,
-              "forward": 1.7879210017495097e-08,
-              "lateral": -0.09339276720382032,
-              "up": 0.012660311749965103
-            },
-            {
-              "timeMs": 4044,
-              "forward": 1.5760277649905443e-08,
-              "lateral": -0.07978624164422232,
-              "up": 0.013698095178630817
-            },
-            {
-              "timeMs": 4079,
-              "forward": 1.3373315884067406e-08,
-              "lateral": -0.06667259530917544,
-              "up": 0.012653126575024388
-            },
-            {
-              "timeMs": 4114,
-              "forward": 1.0684350030857333e-08,
-              "lateral": -0.05422208037741798,
-              "up": 0.009153662218480895
-            },
-            {
-              "timeMs": 4148,
-              "forward": 7.545695276863263e-09,
-              "lateral": -0.0406918913421079,
-              "up": 0.004066472441831441
-            },
-            {
-              "timeMs": 4183,
-              "forward": 4.0130966613587245e-09,
-              "lateral": -0.024084324033127293,
-              "up": -0.0002800697395471414
-            },
-            {
-              "timeMs": 4286,
-              "forward": -4.543619755235866e-09,
-              "lateral": 0.026940190031983734,
-              "up": -1.093966393540596e-05
-            },
-            {
-              "timeMs": 4321,
-              "forward": -6.845353779750888e-09,
-              "lateral": 0.04061210950623413,
-              "up": 7.915740006542854e-06
-            },
-            {
-              "timeMs": 4356,
-              "forward": -8.441934015477867e-09,
-              "lateral": 0.0500841538145887,
-              "up": 9.617537272620883e-06
-            },
-            {
-              "timeMs": 4391,
-              "forward": -9.172971866820682e-09,
-              "lateral": 0.0544042792586512,
-              "up": -6.507109198485104e-06
-            },
-            {
-              "timeMs": 4425,
-              "forward": -9.144784350226239e-09,
-              "lateral": 0.05424435731388045,
-              "up": 7.63447695416742e-07
-            },
-            {
-              "timeMs": 4459,
-              "forward": -8.571371339368805e-09,
-              "lateral": 0.0508578383198337,
-              "up": 1.5534626502497224e-05
-            },
-            {
-              "timeMs": 4528,
-              "forward": -6.241221667469094e-09,
-              "lateral": 0.03701216432769181,
-              "up": -8.531894344761e-06
-            },
-            {
-              "timeMs": 4632,
-              "forward": -1.660830308856905e-09,
-              "lateral": 0.009852585175431295,
-              "up": 1.1346795549742154e-06
-            },
-            {
-              "timeMs": 4667,
-              "forward": -3.8890156875520835e-10,
-              "lateral": 0.0023068296955898408,
-              "up": 4.749744833554281e-09
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_2",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_2",
-          "stageKind": "RECOVERY",
-          "durationMs": 115,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_3",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_3",
-          "stageKind": "ACTIVE",
-          "durationMs": 2500,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 67,
-              "forward": 2.4278659043341674e-10,
-              "lateral": -0.00497883053123951,
-              "up": -0.003538706327359137
-            },
-            {
-              "timeMs": 133,
-              "forward": 8.140240872881506e-10,
-              "lateral": -0.008545995197957382,
-              "up": -0.003717495799495769
-            },
-            {
-              "timeMs": 166,
-              "forward": 1.4525801554422008e-09,
-              "lateral": -0.012333680754527452,
-              "up": -0.0037174957994958765
-            },
-            {
-              "timeMs": 200,
-              "forward": 2.5723429391061553e-09,
-              "lateral": -0.018975711520761253,
-              "up": -0.0037174957994960656
-            },
-            {
-              "timeMs": 233,
-              "forward": 4.292757898238214e-09,
-              "lateral": -0.02918059996794909,
-              "up": -0.0037174957994963553
-            },
-            {
-              "timeMs": 267,
-              "forward": 7.1784057265924655e-09,
-              "lateral": -0.04629722959548234,
-              "up": -0.003717495799496842
-            },
-            {
-              "timeMs": 300,
-              "forward": 1.1049316215175022e-08,
-              "lateral": -0.06925807930529118,
-              "up": -0.0037174957994974946
-            },
-            {
-              "timeMs": 367,
-              "forward": 2.001411726062008e-08,
-              "lateral": -0.12243407915532589,
-              "up": -0.003717495799499006
-            },
-            {
-              "timeMs": 400,
-              "forward": 2.3921379891723148e-08,
-              "lateral": -0.14561054259538653,
-              "up": -0.0037174957994996647
-            },
-            {
-              "timeMs": 433,
-              "forward": 2.6782841652775206e-08,
-              "lateral": -0.16258372566103937,
-              "up": -0.003717495799500147
-            },
-            {
-              "timeMs": 467,
-              "forward": 2.8750112376887884e-08,
-              "lateral": -0.17425286327302458,
-              "up": -0.0037174957995004788
-            },
-            {
-              "timeMs": 500,
-              "forward": 3.0184690883338e-08,
-              "lateral": -0.18276227638125422,
-              "up": -0.0037174957995007207
-            },
-            {
-              "timeMs": 533,
-              "forward": 3.121696676529223e-08,
-              "lateral": -0.18888536775857212,
-              "up": -0.0037174957995008947
-            },
-            {
-              "timeMs": 567,
-              "forward": 3.1936521129998275e-08,
-              "lateral": -0.1931534964591265,
-              "up": -0.003717495799501016
-            },
-            {
-              "timeMs": 633,
-              "forward": 3.2599392037548784e-08,
-              "lateral": -0.19708541565388443,
-              "up": -0.0037174957995011275
-            },
-            {
-              "timeMs": 700,
-              "forward": 3.2548389983751665e-08,
-              "lateral": -0.19678290337324145,
-              "up": -0.003717495799501119
-            },
-            {
-              "timeMs": 733,
-              "forward": 3.196705167464841e-08,
-              "lateral": -0.19333458840847018,
-              "up": -0.003717495799501021
-            },
-            {
-              "timeMs": 767,
-              "forward": 3.091757865962302e-08,
-              "lateral": -0.18710952380299567,
-              "up": -0.003717495799500844
-            },
-            {
-              "timeMs": 800,
-              "forward": 2.9451364117797107e-08,
-              "lateral": -0.17841244712471963,
-              "up": -0.0037174957995005967
-            },
-            {
-              "timeMs": 833,
-              "forward": 2.7528705144571534e-08,
-              "lateral": -0.1670079290866852,
-              "up": -0.0037174957995002728
-            },
-            {
-              "timeMs": 866,
-              "forward": 2.487648347368615e-08,
-              "lateral": -0.15127589596807955,
-              "up": -0.0037174957994998256
-            },
-            {
-              "timeMs": 900,
-              "forward": 2.139733813106988e-08,
-              "lateral": -0.1306388393044472,
-              "up": -0.0037174957994992393
-            },
-            {
-              "timeMs": 967,
-              "forward": 1.3990381854526895e-08,
-              "lateral": -0.08670342623814939,
-              "up": -0.0037174957994979903
-            },
-            {
-              "timeMs": 1000,
-              "forward": 1.0917432210416859e-08,
-              "lateral": -0.06847580261528492,
-              "up": -0.0037174957994974725
-            },
-            {
-              "timeMs": 1033,
-              "forward": 8.78813898326131e-09,
-              "lateral": -0.05584559042751787,
-              "up": -0.0037174957994971134
-            },
-            {
-              "timeMs": 1100,
-              "forward": 6.0337129765185816e-09,
-              "lateral": -0.03950732238590718,
-              "up": -0.003717495799496649
-            },
-            {
-              "timeMs": 1166,
-              "forward": 4.033867978281715e-09,
-              "lateral": -0.027644960518926398,
-              "up": -0.003717495799496312
-            },
-            {
-              "timeMs": 1233,
-              "forward": 2.790132037010688e-09,
-              "lateral": -0.02026756279636174,
-              "up": -0.003717495799496102
-            },
-            {
-              "timeMs": 1267,
-              "forward": 2.487637173394463e-09,
-              "lateral": -0.01847326829750091,
-              "up": -0.0037174957994960513
-            },
-            {
-              "timeMs": 1334,
-              "forward": 2.585057939632212e-09,
-              "lateral": -0.0190511331986636,
-              "up": -0.003717495799496068
-            },
-            {
-              "timeMs": 1367,
-              "forward": 2.9916698618288443e-09,
-              "lateral": -0.021463013244792807,
-              "up": -0.0037174957994961363
-            },
-            {
-              "timeMs": 1400,
-              "forward": 4.074095302459677e-09,
-              "lateral": -0.027883571945130827,
-              "up": -0.0037174957994963185
-            },
-            {
-              "timeMs": 1433,
-              "forward": 6.120685873206791e-09,
-              "lateral": -0.04002321117185059,
-              "up": -0.0037174957994966637
-            },
-            {
-              "timeMs": 1467,
-              "forward": 8.980838921886957e-09,
-              "lateral": -0.056988621849566656,
-              "up": -0.003717495799497146
-            },
-            {
-              "timeMs": 1600,
-              "forward": 2.286793552930561e-08,
-              "lateral": -0.13936191722750665,
-              "up": -0.003717495799499487
-            },
-            {
-              "timeMs": 1633,
-              "forward": 2.5817826915228285e-08,
-              "lateral": -0.1568595952689648,
-              "up": -0.0037174957994999844
-            },
-            {
-              "timeMs": 1666,
-              "forward": 2.8111318144152846e-08,
-              "lateral": -0.17046376714110373,
-              "up": -0.003717495799500371
-            },
-            {
-              "timeMs": 1700,
-              "forward": 2.956283725112073e-08,
-              "lateral": -0.17907367497682572,
-              "up": -0.003717495799500616
-            },
-            {
-              "timeMs": 1733,
-              "forward": 2.982609917128305e-08,
-              "lateral": -0.1806352475434542,
-              "up": -0.00371749579950066
-            },
-            {
-              "timeMs": 1766,
-              "forward": 2.8742634098129313e-08,
-              "lateral": -0.17420852395892147,
-              "up": -0.0037174957995004775
-            },
-            {
-              "timeMs": 1800,
-              "forward": 2.6003180065015376e-08,
-              "lateral": -0.1579590566456318,
-              "up": -0.0037174957995000156
-            },
-            {
-              "timeMs": 1833,
-              "forward": 2.1487624816082128e-08,
-              "lateral": -0.1311744018197059,
-              "up": -0.0037174957994992545
-            },
-            {
-              "timeMs": 1834,
-              "forward": 2.0945668292915264e-08,
-              "lateral": -0.12795970959216324,
-              "up": -0.003717495799499163
-            },
-            {
-              "timeMs": 1866,
-              "forward": -2.878884698397164e-09,
-              "lateral": 0.013359018020331542,
-              "up": -0.0037174957994951466
-            },
-            {
-              "timeMs": 1867,
-              "forward": -3.837445652928819e-09,
-              "lateral": 0.019044858943670372,
-              "up": -0.003717495799494985
-            },
-            {
-              "timeMs": 1900,
-              "forward": -4.959683960698526e-08,
-              "lateral": 0.2904732346534729,
-              "up": -0.0037174957994872706
-            },
-            {
-              "timeMs": 1933,
-              "forward": -9.114224869974395e-08,
-              "lateral": 0.5369057219028479,
-              "up": -0.003717495799480266
-            },
-            {
-              "timeMs": 1934,
-              "forward": -9.175041711293696e-08,
-              "lateral": 0.5405131581425668,
-              "up": -0.003717495799480164
-            },
-            {
-              "timeMs": 1967,
-              "forward": -1.0103948291577918e-07,
-              "lateral": 0.5956125225722789,
-              "up": -0.003717495799478598
-            },
-            {
-              "timeMs": 2000,
-              "forward": -1.0615707054269411e-07,
-              "lateral": 0.6259682774543763,
-              "up": -0.0037174957994777352
-            },
-            {
-              "timeMs": 2033,
-              "forward": -1.0876567123097304e-07,
-              "lateral": 0.6414416065216065,
-              "up": -0.003717495799477295
-            },
-            {
-              "timeMs": 2067,
-              "forward": -1.1024550512984562e-07,
-              "lateral": 0.6502193488180639,
-              "up": -0.0037174957994770457
-            },
-            {
-              "timeMs": 2100,
-              "forward": -1.108401621440707e-07,
-              "lateral": 0.6537466615438462,
-              "up": -0.0037174957994769455
-            },
-            {
-              "timeMs": 2134,
-              "forward": -1.1079818055396083e-07,
-              "lateral": 0.6534976796507835,
-              "up": -0.0037174957994769524
-            },
-            {
-              "timeMs": 2234,
-              "forward": -1.0903122467082328e-07,
-              "lateral": 0.6430167638659477,
-              "up": -0.0037174957994772504
-            },
-            {
-              "timeMs": 2366,
-              "forward": -1.0799673152622042e-07,
-              "lateral": 0.6368804062604905,
-              "up": -0.0037174957994774247
-            },
-            {
-              "timeMs": 2400,
-              "forward": -1.072642644391645e-07,
-              "lateral": 0.632535743713379,
-              "up": -0.0037174957994775483
-            },
-            {
-              "timeMs": 2433,
-              "forward": -1.0595304614134336e-07,
-              "lateral": 0.6247581508159638,
-              "up": -0.0037174957994777695
-            },
-            {
-              "timeMs": 2466,
-              "forward": -1.0385267150128247e-07,
-              "lateral": 0.6122993438839912,
-              "up": -0.0037174957994781234
-            },
-            {
-              "timeMs": 2500,
-              "forward": -1.0066839122851267e-07,
-              "lateral": 0.5934113711118699,
-              "up": -0.0037174957994786603
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_4",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_4",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 33,
-              "forward": 4.820965414770941e-09,
-              "lateral": -0.028596242766827346,
-              "up": -8.127540103210001e-16
-            },
-            {
-              "timeMs": 67,
-              "forward": 1.1676901007861299e-08,
-              "lateral": -0.06926320136711,
-              "up": -1.968578345497071e-15
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.9512634551579047e-08,
-              "lateral": -0.11574196666479111,
-              "up": -3.289584267029226e-15
-            },
-            {
-              "timeMs": 166,
-              "forward": 3.60502562196048e-08,
-              "lateral": -0.2138372156322003,
-              "up": -6.077618856182561e-15
-            },
-            {
-              "timeMs": 200,
-              "forward": 4.3660554149470325e-08,
-              "lateral": -0.25897877663373947,
-              "up": -7.360619174051681e-15
-            },
-            {
-              "timeMs": 234,
-              "forward": 5.035422258235308e-08,
-              "lateral": -0.2986832696795464,
-              "up": -8.489087311073858e-15
-            },
-            {
-              "timeMs": 367,
-              "forward": 7.494091425164023e-08,
-              "lateral": -0.44452273023128513,
-              "up": -1.2634093660162282e-14
-            },
-            {
-              "timeMs": 466,
-              "forward": 9.525597429555785e-08,
-              "lateral": -0.5650243974924087,
-              "up": -1.6058956751473236e-14
-            },
-            {
-              "timeMs": 500,
-              "forward": 1.0177698191553256e-07,
-              "lateral": -0.6037047147750855,
-              "up": -1.715831645149517e-14
-            },
-            {
-              "timeMs": 533,
-              "forward": 1.085375984898896e-07,
-              "lateral": -0.6438061851859093,
-              "up": -1.8298071204202185e-14
-            },
-            {
-              "timeMs": 567,
-              "forward": 1.1619189306407086e-07,
-              "lateral": -0.6892086670398714,
-              "up": 2.6497257626469583e-08
-            },
-            {
-              "timeMs": 600,
-              "forward": 1.229625784208511e-07,
-              "lateral": -0.7293674170970917,
-              "up": 2.649727700765599e-06
-            },
-            {
-              "timeMs": 634,
-              "forward": 1.2778158158223617e-07,
-              "lateral": -0.757954567015171,
-              "up": -2.154236422030633e-14
-            },
-            {
-              "timeMs": 667,
-              "forward": 1.2911456865997808e-07,
-              "lateral": -0.7658613504469396,
-              "up": 1.8403159650064664e-08
-            },
-            {
-              "timeMs": 700,
-              "forward": 1.274419986148436e-07,
-              "lateral": -0.7559384793043138,
-              "up": 1.8403181202300483e-06
-            },
-            {
-              "timeMs": 734,
-              "forward": 1.2402720156096927e-07,
-              "lateral": -0.735684905409813,
-              "up": 5.635718506005857e-08
-            },
-            {
-              "timeMs": 767,
-              "forward": 1.1937733083136604e-07,
-              "lateral": -0.7081007658839226,
-              "up": 2.7896816753639763e-06
-            },
-            {
-              "timeMs": 800,
-              "forward": 1.1364877096088786e-07,
-              "lateral": -0.6741239041090012,
-              "up": -1.9159750463571373e-14
-            },
-            {
-              "timeMs": 834,
-              "forward": 1.0688489504909086e-07,
-              "lateral": -0.6340029442906381,
-              "up": -1.801944623043392e-14
-            },
-            {
-              "timeMs": 900,
-              "forward": 9.234907518765142e-08,
-              "lateral": -0.5477786570787431,
-              "up": 3.088749962242878e-06
-            },
-            {
-              "timeMs": 933,
-              "forward": 7.760611337250275e-08,
-              "lateral": -0.4603316968083383,
-              "up": 3.08874866947086e-08
-            },
-            {
-              "timeMs": 967,
-              "forward": 6.114192951751363e-08,
-              "lateral": -0.3626719951629639,
-              "up": -1.0307758742132334e-14
-            },
-            {
-              "timeMs": 1000,
-              "forward": 6.114192951751363e-08,
-              "lateral": -0.3626719951629639,
-              "up": -1.0307758742132334e-14
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_5",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_5",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 1000,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 6.556622863264095
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_6",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_6",
-          "stageKind": "ACTIVE",
-          "durationMs": 1500,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 34,
-              "forward": 8.825188715138822e-09,
-              "lateral": 0.0,
-              "up": 0.05234785562722255
-            },
-            {
-              "timeMs": 67,
-              "forward": 1.0904012591819823e-08,
-              "lateral": 0.0,
-              "up": 0.06467869360514023
-            },
-            {
-              "timeMs": 100,
-              "forward": 7.347262549820353e-09,
-              "lateral": 0.0,
-              "up": 0.04358132745122223
-            },
-            {
-              "timeMs": 134,
-              "forward": -1.1208614570413487e-09,
-              "lateral": 0.0,
-              "up": -0.006648548334232007
-            },
-            {
-              "timeMs": 167,
-              "forward": -1.2719055424322833e-08,
-              "lateral": 0.0,
-              "up": -0.07544487699452196
-            },
-            {
-              "timeMs": 200,
-              "forward": -2.513876142941826e-08,
-              "lateral": 0.0,
-              "up": -0.1491141205509825
-            },
-            {
-              "timeMs": 234,
-              "forward": -3.579161258063325e-08,
-              "lateral": 0.0,
-              "up": -0.21230301453185474
-            },
-            {
-              "timeMs": 267,
-              "forward": -4.332782343212815e-08,
-              "lateral": 0.0,
-              "up": -0.2570051155706268
-            },
-            {
-              "timeMs": 300,
-              "forward": -4.790242579842565e-08,
-              "lateral": 0.0,
-              "up": -0.28414001681212664
-            },
-            {
-              "timeMs": 333,
-              "forward": -4.992730690853198e-08,
-              "lateral": 0.0,
-              "up": -0.2961508856372097
-            },
-            {
-              "timeMs": 367,
-              "forward": -5.103536836969197e-08,
-              "lateral": 0.0,
-              "up": -0.3027235089846734
-            },
-            {
-              "timeMs": 433,
-              "forward": -5.397362083411141e-08,
-              "lateral": 0.0,
-              "up": -0.3201521692398259
-            },
-            {
-              "timeMs": 466,
-              "forward": -5.490155510913567e-08,
-              "lateral": 0.0,
-              "up": -0.32565634269474586
-            },
-            {
-              "timeMs": 500,
-              "forward": -5.451247144946373e-08,
-              "lateral": 0.0,
-              "up": -0.3233484379121001
-            },
-            {
-              "timeMs": 533,
-              "forward": -5.30433113936962e-08,
-              "lateral": 0.0,
-              "up": -0.3146339071553048
-            },
-            {
-              "timeMs": 566,
-              "forward": -5.08224490734617e-08,
-              "lateral": 0.0,
-              "up": -0.3014605480510233
-            },
-            {
-              "timeMs": 634,
-              "forward": -4.543940798691052e-08,
-              "lateral": 0.0,
-              "up": -0.26953027814633534
-            },
-            {
-              "timeMs": 667,
-              "forward": -4.246185459826247e-08,
-              "lateral": 0.0,
-              "up": -0.2518684988980433
-            },
-            {
-              "timeMs": 700,
-              "forward": -3.8450312998342145e-08,
-              "lateral": 0.0,
-              "up": -0.22807347226535546
-            },
-            {
-              "timeMs": 733,
-              "forward": -3.3627107482355675e-08,
-              "lateral": 0.0,
-              "up": -0.19946394626415254
-            },
-            {
-              "timeMs": 766,
-              "forward": -4.1481892516677186e-08,
-              "lateral": 0.0,
-              "up": -0.24605571514657765
-            },
-            {
-              "timeMs": 767,
-              "forward": -4.185835828103643e-08,
-              "lateral": 0.0,
-              "up": -0.24828877509774472
-            },
-            {
-              "timeMs": 800,
-              "forward": -6.316016438293174e-08,
-              "lateral": 0.0,
-              "up": -0.37464345219470596
-            },
-            {
-              "timeMs": 833,
-              "forward": -9.072064779303145e-08,
-              "lateral": 0.0,
-              "up": -0.5381223593475339
-            },
-            {
-              "timeMs": 834,
-              "forward": -9.176868576356238e-08,
-              "lateral": 0.0,
-              "up": -0.5443389448670128
-            },
-            {
-              "timeMs": 867,
-              "forward": -1.3001473317168484e-07,
-              "lateral": 0.0,
-              "up": -0.771200786880418
-            },
-            {
-              "timeMs": 900,
-              "forward": -1.8280491862520817e-07,
-              "lateral": 0.0,
-              "up": -1.0843332417042904
-            },
-            {
-              "timeMs": 933,
-              "forward": -4.088451953046167e-07,
-              "lateral": 0.13985751070082175,
-              "up": -2.2852656397139506
-            },
-            {
-              "timeMs": 934,
-              "forward": -4.149121564468865e-07,
-              "lateral": 0.14409561556577669,
-              "up": -2.31701457322958
-            },
-            {
-              "timeMs": 966,
-              "forward": -5.965310056130931e-07,
-              "lateral": 0.2797149469256403,
-              "up": -3.2586931283993477
-            },
-            {
-              "timeMs": 967,
-              "forward": -6.004581101728189e-07,
-              "lateral": 0.2833908197730781,
-              "up": -3.27831143163205
-            },
-            {
-              "timeMs": 1000,
-              "forward": -6.146525851803893e-07,
-              "lateral": 0.367587360739708,
-              "up": -3.2783114316320474
-            },
-            {
-              "timeMs": 1034,
-              "forward": -6.188365716359959e-07,
-              "lateral": 0.3924053206443787,
-              "up": -3.278311431632047
-            },
-            {
-              "timeMs": 1067,
-              "forward": -6.193155481414372e-07,
-              "lateral": 0.39524646390974527,
-              "up": -3.278311431632047
-            },
-            {
-              "timeMs": 1100,
-              "forward": -6.17472293165526e-07,
-              "lateral": 0.3843128979206086,
-              "up": -3.278311431632047
-            },
-            {
-              "timeMs": 1167,
-              "forward": -6.118135344293404e-07,
-              "lateral": 0.35074719206988814,
-              "up": -3.2783114316320483
-            },
-            {
-              "timeMs": 1200,
-              "forward": -6.106334463322047e-07,
-              "lateral": 0.3437473133206368,
-              "up": -3.2783114316320483
-            },
-            {
-              "timeMs": 1300,
-              "forward": -6.11407513305842e-07,
-              "lateral": 0.3483387589454651,
-              "up": -3.2783114316320483
-            },
-            {
-              "timeMs": 1500,
-              "forward": -6.146525731011637e-07,
-              "lateral": 0.3675873100757599,
-              "up": -3.2783114316320474
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_7",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_7",
-          "stageKind": "ACTIVE",
-          "durationMs": 1500,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 34,
-              "forward": 8.825188715138822e-09,
-              "lateral": 0.0,
-              "up": 0.05234785562722255
-            },
-            {
-              "timeMs": 67,
-              "forward": 1.0904012591819823e-08,
-              "lateral": 0.0,
-              "up": 0.06467869360514023
-            },
-            {
-              "timeMs": 100,
-              "forward": 7.347262549820353e-09,
-              "lateral": 0.0,
-              "up": 0.04358132745122223
-            },
-            {
-              "timeMs": 134,
-              "forward": -1.1208614570413487e-09,
-              "lateral": 0.0,
-              "up": -0.006648548334232007
-            },
-            {
-              "timeMs": 167,
-              "forward": -1.2719055424322833e-08,
-              "lateral": 0.0,
-              "up": -0.07544487699452196
-            },
-            {
-              "timeMs": 200,
-              "forward": -2.513876142941826e-08,
-              "lateral": 0.0,
-              "up": -0.1491141205509825
-            },
-            {
-              "timeMs": 234,
-              "forward": -3.579161258063325e-08,
-              "lateral": 0.0,
-              "up": -0.21230301453185474
-            },
-            {
-              "timeMs": 267,
-              "forward": -4.332782343212815e-08,
-              "lateral": 0.0,
-              "up": -0.2570051155706268
-            },
-            {
-              "timeMs": 300,
-              "forward": -4.790242579842565e-08,
-              "lateral": 0.0,
-              "up": -0.28414001681212664
-            },
-            {
-              "timeMs": 333,
-              "forward": -4.992730690853198e-08,
-              "lateral": 0.0,
-              "up": -0.2961508856372097
-            },
-            {
-              "timeMs": 367,
-              "forward": -5.103536836969197e-08,
-              "lateral": 0.0,
-              "up": -0.3027235089846734
-            },
-            {
-              "timeMs": 433,
-              "forward": -5.397362083411141e-08,
-              "lateral": 0.0,
-              "up": -0.3201521692398259
-            },
-            {
-              "timeMs": 466,
-              "forward": -5.490155510913567e-08,
-              "lateral": 0.0,
-              "up": -0.32565634269474586
-            },
-            {
-              "timeMs": 500,
-              "forward": -5.451247144946373e-08,
-              "lateral": 0.0,
-              "up": -0.3233484379121001
-            },
-            {
-              "timeMs": 533,
-              "forward": -5.30433113936962e-08,
-              "lateral": 0.0,
-              "up": -0.3146339071553048
-            },
-            {
-              "timeMs": 566,
-              "forward": -5.08224490734617e-08,
-              "lateral": 0.0,
-              "up": -0.3014605480510233
-            },
-            {
-              "timeMs": 634,
-              "forward": -4.543940798691052e-08,
-              "lateral": 0.0,
-              "up": -0.26953027814633534
-            },
-            {
-              "timeMs": 667,
-              "forward": -4.246185459826247e-08,
-              "lateral": 0.0,
-              "up": -0.2518684988980433
-            },
-            {
-              "timeMs": 700,
-              "forward": -3.8450312998342145e-08,
-              "lateral": 0.0,
-              "up": -0.22807347226535546
-            },
-            {
-              "timeMs": 733,
-              "forward": -3.3627107482355675e-08,
-              "lateral": 0.0,
-              "up": -0.19946394626415254
-            },
-            {
-              "timeMs": 766,
-              "forward": -4.1481892516677186e-08,
-              "lateral": 0.0,
-              "up": -0.24605571514657765
-            },
-            {
-              "timeMs": 767,
-              "forward": -4.185835828103643e-08,
-              "lateral": 0.0,
-              "up": -0.24828877509774472
-            },
-            {
-              "timeMs": 800,
-              "forward": -6.316016438293174e-08,
-              "lateral": 0.0,
-              "up": -0.37464345219470596
-            },
-            {
-              "timeMs": 833,
-              "forward": -9.072064779303145e-08,
-              "lateral": 0.0,
-              "up": -0.5381223593475339
-            },
-            {
-              "timeMs": 834,
-              "forward": -9.176868576356238e-08,
-              "lateral": 0.0,
-              "up": -0.5443389448670128
-            },
-            {
-              "timeMs": 867,
-              "forward": -1.3001473317168484e-07,
-              "lateral": 0.0,
-              "up": -0.771200786880418
-            },
-            {
-              "timeMs": 900,
-              "forward": -1.8280491862520817e-07,
-              "lateral": 0.0,
-              "up": -1.0843332417042904
-            },
-            {
-              "timeMs": 933,
-              "forward": -4.088451953046167e-07,
-              "lateral": 0.13985751070082175,
-              "up": -2.2852656397139506
-            },
-            {
-              "timeMs": 934,
-              "forward": -4.149121564468865e-07,
-              "lateral": 0.14409561556577669,
-              "up": -2.31701457322958
-            },
-            {
-              "timeMs": 966,
-              "forward": -5.965310056130931e-07,
-              "lateral": 0.2797149469256403,
-              "up": -3.2586931283993477
-            },
-            {
-              "timeMs": 967,
-              "forward": -6.004581101728189e-07,
-              "lateral": 0.2833908197730781,
-              "up": -3.27831143163205
-            },
-            {
-              "timeMs": 1000,
-              "forward": -6.146525851803893e-07,
-              "lateral": 0.367587360739708,
-              "up": -3.2783114316320474
-            },
-            {
-              "timeMs": 1034,
-              "forward": -6.188365716359959e-07,
-              "lateral": 0.3924053206443787,
-              "up": -3.278311431632047
-            },
-            {
-              "timeMs": 1067,
-              "forward": -6.193155481414372e-07,
-              "lateral": 0.39524646390974527,
-              "up": -3.278311431632047
-            },
-            {
-              "timeMs": 1100,
-              "forward": -6.17472293165526e-07,
-              "lateral": 0.3843128979206086,
-              "up": -3.278311431632047
-            },
-            {
-              "timeMs": 1167,
-              "forward": -6.118135344293404e-07,
-              "lateral": 0.35074719206988814,
-              "up": -3.2783114316320483
-            },
-            {
-              "timeMs": 1200,
-              "forward": -6.106334463322047e-07,
-              "lateral": 0.3437473133206368,
-              "up": -3.2783114316320483
-            },
-            {
-              "timeMs": 1300,
-              "forward": -6.11407513305842e-07,
-              "lateral": 0.3483387589454651,
-              "up": -3.2783114316320483
-            },
-            {
-              "timeMs": 1500,
-              "forward": -6.146525731011637e-07,
-              "lateral": 0.3675873100757599,
-              "up": -3.2783114316320474
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_8",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_8",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 1000,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.16325537175137228
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_9",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_9",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 1000,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.16325537175137228
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_10",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_10",
-          "stageKind": "ACTIVE",
-          "durationMs": 718,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 67,
-              "forward": -8.633772660354631e-09,
-              "lateral": 0.0,
-              "up": -0.05121244421291671
-            },
-            {
-              "timeMs": 233,
-              "forward": -2.7682547163697027e-08,
-              "lateral": 0.0,
-              "up": -0.1642029455793006
-            },
-            {
-              "timeMs": 300,
-              "forward": -3.580513995383305e-08,
-              "lateral": 0.0,
-              "up": -0.21238325406011072
-            },
-            {
-              "timeMs": 333,
-              "forward": -3.901418382184564e-08,
-              "lateral": 0.0,
-              "up": -0.23141815184263503
-            },
-            {
-              "timeMs": 366,
-              "forward": -4.1579839390272526e-08,
-              "lateral": 0.0,
-              "up": -0.24663670088678202
-            },
-            {
-              "timeMs": 400,
-              "forward": -4.363990588342541e-08,
-              "lateral": 0.0,
-              "up": -0.25885627679013457
-            },
-            {
-              "timeMs": 434,
-              "forward": -4.514502277267875e-08,
-              "lateral": 0.0,
-              "up": -0.26778409059263897
-            },
-            {
-              "timeMs": 467,
-              "forward": -4.620784095465562e-08,
-              "lateral": 0.0,
-              "up": -0.2740883470277087
-            },
-            {
-              "timeMs": 567,
-              "forward": -4.8439923813118715e-08,
-              "lateral": 0.0,
-              "up": -0.2873282623421991
-            },
-            {
-              "timeMs": 600,
-              "forward": -4.951659530439767e-08,
-              "lateral": 0.0,
-              "up": -0.2937146916416342
-            },
-            {
-              "timeMs": 633,
-              "forward": -5.094462599846253e-08,
-              "lateral": 5.015730278612457e-10,
-              "up": -0.30218525726811674
-            },
-            {
-              "timeMs": 700,
-              "forward": -5.444677183627817e-08,
-              "lateral": 5.06639422082067e-10,
-              "up": -0.3229587308533617
-            },
-            {
-              "timeMs": 718,
-              "forward": -5.504559640270521e-08,
-              "lateral": 5.06639422082067e-10,
-              "up": -0.32651074350274456
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_11",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_11",
-          "stageKind": "ACTIVE",
-          "durationMs": 1600,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 33,
-              "forward": 0.09964799936207765,
-              "lateral": 0.015690726516778896,
-              "up": -1.6799396821883236e-08
-            },
-            {
-              "timeMs": 66,
-              "forward": 0.25385369588834616,
-              "lateral": 0.00031702336200580184,
-              "up": -4.2796533791253825e-08
-            },
-            {
-              "timeMs": 67,
-              "forward": 0.2593945138141421,
-              "lateral": -0.0014263879860343454,
-              "up": -4.3730645862235097e-08
-            },
-            {
-              "timeMs": 100,
-              "forward": 0.4984106730243017,
-              "lateral": -0.14264273717998394,
-              "up": -8.402575796803798e-08
-            },
-            {
-              "timeMs": 133,
-              "forward": 0.7851133912793028,
-              "lateral": -0.252477650381614,
-              "up": 0.018536979251292336
-            },
-            {
-              "timeMs": 134,
-              "forward": 0.7939286829633831,
-              "lateral": -0.2535314912795914,
-              "up": 0.0183497342135138
-            },
-            {
-              "timeMs": 167,
-              "forward": 1.086979313115241,
-              "lateral": -0.25072813470660577,
-              "up": -1.8325101291647516e-07
-            },
-            {
-              "timeMs": 200,
-              "forward": 1.3844449331706723,
-              "lateral": -0.24292438477276693,
-              "up": -2.3339996747823136e-07
-            },
-            {
-              "timeMs": 233,
-              "forward": 1.6853348927361183,
-              "lateral": -0.23074756957589518,
-              "up": -2.841262225241905e-07
-            },
-            {
-              "timeMs": 267,
-              "forward": 1.9977271098440017,
-              "lateral": -0.2144039184898032,
-              "up": -3.367916132280648e-07
-            },
-            {
-              "timeMs": 300,
-              "forward": 2.30223170573369,
-              "lateral": -0.19551896452902684,
-              "up": -3.8812725040278206e-07
-            },
-            {
-              "timeMs": 366,
-              "forward": 2.9107849787589406,
-              "lateral": -0.1514397084712876,
-              "up": -4.907216625962461e-07
-            },
-            {
-              "timeMs": 400,
-              "forward": 3.2218949694617556,
-              "lateral": -0.12688256353138813,
-              "up": -5.43170886088213e-07
-            },
-            {
-              "timeMs": 433,
-              "forward": 3.520804417691772,
-              "lateral": -0.10273163136093742,
-              "up": -5.935632518835389e-07
-            },
-            {
-              "timeMs": 466,
-              "forward": 3.815708844655234,
-              "lateral": -0.07895648648588784,
-              "up": -6.432804215688811e-07
-            },
-            {
-              "timeMs": 500,
-              "forward": 4.114309542756219,
-              "lateral": -0.055536768585432834,
-              "up": -6.936207359836512e-07
-            },
-            {
-              "timeMs": 533,
-              "forward": 4.397844773933716,
-              "lateral": -0.03456453076748977,
-              "up": -7.414212025462331e-07
-            },
-            {
-              "timeMs": 567,
-              "forward": 4.682460869698172,
-              "lateral": -0.015456065721843406,
-              "up": 8.278625759040748e-06
-            },
-            {
-              "timeMs": 600,
-              "forward": 4.950399185541399,
-              "lateral": 7.663809349000925e-07,
-              "up": 0.000905968389917107
-            },
-            {
-              "timeMs": 633,
-              "forward": 5.20361252018212,
-              "lateral": 0.011000079893007834,
-              "up": 8.190766158879083e-06
-            },
-            {
-              "timeMs": 667,
-              "forward": 5.441948930877653,
-              "lateral": 0.0176662435038122,
-              "up": -9.174440044907572e-07
-            },
-            {
-              "timeMs": 700,
-              "forward": 5.649244256315551,
-              "lateral": 0.020818189904104414,
-              "up": -9.523913838023981e-07
-            },
-            {
-              "timeMs": 733,
-              "forward": 5.83028564341261,
-              "lateral": 0.021898915325302123,
-              "up": -9.829126799899571e-07
-            },
-            {
-              "timeMs": 767,
-              "forward": 5.987476784232993,
-              "lateral": 0.022163302035081628,
-              "up": 1.1256449476271609e-05
-            },
-            {
-              "timeMs": 800,
-              "forward": 6.109422835076209,
-              "lateral": 0.022806583624343815,
-              "up": 0.0012255562884586591
-            },
-            {
-              "timeMs": 833,
-              "forward": 6.210633053462015,
-              "lateral": 0.02405687836651826,
-              "up": 0.0015136587522338895
-            },
-            {
-              "timeMs": 866,
-              "forward": 6.302987976388518,
-              "lateral": 0.025263101933534687,
-              "up": 0.0018020170715860888
-            },
-            {
-              "timeMs": 900,
-              "forward": 6.38962241311207,
-              "lateral": 0.026404947787533942,
-              "up": 0.0020995065175872093
-            },
-            {
-              "timeMs": 933,
-              "forward": 6.4658221930564626,
-              "lateral": 0.027357040088634432,
-              "up": 0.0023877418238640647
-            },
-            {
-              "timeMs": 966,
-              "forward": 6.534983097333966,
-              "lateral": 0.0281022256389367,
-              "up": 0.0018025872336426827
-            },
-            {
-              "timeMs": 1000,
-              "forward": 6.5995973057625195,
-              "lateral": 0.02860123943538541,
-              "up": 0.0011594889105120863
-            },
-            {
-              "timeMs": 1033,
-              "forward": 6.656297129346032,
-              "lateral": 0.028761714609350505,
-              "up": 0.0011588694309735612
-            },
-            {
-              "timeMs": 1067,
-              "forward": 6.709287728034873,
-              "lateral": 0.0285416394434976,
-              "up": 0.0011588530393376502
-            },
-            {
-              "timeMs": 1100,
-              "forward": 6.756048781367289,
-              "lateral": 0.027900234051059427,
-              "up": 0.0011587167258834505
-            },
-            {
-              "timeMs": 1133,
-              "forward": 6.798760735801659,
-              "lateral": 0.026775672709580006,
-              "up": 0.0011583243327598985
-            },
-            {
-              "timeMs": 1167,
-              "forward": 6.839232233349039,
-              "lateral": 0.025062093147087343,
-              "up": 0.0011581005790366136
-            },
-            {
-              "timeMs": 1200,
-              "forward": 6.875680944824471,
-              "lateral": 0.022806702367972078,
-              "up": 0.0011578697060066997
-            },
-            {
-              "timeMs": 1234,
-              "forward": 6.901456408823248,
-              "lateral": 0.018669753300036715,
-              "up": 0.0011579730234487914
-            },
-            {
-              "timeMs": 1267,
-              "forward": 6.909553471746856,
-              "lateral": 0.012407925366434711,
-              "up": 0.0011576881144558537
-            },
-            {
-              "timeMs": 1300,
-              "forward": 6.904641265948725,
-              "lateral": 0.004672406613837419,
-              "up": 0.0011579297368400454
-            },
-            {
-              "timeMs": 1334,
-              "forward": 6.890032151462645,
-              "lateral": -0.004018362022925696,
-              "up": 0.0011574509358221144
-            },
-            {
-              "timeMs": 1400,
-              "forward": 6.850286554552962,
-              "lateral": -0.01983758127315766,
-              "up": -1.1548719784668549e-06
-            },
-            {
-              "timeMs": 1433,
-              "forward": 6.832589452425071,
-              "lateral": -0.025653963843349892,
-              "up": 0.0001310868413822867
-            },
-            {
-              "timeMs": 1466,
-              "forward": 6.8215757270090736,
-              "lateral": -0.02904678088611787,
-              "up": 1.5214577971799253e-06
-            },
-            {
-              "timeMs": 1500,
-              "forward": 6.815471102726139,
-              "lateral": -0.026999286562193695,
-              "up": -1.149002532070377e-06
-            },
-            {
-              "timeMs": 1533,
-              "forward": 6.810245112829441,
-              "lateral": -0.019225131007832037,
-              "up": -1.1481214960373024e-06
-            },
-            {
-              "timeMs": 1600,
-              "forward": 6.799999144792482,
-              "lateral": 1.0527210285804301e-06,
-              "up": -1.1463941549569083e-06
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_12",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_12",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_13",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_13",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_14",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_14",
-          "stageKind": "ACTIVE",
-          "durationMs": 2000,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_15",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_15",
-          "stageKind": "RECOVERY",
-          "durationMs": 70,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_16",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_16",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.6180769215693426e-09,
-              "lateral": -0.009599692689254764,
-              "up": -1.8386459906315298e-06
-            },
-            {
-              "timeMs": 133,
-              "forward": 1.699531381300347e-09,
-              "lateral": -0.01007487597735587,
-              "up": 6.1355817570030256e-06
-            },
-            {
-              "timeMs": 833,
-              "forward": 1.61212429384495e-09,
-              "lateral": -0.00959968952275801,
-              "up": -3.714414105745415e-05
-            },
-            {
-              "timeMs": 933,
-              "forward": 2.212013696373615e-09,
-              "lateral": -0.013138891430571559,
-              "up": -1.80189167375592e-05
-            },
-            {
-              "timeMs": 966,
-              "forward": 2.1667439735797544e-09,
-              "lateral": -0.012764015262946371,
-              "up": 8.83348052280223e-05
-            },
-            {
-              "timeMs": 1000,
-              "forward": 1.6167725051924193e-09,
-              "lateral": -0.009599671315401678,
-              "up": -9.554705319526902e-06
-            },
-            {
-              "timeMs": 1033,
-              "forward": -2.1194688199310123e-12,
-              "lateral": 1.306495509211525e-05,
-              "up": 4.930175697545267e-07
-            },
-            {
-              "timeMs": 1100,
-              "forward": -4.85089943305228e-09,
-              "lateral": 0.028777232311666134,
-              "up": 3.4302063005749433e-06
-            },
-            {
-              "timeMs": 1134,
-              "forward": -5.860011603790114e-09,
-              "lateral": 0.034763630520552515,
-              "up": 4.1369366572826215e-06
-            },
-            {
-              "timeMs": 1167,
-              "forward": -5.657784188909554e-09,
-              "lateral": 0.03353234915062798,
-              "up": -2.7602562844077387e-05
-            },
-            {
-              "timeMs": 1233,
-              "forward": -4.273475737118624e-09,
-              "lateral": 0.025353754840791335,
-              "up": 5.023490371414965e-06
-            },
-            {
-              "timeMs": 1367,
-              "forward": 6.349782516159683e-11,
-              "lateral": -0.0003778427028299649,
-              "up": -1.1963192042981595e-06
-            },
-            {
-              "timeMs": 1433,
-              "forward": 1.608660389756788e-09,
-              "lateral": -0.009560477174585578,
-              "up": -1.8478449596126545e-05
-            },
-            {
-              "timeMs": 1467,
-              "forward": 1.8157600801827193e-09,
-              "lateral": -0.010781539843883253,
-              "up": -1.1101445849890116e-05
-            },
-            {
-              "timeMs": 1633,
-              "forward": 7.798852300866085e-11,
-              "lateral": -0.0005657560894322761,
-              "up": -0.00010315602655706327
-            },
-            {
-              "timeMs": 1667,
-              "forward": 2.2197777453364033e-13,
-              "lateral": -1.013278844164134e-09,
-              "up": 1.315679300780987e-06
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_17",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_17",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.6180769215693426e-09,
-              "lateral": -0.009599692689254764,
-              "up": -1.8386459906315298e-06
-            },
-            {
-              "timeMs": 133,
-              "forward": 1.699531381300347e-09,
-              "lateral": -0.01007487597735587,
-              "up": 6.1355817570030256e-06
-            },
-            {
-              "timeMs": 833,
-              "forward": 1.61212429384495e-09,
-              "lateral": -0.00959968952275801,
-              "up": -3.714414105745415e-05
-            },
-            {
-              "timeMs": 933,
-              "forward": 2.212013696373615e-09,
-              "lateral": -0.013138891430571559,
-              "up": -1.80189167375592e-05
-            },
-            {
-              "timeMs": 966,
-              "forward": 2.1667439735797544e-09,
-              "lateral": -0.012764015262946371,
-              "up": 8.83348052280223e-05
-            },
-            {
-              "timeMs": 1000,
-              "forward": 1.6167725051924193e-09,
-              "lateral": -0.009599671315401678,
-              "up": -9.554705319526902e-06
-            },
-            {
-              "timeMs": 1033,
-              "forward": -2.1194688199310123e-12,
-              "lateral": 1.306495509211525e-05,
-              "up": 4.930175697545267e-07
-            },
-            {
-              "timeMs": 1100,
-              "forward": -4.85089943305228e-09,
-              "lateral": 0.028777232311666134,
-              "up": 3.4302063005749433e-06
-            },
-            {
-              "timeMs": 1134,
-              "forward": -5.860011603790114e-09,
-              "lateral": 0.034763630520552515,
-              "up": 4.1369366572826215e-06
-            },
-            {
-              "timeMs": 1167,
-              "forward": -5.657784188909554e-09,
-              "lateral": 0.03353234915062798,
-              "up": -2.7602562844077387e-05
-            },
-            {
-              "timeMs": 1233,
-              "forward": -4.273475737118624e-09,
-              "lateral": 0.025353754840791335,
-              "up": 5.023490371414965e-06
-            },
-            {
-              "timeMs": 1367,
-              "forward": 6.349782516159683e-11,
-              "lateral": -0.0003778427028299649,
-              "up": -1.1963192042981595e-06
-            },
-            {
-              "timeMs": 1433,
-              "forward": 1.608660389756788e-09,
-              "lateral": -0.009560477174585578,
-              "up": -1.8478449596126545e-05
-            },
-            {
-              "timeMs": 1467,
-              "forward": 1.8157600801827193e-09,
-              "lateral": -0.010781539843883253,
-              "up": -1.1101445849890116e-05
-            },
-            {
-              "timeMs": 1633,
-              "forward": 7.798852300866085e-11,
-              "lateral": -0.0005657560894322761,
-              "up": -0.00010315602655706327
-            },
-            {
-              "timeMs": 1667,
-              "forward": 2.2197777453364033e-13,
-              "lateral": -1.013278844164134e-09,
-              "up": 1.315679300780987e-06
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_18",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_18",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.6180769215693426e-09,
-              "lateral": -0.009599692689254764,
-              "up": -1.8386459906315298e-06
-            },
-            {
-              "timeMs": 133,
-              "forward": 1.699531381300347e-09,
-              "lateral": -0.01007487597735587,
-              "up": 6.1355817570030256e-06
-            },
-            {
-              "timeMs": 833,
-              "forward": 1.61212429384495e-09,
-              "lateral": -0.00959968952275801,
-              "up": -3.714414105745415e-05
-            },
-            {
-              "timeMs": 933,
-              "forward": 2.212013696373615e-09,
-              "lateral": -0.013138891430571559,
-              "up": -1.80189167375592e-05
-            },
-            {
-              "timeMs": 966,
-              "forward": 2.1667439735797544e-09,
-              "lateral": -0.012764015262946371,
-              "up": 8.83348052280223e-05
-            },
-            {
-              "timeMs": 1000,
-              "forward": 1.6167725051924193e-09,
-              "lateral": -0.009599671315401678,
-              "up": -9.554705319526902e-06
-            },
-            {
-              "timeMs": 1033,
-              "forward": -2.1194688199310123e-12,
-              "lateral": 1.306495509211525e-05,
-              "up": 4.930175697545267e-07
-            },
-            {
-              "timeMs": 1100,
-              "forward": -4.85089943305228e-09,
-              "lateral": 0.028777232311666134,
-              "up": 3.4302063005749433e-06
-            },
-            {
-              "timeMs": 1134,
-              "forward": -5.860011603790114e-09,
-              "lateral": 0.034763630520552515,
-              "up": 4.1369366572826215e-06
-            },
-            {
-              "timeMs": 1167,
-              "forward": -5.657784188909554e-09,
-              "lateral": 0.03353234915062798,
-              "up": -2.7602562844077387e-05
-            },
-            {
-              "timeMs": 1233,
-              "forward": -4.273475737118624e-09,
-              "lateral": 0.025353754840791335,
-              "up": 5.023490371414965e-06
-            },
-            {
-              "timeMs": 1367,
-              "forward": 6.349782516159683e-11,
-              "lateral": -0.0003778427028299649,
-              "up": -1.1963192042981595e-06
-            },
-            {
-              "timeMs": 1433,
-              "forward": 1.608660389756788e-09,
-              "lateral": -0.009560477174585578,
-              "up": -1.8478449596126545e-05
-            },
-            {
-              "timeMs": 1467,
-              "forward": 1.8157600801827193e-09,
-              "lateral": -0.010781539843883253,
-              "up": -1.1101445849890116e-05
-            },
-            {
-              "timeMs": 1633,
-              "forward": 7.798852300866085e-11,
-              "lateral": -0.0005657560894322761,
-              "up": -0.00010315602655706327
-            },
-            {
-              "timeMs": 1667,
-              "forward": 2.2197777453364033e-13,
-              "lateral": -1.013278844164134e-09,
-              "up": 1.315679300780987e-06
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_19",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_19",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.6180769215693426e-09,
-              "lateral": -0.009599692689254764,
-              "up": -1.8386459906315298e-06
-            },
-            {
-              "timeMs": 133,
-              "forward": 1.699531381300347e-09,
-              "lateral": -0.01007487597735587,
-              "up": 6.1355817570030256e-06
-            },
-            {
-              "timeMs": 833,
-              "forward": 1.61212429384495e-09,
-              "lateral": -0.00959968952275801,
-              "up": -3.714414105745415e-05
-            },
-            {
-              "timeMs": 933,
-              "forward": 2.212013696373615e-09,
-              "lateral": -0.013138891430571559,
-              "up": -1.80189167375592e-05
-            },
-            {
-              "timeMs": 966,
-              "forward": 2.1667439735797544e-09,
-              "lateral": -0.012764015262946371,
-              "up": 8.83348052280223e-05
-            },
-            {
-              "timeMs": 1000,
-              "forward": 1.6167725051924193e-09,
-              "lateral": -0.009599671315401678,
-              "up": -9.554705319526902e-06
-            },
-            {
-              "timeMs": 1033,
-              "forward": -2.1194688199310123e-12,
-              "lateral": 1.306495509211525e-05,
-              "up": 4.930175697545267e-07
-            },
-            {
-              "timeMs": 1100,
-              "forward": -4.85089943305228e-09,
-              "lateral": 0.028777232311666134,
-              "up": 3.4302063005749433e-06
-            },
-            {
-              "timeMs": 1134,
-              "forward": -5.860011603790114e-09,
-              "lateral": 0.034763630520552515,
-              "up": 4.1369366572826215e-06
-            },
-            {
-              "timeMs": 1167,
-              "forward": -5.657784188909554e-09,
-              "lateral": 0.03353234915062798,
-              "up": -2.7602562844077387e-05
-            },
-            {
-              "timeMs": 1233,
-              "forward": -4.273475737118624e-09,
-              "lateral": 0.025353754840791335,
-              "up": 5.023490371414965e-06
-            },
-            {
-              "timeMs": 1367,
-              "forward": 6.349782516159683e-11,
-              "lateral": -0.0003778427028299649,
-              "up": -1.1963192042981595e-06
-            },
-            {
-              "timeMs": 1433,
-              "forward": 1.608660389756788e-09,
-              "lateral": -0.009560477174585578,
-              "up": -1.8478449596126545e-05
-            },
-            {
-              "timeMs": 1467,
-              "forward": 1.8157600801827193e-09,
-              "lateral": -0.010781539843883253,
-              "up": -1.1101445849890116e-05
-            },
-            {
-              "timeMs": 1633,
-              "forward": 7.798852300866085e-11,
-              "lateral": -0.0005657560894322761,
-              "up": -0.00010315602655706327
-            },
-            {
-              "timeMs": 1667,
-              "forward": 2.2197777453364033e-13,
-              "lateral": -1.013278844164134e-09,
-              "up": 1.315679300780987e-06
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_20",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_20",
-          "stageKind": "ACTIVE",
-          "durationMs": 1667,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.6180769215693426e-09,
-              "lateral": -0.009599692689254764,
-              "up": -1.8386459906315298e-06
-            },
-            {
-              "timeMs": 133,
-              "forward": 1.699531381300347e-09,
-              "lateral": -0.01007487597735587,
-              "up": 6.1355817570030256e-06
-            },
-            {
-              "timeMs": 833,
-              "forward": 1.61212429384495e-09,
-              "lateral": -0.00959968952275801,
-              "up": -3.714414105745415e-05
-            },
-            {
-              "timeMs": 933,
-              "forward": 2.212013696373615e-09,
-              "lateral": -0.013138891430571559,
-              "up": -1.80189167375592e-05
-            },
-            {
-              "timeMs": 966,
-              "forward": 2.1667439735797544e-09,
-              "lateral": -0.012764015262946371,
-              "up": 8.83348052280223e-05
-            },
-            {
-              "timeMs": 1000,
-              "forward": 1.6167725051924193e-09,
-              "lateral": -0.009599671315401678,
-              "up": -9.554705319526902e-06
-            },
-            {
-              "timeMs": 1033,
-              "forward": -2.1194688199310123e-12,
-              "lateral": 1.306495509211525e-05,
-              "up": 4.930175697545267e-07
-            },
-            {
-              "timeMs": 1100,
-              "forward": -4.85089943305228e-09,
-              "lateral": 0.028777232311666134,
-              "up": 3.4302063005749433e-06
-            },
-            {
-              "timeMs": 1134,
-              "forward": -5.860011603790114e-09,
-              "lateral": 0.034763630520552515,
-              "up": 4.1369366572826215e-06
-            },
-            {
-              "timeMs": 1167,
-              "forward": -5.657784188909554e-09,
-              "lateral": 0.03353234915062798,
-              "up": -2.7602562844077387e-05
-            },
-            {
-              "timeMs": 1233,
-              "forward": -4.273475737118624e-09,
-              "lateral": 0.025353754840791335,
-              "up": 5.023490371414965e-06
-            },
-            {
-              "timeMs": 1367,
-              "forward": 6.349782516159683e-11,
-              "lateral": -0.0003778427028299649,
-              "up": -1.1963192042981595e-06
-            },
-            {
-              "timeMs": 1433,
-              "forward": 1.608660389756788e-09,
-              "lateral": -0.009560477174585578,
-              "up": -1.8478449596126545e-05
-            },
-            {
-              "timeMs": 1467,
-              "forward": 1.8157600801827193e-09,
-              "lateral": -0.010781539843883253,
-              "up": -1.1101445849890116e-05
-            },
-            {
-              "timeMs": 1633,
-              "forward": 7.798852300866085e-11,
-              "lateral": -0.0005657560894322761,
-              "up": -0.00010315602655706327
-            },
-            {
-              "timeMs": 1667,
-              "forward": 2.2197777453364033e-13,
-              "lateral": -1.013278844164134e-09,
-              "up": 1.315679300780987e-06
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_21",
-          "actionId": "KAKULSAYDON_G1_PATTERN_37_ACTION_21",
-          "stageKind": "ACTIVE",
-          "durationMs": 328,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 100,
-              "forward": 1.6180769215693426e-09,
-              "lateral": -0.009599692689254764,
-              "up": -1.8386459906315298e-06
-            },
-            {
-              "timeMs": 328,
-              "forward": 1.614599325597697e-09,
-              "lateral": -0.009599692689254764,
-              "up": -2.2466498575952724e-05
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        }
-      ],
-      "resetBossToSpawn": false,
       "fixedTimeline": true,
       "logicWindows": [],
       "mechanicTriggers": [],
-      "worldSequences": [
-        {
-          "sequenceInstanceId": "world.object.instance.kouku.iron_maiden.idle_normal_1",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_37.world.2",
-          "startMs": 21290,
-          "durationMs": 8710,
-          "playbackSpeed": 1.0,
-          "positionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "anchorKind": "NONE",
-          "anchorPosition": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "placement": {
-            "position": [
-              -9.217000007629395,
-              1.317625641822815,
-              939.5330200195312
-            ],
-            "rotationDegrees": [
-              0,
-              -18.5,
-              0
-            ],
-            "scale": [
-              1.5,
-              1.5,
-              1.5
-            ]
-          }
-        }
-      ],
+      "worldSequences": [],
       "sceneProfiles": []
     },
     {
@@ -64785,7 +62066,7 @@
               "timeMs": 1000,
               "forward": 0.0,
               "lateral": 0.0,
-              "up": 6.556622863264095
+              "up": 13.678813305200356
             }
           ],
           "hitShape": "NONE",
@@ -64807,7 +62088,7 @@
           "stageId": "STAGE_7",
           "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.7",
           "stageKind": "ACTIVE",
-          "durationMs": 1500,
+          "durationMs": 2418,
           "rootMotionSamples": [
             {
               "timeMs": 0,
@@ -64816,235 +62097,235 @@
               "up": 0.0
             },
             {
-              "timeMs": 34,
-              "forward": 8.825188715138822e-09,
+              "timeMs": 918,
+              "forward": 0.0,
               "lateral": 0.0,
-              "up": 0.05234785562722255
+              "up": 0.0
             },
             {
-              "timeMs": 67,
+              "timeMs": 951,
+              "forward": 8.694210233327592e-09,
+              "lateral": 0.0,
+              "up": 0.05157093822891623
+            },
+            {
+              "timeMs": 985,
               "forward": 1.0904012591819823e-08,
               "lateral": 0.0,
               "up": 0.06467869360514023
             },
             {
-              "timeMs": 100,
+              "timeMs": 1018,
               "forward": 7.347262549820353e-09,
               "lateral": 0.0,
               "up": 0.04358132745122223
             },
             {
-              "timeMs": 134,
-              "forward": -1.1208614570413487e-09,
+              "timeMs": 1051,
+              "forward": -8.043839931450435e-10,
               "lateral": 0.0,
-              "up": -0.006648548334232007
+              "up": -0.00477131747559989
             },
             {
-              "timeMs": 167,
+              "timeMs": 1085,
               "forward": -1.2719055424322833e-08,
               "lateral": 0.0,
               "up": -0.07544487699452196
             },
             {
-              "timeMs": 200,
+              "timeMs": 1118,
               "forward": -2.513876142941826e-08,
               "lateral": 0.0,
               "up": -0.1491141205509825
             },
             {
-              "timeMs": 234,
-              "forward": -3.579161258063325e-08,
+              "timeMs": 1151,
+              "forward": -3.553375544219627e-08,
               "lateral": 0.0,
-              "up": -0.21230301453185474
+              "up": -0.21077349842845505
             },
             {
-              "timeMs": 267,
+              "timeMs": 1185,
               "forward": -4.332782343212815e-08,
               "lateral": 0.0,
               "up": -0.2570051155706268
             },
             {
-              "timeMs": 300,
+              "timeMs": 1218,
               "forward": -4.790242579842565e-08,
               "lateral": 0.0,
               "up": -0.28414001681212664
             },
             {
-              "timeMs": 333,
+              "timeMs": 1251,
               "forward": -4.992730690853198e-08,
               "lateral": 0.0,
               "up": -0.2961508856372097
             },
             {
-              "timeMs": 367,
+              "timeMs": 1285,
               "forward": -5.103536836969197e-08,
               "lateral": 0.0,
               "up": -0.3027235089846734
             },
             {
-              "timeMs": 433,
-              "forward": -5.397362083411141e-08,
+              "timeMs": 1352,
+              "forward": -5.4008285197707354e-08,
               "lateral": 0.0,
-              "up": -0.3201521692398259
+              "up": -0.3203577858174995
             },
             {
-              "timeMs": 466,
-              "forward": -5.490155510913567e-08,
+              "timeMs": 1385,
+              "forward": -5.491608796446222e-08,
               "lateral": 0.0,
-              "up": -0.32565634269474586
+              "up": -0.32574254638251254
             },
             {
-              "timeMs": 500,
+              "timeMs": 1418,
               "forward": -5.451247144946373e-08,
               "lateral": 0.0,
               "up": -0.3233484379121001
             },
             {
-              "timeMs": 533,
+              "timeMs": 1451,
               "forward": -5.30433113936962e-08,
               "lateral": 0.0,
               "up": -0.3146339071553048
             },
             {
-              "timeMs": 566,
+              "timeMs": 1484,
               "forward": -5.08224490734617e-08,
               "lateral": 0.0,
               "up": -0.3014605480510233
             },
             {
-              "timeMs": 634,
+              "timeMs": 1552,
               "forward": -4.543940798691052e-08,
               "lateral": 0.0,
               "up": -0.26953027814633534
             },
             {
-              "timeMs": 667,
+              "timeMs": 1585,
               "forward": -4.246185459826247e-08,
               "lateral": 0.0,
               "up": -0.2518684988980433
             },
             {
-              "timeMs": 700,
+              "timeMs": 1618,
               "forward": -3.8450312998342145e-08,
               "lateral": 0.0,
               "up": -0.22807347226535546
             },
             {
-              "timeMs": 733,
+              "timeMs": 1651,
               "forward": -3.3627107482355675e-08,
               "lateral": 0.0,
               "up": -0.19946394626415254
             },
             {
-              "timeMs": 766,
-              "forward": -4.1481892516677186e-08,
+              "timeMs": 1652,
+              "forward": -3.373968424047366e-08,
               "lateral": 0.0,
-              "up": -0.24605571514657765
+              "up": -0.20013171123453022
             },
             {
-              "timeMs": 767,
+              "timeMs": 1685,
               "forward": -4.185835828103643e-08,
               "lateral": 0.0,
               "up": -0.24828877509774472
             },
             {
-              "timeMs": 800,
+              "timeMs": 1718,
               "forward": -6.316016438293174e-08,
               "lateral": 0.0,
               "up": -0.37464345219470596
             },
             {
-              "timeMs": 833,
+              "timeMs": 1751,
               "forward": -9.072064779303145e-08,
               "lateral": 0.0,
               "up": -0.5381223593475339
             },
             {
-              "timeMs": 834,
-              "forward": -9.176868576356238e-08,
-              "lateral": 0.0,
-              "up": -0.5443389448670128
-            },
-            {
-              "timeMs": 867,
+              "timeMs": 1785,
               "forward": -1.3001473317168484e-07,
               "lateral": 0.0,
               "up": -0.771200786880418
             },
             {
-              "timeMs": 900,
+              "timeMs": 1818,
               "forward": -1.8280491862520817e-07,
               "lateral": 0.0,
               "up": -1.0843332417042904
             },
             {
-              "timeMs": 933,
+              "timeMs": 1851,
               "forward": -4.088451953046167e-07,
               "lateral": 0.13985751070082175,
               "up": -2.2852656397139506
             },
             {
-              "timeMs": 934,
+              "timeMs": 1852,
               "forward": -4.149121564468865e-07,
               "lateral": 0.14409561556577669,
               "up": -2.31701457322958
             },
             {
-              "timeMs": 966,
+              "timeMs": 1884,
               "forward": -5.965310056130931e-07,
               "lateral": 0.2797149469256403,
               "up": -3.2586931283993477
             },
             {
-              "timeMs": 967,
+              "timeMs": 1885,
               "forward": -6.004581101728189e-07,
               "lateral": 0.2833908197730781,
               "up": -3.27831143163205
             },
             {
-              "timeMs": 1000,
+              "timeMs": 1918,
               "forward": -6.146525851803893e-07,
               "lateral": 0.367587360739708,
               "up": -3.2783114316320474
             },
             {
-              "timeMs": 1034,
+              "timeMs": 1952,
               "forward": -6.188365716359959e-07,
               "lateral": 0.3924053206443787,
               "up": -3.278311431632047
             },
             {
-              "timeMs": 1067,
+              "timeMs": 1985,
               "forward": -6.193155481414372e-07,
               "lateral": 0.39524646390974527,
               "up": -3.278311431632047
             },
             {
-              "timeMs": 1100,
+              "timeMs": 2018,
               "forward": -6.17472293165526e-07,
               "lateral": 0.3843128979206086,
               "up": -3.278311431632047
             },
             {
-              "timeMs": 1167,
+              "timeMs": 2085,
               "forward": -6.118135344293404e-07,
               "lateral": 0.35074719206988814,
               "up": -3.2783114316320483
             },
             {
-              "timeMs": 1200,
+              "timeMs": 2118,
               "forward": -6.106334463322047e-07,
               "lateral": 0.3437473133206368,
               "up": -3.2783114316320483
             },
             {
-              "timeMs": 1300,
+              "timeMs": 2218,
               "forward": -6.11407513305842e-07,
               "lateral": 0.3483387589454651,
               "up": -3.2783114316320483
             },
             {
-              "timeMs": 1500,
+              "timeMs": 2418,
               "forward": -6.146525731011637e-07,
               "lateral": 0.3675873100757599,
               "up": -3.2783114316320474
@@ -65328,78 +62609,10 @@
           "downMs": 0
         },
         {
-          "stageId": "STAGE_9",
-          "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.9",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 1000,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 3.5610952209681304
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "STAGE_10",
-          "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.10",
-          "stageKind": "ACTIVE",
-          "durationMs": 1000,
-          "rootMotionSamples": [
-            {
-              "timeMs": 0,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 0.0
-            },
-            {
-              "timeMs": 1000,
-              "forward": 0.0,
-              "lateral": 0.0,
-              "up": 3.5610952209681304
-            }
-          ],
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
           "stageId": "STAGE_11",
           "actionId": "KAKULSAYDON_G1_PATTERN_39.stage.11",
           "stageKind": "ACTIVE",
-          "durationMs": 2500,
+          "durationMs": 3927,
           "rootMotionSamples": [
             {
               "timeMs": 0,
@@ -65408,343 +62621,349 @@
               "up": 0.0
             },
             {
-              "timeMs": 67,
+              "timeMs": 1427,
+              "forward": 0.0,
+              "lateral": 0.0,
+              "up": 0.0
+            },
+            {
+              "timeMs": 1494,
               "forward": -8.633772660354631e-09,
               "lateral": 0.0,
               "up": -0.05121244421291671
             },
             {
-              "timeMs": 233,
+              "timeMs": 1660,
               "forward": -2.7682547163697027e-08,
               "lateral": 0.0,
               "up": -0.1642029455793006
             },
             {
-              "timeMs": 300,
+              "timeMs": 1727,
               "forward": -3.580513995383305e-08,
               "lateral": 0.0,
               "up": -0.21238325406011072
             },
             {
-              "timeMs": 334,
+              "timeMs": 1761,
               "forward": -3.909829720196086e-08,
               "lateral": 0.0,
               "up": -0.2319170822588239
             },
             {
-              "timeMs": 367,
+              "timeMs": 1794,
               "forward": -4.165162186283785e-08,
               "lateral": 0.0,
               "up": -0.2470624887800179
             },
             {
-              "timeMs": 400,
+              "timeMs": 1827,
               "forward": -4.363990588342541e-08,
               "lateral": 0.0,
               "up": -0.25885627679013457
             },
             {
-              "timeMs": 433,
+              "timeMs": 1860,
               "forward": -4.510866005649971e-08,
               "lateral": 0.0,
               "up": -0.26756839999630166
             },
             {
-              "timeMs": 467,
+              "timeMs": 1894,
               "forward": -4.620784095465562e-08,
               "lateral": 0.0,
               "up": -0.2740883470277087
             },
             {
-              "timeMs": 566,
+              "timeMs": 1993,
               "forward": -4.841365213332977e-08,
               "lateral": 0.0,
               "up": -0.2871724281560901
             },
             {
-              "timeMs": 600,
+              "timeMs": 2027,
               "forward": -4.951659530439767e-08,
               "lateral": 0.0,
               "up": -0.2937146916416342
             },
             {
-              "timeMs": 633,
+              "timeMs": 2060,
               "forward": -5.094462599846253e-08,
               "lateral": 5.015730278612457e-10,
               "up": -0.30218525726811674
             },
             {
-              "timeMs": 700,
+              "timeMs": 2127,
               "forward": -5.444677183627817e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.3229587308533617
             },
             {
-              "timeMs": 733,
+              "timeMs": 2160,
               "forward": -5.5544616874727955e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.32947075404389636
             },
             {
-              "timeMs": 766,
+              "timeMs": 2193,
               "forward": -5.617565718415882e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.3332138589314315
             },
             {
-              "timeMs": 833,
+              "timeMs": 2260,
               "forward": -5.641013028634574e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.33460466931497557
             },
             {
-              "timeMs": 933,
+              "timeMs": 2360,
               "forward": -5.580346070442607e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.3310061228461292
             },
             {
-              "timeMs": 966,
+              "timeMs": 2393,
               "forward": -5.585982305116462e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.3313404440810759
             },
             {
-              "timeMs": 1133,
+              "timeMs": 2560,
               "forward": -5.810479712661963e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.34465682547325827
             },
             {
-              "timeMs": 1166,
-              "forward": -5.67713959488295e-08,
-              "lateral": 5.06639422082067e-10,
-              "up": -0.33674756771105496
-            },
-            {
-              "timeMs": 1167,
+              "timeMs": 2594,
               "forward": -5.6854746078155936e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.33724197079719076
             },
             {
-              "timeMs": 1200,
+              "timeMs": 2627,
               "forward": -6.780782879431767e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.40221173078828176
             },
             {
-              "timeMs": 1233,
+              "timeMs": 2660,
               "forward": -8.261679709749213e-08,
               "lateral": 5.06639422082067e-10,
               "up": -0.4900532217461899
             },
             {
-              "timeMs": 1267,
+              "timeMs": 2694,
               "forward": -1.0126222114740793e-07,
               "lateral": 0.0,
               "up": -0.6006511933306617
             },
             {
-              "timeMs": 1300,
+              "timeMs": 2727,
               "forward": -1.2474490260789488e-07,
               "lateral": 0.0,
               "up": -0.7399420412107665
             },
             {
-              "timeMs": 1333,
+              "timeMs": 2760,
               "forward": -1.5575549038231124e-07,
               "lateral": 0.0,
               "up": -0.9238857305899835
             },
             {
-              "timeMs": 1367,
+              "timeMs": 2793,
+              "forward": -1.9629060890227998e-07,
+              "lateral": 0.0,
+              "up": -1.1643255218066537
+            },
+            {
+              "timeMs": 2794,
               "forward": -1.9763982993885257e-07,
               "lateral": 0.0,
               "up": -1.1723286172997334
             },
             {
-              "timeMs": 1400,
+              "timeMs": 2827,
               "forward": -2.49948097341115e-07,
               "lateral": 0.0,
               "up": -1.482602507011193
             },
             {
-              "timeMs": 1433,
+              "timeMs": 2860,
               "forward": -7.203192421058731e-07,
               "lateral": 0.13985693389177353,
               "up": -4.132818589329174
             },
             {
-              "timeMs": 1434,
+              "timeMs": 2861,
               "forward": -7.355484760977299e-07,
               "lateral": 0.1440950552225116,
               "up": -4.218914824949959
             },
             {
-              "timeMs": 1466,
+              "timeMs": 2893,
               "forward": -1.2384929708512054e-06,
               "lateral": 0.2797154566049573,
               "up": -7.0665808827146215
             },
             {
-              "timeMs": 1467,
+              "timeMs": 2894,
               "forward": -1.2491143587276625e-06,
               "lateral": 0.2833913459181784,
               "up": -7.125907258918058
             },
             {
-              "timeMs": 1500,
+              "timeMs": 2927,
               "forward": -1.2633087380677664e-06,
               "lateral": 0.3675873100757599,
               "up": -7.125907258918056
             },
             {
-              "timeMs": 1534,
+              "timeMs": 2961,
               "forward": -1.2674927607610497e-06,
               "lateral": 0.3924054462909699,
               "up": -7.125907258918055
             },
             {
-              "timeMs": 1567,
+              "timeMs": 2994,
               "forward": -1.2679717370249066e-06,
               "lateral": 0.3952465391457082,
               "up": -7.125907258918055
             },
             {
-              "timeMs": 1600,
+              "timeMs": 3027,
               "forward": -1.2661284581321288e-06,
               "lateral": 0.3843128979206086,
               "up": -7.125907258918056
             },
             {
-              "timeMs": 1667,
+              "timeMs": 3094,
               "forward": -1.2604697412504599e-06,
               "lateral": 0.3507473926991225,
               "up": -7.1259072589180565
             },
             {
-              "timeMs": 1700,
+              "timeMs": 3127,
               "forward": -1.2592896112988077e-06,
               "lateral": 0.3437473133206368,
               "up": -7.1259072589180565
             },
             {
-              "timeMs": 1733,
+              "timeMs": 3160,
               "forward": -1.2595456533148467e-06,
               "lateral": 0.34526605154573925,
               "up": -7.1259072589180565
             },
             {
-              "timeMs": 1767,
+              "timeMs": 3194,
               "forward": -1.2602288704397767e-06,
               "lateral": 0.34931868709623815,
               "up": -7.1259072589180565
             },
             {
-              "timeMs": 1900,
+              "timeMs": 3327,
               "forward": -1.2638974795228452e-06,
               "lateral": 0.3710795253515244,
               "up": -7.125907258918056
             },
             {
-              "timeMs": 1933,
+              "timeMs": 3360,
               "forward": -1.2642774228666214e-06,
               "lateral": 0.3733331684619189,
               "up": -7.125907258918056
             },
             {
-              "timeMs": 1966,
+              "timeMs": 3393,
               "forward": -1.2641401382401036e-06,
               "lateral": 0.37251892155408867,
               "up": -7.125907258918056
             },
             {
-              "timeMs": 2000,
+              "timeMs": 3427,
               "forward": -1.2633087259885408e-06,
               "lateral": 0.36758723407983784,
               "up": -7.125907258918056
             },
             {
-              "timeMs": 2033,
+              "timeMs": 3460,
               "forward": -1.2588809785259452e-06,
               "lateral": 0.341323412746191,
               "up": -7.1259072589180565
             },
             {
-              "timeMs": 2067,
+              "timeMs": 3494,
               "forward": -1.2509603358174558e-06,
               "lateral": 0.29434105622768386,
               "up": -7.125907258918058
             },
             {
-              "timeMs": 2100,
+              "timeMs": 3527,
               "forward": -1.2446130804288171e-06,
               "lateral": 0.25669137537479403,
               "up": -7.125907258918059
             },
             {
-              "timeMs": 2133,
+              "timeMs": 3560,
               "forward": -1.238351124423284e-06,
               "lateral": 0.23036275079846397,
               "up": -7.115092188828148
             },
             {
-              "timeMs": 2167,
+              "timeMs": 3594,
               "forward": -1.2350315383437803e-06,
               "lateral": 0.19985707217454898,
               "up": -7.125907258918061
             },
             {
-              "timeMs": 2233,
+              "timeMs": 3660,
               "forward": -1.224235381023984e-06,
               "lateral": 0.1358181641772391,
               "up": -7.125907258918063
             },
             {
-              "timeMs": 2267,
+              "timeMs": 3694,
               "forward": -1.2182104156816345e-06,
               "lateral": 0.10298068962991225,
               "up": -7.123006769534321
             },
             {
-              "timeMs": 2300,
+              "timeMs": 3727,
               "forward": -1.2130382876060507e-06,
               "lateral": 0.07288028560578824,
               "up": -7.1224279667768124
             },
             {
-              "timeMs": 2333,
+              "timeMs": 3760,
               "forward": -1.2084383246873834e-06,
               "lateral": 0.04583038952760411,
               "up": -7.122192531914994
             },
             {
-              "timeMs": 2367,
+              "timeMs": 3794,
               "forward": -1.204494277671537e-06,
               "lateral": 0.022422316098352817,
               "up": -7.122205930786661
             },
             {
-              "timeMs": 2400,
+              "timeMs": 3827,
               "forward": -1.2016013768963461e-06,
               "lateral": 0.0052785006118938336,
               "up": -7.122190093225832
             },
             {
-              "timeMs": 2433,
+              "timeMs": 3860,
               "forward": -1.199870825888925e-06,
               "lateral": -0.005009960883296979,
               "up": -7.122213545684343
             },
             {
-              "timeMs": 2467,
+              "timeMs": 3894,
               "forward": -1.1994930708493665e-06,
               "lateral": -0.00722748948074874,
               "up": -7.12219036630845
             },
             {
-              "timeMs": 2500,
+              "timeMs": 3927,
               "forward": -1.2007115470563576e-06,
               "lateral": 0.0,
               "up": -7.122190441936261
@@ -74487,6 +71706,126 @@
       "mechanicTriggers": [],
       "worldSequences": [],
       "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_56",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "folderId": "kakulsaydon.folder.13",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_마리오_1페이즈",
+      "actionId": "kakulsaydon.g1.pattern.56",
+      "sourceActionIds": [],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_56_ACTION_1",
+          "stageKind": "RECOVERY",
+          "durationMs": 15000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "fixedTimeline": true,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_57",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "folderId": "kakulsaydon.folder.14",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_마리오_2페이즈",
+      "actionId": "kakulsaydon.g1.pattern.57",
+      "sourceActionIds": [],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_57_ACTION_1",
+          "stageKind": "RECOVERY",
+          "durationMs": 15000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "fixedTimeline": true,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
     }
   ],
   "folders": [
@@ -74543,18 +71882,14 @@
     {
       "folderId": "kakulsaydon.folder.13",
       "gateId": "GATE3",
-      "displayName": "세이튼_마리오_1페이즈"
+      "displayName": "세이튼_마리오_1페이즈",
+      "timelinePatternId": "KAKULSAYDON_G1_PATTERN_56"
     },
     {
       "folderId": "kakulsaydon.folder.14",
       "gateId": "GATE3",
-      "displayName": "세이튼_마리오_2페이즈"
-    },
-    {
-      "folderId": "kakulsaydon.folder.15",
-      "gateId": "GATE3",
-      "displayName": "3관문_쿠크세이튼_마리오",
-      "timelinePatternId": "KAKULSAYDON_G1_PATTERN_37"
+      "displayName": "세이튼_마리오_2페이즈",
+      "timelinePatternId": "KAKULSAYDON_G1_PATTERN_57"
     },
     {
       "folderId": "kakulsaydon.folder.17",
@@ -74779,12 +72114,14 @@
       {
         "folderId": "kakulsaydon.folder.13",
         "gateId": "GATE3",
-        "displayName": "세이튼_마리오_1페이즈"
+        "displayName": "세이튼_마리오_1페이즈",
+        "timelinePatternId": "KAKULSAYDON_G1_PATTERN_56"
       },
       {
         "folderId": "kakulsaydon.folder.14",
         "gateId": "GATE3",
-        "displayName": "세이튼_마리오_2페이즈"
+        "displayName": "세이튼_마리오_2페이즈",
+        "timelinePatternId": "KAKULSAYDON_G1_PATTERN_57"
       },
       {
         "folderId": "kakulsaydon.folder.15",
@@ -75142,7 +72479,7 @@
         "gateId": "GATE3",
         "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
         "actorProfileId": "MN_RPCT_05",
-        "unavailableReason": "",
+        "unavailableReason": "Child FOLLOWUP_PATTERN is dynamic; append the follow-up explicitly on the Parent Pattern row: KAKULSAYDON_G1_PATTERN_34",
         "folderId": "kakulsaydon.folder.15"
       },
       {
@@ -75312,6 +72649,26 @@
         "actorProfileId": "MN_RPCT_05",
         "unavailableReason": "PRODUCT pattern must use MECHANIC category: KAKULSAYDON_G1_PATTERN_55",
         "folderId": "kakulsaydon.folder.17"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_56",
+        "displayName": "세이튼_마리오_1페이즈",
+        "category": "MECHANIC",
+        "gateId": "GATE3",
+        "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "",
+        "folderId": "kakulsaydon.folder.13"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_57",
+        "displayName": "세이튼_마리오_2페이즈",
+        "category": "MECHANIC",
+        "gateId": "GATE3",
+        "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "",
+        "folderId": "kakulsaydon.folder.14"
       }
     ],
     "bundles": [

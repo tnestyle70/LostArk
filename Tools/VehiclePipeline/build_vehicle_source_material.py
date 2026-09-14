@@ -493,7 +493,11 @@ def emit_configure(document, family, number):
 
 
 def read_text(path):
-    return path.read_bytes().decode('utf8').replace('\r\n', '\n')
+    text = path.read_bytes().decode('utf8').replace('\r\n', '\n')
+    if path in (BASE_PROGRAMS, LIGHT_PROGRAMS):
+        from native_shader_dispatch import expand_source_character_stage
+        text = expand_source_character_stage(text, path.parent)
+    return text
 
 
 def installed_function(path, name):
@@ -580,8 +584,10 @@ def command_install(arguments):
     light = (arguments.generated / f'light{arguments.program}.hlsli').read_text(encoding='utf8')
     configure = (arguments.generated / f'configure{arguments.program}.h').read_text(encoding='utf8')
     for path, function, stage in ((BASE_PROGRAMS, base, 'base'), (LIGHT_PROGRAMS, light, 'light')):
-        write_preserving_newlines(path, install_program(path, function, arguments.program, stage))
-        shutil.copyfile(path, CLIENT_SHADER_DIR / path.name)
+        from native_shader_dispatch import write_partitioned_source_character_stage, write_if_changed
+        leaves = write_partitioned_source_character_stage(path, install_program(path, function, arguments.program, stage))
+        for name in (path.name, *leaves):
+            write_if_changed(CLIENT_SHADER_DIR / name, (path.parent / name).read_text(encoding='utf8'))
     header = read_text(PARAMETER_HEADER)
     existing = installed_configure(arguments.family)
     if existing is None:

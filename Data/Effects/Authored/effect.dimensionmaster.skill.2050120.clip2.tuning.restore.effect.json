@@ -539,7 +539,7 @@
             0.25999999,
             0.0350000001
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,

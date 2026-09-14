@@ -144,6 +144,8 @@ private:
 	//해당 batch에 소속된 전체 placement
 	//vector - 메모리 연속, 순회가 빠름, index O(1), 프레임마다 전체 순회 좋음
 	std::vector<FMapStaticInstance>	m_Instances;
+    // Derived from each instance World; refreshed only when that transform changes.
+    std::vector<f32_t> m_InstanceLinearScaleBounds;
 	//이번 프레임에 실제 보이는 GPU용 인스턴스 배열
 	std::vector<VTXMESHINSTANCE> m_VisibleInstances;
 	// Reused staging storage; m_VisibleInstances remains the committed payload.

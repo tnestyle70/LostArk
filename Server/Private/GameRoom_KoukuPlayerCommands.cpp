@@ -700,6 +700,7 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 				Broadcast_WorldSequencePlay(action.strTargetId, 1.f, 0.f, 0.f, 0.f, 0u, {}, WORLD_SEQUENCE_OPERATION::STOP);
 	Reset_CardMaze();
 	m_KoukuBingo.Reset();
+	m_iNextMarioEntryStage = 1u;
 	player.Clear_KoukuInteractionState();
 	player.Clear_KoukuAssignedCard();
 	m_strStatus = "KoukuSaydon arena bosses and entry triggers reset; requesting player returned to authored start.";
@@ -955,6 +956,32 @@ void LostArk::Server::CGameRoom::Cleanup_EmptyMarioStages()
 			Reset_MarioStageObjects(stage);
 	}
 }
+
+#ifdef _DEBUG
+bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, const std::uint8_t stage)
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || stage < 1u || stage > 4u || !player.isCombatReady ||
+		!player.iCurrentHp || player.iMarioStage || player.TriggerMove.isActive || player.bPatternBound ||
+		player.iAttachmentOwnerNetEntityId != INVALID_NET_ENTITY_ID || player.eAction != PLAYER_ACTION_STATE::NONE) return false;
+	const auto* intro = Find_Placement("Mario" + std::to_string(stage) + "_Intro");
+	SERVER_NAV_POINT ground;
+	if (!intro || !intro->isEnabled || intro->eKind != WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ||
+		!m_ServerNavigation.Is_PointWalkableExact(intro->fPositionX, intro->fPositionZ) ||
+		!m_ServerNavigation.Sample_Position(intro->fPositionX, intro->fPositionZ, ground))
+	{ m_strStatus = "Mario entry destination is unavailable in published navigation"; return false; }
+	SERVER_PLAYER candidate = player;
+	candidate.fPositionX = ground.x; candidate.fPositionY = ground.y; candidate.fPositionZ = ground.z;
+	if (!CServerTriggerSystem::Contains_Placement(*intro, candidate) ||
+		!m_ServerCollisionSystem.Is_PlayerPositionClear(candidate.fPositionX, candidate.fPositionY, candidate.fPositionZ, player.iNetEntityId))
+	{ m_strStatus = "Mario entry destination is outside the Intro box or blocked"; return false; }
+	Reset_PlayerForDebugTeleport(candidate);
+	Update_MarioControlState(candidate);
+	if (candidate.iMarioStage != stage) return false;
+	player = std::move(candidate);
+	return true;
+}
+#endif
 
 void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 {

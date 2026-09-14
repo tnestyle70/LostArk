@@ -316,7 +316,7 @@
             1,
             0.300000012
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -1796,7 +1796,7 @@
             0.0799999982,
             0.0199999996
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -3716,7 +3716,7 @@
             0.300000012,
             0.75
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -5611,7 +5611,7 @@
             0.300000012,
             0.75
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -7488,7 +7488,7 @@
             0.00209999993,
             0.00209999993
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -9815,7 +9815,7 @@
             0.00209999993,
             0.00209999993
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -12054,7 +12054,7 @@
             0.00790290069,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -14255,7 +14255,7 @@
             0.00790290069,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -16394,7 +16394,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -18153,7 +18153,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -19703,7 +19703,7 @@
             1,
             0.300000012
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -21262,7 +21262,7 @@
             0.0799999982,
             0.0199999996
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -23261,7 +23261,7 @@
             0.5,
             0.75
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -25235,7 +25235,7 @@
             0.5,
             0.75
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -27041,7 +27041,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -28800,7 +28800,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -30365,7 +30365,7 @@
             0.00790290069,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -32566,7 +32566,7 @@
             0.00790290069,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -34767,7 +34767,7 @@
             8,
             6
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -36398,7 +36398,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -38270,7 +38270,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -39619,7 +39619,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -40943,7 +40943,7 @@
             4.20000029,
             4.5
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -42889,7 +42889,7 @@
             0.00999999978,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -44480,7 +44480,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -46108,7 +46108,7 @@
             0.0500000007,
             0.0250000004
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -48023,7 +48023,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -49250,7 +49250,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -50837,7 +50837,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -52411,7 +52411,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,

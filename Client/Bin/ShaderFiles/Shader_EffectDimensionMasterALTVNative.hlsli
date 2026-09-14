@@ -3,8 +3,8 @@
 #ifndef EFFECT_DIMENSIONMASTER_ALTV_NATIVE_HLSLI
 #define EFFECT_DIMENSIONMASTER_ALTV_NATIVE_HLSLI
 #ifndef ALTV_NATIVE_CAPTURE_ONLY
-#include "Shader_EffectSliceSceneDepth.hlsli"
-#include "Shader_EffectCubeSampleScene.hlsli"
+#include "Shader_EffectSceneDepthInput.hlsli"
+#include "Shader_EffectSceneColorInput.hlsli"
 #endif
 
 float4 g_ALTVSourceMaterialParameters[32];

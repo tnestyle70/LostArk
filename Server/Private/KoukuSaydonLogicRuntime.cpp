@@ -856,6 +856,22 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	}
 }
 
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(
+	const BOSS_PATTERN_DEFINITION& root, const SERVER_WORLD_ENTITY& anchor,
+	const SERVER_PLAYER& player, const std::uint32_t elapsedTicks)
+{
+	if (!Is_Judgeable(player) || player.iMarioStage || player.TriggerMove.isActive ||
+		player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::NONE) return false;
+	for (const auto& window : root.LogicWindows)
+	{
+		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || elapsedTicks < Ticks_FromMs(window.iStartMs) ||
+			window.OnSuccess.size() != 1u || window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER) continue;
+		for (const auto& region : window.CardRegions)
+			if (Contains_LogicRegion(region, anchor, player, elapsedTicks)) return true;
+	}
+	return false;
+}
+
 void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 	const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results,
 	KOUKUSAYDON_LOGIC_WINDOW_STATE& state,

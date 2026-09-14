@@ -2,14 +2,14 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 547,
+  "revision": 548,
   "placements": [
     {
       "placementId": "collision.bern.editor-proof",
       "kind": "collisionBox",
       "position": [140.800003, 43.7000008, -65.3000031],
       "yawDegrees": 0,
-      "enabled": true,
+      "enabled": false,
       "halfExtents": [0.5, 1, 3]
     },
     {

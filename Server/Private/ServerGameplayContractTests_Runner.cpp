@@ -789,13 +789,13 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 		!bernValtanTrigger->isEnabled &&
 		1u == bernValtanTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
-		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
+		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind && !bernCollision->isEnabled,
 		"Load Bern spawns, Schmidt, four irregular stationary plaza crowds, two guard ping-pong patrols toward the player entry, disabled legacy trigger, and collision box");
 	CServerCollisionSystem bernCollisionSystem;
 	std::string bernCollisionStatus;
 	tests.Require(
 		bernCollisionSystem.Initialize(bernPlacements, bernCollisionStatus) &&
-		1u == bernCollisionSystem.Get_CollisionBoxCount() &&
+		0u == bernCollisionSystem.Get_CollisionBoxCount() &&
 		std::all_of(
 			bernPlacements.begin(), bernPlacements.end(),
 			[&bernCollisionSystem](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -803,7 +803,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != placement.eKind ||
 					bernCollisionSystem.Is_PlayerSpawnClear(placement);
 			}),
-		"Stage Bern collision box without overlapping player spawns");
+		"Exclude the retired Bern editor-proof wall while preserving player spawn clearance");
 	SERVER_PLAYER collisionPlayer{};
 	collisionPlayer.fPositionX = 138.f;
 	collisionPlayer.fPositionY = 42.7f;
@@ -812,6 +812,14 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 	float resolvedY = 0.f;
 	float resolvedZ = 0.f;
 	bool wasBlocked = false;
+    tests.Require(bernCollisionSystem.Resolve_PlayerMove(collisionPlayer, 143.f, 42.7f, -65.3f,
+        resolvedX, resolvedY, resolvedZ, wasBlocked) && !wasBlocked && std::abs(resolvedX - 143.f) < 0.001f,
+        "Allow the real Bern floor through the retired editor-proof wall");
+    auto isolatedCollisionPlacements = bernPlacements;
+    for (auto& placement : isolatedCollisionPlacements)
+        if (placement.strPlacementId == "collision.bern.editor-proof") placement.isEnabled = true;
+    tests.Require(bernCollisionSystem.Initialize(isolatedCollisionPlacements, bernCollisionStatus),
+        "Stage the original collision shape only inside its isolated regression fixture");
 	tests.Require(
 		bernCollisionSystem.Resolve_PlayerMove(
 			collisionPlayer,

@@ -6088,10 +6088,15 @@ bool LostArk::Shared::Write_Message(
 {
 	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
 		message.iRequestSequence, message.eOperation, message.Scope,
-		message.strPatternId, message.strBundleId, message.iExpectedRunEpoch))
+		message.strPatternId, message.strBundleId, message.iExpectedRunEpoch) ||
+		message.iMarioTestStartStage > 4u ||
+		(message.iMarioTestStartStage != 0u && message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED) ||
+		(message.iMarioTestStartStage == 0u && message.iMarioTestSeed != 0u))
 	{
 		return false;
 	}
+	writer.Write_U8(message.iMarioTestStartStage);
+	writer.Write_U32(message.iMarioTestSeed);
 	writer.Write_U32(message.iExpectedRunEpoch);
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
@@ -6106,7 +6111,8 @@ bool LostArk::Shared::Read_Message(
 {
 	C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST decoded{};
 	std::uint8_t rawOperation = 0u;
-	if (!reader.Read_U32(decoded.iExpectedRunEpoch) ||
+	if (!reader.Read_U8(decoded.iMarioTestStartStage) || !reader.Read_U32(decoded.iMarioTestSeed) ||
+		!reader.Read_U32(decoded.iExpectedRunEpoch) ||
 		!reader.Read_U32(decoded.iRequestSequence) ||
 		!reader.Read_U8(rawOperation) ||
 		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
@@ -6119,7 +6125,10 @@ bool LostArk::Shared::Read_Message(
 		static_cast<KOUKUSAYDON_PATTERN_AUDITION_OPERATION>(rawOperation);
 	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
 		decoded.iRequestSequence, decoded.eOperation, decoded.Scope,
-		decoded.strPatternId, decoded.strBundleId, decoded.iExpectedRunEpoch))
+		decoded.strPatternId, decoded.strBundleId, decoded.iExpectedRunEpoch) ||
+		decoded.iMarioTestStartStage > 4u ||
+		(decoded.iMarioTestStartStage != 0u && decoded.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED) ||
+		(decoded.iMarioTestStartStage == 0u && decoded.iMarioTestSeed != 0u))
 	{
 		return false;
 	}
@@ -6325,6 +6334,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON
 	for (std::size_t i = 0; i < message.Members.size(); ++i)
 	{
 		const auto& member = message.Members[i];
+        if (!Is_Valid_StableId(member.strMarioEntryPatternId, true) || member.iMarioEntryStage > 4u ||
+            !std::isfinite(member.fMarioEntryX) || !std::isfinite(member.fMarioEntryY) ||
+            !std::isfinite(member.fMarioEntryZ) || !std::isfinite(member.fMarioEntryYawDegrees) ||
+            (member.strMarioEntryPatternId.empty() ?
+                (member.iMarioEntryStage || member.iMarioEntryStartTick || member.iMarioEntryHoldMs ||
+                 member.fMarioEntryX != 0.f || member.fMarioEntryY != 0.f || member.fMarioEntryZ != 0.f || member.fMarioEntryYawDegrees != 0.f) :
+                (!member.iMarioEntryStage || !member.iMarioEntryStartTick || !member.iMarioEntryHoldMs || member.iMarioEntryHoldMs > 600000u))) return false;
 		if (!Is_Valid_StableId(member.strMemberId, false) || !Is_Valid_StableId(member.strPatternId, false) ||
 			member.iBossNetEntityId == INVALID_NET_ENTITY_ID || member.iStartTick == 0u || member.eState >= STATE::END) return false;
 		for (std::size_t j = 0; j < i; ++j)
@@ -6343,6 +6359,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON
 			!writer.Write_String(member.strPatternId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
 		writer.Write_U32(member.iBossNetEntityId); writer.Write_U32(member.iPatternSequence); writer.Write_U32(member.iStartTick);
 		writer.Write_U8(static_cast<std::uint8_t>(member.eState));
+        if (!writer.Write_String(member.strMarioEntryPatternId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
+        writer.Write_U32(member.iMarioEntryStartTick); writer.Write_U32(member.iMarioEntryHoldMs); writer.Write_U8(member.iMarioEntryStage);
+        writer.Write_F32(member.fMarioEntryX); writer.Write_F32(member.fMarioEntryY); writer.Write_F32(member.fMarioEntryZ); writer.Write_F32(member.fMarioEntryYawDegrees);
 	}
 	return true;
 }
@@ -6362,6 +6381,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_BUNDLE
 		if (!reader.Read_String(member.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
 			!reader.Read_String(member.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) || !reader.Read_U32(member.iBossNetEntityId) ||
 			!reader.Read_U32(member.iPatternSequence) || !reader.Read_U32(member.iStartTick) || !reader.Read_U8(state)) return false;
+        if (!reader.Read_String(member.strMarioEntryPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+            !reader.Read_U32(member.iMarioEntryStartTick) || !reader.Read_U32(member.iMarioEntryHoldMs) || !reader.Read_U8(member.iMarioEntryStage) ||
+            !reader.Read_F32(member.fMarioEntryX) || !reader.Read_F32(member.fMarioEntryY) || !reader.Read_F32(member.fMarioEntryZ) ||
+            !reader.Read_F32(member.fMarioEntryYawDegrees)) return false;
 		member.eState = static_cast<KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE>(state); decoded.Members.push_back(std::move(member));
 	}
 	CPacketWriter validation; if (!Write_Message(validation, decoded)) return false;

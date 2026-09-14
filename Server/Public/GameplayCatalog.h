@@ -604,7 +604,8 @@ namespace LostArk::Server
 		OBJECT_CONTACT,
 		EXTERNAL_SIGNAL,
 		COUNTER_WINDOW,
-        ATTACHMENT_HOLD
+        ATTACHMENT_HOLD,
+		PATTERN_COMPLETION_COUNT
 	};
 
 	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
@@ -623,7 +624,8 @@ namespace LostArk::Server
 		/* Hangs the player on the region that judged them and drags them with
 		it. Only an ENTER_AREA window whose regions ride a World Object world
 		track can offer this, because only that region keeps moving. */
-		GRAB_TO_WORLD_OBJECT
+		GRAB_TO_WORLD_OBJECT,
+		MARIO_ENTER
 	};
 
 	struct BOSS_LOGIC_CONTACT_MOTION final
@@ -703,6 +705,8 @@ namespace LostArk::Server
 	struct BOSS_PATTERN_LOGIC_WINDOW final
 	{
 		std::string strWindowId;
+		std::vector<std::string> PatternIds;
+		std::uint32_t iCompletionCount = 0u;
 		BOSS_PATTERN_LOGIC_KIND eKind = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
 		std::uint32_t iStartMs = 0u;
 		std::uint32_t iDurationMs = 0u;

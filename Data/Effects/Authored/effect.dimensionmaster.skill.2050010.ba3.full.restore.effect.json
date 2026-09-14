@@ -232,7 +232,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -1388,7 +1388,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -2544,7 +2544,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -3695,7 +3695,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -4928,7 +4928,7 @@
             1.5,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -6838,7 +6838,7 @@
             1.5,
             2.5
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -8864,7 +8864,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -10725,7 +10725,7 @@
             0.01,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -12759,7 +12759,7 @@
             0.01210000052452088,
             0.01210000052452088
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -15032,7 +15032,7 @@
             0.01210000052452088,
             0.01210000052452088
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -17501,7 +17501,7 @@
             0.01600000023841858,
             0.01600000023841858
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -20004,7 +20004,7 @@
             0.01600000023841858,
             0.01600000023841858
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -22259,7 +22259,7 @@
             0.018000000715255735,
             0.018000000715255735
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -24423,7 +24423,7 @@
             0.018000000715255735,
             0.018000000715255735
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -26540,7 +26540,7 @@
             2.5200001001358032,
             2.5200001001358032
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -28137,7 +28137,7 @@
             2.5200001001358032,
             2.5200001001358032
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -29781,7 +29781,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -31921,7 +31921,7 @@
             0.02160000028610227,
             0.02160000028610227
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -33967,7 +33967,7 @@
             2.3000000000000003,
             2.3000000000000003
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -36124,7 +36124,7 @@
             2.3000000000000003,
             2.3000000000000003
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -38282,7 +38282,7 @@
             1.6200000643730164,
             1.6200000643730164
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -40531,7 +40531,7 @@
             1.6200000643730164,
             1.6200000643730164
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -42713,7 +42713,7 @@
             0.0033000001311302186,
             0.015
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -44570,7 +44570,7 @@
             0.0033000001311302186,
             0.015
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -46421,7 +46421,7 @@
             1.5,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -48458,7 +48458,7 @@
             2.0,
             0.02
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -50069,7 +50069,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -51867,7 +51867,7 @@
             2.25,
             0.015
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -53179,7 +53179,7 @@
             0.01,
             0.01
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -54978,7 +54978,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -57652,7 +57652,7 @@
             2.6,
             3.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -60054,7 +60054,7 @@
             2.6,
             3.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -62473,7 +62473,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -64065,7 +64065,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,

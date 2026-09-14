@@ -2881,6 +2881,9 @@ namespace LostArk::Shared
 		std::string strPatternId;
 		std::string strBundleId;
 		std::uint32_t iExpectedRunEpoch = 0u;
+		// Zero uses the live room progression; 1..4 is an explicit selected-pattern test fixture.
+		std::uint8_t iMarioTestStartStage = 0u;
+		std::uint32_t iMarioTestSeed = 0u;
 	};
 
 	bool Write_Message(
@@ -2893,6 +2896,12 @@ namespace LostArk::Shared
 	inline constexpr std::size_t MAX_KOUKUSAYDON_BUNDLE_MEMBERS = 4u;
 	struct KOUKUSAYDON_BUNDLE_MEMBER_STATE final
 	{
+        // Retained root presentation follows the Server-owned Mario entry lifetime.
+        std::string strMarioEntryPatternId;
+        std::uint32_t iMarioEntryStartTick = 0u;
+        std::uint32_t iMarioEntryHoldMs = 0u;
+        std::uint8_t iMarioEntryStage = 0u;
+        float fMarioEntryX = 0.f, fMarioEntryY = 0.f, fMarioEntryZ = 0.f, fMarioEntryYawDegrees = 0.f;
 		std::string strMemberId;
 		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
 		std::string strPatternId;

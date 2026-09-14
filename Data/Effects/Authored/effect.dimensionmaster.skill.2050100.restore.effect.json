@@ -311,7 +311,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 5.65999985,
@@ -1848,7 +1848,7 @@
             1.5,
             2.76000023
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 0.50999999,

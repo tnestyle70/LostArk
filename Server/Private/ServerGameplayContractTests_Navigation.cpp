@@ -115,6 +115,16 @@ int LostArk::Server::Run_ServerNavigationContractTests()
 		stairPath.back().y - stairPath.front().y > 6.f,
 		"Reach the Bern stairs without crossing an arch-roof height jump");
 
+    std::vector<SERVER_NAV_POINT> southPath;
+    SERVER_NAV_POINT southRidge{};
+    const bool southConnected = loaded && bernNavigation.Find_Path(
+        137.586334f, -22.4640217f, 137.162415f, -167.909286f, southPath);
+    tests.Require(southConnected && !southPath.empty() && southPath.back().y > 53.f &&
+        bernNavigation.Sample_Position(137.238007f, -152.188004f, southRidge) &&
+        std::abs(southRidge.y - 50.5766411f) < 0.001f &&
+        std::adjacent_find(southPath.begin(), southPath.end(), [&](const auto& a, const auto& b) {
+            return !bernNavigation.Is_HeightTransitionAllowed(a.y, b.y);
+        }) == southPath.end(), "Reach the south Bern NPC stairs on the installed STAIR02D floor while preserving the 1m guard");
 	SERVER_NAV_POINT firstRidge{};
 	SERVER_NAV_POINT secondRidge{};
 	SERVER_NAV_POINT thirdRidge{};

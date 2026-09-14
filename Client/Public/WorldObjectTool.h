@@ -79,6 +79,7 @@ private:
     const WORLD_SEQUENCE_INSTANCE* Effect_TargetInstance() const;
     void Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence);
     bool Append_SelectedAnimation();
+    bool Duplicate_TimelineBox(WORLD_SEQUENCE_TEMPLATE& sequence, bool animation, size_t index);
     bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
     bool Assign_SelectedModel();
     void Render_Detail();
@@ -148,6 +149,8 @@ private:
     std::string m_SelectedGroup;
     std::string m_SelectedInstance;
     size_t m_SelectedTrack = 0;
+    size_t m_SelectedAnimationRow = 0;
+    int m_SelectedBoxKind = 0; // 0 Transform, 1 Animation, 2 Effect; authoring selection only.
     size_t m_SelectedKey = 0;
     uint64_t m_SavedGeneration = 0;
     std::array<char, 128> m_NewObjectName{};

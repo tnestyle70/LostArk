@@ -1,3 +1,6 @@
+#ifndef SOURCE_CHARACTER_PROGRAM_GROUP
+#define SOURCE_CHARACTER_PROGRAM_GROUP 0
+#endif
 #include "Engine_Shader_Defines.hlsli"
 #define clip Effect_Clip
 
@@ -564,11 +567,16 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
         ambient += colorExponent.rgb * g_SourceMapForwardLightAmbient[index].rgb * attenuation;
         const SOURCE_CHARACTER_NATIVE_INPUT lightInput =
             MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb);
-        SOURCE_CHARACTER_NATIVE_OUTPUT lit;
+        SOURCE_CHARACTER_NATIVE_OUTPUT lit = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
+        lit.discarded = true;
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 17
         if (18u == g_SourceCharacterProgram)
             lit = SourceCharacterLight18(lightInput);
-        else
+#endif
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+        if (88u == g_SourceCharacterProgram)
             lit = SourceCharacterLight88(lightInput);
+#endif
         if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;
     }
 

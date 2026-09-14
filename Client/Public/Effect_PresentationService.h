@@ -265,6 +265,7 @@ public:
 	static EFFECT_PRODUCT_PREWARM_TARGET_PROBE
 		Get_ProductCuePreparationProbe(
 			const std::vector<std::string>& EffectAssetIds);
+	static std::string Get_ProductCuePreparationFailure(const std::string& EffectAssetId);
 	static bool_t Begin_LoadingProductCuePreparation(
 		const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
 		uint64_t iJobEpoch,

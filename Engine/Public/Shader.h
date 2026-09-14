@@ -49,6 +49,7 @@ private:
 		VALUE_KIND eLastValueKind = VALUE_KIND::NONE;
 		ID3D11ShaderResourceView* pLastResource = nullptr;
 		bool bHasLastResource = false;
+		uint64_t iRevision = 1u;
 	};
 	struct EFFECT_BINDINGS final
 	{
@@ -57,7 +58,14 @@ private:
 		std::vector<VARIABLE_BINDING> Variables;
 		size_t iVariableMask = 0u;
 		std::vector<ID3DX11EffectPass*> Passes;
+		uint64_t iRevision = 1u;
 	};
+	struct PROGRAM_VARIANTS;
+	HRESULT Stage_ProgramVariants(const tchar_t* pShaderFilePath,
+		const D3D11_INPUT_ELEMENT_DESC* pElements, uint32_t iNumElements,
+		const std::shared_ptr<EFFECT_BINDINGS>& pBindings,
+		std::shared_ptr<PROGRAM_VARIANTS>& pVariants);
+	HRESULT Apply_ProgramVariant(uint32_t iProgram, uint32_t iPassIndex);
 
 	VARIABLE_BINDING* Find_Variable(const char_t* pConstantName) const;
 	static uint64_t Hash_VariableName(const char_t* pConstantName) noexcept;
@@ -67,6 +75,8 @@ private:
 	// Handles and last successful inputs share the same owner as m_pEffect.
 	// Every variable write stays private to CShader; Begin always applies the pass.
 	std::shared_ptr<EFFECT_BINDINGS> m_pBindings;
+	// Clones share the same FX state, revision owner and cohort synchronization.
+	std::shared_ptr<PROGRAM_VARIANTS> m_pProgramVariants;
 
 private:
 	uint32_t			m_iNumPasses = {};

@@ -1761,7 +1761,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				workbench->Get_PatternPreviewDocument(), bundlePreviewId, bundleClockMs, bundlePaused, previewRouteStatus,
 				m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
 			{
-				if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+				if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
 				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
 				ClaimCompositionPreviewOwner(route.owner);
 					m_eDebugInputOwner = route.owner;
@@ -1801,12 +1801,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
     document.Bundles.push_back(std::move(single));
     if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
       document, pattern.strPatternId, startClockMs, startPaused, previewRouteStatus,
-      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
+      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr, true, true))
     {
-     if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
-     if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+     if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
+
      ClaimCompositionPreviewOwner(route.owner);
-     previewAccepted = true;
+     previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
+      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr);
+     if (!previewAccepted) StopCompositionPreview(route.owner);
 					m_eDebugInputOwner = route.owner;
     }
     else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
@@ -1826,7 +1828,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
      !hasAnimation, startClockMs, startPaused, previewRouteStatus);
     if (previewed)
     {
-     if (!hasAnimation && m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+     if (!hasAnimation && m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
      ClaimCompositionPreviewOwner(route.owner);
      m_eDebugInputOwner = route.owner;
      previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
@@ -1948,7 +1950,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
     if (m_pKoukuPresentationPlayer->Begin_Preview(document, resourcePattern, true, 0u,
      !resourcePreview.WorldBoxes.empty(), previewRouteStatus))
     {
-     if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+     if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
      ClaimCompositionPreviewOwner(route.owner);
      m_eDebugInputOwner = route.owner;
      if (!m_pKoukuPresentationPlayer->Preview_IsBundle() &&
@@ -6984,7 +6986,7 @@ void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 void CMainApp::StopCompositionPreview(const DEBUG_TOOL owner)
 {
 	if (owner == DEBUG_TOOL::NONE || m_eCompositionPreviewOwner != owner) return;
-	if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+	if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
 	ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
@@ -9187,7 +9189,6 @@ void CMainApp::RenderDeveloperTools()
 		(currentLevelId == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
 			"Kouku runtime supports Map, Object, Camera and Sequence authoring through F1." :
 			"F1 opens tools. Map authoring is available in Lobby Test or the Kouku runtime."));
-	RenderSequenceViewer();
 	ImGui::SeparatorText("Tools");
 
 	const auto toolButton = [this](
@@ -9482,6 +9483,8 @@ void CMainApp::RenderDeveloperTools()
 		}
 		ImGui::TextDisabled("Riding now: %u", ridingPlayer.iVehicleId);
 	}
+
+	RenderSequenceViewer();
 
 	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
 	{

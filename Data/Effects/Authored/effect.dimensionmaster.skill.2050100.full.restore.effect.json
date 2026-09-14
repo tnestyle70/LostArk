@@ -312,7 +312,7 @@
             0,
             0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false,
           "sourceScale": {
             "count": 1,
@@ -1874,7 +1874,7 @@
             1.5,
             2.76000023
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -3687,7 +3687,7 @@
             0.01,
             0.012999999523162843
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -5271,7 +5271,7 @@
             1.4431856274604797,
             6.6244189739227295
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -6500,7 +6500,7 @@
             0.030000000447034835,
             2.774613857269287
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -7773,7 +7773,7 @@
             0.0,
             6.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -9051,7 +9051,7 @@
             0.51994788646698,
             2.821883887052536
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -10692,7 +10692,7 @@
             0.25,
             2.2
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {
@@ -11846,7 +11846,7 @@
             0.0,
             0.0
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": false
         },
         "trail": {
@@ -13918,7 +13918,7 @@
             0.0,
             2.6
           ],
-          "localSpace": true,
+          "localSpace": false,
           "billboard": true
         },
         "trail": {

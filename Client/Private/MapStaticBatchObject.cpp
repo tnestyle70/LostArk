@@ -46,7 +46,7 @@ namespace
         double maximum[3] = { -DBL_MAX, -DBL_MAX, -DBL_MAX };
         bool valid = true, any = false;
         float maximumScale = 0.f;
-        void Add(const FMapStaticInstance& instance)
+        void Add(const FMapStaticInstance& instance, const float scale)
         {
             const float* center = &instance.WorldBoundsCenter.x;
             if (!std::isfinite(instance.WorldBoundsRadius) || instance.WorldBoundsRadius <= 0.f) valid = false;
@@ -56,7 +56,6 @@ namespace
                 minimum[axis] = (std::min)(minimum[axis], double(center[axis]) - instance.WorldBoundsRadius);
                 maximum[axis] = (std::max)(maximum[axis], double(center[axis]) + instance.WorldBoundsRadius);
             }
-            const float scale = LinearScaleBound(instance.World);
             if (scale <= 0.f) valid = false;
             maximumScale = (std::max)(maximumScale, scale);
             any = true;
@@ -132,9 +131,6 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 		desc.ModelPrototypeTag)) ||
 		FAILED(Rebuild_PlacementLookup()) ||
 		FAILED(Ensure_InstanceCapacity(
-			static_cast<uint32_t>(
-				m_Instances.size()))) ||
-		FAILED(Ensure_ShadowInstanceCapacity(
 			static_cast<uint32_t>(
 				m_Instances.size()))))
 	{
@@ -368,6 +364,7 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 			--m_iAuthoredVisibleInstanceCount;
 	}
 	current = instance;
+    m_InstanceLinearScaleBounds[iter->second] = LinearScaleBound(current.World);
     m_bBatchBoundsDirty = true;
 	m_bShadowInstancesDirty = true;
 	m_bVisibleInstancesDirty = true;
@@ -582,9 +579,9 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.CullAndPack");
-	if (!rejectBatch) for (FMapStaticInstance& instance :
-		m_Instances)
+	if (!rejectBatch) for (size_t index = 0u; index < m_Instances.size(); ++index)
 	{
+        FMapStaticInstance& instance = m_Instances[index];
 		if (!instance.Visible)
 			continue;
 
@@ -610,7 +607,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 			continue;
 		}
 
-        visibleEnvelope.Add(instance);
+        visibleEnvelope.Add(instance, m_InstanceLinearScaleBounds[index]);
 		VTXMESHINSTANCE gpuInstance{};
 		gpuInstance.World =
 			instance.World;
@@ -767,6 +764,7 @@ Rebuild_PlacementLookup()
 	m_iAuthoredVisibleInstanceCount = 0u;
 	m_PlacementLookup.reserve(
 		m_Instances.size());
+    m_InstanceLinearScaleBounds.resize(m_Instances.size());
 
 	for (uint32_t index = 0;
 		index < m_Instances.size();
@@ -790,6 +788,7 @@ Rebuild_PlacementLookup()
 
 		if (!inserted)
 			return E_INVALIDARG;
+        m_InstanceLinearScaleBounds[index] = LinearScaleBound(instance.World);
 		if (instance.Visible)
 			++m_iAuthoredVisibleInstanceCount;
 	}
@@ -835,10 +834,11 @@ void CMapStaticBatchObject::Rebuild_BatchCullBounds()
 {
     INSTANCE_ENVELOPE envelope;
     uint32_t grace = 0u;
-    for (const auto& instance : m_Instances)
+    for (size_t index = 0u; index < m_Instances.size(); ++index)
     {
+        const auto& instance = m_Instances[index];
         if (!instance.Visible) continue;
-        envelope.Add(instance);
+        envelope.Add(instance, m_InstanceLinearScaleBounds[index]);
         grace = (std::max)(grace, instance.FrustumState.rejectGraceFrames);
     }
     m_bHasBatchBounds = envelope.Store(m_BatchBounds);

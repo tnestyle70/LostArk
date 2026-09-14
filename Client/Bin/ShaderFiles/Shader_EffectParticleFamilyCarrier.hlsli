@@ -1,7 +1,10 @@
 #define EFFECT_NATIVE_PARTICLE_CARRIER 1
 #include "Shader_EffectCommon.hlsli"
-#include "Shader_EffectCubeSampleScene.hlsli"
+#include "Shader_EffectSceneColorInput.hlsli"
+#include "Shader_EffectSceneDepthInput.hlsli"
+#if EFFECT_SHADER_FAMILY == 0
 #include "Shader_EffectSliceSceneDepth.hlsli"
+#endif
 #if EFFECT_SHADER_FAMILY == 1
 #include "Shader_EffectDimensionMasterQNative.hlsli"
 #endif

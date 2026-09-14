@@ -3,8 +3,8 @@
 #ifndef EFFECT_DIMENSIONMASTER_SD_NATIVE_HLSLI
 #define EFFECT_DIMENSIONMASTER_SD_NATIVE_HLSLI
 #include "Shader_EffectDimensionMasterVNativeShared.hlsli"
-#include "Shader_EffectSliceSceneDepth.hlsli"
-#include "Shader_EffectCubeSampleScene.hlsli"
+#include "Shader_EffectSceneDepthInput.hlsli"
+#include "Shader_EffectSceneColorInput.hlsli"
 
 // Mutually exclusive V/SD programs share the existing native packet.
 #define g_SDSourceMaterialParameters g_VSourceMaterialParameters

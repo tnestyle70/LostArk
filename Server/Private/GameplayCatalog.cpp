@@ -557,6 +557,8 @@ namespace
             output = BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD;
 		else if ("COUNTER_WINDOW" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW;
+		else if ("PATTERN_COMPLETION_COUNT" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT;
 		else if ("EXTERNAL_SIGNAL" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL;
 		else
@@ -583,6 +585,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR;
 		else if ("CLOWN_TRANSFORM" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::CLOWN_TRANSFORM;
+		else if ("MARIO_ENTER" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER;
 		else if ("FOLLOWUP_PATTERN" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
 		else if ("PLAY_WORLD_OBJECT_MOTION" == value)
@@ -2819,6 +2823,26 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				{ m_strStatus = "Boss Logic WORLD key scale/quaternion is invalid"; return false; }
 				key.bVisible = 1u == visible; track.Keys.push_back(key);
 			}
+		}
+		else if (!fields.empty() && "PATTERNLOGICCHAIN" == fields[0])
+		{
+			std::uint32_t count = 0u;
+			if (fields.size() < 6u || fields.size() > 21u || !ParseNumber(fields[4], count) || count < 1u || count > fields.size() - 5u)
+			{ m_strStatus = "Pattern completion chain count is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "Pattern chain encounter missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end()) { m_strStatus = "Pattern chain owner missing"; return false; }
+			const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(), [&](const auto& row) { return row.strWindowId == fields[3]; });
+			if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT || !window->PatternIds.empty())
+			{ m_strStatus = "Pattern chain window missing or duplicated"; return false; }
+			for (std::size_t i = 5u; i < fields.size(); ++i)
+			{
+				if (!IsStableId(fields[i]) || fields[i] == pattern->strPatternId || std::find(window->PatternIds.begin(), window->PatternIds.end(), fields[i]) != window->PatternIds.end())
+				{ m_strStatus = "Pattern chain candidate is invalid or duplicated"; return false; }
+				window->PatternIds.emplace_back(fields[i]);
+			}
+			window->iCompletionCount = count;
 		}
 		else if (!fields.empty() && "PATTERNLOGICOUTCOME" == fields[0])
 		{
@@ -6413,6 +6437,44 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			for (const auto& window : pattern.LogicWindows)
 			{
 				const auto fail = [&](const char* reason) { m_strStatus = "Pattern " + pattern.strPatternId + " / " + window.strWindowId + ": " + reason; return false; };
+                const auto chainCount = std::count_if(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [](const auto& row) {
+                    return row.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT;
+                });
+                if (chainCount > 1) return fail("One pattern may own only one completion chain");
+                if (window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT)
+                {
+                    if (window.PatternIds.empty() || window.PatternIds.size() > 16u || window.iCompletionCount < 1u ||
+                        window.iCompletionCount > window.PatternIds.size() || !window.CardRegions.empty() ||
+                        window.OnSuccess.size() != 1u || window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN ||
+                        !window.OnFail.empty() || !window.OnTimeout.empty())
+                        return fail("Completion chain requires a bounded pool, count and one Success followup");
+                    std::unordered_set<std::string> candidateIds;
+                    for (const auto& id : window.PatternIds)
+                    {
+                        const auto child = std::find_if(patterns.begin(), patterns.end(), [&](const auto& row) { return row.strPatternId == id; });
+                        if (id == pattern.strPatternId || !candidateIds.insert(id).second || child == patterns.end() || child->Stages.empty() ||
+                            child->strGateId != pattern.strGateId || child->AuditionBossArchetypeIds != pattern.AuditionBossArchetypeIds ||
+                            child->strTargetBossPlacementId != pattern.strTargetBossPlacementId)
+                            return fail("Completion candidates must be distinct playable patterns for the same Gate and boss");
+                        for (const auto& childWindow : child->LogicWindows)
+                        {
+                            if (childWindow.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT)
+                                return fail("Completion candidates cannot contain another chain");
+                            for (const auto* outcomes : { &childWindow.OnSuccess, &childWindow.OnFail, &childWindow.OnTimeout })
+                                for (const auto& outcome : *outcomes)
+                                    if (outcome.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN || outcome.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER)
+                                        return fail("Completion candidates cannot insert another pattern or Mario entry");
+                        }
+                    }
+                }
+                else if (!window.PatternIds.empty() || window.iCompletionCount) return fail("Only a completion chain owns candidates");
+                for (const auto* outcomes : { &window.OnSuccess, &window.OnFail, &window.OnTimeout })
+                    for (const auto& outcome : *outcomes)
+                        if (outcome.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER &&
+                            (chainCount != 1 || pattern.strGateId != "GATE3" || window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ||
+                             outcomes != &window.OnSuccess || outcomes->size() != 1u || window.CardRegions.empty()))
+                            return fail("Mario entry is the sole ENTER_AREA Success owned by a Gate 3 completion chain");
+
 				for (const auto* results : { &window.OnSuccess, &window.OnFail, &window.OnTimeout })
 					for (const auto& result : *results)
 						if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION &&
