@@ -244,6 +244,30 @@ namespace
 		std::string strLevelPlacementId;
     };
 
+	bool_t Commit_ExternalTransformHistorySample(
+		ACTIVE_EFFECT& Effect, std::string& strOutError)
+	{
+		const f32_t fTarget = std::clamp(Effect.fPendingInitialSampleTimeSeconds,
+			0.f, Effect.pObject->Get_PreviewDurationSeconds());
+		const f64_t fClock = Effect.pObject->Get_PreviewFixedStepClockSeconds();
+		const f64_t fDelta = static_cast<f64_t>(fTarget) - fClock;
+		// Rebuild on first sample, rewind, large seek, or an authored edit.
+		// A held capture frame keeps the already committed history and anchors.
+		const bool_t bSeek = !Effect.bExternalHistorySampled ||
+			!std::isfinite(fClock) || fDelta < -0.000001 || fDelta > 0.5;
+		const bool_t bCommitted = bSeek ?
+			Effect.pObject->Set_SampleTimeWithTransformHistory(fTarget,
+				Effect.ExternalTransformProvider, strOutError) :
+			Effect.pObject->Advance_PreviewWithTransformHistory(
+				static_cast<f32_t>((std::max)(0.0, fDelta)),
+				Effect.ExternalTransformProvider, strOutError);
+		if (!bCommitted) return false;
+		Effect.bExternalHistorySampled = true;
+		Effect.bPendingInitialSeek = false;
+		Effect.fElapsedCueTimeSeconds = fTarget;
+		return true;
+	}
+
 	EFFECT_OWNER_VIEW Resolve_Owner(
 		const Client::EFFECT_SPAWN_DESC& Desc)
 	{
@@ -4690,6 +4714,8 @@ bool_t Client::CEffectPresentationService::Spawn(
 		Desc.fPlaybackRate <= 16.f &&
 		std::isfinite(Desc.fInitialSampleTimeSeconds) &&
 		Desc.fInitialSampleTimeSeconds >= 0.f &&
+		std::isfinite(Desc.fExternalPlaybackEndSeconds) && Desc.fExternalPlaybackEndSeconds >= 0.f &&
+		(Desc.fExternalPlaybackEndSeconds == 0.f || Desc.bExternallySampled) &&
 		EFFECT_FOLLOW_POLICY::END != Desc.eFollowPolicy &&
 		Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) &&
 		(!Desc.bUseWorldRoot ||
@@ -4937,10 +4963,11 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	const EFFECT_WORLD_ROOT_HANDLE Handle,
 	const f32_t fSampleTimeSeconds,
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
-	const bool_t bRebuildHistory)
+	const bool_t bRebuildHistory,
+	const f32_t fPlaybackEndSeconds)
 {
 	if (!Handle.Is_Valid() || !std::isfinite(fSampleTimeSeconds) ||
-		fSampleTimeSeconds < 0.f)
+		fSampleTimeSeconds < 0.f || !std::isfinite(fPlaybackEndSeconds) || fPlaybackEndSeconds < 0.f)
 	{
 		return false;
 	}
@@ -4948,7 +4975,8 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	{
 		if (pending.Desc.iWorldRootHandle == Handle.iValue)
 		{
-			if (TransformProvider && !pending.Desc.bExternallySampled) return false;
+			if ((TransformProvider || fPlaybackEndSeconds > 0.f) && !pending.Desc.bExternallySampled) return false;
+			pending.Desc.fExternalPlaybackEndSeconds = fPlaybackEndSeconds;
 			pending.Desc.fInitialSampleTimeSeconds = fSampleTimeSeconds;
 			pending.Desc.ExternalTransformProvider = TransformProvider;
 			return true;
@@ -4958,7 +4986,8 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	{
 		if (effect.iWorldRootHandle == Handle.iValue && nullptr != effect.pObject)
 		{
-			if (TransformProvider && !effect.bExternallySampled) return false;
+			if ((TransformProvider || fPlaybackEndSeconds > 0.f) && !effect.bExternallySampled) return false;
+			effect.pObject->Set_ScreenPostPlaybackEnd(fPlaybackEndSeconds);
 			effect.fPendingInitialSampleTimeSeconds = fSampleTimeSeconds;
 			effect.fElapsedCueTimeSeconds = fSampleTimeSeconds;
 			effect.bPendingInitialSeek = true;
@@ -4991,20 +5020,14 @@ HRESULT Client::CEffectPresentationService::Commit_WorldRootCaptureSample(
 		g_strStatus = "Scene capture sample needs its admitted transform-history provider.";
 		return E_INVALIDARG;
 	}
-	const f32_t target = std::clamp(effect->fPendingInitialSampleTimeSeconds,
-		0.f, effect->pObject->Get_PreviewDurationSeconds());
 	std::string historyError;
 	// MainApp's final preview sample follows the service's normal update.
 	// Commit that exact sample before FrameProviders build this render frame.
-	if (!effect->pObject->Set_SampleTimeWithTransformHistory(target,
-		effect->ExternalTransformProvider, historyError))
+	if (!Commit_ExternalTransformHistorySample(*effect, historyError))
 	{
 		g_strStatus = "Scene capture transform-history sample failed: " + historyError;
 		return E_FAIL;
 	}
-	effect->bExternalHistorySampled = true;
-	effect->bPendingInitialSeek = false;
-	effect->fElapsedCueTimeSeconds = target;
 	return S_OK;
 }
 
@@ -5161,6 +5184,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		Desc.fPlaybackRate <= 0.f || Desc.fPlaybackRate > 16.f ||
         !std::isfinite(Desc.fInitialSampleTimeSeconds) ||
         Desc.fInitialSampleTimeSeconds < 0.f ||
+        !std::isfinite(Desc.fExternalPlaybackEndSeconds) || Desc.fExternalPlaybackEndSeconds < 0.f ||
+        (Desc.fExternalPlaybackEndSeconds > 0.f && !Desc.bExternallySampled) ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
 		!Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) ||
 		(Desc.bUseWorldRoot && Desc.eScalePolicy !=
@@ -5364,6 +5389,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
             }
         }
     }
+    pEffect->Set_ScreenPostPlaybackEnd(Desc.fExternalPlaybackEndSeconds);
     ACTIVE_EFFECT Active;
     Active.pObject = pEffect;
 	Active.pOwner = Owner.pCharacter;
@@ -5532,20 +5558,8 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 		else if (Effect.bExternallySampled && Effect.ExternalTransformProvider &&
 			Effect.bPendingInitialSeek && nullptr != Effect.pObject && !Effect.bFollowAnchorMissing)
 		{
-			const f32_t fTarget = std::clamp(Effect.fPendingInitialSampleTimeSeconds,
-				0.f, Effect.pObject->Get_PreviewDurationSeconds());
-			const f64_t fClock = Effect.pObject->Get_PreviewFixedStepClockSeconds();
-			const f64_t fDelta = static_cast<f64_t>(fTarget) - fClock;
 			std::string strHistoryError;
-			// Replay only on first sample, rewind, large seek, or an authored
-			// placement edit. Normal frames consume only their new fixed steps.
-			const bool_t bSeek = !Effect.bExternalHistorySampled ||
-				!std::isfinite(fClock) || fDelta < -0.000001 || fDelta > 0.5;
-			const bool_t bCommitted = bSeek ?
-				Effect.pObject->Set_SampleTimeWithTransformHistory(fTarget,
-					Effect.ExternalTransformProvider, strHistoryError) :
-				Effect.pObject->Advance_PreviewWithTransformHistory(static_cast<f32_t>((std::max)(0.0, fDelta)),
-					Effect.ExternalTransformProvider, strHistoryError);
+			const bool_t bCommitted = Commit_ExternalTransformHistorySample(Effect, strHistoryError);
 			if (!bCommitted)
 			{
 				g_strStatus = "External Effect transform-history playback failed: " + strHistoryError;
@@ -5553,9 +5567,6 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 				Remove_At(iEffect);
 				continue;
 			}
-			Effect.bExternalHistorySampled = true;
-			Effect.bPendingInitialSeek = false;
-			Effect.fElapsedCueTimeSeconds = fTarget;
 		}
 		else if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
 			!Effect.bFollowAnchorMissing)

@@ -42,6 +42,7 @@ public:
 	void Set_HiddenMeshes(uint32_t iHiddenMeshMask) {
 		m_iHiddenMeshMask = iHiddenMeshMask;
 	}
+	void Set_WeaponReplacementBody(const shared_ptr<CModel>& body) { m_WeaponReplacementBody = body; }
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	/* Uses the same local x parent composition as the rendered body, including
 	   parent edits made after the level update by an authoring tool. */
@@ -63,6 +64,7 @@ private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	uint32_t m_iHiddenMeshMask = {};
+	std::weak_ptr<CModel> m_WeaponReplacementBody;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
 
 private:

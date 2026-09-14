@@ -624,3 +624,190 @@ shader·필수 DLL 배포가 완료됐다. Engine 출력과 Client 배포 DLL의
 사용자가 Ctrl+F5를 눌러 실행하고, Lobby의 KoukuSaydon 진입 후 해당 화면 동작을 확인한다.
 최종 process 조회에서는23:15:53에 시작된 제품 Server46652와 Client70468이 실행 중이었다.
 검증한 EXE와 같은 경로·수정 시각이며 에이전트가 실행하거나 UI를 조작한 결과가 아니다.
+
+
+## G14. 화염링 2배와 공통 불뿜기 후보 (2026-09-14)
+
+`build_kouku_backstep_flame_groups.py --shared-firebreath`는 현재 저장된 문서를 읽어
+5개 후보와 원본 백업·입력 hash를 out에 작성한다. live Data 설치는 하지 않았다.
+기존 기본 생성/new-or-equal 설치와 head-motion repair 함수6개의 AST는 수정 전과 같다.
+새 경로는 기존 ring/화염의 멤버·transform·attachment가 달라졌으면 거절하며, 공통25의
+identity particleSystem, yaw0, scale1.7과 비부착 frame을 검증한다.
+
+| 대상 stable asset의 끝부분 | 구성 전 → 후 | 수명 | 공통 화염 local origin |
+|---|---:|---:|---|
+| `gate3.backstep.ring` | body10 → body10 | 9000ms | 없음 |
+| `gate3.backstep.ring.flame` | body10 + Sk_01 11 → body10 + 공통25 | 9000ms | [0,2.2,0]m |
+| `gate3.backstep.flame` | Sk_01 11 → 공통25 | 5500ms | [0,1.1,0]m |
+| `gate3.backstep.full` | Sk_01 11 + ground3 → 공통25 + ground3 | 5500ms | [0,1.1,0]m |
+| `source.fx_mn_rpct_07_v.par_v_rpct_firebreath_breath_01_loc_int` | 원본9 → 공통25 | 5500ms | [0,0,0]m |
+
+공통 입력은 `effect.kouku.gate3.firebreath.shared`의 Fire_01/02 25요소다.
+SHA256은 `d5087f6500cdec952810d95b0310bba45e4f6182f3611b0512bb46ad622f1599`다.
+각 복사는 stable ID/provider·group·position만 remap하며 recipe, native emitter clock,
+material, local/world emission 정책은 같다. 실제 Playback은 이미 원본 UE -Y를 Client +Z로
+변환한다. lookupTable 앞2개 range header를 속도 XYZ로 읽은 초기 추론은 폐기했고 최종
+후보는 yaw0이다. 기존 Sk_01의 yaw-90/scale2를 공통25에 재적용하지 않는다.
+
+### G14-01. 링 크기와 바닥 기준
+
+확대한 대상은 `Par_G_RPCT_05_FireRing_01_LOC_INT`의10요소이며 별도 `.ring.end`의7요소,
+다른 Sk_04_10/11 불기둥·반원 메시와 재질·shader를 변경하지 않았다. 본체의 Element position은
+[0,1.1,1.575]→[0,2.2,3.15], scale은 .7→1.4다. Y 중심 이동1.1m와 source hoop225cm
+편심에 따른 Z 보정1.575m를 함께 적용했다. 따라서 중심을 Y1.1에 고정해 링 하단이 지하로
+들어가던 중간 후보 대신, 바닥 원점을 기준으로2배인 최종 후보를 전달했다.
+
+설치된 `fm_k_ppct_hoop_01.wmodel`의822정점과 실제 Codec/Playback의0.3초 mesh matrix로
+두 링 문서를 검사했다. 가로2.191875→4.383750m, 세로2.192141→4.384282m,
+두께 .169990→.339980m, 중심Y1.10000024→2.20000024m다. 메시 하단은
+Y.00392981→.00785940m이며, 점별 바닥 원점2배 오차의 최댓값은2.37e-7m다.
+이 값은 메시 geometry의 bounds다. 주변 sprite 확산·shader 변형까지 바닥 위에만 있다는
+판정이나 GPU 표시 성공을 의미하지 않는다.
+
+### G14-02. 공굴리기 원본과 보존 범위
+
+교체한 공굴리기 library의 실제 원본은 MN_RPCT_05 action4219866과 MN_RPCT_07
+ action4219910이다. 각각 stage1~8/14~21/27~34의 활성 notify005 24회가 같은
+FireBreath_Breath_01을 참조한다. 현재 library의 synthetic action242156428은 실제
+게임 action ID가 아니다. 현재 saved Composition에는 이 library resource 소비자가 없고,
+WorldSequence의 ball/ball_bounce도 이 화염을 연결하지 않는다.
+
+사용자 요청에 따라 같은 stable asset ID를 유지하며 표시명을 `공굴리기_공통 불뿜기`로
+바꾼 후보를 만들었다. 기존 tree parent를 유지하도록 manifest에서 categoryPath는 생략했다.
+원본9의 추출 archive와 baseline은 보존하며, 이것은 원본 외형 복원이 아닌 공통 외형 교체다.
+전체 공 탑승 animation이나24회 발사를 새로 작성하지 않았다. P40은 공굴리기가 아닌
+`쿠크세이튼_십자화염폭발`이므로 수정 대상에서 제외했다.
+
+### G14-03. 검증과 전달 경계
+
+기존 native group probe를 out에서 컴파일·링크해 actual Codec의 drawable validation,
+SaveAtomic/reopen, 전체 수명60Hz CPU Playback, finite 및 deterministic seek를5문서에서
+확인했다. 모두 PASS다. 기존 Engine_Enum.h의 C4819 경고는 유지한다. 공통25 가운데
+정지 root에서 실제 emission이 발생한 것은15요소이며 원본 rate 정책을 유지했다.
+누락을 숨기려고25개를 강제로 발생시키지 않았다. full의 ground3, 별도 end7의 hash,
+문서의 다른 header field와 source JSON hash도 보존했다. Python compile, 엄격 JSON parse,
+기존 함수 AST 비교와 관련 diff-check가 PASS다.
+
+최종 전달 파일은 `out/KoukuSharedFlameRing20260914/final/installation.json`이다.
+같은 폴더의 `validation.json`, `native.json`, `native-stderr.log`, `roundtrip/`에 근거가 있다.
+공굴 source 사용처는 상위 폴더 `ball-fire-source-uses.json`에 기록했다. 상위 통합 작업이
+최신 입력 hash를 다시 확인하고 Catalog/Tree/Composition 등록과 guarded 설치를 담당한다.
+이 G14는 후보와 수치 검증 완료이며 Product 빌드·실제 보스 본 부착·Client/UI 실행·화면
+확인은 수행하지 않았다. 사용자 화면 판정과 최종 설치 결과는 상위 G15 결과와 구분한다.
+
+
+## G15. 공통 불뿜기와 1·2·3·4 화염 파동 — 2026-09-14
+
+사용자가 마지막으로 확인한 구분을 반영했다. 기존 `지팡이 내려찍기 | 바닥 예고 후 화염기둥`의
+42요소 원본은 stable ID와 사용자 편집을 보존하고 `불뿜기`로 이름만 바꾼다. 별도 Fire_01/02
+25요소가 백스텝·화염링·공굴리기의 공통 분출이다. 새10지점 화염 파동은 내려찍기 동작의
+전조·불기둥·바닥 데칼로 구성하며 불뿜기 합성과 혼합하지 않는다.
+
+후보는 `out/KoukuFlameUnification20260914/review`의17파일이다. Effect JSON12개(기존6,
+신규6), Catalog/Tree/Composition, project/filter이며 새 런타임 schema나 C++ 파일은 없다.
+현재까지 후보 검증이며 live 적용·publisher·제품 빌드 결과는 이 절 뒤에 기록한다.
+
+| 소비자 | 이펙트 시작 | 전체 길이 | 연결 |
+|---|---:|---:|---|
+| P43 백스텝 불뿜기 | 3267ms | 기존6267ms | head 위치 + 보스 방향, 분출 box3000ms |
+| P49 우측 이동 화염 파동 | 3504ms | 11154ms | 전조 시작의 BOSS pivot 하나 |
+| 새P58 세이튼 화염 파동 | 1904ms | 9554ms | action4219820 동작1회 + 회복 |
+| 새P59 쿠크세이튼 화염 파동 | 1904ms | 9554ms | action4219948 동작1회 + 회복 |
+
+P49의 기존 세 animation box·재생 속도·stage 길이는 보존하며, 바닥 잔광이 잘리지 않도록
+명시적 전체 수명만11154ms로 늘린다. P43은 현재 상위 마리오 타임라인을 늘리지 않고 기존
+backstep 동작의3초 창으로 자른다. 원본 불뿜기42의Resource5560ms도 이번 이름변경에서
+보존했다. 공통25의 전체 입자 꼬리까지 수명은5500ms다.
+
+화염 파동은 행당1/2/3/4개, 총10개다. 동작 기준 전조1904/2204/2504/2804ms,
+폭발3104/3404/3704/4004ms이며 전조는 각1200ms 지속한다. 첫 폭발3104ms만 원본
+WandDecal notify3.103589s에 맞췄고, 삼각형·300ms·전조1200ms는 사용자 저작 구성이다.
+지점 간5m, 행 전진4.330m, 첫 지점 전방5m다. 확대1.5배 후 핵심기둥 지름4.5m,
+impact halo7.297m라는 실제 Playback·mesh 수치로 .5m 핵심 간격과 약2.30m halo 겹침을
+선택했다. 화면에서 보이는 외곽선·shader 변형을 측정한 값은 아니다.
+
+Light는 지목한 `Par_M_Light_001` 하나를 사용한다. 원본 notify Color[3,1,.3]와 Size분포500,
+PointLightComponent 반경4.856068m/밝기15를 보존하며 수명만1200ms로 편집했다.
+불기둥 `Par_L_RPCT_05_Sk_04_11_LOC_INT`12요소만1.5배이고, WandDecal13요소는 같은
+위치·같은 시작의 폭발 바닥이다. 전체260요소, 각 지점26요소이며 별도 원점3종도 등록한다.
+
+Tree는 `불뿜기`를 기존3관문/패턴/세이튼 위치에 유지한다. 전체 화염 파동은 기존1관문
+`세이튼_화염 파동`과3관문 `쿠크세이튼_본체 우측 이동 후 화염 파동`에 각각 등록한다.
+Tree의 한 asset당 한 위치 계약 때문에 두 full asset ID를 사용하지만 생성 원본과260요소,
+ParticleSystem은 동일하다. 공유 기하/시각 레시피를 따로 구현하지 않았다.
+
+독립 full1box가 전조 시작에서 BOSS 위치·방향을 한 번 고정한다. 편집용30box 후보도
+manifest에 남겼으나 각 box가 서로 다른 BOSS 시각을 고정하는 구성은 기본 패턴에 설치하지
+않는다. 골격 기저의 scale1.7은 공통25의 Detail scale에 한 번만 적용한다. 실제 분포의
+lookupTable 앞2값은 range header이며 원본 속도가 아니다. 실제 Playback은 이미 +Z로
+분사하므로 추가 yaw90을 넣지 않는다. 원본 source recipe·재질은 바꾸지 않았다.
+
+현재 검증: 공통25 native5529검사 PASS, 링계열5문서 실제 Codec/Playback 저장·재로드·
+유한값·전체 수명·seek PASS, 화염 파동5문서148067 native검사와2621 저장·타이밍 검사 PASS. 링822정점의2배 최대오차
+2.37e-7m, 아래쪽 접점도 바닥 원점 기준2배로 유지된다. helper의 기존6개 함수 AST가 같다.
+`review/projection-validation.json`에 변경4패턴의 현행 publisher validator·실제 Product
+projection2파일·변경17파일 JSON/XML parse PASS를 기록했다. 다른 미완성P32 draft는
+원래 수명0인 상태로 보존하고 기존 publisher의 항목별 admission 계약을 그대로 사용한다.
+
+통합기의 `cas-checks.json`은 실행 중 app 차단, stale 사용자 저장 보존, 두 번째 파일 교체
+실패 시 첫 파일 복구, 정상 전체 적용, 중복 적용 거절과 Pattern 직렬화 검사를 통과했다.
+사용자 실제 Data에 대한 시험이 아니라 격리된 out fixture다. Client/UI 실행이나 화면 캡처는
+하지 않았으며 최종 외형·배치·보스 동작과의 시각 일치는 사용자 확인 전이다.
+
+
+### G15-01. 최종 저장본 적용
+
+사용자가 Save 후 Client·Server를 모두 종료했다고 알려왔고 실제 대상 프로세스0을 확인했다.
+17개 파일의 input/before/after/backup hash를 검증한 뒤 원본 백업을 보존하며 적용했다.
+Composition은 revision605→606이며 `review/receipt.json`의 installed=true가 실제 적용 기록이다.
+별도 검토자는 현재 후보의 중복 resource/Pattern, head translation과 TARGET_YAW 기저,
+1.7배 중복 여부, P49 animation 보존과 CAS 경로에서 수정이 필요한 결함을 찾지 못했다.
+
+
+### G15-02. 게시본·사용자 Visual Studio 빌드·재생 확인
+
+정본 `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 606`
+완료: Kouku Product PASS, Map REUSED, World PASS, Gameplay balance PASS다.
+저장59패턴 중48패턴·325stage·8bundle을 기존 admission 정책으로 게시했다. Authoring,
+KoukuSaydon.patternbindings와Encounter의 revision606 일치,17개 설치 파일 hash 일치를 확인했다.
+로그는 `out/KoukuFlameUnification20260914/publish606.log`다.
+
+에이전트 Product Build는 사용자 재실행 뒤 output guard에서 거절됐다. 기록
+`out/BuildPipeline/runs/20260914T081916923Z-debug-product.json`은 컴파일 성공 증거가 아니다.
+사용자 Visual Studio는16:54:34 Client.exe를 이미 링크했고17:18:47 증분 Build가 성공했다.
+`Client/Default/x64/Debug/Client.log`와 compiler read/write, linker read tlog를 확인했다.
+이번 Shift·앵커 그룹·Object preview 관련9개 TU의 모든 compiler dependency가 OBJ보다
+이르고,9개 OBJ가 실제 Link 입력이며 EXE보다 이른 것을 검사했다. 현재 소스 hash도
+`out/KoukuFlameUnification20260914/user-build-verification.json`에 보존했다.
+따라서 별도 에이전트 재빌드를 성공으로 꾸미거나 사용자 프로그램을 다시 닫게 하지 않았다.
+이번 화염 변경은 JSON·생성/등록 도구 변경이며 새 C++ 컴파일을 요구하지 않는다.
+
+사용자 Server/Client는17:18:48 시작됐고 Gameplay bootstrap은17:19:00에 게시됐다.
+처음에는 재시작을 안내했으나 현행 GameRoom_KoukuAudition의 새 Play revision admission이
+별도 새 쿠크 세대를 로드하는 계약을 확인해 이를 정정했다. 사용자가 이후 '시퀀스 재생돼'라고
+확인했다. 다른 balance/world 변경의 일반적인 Server 재시작 계약과 혼동하지 않는다.
+현재 실행은 사용자 조작이며 에이전트가 Client/UI를 실행하거나 화면을 캡처하지 않았다.
+
+P43 실제 CModel과 production Resolve_TargetPivot/Make_Pivot240검사도 PASS다.
+head translation 오차0, 보스 +Z 전방 오차0, 본1.7 → pivot1.0 → shared 최종1.7이며
+배율을 중복 적용하지 않는다. 증거 `out/KoukuFlameCommon20260914/p43-result.log`다.
+최종 Python/JSON/XML와 변경 범위 diff-check를 통과했다. 전체 상태는
+`out/KoukuFlameUnification20260914/final-receipt.json`에 기록했다.
+
+사용자 시퀀스 재생 확인과 화염의 최종 시각 판정은 별개다. 화염 방향·밀도·원작 외형은
+사용자 확인 전이며 visual PASS로 기록하지 않는다. 사용자는 Effect Tool V1의 기존
+불뿜기/세이튼 화염 파동/쿠크세이튼 우측 이동 화염 파동 폴더와 Action Workbench의
+기존P43/P49, 새P58/P59에서 확인할 수 있다.
+
+
+## G16. 십자·3갈래 공통 화염 실제 적용과 최종 게시
+
+`effect.kouku.firecross.impact.line`, `.impact`, `.impact.full`과 `effect.kouku.gate3.threeway.breath.full.restore` 네 기존 Authored 파일에 공통 불뿜기 외형을 적용했다. 각각50/100/105/110요소다. 십자는0/90/180/270도의 네 방향이며 3갈래는 기존 FX_Prj_01/02/03 socket과 원본 시작1.766666986초를 유지한다. 3갈래 main42개만75개로 교체해 준비17·예고15·조명3을 보존했고 십자 전체의 조명5개도 유지했다.
+
+리소스 ID·이름·기본 박스 수명1500/1500/1750/11075ms와 저장된 P37.presentation.10은 변경하지 않았다. 나머지 세 리소스에는 기존 저장 소비자가 없고, P40/P45의 빈 animation draft에 새로운 clip을 넣지 않았다. 공통 native 수명5.5초와 실제 occurrence의 사용 구간은 별도 계약이다. 다른 기존 패턴과 화염 파동·공 낙하 편집은 보존했다.
+
+실제 Codec/Playback2,878검사에서 십자 속도가+Z/+X/-Z/-X로 회전하고 최대 위치·속도 오차1.90735e-6을 확인했다. 3갈래 local +Z를 yaw90으로 원본 +X에 연결하며, Detail scale1과 설치 본 basis1.7의 결과는 neutral1.7과 오차0이다. 독립 ID·참조·공통recipe·보존 검사2,440개 및 실제 두 clip·세 본·다섯 시점·세 owner yaw의90검사도 통과했다. CModel 본 검사의 최대 방향 오차3.424e-7, 크기 오차4.411e-6이다. 이는 실제 GPU 외형의 사용자 판정을 대신하지 않는다.
+
+원래 두 생성기의 최종 지정 출력에도 같은 교체를 연결했고, 신규 stage 생성기를 추가했다. py_compile와 diff 검사를 통과했다. `out/KoukuDirectionalFlame20260914/installation.json`의 최신 input hash를 확인해 닫힌 Client/Server 상태에서 네 파일을 CAS로 적용했다. `installed/receipt.json`은 installed=true이며 원본 백업을 보존한다. 공유 원본25요소는 수정하지 않았다.
+
+최종 KoukuSaydon owner publish의 네 domain은 sourceRevision610에서 정상 재사용됐고 Composition Publish도 통과했다. Authored Effect는 기존 Catalog의 DIRECT_AUTHORED_DOCUMENT 경로로 실제 수정 파일을 읽는다. stable ID·게시 계약이 같으므로 Effect 외형 변경을 이유로 불필요한 Gameplay revision을 올리지 않았다. C++ 변경은 없으며 같은 작업의 Open Editor 수정·레거시 호출 제거 Product Debug와 Server 검사 결과는09-14 Sequence G24에 기록했다. 자료는 `verification.json`, `native-playback.log`, `final-kouku-publish610.log`, `final-composition-publish.log` 및 `out/ThreewayBonePeer20260914/candidate-peer-review.json`이다.

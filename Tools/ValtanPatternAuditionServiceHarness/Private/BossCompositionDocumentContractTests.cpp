@@ -7,6 +7,9 @@
 #include "EffectAuthoringResourceTree.h"
 #include "WorldGameplayDocument.h"
 #include "KoukuCinematicAnimationCatalog.h"
+#include "KoukuSaydonPatternAuditionService.h"
+#include "KoukuSaydonBossTool.h"
+#include "Effect_Catalog.h"
 
 #include <Windows.h>
 
@@ -25,6 +28,37 @@
 #include <vector>
 
 #ifdef LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS
+namespace Client
+{
+struct CKoukuSaydonWorkbenchTestAccess
+{
+    static bool Append(CKoukuSaydonActionWorkbench& workbench,
+        const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source, std::string& status)
+    { return workbench.Append_PresentationSource(source, status); }
+};
+}
+namespace
+{
+    Client::WORLD_GAMEPLAY_PLACEMENT* g_AppendWorldFixture = nullptr;
+    std::filesystem::path g_AppendWorldFixturePath;
+    std::string g_AppendWorldFixtureArea;
+}
+Client::EFFECT_TOOL_KOUKU_EFFECT_VIEW Client::Describe_KoukuSavedEffect(const std::string&, const std::string&, std::vector<std::string>)
+{ throw std::runtime_error("CPU editor contracts unexpectedly described a live saved Effect."); }
+bool Client::Matches_KoukuSavedEffect(const EFFECT_TOOL_KOUKU_EFFECT_VIEW&, const std::string&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly searched live saved Effects."); }
+Client::EFFECT_TOOL_KOUKU_EFFECT_TREE Client::Build_KoukuSavedEffectTree(std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW>)
+{ throw std::runtime_error("CPU editor contracts unexpectedly built the live Effect tree."); }
+void Client::Render_KoukuSavedEffectTree(const EFFECT_TOOL_KOUKU_EFFECT_TREE&, const std::function<void(std::size_t)>&,
+    bool, std::string_view, const std::function<bool(std::size_t)>&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly rendered the live Effect tree."); }
+Client::CKoukuSaydonPatternAuditionService& Client::CKoukuSaydonPatternAuditionService::Get()
+{ throw std::runtime_error("CPU editor contracts unexpectedly requested live Server audition."); }
+bool Client::CKoukuSaydonBossTool::Reload(std::string&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly reloaded the live Boss tool."); }
+std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Client::CEffectCatalog::Find_Loaded(const std::string&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly queried the live Effect catalog."); }
+
 bool Client::CKoukuCinematicAnimationCatalog::Load(std::vector<KOUKU_CINEMATIC_ANIMATION_GROUP>&, std::string&)
 {
 	throw std::runtime_error("CPU editor contracts unexpectedly queried the live Cinematic inventory.");
@@ -40,13 +74,16 @@ bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE
 	throw std::runtime_error("CPU editor contracts unexpectedly queried the live Effect inventory.");
 }
 
-bool_t Client::CWorldGameplayDocument::Load(const std::filesystem::path&, const std::string&, std::string&)
+bool_t Client::CWorldGameplayDocument::Load(const std::filesystem::path& path, const std::string& area, std::string& status)
 {
+    if (g_AppendWorldFixture && path.lexically_normal() == g_AppendWorldFixturePath.lexically_normal() && area == g_AppendWorldFixtureArea)
+    { status.clear(); return true; }
 	throw std::runtime_error("CPU editor contracts unexpectedly queried live World placement.");
 }
 
-Client::WORLD_GAMEPLAY_PLACEMENT* Client::CWorldGameplayDocument::Find(const std::string&)
+Client::WORLD_GAMEPLAY_PLACEMENT* Client::CWorldGameplayDocument::Find(const std::string& id)
 {
+    if (g_AppendWorldFixture && id == g_AppendWorldFixture->placementId) return g_AppendWorldFixture;
 	throw std::runtime_error("CPU editor contracts unexpectedly queried live World placement.");
 }
 
@@ -2490,6 +2527,146 @@ namespace
 		Require(!workbench.Save(status) && !status.empty() && workbench.Is_Dirty() &&
 			workbench.Get_Composition() == pending && ReadText(sourcePath) == externalBytes,
 			"Save conflict lost group geometry, draft or external source");
+
+		// Effect groups retain independent gun frames and duplicate their own boxes only.
+		source.Patterns.front() = pattern;
+		auto& effectPattern = source.Patterns.front();
+		effectPattern.PresentationOccurrences.clear();
+		resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
+		resource.strAssetId = "effect.group.fixture";
+		source.PresentationResources = {resource};
+		std::vector<std::string> effectIds;
+		for (unsigned i = 0u; i < 2u; ++i)
+		{
+			KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION world;
+			world.strWorldId = "kakulsaydon.g1.world." + std::to_string(source.iNextWorldOrdinal++);
+			world.strDisplayName = i ? "Right gun" : "Left gun";
+			world.strSequenceInstanceId = "sequence.gun." + std::to_string(i);
+			source.Worlds.push_back(world);
+			KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE worldBox;
+			worldBox.strOccurrenceId = patternId + ".world." + std::to_string(effectPattern.iNextWorldOccurrenceOrdinal++);
+			worldBox.strWorldId = world.strWorldId; worldBox.iDurationMs = 10000u;
+			effectPattern.WorldOccurrences.push_back(worldBox);
+			auto box = pattern.PresentationOccurrences[i];
+			box.strResourceId = resource.strResourceId; box.strAnchorKind = "WORLD";
+			box.strWorldId = world.strWorldId; box.strWorldOccurrenceId = worldBox.strOccurrenceId;
+			box.RotationDegrees = {11. * i, -89. + i, -0.8};
+			box.bFollowBoss = i != 0u;
+			effectPattern.PresentationOccurrences.push_back(box); effectIds.push_back(box.strOccurrenceId);
+		}
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "write Effect group fixture");
+		CKoukuSaydonActionWorkbench effectEditor;
+		RequireEditorStep(effectEditor.Reload(status), status, "load Effect group fixture");
+		const auto effectBefore = effectEditor.Get_Composition();
+		Require(!effectEditor.Set_EffectSelectionGroup(patternId, {effectIds.front()}, true, status) &&
+			effectEditor.Get_Composition() == effectBefore, "Effect singleton changed the draft");
+		Require(!effectEditor.Set_ColliderSelectionGroup(patternId, effectIds, true, status) &&
+			effectEditor.Get_Composition() == effectBefore, "Collider command accepted Effect selection");
+		RequireEditorStep(effectEditor.Set_EffectSelectionGroup(patternId, effectIds, true, status), status, "group left and right gun Effects");
+		const auto effectGrouped = EditorPattern(effectEditor, patternId);
+		const auto effectGroup = effectGrouped.PresentationOccurrences.front().strSelectionGroupId;
+		Require(!effectGroup.empty(), "Effect group ID missing");
+		for (unsigned i = 0u; i < 2u; ++i)
+		{
+			auto expected = effectPattern.PresentationOccurrences[i]; expected.strSelectionGroupId = effectGroup;
+			Require(effectGrouped.PresentationOccurrences[i] == expected, "Effect grouping changed timing or gun anchor/TRS");
+		}
+		RequireEditorRoundtrip(effectEditor);
+		RequireEditorStep(effectEditor.Select_PresentationBoxById(patternId, effectIds.front(), status), status, "select one Effect group member");
+		RequireEditorStep(effectEditor.Duplicate_TimelineSelection(patternId, {}, {effectIds.front()}, status), status, "duplicate selected Effect group");
+		const auto effectCopied = EditorPattern(effectEditor, patternId);
+		Require(effectCopied.WorldOccurrences == effectGrouped.WorldOccurrences &&
+			effectCopied.PresentationOccurrences.size() == 4u, "Effect repeat duplicated a gun or omitted its selected group");
+		const auto copiedEffectGroup = effectCopied.PresentationOccurrences[2].strSelectionGroupId;
+		Require(!copiedEffectGroup.empty() && copiedEffectGroup != effectGroup, "Effect copy kept the original selection group");
+		for (unsigned i = 0u; i < 2u; ++i)
+		{
+			auto expected = effectGrouped.PresentationOccurrences[i];
+			expected.strOccurrenceId = effectCopied.PresentationOccurrences[i + 2u].strOccurrenceId;
+			expected.iStartMs = effectCopied.PresentationOccurrences[i + 2u].iStartMs;
+			expected.strSelectionGroupId = copiedEffectGroup;
+			Require(effectCopied.PresentationOccurrences[i + 2u] == expected, "Effect repeat changed its original gun anchor/TRS or lifetime");
+		}
+		RequireEditorRoundtrip(effectEditor);
+		RequireEditorStep(effectEditor.Set_EffectSelectionGroup(patternId,
+			{effectCopied.PresentationOccurrences[2].strOccurrenceId}, false, status), status, "ungroup repeated Effects");
+		for (unsigned i = 2u; i < 4u; ++i)
+			Require(EditorPattern(effectEditor, patternId).PresentationOccurrences[i].strSelectionGroupId.empty(), "Effect ungroup missed a copied member");
+		RequireEditorStep(effectEditor.Delete_TimelineSelection(patternId, {}, {effectIds.front()}, status), status, "delete one original Effect group member");
+		for (const auto& box : EditorPattern(effectEditor, patternId).PresentationOccurrences)
+			Require(box.strSelectionGroupId.empty(), "Effect deletion retained a singleton group");
+		RequireEditorRoundtrip(effectEditor);
+		const auto beforeWorldCopy = EditorPattern(effectEditor, patternId);
+		const auto leftWorldId = beforeWorldCopy.WorldOccurrences.front().strOccurrenceId;
+		RequireEditorStep(effectEditor.Duplicate_TimelineSelection(patternId, {}, {leftWorldId}, status), status, "explicit World copy keeps attached Effect ownership");
+		const auto afterWorldCopy = EditorPattern(effectEditor, patternId);
+		Require(afterWorldCopy.WorldOccurrences.size() == beforeWorldCopy.WorldOccurrences.size() + 1u &&
+			afterWorldCopy.PresentationOccurrences.size() == beforeWorldCopy.PresentationOccurrences.size() + 1u,
+			"explicit gun copy failed to duplicate its attached Effect");
+		Require(afterWorldCopy.PresentationOccurrences.back().strWorldOccurrenceId == afterWorldCopy.WorldOccurrences.back().strOccurrenceId,
+			"explicit gun copy did not remap the attached Effect to its new gun");
+		RequireEditorRoundtrip(effectEditor);
+
+		// V1 resource WORLD defaults have no occurrence identity until the user selects a gun.
+		WORLD_GAMEPLAY_PLACEMENT spawnFixture;
+		spawnFixture.placementId = effectPattern.strTargetBossPlacementId;
+		spawnFixture.archetypeId = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(spawnFixture.placementId);
+		spawnFixture.eKind = WORLD_PLACEMENT_KIND::BOSS;
+		spawnFixture.position = float3_t(12.f, 3.f, -8.f);
+		struct APPEND_WORLD_FIXTURE_SCOPE
+		{
+			APPEND_WORLD_FIXTURE_SCOPE(WORLD_GAMEPLAY_PLACEMENT& spawn, const std::filesystem::path& path, const std::string& area)
+			{ g_AppendWorldFixture = &spawn; g_AppendWorldFixturePath = path; g_AppendWorldFixtureArea = area; }
+			~APPEND_WORLD_FIXTURE_SCOPE()
+			{ g_AppendWorldFixture = nullptr; g_AppendWorldFixturePath.clear(); g_AppendWorldFixtureArea.clear(); }
+		} appendWorldFixture(spawnFixture, dataRoot / "Worlds" / source.strAreaId / "Gameplay.world.json", source.strAreaId);
+		for (const auto* kind : {"V1_EFFECT", "V1_ELEMENT"})
+		{
+			RequireEditorStep(effectEditor.Select_PatternById(patternId, status), status, "select Boss pattern for WORLD-default V1 Append");
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE v1;
+			v1.eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
+			v1.strResourceKind = kind; v1.strAssetId = std::string("effect.world.append.") + kind;
+			v1.strDisplayName = std::string("World-default ") + kind; v1.strDefaultAnchorKind = "WORLD";
+			if (v1.strResourceKind == "V1_ELEMENT") v1.strElementId = "gun.flash.element";
+			v1.iDurationMs = 333u;
+			const auto beforeAppend = effectEditor.Get_Composition();
+			RequireEditorStep(CKoukuSaydonWorkbenchTestAccess::Append(effectEditor, v1, status), status, "Append WORLD-default V1 into Boss workbench");
+			const auto appendedPattern = EditorPattern(effectEditor, patternId);
+			Require(appendedPattern.PresentationOccurrences.size() == beforeAppend.Patterns.front().PresentationOccurrences.size() + 1u, "V1 Append added the wrong number of Effect boxes");
+			const auto appended = appendedPattern.PresentationOccurrences.back();
+			Require(appended.strAnchorKind == "MAP" && !appended.bFollowBoss && appended.strWorldId.empty() &&
+				appended.strWorldOccurrenceId.empty() && appended.strBone.empty() && appended.strBoneTarget == "BODY" &&
+				appended.PositionOffset == std::array<double, 3u>{12., 3., -8.} && appended.iDurationMs == 333u,
+				"WORLD-default Append did not create a valid fixed placement at this Pattern's boss spawn");
+			Require(effectEditor.Get_Composition().PresentationResources.size() == beforeAppend.PresentationResources.size() + 1u &&
+				appendedPattern.WorldOccurrences == beforeAppend.Patterns.front().WorldOccurrences,
+				"V1 Append failed to stage one resource or created a gun implicitly");
+			RequireEditorRoundtrip(effectEditor);
+			const auto savedAppend = effectEditor.Get_Composition();
+			auto invalid = appended; invalid.strAnchorKind = "WORLD"; invalid.bFollowBoss = true;
+			Require(!effectEditor.Set_PresentationBox(patternId, invalid, status) &&
+				status.find("worldId") != std::string::npos && effectEditor.Get_Composition() == savedAppend,
+				"manual WORLD-without-worldId stopped rejecting or changed the saved draft");
+			auto attached = appended;
+			attached.strAnchorKind = "WORLD"; attached.bFollowBoss = true;
+			attached.strWorldId = appendedPattern.WorldOccurrences.front().strWorldId;
+			attached.strWorldOccurrenceId = appendedPattern.WorldOccurrences.front().strOccurrenceId;
+			attached.PositionOffset = {0.02, -0.03, 0.98}; attached.RotationDegrees = {0., -89.3, -0.8};
+			RequireEditorStep(effectEditor.Set_PresentationBox(patternId, attached, status), status, "attach appended V1 to exact gun in Box Detail");
+			RequireEditorRoundtrip(effectEditor);
+			const auto beforeRepeat = EditorPattern(effectEditor, patternId);
+			RequireEditorStep(effectEditor.Duplicate_TimelineSelection(patternId, {}, {attached.strOccurrenceId}, status), status, "repeat appended gun V1");
+			const auto afterRepeat = EditorPattern(effectEditor, patternId);
+			Require(afterRepeat.WorldOccurrences == beforeRepeat.WorldOccurrences &&
+				afterRepeat.PresentationOccurrences.size() == beforeRepeat.PresentationOccurrences.size() + 1u,
+				"repeating appended V1 copied the gun or failed to copy the Effect");
+			auto expected = attached;
+			expected.strOccurrenceId = afterRepeat.PresentationOccurrences.back().strOccurrenceId;
+			expected.iStartMs = afterRepeat.PresentationOccurrences.back().iStartMs;
+			Require(afterRepeat.PresentationOccurrences.back() == expected, "V1 repeat lost its exact gun anchor or local transform");
+			RequireEditorRoundtrip(effectEditor);
+		}
+
 	}
 
 	void VerifyKoukuPreviewTransportContracts()

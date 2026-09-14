@@ -601,8 +601,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		}
 		iPass = Adapter.iPassIndex;
 	}
+	const bool_t bArtistWorldToLocal = 2349u == pResource->iSourceMaterialProfile ||
+		2874u == pResource->iSourceMaterialProfile || 3316u == pResource->iSourceMaterialProfile;
 	if (341u == pResource->iSourceMaterialProfile || 361u == pResource->iSourceMaterialProfile ||
-		2349u == pResource->iSourceMaterialProfile)
+		bArtistWorldToLocal)
 	{
 		// Native FMaterialShaderParameters binds BatchElement.WorldToLocal.
 		// The batch uses emitter space only for local-space particles; Playback
@@ -618,7 +620,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		const f32_t* Values = &SourceInverse._11;
 		if (!std::all_of(Values, Values + 12u, [](f32_t Value) { return std::isfinite(Value); }))
 			return Fail_RenderOperation("Native particle inverse is non-finite.", E_INVALIDARG, true);
-		const char* const WorldToLocalUniform = 2349u == pResource->iSourceMaterialProfile ?
+		const char* const WorldToLocalUniform = bArtistWorldToLocal ?
 			"g_ArtistSourceWorldToLocal" : "g_SDSourceWorldToLocal";
 		hResult = pDrawShader->Bind_RawValue(WorldToLocalUniform, Values, sizeof(float4_t) * 3u);
 		if (FAILED(hResult))

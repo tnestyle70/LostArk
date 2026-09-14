@@ -362,6 +362,9 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request);
 		void Handle_MarioMove(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_MOVE& request);
+		void Handle_MarioReturn(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_RETURN& request);
+		LostArk::Shared::S2C_MARIO_RETURN_RESULT Apply_MarioReturn(
+			SERVER_PLAYER& player, const LostArk::Shared::C2S_MARIO_RETURN& request);
 		void Update_MarioControlState(SERVER_PLAYER& player);
 		std::uint8_t Begin_MarioStageObjects(std::uint8_t stage);
 		void Reset_MarioStageObjects(std::uint8_t stage);
@@ -533,11 +536,19 @@ namespace LostArk::Server
 			std::uint32_t iMarioEntryStartTick = 0u;
 			std::uint8_t iMarioEntryStage = 0u;
 			bool bMarioEntryConsumed = false;
+			// Pin the successful entrant, not whichever player is present later.
+			bool bMarioSoloReturnRequired = false;
+			LostArk::Shared::PLAYER_ID iMarioEntrantPlayerId = 0u;
+			SESSION_ID iMarioEntrantSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::NET_ENTITY_ID iMarioEntrantNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			bool bMarioReturnCompleted = false;
 			std::size_t iCompletionChainFirstIndex = 0u;
 			std::uint32_t iCompletionChainCount = 0u;
 			std::uint32_t iCompletionChainCompleted = 0u;
 			std::string strCompletionChainSuccessPatternId;
 			bool bCompletionChainStarted = false;
+			bool bCompletionChainAwaitingReturn = false;
+			bool bCompletionChainSuccessQueued = false;
 			std::uint32_t iNextWorldCue = 1u;
 			std::unordered_map<std::string, std::string> WorldCueByInstance;
 			std::unordered_map<std::string, std::string> WorldCueByOccurrence;
@@ -573,6 +584,10 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);
 		void Commit_KoukuMarioEntries();
+		void Complete_KoukuMarioReturn(const SERVER_PLAYER& player,
+			const std::string& sourcePlacementId, std::uint32_t updateTick);
+		void Queue_KoukuCompletionChainSuccess(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
+			std::uint32_t serverTick);
 		struct KOUKU_PENDING_MARIO_ENTRY final { std::string strMemberId; LostArk::Shared::PLAYER_ID iPlayerId; std::uint32_t iRootStartTick; };
 		std::vector<KOUKU_PENDING_MARIO_ENTRY> m_PendingKoukuMarioEntries;
 		bool Enter_MarioFromPattern(SERVER_PLAYER& player, std::uint8_t stage);
@@ -601,7 +616,7 @@ namespace LostArk::Server
 				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state,
 			std::string reason = {}, LostArk::Shared::NET_ENTITY_ID bossId = LostArk::Shared::INVALID_NET_ENTITY_ID);
 		bool Flush_KoukuSaydonPatternAuditionLifecycle();
-		void Clear_KoukuSaydonPatternAudition(bool completed = false);
+		void Clear_KoukuSaydonPatternAudition(bool completed = false, std::string reason = {});
 #endif
 		SERVER_WORLD_ENTITY* Find_AuditionBoss();
 		SERVER_WORLD_ENTITY* Find_AuditionBoss(
@@ -971,8 +986,9 @@ namespace LostArk::Server
 			const SERVER_PLAYER& player, const std::string& npcPlacementId) const;
 		/* Tells every session in this room that an authored world sequence
 		   instance started. Presentation only: the Server keeps no sequence
-		   state, so a session that joins later simply misses a played edge. */
-		void Broadcast_WorldSequencePlay(
+		   state, so a session that joins later simply misses a played edge.
+		   False rejects the action without consuming its trigger or moving players. */
+		bool Broadcast_WorldSequencePlay(
 			const std::string& instanceId, float playbackSpeed = 1.f,
 			float positionOffsetX = 0.f, float positionOffsetY = 0.f, float positionOffsetZ = 0.f,
 			std::uint32_t durationMs = 0u, const std::string& targetSequenceInstanceId = {},
@@ -982,10 +998,6 @@ namespace LostArk::Server
 		/* Offers or withdraws one interact-gated box for the one player it
 		   concerns. Unlike the sequence broadcast this is never room-wide. */
 		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);
-		/* The pop-up book cutscene opens the tent arena, so the room's living
-		   players stand on it while the sequence plays. Returns how many were
-		   placed; zero means this sequence stages nobody. */
-		std::uint32_t Place_PartyForCutscene(const std::string& instanceId);
 		/* Leave() calls this so a disconnecting player does not linger as a
 		   ghost roster entry for whoever they partied with. */
 		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);
@@ -1164,7 +1176,8 @@ namespace LostArk::Server
 			const BOSS_PATTERN_STAGE_ACTION& action,
 			const BOSS_COMBAT_OBJECT_DEFINITION& definition,
 			std::uint32_t spawnWaveOrdinal,
-			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins);
+			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins,
+			float explicitMinimumSpacingM = 0.f);
 		bool Broadcast_CombatObjectLifecycle();
 		void Drain_BossCombatEvents();
 		bool Apply_WorldDestructionStageEntry(

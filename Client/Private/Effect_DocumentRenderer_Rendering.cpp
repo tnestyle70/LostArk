@@ -269,6 +269,21 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
         snapshot.fCaptureProgress = shrinkSeconds > 0.f ?
             std::clamp((Frame.fSampleTimeSeconds - timing.fStartDelaySeconds) / shrinkSeconds, 0.f, 1.f) :
             std::clamp(Evaluated.fNormalizedLife, 0.f, 1.f);
+        if (Evaluated.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 &&
+            m_fScreenPostPlaybackEndSeconds > 0.f)
+        {
+            // An externally trimmed box must finish shrinking before its owner removes it.
+            // Retiming the image keeps its frozen capture and every particle's authored clock.
+            const float availableSeconds = m_fScreenPostPlaybackEndSeconds - timing.fStartDelaySeconds;
+            if (!std::isfinite(availableSeconds) || availableSeconds <= 0.f)
+            { strOutError = "Scene collapse starts at or after its owning Effect box ends."; return E_INVALIDARG; }
+            const float effectiveShrinkSeconds = (std::min)(availableSeconds,
+                shrinkSeconds > 0.f ? shrinkSeconds : timing.fLifeTimeSeconds);
+            if (!std::isfinite(effectiveShrinkSeconds) || effectiveShrinkSeconds <= 0.f)
+            { strOutError = "Scene collapse has no valid shrink interval."; return E_INVALIDARG; }
+            snapshot.fCaptureProgress = std::clamp(
+                (Frame.fSampleTimeSeconds - timing.fStartDelaySeconds) / effectiveShrinkSeconds, 0.f, 1.f);
+        }
         const auto* view = Engine::CGameInstance::Get().Get_Transform(D3DTS::VIEW);
         const auto* projection = Engine::CGameInstance::Get().Get_Transform(D3DTS::PROJ);
         if (view && projection)

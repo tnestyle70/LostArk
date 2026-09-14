@@ -548,8 +548,8 @@ void CEffectAuthoringSequencer::Render_PreviewPlacementControls()
         const auto& root = *m_ScenePreviewWorldRoot;
         float3_t position{root._41, root._42, root._43};
         float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
-        bool changed = ImGui::InputFloat3("World Position (m)", &position.x, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
-        changed = ImGui::InputFloat("World Yaw (deg)", &yaw, 0.f, 0.f, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue) || changed;
+        bool changed = ImGui::InputFloat3("World Position (m)", &position.x, "%.3f");
+        changed = ImGui::InputFloat("World Yaw (deg)", &yaw, 0.f, 0.f, "%.2f") || changed;
         if (changed) Set_WorldPreviewPlacement(position, yaw);
         if (m_ScenePreviewWorldLevel != CGameInstance::Get().Get_CurrentLevelID())
             ImGui::TextDisabled("Pick a new position after changing Level.");
@@ -609,17 +609,34 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     const std::optional<std::uint32_t> previewDurationMs, const EFFECT_DOCUMENT_DESC* sourceDocument)
 {
     m_PendingKoukuEffectPreview.reset();
+    const bool useProps = m_UseKouku && m_PreviewSavedHandProps && assetId.starts_with("effect.kouku.");
+    const std::string worldContext = useProps ? m_ExplicitKoukuPatternId : std::string{};
+    const std::string worldOccurrence = useProps ? m_PreviewWorldOccurrenceId : std::string{};
+    const bool sourceModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
+    if (useProps && worldContext.empty())
+    { m_Status = "Select one saved Kouku Pattern for the prop reference, then Play All or Play Group."; return false; }
+    if (!worldOccurrence.empty() && (sourceModel || m_PreviewPropPatternId != worldContext))
+    { m_Status = sourceModel ? "This Effect already follows source bones. Choose Source model / internal bones, or open the neutral WORLD variant." :
+        "Object anchors belong to another Pattern. Load its saved Object anchors first."; return false; }
+    if (useProps && !sourceModel && worldOccurrence.empty())
+    { m_Status = "For this neutral WORLD Effect, load saved Object anchors and choose the left or right gun."; return false; }
     const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId &&
-        m_KoukuEffectPreview->placementRevision == m_PreviewPlacementRevision;
+        m_KoukuEffectPreview->placementRevision == m_PreviewPlacementRevision &&
+        m_KoukuEffectPreview->worldContextPatternId == worldContext &&
+        m_KoukuEffectPreview->worldOccurrenceId == worldOccurrence &&
+        (!useProps || m_KoukuEffectPreview->propReferenceRevision == m_PreviewPropReferenceRevision);
     // A saved source model or external bone attachment owns model playback.
     // Independent world/map Effects use their selected placement without
     // requiring a boss pattern merely because their asset ID names that boss.
-    const bool needsModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
+    const bool needsModel = sourceModel || !worldOccurrence.empty();
     if (reuseTarget && m_KoukuEffectPreview->model.has_value() == needsModel &&
         m_KoukuEffectPreview->loopPolicy == loopPolicy &&
         m_KoukuEffectPreview->previewDurationMs == previewDurationMs) return true;
     KOUKU_EFFECT_PREVIEW_TARGET target;
     target.assetId = assetId;
+    target.worldContextPatternId = worldContext;
+    target.worldOccurrenceId = worldOccurrence;
+    target.propReferenceRevision = m_PreviewPropReferenceRevision;
     target.loopPolicy = loopPolicy;
     target.previewDurationMs = previewDurationMs;
     target.placementRevision = m_PreviewPlacementRevision;
@@ -632,9 +649,16 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
         target.model.emplace();
         auto& staged = *target.model;
         staged.Set_Player(m_Player);
-        if (sourceDocument && sourceDocument->SourceModelPreview)
+        if (!worldOccurrence.empty())
         {
-            if (!staged.Select_SourceEffect(*sourceDocument)) { m_Status = staged.Status(); return false; }
+            if (!staged.Select_WorldEffectContext(worldContext)) { m_Status = staged.Status(); return false; }
+            if (std::none_of(staged.Props().begin(), staged.Props().end(),
+                [&](const auto& prop) { return prop.occurrenceId == worldOccurrence; }))
+            { m_Status = "The selected Object anchor is no longer available in this saved Pattern."; return false; }
+        }
+        else if (sourceDocument && sourceDocument->SourceModelPreview)
+        {
+            if (!staged.Select_SourceEffect(*sourceDocument, worldContext)) { m_Status = staged.Status(); return false; }
         }
         else
         {
@@ -794,7 +818,17 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
 }
 bool CEffectAuthoringSequencer::Resolve_Root(float4x4_t& root)
 {
-    if (m_KoukuEffectPreview) { root = m_KoukuEffectPreview->playerRoot; return true; }
+    if (m_KoukuEffectPreview)
+    {
+        if (!m_KoukuEffectPreview->worldOccurrenceId.empty())
+        {
+            if (!m_KoukuEffectPreview->model || !m_KoukuEffectPreview->model->Resolve_WorldPropPivot(
+                m_KoukuEffectPreview->worldOccurrenceId, root))
+            { m_Status = "The selected saved Object is not active at this preview time: " + m_KoukuEffectPreview->worldOccurrenceId; return false; }
+            return true;
+        }
+        root = m_KoukuEffectPreview->playerRoot; return true;
+    }
     if (m_UseKouku)
     {
         EFFECT_V2_TARGET target; EFFECT_V2_TARGET_VIEW view;
@@ -887,12 +921,13 @@ bool CEffectAuthoringSequencer::Record_RowPivot(EFFECT_ROW& row, const float4x4_
         if (!row.history->Record(seconds, world, discontinuity, m_Status)) return false;
         row.recordedAge = seconds; row.recordedRoot = world; return true;
     };
-    if (row.anchorSlotId == "root")
+    const bool objectRoot = m_KoukuEffectPreview && !m_KoukuEffectPreview->worldOccurrenceId.empty();
+    if (row.anchorSlotId == "root" && !objectRoot)
     {
         if (row.recordedAge < 0.f && age > 0.f && !record(0.f, pivot)) return false;
         return record(age, pivot);
     }
-    // Named pivots move with animation. Reuse the source-anchor 60 Hz pose
+    // Bone and Object pivots move with animation. Reuse the source-anchor 60 Hz pose
     // sampling contract instead of seeding earlier births with today's pose.
     const bool ownsSequence = Has_ModelSequence() || m_KoukuEffectPreview.has_value();
     if (age > 0.f && row.recordedAge < 0.f && !ownsSequence)
@@ -1669,7 +1704,8 @@ void CEffectAuthoringSequencer::Draw_KoukuInventory()
     const auto drawPattern = [&](const auto& pattern)
     {
         ImGui::PushID(pattern.strPatternId.c_str());
-        const std::string label = std::string(Label(pattern.strDisplayName, pattern.strPatternId)) + "##Pattern";
+        const std::string label = std::string(Label(pattern.strDisplayName, pattern.strPatternId)) +
+            " [" + pattern.strPatternId + "]##Pattern";
         if (ImGui::Selectable(label.c_str(), m_UseKouku && !m_Kouku.Selected_IsBundle() && m_Kouku.Selected_Id() == pattern.strPatternId)) Select_Kouku(pattern.strPatternId, false);
         ImGui::PopID();
     };
@@ -1754,6 +1790,45 @@ void CEffectAuthoringSequencer::Render_ModelView()
         ImGui::TextWrapped("Play All uses the Effect's saved source boss. Shared Effects without one use the single boss pattern selected here.");
         if (ImGui::BeginChild("KoukuPatternList", {0.f, 220.f}, ImGuiChildFlags_Borders)) Draw_KoukuInventory();
         ImGui::EndChild();
+        ImGui::Checkbox("Show saved hand props (Play All / Play Group)", &m_PreviewSavedHandProps);
+        if (m_PreviewSavedHandProps)
+        {
+            ImGui::TextWrapped("Prop Pattern: %s", m_ExplicitKoukuPatternId.empty() ?
+                "Select one Pattern above" : m_ExplicitKoukuPatternId.c_str());
+            ImGui::BeginDisabled(m_ExplicitKoukuPatternId.empty());
+            if (ImGui::SmallButton("Load saved Object anchors"))
+            {
+                CEffectCompositionModelPreview staged; staged.Set_Player(m_Player);
+                if (staged.Select_WorldEffectContext(m_ExplicitKoukuPatternId))
+                {
+                    m_PreviewPropChoices = staged.Props();
+                    m_PreviewPropPatternId = m_ExplicitKoukuPatternId;
+                    ++m_PreviewPropReferenceRevision;
+                    if (std::none_of(m_PreviewPropChoices.begin(), m_PreviewPropChoices.end(),
+                        [&](const auto& prop) { return prop.occurrenceId == m_PreviewWorldOccurrenceId; }))
+                        m_PreviewWorldOccurrenceId.clear();
+                    m_Status = "Loaded saved Object anchors. Choose a gun for a neutral WORLD Effect, or Source model for an internally attached Effect.";
+                }
+                else m_Status = staged.Status();
+            }
+            ImGui::EndDisabled();
+            const auto selectedProp = std::find_if(m_PreviewPropChoices.begin(), m_PreviewPropChoices.end(),
+                [&](const auto& prop) { return prop.occurrenceId == m_PreviewWorldOccurrenceId; });
+            const std::string propLabel = selectedProp == m_PreviewPropChoices.end() ? "Source model / internal bones" :
+                selectedProp->displayName + " / " + selectedProp->bone + " [" + selectedProp->occurrenceId + "]";
+            if (ImGui::BeginCombo("Effect preview anchor", propLabel.c_str()))
+            {
+                if (ImGui::Selectable("Source model / internal bones", m_PreviewWorldOccurrenceId.empty())) m_PreviewWorldOccurrenceId.clear();
+                if (m_PreviewPropPatternId == m_ExplicitKoukuPatternId)
+                    for (const auto& prop : m_PreviewPropChoices)
+                    {
+                        const std::string label = prop.displayName + " / " + prop.bone + " [" + prop.occurrenceId + "]";
+                        if (ImGui::Selectable(label.c_str(), prop.occurrenceId == m_PreviewWorldOccurrenceId)) m_PreviewWorldOccurrenceId = prop.occurrenceId;
+                    }
+                ImGui::EndCombo();
+            }
+            ImGui::TextWrapped("Save Object edits in Action Workbench first. Neutral WORLD Effects use the selected gun's full transform; internally attached Effects keep their source bones. This preview selection is not saved into the Effect.");
+        }
     }
     else
     {

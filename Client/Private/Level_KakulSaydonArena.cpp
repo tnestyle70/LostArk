@@ -943,7 +943,8 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
-	const std::string& patternId, const bool_t playing, const uint32_t clockMs, std::string& status)
+	const std::string& patternId, const bool_t playing, const uint32_t clockMs, std::string& status,
+	const decltype(CWorldSequencePlayer::TARGET_SET::bossAnchor)& bossAnchorOverride)
 {
 	status.clear();
 	if (!m_strCompositionWorldPreviewFailure.empty())
@@ -964,6 +965,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	}
 	m_bCompositionWorldPreviewClockBound = true;
 	auto targets = Make_WorldSequenceTargets();
+	const auto replicatedBossAnchor = targets.bossAnchor;
+	std::string pendingAnchorStatus;
 	bool_t cutsceneMapPending = false;
 	bool_t popupBookActive = false;
 	bool_t gateBorrowPending = false;
@@ -994,7 +997,9 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		const auto& cue = playback.cue;
 		auto& player = *playback.player;
 		targets.objectEmissionAnchor = cue.emissionAnchor;
-		if (!cue.actorProfileId.empty())
+		// Each cue selects its own actor; a previous Model View resolver cannot leak.
+		targets.bossAnchor = bossAnchorOverride ? bossAnchorOverride : replicatedBossAnchor;
+		if (!bossAnchorOverride && !cue.actorProfileId.empty())
 			targets.bossAnchor = [&cue](const std::string& archetype, const std::string& bone,
 				CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
 			{
@@ -1005,6 +1010,15 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 				{ status = "World Object Boss anchor is waiting for its matching Model View actor: " + archetype; return false; }
 				return CWorldSequencePlayer::Resolve_BossBoneAnchor(view.Model, view.BoneRoot, bone, out, status);
 			};
+		bool_t bossAnchorPending = false;
+		const auto resolveBossAnchor = targets.bossAnchor;
+		targets.bossAnchor = [resolveBossAnchor, &bossAnchorPending](const std::string& archetype,
+			const std::string& bone, CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& reason)
+		{
+			const bool_t resolved = resolveBossAnchor && resolveBossAnchor(archetype, bone, out, reason);
+			bossAnchorPending |= !resolved;
+			return resolved;
+		};
 		const auto span = player.Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
 		const auto* instance = player.Get_Document().Find_Instance(cue.instanceId);
 		if (instance && Is_PopupBookHoldInstance(*instance) &&
@@ -1040,6 +1054,11 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 			Debug_StopCompositionWorldPreview();
 			return false;
 		}
+		if (bossAnchorPending)
+		{
+			if (!pendingAnchorStatus.empty()) pendingAnchorStatus += " | ";
+			pendingAnchorStatus += "WORLD preview " + cue.occurrenceId + ": " + player.Get_ObjectSampleStatus(cue.instanceId);
+		}
 	}
 	// Finished unfold boxes release their animated copies before the real arena
 	// (including its placement lighting) is shown. Scrubbing reverses the swap.
@@ -1067,6 +1086,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	if (m_bCompositionWorldPreviewBorrowsGateObjects && !gateBorrowPending &&
 		!Debug_SetGateObjectsSuspended(false, status))
 	{ Debug_StopCompositionWorldPreview(); return false; }
+	if (!pendingAnchorStatus.empty()) status = std::move(pendingAnchorStatus);
 	return true;
 }
 #endif
@@ -1534,6 +1554,16 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			continue;
 		}
 		const std::string& instanceId = play.strSequenceInstanceId;
+		// Reject stale legacy cues before they cancel an active Pattern preview
+		// or take the exact-motion branch around normal sequence admission.
+		if ((play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY ||
+			play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::REPLAY) &&
+			(instanceId == KAKULSAYDON_CUTSCENE_SEQUENCE_ID ||
+			 play.strTargetSequenceInstanceId == KAKULSAYDON_CUTSCENE_SEQUENCE_ID))
+		{
+			OutputDebugStringA("[Level_KakulSaydonArena] Retired Saydon cutscene cue rejected; use the authored Sequence Pattern.\n");
+			continue;
+		}
 #ifdef _DEBUG
 		Debug_StopWorldObjectPreview();
 		Debug_StopCompositionWorldPreview();
@@ -1721,71 +1751,6 @@ void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeD
 	m_StatusEffectTextView.Update(fTimeDelta);
 }
 
-bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
-	const CWorldSequencePlayer::TARGET_SET& targets,
-	std::string& outStatus)
-{
-	if (!targets.Is_Complete())
-	{
-		outStatus = "Cutscene targets are not ready";
-		return false;
-	}
-	// Older documents borrow Deploy 7. Recovered documents clone the same
-    // book through an explicit material-bound World Object; keep only its owner visible.
-    bool borrowsBook = false;
-    for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
-        if (instance.instanceId.starts_with(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
-            for (const auto& binding : instance.bindings)
-                if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT &&
-                    binding.targetId == std::to_string(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID)) borrowsBook = true;
-	if (!targets.pDeployRuntime->Set_State(
-		KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, borrowsBook ? DEPLOY_PROP_STATE::INTACT : DEPLOY_PROP_STATE::DESPAWNED))
-	{
-		outStatus = "Cutscene book could not be revealed: " +
-			targets.pDeployRuntime->Get_Status();
-		return false;
-	}
-	Apply_CutsceneSetVisible(true);
-	if (!targets.pDeployRuntime->Set_State(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::INTACT))
-	{
-		Apply_CutsceneSetVisible(false);
-		outStatus = "Cutscene boss could not be revealed: " + targets.pDeployRuntime->Get_Status();
-		return false;
-	}
-
-	const size_t prefixLength = strlen(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX);
-	size_t started = 0u;
-	std::string rejected;
-	for (const WORLD_SEQUENCE_INSTANCE& instance :
-		m_SequencePlayer.Get_Document().Get_Instances())
-	{
-		if (instance.instanceId.size() < prefixLength ||
-			0 != instance.instanceId.compare(0, prefixLength,
-				KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
-		{
-			continue;
-		}
-		if (m_SequencePlayer.Play(instance.instanceId, targets))
-		{
-			++started;
-			continue;
-		}
-		if (!rejected.empty())
-			rejected += ", ";
-		rejected += instance.instanceId.substr(prefixLength);
-	}
-	if (0u == started)
-	{
-		Apply_CutsceneSetVisible(false);
-		outStatus = "Cutscene could not start: " + rejected;
-		return false;
-	}
-	m_bCutsceneBossVisible = true;
-	outStatus = rejected.empty() ? "Cutscene started" :
-		"Cutscene started without " + rejected;
-	return true;
-}
-
 void Client::CLevel_KakulSaydonArena::Apply_CutsceneSetVisible(
 	const bool_t cutsceneVisible)
 {
@@ -1867,10 +1832,13 @@ bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
 	if (KAKULSAYDON_PAPER_BRIDGE_LINKS.end() != link)
 		return Request_PaperBridgeUnfold(link->leverPlacementId, outStatus);
 
-	/* The pop-up book show is authored as several instances but the Server
-	   names only one of them, so that name starts the whole show. */
+	// Saydon is owned by a Composition Pattern. Old saved trigger messages
+	// must not resurrect the separate Deploy actor or start every original_* map.
 	if (KAKULSAYDON_CUTSCENE_SEQUENCE_ID == instanceId)
-		return Start_PopupBookCutscene(targets, outStatus);
+	{
+		outStatus = "Legacy Saydon cutscene is retired; play the authored Sequence Pattern.";
+		return false;
+	}
 
 	if (!m_SequencePlayer.Play(instanceId, targets, playbackSpeed, positionOffset, durationMs, placement))
 	{

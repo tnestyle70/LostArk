@@ -118,6 +118,9 @@ namespace Client
 	   MainApp and routed to their dedicated tools/services. */
 	class CKoukuSaydonActionWorkbench final : public ICompositionWorkbenchSession
 	{
+#ifdef LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS
+		friend struct CKoukuSaydonWorkbenchTestAccess;
+#endif
 	public:
 		explicit CKoukuSaydonActionWorkbench(bool sequenceWorkspace = false);
 		~CKoukuSaydonActionWorkbench();
@@ -265,6 +268,7 @@ namespace Client
 			std::string& outTargetAssetName);
 		bool_t Consume_BundlePreviewRequest(std::string& bundleId, std::uint32_t& clockMs, bool_t& paused);
 		bool_t Consume_BundleServerPlayRequest(std::string& bundleId, std::uint32_t& revision);
+		bool_t Request_SelectedServerPlay(std::string& outStatus);
 		bool_t Select_BundleById(std::string_view bundleId, std::string& status);
 		bool_t Consume_ServerPlayRequest(
 			std::string& outPatternId,
@@ -350,6 +354,9 @@ namespace Client
 			std::string& outStatus);
 		// Collider groups are authoring selection metadata; geometry remains on each occurrence.
 		bool_t Set_ColliderSelectionGroup(std::string_view patternId,
+			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
+		// Effect groups share selection and timing only; each occurrence retains its anchor.
+		bool_t Set_EffectSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
 		bool_t Transform_SelectedColliders(const std::array<double, 3u>& translation,
 			double yawDeltaDegrees, std::string& outStatus);
@@ -703,11 +710,15 @@ namespace Client
 		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
 		void Render_CameraAuthoring(std::string_view shotId);
 		void Render_CameraWindow();
-		bool_t Move_ColliderTimelineGroup(std::string_view patternId, const std::vector<std::string>& occurrenceIds,
+		bool_t Move_PresentationTimelineSelection(std::string_view patternId, const std::vector<std::string>& occurrenceIds,
 			std::int64_t deltaMs, std::uint64_t generation, std::string& outStatus);
 		bool_t Collect_ColliderPlacements(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds,
 			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>& outBoxes, std::string& outStatus) const;
+		bool_t Set_PresentationSelectionGroup(std::string_view patternId,
+			const std::vector<std::string>& occurrenceIds, KOUKU_SAYDON_PRESENTATION_KIND kind,
+			bool_t grouped, std::string& outStatus);
+		bool_t Render_EffectGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_ColliderGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
@@ -732,6 +743,7 @@ namespace Client
 		void Select_TimelineBox(const std::string& stageId,
 			const std::string& occurrenceId, bool_t toggle);
 		void Render_Transport();
+		void Render_ServerPlayButton(const char_t* label);
 		bool_t Queue_CompleteSequenceItem(std::vector<std::string> patternIds,
 			std::size_t index, std::string& outStatus);
 		void Render_CompleteSequenceTransport();
@@ -798,6 +810,7 @@ namespace Client
 		bool_t m_bLocatePresentationSource = false;
 		std::unordered_map<std::string, CEffectAuthoringResourceTree::RESOURCE> m_EffectSourceInventory;
 		std::unordered_map<std::string, CEffectAuthoringResourceTree::RESOURCE> m_EffectSourceOrganization;
+        EFFECT_TOOL_KOUKU_EFFECT_TREE m_KoukuEffectResourceTree;
 		std::string m_strEffectSourceMetadataStatus;
 		std::string m_strExpandedV1EffectId;
 		std::string m_strV1ElementResourceStatus;

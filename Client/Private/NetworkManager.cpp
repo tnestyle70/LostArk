@@ -1420,6 +1420,34 @@ bool CNetworkManager::Send_MarioMove(
 		writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
+bool CNetworkManager::Send_MarioReturn(
+	const std::uint32_t clientSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_MARIO_RETURN message{};
+	message.iClientSequence = clientSequence;
+	message.eWorldId = m_eWorldId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_MARIO_RETURN,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_MarioReturnResult(
+	LostArk::Shared::S2C_MARIO_RETURN_RESULT& result)
+{
+	if (m_MarioReturnResults.empty())
+		return false;
+	result = m_MarioReturnResults.front();
+	m_MarioReturnResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugMarioJump(
 	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
 {
@@ -2380,6 +2408,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_SessionDiagnostic.Record_EventQueueDepth(0u);
 	m_DebugTeleportResults.clear();
 	m_DebugMarioJumpResults.clear();
+	m_MarioReturnResults.clear();
 	m_DebugWorldPlaybackResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
@@ -3573,6 +3602,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_DebugTeleportResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
+	{
+		S2C_MARIO_RETURN_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_MarioReturnResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_MarioReturnResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:

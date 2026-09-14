@@ -1735,7 +1735,7 @@ float4 ArtistNative2888(ARTIST_NATIVE_INPUT input)
 float4 ArtistNative2889(ARTIST_NATIVE_INPUT input)
 {
     float4 source[12]; [unroll] for (uint i=0u; i<12u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
+    source[0]=input.color; // Native masked LocalVF binds particle RGB and opacity in row 0.
     float4 output=0.f;
     source[1]=input.color; // Native mesh particle color prefix.
     source[1] = g_ArtistSourceMaterialParameters[4u];

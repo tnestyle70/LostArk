@@ -547,6 +547,9 @@ private:
     void Render_AllEffectsWindow();
 	void Render_SavedAuthoredEffectSection(const std::string& strSearch, bool_t bWorld);
 	void Render_ActiveAuthoredEffectTree();
+    void Render_ActiveAuthoredElementRow(const EFFECT_ELEMENT_DESC& element, size_t ordinal);
+    void Render_CurrentEffectAttachmentGroups();
+    bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
     void Render_ProjectileDestinationControls();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
@@ -1142,6 +1145,8 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+    // Borrowed only during synchronous sequencer Refresh_Effects; restored on every exit.
+    const EFFECT_DOCUMENT_DESC* m_pAuthoringRefreshDocument = nullptr;
 	optional<REGISTRY_BOUND_AUDITION_PROVENANCE>
 		m_ActiveRegistryBoundAuditionProvenance;
 	optional<EFFECT_DOCUMENT_DESC> m_SourcePreviewDocument;
@@ -1298,6 +1303,7 @@ private:
 	std::set<string, std::less<>> m_MarkedElementIds;
 	// Document replacement invalidates marks; row marking never changes IDs.
 	bool_t m_bMarkedElementIdsNeedPrune = false;
+    bool_t m_bCurrentEffectGroupByAnchor = true;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
@@ -1397,6 +1403,7 @@ private:
         std::string strDisplayName, strStatus, strLoadStatus;
     };
     std::map<std::string, SAVED_KOUKU_EFFECT_SOURCE> m_SavedKoukuEffectSources;
+    EFFECT_TOOL_KOUKU_EFFECT_TREE m_SavedKoukuEffectTree;
     std::string m_strSavedKoukuInventoryStatus;
     bool_t m_bDataFilesRefreshAttempted = false;
 	bool_t m_bCatalogMetadataViewInitialized = false;
@@ -1463,6 +1470,7 @@ private:
     void Render_AuthoringCommands();
     bool Render_WorldObjectResourceGrid(bool draft);
     bool Is_AuthoringWorldResource(const std::string& id, EFFECT_RESOURCE_FILE_KIND kind) const;
+    bool Resolve_AuthoringOccurrenceDocument(const EFFECT_RESOURCE_KEY& key, EFFECT_DOCUMENT_DESC& document, std::string& error) const;
     bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root,
         std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error);
     void Attach_AuthoringSaved();

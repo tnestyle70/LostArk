@@ -1204,6 +1204,7 @@ void Client::CEffectDocumentRenderer::Clear()
 {
     m_BloomIntensityOverride.reset();
     m_bScreenPostCaptureAllowed = true;
+    m_fScreenPostPlaybackEndSeconds = 0.f;
     m_ScreenPostCaptures.clear();
     m_pStartingSceneCapture.Reset();
     m_pStartingSceneBloomCapture.Reset();

@@ -11,6 +11,9 @@ namespace Engine { class CModel; }
 
 NS_BEGIN(Client)
 
+class CWorldSequenceObject;
+struct SAYDON_WEAPON_REPLACEMENT;
+
 class CNpcPresentationAssetService final
 {
 public:
@@ -36,6 +39,10 @@ public:
 	// Body source seconds drive the existing animated hammer, with rest fallback.
 	static void Synchronize_SaydonHammerPose(const std::shared_ptr<Engine::CModel>& body,
 		const std::shared_ptr<Engine::CModel>& weapon, const std::vector<float4x4_t>& restPose);
+	// The active WORLD object owns this registration until it is released or reused.
+	static void Track_SaydonWeaponReplacement(std::shared_ptr<const SAYDON_WEAPON_REPLACEMENT>& registration,
+		const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<CWorldSequenceObject>& object);
+	static bool_t Is_SaydonHammerSuppressed(const std::shared_ptr<Engine::CModel>& body);
 };
 
 NS_END

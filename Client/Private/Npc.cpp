@@ -711,7 +711,7 @@ HRESULT CNpc::Render()
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
-	if (nullptr != m_pWeaponModelCom)
+	if (nullptr != m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom))
 	{
 		ANIMATION_MODEL_TARGET_VIEW weaponView;
 		if (!Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView) ||

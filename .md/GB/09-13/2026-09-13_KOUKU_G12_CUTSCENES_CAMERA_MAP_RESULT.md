@@ -1,5 +1,7 @@
 # 쿠크 2관문 진입·3관문 진입 전체·빙고 최종 엔딩 — 카메라·맵 애니메이션 1차 결과
 
+2026-09-14 PR #384 병합에서는 사용자가 완성본으로 지정한 `codex/sequence-capture-focus`의 Sequence/World 정본을 보존했다. 아래 G15의 추가130소품·14 WORLD 및 P3 카메라7컷 설치는 해당 작업 당시 기록이며 현재 통합본의 설치 상태가 아니다. 현재 P3는 WORLD17개·CAMERA5개다. 병합 기준과 검증은 [PR384 동기화 결과](../09-14/2026-09-14_PR384_CANONICAL_SEQUENCE_SYNC_RESULT.md)를 따른다.
+
 계획은 `.md/GB/09-12/2026-09-12_KOUKU_SOURCE_SEQUENCE_RESTORE_IMPLEMENTATION_PLAN.md`의 G12다.
 이번 결과는 그 계획의 **카메라·맵 애니메이션 부분**만 다룬다. 배우(세이튼·쿠크·무기·부착) 저작, 조명·암전·재질·FX는
 이 결과에 포함하지 않는다. 사용자 화면 판정은 남아 있다.

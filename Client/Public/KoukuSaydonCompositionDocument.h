@@ -161,6 +161,11 @@ namespace Client
 		std::uint32_t iCountPerPlayer = 0u;
 		double fPlayerEffectRadiusM = 0.0;
 		std::uint32_t iEffectLifetimeMs = 0u;
+		std::uint32_t iArenaRandomCount = 0u;
+		double fArenaRandomRadiusM = 0.0;
+		double fArenaHeightToleranceM = 0.0;
+		double fArenaMinimumSpacingM = 0.0;
+		bool_t bRandomPlayerOnly = false;
 		bool_t bRearmOnExit = false;
 		bool_t bRepeatAfterKnockback = false;
 		double fBossChargeDistanceM = 0.0;
@@ -242,6 +247,15 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION&) const = default;
 	};
 
+    struct KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN final
+    {
+        std::string strSpawnId;
+        std::string strPatternId;
+        std::array<double, 3u> PositionOffset{};
+        double fYawOffsetDegrees = 0.0;
+        bool operator==(const KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN&) const = default;
+    };
+
 	/* One placed Summon box: startMs is the spawn time and durationMs the
 	   lifetime after which the spawn despawns. Pattern-relative like Logic. */
 	struct KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE final
@@ -250,6 +264,8 @@ namespace Client
 		std::string strSummonId;
 		std::uint32_t iStartMs = 0u;
 		std::uint32_t iDurationMs = 0u;
+        // Empty keeps the existing name-only Summon behavior.
+        std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN> PatternSpawns;
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE&) const = default;
@@ -377,7 +393,7 @@ namespace Client
 		std::string strWorldOccurrenceId;
 		// Row of that World box's authored emission list this box follows; 0 for single emitters.
 		std::uint32_t iWorldEmissionIndex = 0u;
-		// Pattern-local BOSS Collider selection metadata; runtime transforms remain per occurrence.
+		// Pattern-local Effect or BOSS Collider selection metadata; runtime transforms remain per occurrence.
 		std::string strSelectionGroupId;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE&) const = default;
 	};
@@ -598,6 +614,10 @@ namespace Client
 		static bool_t Load_ImmutableActionReferences(
 			KOUKU_SAYDON_ACTION_REFERENCE_SET& outReferences,
 			std::string& outStatus);
+        static bool_t Validate_SummonPatternTarget(
+            const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+            const KOUKU_SAYDON_COMPOSITION_PATTERN& owner,
+            std::string_view targetPatternId, std::string& outStatus);
 		static bool_t Validate(
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 			const KOUKU_SAYDON_ACTION_REFERENCE_SET& references,

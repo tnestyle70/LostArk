@@ -555,6 +555,7 @@ public:
 	bool_t Has_CapturedScreenPost(const std::string& elementId) const;
 	HRESULT Get_ScreenPostCaptureResult(const std::string& elementId) const;
 	void Set_ScreenPostCaptureAllowed(bool_t allowed) { m_bScreenPostCaptureAllowed = allowed; }
+	void Set_ScreenPostPlaybackEnd(f32_t endSeconds) { m_fScreenPostPlaybackEndSeconds = endSeconds; }
 	bool Try_ProjectCaptureTargetBounds(const EFFECT_EVALUATED_FRAME& Frame,
 		const std::string& cueId, f32_t targetTimeSeconds,
 		float2_t& centerUV, float2_t& sizeUV) const;
@@ -875,6 +876,7 @@ private:
 	std::vector<uint32_t> m_TrailIndexScratch;
 	// Per playback occurrence; never retained by the shared prepared-resource cache.
 	bool_t m_bScreenPostCaptureAllowed = true;
+	f32_t m_fScreenPostPlaybackEndSeconds = 0.f;
 	std::unordered_map<std::string, std::shared_ptr<EFFECT_SCENE_CAPTURE_STATE>> m_ScreenPostCaptures;
 	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneCapture;
 	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneBloomCapture;

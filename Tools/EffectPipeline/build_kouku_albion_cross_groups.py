@@ -383,6 +383,21 @@ def compose(evidence):
         npc_documents,npc_records=compose_npc(evidence,npc)
         documents+=npc_documents
         records+=npc_records
+    # Source reconstruction above remains the timing/placement evidence. The
+    # authored cross appearance uses the same forward flame as the other attacks.
+    from build_kouku_directional_shared_firebreath import CROSS_ASSETS, SHARED_ASSET, replace_cross
+    shared=None
+    for index,doc in enumerate(documents):
+        if doc['effectAssetId'] not in CROSS_ASSETS:
+            continue
+        if shared is None:
+            shared=source.read(AUTHORED/(SHARED_ASSET+'.effect.json'))
+        documents[index],_=replace_cross(doc,shared)
+        row=next(r for r in records if r['effectAssetId']==doc['effectAssetId'])
+        row.update(elementCount=len(documents[index]['elements']), sharedFirebreathAssetId=SHARED_ASSET,
+            sourcePlaybackDurationSeconds=row['playbackDurationSeconds'], playbackDurationSeconds=5.5,
+            durationBasis='PRESERVED_AUTHORED_BOX_WINDOW',
+            durationNote='The common flame has a 5.5-second native tail; the existing source-sized box remains editable.')
     for doc in documents:
         path=AUTHORED/(doc['effectAssetId']+'.effect.json')
         assert doc['elements'] and len({e['id'] for e in doc['elements']})==len(doc['elements'])

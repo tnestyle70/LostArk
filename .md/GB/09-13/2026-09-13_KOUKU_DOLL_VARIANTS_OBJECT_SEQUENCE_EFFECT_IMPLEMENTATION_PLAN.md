@@ -139,3 +139,25 @@ stable asset ID는 항목 식별과 tooltip에 유지하며 같은 이름끼리 
 현재 `Box Detail → Use Mouse Position`은 기존 MainApp 표면 picking과 stable request 검사를 사용한다. 성공한 좌표는 선택한 Effect MAP 박스의 위치 편집과 preview에 반영되고, `Save`가 staged placement를 검증해 문서에 저장한다. 위치만 바꿀 때 Apply는 필수가 아니다. 기존 커서/paused 상태를 유지하므로 수명 밖에서 보고 있다면 박스 Preview로 시작부터 재생한다. 이 동작과 실패·취소 보존을 현재 코드 및 제품 빌드 기록에서 확인한다.
 
 Sequence는 `CProjectDataRoot` 아래 원본을 직접 읽는 local preview/Save workspace다. 데이터 이동은 새 EXE나 Server publish를 필요로 하지 않는다. JSON parse와 대상 외 의미/byte 보존, 기존 실제 Composition reader의 재로드로 확인하고 Client/UI의 화면 검증은 사용자가 직접 한다.
+
+## G12. 09-14 Object 인형의 실제 불뿜기 15초
+
+사용자는 전체 동작을 느리게 만드는 대신 준비 동작을 제외한 실제 불뿜는 구간을 15초로 확정했다.
+원본 notify-007은 1.539113~10.558918초이고 뒤 종료 notify-042는 10.629546초에 시작한다.
+불 구간을 5.980195초 연장하고 준비와 끝동작의 속도 및 두 구간 사이 간격은 보존한다.
+
+기존 WorldSequence animationTracks에 optional sourceStartMs(기본 0)를 연결한다.
+WorldSequenceDocument의 parse/validate/save/equivalent, Object와 socket history 및 Deploy의
+동일 source sample, Object Detail 편집, Map publisher가 같은 입력을 소비한다. native clip 밖
+sourceStart는 실패하며 기존 0 입력의 loop/hold 동작은 유지한다. 별도 모델 런타임이나 전체
+타임라인 비례 확대를 만들지 않는다. 실제 두 인형 Motion은 준비/유지/종료의 세 clip window로
+연결하고 유지 구간만 늘린다. 이는 반복 복제로 준비 동작을 다시 넣는 작업이 아니다.
+
+원본 Required CDO에서 emitterloops가 없는 28 sustained 요소의 zero 기본값을 확인한다.
+Object용 15초 Effect는 기존 source 재질·입자 속도·particle lifetime·크기·양쪽 소켓을 보존하고
+반복 배출과 저작 emission window만 연결한다. 작은/큰 인형의 저장된 위치·배율·큰 인형의
+Effect Y 회전 90도와 다른 Motion은 보존한다. 새 Effect는 기존 catalog 경로로 등록한다.
+
+검증은 현재 설치 모델의 source 시간/본 샘플, actual Effect emission window, 문서 저장·재로드와
+실패 보존, scoped Map publisher, 최소 C++ 컴파일 및 diff 검사다. 실행 중 Client/Server와
+미저장 draft를 종료·Reload하지 않는다. 최종 링크와 사용자 화면 확인은 별도 상태로 기록한다.

@@ -757,7 +757,20 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
-    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active()) return m_pAuthoringSequencer->Refresh_Effects();
+    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active())
+    {
+        struct CANDIDATE_SCOPE
+        {
+            const EFFECT_DOCUMENT_DESC*& slot;
+            const EFFECT_DOCUMENT_DESC* previous;
+            ~CANDIDATE_SCOPE() { slot = previous; }
+        } scope{m_pAuthoringRefreshDocument, m_pAuthoringRefreshDocument};
+        m_pAuthoringRefreshDocument = &Document;
+        const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, Document.strEffectAssetId};
+        const bool refreshed = m_pAuthoringSequencer->Refresh_Effects(&key);
+        m_strPreviewStatus = m_pAuthoringSequencer->Status();
+        return refreshed;
+    }
 	if (m_ValtanCombatObjectIndependentPreview.has_value())
 	{
 		m_strPreviewStatus =

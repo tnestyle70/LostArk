@@ -7,6 +7,9 @@
 
 #include <deque>
 #include <filesystem>
+#include <functional>
+#include <string_view>
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -61,6 +64,28 @@ inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 9u>
 			"World" }
 	}};
 
+
+/* One display projection for the Kouku V1 catalog in All Effects and Composition.
+   Classification changes neither source identity nor its admission/preview owner. */
+struct EFFECT_TOOL_KOUKU_EFFECT_VIEW final
+{
+    int gateOrder = 4;
+    std::string assetId, text, originalName, fullPath;
+};
+EFFECT_TOOL_KOUKU_EFFECT_VIEW Describe_KoukuSavedEffect(const std::string& assetId,
+    const std::string& displayName, std::vector<std::string> categoryPath);
+bool Matches_KoukuSavedEffect(const EFFECT_TOOL_KOUKU_EFFECT_VIEW& view, const std::string& search);
+std::vector<std::size_t> Order_KoukuSavedEffects(const std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW>& views);
+struct EFFECT_TOOL_KOUKU_EFFECT_TREE final
+{
+    std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW> views;
+    std::vector<std::size_t> order;
+    std::unordered_map<std::string, std::size_t> assetIndices;
+};
+EFFECT_TOOL_KOUKU_EFFECT_TREE Build_KoukuSavedEffectTree(std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW> views);
+void Render_KoukuSavedEffectTree(const EFFECT_TOOL_KOUKU_EFFECT_TREE& tree,
+    const std::function<void(std::size_t)>& renderLeaf, bool expandAll = false,
+    std::string_view revealAssetId = {}, const std::function<bool(std::size_t)>& isVisible = {});
 
 /* Saved-resource organization only. Effect documents keep their native owner,
    stable ID, source location, codec and runtime. Render never opens a model. */

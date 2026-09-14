@@ -240,67 +240,6 @@ void LostArk::Server::CGameRoom::Broadcast_PartyRoster(
 	}
 }
 
-std::uint32_t LostArk::Server::CGameRoom::Place_PartyForCutscene(
-	const std::string& instanceId)
-{
-	using namespace LostArk::Shared;
-	/* Only the pop-up book cutscene stages the party; every other sequence is
-	   presentation the players watch from where they already stand. */
-	if ("world.sequence.instance.original_kouku" != instanceId)
-		return 0u;
-
-	/* Authored in front of the boss at (-0.29, 1.33, 737.63), three metres
-	   apart, each checked walkable against the Area navigation. */
-	struct CUTSCENE_STAND_SPOT final
-	{
-		float fX;
-		float fY;
-		float fZ;
-	};
-	static constexpr CUTSCENE_STAND_SPOT SPOTS[] = {
-		{ -1.166f, 1.31f, 745.078f },
-		{ -3.339f, 1.32f, 743.009f },
-		{ -5.512f, 1.30f, 740.941f },
-		{ -7.685f, 1.32f, 738.872f },
-	};
-	static constexpr float BOSS_X = -0.2883f;
-	static constexpr float BOSS_Z = 737.6292f;
-
-	std::uint32_t placed = 0u;
-	for (auto& [playerId, player] : m_Players)
-	{
-		(void)playerId;
-		if (0u == player.iCurrentHp)
-			continue;
-		const CUTSCENE_STAND_SPOT& spot =
-			SPOTS[placed % (sizeof(SPOTS) / sizeof(SPOTS[0]))];
-		/* A cutscene entrance is a placement, not a move: clear whatever the
-		   player was doing so no queued path or skill drags them back off. */
-		player.hasMoveGoal = false;
-		player.MovePath.clear();
-		player.iMovePathIndex = 0;
-		player.iCurrentSkillId = INVALID_SKILL_ID;
-		player.Clear_SkillTarget();
-		player.fActionElapsedSeconds = 0.f;
-		player.iComboStage = 0;
-		player.hasBufferedComboInput = false;
-		player.PendingCommand.Clear();
-		player.eAction = PLAYER_ACTION_STATE::NONE;
-		/* Party staging replaces the Mario location, not just its camera.
-		Restore the previous avatar and retire any in-flight Mario movement. */
-		player.Clear_MarioControl();
-		player.TriggerMove = {};
-		player.fPositionX = spot.fX;
-		player.fPositionY = spot.fY;
-		player.fPositionZ = spot.fZ;
-		/* Face the boss so the party watches the show. */
-		player.fYawDegrees = std::atan2(BOSS_X - spot.fX, BOSS_Z - spot.fZ) *
-			RADIANS_TO_DEGREES;
-		++placed;
-	}
-	return placed;
-}
-
 void LostArk::Server::CGameRoom::Send_InteractPrompt(
 	const SERVER_INTERACT_PROMPT_EDGE& edge)
 {
@@ -348,8 +287,7 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 		{
 			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
 			{
-				Broadcast_WorldSequencePlay(targetId);
-				return true;
+				return Broadcast_WorldSequencePlay(targetId);
 			}
 			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
 				return m_SpawnGroupRuntime.Activate(targetId);
@@ -409,9 +347,8 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 		{
 			const auto& ids = m_WorldBootstrap.Get_SequenceInstanceIds();
 			if (std::find(ids.begin(), ids.end(), id) == ids.end()) return false;
-			Broadcast_WorldSequencePlay(id, 1.f, 0.f, 0.f, 0.f, 0u, {},
+			return Broadcast_WorldSequencePlay(id, 1.f, 0.f, 0.f, 0.f, 0u, {},
 				replay ? WORLD_SEQUENCE_OPERATION::REPLAY : WORLD_SEQUENCE_OPERATION::PLAY);
-			return true;
 		};
 		if (request.eOperation == Op::PLAY_TRIGGER || request.eOperation == Op::REPLAY_TRIGGER)
 		{
@@ -450,7 +387,7 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 		session->Request_Close();
 }
 
-void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
+bool LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	const std::string& instanceId,
 	const float playbackSpeed, const float positionOffsetX,
 	const float positionOffsetY, const float positionOffsetZ, const std::uint32_t durationMs,
@@ -458,6 +395,16 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	const LostArk::Shared::WORLD_SEQUENCE_OPERATION operation)
 {
 	using namespace LostArk::Shared;
+
+	// The authored Pattern owns Saydon. Reject the retired trigger before any
+	// player mutation or broadcast; STOP remains valid for stale-client cleanup.
+	if ((operation == WORLD_SEQUENCE_OPERATION::PLAY || operation == WORLD_SEQUENCE_OPERATION::REPLAY) &&
+		(instanceId == "world.sequence.instance.original_kouku" ||
+		 targetSequenceInstanceId == "world.sequence.instance.original_kouku"))
+	{
+		m_strStatus = "Legacy Saydon cutscene is retired; use the authored Sequence Pattern";
+		return false;
+	}
 
 	S2C_WORLD_SEQUENCE_PLAY message{};
 	message.eOperation = operation;
@@ -470,11 +417,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	message.fPositionOffsetZ = positionOffsetZ;
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
-		return;
-	// Saved-instance PLAY/REPLAY stage the party; STOP and exact motion do not.
-	if ((operation == WORLD_SEQUENCE_OPERATION::PLAY || operation == WORLD_SEQUENCE_OPERATION::REPLAY) &&
-		targetSequenceInstanceId.empty())
-		(void)Place_PartyForCutscene(instanceId);
+		return false;
 	for (const auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
@@ -487,6 +430,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 			session->Request_Close();
 		}
 	}
+	return true;
 }
 
 void LostArk::Server::CGameRoom::Remove_FromParty(

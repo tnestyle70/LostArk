@@ -1006,6 +1006,44 @@ namespace
   }
  }
 
+ bool Resolve_KoukuWorldPreviewActor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+  const CWorldSequenceDocument& sequences, const std::string& selectedPatternId,
+  KOUKU_SAYDON_COMPOSITION_PATTERN& resourcePattern, bool& requiresActor, std::string& status)
+ {
+  requiresActor = false;
+  std::string requiredArchetype;
+  for (const auto& box : resourcePattern.WorldOccurrences)
+  {
+   const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
+    [&box](const auto& value) { return value.strWorldId == box.strWorldId; });
+   const auto* instance = world == document.Worlds.end() ? nullptr : sequences.Find_Instance(world->strSequenceInstanceId);
+   if (!instance) { status = "World Object Preview has no saved motion for: " + box.strWorldId; return false; }
+   if (instance->anchorKind != "BOSS") continue;
+   for (const auto& binding : instance->bindings)
+   {
+    if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
+    const auto* object = sequences.Find_ObjectResource(binding.targetId);
+    if (!object || object->anchorBossArchetypeId.empty())
+    { status = "World Object Preview has no exact Boss anchor: " + binding.targetId; return false; }
+    if (!requiredArchetype.empty() && requiredArchetype != object->anchorBossArchetypeId)
+    { status = "World Object Preview contains different Boss anchors; preview their Patterns separately."; return false; }
+    requiredArchetype = object->anchorBossArchetypeId;
+    requiresActor = true;
+   }
+  }
+  if (!requiresActor) return true;
+  const auto selected = std::find_if(document.Patterns.begin(), document.Patterns.end(),
+   [&selectedPatternId](const auto& value) { return value.strPatternId == selectedPatternId; });
+  if (selected == document.Patterns.end() || !selected->strLoadError.empty() ||
+   selected->strActorProfileId.empty() || selected->strGateId.empty() ||
+   CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(selected->strTargetBossPlacementId) != requiredArchetype)
+  { status = "World Object Preview requires its Boss Pattern to be selected: " + requiredArchetype; return false; }
+  resourcePattern.strActorProfileId = selected->strActorProfileId;
+  resourcePattern.strGateId = selected->strGateId;
+  resourcePattern.strTargetBossPlacementId = selected->strTargetBossPlacementId;
+  return true;
+ }
+
  bool Begin_KoukuWorldPreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
   const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status,
   const CWorldSequenceDocument* sourceDocument = nullptr, const bool previewAtCharacter = false)
@@ -1246,7 +1284,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open())
 	{
-		const bool_t escapeDown =
+		const bool_t escapeDown = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
 			0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
 		if (escapeDown && !m_bEscapeDown)
 			m_pChatWindowView->Close_Input();
@@ -1997,16 +2035,42 @@ void CMainApp::Update(const f32_t fTimeDelta)
       resourcePattern.WorldOccurrences.push_back(worldBox);
      }
     }
-    if (m_pKoukuPresentationPlayer->Begin_Preview(document, resourcePattern, true, 0u,
-     !resourcePreview.WorldBoxes.empty(), previewRouteStatus))
+    const auto* worldSource = m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr;
+    bool worldRequiresActor = false;
+    bool contextReady = true;
+    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD)
+    {
+     const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+     if (!arena) { previewRouteStatus = "World Object Preview requires the KoukuSaydon Arena."; contextReady = false; }
+     else contextReady = Resolve_KoukuWorldPreviewActor(document,
+      worldSource ? *worldSource : arena->Get_WorldSequenceDocument(), workbench->Get_SelectedPatternId(),
+      resourcePattern, worldRequiresActor, previewRouteStatus);
+    }
+    bool resourceStarted = false;
+    if (contextReady && worldRequiresActor)
+    {
+     // Hand props share the exact actor and pose owner used by Pattern Play.
+     // Level still owns WORLD visibility, placement and lighting restoration.
+     document.Patterns.push_back(resourcePattern);
+     KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
+     bundle.strBundleId = resourcePattern.strPatternId;
+     bundle.strGateId = resourcePattern.strGateId;
+     bundle.Members.push_back({resourcePattern.strPatternId + ".member", resourcePattern.strPatternId, 0u});
+     document.Bundles.push_back(std::move(bundle));
+     resourceStarted = m_pKoukuPresentationPlayer->Begin_BundlePreview(document, resourcePattern.strPatternId,
+      0u, !resourcePreview.WorldBoxes.empty(), previewRouteStatus, worldSource, true, true);
+    }
+    else if (contextReady)
+     resourceStarted = m_pKoukuPresentationPlayer->Begin_Preview(document, resourcePattern, true, 0u,
+      !resourcePreview.WorldBoxes.empty(), previewRouteStatus);
+    if (resourceStarted)
     {
      if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
      ClaimCompositionPreviewOwner(route.owner);
      m_eDebugInputOwner = route.owner;
-     if (!m_pKoukuPresentationPlayer->Preview_IsBundle() &&
-      !Begin_KoukuWorldPreview(document, resourcePattern, previewRouteStatus,
-      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr,
-      resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD && resourcePreview.WorldBoxes.empty()))
+     if ((worldRequiresActor || !m_pKoukuPresentationPlayer->Preview_IsBundle()) &&
+      !Begin_KoukuWorldPreview(document, resourcePattern, previewRouteStatus, worldSource,
+      !worldRequiresActor && resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD && resourcePreview.WorldBoxes.empty()))
       StopCompositionPreview(route.owner);
     }
    }
@@ -2135,6 +2199,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 	}
 	KOUKU_PREVIEW_STATE finalPreview;
+	std::string worldAnchorWaitingStatus;
 	std::string completedPreviewId;
     bool previewFailed = false;
     const auto rejectPreview = [&](const std::string& patternId, const std::string& error)
@@ -2220,6 +2285,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		{
             rejectPreview(finalPreview.strPatternId, worldPreviewStatus);
 		}
+		else worldAnchorWaitingStatus = worldPreviewStatus;
 	}
 	if (!previewFailed && m_pKoukuPresentationPlayer && !m_pKoukuPresentationPlayer->Preview_IsBundle())
 	{
@@ -2250,6 +2316,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (previewStatusOwner == m_eCompositionPreviewOwner && !activePreviewRouteStatus.empty())
 		finalPreview.strStatus = activePreviewRouteStatus;
+	if (!previewFailed && !worldAnchorWaitingStatus.empty())
+		finalPreview.strStatus = worldAnchorWaitingStatus;
 	for (const auto& route : compositionRoutes)
 	{
 		if (route.owner != m_eCompositionPreviewOwner) continue;
@@ -8560,6 +8628,15 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	const std::string& focus = CCombatHUDViewModel::Get().Get_BossFocusArchetype();
 	ImGui::TextDisabled("HUD focus: %s",
 		focus.empty() ? "(last primary boss)" : focus.c_str());
+	ImGui::BeginDisabled(placementPending);
+	if (ImGui::SmallButton("Despawn Fire Object"))
+	{
+		std::string status;
+		(void)pArena->Debug_DespawnFireObjects(status);
+	}
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Remove the gate-entry outer fire. Activate Gate 3 again to restore it.");
 	ImGui::TextDisabled("Pattern audition target: %s (%s)",
 		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossPlacementId().c_str(),
 		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossArchetypeId().c_str());
@@ -8571,6 +8648,8 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 			ImGui::SeparatorText("Mario Controls (Debug Jump)");
 			ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
 	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_DebugMarioJumpStatus().c_str());
+	ImGui::TextWrapped("0: return from Mario to Gate 3 through the Server-approved exit.");
+	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_MarioReturnStatus().c_str());
 
 	ImGui::SeparatorText("--진짜 쿠크세이튼 찾기 시야 콜라이더--");
 	static CKoukuSaydonCompositionDocument gazeDocument;

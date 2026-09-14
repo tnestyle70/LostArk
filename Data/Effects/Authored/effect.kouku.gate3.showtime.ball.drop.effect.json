@@ -3,6 +3,7 @@
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.showtime.ball.drop",
   "displayName": "3관문_세이튼_쇼타임_공 낙하",
+  "bloomIntensity": 1.29999995,
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -33,6 +34,7 @@
         "sourceAnchorSlotId": "root",
         "runtimeAnchorSlotId": "root",
         "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
         "socketLocalTransform": {
           "position": [
             0,
@@ -59,7 +61,7 @@
         "transform": {
           "position": [
             0,
-            0,
+            1,
             0
           ],
           "rotationDegrees": [
@@ -68,9 +70,9 @@
             0
           ],
           "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
             1.25,
@@ -78,30 +80,30 @@
             1.25
           ],
           "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ]
         },
         "color": {
           "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
-          "clip": 0.0,
+          "clip": 0,
           "emissiveIntensity": 1,
-          "distortionIntensity": 0.0,
+          "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
+          "radialTime": 0,
+          "radialIntensity": 0
         },
         "uv": {
           "start": [
@@ -114,28 +116,35 @@
           ],
           "wave": false,
           "waveAmplitude": [
-            0.0,
-            0.0
+            0,
+            0
           ],
-          "waveFrequency": 1.0,
+          "waveFrequency": 1,
           "sequence": false,
           "loop": true,
-          "sequenceTerm": 0.1,
+          "sequenceTerm": 0.100000001,
           "tileColumns": 1,
           "tileRows": 1,
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 1,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": true,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
         },
         "decal": {
           "size": [
@@ -147,54 +156,54 @@
         "linearLerp": {
           "position": false,
           "endPosition": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotation": false,
           "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolution": false,
           "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": false,
           "endScale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "velocity": false,
           "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "colorOffset": false,
           "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "colorMultiply": false,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
           "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
+          "endEmissiveIntensity": 1
         },
         "particle": {
           "maxParticles": 3,
-          "spawnRatePerSecond": 0.0,
+          "spawnRatePerSecond": 0,
           "burstCount": 0,
           "randomSeed": 101,
           "lifeTimeSeconds": [
@@ -202,110 +211,76 @@
             0.5
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "startSize": [
             0.25,
             0.25
           ],
           "endSize": [
-            0.0,
-            0.0
+            0,
+            0
           ],
           "localSpace": false,
-          "billboard": true,
-          "authoringApproximate": false,
-          "sourceScale": {
-            "count": 1,
-            "size": 1,
-            "lifeTime": 1,
-            "speed": 1,
-            "rotation": 1,
-            "alpha": 1,
-            "spawnDelay": 1
-          }
+          "billboard": true
         },
         "trail": {
           "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
           "faceCamera": true
         },
         "afterImage": {
-          "sampleIntervalSeconds": 0.05,
+          "sampleIntervalSeconds": 0.0500000007,
           "maxCopies": 16,
-          "alphaExponent": 1.0
+          "alphaExponent": 1
         },
         "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
+          "enabled": false
         },
         "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
+          "enabled": false
         }
       },
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "simulationOnly": true,
+        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
+        "emitterName": "line",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1,
         "emitterLoopCount": 1,
         "bursts": [
           {
-            "timeSeconds": 0.0,
+            "timeSeconds": 0,
             "countMinimum": 1,
             "countMaximum": 1
           }
@@ -364,22 +339,22 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "emitterloops",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "farculldistance",
                 "kind": "number",
-                "value": 2100.0
+                "value": 2100
               },
               {
                 "propertyPath": "farfadedistance",
                 "kind": "number",
-                "value": 2000.0
+                "value": 2000
               },
               {
                 "propertyPath": "lodduplicate",
@@ -389,12 +364,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "material",
                 "kind": "number",
-                "value": -96.0
+                "value": -96
               },
               {
                 "propertyPath": "material.objectpath",
@@ -404,47 +379,47 @@
               {
                 "propertyPath": "maxdrawcount",
                 "kind": "number",
-                "value": 500.0
+                "value": 500
               },
               {
                 "propertyPath": "nearculldistance",
                 "kind": "number",
-                "value": 10.0
+                "value": 10
               },
               {
                 "propertyPath": "nearfadedistance",
                 "kind": "number",
-                "value": 150.0
+                "value": 150
               },
               {
                 "propertyPath": "normalscylinderdirection.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.z",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "normalsspherecenter.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.z",
                 "kind": "number",
-                "value": 100.0
+                "value": 100
               },
               {
                 "propertyPath": "offsetcenterx",
@@ -459,17 +434,17 @@
               {
                 "propertyPath": "randomimagetime",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_horizontal",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_vertical",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "source.emitterrendermode",
@@ -487,19 +462,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -539,7 +514,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -552,19 +527,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
                   0.5,
@@ -609,7 +584,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -622,29 +597,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  25.0,
-                  25.0,
-                  25.0,
-                  25.0,
-                  25.0,
-                  25.0,
-                  25.0,
-                  25.0
+                  25,
+                  25,
+                  25,
+                  25,
+                  25,
+                  25,
+                  25,
+                  25
                 ],
                 "keys": []
               }
@@ -698,7 +673,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -711,25 +686,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 1,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  1.0,
-                  1.0,
-                  0.0
+                  0,
+                  1,
+                  1,
+                  0
                 ],
                 "keys": []
               },
@@ -742,29 +717,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 1,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -808,7 +783,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -821,19 +796,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -847,86 +822,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  1000.0,
-                  300.0,
-                  0.0,
-                  1000.0,
-                  282.7420959472656,
-                  0.0,
-                  978.2236328125,
-                  265.6393127441406,
-                  0.0,
-                  949.1182250976562,
-                  248.70535278320312,
-                  0.0,
-                  913.4100952148438,
-                  231.95404052734375,
-                  0.0,
-                  871.8255004882812,
-                  215.39906311035156,
-                  0.0,
-                  825.0910034179688,
-                  199.05422973632812,
-                  0.0,
-                  773.9328002929688,
-                  182.93333435058594,
-                  0.0,
-                  719.077392578125,
-                  167.05007934570312,
-                  0.0,
-                  661.2509765625,
-                  151.41827392578125,
-                  0.0,
-                  601.1799926757812,
-                  136.05169677734375,
-                  0.0,
-                  539.5909423828125,
-                  120.96404266357422,
-                  0.0,
-                  477.2099609375,
-                  106.16912841796875,
-                  0.0,
-                  414.76361083984375,
-                  91.68072509765625,
-                  0.0,
-                  352.97808837890625,
-                  77.51260375976562,
-                  0.0,
-                  292.58001708984375,
-                  63.678466796875,
-                  0.0,
-                  234.29541015625,
-                  50.19214630126953,
-                  0.0,
-                  178.85086059570312,
-                  37.06736755371094,
-                  0.0,
-                  126.97270202636719,
-                  24.317852020263672,
-                  0.0,
-                  79.3870849609375,
-                  11.95750904083252,
-                  0.0,
-                  36.820838928222656,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  1000,
+                  300,
+                  0,
+                  1000,
+                  282.742096,
+                  0,
+                  978.223633,
+                  265.639313,
+                  0,
+                  949.118225,
+                  248.705353,
+                  0,
+                  913.410095,
+                  231.954041,
+                  0,
+                  871.8255,
+                  215.399063,
+                  0,
+                  825.091003,
+                  199.05423,
+                  0,
+                  773.9328,
+                  182.933334,
+                  0,
+                  719.077393,
+                  167.050079,
+                  0,
+                  661.250977,
+                  151.418274,
+                  0,
+                  601.179993,
+                  136.051697,
+                  0,
+                  539.590942,
+                  120.964043,
+                  0,
+                  477.209961,
+                  106.169128,
+                  0,
+                  414.763611,
+                  91.6807251,
+                  0,
+                  352.978088,
+                  77.5126038,
+                  0,
+                  292.580017,
+                  63.6784668,
+                  0,
+                  234.29541,
+                  50.1921463,
+                  0,
+                  178.850861,
+                  37.0673676,
+                  0,
+                  126.972702,
+                  24.317852,
+                  0,
+                  79.387085,
+                  11.957509,
+                  0,
+                  36.8208389,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -939,19 +914,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -963,23 +938,32 @@
                 "componentCount": 3,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -1017,17 +1001,17 @@
               {
                 "propertyPath": "burstlist[0].count",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "burstlist[0].countlow",
                 "kind": "number",
-                "value": -1.0
+                "value": -1
               },
               {
                 "propertyPath": "burstlist[0].time",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "lodduplicate",
@@ -1037,7 +1021,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -1050,25 +1034,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -1081,42 +1065,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
               }
             ]
           }
-        ],
-        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "emitterName": "line",
-        "simulationOnly": true
+        ]
       },
       "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int.particlespriteemitter_38",
-        "sourceActionCueId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceEventId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
+        "enabled": false
       }
     },
     {
@@ -1161,42 +1132,42 @@
             {
               "name": "uv_noise_panning_x",
               "group": "None",
-              "value": 0.10000000149011612
+              "value": 0.100000001
             },
             {
               "name": "uv_noise_panning_y",
               "group": "None",
-              "value": 0.10000000149011612
+              "value": 0.100000001
             },
             {
               "name": "uv_panning_x",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "uv_panning_y",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "uv_noise_tilling",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "uv_noise_intensity",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "dynamic_parameter_explanation",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "emissive_tex_desturation",
               "group": "None",
-              "value": 0.0
+              "value": 0
             }
           ],
           "vectors": [
@@ -1204,20 +1175,20 @@
               "name": "selectioncolor",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "emissive_color&intensity",
               "group": "None",
               "value": [
-                0.9226179718971252,
-                0.8943700194358826,
-                0.8410639762878418,
-                1.0
+                0.922617972,
+                0.894370019,
+                0.841063976,
+                1
               ]
             }
           ],
@@ -1263,6 +1234,7 @@
         "sourceAnchorSlotId": "root",
         "runtimeAnchorSlotId": "root",
         "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
         "socketLocalTransform": {
           "position": [
             0,
@@ -1289,7 +1261,7 @@
         "transform": {
           "position": [
             0,
-            0,
+            1,
             0
           ],
           "rotationDegrees": [
@@ -1298,9 +1270,9 @@
             0
           ],
           "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
             1.25,
@@ -1308,30 +1280,30 @@
             1.25
           ],
           "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ]
         },
         "color": {
           "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
-          "clip": 0.0,
+          "clip": 0,
           "emissiveIntensity": 1,
-          "distortionIntensity": 0.0,
+          "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
+          "radialTime": 0,
+          "radialIntensity": 0
         },
         "uv": {
           "start": [
@@ -1344,193 +1316,165 @@
           ],
           "wave": false,
           "waveAmplitude": [
-            0.0,
-            0.0
+            0,
+            0
           ],
-          "waveFrequency": 1.0,
+          "waveFrequency": 1,
           "sequence": false,
           "loop": true,
-          "sequenceTerm": 0.1,
+          "sequenceTerm": 0.100000001,
           "tileColumns": 1,
           "tileRows": 1,
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0,
+          "startDelaySeconds": 0,
           "lifeTimeSeconds": 0.5,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": true,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
         },
         "decal": {
           "size": [
-            0.35000000000000003,
-            0.01
+            0.349999994,
+            0.00999999978
           ],
           "depth": 0.25
         },
         "linearLerp": {
           "position": false,
           "endPosition": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotation": false,
           "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolution": false,
           "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": false,
           "endScale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "velocity": false,
           "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "colorOffset": false,
           "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "colorMultiply": false,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
           "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
+          "endEmissiveIntensity": 1
         },
         "particle": {
           "maxParticles": 37,
-          "spawnRatePerSecond": 70.0,
+          "spawnRatePerSecond": 70,
           "burstCount": 0,
           "randomSeed": 102,
           "lifeTimeSeconds": [
-            1.0,
+            1,
             1.5
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
-            0.0,
-            0.2,
-            -0.0
+            0,
+            0.200000003,
+            0
           ],
           "startSize": [
-            0.35000000000000003,
-            0.01
+            0.349999994,
+            0.00999999978
           ],
           "endSize": [
-            1.05,
-            0.03
+            1.04999995,
+            0.0299999993
           ],
           "localSpace": false,
-          "billboard": true,
-          "authoringApproximate": false,
-          "sourceScale": {
-            "count": 1,
-            "size": 1,
-            "lifeTime": 1,
-            "speed": 1,
-            "rotation": 1,
-            "alpha": 1,
-            "spawnDelay": 1
-          }
+          "billboard": true
         },
         "trail": {
           "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
           "faceCamera": true
         },
         "afterImage": {
-          "sampleIntervalSeconds": 0.05,
+          "sampleIntervalSeconds": 0.0500000007,
           "maxCopies": 16,
-          "alphaExponent": 1.0
+          "alphaExponent": 1
         },
         "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
+          "enabled": false
         },
         "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
+          "enabled": false
         }
       },
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.0,
+        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
+        "emitterName": "particle emitter",
+        "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
         "emitterLoopCount": 1,
         "bursts": [],
@@ -1593,17 +1537,17 @@
               {
                 "propertyPath": "emitterloops",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "farculldistance",
                 "kind": "number",
-                "value": 2100.0
+                "value": 2100
               },
               {
                 "propertyPath": "farfadedistance",
                 "kind": "number",
-                "value": 2000.0
+                "value": 2000
               },
               {
                 "propertyPath": "lodduplicate",
@@ -1613,12 +1557,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "material",
                 "kind": "number",
-                "value": -161.0
+                "value": -161
               },
               {
                 "propertyPath": "material.objectpath",
@@ -1628,47 +1572,47 @@
               {
                 "propertyPath": "maxdrawcount",
                 "kind": "number",
-                "value": 500.0
+                "value": 500
               },
               {
                 "propertyPath": "nearculldistance",
                 "kind": "number",
-                "value": 10.0
+                "value": 10
               },
               {
                 "propertyPath": "nearfadedistance",
                 "kind": "number",
-                "value": 150.0
+                "value": 150
               },
               {
                 "propertyPath": "normalscylinderdirection.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.z",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "normalsspherecenter.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.z",
                 "kind": "number",
-                "value": 100.0
+                "value": 100
               },
               {
                 "propertyPath": "offsetcenterx",
@@ -1683,17 +1627,17 @@
               {
                 "propertyPath": "randomimagetime",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_horizontal",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_vertical",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               }
             ],
             "distributions": [
@@ -1706,19 +1650,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -1758,7 +1702,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -1771,27 +1715,27 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 2,
                 "lookupTableNumElements": 2,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
                   1.5,
-                  1.0,
+                  1,
                   1.5,
-                  1.0,
+                  1,
                   1.5,
-                  1.0
+                  1
                 ],
                 "keys": []
               }
@@ -1830,7 +1774,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -1843,35 +1787,35 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 6,
                 "lookupTableNumElements": 2,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  30.0,
-                  35.0,
-                  0.0,
-                  0.0,
-                  30.0,
-                  0.0,
-                  0.0,
-                  35.0,
-                  0.0,
-                  0.0,
-                  30.0,
-                  0.0,
-                  0.0
+                  0,
+                  30,
+                  35,
+                  0,
+                  0,
+                  30,
+                  0,
+                  0,
+                  35,
+                  0,
+                  0,
+                  30,
+                  0,
+                  0
                 ],
                 "keys": []
               }
@@ -1910,7 +1854,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -1923,19 +1867,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -1980,7 +1924,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "multiplyx",
@@ -2008,86 +1952,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.20000000298023224,
-                  3.0,
-                  0.20000000298023224,
-                  0.20000000298023224,
-                  0.20000000298023224,
-                  1.1508897542953491,
-                  1.1508897542953491,
-                  1.1508897542953491,
-                  1.8063092231750488,
-                  1.8063092231750488,
-                  1.8063092231750488,
-                  1.9494335651397705,
-                  1.9494335651397705,
-                  1.9494335651397705,
-                  2.0819520950317383,
-                  2.0819520950317383,
-                  2.0819520950317383,
-                  2.2041587829589844,
-                  2.2041587829589844,
-                  2.2041587829589844,
-                  2.3163483142852783,
-                  2.3163483142852783,
-                  2.3163483142852783,
-                  2.4188146591186523,
-                  2.4188146591186523,
-                  2.4188146591186523,
-                  2.511852502822876,
-                  2.511852502822876,
-                  2.511852502822876,
-                  2.5957560539245605,
-                  2.5957560539245605,
-                  2.5957560539245605,
-                  2.6708192825317383,
-                  2.6708192825317383,
-                  2.6708192825317383,
-                  2.7373366355895996,
-                  2.7373366355895996,
-                  2.7373366355895996,
-                  2.7956032752990723,
-                  2.7956032752990723,
-                  2.7956032752990723,
-                  2.845912456512451,
-                  2.845912456512451,
-                  2.845912456512451,
-                  2.8885583877563477,
-                  2.8885583877563477,
-                  2.8885583877563477,
-                  2.9238367080688477,
-                  2.9238367080688477,
-                  2.9238367080688477,
-                  2.952039957046509,
-                  2.952039957046509,
-                  2.952039957046509,
-                  2.973464012145996,
-                  2.973464012145996,
-                  2.973464012145996,
-                  2.9884026050567627,
-                  2.9884026050567627,
-                  2.9884026050567627,
-                  2.997149705886841,
-                  2.997149705886841,
-                  2.997149705886841,
-                  3.0,
-                  3.0,
-                  3.0
+                  0.200000003,
+                  3,
+                  0.200000003,
+                  0.200000003,
+                  0.200000003,
+                  1.15088975,
+                  1.15088975,
+                  1.15088975,
+                  1.80630922,
+                  1.80630922,
+                  1.80630922,
+                  1.94943357,
+                  1.94943357,
+                  1.94943357,
+                  2.0819521,
+                  2.0819521,
+                  2.0819521,
+                  2.20415878,
+                  2.20415878,
+                  2.20415878,
+                  2.31634831,
+                  2.31634831,
+                  2.31634831,
+                  2.41881466,
+                  2.41881466,
+                  2.41881466,
+                  2.5118525,
+                  2.5118525,
+                  2.5118525,
+                  2.59575605,
+                  2.59575605,
+                  2.59575605,
+                  2.67081928,
+                  2.67081928,
+                  2.67081928,
+                  2.73733664,
+                  2.73733664,
+                  2.73733664,
+                  2.79560328,
+                  2.79560328,
+                  2.79560328,
+                  2.84591246,
+                  2.84591246,
+                  2.84591246,
+                  2.88855839,
+                  2.88855839,
+                  2.88855839,
+                  2.92383671,
+                  2.92383671,
+                  2.92383671,
+                  2.95203996,
+                  2.95203996,
+                  2.95203996,
+                  2.97346401,
+                  2.97346401,
+                  2.97346401,
+                  2.98840261,
+                  2.98840261,
+                  2.98840261,
+                  2.99714971,
+                  2.99714971,
+                  2.99714971,
+                  3,
+                  3,
+                  3
                 ],
                 "keys": []
               }
@@ -2136,7 +2080,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -2149,35 +2093,35 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 6,
                 "lookupTableNumElements": 2,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  30.0,
-                  0.0,
-                  0.0,
-                  20.0,
-                  0.0,
-                  0.0,
-                  30.0,
-                  0.0,
-                  0.0,
-                  20.0,
-                  0.0,
-                  0.0,
-                  30.0
+                  0,
+                  30,
+                  0,
+                  0,
+                  20,
+                  0,
+                  0,
+                  30,
+                  0,
+                  0,
+                  20,
+                  0,
+                  0,
+                  30
                 ],
                 "keys": []
               }
@@ -2221,7 +2165,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -2234,86 +2178,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.10000000149011612,
-                  3.0,
-                  3.0,
-                  3.0,
-                  3.0,
-                  2.419968605041504,
-                  2.419968605041504,
-                  2.419968605041504,
-                  1.903236985206604,
-                  1.903236985206604,
-                  1.903236985206604,
-                  1.4775141477584839,
-                  1.4775141477584839,
-                  1.4775141477584839,
-                  1.1705076694488525,
-                  1.1705076694488525,
-                  1.1705076694488525,
-                  1.0094863176345825,
-                  1.0094863176345825,
-                  1.0094863176345825,
-                  0.9190661311149597,
-                  0.9190661311149597,
-                  0.9190661311149597,
-                  0.8293458223342896,
-                  0.8293458223342896,
-                  0.8293458223342896,
-                  0.7411459684371948,
-                  0.7411459684371948,
-                  0.7411459684371948,
-                  0.655286967754364,
-                  0.655286967754364,
-                  0.655286967754364,
-                  0.572589635848999,
-                  0.572589635848999,
-                  0.572589635848999,
-                  0.49387404322624207,
-                  0.49387404322624207,
-                  0.49387404322624207,
-                  0.4199609160423279,
-                  0.4199609160423279,
-                  0.4199609160423279,
-                  0.35167068243026733,
-                  0.35167068243026733,
-                  0.35167068243026733,
-                  0.2898238003253937,
-                  0.2898238003253937,
-                  0.2898238003253937,
-                  0.23524075746536255,
-                  0.23524075746536255,
-                  0.23524075746536255,
-                  0.18874211609363556,
-                  0.18874211609363556,
-                  0.18874211609363556,
-                  0.15114814043045044,
-                  0.15114814043045044,
-                  0.15114814043045044,
-                  0.12327944487333298,
-                  0.12327944487333298,
-                  0.12327944487333298,
-                  0.10595665872097015,
-                  0.10595665872097015,
-                  0.10595665872097015,
-                  0.10000000149011612,
-                  0.10000000149011612,
-                  0.10000000149011612
+                  0.100000001,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2.41996861,
+                  2.41996861,
+                  2.41996861,
+                  1.90323699,
+                  1.90323699,
+                  1.90323699,
+                  1.47751415,
+                  1.47751415,
+                  1.47751415,
+                  1.17050767,
+                  1.17050767,
+                  1.17050767,
+                  1.00948632,
+                  1.00948632,
+                  1.00948632,
+                  0.919066131,
+                  0.919066131,
+                  0.919066131,
+                  0.829345822,
+                  0.829345822,
+                  0.829345822,
+                  0.741145968,
+                  0.741145968,
+                  0.741145968,
+                  0.655286968,
+                  0.655286968,
+                  0.655286968,
+                  0.572589636,
+                  0.572589636,
+                  0.572589636,
+                  0.493874043,
+                  0.493874043,
+                  0.493874043,
+                  0.419960916,
+                  0.419960916,
+                  0.419960916,
+                  0.351670682,
+                  0.351670682,
+                  0.351670682,
+                  0.2898238,
+                  0.2898238,
+                  0.2898238,
+                  0.235240757,
+                  0.235240757,
+                  0.235240757,
+                  0.188742116,
+                  0.188742116,
+                  0.188742116,
+                  0.15114814,
+                  0.15114814,
+                  0.15114814,
+                  0.123279445,
+                  0.123279445,
+                  0.123279445,
+                  0.105956659,
+                  0.105956659,
+                  0.105956659,
+                  0.100000001,
+                  0.100000001,
+                  0.100000001
                 ],
                 "keys": []
               }
@@ -2352,12 +2296,12 @@
               {
                 "propertyPath": "inheritsourcerotationscale",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "inheritsourcevelocityscale",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "lodduplicate",
@@ -2367,7 +2311,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "runtime.providerelementid",
@@ -2520,12 +2464,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "updateflags",
                 "kind": "number",
-                "value": 15.0
+                "value": 15
               }
             ],
             "distributions": [
@@ -2538,25 +2482,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               },
@@ -2569,25 +2513,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.800000011920929,
-                  0.800000011920929,
-                  0.800000011920929,
-                  0.800000011920929
+                  0.800000012,
+                  0.800000012,
+                  0.800000012,
+                  0.800000012
                 ],
                 "keys": []
               },
@@ -2600,25 +2544,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               },
@@ -2631,25 +2575,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -2698,7 +2642,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -2711,25 +2655,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 2.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 2,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  2.0,
-                  0.0,
-                  2.0
+                  0,
+                  2,
+                  0,
+                  2
                 ],
                 "keys": []
               },
@@ -2742,29 +2686,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.07999999821186066,
-                  0.10000000149011612,
-                  0.10000000149011612,
-                  0.09000000357627869,
-                  0.07999999821186066,
-                  0.10000000149011612,
-                  0.09000000357627869,
-                  0.07999999821186066
+                  0.0799999982,
+                  0.100000001,
+                  0.100000001,
+                  0.0900000036,
+                  0.0799999982,
+                  0.100000001,
+                  0.0900000036,
+                  0.0799999982
                 ],
                 "keys": []
               }
@@ -2813,7 +2757,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -2826,28 +2770,28 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  1.0,
-                  0.0,
+                  0,
+                  1,
+                  0,
                   0.25,
                   0.5,
                   0.75,
-                  1.0,
+                  1,
                   0.9375,
                   0.875,
                   0.8125,
@@ -2855,15 +2799,15 @@
                   0.6875,
                   0.625,
                   0.5625,
-                  0.4999999403953552,
-                  0.4374999403953552,
+                  0.49999994,
+                  0.43749994,
                   0.375,
                   0.3125,
                   0.25,
-                  0.18749994039535522,
-                  0.12499994039535522,
+                  0.18749994,
+                  0.12499994,
                   0.0625,
-                  0.0
+                  0
                 ],
                 "keys": []
               },
@@ -2876,29 +2820,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 1,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -2942,7 +2886,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -2955,25 +2899,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  70.0,
-                  70.0,
-                  70.0,
-                  70.0
+                  70,
+                  70,
+                  70,
+                  70
                 ],
                 "keys": []
               },
@@ -2986,41 +2930,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
               }
             ]
           }
-        ],
-        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "emitterName": "particle emitter"
+        ]
       },
       "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int.particlespriteemitter_42",
-        "sourceActionCueId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceEventId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
+        "enabled": false
       }
     },
     {
@@ -3056,32 +2988,32 @@
             {
               "name": "01.uv.x",
               "group": "None",
-              "value": 6.0
+              "value": 6
             },
             {
               "name": "02.uv.y",
               "group": "None",
-              "value": 6.0
+              "value": 6
             },
             {
               "name": "02.lod",
               "group": "None",
-              "value": -1.0
+              "value": -1
             },
             {
               "name": "10.shadowstr",
               "group": "None",
-              "value": 0.07000000029802322
+              "value": 0.0700000003
             },
             {
               "name": "desaturation",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "01.depthbiasdalpha_bias",
               "group": "None",
-              "value": 50.0
+              "value": 50
             }
           ],
           "vectors": [
@@ -3089,10 +3021,10 @@
               "name": "selectioncolor",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             }
           ],
@@ -3128,6 +3060,7 @@
         "sourceAnchorSlotId": "root",
         "runtimeAnchorSlotId": "root",
         "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
         "socketLocalTransform": {
           "position": [
             0,
@@ -3154,7 +3087,7 @@
         "transform": {
           "position": [
             0,
-            0,
+            1,
             0
           ],
           "rotationDegrees": [
@@ -3163,9 +3096,9 @@
             0
           ],
           "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
             1.25,
@@ -3173,30 +3106,30 @@
             1.25
           ],
           "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ]
         },
         "color": {
           "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
-          "clip": 0.0,
+          "clip": 0,
           "emissiveIntensity": 1,
-          "distortionIntensity": 0.0,
+          "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
+          "radialTime": 0,
+          "radialIntensity": 0
         },
         "uv": {
           "start": [
@@ -3209,194 +3142,166 @@
           ],
           "wave": false,
           "waveAmplitude": [
-            0.0,
-            0.0
+            0,
+            0
           ],
-          "waveFrequency": 1.0,
+          "waveFrequency": 1,
           "sequence": false,
           "loop": true,
-          "sequenceTerm": 0.1,
+          "sequenceTerm": 0.100000001,
           "tileColumns": 1,
           "tileRows": 1,
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 1,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": true,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
         },
         "decal": {
           "size": [
-            1.0,
-            1.0
+            1,
+            1
           ],
           "depth": 0.25
         },
         "linearLerp": {
           "position": false,
           "endPosition": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotation": false,
           "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolution": false,
           "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": false,
           "endScale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "velocity": false,
           "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "colorOffset": false,
           "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "colorMultiply": false,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
           "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
+          "endEmissiveIntensity": 1
         },
         "particle": {
           "maxParticles": 48,
-          "spawnRatePerSecond": 0.0,
+          "spawnRatePerSecond": 0,
           "burstCount": 0,
           "randomSeed": 103,
           "lifeTimeSeconds": [
-            0.800000011920929,
-            1.0
+            0.800000012,
+            1
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
+            0,
             -0.5,
-            -0.0
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.0,
-            -0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "startSize": [
-            0.2,
-            0.2
+            0.200000003,
+            0.200000003
           ],
           "endSize": [
             0.5,
             0.5
           ],
           "localSpace": true,
-          "billboard": true,
-          "authoringApproximate": false,
-          "sourceScale": {
-            "count": 1,
-            "size": 1,
-            "lifeTime": 1,
-            "speed": 1,
-            "rotation": 1,
-            "alpha": 1,
-            "spawnDelay": 1
-          }
+          "billboard": true
         },
         "trail": {
           "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
           "faceCamera": true
         },
         "afterImage": {
-          "sampleIntervalSeconds": 0.05,
+          "sampleIntervalSeconds": 0.0500000007,
           "maxCopies": 16,
-          "alphaExponent": 1.0
+          "alphaExponent": 1
         },
         "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
+          "enabled": false
         },
         "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
+          "enabled": false
         }
       },
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
+        "emitterName": "exp",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -3458,22 +3363,22 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "emitterloops",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "farculldistance",
                 "kind": "number",
-                "value": 2100.0
+                "value": 2100
               },
               {
                 "propertyPath": "farfadedistance",
                 "kind": "number",
-                "value": 2000.0
+                "value": 2000
               },
               {
                 "propertyPath": "interpolationmethod",
@@ -3488,12 +3393,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "material",
                 "kind": "number",
-                "value": -263.0
+                "value": -263
               },
               {
                 "propertyPath": "material.objectpath",
@@ -3503,47 +3408,47 @@
               {
                 "propertyPath": "maxdrawcount",
                 "kind": "number",
-                "value": 500.0
+                "value": 500
               },
               {
                 "propertyPath": "nearculldistance",
                 "kind": "number",
-                "value": 10.0
+                "value": 10
               },
               {
                 "propertyPath": "nearfadedistance",
                 "kind": "number",
-                "value": 150.0
+                "value": 150
               },
               {
                 "propertyPath": "normalscylinderdirection.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.z",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "normalsspherecenter.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.z",
                 "kind": "number",
-                "value": 100.0
+                "value": 100
               },
               {
                 "propertyPath": "offsetcenterx",
@@ -3558,7 +3463,7 @@
               {
                 "propertyPath": "randomimagetime",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "screenalignment",
@@ -3573,12 +3478,12 @@
               {
                 "propertyPath": "subimages_horizontal",
                 "kind": "number",
-                "value": 6.0
+                "value": 6
               },
               {
                 "propertyPath": "subimages_vertical",
                 "kind": "number",
-                "value": 6.0
+                "value": 6
               }
             ],
             "distributions": [
@@ -3591,19 +3496,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -3643,7 +3548,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -3656,27 +3561,27 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 2,
                 "lookupTableNumElements": 2,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  0.800000011920929,
-                  1.0,
-                  0.800000011920929,
-                  1.0,
-                  0.800000011920929
+                  1,
+                  0.800000012,
+                  1,
+                  0.800000012,
+                  1,
+                  0.800000012
                 ],
                 "keys": []
               }
@@ -3820,12 +3725,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "updateflags",
                 "kind": "number",
-                "value": 15.0
+                "value": 15
               }
             ],
             "distributions": [
@@ -3838,34 +3743,34 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  15.0,
-                  15.0,
-                  7.572367191314697,
-                  1.7327673435211182,
-                  0.8787897229194641,
-                  0.6847244501113892,
-                  0.5050126910209656,
-                  0.34474703669548035,
-                  0.20902037620544434,
-                  0.1029251366853714,
-                  0.03155401721596718,
-                  0.0
+                  0,
+                  15,
+                  15,
+                  7.57236719,
+                  1.73276734,
+                  0.878789723,
+                  0.68472445,
+                  0.505012691,
+                  0.344747037,
+                  0.209020376,
+                  0.102925137,
+                  0.0315540172,
+                  0
                 ],
                 "keys": []
               },
@@ -3878,37 +3783,37 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 19.696969985961914,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 19.69697,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  1.0,
-                  1.0,
-                  0.8130916357040405,
-                  0.6519044041633606,
-                  0.5144228935241699,
-                  0.3986315131187439,
-                  0.30251461267471313,
-                  0.22405679523944855,
-                  0.1612425297498703,
-                  0.11205612123012543,
-                  0.07448221743106842,
-                  0.04650517553091049,
-                  0.026109442114830017,
-                  0.011279501020908356,
-                  0.0
+                  0,
+                  1,
+                  1,
+                  0.813091636,
+                  0.651904404,
+                  0.514422894,
+                  0.398631513,
+                  0.302514613,
+                  0.224056795,
+                  0.16124253,
+                  0.112056121,
+                  0.0744822174,
+                  0.0465051755,
+                  0.0261094421,
+                  0.011279501,
+                  0
                 ],
                 "keys": []
               },
@@ -3921,44 +3826,44 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  10.0,
-                  10.0,
-                  6.125921249389648,
-                  2.5337047576904297,
-                  1.8006701469421387,
-                  1.5029792785644531,
-                  1.2456108331680298,
-                  1.025294542312622,
-                  0.8387601971626282,
-                  0.6827377080917358,
-                  0.5539563894271851,
-                  0.4491462707519531,
-                  0.36503711342811584,
-                  0.29835838079452515,
-                  0.2458401620388031,
-                  0.2042122781276703,
-                  0.17020370066165924,
-                  0.14054493606090546,
-                  0.11196533590555191,
-                  0.08119537681341171,
-                  0.04496321082115173,
-                  0.0
+                  0,
+                  10,
+                  10,
+                  6.12592125,
+                  2.53370476,
+                  1.80067015,
+                  1.50297928,
+                  1.24561083,
+                  1.02529454,
+                  0.838760197,
+                  0.682737708,
+                  0.553956389,
+                  0.449146271,
+                  0.365037113,
+                  0.298358381,
+                  0.245840162,
+                  0.204212278,
+                  0.170203701,
+                  0.140544936,
+                  0.111965336,
+                  0.0811953768,
+                  0.0449632108,
+                  0
                 ],
                 "keys": []
               },
@@ -3971,44 +3876,44 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  4.0,
-                  4.0,
-                  2.9595906734466553,
-                  2.0101234912872314,
-                  1.2307775020599365,
-                  0.7007342576980591,
-                  0.49107566475868225,
-                  0.4069204032421112,
-                  0.33447593450546265,
-                  0.2727346420288086,
-                  0.2206893414258957,
-                  0.17733250558376312,
-                  0.14165668189525604,
-                  0.11265452951192856,
-                  0.08931869268417358,
-                  0.0706416517496109,
-                  0.05561594292521477,
-                  0.043234311044216156,
-                  0.032489411532878876,
-                  0.022373631596565247,
-                  0.011879587545990944,
-                  0.0
+                  0,
+                  4,
+                  4,
+                  2.95959067,
+                  2.01012349,
+                  1.2307775,
+                  0.700734258,
+                  0.491075665,
+                  0.406920403,
+                  0.334475935,
+                  0.272734642,
+                  0.220689341,
+                  0.177332506,
+                  0.141656682,
+                  0.11265453,
+                  0.0893186927,
+                  0.0706416517,
+                  0.0556159429,
+                  0.043234311,
+                  0.0324894115,
+                  0.0223736316,
+                  0.0118795875,
+                  0
                 ],
                 "keys": []
               }
@@ -4052,7 +3957,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -4065,44 +3970,44 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  35.0,
-                  0.0,
-                  3.296673059463501,
-                  6.314148902893066,
-                  9.07182502746582,
-                  11.589099884033203,
-                  13.885372161865234,
-                  15.980042457580566,
-                  17.89250373840332,
-                  19.64215850830078,
-                  21.24840545654297,
-                  22.73063850402832,
-                  24.108261108398438,
-                  25.400667190551758,
-                  26.62725830078125,
-                  27.807430267333984,
-                  28.96058464050293,
-                  30.10611343383789,
-                  31.263423919677734,
-                  32.4519157409668,
-                  33.69097137451172,
-                  35.0
+                  0,
+                  35,
+                  0,
+                  3.29667306,
+                  6.3141489,
+                  9.07182503,
+                  11.5890999,
+                  13.8853722,
+                  15.9800425,
+                  17.8925037,
+                  19.6421585,
+                  21.2484055,
+                  22.7306385,
+                  24.1082611,
+                  25.4006672,
+                  26.6272583,
+                  27.8074303,
+                  28.9605846,
+                  30.1061134,
+                  31.2634239,
+                  32.4519157,
+                  33.6909714,
+                  35
                 ],
                 "keys": []
               }
@@ -4146,7 +4051,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "multiplyx",
@@ -4174,86 +4079,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
                   0.5,
-                  2.51041579246521,
+                  2.51041579,
                   0.5,
                   0.5,
-                  1.0,
-                  0.7384237051010132,
-                  0.8224666118621826,
-                  1.0,
-                  0.9579461216926575,
-                  1.1088043451309204,
-                  1.0,
-                  1.1592891216278076,
-                  1.3611317873001099,
-                  1.0,
-                  1.3431740999221802,
-                  1.5815672874450684,
-                  1.0,
-                  1.510323166847229,
-                  1.772229790687561,
-                  1.0,
-                  1.6614577770233154,
-                  1.9352376461029053,
-                  1.0,
-                  1.7972997426986694,
-                  2.072709083557129,
-                  1.0,
-                  1.918570876121521,
-                  2.186763286590576,
-                  1.0,
-                  2.0259928703308105,
-                  2.2795186042785645,
-                  1.0,
-                  2.1202871799468994,
-                  2.353093147277832,
-                  1.0,
-                  2.202176094055176,
-                  2.4096059799194336,
-                  1.0,
-                  2.272380828857422,
-                  2.4511756896972656,
-                  1.0,
-                  2.331622838973999,
-                  2.4799201488494873,
-                  1.0,
-                  2.380624771118164,
-                  2.4979588985443115,
-                  1.0,
-                  2.420107841491699,
-                  2.5074100494384766,
-                  1.0,
-                  2.4507932662963867,
-                  2.5103914737701416,
-                  1.0,
-                  2.4734039306640625,
-                  2.5090231895446777,
-                  1.0,
-                  2.488661050796509,
-                  2.505423069000244,
-                  1.0,
-                  2.4972856044769287,
-                  2.501708984375,
-                  1.0,
+                  1,
+                  0.738423705,
+                  0.822466612,
+                  1,
+                  0.957946122,
+                  1.10880435,
+                  1,
+                  1.15928912,
+                  1.36113179,
+                  1,
+                  1.3431741,
+                  1.58156729,
+                  1,
+                  1.51032317,
+                  1.77222979,
+                  1,
+                  1.66145778,
+                  1.93523765,
+                  1,
+                  1.79729974,
+                  2.07270908,
+                  1,
+                  1.91857088,
+                  2.18676329,
+                  1,
+                  2.02599287,
+                  2.2795186,
+                  1,
+                  2.12028718,
+                  2.35309315,
+                  1,
+                  2.20217609,
+                  2.40960598,
+                  1,
+                  2.27238083,
+                  2.45117569,
+                  1,
+                  2.33162284,
+                  2.47992015,
+                  1,
+                  2.38062477,
+                  2.4979589,
+                  1,
+                  2.42010784,
+                  2.50741005,
+                  1,
+                  2.45079327,
+                  2.51039147,
+                  1,
+                  2.47340393,
+                  2.50902319,
+                  1,
+                  2.48866105,
+                  2.50542307,
+                  1,
+                  2.4972856,
+                  2.50170898,
+                  1,
                   2.5,
                   2.5,
-                  1.0
+                  1
                 ],
                 "keys": []
               }
@@ -4297,7 +4202,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -4310,19 +4215,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -4372,7 +4277,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "randomseedinfo.properties.bgetseedfrominstance",
@@ -4402,12 +4307,12 @@
               {
                 "propertyPath": "randomseedinfo.properties.randomseeds[0]",
                 "kind": "number",
-                "value": 9.0
+                "value": 9
               },
               {
                 "propertyPath": "randomseedinfo.size",
                 "kind": "number",
-                "value": 40.0
+                "value": 40
               }
             ],
             "distributions": [
@@ -4420,35 +4325,35 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 6,
                 "lookupTableNumElements": 2,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  -50.0,
-                  80.0,
-                  -50.0,
-                  80.0,
-                  1.0,
-                  50.0,
-                  80.0,
-                  1.0,
-                  -50.0,
-                  80.0,
-                  1.0,
-                  50.0,
-                  80.0,
-                  1.0
+                  -50,
+                  80,
+                  -50,
+                  80,
+                  1,
+                  50,
+                  80,
+                  1,
+                  -50,
+                  80,
+                  1,
+                  50,
+                  80,
+                  1
                 ],
                 "keys": []
               }
@@ -4487,7 +4392,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -4500,25 +4405,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               }
@@ -4572,7 +4477,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -4585,43 +4490,43 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 19.048133850097656,
-                "lookupTableStartTime": 0.002526999916881323,
+                "lookupTableTimeScale": 19.0481339,
+                "lookupTableStartTime": 0.00252699992,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  5.000000476837158,
-                  0.0,
-                  0.872545063495636,
-                  2.738182783126831,
-                  4.468917369842529,
-                  4.996280193328857,
-                  4.911101341247559,
-                  4.724862575531006,
-                  4.452712535858154,
-                  4.109799861907959,
-                  3.711273431777954,
-                  3.272282123565674,
-                  2.8079748153686523,
-                  2.3335001468658447,
-                  1.864007830619812,
-                  1.4146450757980347,
-                  1.0005619525909424,
-                  0.6369071006774902,
-                  0.33882850408554077,
-                  0.12147721648216248,
-                  0.0
+                  0,
+                  5.00000048,
+                  0,
+                  0.872545063,
+                  2.73818278,
+                  4.46891737,
+                  4.99628019,
+                  4.91110134,
+                  4.72486258,
+                  4.45271254,
+                  4.10979986,
+                  3.71127343,
+                  3.27228212,
+                  2.80797482,
+                  2.33350015,
+                  1.86400783,
+                  1.41464508,
+                  1.00056195,
+                  0.636907101,
+                  0.338828504,
+                  0.121477216,
+                  0
                 ],
                 "keys": []
               },
@@ -4634,29 +4539,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.30000001192092896,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0.300000012,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.10000000149011612,
-                  3.0,
-                  3.0,
-                  0.10000000149011612,
-                  0.10000000149011612,
-                  3.0,
-                  0.10000000149011612,
-                  0.10000000149011612
+                  0.100000001,
+                  3,
+                  3,
+                  0.100000001,
+                  0.100000001,
+                  3,
+                  0.100000001,
+                  0.100000001
                 ],
                 "keys": []
               }
@@ -4695,7 +4600,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -4708,35 +4613,35 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 6,
                 "lookupTableNumElements": 2,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  -50.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0,
-                  -50.0
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  -50,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  -50
                 ],
                 "keys": []
               },
@@ -4749,19 +4654,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -4811,7 +4716,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "movementtolerance",
@@ -4821,7 +4726,7 @@
               {
                 "propertyPath": "unitscalar",
                 "kind": "number",
-                "value": 50.0
+                "value": 50
               }
             ],
             "distributions": [
@@ -4834,25 +4739,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -4891,12 +4796,12 @@
               {
                 "propertyPath": "inheritsourcerotationscale",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "inheritsourcevelocityscale",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "lodduplicate",
@@ -4906,7 +4811,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "runtime.providerelementid",
@@ -4954,17 +4859,17 @@
               {
                 "propertyPath": "burstlist[0].count",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "burstlist[0].countlow",
                 "kind": "number",
-                "value": -1.0
+                "value": -1
               },
               {
                 "propertyPath": "burstlist[0].time",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "lodduplicate",
@@ -4974,7 +4879,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -4987,25 +4892,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  50.0,
-                  50.0,
-                  50.0,
-                  50.0
+                  50,
+                  50,
+                  50,
+                  50
                 ],
                 "keys": []
               },
@@ -5018,41 +4923,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
               }
             ]
           }
-        ],
-        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "emitterName": "exp"
+        ]
       },
       "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int.particlespriteemitter_3",
-        "sourceActionCueId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceEventId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
+        "enabled": false
       }
     },
     {
@@ -5156,67 +5049,67 @@
             {
               "name": "normaltex_intensity",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "fx_color_desaturation_actiontool",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "fx_color_desaturation_buffsettool",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "ibl_normal_smooth",
               "group": "None",
-              "value": 0.699999988079071
+              "value": 0.699999988
             },
             {
               "name": "roughness_power",
               "group": "None",
-              "value": 3.0
+              "value": 3
             },
             {
               "name": "ibl_reflect_lodbias",
               "group": "None",
-              "value": 80.0
+              "value": 80
             },
             {
               "name": "ibl_exposer",
               "group": "None",
-              "value": 5.0
+              "value": 5
             },
             {
               "name": "ibl_intensity",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "1.use_dyeing_sp",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "transcolor_rimlight ",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "trans_rim_inradius",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "trans_rim_hard",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "metalicness_power",
               "group": "None",
-              "value": 0.20000000298023224
+              "value": 0.200000003
             },
             {
               "name": "fresnel_rimlightintensity",
@@ -5226,7 +5119,7 @@
             {
               "name": "fresnel_radius",
               "group": "None",
-              "value": 0.949999988079071
+              "value": 0.949999988
             },
             {
               "name": "emissive_intensity",
@@ -5236,22 +5129,22 @@
             {
               "name": "emissive_intensitymin",
               "group": "None",
-              "value": 0.30000001192092896
+              "value": 0.300000012
             },
             {
               "name": "emissive_flicker_speed",
               "group": "None",
-              "value": 0.6499999761581421
+              "value": 0.649999976
             },
             {
               "name": "1.use_emissive_flickerspeed_fixed",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "constantoutline",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "constantoutline_blink",
@@ -5266,32 +5159,32 @@
             {
               "name": "orennayar_brightness",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "orennayar",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "specular_power_limit",
               "group": "None",
-              "value": 0.9200000166893005
+              "value": 0.920000017
             },
             {
               "name": "beckmannspecular_constant_max",
               "group": "None",
-              "value": 3.3499999046325684
+              "value": 3.3499999
             },
             {
               "name": "pbr_specular_power",
               "group": "None",
-              "value": 6.0
+              "value": 6
             },
             {
               "name": "pbr_specular_intensity",
               "group": "None",
-              "value": 10.0
+              "value": 10
             }
           ],
           "vectors": [
@@ -5299,130 +5192,130 @@
               "name": "selectioncolor",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "state",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0,
+                0
               ]
             },
             {
               "name": "diffusecolor",
               "group": "None",
               "value": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1,
+                1
               ]
             },
             {
               "name": "fx_color_intensity_buffsettool",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "fx_color_intensity_actiontool",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "ibl_color_bottom",
               "group": "None",
               "value": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1,
+                1
               ]
             },
             {
               "name": "ibl_color_top",
               "group": "None",
               "value": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
+                1,
+                1,
+                1,
+                1
               ]
             },
             {
               "name": "emissive_color",
               "group": "None",
               "value": [
-                0.9658146500587463,
-                0.005028203595429659,
-                0.013473397120833397,
-                1.0
+                0.96581465,
+                0.0050282036,
+                0.0134733971,
+                1
               ]
             },
             {
               "name": "transcolor",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "buffcolor",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "constantoutline_color",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "hit_color",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0,
+                0
               ]
             },
             {
               "name": "state_noise",
               "group": "None",
               "value": [
-                1.0,
-                0.0,
-                0.0,
-                1.0
+                1,
+                0,
+                0,
+                1
               ]
             }
           ],
@@ -5618,6 +5511,7 @@
         "sourceAnchorSlotId": "root",
         "runtimeAnchorSlotId": "root",
         "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
         "socketLocalTransform": {
           "position": [
             0,
@@ -5653,9 +5547,9 @@
             0
           ],
           "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
             1.25,
@@ -5663,30 +5557,30 @@
             1.25
           ],
           "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ]
         },
         "color": {
           "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
-          "clip": 0.0,
+          "clip": 0,
           "emissiveIntensity": 1,
-          "distortionIntensity": 0.0,
+          "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
+          "radialTime": 0,
+          "radialIntensity": 0
         },
         "uv": {
           "start": [
@@ -5699,199 +5593,171 @@
           ],
           "wave": false,
           "waveAmplitude": [
-            0.0,
-            0.0
+            0,
+            0
           ],
-          "waveFrequency": 1.0,
+          "waveFrequency": 1,
           "sequence": false,
           "loop": true,
-          "sequenceTerm": 0.1,
+          "sequenceTerm": 0.100000001,
           "tileColumns": 1,
           "tileRows": 1,
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 1,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
         },
         "mesh": {
           "useModelMaterial": true,
-          "modelPreScale": 0.01
+          "modelPreScale": 0.00999999978,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
         },
         "decal": {
           "size": [
-            1.0,
-            1.0
+            1,
+            1
           ],
           "depth": 0.25
         },
         "linearLerp": {
           "position": false,
           "endPosition": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotation": false,
           "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolution": false,
           "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": false,
           "endScale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "velocity": false,
           "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "colorOffset": false,
           "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "colorMultiply": false,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
           "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
+          "endEmissiveIntensity": 1
         },
         "particle": {
           "maxParticles": 3,
-          "spawnRatePerSecond": 0.0,
+          "spawnRatePerSecond": 0,
           "burstCount": 0,
           "randomSeed": 104,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            1,
+            1
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "startSize": [
-            0.2,
-            0.2
+            0.200000003,
+            0.200000003
           ],
           "endSize": [
-            0.2,
-            0.2
+            0.200000003,
+            0.200000003
           ],
           "localSpace": false,
-          "billboard": false,
-          "authoringApproximate": false,
-          "sourceScale": {
-            "count": 1,
-            "size": 1,
-            "lifeTime": 1,
-            "speed": 1,
-            "rotation": 1,
-            "alpha": 1,
-            "spawnDelay": 1
-          }
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
           "faceCamera": true
         },
         "afterImage": {
-          "sampleIntervalSeconds": 0.05,
+          "sampleIntervalSeconds": 0.0500000007,
           "maxCopies": 16,
-          "alphaExponent": 1.0
+          "alphaExponent": 1
         },
         "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
+          "enabled": false
         },
         "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
+          "enabled": false
         }
       },
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "mesh",
-        "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
+        "emitterName": "particle emitter",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1,
         "emitterLoopCount": 1,
         "bursts": [
           {
-            "timeSeconds": 0.0,
+            "timeSeconds": 0,
             "countMinimum": 1,
             "countMaximum": 1
           }
@@ -5955,22 +5821,22 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "emitterloops",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "farculldistance",
                 "kind": "number",
-                "value": 2100.0
+                "value": 2100
               },
               {
                 "propertyPath": "farfadedistance",
                 "kind": "number",
-                "value": 2000.0
+                "value": 2000
               },
               {
                 "propertyPath": "lodduplicate",
@@ -5980,12 +5846,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "material",
                 "kind": "number",
-                "value": -429.0
+                "value": -429
               },
               {
                 "propertyPath": "material.objectpath",
@@ -5995,47 +5861,47 @@
               {
                 "propertyPath": "maxdrawcount",
                 "kind": "number",
-                "value": 500.0
+                "value": 500
               },
               {
                 "propertyPath": "nearculldistance",
                 "kind": "number",
-                "value": 10.0
+                "value": 10
               },
               {
                 "propertyPath": "nearfadedistance",
                 "kind": "number",
-                "value": 150.0
+                "value": 150
               },
               {
                 "propertyPath": "normalscylinderdirection.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.z",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "normalsspherecenter.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.z",
                 "kind": "number",
-                "value": 100.0
+                "value": 100
               },
               {
                 "propertyPath": "offsetcenterx",
@@ -6050,7 +5916,7 @@
               {
                 "propertyPath": "randomimagetime",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "screenalignment",
@@ -6060,12 +5926,12 @@
               {
                 "propertyPath": "subimages_horizontal",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_vertical",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               }
             ],
             "distributions": [
@@ -6078,19 +5944,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -6130,7 +5996,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -6143,25 +6009,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -6200,7 +6066,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -6211,23 +6077,32 @@
                 "componentCount": 3,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -6275,7 +6150,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -6288,19 +6163,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -6314,29 +6189,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -6380,7 +6255,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "multiplyx",
@@ -6408,86 +6283,86 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.8999999761581421,
-                  1.100000023841858,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0351999998092651,
-                  1.0,
-                  1.0,
-                  1.0896000862121582,
-                  1.0,
-                  1.0,
-                  1.0928000211715698,
-                  1.0,
-                  1.0,
-                  1.0496000051498413,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  0.9503999948501587,
-                  1.0,
-                  1.0,
-                  0.9071999788284302,
-                  1.0,
-                  1.0,
-                  0.9071999788284302,
-                  1.0,
-                  1.0,
-                  0.9503999948501587,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0496000051498413,
-                  1.0,
-                  1.0,
-                  1.0928000211715698,
-                  1.0,
-                  1.0,
-                  1.0928000211715698,
-                  1.0,
-                  1.0,
-                  1.0496000051498413,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  0.9503999948501587,
-                  1.0,
-                  1.0,
-                  0.9071999788284302,
-                  1.0,
-                  1.0,
-                  0.9104000329971313,
-                  1.0,
-                  1.0,
-                  0.9648000001907349,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  0.899999976,
+                  1.10000002,
+                  1,
+                  1,
+                  1,
+                  1.0352,
+                  1,
+                  1,
+                  1.08960009,
+                  1,
+                  1,
+                  1.09280002,
+                  1,
+                  1,
+                  1.04960001,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0.950399995,
+                  1,
+                  1,
+                  0.907199979,
+                  1,
+                  1,
+                  0.907199979,
+                  1,
+                  1,
+                  0.950399995,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1.04960001,
+                  1,
+                  1,
+                  1.09280002,
+                  1,
+                  1,
+                  1.09280002,
+                  1,
+                  1,
+                  1.04960001,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0.950399995,
+                  1,
+                  1,
+                  0.907199979,
+                  1,
+                  1,
+                  0.910400033,
+                  1,
+                  1,
+                  0.9648,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -6536,7 +6411,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "runtime.providerelementid",
@@ -6574,12 +6449,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "mesh",
                 "kind": "number",
-                "value": -1787.0
+                "value": -1787
               },
               {
                 "propertyPath": "mesh.objectpath",
@@ -6622,17 +6497,17 @@
               {
                 "propertyPath": "burstlist[0].count",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "burstlist[0].countlow",
                 "kind": "number",
-                "value": -1.0
+                "value": -1
               },
               {
                 "propertyPath": "burstlist[0].time",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "lodduplicate",
@@ -6642,7 +6517,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -6655,25 +6530,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -6686,41 +6561,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
               }
             ]
           }
-        ],
-        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "emitterName": "particle emitter"
+        ]
       },
       "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int.particlespriteemitter_4",
-        "sourceActionCueId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceEventId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
+        "enabled": false
       }
     },
     {
@@ -6765,42 +6628,42 @@
             {
               "name": "uv_noise_panning_x",
               "group": "None",
-              "value": 0.10000000149011612
+              "value": 0.100000001
             },
             {
               "name": "uv_noise_panning_y",
               "group": "None",
-              "value": 0.10000000149011612
+              "value": 0.100000001
             },
             {
               "name": "uv_panning_x",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "uv_panning_y",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "uv_noise_tilling",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "uv_noise_intensity",
               "group": "None",
-              "value": 0.0
+              "value": 0
             },
             {
               "name": "dynamic_parameter_explanation",
               "group": "None",
-              "value": 1.0
+              "value": 1
             },
             {
               "name": "emissive_tex_desturation",
               "group": "None",
-              "value": 0.0
+              "value": 0
             }
           ],
           "vectors": [
@@ -6808,20 +6671,20 @@
               "name": "selectioncolor",
               "group": "None",
               "value": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0,
+                0,
+                0,
+                1
               ]
             },
             {
               "name": "emissive_color&intensity",
               "group": "None",
               "value": [
-                3.0,
+                3,
                 0.5,
-                0.0,
-                1.0
+                0,
+                1
               ]
             }
           ],
@@ -6867,6 +6730,7 @@
         "sourceAnchorSlotId": "root",
         "runtimeAnchorSlotId": "root",
         "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
         "socketLocalTransform": {
           "position": [
             0,
@@ -6893,7 +6757,7 @@
         "transform": {
           "position": [
             0,
-            0,
+            1,
             0
           ],
           "rotationDegrees": [
@@ -6902,9 +6766,9 @@
             0
           ],
           "revolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
             1.25,
@@ -6912,30 +6776,30 @@
             1.25
           ],
           "velocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ]
         },
         "color": {
           "offset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
-          "clip": 0.0,
+          "clip": 0,
           "emissiveIntensity": 1,
-          "distortionIntensity": 0.0,
+          "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
-          "radialTime": 0.0,
-          "radialIntensity": 0.0
+          "radialTime": 0,
+          "radialIntensity": 0
         },
         "uv": {
           "start": [
@@ -6948,32 +6812,39 @@
           ],
           "wave": false,
           "waveAmplitude": [
-            0.0,
-            0.0
+            0,
+            0
           ],
-          "waveFrequency": 1.0,
+          "waveFrequency": 1,
           "sequence": false,
           "loop": true,
-          "sequenceTerm": 0.1,
+          "sequenceTerm": 0.100000001,
           "tileColumns": 1,
           "tileRows": 1,
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
-          "afterImageSeconds": 0.0,
-          "dissolveStartNormalized": 1.0
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 1,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": true,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
         },
         "decal": {
           "size": [
-            3.0,
+            3,
             1.5
           ],
           "depth": 0.25
@@ -6981,54 +6852,54 @@
         "linearLerp": {
           "position": false,
           "endPosition": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotation": false,
           "endRotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "revolution": false,
           "endRevolutionDegreesPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": false,
           "endScale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "velocity": false,
           "endVelocityPerSecond": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "colorOffset": false,
           "endColorOffset": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0,
+            0
           ],
           "colorMultiply": false,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1,
+            1
           ],
           "emissiveIntensity": false,
-          "endEmissiveIntensity": 1.0
+          "endEmissiveIntensity": 1
         },
         "particle": {
           "maxParticles": 3,
-          "spawnRatePerSecond": 0.0,
+          "spawnRatePerSecond": 0,
           "burstCount": 0,
           "randomSeed": 105,
           "lifeTimeSeconds": [
@@ -7036,110 +6907,75 @@
             0.5
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "startSize": [
-            3.0,
+            3,
             1.5
           ],
           "endSize": [
-            0.0,
-            0.0
+            0,
+            0
           ],
           "localSpace": false,
-          "billboard": true,
-          "authoringApproximate": false,
-          "sourceScale": {
-            "count": 1,
-            "size": 1,
-            "lifeTime": 1,
-            "speed": 1,
-            "rotation": 1,
-            "alpha": 1,
-            "spawnDelay": 1
-          }
+          "billboard": true
         },
         "trail": {
           "maxPoints": 64,
-          "pointLifeTimeSeconds": 0.35,
-          "sampleIntervalSeconds": 0.0166667,
-          "minimumDistance": 0.01,
-          "startWidth": 0.2,
-          "endWidth": 0.0,
+          "pointLifeTimeSeconds": 0.349999994,
+          "sampleIntervalSeconds": 0.0166666992,
+          "minimumDistance": 0.00999999978,
+          "startWidth": 0.200000003,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
           "faceCamera": true
         },
         "afterImage": {
-          "sampleIntervalSeconds": 0.05,
+          "sampleIntervalSeconds": 0.0500000007,
           "maxCopies": 16,
-          "alphaExponent": 1.0
+          "alphaExponent": 1
         },
         "light": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "range": 0.0,
-          "intensity": 0.0,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "ambient": [
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ],
-          "falloffExponent": 0.0
+          "enabled": false
         },
         "screenPost": {
-          "enabled": false,
-          "profileId": "",
-          "status": "reconstructed_profile",
-          "intensity": 0.0,
-          "secondaryIntensity": 0.0,
-          "frequency": 0.0,
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
-          "randomSeed": 1
+          "enabled": false
         }
       },
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
-        "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
+        "emitterName": "particle emitter",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1,
         "emitterLoopCount": 1,
         "bursts": [
           {
-            "timeSeconds": 0.0,
+            "timeSeconds": 0,
             "countMinimum": 1,
             "countMaximum": 1
           }
@@ -7198,22 +7034,22 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "emitterloops",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "farculldistance",
                 "kind": "number",
-                "value": 2100.0
+                "value": 2100
               },
               {
                 "propertyPath": "farfadedistance",
                 "kind": "number",
-                "value": 2000.0
+                "value": 2000
               },
               {
                 "propertyPath": "lodduplicate",
@@ -7223,12 +7059,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "material",
                 "kind": "number",
-                "value": -158.0
+                "value": -158
               },
               {
                 "propertyPath": "material.objectpath",
@@ -7238,47 +7074,47 @@
               {
                 "propertyPath": "maxdrawcount",
                 "kind": "number",
-                "value": 500.0
+                "value": 500
               },
               {
                 "propertyPath": "nearculldistance",
                 "kind": "number",
-                "value": 10.0
+                "value": 10
               },
               {
                 "propertyPath": "nearfadedistance",
                 "kind": "number",
-                "value": 150.0
+                "value": 150
               },
               {
                 "propertyPath": "normalscylinderdirection.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalscylinderdirection.z",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "normalsspherecenter.x",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.y",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "normalsspherecenter.z",
                 "kind": "number",
-                "value": 100.0
+                "value": 100
               },
               {
                 "propertyPath": "offsetcenterx",
@@ -7293,7 +7129,7 @@
               {
                 "propertyPath": "randomimagetime",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "screenalignment",
@@ -7303,12 +7139,12 @@
               {
                 "propertyPath": "subimages_horizontal",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "subimages_vertical",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               }
             ],
             "distributions": [
@@ -7321,19 +7157,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
@@ -7373,7 +7209,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -7386,19 +7222,19 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
                   0.5,
@@ -7443,7 +7279,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -7456,29 +7292,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  300.0,
-                  300.0,
-                  150.0,
-                  0.0,
-                  300.0,
-                  150.0,
-                  0.0
+                  0,
+                  300,
+                  300,
+                  150,
+                  0,
+                  300,
+                  150,
+                  0
                 ],
                 "keys": []
               }
@@ -7532,7 +7368,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -7545,44 +7381,44 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 20,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  1.0,
-                  0.0,
+                  0,
+                  1,
+                  0,
                   0.25,
                   0.5,
                   0.75,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               },
@@ -7595,29 +7431,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  10.0,
-                  10.0,
-                  1.0,
-                  1.0,
-                  10.0,
-                  1.0,
-                  1.0
+                  1,
+                  10,
+                  10,
+                  1,
+                  1,
+                  10,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -7761,12 +7597,12 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "updateflags",
                 "kind": "number",
-                "value": 15.0
+                "value": 15
               }
             ],
             "distributions": [
@@ -7779,25 +7615,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 1,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               },
@@ -7810,25 +7646,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 1,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  10.0,
-                  1.0,
-                  10.0
+                  1,
+                  10,
+                  1,
+                  10
                 ],
                 "keys": []
               },
@@ -7841,25 +7677,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -7872,25 +7708,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1,
+                  1,
+                  1,
+                  1
                 ],
                 "keys": []
               }
@@ -7939,7 +7775,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               },
               {
                 "propertyPath": "runtime.providerelementid",
@@ -7982,17 +7818,17 @@
               {
                 "propertyPath": "burstlist[0].count",
                 "kind": "number",
-                "value": 1.0
+                "value": 1
               },
               {
                 "propertyPath": "burstlist[0].countlow",
                 "kind": "number",
-                "value": -1.0
+                "value": -1
               },
               {
                 "propertyPath": "burstlist[0].time",
                 "kind": "number",
-                "value": 0.0
+                "value": 0
               },
               {
                 "propertyPath": "lodduplicate",
@@ -8002,7 +7838,7 @@
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
-                "value": 3.0
+                "value": 3
               }
             ],
             "distributions": [
@@ -8015,25 +7851,25 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "keys": []
               },
@@ -8046,41 +7882,29 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 0,
                 "lookupTableNumElements": 0,
-                "lookupTableTimeScale": 0.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "defaultMaximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  0.0
+                  0,
+                  0,
+                  0,
+                  0
                 ],
                 "lookupTable": [],
                 "keys": []
               }
             ]
           }
-        ],
-        "particleSystemOccurrenceId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "emitterName": "particle emitter"
+        ]
       },
       "sourcePresentation": {
-        "enabled": false,
-        "schema": "lostark.effect-source-presentation",
-        "version": 1,
-        "profileId": "",
-        "status": "unresolved",
-        "sourceObjectPath": "fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int.particlespriteemitter_41",
-        "sourceActionCueId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceEventId": "source-system/fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int/library-root",
-        "sourceOccurrenceIndex": 0,
-        "sourceTimeSeconds": 0.0,
-        "parameters": []
+        "enabled": false
       }
     }
   ]

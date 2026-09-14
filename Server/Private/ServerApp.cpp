@@ -2899,6 +2899,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_MARIO_JUMP;
 		command.DebugMarioJump = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_MARIO_RETURN)
+	{
+		C2S_MARIO_RETURN request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_MARIO_RETURN");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::MARIO_RETURN;
+		command.MarioReturn = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_MARIO_MOVE)
 	{
 		C2S_MARIO_MOVE request{};

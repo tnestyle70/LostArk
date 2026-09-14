@@ -193,7 +193,14 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 				m_strStatus = "Dependent boss requires a live primary in its pinned encounter";
 				return false;
 			}
-			const bool ownerRunsFinale = std::any_of(patterns->begin(), patterns->end(),
+			const auto* ownerPatterns = patterns;
+#ifdef _DEBUG
+			// A live audition can pin a newer Product than the base combat catalog.
+			if (isKoukuClone)
+				if (const auto* product = Resolve_KoukuProductCatalog())
+					ownerPatterns = product->Find_BossPatterns(owner->strEncounterId);
+#endif
+			const bool ownerRunsFinale = ownerPatterns && std::any_of(ownerPatterns->begin(), ownerPatterns->end(),
 				[&owner, &staged, isKoukuClone](const BOSS_PATTERN_DEFINITION& pattern)
 				{
 					if (isKoukuClone)
@@ -201,7 +208,8 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 							owner->strArchetypeId == staged.strArchetypeId &&
 							std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
 								[](const BOSS_PATTERN_MECHANIC_TRIGGER& trigger)
-								{ return BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind; });
+								{ return BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind ||
+									(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS == trigger.eKind && !trigger.PatternSpawns.empty()); });
 					const bool directFinaleOccurrence =
 						pattern.strPatternId == owner->strPatternId;
 					const bool phaseThreeFinaleController =
@@ -616,7 +624,8 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 	const BOSS_PATTERN_STAGE_ACTION& action,
 	const BOSS_COMBAT_OBJECT_DEFINITION& definition,
 	const std::uint32_t spawnWaveOrdinal,
-	std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins)
+	std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins,
+	const float explicitMinimumSpacingM)
 {
 	outOrigins.clear();
 	const BOSS_COMBAT_OBJECT_VOLLEY& volley = action.Volley;
@@ -638,7 +647,9 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 		return false;
 	}
 
-	const float minimumSpacing = Resolve_VolleyMinimumSpacing(definition);
+	// Presentation-only volleys have no damage radius from which to derive spacing.
+	const float minimumSpacing = explicitMinimumSpacingM == 0.f ?
+		Resolve_VolleyMinimumSpacing(definition) : explicitMinimumSpacingM;
 	if (!std::isfinite(minimumSpacing) || minimumSpacing <= 0.f)
 	{
 		m_strStatus = "Boss arena-random volley spacing is invalid";
@@ -648,8 +659,8 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 	/* Arena-random authoring defines a valid origin, not a guarantee that every
 	   cell under the 3.5m damage circle is walkable. The Valtan nav paint has
 	   intentional seams inside the arena, so admission pins the exact centre to
-	   authoritative navigation/height and keeps whole circles apart by their
-	   damage diameter. */
+	   authoritative navigation/height and separates centres by the authored
+	   spacing or the existing damage diameter. */
 	const auto IsSpawnPointWalkable =
 		[this, &boss, &volley](
 			const float centerX, const float centerZ, float& outY)
@@ -657,6 +668,7 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 			SERVER_NAV_POINT center{};
 			if (!m_ServerNavigation.Is_PointWalkableExact(centerX, centerZ) ||
 				!m_ServerNavigation.Sample_Position(centerX, centerZ, center) ||
+				!std::isfinite(center.y) ||
 				std::abs(center.y - boss.fSpawnPositionY) >
 					volley.fArenaHeightToleranceM)
 			{

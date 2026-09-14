@@ -254,6 +254,13 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 
 ## 3. 플레이어 입력과 스킬
 
+Client의 gameplay 키보드·마우스와 raw 입력은 실제 Client 창이 foreground일 때만 유효하다.
+포커스 상실·장치 읽기 실패는 입력을 비우며, 복귀 시 이미 누른 키·버튼은 놓고 다시 누른
+입력부터 받는다. Controller의 조준·hold 예약도 기존 취소 경로로 정리한다.
+사운드는 foreground 창이 같은 프로세스일 때만 FMOD master 출력을 열어 여러 Client EXE의
+소리가 겹치지 않게 한다. 같은 프로세스의 분리 도구 창은 소리를 유지하며, mute는 채널별
+볼륨·명시 pause·시퀀스 재생 시각을 바꾸지 않는다.
+
 현재 제품 입력은 다음과 같다.
 
 | 입력 | stable ID | 결과 |
@@ -818,6 +825,13 @@ Encounter/patternbindings와 Gameplay 게시 중 실패하면 domain owner가 �
 변경·배포 진행·source/Product revision 불일치를 거절하고, Server 활성 revision 검사는 유지한다.
 새 runtime 데이터의 Server 적용에는 재시작이 필요하다. Product source revision 거절 메시지는
 요청 번호와 Server 활성 번호를 함께 표시한다. publish 성공 뒤에는 Server를 재시작하고 Client를 재접속한다.
+Summon 박스의 optional `patternSpawns`는 stable spawnId·patternId와 본체 기준 positionOffset·yawOffsetDegrees를
+소유한다. 같은 Summon 이름의 다른 박스에는 전파하지 않는다. 현재 같은 Gate·actor의 animation-only
+MECHANIC Pattern을 최대 4개 지원한다. 각 분신은 Server에서 독립 NetEntity로 생성하고 기존 dependent
+spawn/snapshot과 CNpc/CModel 경로로 표시한다. 부모 run 종료·교체·사망 또는 박스 수명 종료 시 정리한다.
+자식의 재귀 Summon·Logic·World·Scene·presentation·본체 reset은 지원하지 않으며 명시적으로 거부한다.
+본체의 Effect·추가 시퀀스는 기존 Pattern 행에 계속 저작한다. Publisher는 `SUMMON_PATTERNS` trigger와
+`PATTERNSUMMONSPAWN` 행으로 세부 배치를 연결하며 잘못된 자식은 기존 개체를 바꾸기 전에 거절한다.
 패턴 상세 Sequencer는 Stage/Animation/Logic/Summon/World/Scene Profile 및 모든 presentation lane을
 드래그 또는 Ctrl+click으로 함께 선택한다. 드래그는 박스의 시간폭 전체를 감싸며 Ctrl+drag는 선택을 추가한다.
 Duplicate 또는 Ctrl+D는 선택한 구간과 Collider↔Logic·World↔동반 Effect 연결을 새 stable ID로 복제한다.
@@ -847,6 +861,13 @@ Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 
 원래 run epoch를 명시한다. 같은 방의 Client와 늦게 입장한 Client는 복제된 묶음 상태와 시작 tick을 소비한다.
 공통 Camera/Scene Profile은 묶음 시계에서 한 번 실행하며 다른 소유자의 겹치는 전역 연출은 게시 단계에서
 거부한다. Preview는 연출 확인이고 조건부 gameplay 결과는 Server Complete Play에서 확인한다.
+Sequencer의 Reset 오른쪽 `Play Pattern`은 현재 Pattern/Parent/Bundle을 기존 Server audition으로
+요청한다. Save와 Publish 완료 후 사용하며 dirty·게시 진행·저장/게시 revision 불일치·미지원
+대상은 이유를 표시하고 요청하지 않는다. 자동 저장·게시나 local collider 판정은 하지 않는다.
+버튼 tooltip의 대상 이름과 stable ID가 실제 실행 단위다. Resources에서 고른 Pattern은 Append할
+원본이며 현재 타임라인을 바꾸지 않는다. 기존 local 재생은 `Play Preview`로 구분하고 별도
+Sequence workspace는 원래 전투 입장 흐름을 유지한다. 후속 패턴을 가진 Logic도 Server에서
+그대로 실행되므로 1페이즈 이름의 Pattern이 완료 이후 2페이즈까지 이어질 수 있다.
 K Resource는 실제 `MN_RPCZ_00` 모델 clip 전체를 읽고 action reference는 참고 트리로만 사용한다.
 reference에 없는 물리 clip은 `sourceActionId=0`, `sourceStageId=RAW`, 빈 `referenceRevision`으로 저장한다.
 PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE 행을 생략한다.
@@ -866,7 +887,7 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 83으로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol 84로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
 `iMarioCurseReleasedMask`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다. 두 기능이 별도 branch에서
 각각 79를 사용했으므로 두 종류의 v79 및 이전73/77/78 실행 파일과 혼용하지 않는다.
@@ -878,6 +899,13 @@ Success 결과를 실행한다. Timeout·취소·실패를 성공으로 바꾸�
 마리오 시작 root의 entry collider·anchor·시계는 child 패턴이 바뀌는 동안 Server가 유지하고,
 기존 Bundle member state를 통해 Client의 retained entry presentation에 전달한다. 늦은 입장도
 같은 root 시계를 소비하며, 입장 소비·chain 종료·취소에는 해당 owner의 상태를 정리한다.
+솔로 마리오 입장 회차는 Server가 참가자 identity와 실제 복귀 완료를 보관한다. 랜덤 패턴을 모두
+마쳐도 진입자가 남아 있으면 2페이즈 Success를 보류한다. 미진입 또는 복귀 완료 상태에서는
+세 패턴 완료 직후 이어지며, 사망·퇴장은 성공으로 대신 처리하지 않는다. 현재 P33은 감금 판정이 없다.
+숫자열 0키는 마리오 조작 중 typed MARIO_RETURN 요청을 보낸다. Server가 해당 회차의 마지막
+movePlayer 트리거와 3관문 stage.kakul.sl05 목적지의 navigation/collision을 검증하고 기존
+스크립트 이동을 실행한다. 마지막 출구와 0키 모두 실제 착지 뒤 복귀를 완료한다. Client는
+직접 좌표를 보내거나 이동하지 않으며 UI·free camera·텍스트 입력 중에는 요청하지 않는다.
 F1 단독 Test의 Mario stage0은 현재 Server 횟수,1..4는 해당 요청 한 번의 재현 시작값이다.
 seed를 함께 지정하면 같은 후보 순서를 재현한다. Saved Pattern Flow는 테스트 강제값을 사용하지
 않고 실제 Server 진행 횟수를 소비한다. 입력은 기존 typed audition request이며 별도 local 실행을 만들지 않는다.
@@ -960,11 +988,19 @@ ENTER_AREA의 optional bossChargeDistanceM은 Trigger 시작 시 살아 있는 t
 해당 occurrence duration 동안 지정 거리를 이동한다. navigation/collision이 막으면 경계에서 멈추고,
 이동한 Server pose로 같은 tick의 접촉을 검사한다. 절대 bossMotion과의 중복 소유는 거부한다.
 
-Kouku의 `ALBION_BLUE_CIRCLE` Trigger는 시작 시 살아 있는 플레이어마다 고정 장판을 만든다.
+Kouku의 `ALBION_BLUE_CIRCLE` Trigger는 시작 시 살아 있는 플레이어의 위치에 고정 장판을 만든다.
 Logic의 `countPerPlayer`는 1..8, `radiusM`은 1개일 때 0, 여러 개일 때 (0,20]m이며,
 `effectLifetimeMs`는 1..600000ms다. 등록된 `알비온_플레이어장판`은 1개·0m·7000ms를 사용한다.
 여러 개는 플레이어 주변 원주에 등간격으로 놓고 Server가 모든 생성점의 navigation을 검사한 뒤
 기존 CombatObjectRuntime transaction으로 함께 생성한다. 하나라도 실패하면 기존 객체를 보존한다.
+optional `randomPlayerOnly=true`는 준비된 생존 플레이어 중 한 명만 Server가 선택하며
+마리오 참가자·사망·낙하는 제외한다. 이때 `countPerPlayer=1`, `radiusM=0`이어야 한다.
+optional `arenaRandomCount`(0..32)는 플레이어 수와 별도의 nav 랜덤 장판 수다. 0 또는 생략이면
+기존 생성 의미를 유지한다. 양수이면 `arenaRandomRadiusM`((0,100]m),
+`arenaHeightToleranceM`((0,10]m), `arenaMinimumSpacingM`((0,20]m)를 함께 지정한다.
+비활성 상태의 세 값은 0이다. 발탄의 공용 nav 후보 선택을 사용해 boss spawn 주변의 같은
+지면과 랜덤 지점 사이 간격을 검증한다. 한 명 선택 시 대상이 없거나 전체 위치를 확보하지 못하면
+기존 객체·ID를 보존한다. 위치는 생성 순간 고정하며 지속 이동 추적은 하지 않는다.
 `combatobject.kouku.albion.bluecircle` / `combatvisual.kouku.albion.bluecircle`을 BossCatalog의
 `effect.kouku.albion.bluecircle.warning.impact.runtime`에 연결한다. 이 문서가 예고 2초 뒤 폭발과
 잔상을 소유하며 Trigger는 피해를 추가하지 않는다. Logic은 원하는 Pattern 시점에 Append하고
@@ -1014,6 +1050,17 @@ Kouku의 독립 V1 Effect/Element Resource에 `sourceModelPreview`가 있으면 
 기존 CNpc/CModel Preview에서 함께 준비한다. Effect의 마지막 입자까지 마지막 pose를 유지하며
 빈 Resource용 Stage에서 본 애니메이션을 조회하지 않는다. 이 독립 Preview 정책은 제품 Pattern의
 저장된 animation/history 계약을 변경하지 않는다.
+
+Composition의 Camera/Sound는 World Object 참조 없이 전역 재생할 수 있다. 기존 Camera의
+`anchorKind=WORLD, worldId=""`는 shot asset의 좌표를 사용하는 유효한 저장값이다.
+WORLD의 worldId 필수 검사는 실제 Object transform을 소비하는 Effect/Light/Collider에만
+적용한다. 공용 codec 변경 시 gameplay Composition과 Sequence Composition 양쪽의 실제 저장
+행을 검증하며 Camera 값을 MAP으로 자동 변경하지 않는다.
+
+Kouku All Effects와 Composition Resources의 저장 Effect 목록은 EffectAuthoringResourceTree의 동일한
+표시명·검색·정렬과 `1관문 / 2관문 / 3관문 / 공통` 네 상위 분류를 사용한다. metadata를 우선하고
+빙고는 3관문에 포함하며 관문 근거가 없는 ID는 공통에 보존한다. 분류 결과는 resource refresh 때
+캐시하며 렌더 프레임마다 전체 경로를 재구성하거나 정렬하지 않는다. 각 화면의 Open/Play/Append는 유지한다.
 
 쿠크 금빛 이동 축포 `effect.kouku.gate1.intro.gold-trails.full.restore`는 기존 V1 문서의
 4경로·24행, tail 포함 9413ms resource다. Effect Tool의 독립 Play All과 Composition의 명시적

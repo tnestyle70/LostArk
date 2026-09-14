@@ -12,7 +12,7 @@ param(
     [ValidateSet('Validate', 'Check', 'Publish')]
     [string]$Mode = 'Publish',
 
-    [ValidateSet('Area', 'WorldSequences')]
+    [ValidateSet('Area', 'WorldSequences', 'Lights')]
     [string]$Scope = 'Area'
 )
 
@@ -1748,6 +1748,14 @@ function Read-WorldSequenceDocument {
             if ($null -ne $track.PSObject.Properties['startMs']) {
                 $trackProperties += 'startMs'
             }
+            if ($null -ne $track.PSObject.Properties['sourceStartMs']) {
+                $trackProperties += 'sourceStartMs'
+                if (-not (Test-JsonNumber $track.sourceStartMs) -or
+                    [double]$track.sourceStartMs -lt 0 -or [double]$track.sourceStartMs -gt 600000 -or
+                    [double]$track.sourceStartMs -ne [math]::Floor([double]$track.sourceStartMs)) {
+                    throw "World sequence animation source start is invalid: $($template.sequenceId)"
+                }
+            }
             Assert-ExactJsonProperties $track $trackProperties `
                 'World sequence animation track'
             $startMs = 0
@@ -3044,7 +3052,7 @@ if (1 -ne $areaEntries.Count) {
     throw "Map catalog must declare Area exactly once: $AreaId"
 }
 $areaEntry = $areaEntries[0]
-if ($Scope -eq 'Area') {
+if ($Scope -in @('Area', 'Lights')) {
 $sourceLightsProperty = $areaEntry.PSObject.Properties['sourceLights']
 $runtimeLightsProperty = $areaEntry.PSObject.Properties['lights']
 if (($null -eq $sourceLightsProperty) -ne ($null -eq $runtimeLightsProperty)) {
@@ -3068,6 +3076,9 @@ elseif ([IO.File]::Exists($authoringLightPath)) {
     throw "Map light source exists without a MapCatalog declaration: $AreaId"
 }
 
+}
+
+if ($Scope -eq 'Area') {
 $sourceEffectsProperty = $areaEntry.PSObject.Properties['sourceEffects']
 $runtimeEffectsProperty = $areaEntry.PSObject.Properties['effects']
 if (($null -eq $sourceEffectsProperty) -ne ($null -eq $runtimeEffectsProperty)) {
@@ -3320,6 +3331,15 @@ function Complete-MapPublish {
     if ($ShardCount -gt 0) { $result.ShardCount = $ShardCount }
     if ($Mode -eq 'Publish') { $result.Sha256 = Get-MapPublishSha256 $RuntimeEntry }
     [pscustomobject]$result
+}
+
+if ($Scope -eq 'Lights') {
+    if (-not $script:mapLightsDeclared) { throw "Map catalog does not declare lights: $AreaId" }
+    $authoringRows = @()
+    $files = [Collections.Generic.List[object]]::new()
+    Add-MapLightPublishFile $files
+    Complete-MapPublish $files 'lights' $runtimeLightPath
+    return
 }
 
 if ($Scope -eq 'WorldSequences') {

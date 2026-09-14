@@ -529,7 +529,7 @@ void LostArk::Server::CGameRoom::Stop_KoukuWorldOwner(const std::string& memberI
 #endif
 
 #ifdef _DEBUG
-void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool completed)
+void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool completed, std::string reason)
 {
 	m_PendingKoukuMarioEntries.clear();
 	using namespace LostArk::Shared;
@@ -538,7 +538,7 @@ void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool com
 	const auto& first = run.Members.front();
 	Queue_KoukuSaydonPatternAuditionLifecycle(first.PatternIds[first.iPatternIndex], first.iPatternSequence, 0u,
 		completed ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED : KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED,
-		completed ? std::string{} : "KoukuSaydon run stopped or lost an admitted participant");
+		completed ? std::string{} : (reason.empty() ? "KoukuSaydon run stopped or lost an admitted participant" : std::move(reason)));
 	Broadcast_KoukuBundleState(completed ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED : KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED);
 	Stop_KoukuWorldOwner({}, completed);
 	for (auto& member : run.Members)
@@ -656,6 +656,19 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 		for (auto& entity : m_WorldEntities) if (entity.iNetEntityId == member.iBossEntityId) { boss = &entity; break; }
 		if (!boss || !boss->iCurrentHp || boss->eAction == SERVER_ENTITY_ACTION::DEAD || !CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, *boss))
 		{ m_strStatus = "KoukuSaydon admitted participant died or disappeared"; Clear_KoukuSaydonPatternAudition(); return; }
+		if (member.bMarioSoloReturnRequired && !member.bCompletionChainSuccessQueued)
+		{
+			const auto entrant = m_Players.find(member.iMarioEntrantPlayerId);
+			const bool disconnected = entrant == m_Players.end() || entrant->second.iSessionId != member.iMarioEntrantSessionId ||
+				entrant->second.iNetEntityId != member.iMarioEntrantNetEntityId;
+			if (disconnected || !entrant->second.iCurrentHp || entrant->second.eAction == PLAYER_ACTION_STATE::DEAD)
+			{
+				m_strStatus = disconnected ? "Mario solo entrant disconnected before phase 2" : "Mario solo entrant died before phase 2";
+				Clear_KoukuSaydonPatternAudition(false, m_strStatus); return;
+			}
+		}
+		// Last-tick entry has committed by now; it must participate in the gate.
+		if (member.bCompletionChainAwaitingReturn) Queue_KoukuCompletionChainSuccess(member, serverTick);
 		if (member.bCompleted || member.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING || !Has_ReachedServerTick(serverTick, member.iNextStartTick)) continue;
 		std::string status;
 		const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, member.PatternIds[member.iPatternIndex], status);
@@ -713,7 +726,14 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 			start.member->iMarioEntryStartTick = start.live->iPatternStartTick;
 			start.member->iMarioEntryStage = m_iNextMarioEntryStage;
 			start.member->bMarioEntryConsumed = false;
+			start.member->bMarioSoloReturnRequired = false;
+			start.member->iMarioEntrantPlayerId = 0u;
+			start.member->iMarioEntrantSessionId = INVALID_SESSION_ID;
+			start.member->iMarioEntrantNetEntityId = INVALID_NET_ENTITY_ID;
+			start.member->bMarioReturnCompleted = false;
 			start.member->bCompletionChainStarted = false;
+			start.member->bCompletionChainAwaitingReturn = false;
+			start.member->bCompletionChainSuccessQueued = false;
 		}
 		start.member->iPatternSequence = start.live->iPatternSequence; start.member->ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
 		run.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
@@ -790,12 +810,77 @@ void LostArk::Server::CGameRoom::Commit_KoukuMarioEntries()
 			player == m_Players.end() || !Enter_MarioFromPattern(player->second, found->iMarioEntryStage)) continue;
 		auto& member = *found;
 		member.bMarioEntryConsumed = true;
+		member.bMarioSoloReturnRequired = m_Players.size() == 1u;
+		member.iMarioEntrantPlayerId = player->second.iPlayerId;
+		member.iMarioEntrantSessionId = player->second.iSessionId;
+		member.iMarioEntrantNetEntityId = player->second.iNetEntityId;
 		Broadcast_KoukuBundleState(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
 		m_iNextMarioEntryStage = static_cast<std::uint8_t>(member.iMarioEntryStage + 1u);
 		std::cout << "[MarioEntry] player=" << entry.iPlayerId << " stage=" << static_cast<unsigned>(member.iMarioEntryStage)
 			<< " next=" << static_cast<unsigned>(m_iNextMarioEntryStage) << '\n';
 	}
 	m_PendingKoukuMarioEntries.clear();
+}
+
+void LostArk::Server::CGameRoom::Complete_KoukuMarioReturn(
+	const SERVER_PLAYER& player, const std::string& sourcePlacementId, const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || player.TriggerMove.isActive || player.iMarioStage ||
+		!player.iCurrentHp || player.eAction != PLAYER_ACTION_STATE::NONE) return;
+	for (auto& member : m_KoukuSaydonPatternAudition.Members)
+	{
+		if (!member.bMarioSoloReturnRequired || member.bMarioReturnCompleted || member.bCompletionChainSuccessQueued ||
+			member.iMarioEntrantPlayerId != player.iPlayerId || member.iMarioEntrantSessionId != player.iSessionId ||
+			member.iMarioEntrantNetEntityId != player.iNetEntityId) continue;
+		const bool terminal = std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&](const auto& lane) {
+			return lane.stage == member.iMarioEntryStage && sourcePlacementId == lane.exit;
+		}) && !std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&](const auto& lane) {
+			return lane.stage == member.iMarioEntryStage && sourcePlacementId == lane.arrival;
+		});
+		if (!terminal) continue;
+		const auto* safe = Find_Placement("stage.kakul.sl05");
+		SERVER_NAV_POINT ground;
+		if (!safe || safe->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN ||
+			!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionY) || !std::isfinite(player.fPositionZ) ||
+			!m_ServerNavigation.Is_PointWalkableExact(safe->fPositionX, safe->fPositionZ) ||
+			!m_ServerNavigation.Sample_Position(safe->fPositionX, safe->fPositionZ, ground) ||
+			std::abs(player.fPositionX - safe->fPositionX) > 0.05f ||
+			std::abs(player.fPositionZ - safe->fPositionZ) > 0.05f || std::abs(player.fPositionY - ground.y) > 0.25f)
+		{
+			m_strStatus = "Mario solo return did not reach the published Gate 3 safe point";
+			Clear_KoukuSaydonPatternAudition(false, m_strStatus); return;
+		}
+		member.bMarioReturnCompleted = true;
+		m_strStatus = "Mario solo entrant returned to Gate 3; waiting for three completed patterns";
+		std::cout << "[MarioReturn] player=" << player.iPlayerId << " stage=" << static_cast<unsigned>(member.iMarioEntryStage)
+			<< " completedTick=" << updateTick << '\n';
+	}
+}
+
+void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
+	KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (!member.bCompletionChainAwaitingReturn || member.bCompletionChainSuccessQueued) return;
+	member.MarioEntryAnchor.reset();
+	if (member.bMarioSoloReturnRequired && !member.bMarioReturnCompleted)
+	{
+		m_strStatus = "Mario phase 2 is waiting for the solo entrant to return to Gate 3";
+		return;
+	}
+	const auto completedIndex = member.iPatternIndex;
+	member.PatternIds.insert(member.PatternIds.begin() + completedIndex + 1u, member.strCompletionChainSuccessPatternId);
+	member.TransitionTicks.insert(member.TransitionTicks.begin() + completedIndex, 1u);
+	member.bCompletionChainSuccessQueued = true;
+	member.bCompletionChainAwaitingReturn = false;
+	++member.iPatternIndex;
+	member.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
+	member.iNextStartTick = serverTick;
+	Queue_KoukuSaydonPatternAuditionLifecycle(member.PatternIds[member.iPatternIndex], 0u, 0u,
+		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING, {}, member.iBossEntityId);
+	if (m_KoukuSaydonPatternAudition.Members.size() == 1u) m_KoukuSaydonPatternAudition.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
+	m_strStatus = "Mario phase 2 admitted after three patterns and the required solo return";
 }
 #endif
 
@@ -812,7 +897,8 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 		if (!boss.strPatternId.empty()) { m_KoukuSaydonBrain.Abort_Pattern(boss, serverTick); m_strStatus = "KoukuSaydon boss had an unowned pattern occurrence"; return false; }
 		boss.PinnedDefinitionRevision = m_GameplayCatalog.Get_ActiveRevision(); return true;
 	}
-	if (member->bCompleted || member->ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING) return true;
+	if (member->bCompleted || member->bCompletionChainAwaitingReturn ||
+		member->ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING) return true;
 	const auto* catalog = Resolve_KoukuProductCatalog();
 	std::string status;
 	const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, member->PatternIds[member->iPatternIndex], status) : nullptr;
@@ -857,9 +943,11 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 			<< " pattern=" << completedPatternId << " sequence=" << sequence << '\n';
 		if (member->iCompletionChainCompleted == member->iCompletionChainCount)
 		{
-			member->MarioEntryAnchor.reset();
-			member->PatternIds.insert(member->PatternIds.begin() + completedIndex + 1u, member->strCompletionChainSuccessPatternId);
-			member->TransitionTicks.insert(member->TransitionTicks.begin() + completedIndex, 1u);
+			// Keep the anchor until this tick's pending entry has committed.
+			// Prepare closes it and schedules success after the solo return gate.
+			member->bCompletionChainAwaitingReturn = true;
+			Broadcast_KoukuBundleState(KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+			return true;
 		}
 	}
 	if (completedIndex + 1u < member->PatternIds.size())

@@ -4110,6 +4110,23 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 		Samples.push_back(std::move(Sample));
 	}
 
+	const f32_t fTargetSampleTime = static_cast<f32_t>(
+		static_cast<f64_t>(m_iSimulationStep) * FIXED_STEP_SECONDS_EXACT +
+		fPendingAccumulator);
+	const f64_t fSteppedTime = static_cast<f64_t>(m_iSimulationStep + iStepCount) *
+		FIXED_STEP_SECONDS_EXACT;
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE FinalSample;
+	if (!Samples.empty() &&
+		std::abs(static_cast<f64_t>(fTargetSampleTime) - fSteppedTime) <= FIXED_STEP_EPSILON)
+	{
+		FinalSample = Samples.back();
+	}
+	else if (!Collect_TransformHistorySample(
+		fTargetSampleTime, TransformProvider, FinalSample, strOutError))
+	{
+		return false;
+	}
+
 	if (m_bShowtimeBurstPresentation && fTimeDelta > 0.f)
     {
         m_MissedShowtimeBursts.clear();
@@ -4131,7 +4148,9 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 			0.0, fCommittedAccumulator - FIXED_STEP_SECONDS_EXACT);
 	}
 	m_fAccumulatorSeconds = fCommittedAccumulator;
-	Rebuild_Frame(FinalRoot);
+	m_fSampleTimeSeconds = fTargetSampleTime;
+	Set_SourceAnchorWorlds(std::move(FinalSample.SourceAnchorWorlds));
+	Rebuild_Frame(FinalSample.RootWorld);
 	Append_MissedShowtimeBursts();
 	strOutError.clear();
 	return true;

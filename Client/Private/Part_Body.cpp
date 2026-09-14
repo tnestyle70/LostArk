@@ -3,6 +3,7 @@
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
+#include "NpcPresentationAssetService.h"
 
 CPart_Body::CPart_Body(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -90,6 +91,7 @@ HRESULT CPart_Body::Render()
 
 HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 {
+	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
@@ -120,6 +122,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 
 HRESULT CPart_Body::Render_Shadow()
 {
+	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	if (FAILED(Bind_ShadowShaderResources()))
 		return E_FAIL;

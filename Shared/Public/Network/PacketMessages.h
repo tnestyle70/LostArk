@@ -635,6 +635,36 @@ namespace LostArk::Shared
 	bool Write_Message(CPacketWriter& writer, const S2C_DEBUG_MARIO_JUMP_RESULT& message);
 	bool Read_Message(CPacketReader& reader, S2C_DEBUG_MARIO_JUMP_RESULT& message);
 
+	// Return intent carries no destination; the Server owns encounter exit.
+	struct C2S_MARIO_RETURN
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+	};
+
+	enum class MARIO_RETURN_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_WRONG_WORLD,
+		REJECTED_PLAYER_STATE,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_OUTSIDE_MARIO,
+		REJECTED_DESTINATION,
+		END
+	};
+
+	struct S2C_MARIO_RETURN_RESULT
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		MARIO_RETURN_RESULT eResult = MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const C2S_MARIO_RETURN& message);
+	bool Read_Message(CPacketReader& reader, C2S_MARIO_RETURN& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_MARIO_RETURN_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_MARIO_RETURN_RESULT& message);
+
 	/* Which body a player presents. NORMAL is the class body; CLOWN is the
 	colourless KoukuSaydon body a full madness gauge turns the player into. */
 	enum class PLAYER_MADNESS_FORM : std::uint8_t

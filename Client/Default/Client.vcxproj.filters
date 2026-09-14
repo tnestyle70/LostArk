@@ -3192,6 +3192,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bullet.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.staff.flame.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.object-sustain15.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.pentagram.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -3243,6 +3244,7 @@
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.authored.fade.black.effectv2.json">
       <Filter>96.DataFiles</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.gate1.authored.p4.popup.transition.fade.effectv2.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.clear.fade.black.effectv2.json">
       <Filter>96.DataFiles</Filter>
     </None>
@@ -3704,6 +3706,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.context.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.portal-arrival.context.p4-late.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.popup.movable-lights.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
@@ -3748,6 +3751,7 @@
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.scene-image-collapse.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.intro.portal-suction.scene-collapse.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.authored.p4.scene-image-collapse.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup001.hlsli">
@@ -3846,5 +3850,18 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectSceneDepthInput.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.firebreath.shared.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_firebreath_breath_01_loc_int.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.pillar.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.decal.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.full.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.flame.wave.full.koukusaydon.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.fuse.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.blackhole.beam.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.showtime.gun.signature.world",
-  "displayName": "쇼타임 총구 섬광 / WORLD 총구",
+  "displayName": "3관문_세이튼_쇼타임_발사 섬광 한 손",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

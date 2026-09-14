@@ -766,7 +766,7 @@ HRESULT CRenderer::Initialize()
 	m_pShader = CShader::Create(m_pDevice, m_pContext, TEXT("../Bin/ShaderFiles/Shader_Deferred.hlsl"), VTXTEX::Elements, VTXTEX::iNumElements);
 	if (nullptr == m_pShader)
 		return E_FAIL;
-	
+
 	XMStoreFloat4x4(&m_WorldMatrix, XMMatrixScaling(vViewportSize.x, vViewportSize.y, 1.f));
 	XMStoreFloat4x4(&m_ViewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_ProjMatrix,
@@ -2595,7 +2595,7 @@ private:
 	bool_t m_bApplyBottomCenter = false;
 	bool_t m_bVisible = true;
 	bool_t m_bMirrored = false;
-	//Frustum Culling을 위한 멤버 변수 추가 
+	//Frustum Culling을 위한 멤버 변수 추가
 	bool_t m_bHasLocalCullBounds = false;
 	bool_t m_bHasWorldCullBounds = false;
 	float3_t m_vLocalCullCenter = {};
@@ -3332,7 +3332,7 @@ void CMapAssetObject::Update_WorldCullBounds()
 		m_fLocalCullRadius *
 		maximumScale *
 		1.02f + 0.05f;
-	
+
 	if (!std::isfinite(storedWorldCenter.x) ||
 		!std::isfinite(storedWorldCenter.y) ||
 		!std::isfinite(storedWorldCenter.z) ||

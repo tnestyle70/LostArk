@@ -74,6 +74,9 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.runtimeUV;
+        // Water-ribbon UV1 is transverse width, then tiled path distance.
+        // Native edge coverage reads TEXCOORD0.z, not the first UV pair.
+        nativeInput.uv1 = input.runtimeUV.yx;
         nativeInput.color = input.color * g_ColorMultiply + g_ColorOffset;
         nativeInput.vertexColor = input.color;
         nativeInput.dynamicParameter = input.dynamicParameter;

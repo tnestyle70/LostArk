@@ -293,8 +293,9 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
         (box.bFollowBoss || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
             !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty()))
         throw std::runtime_error("MAP Effect requires a fixed position without a bone or World occurrence.");
-    if (box.strAnchorKind == "WORLD" && box.strWorldId.empty())
-        throw std::runtime_error("WORLD presentation anchor needs a worldId.");
+    if ((kind == KIND::EFFECT || kind == KIND::LIGHT || kind == KIND::COLLIDER) &&
+        box.strAnchorKind == "WORLD" && box.strWorldId.empty())
+        throw std::runtime_error("World Object anchor needs a worldId; fixed world coordinates use MAP: " + box.strOccurrenceId);
     if (box.strBoneTarget == "WEAPON" && ((kind != KIND::COLLIDER && kind != KIND::EFFECT) || box.strAnchorKind != "BOSS" || box.strBone.empty()))
         throw std::runtime_error("WEAPON bone target needs a Boss Collider/Effect and a named weapon bone.");
     return box;
@@ -1370,7 +1371,13 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     const ANIMATION_MODEL_TARGET_VIEW* weaponView)
 {
     if (!std::isfinite(clockMs) || clockMs < 0.f) return;
-    if (session.lastClockMs >= 0.f &&
+    const bool previewSession = &session == &m_PreviewSession || std::any_of(
+        m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+        [&](const auto& member) { return &session == &member.session; });
+    // Preview's external clocks already handle forward/rewind samples. A slow
+    // frame must not destroy a live occurrence and its frozen screen capture,
+    // or the capture resolver repeatedly returns to the same boundary.
+    if (!previewSession && session.lastClockMs >= 0.f &&
         (clockMs < session.lastClockMs - 0.5f || clockMs > session.lastClockMs + 150.f))
     {
         // Same occurrence seek retains observed actor history; a new Server run
@@ -1494,7 +1501,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             if (box.iFadeInMs) row.lightWeight *= (std::min)(1.f, (clockMs - box.iStartMs) / box.iFadeInMs);
             if (box.iFadeOutMs) row.lightWeight *= (std::min)(1.f, (box.iStartMs + box.iDurationMs - clockMs) / box.iFadeOutMs);
         }
-        if (resource.eKind != KIND::CAMERA && (inserted || box.bFollowBoss || row.waitingForAnchor) &&
+        if ((resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT || resource.eKind == KIND::COLLIDER) &&
+            (inserted || box.bFollowBoss || row.waitingForAnchor) &&
             !(resource.eKind == KIND::LIGHT && box.strAnchorKind == "PLAYER"))
         {
             OCCURRENCE placedBox = box;
@@ -1674,16 +1682,15 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         }
         if (row.v1EffectHandle)
         {
-            const bool previewSession = &session == &m_PreviewSession || std::any_of(
-                m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
-                [&](const auto& member) { return &session == &member.session; });
             const bool captureSample = previewSession && m_bPreviewCaptureClockHeld;
             CEffectPresentationService::Set_ScreenPostCaptureAllowed({row.v1EffectHandle},
                 !captureSample || m_bPreviewCaptureAllowed);
+            // A capture boundary continues the same fixed-step history. Commit
+            // it before render without replaying every active particle from birth.
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
                 !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, age,
                     Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler),
-                    captureSample) || (captureSample && FAILED(
+                    false, static_cast<float>(box.iDurationMs) / 1000.f) || (captureSample && FAILED(
                         CEffectPresentationService::Commit_WorldRootCaptureSample({row.v1EffectHandle}))))
             {
                 CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
@@ -2478,7 +2485,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
 
 bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const std::string& selectionId,
-    const bool isBundle, const std::uint32_t clockMs, const bool paused, std::string& status)
+    const bool isBundle, const std::uint32_t clockMs, const bool paused, std::string& status,
+    const CWorldSequenceDocument* propSequences)
 {
     KOUKU_SAYDON_COMPOSITION_DOCUMENT reference;
     reference.iRevision = document.iRevision;
@@ -2522,15 +2530,33 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
         for (auto& stage : pattern.Stages) stage.bRetargetOnEnter = false;
         pattern.LogicOccurrences.clear();
         pattern.SummonOccurrences.clear();
-        pattern.WorldOccurrences.clear();
+        if (!propSequences) pattern.WorldOccurrences.clear();
+        else
+        {
+            // A model reference may borrow actor props only. It never starts
+            // map/deploy choreography, projectile transitions or nested Effects.
+            std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> props;
+            if (!CEffectCompositionModelPreview::Stage_ActorWorldProps(document, pattern, *propSequences, props, status))
+                return false;
+            for (const auto& box : props)
+            {
+                const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
+                    [&](const auto& value) { return value.strWorldId == box.strWorldId; });
+                if (std::none_of(reference.Worlds.begin(), reference.Worlds.end(),
+                    [&](const auto& value) { return value.strWorldId == world->strWorldId; }))
+                    reference.Worlds.push_back(*world);
+            }
+            pattern.WorldOccurrences = std::move(props);
+        }
         pattern.SceneProfileOccurrences.clear();
         pattern.PresentationOccurrences.clear();
     }
     const std::string bundleId = bundle.strBundleId;
     reference.Bundles.push_back(std::move(bundle));
-    if (!Begin_BundlePreview(reference, bundleId, clockMs, paused, status, nullptr, false)) return false;
+    if (!Begin_BundlePreview(reference, bundleId, clockMs, paused, status, propSequences, false)) return false;
     m_bModelReferencePreview = true;
     status = m_strStatus = "Model reference ready. Master cursor owns time; actors stay at authored spawn (no Server movement replay).";
+    if (propSequences) status = m_strStatus += " Saved actor-bound WORLD props are enabled.";
     return true;
 }
 
@@ -2541,6 +2567,39 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_ModelReferencePreview(
     m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
     m_bPreviewPaused = paused;
     Sample_BundlePreview();
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Place_ModelReferenceRoot(const float4x4_t& root)
+{
+    if (!m_bModelReferencePreview || !m_bPreviewPlaying || m_BundlePreviewMembers.size() != 1u) return false;
+    for (const auto& row : root.m) for (const float value : row) if (!std::isfinite(value)) return false;
+    auto& member = m_BundlePreviewMembers.front();
+    const float3_t position{root._41, root._42, root._43};
+    const float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
+    if (!member.actor || !member.actor->Apply_NetworkState(position, yaw)) return false;
+    // Model-reference stages never retarget. Their facing seed must be the
+    // explicit preview placement, so resampling props cannot restore spawn yaw.
+    member.initialPosition = position;
+    member.initialYawDegrees = yaw;
+    if (!member.session.previewWorlds.empty()) Sample_BundlePreview();
+    return m_bPreviewPlaying;
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Resolve_ModelReferenceWorldPivot(
+    const std::string& memberId, const std::string& occurrenceId, float4x4_t& out) const
+{
+    if (!m_bModelReferencePreview || !m_bPreviewPlaying || occurrenceId.empty()) return false;
+    const auto member = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+        [&](const auto& value) { return value.memberId == memberId; });
+    if (member == m_BundlePreviewMembers.end()) return false;
+    const auto box = std::find_if(member->pattern.WorldOccurrences.begin(), member->pattern.WorldOccurrences.end(),
+        [&](const auto& value) { return value.strOccurrenceId == occurrenceId; });
+    if (box == member->pattern.WorldOccurrences.end()) return false;
+    const auto world = std::find_if(m_PreviewDocument.Worlds.begin(), m_PreviewDocument.Worlds.end(),
+        [&](const auto& value) { return value.strWorldId == box->strWorldId; });
+    const auto player = member->session.previewWorlds.find(occurrenceId);
+    return world != m_PreviewDocument.Worlds.end() && player != member->session.previewWorlds.end() &&
+        player->second->Try_GetSequencePivot(world->strSequenceInstanceId, out);
 }
 
 bool Client::CKoukuSaydonPresentationPlayer::Resolve_ModelReferenceTarget(
@@ -2662,14 +2721,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     if (!Resolve_PreviewCaptureClock(effectiveMs, effectiveMs))
     { const auto error = m_strStatus; Fail_Preview(error); return; }
     m_fPreviewClockMs = effectiveMs;
-#ifdef _DEBUG
-    if (m_bBundleWorldExternal)
-    {
-        std::string worldStatus;
-        if (!level->Debug_SampleCompositionWorldPreview(m_PreviewBundleId, true, effectiveMs, worldStatus))
-        { Fail_Preview(worldStatus); return; }
-    }
-#endif
+    std::string worldPreviewStatus;
     const auto targets = level->Get_CompositionWorldTargets();
     for (auto& member : m_BundlePreviewMembers)
     {
@@ -2779,6 +2831,27 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             }
         }
         member.actor->Synchronize_WeaponPose();
+#ifdef _DEBUG
+        if (m_bBundleWorldExternal)
+        {
+            // External WORLD is admitted only for one zero-offset member. Its
+            // freshly sampled BODY, WORLD props and Effects share this clock.
+            const auto actor = member.actor;
+            const std::string actorArchetype(CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
+                member.pattern.strTargetBossPlacementId));
+            const auto bossAnchor = [actor, actorArchetype](const std::string& archetype,
+                const std::string& bone, CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
+            {
+                if (archetype != actorArchetype || !actor || !actor->Get_Transform())
+                { status = "World Object Boss anchor does not match this preview actor: " + archetype; return false; }
+                return CWorldSequencePlayer::Resolve_BossBoneAnchor(actor->Get_Model(),
+                    *actor->Get_Transform()->Get_WorldMatrixPtr(), bone, out, status);
+            };
+            if (!level->Debug_SampleCompositionWorldPreview(m_PreviewBundleId, true,
+                effectiveMs, worldPreviewStatus, bossAnchor))
+            { Fail_Preview(worldPreviewStatus); return; }
+        }
+#endif
         ANIMATION_MODEL_TARGET_VIEW weaponView;
         const bool hasWeapon = member.actor->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
         if (localMs < 0.0 || localMs >= member.durationMs) Stop_Session(member.session);
@@ -2787,6 +2860,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     }
     Sample(m_PreviewSession, m_PreviewDocument, m_PreviewPattern,
         float(m_fPreviewClockMs), m_bPreviewPaused, m_PreviewPivot, nullptr);
+    // A queued/successful Effect must not hide a recoverable WORLD anchor wait.
+    if (!worldPreviewStatus.empty()) m_strStatus = std::move(worldPreviewStatus);
     if (m_bPreviewCaptureClockHeld && Preview_ClockMs() == m_iPreviewCaptureBoundaryMs)
         m_bPreviewCaptureBoundarySampled = true;
 }
@@ -3548,7 +3623,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
                 (!CEffectPresentationService::Update_WorldRoot({active->second.v1EffectHandle}, pivot) ||
                  !CEffectPresentationService::Seek_WorldRoot({active->second.v1EffectHandle},
                     (std::max)(0.f, active->second.lastAge), Effect_V1TransformProvider(edited, pivot,
-                        session.rootHistory, active->second.effectPivotHistory, active->second.sourceAnchorSampler), true)))
+                        session.rootHistory, active->second.effectPivotHistory, active->second.sourceAnchorSampler), true,
+                    static_cast<float>(edited.iDurationMs) / 1000.f)))
             {
                 m_strStatus = "V1 Effect geometry preview lost its active handle: " +
                     CEffectPresentationService::Get_Status();

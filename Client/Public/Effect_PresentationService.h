@@ -64,6 +64,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bExternallySampled = false;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
+	// External occurrence end age; zero retains the authored screen-post duration.
+	f32_t fExternalPlaybackEndSeconds = 0.f;
 	// Set by external world-root sampling; shares the existing playback history path.
 	EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
 	std::string strLevelPlacementId;
@@ -364,7 +366,8 @@ public:
 		EFFECT_WORLD_ROOT_HANDLE Handle,
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider = {},
-		bool_t bRebuildHistory = false);
+		bool_t bRebuildHistory = false,
+		f32_t fPlaybackEndSeconds = 0.f);
 	// Completes only this external preview handle after its final WORLD sample.
 	static HRESULT Commit_WorldRootCaptureSample(EFFECT_WORLD_ROOT_HANDLE Handle);
 	static void Set_ScreenPostCaptureAllowed(EFFECT_WORLD_ROOT_HANDLE Handle, bool_t allowed);

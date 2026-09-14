@@ -110,7 +110,6 @@ private:
     f32_t m_ClockMs = 0.f;
     f32_t m_VerticalArcHeight = 2.f;
     std::shared_ptr<WORLD_OBJECT_TRAVEL_DRAFT> m_TravelDraft;
-    f32_t m_RadialOffset = 0.f;
     // Distribute on Ring preset inputs; rows are the saved truth, not these.
     int m_GroupCount = 1;
     float3_t m_EmissionStep{1.f, 0.f, 0.f};

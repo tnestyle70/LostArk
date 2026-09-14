@@ -147,6 +147,7 @@ namespace LostArk::Server
 		/* One idempotent Debug verdict belongs to this player in this room. */
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT LastDebugTeleportResult;
 		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT LastDebugMarioJumpResult;
+		LostArk::Shared::S2C_MARIO_RETURN_RESULT LastMarioReturnResult;
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT LastDebugMadnessFormResult;
 		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT LastVehicleRidingResult;
 		/* The ridden vehicle or INVALID_VEHICLE_ID on foot. Only riding worlds

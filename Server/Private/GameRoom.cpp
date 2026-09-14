@@ -754,6 +754,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::DEBUG_MARIO_JUMP:
 			Handle_DebugMarioJump(command.iSessionId, command.DebugMarioJump);
 			break;
+		case ROOM_COMMAND_TYPE::MARIO_RETURN:
+			Handle_MarioReturn(command.iSessionId, command.MarioReturn);
+			break;
 		case ROOM_COMMAND_TYPE::MARIO_MOVE:
 			Handle_MarioMove(command.iSessionId, command.MarioMove);
 			break;
@@ -902,11 +905,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		{
 			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
 			{
-				/* Presentation has no Server state to commit, so the entry
-				   itself is the whole result: tell the room and report the
-				   action handled. */
-				Broadcast_WorldSequencePlay(targetId);
-				return true;
+				// Rejected retired sequences must not consume the one-shot trigger.
+				return Broadcast_WorldSequencePlay(targetId);
 			}
 			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
 				return m_SpawnGroupRuntime.Activate(targetId);

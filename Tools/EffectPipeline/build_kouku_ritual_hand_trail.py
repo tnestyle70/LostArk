@@ -165,8 +165,55 @@ def build(evidence):
     print(json.dumps(dict(documents=[dict(asset=r['effectAssetId'], elements=r['elementCount']) for r in rows]), ensure_ascii=True))
 
 
+def stage_left_hand(evidence):
+    """Retain the saved ritual recipe and use the original left-hand socket."""
+    evidence = evidence.resolve()
+    path = ROOT / 'Data/Effects/Authored' / (HAND + '.effect.json')
+    before = path.read_bytes()
+    hand = json.loads(before)
+    sockets = parse_socket_contract(SOCKETS)
+    socket = next(s for s in sockets['sockets'] if s['socketName'].casefold() == 'fx_l_hand_01')
+    assert socket['boneName'].casefold() == 'bip001-l-hand'
+    assert socket['sourceTransform'] == dict(positionUeUnits=[15, 0, 0], rotationUnrealUnits=[0, 0, 0], scale=[1, 1, 1])
+    basis_path = ROOT / 'out/KoukuGate3BossAssembly20260912/body_socket_basis_evidence.json'
+    basis = source.read(basis_path)
+    model = ROOT / 'Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
+    assert hashlib.sha256(model.read_bytes()).hexdigest() == '3fd4c21eb87e3ac66ff46d30ebadc164f0bf20530585b9d24a7e5e8ef62b1541'
+    assert hashlib.sha256(basis_path.read_bytes()).hexdigest() == 'e3180b63b8c2670670f1790ed475ad41e4f95962cdb6dc65f205331ae71a3f1a'
+    hand['displayName'] = '\uc800\uc8fc\uc758\uc2dd | \uc67c\uc190 \ud2b8\ub808\uc77c'
+    assert len(hand['elements']) == 3
+    previous = []
+    for element in hand['elements']:
+        attachment = element['actionCueAttachment']
+        previous.append(dict(elementId=element['id'], attachment=copy.deepcopy(attachment)))
+        assert attachment['enabled'] and attachment['follow']
+        attachment.update(runtimeAnchorSlotId='fx_l_hand_01', runtimeBoneName='bip001-l-hand')
+        attachment['socketLocalTransform'] = dict(position=[.15, 0, 0], rotationDegrees=[-90, 0, 0], scale=[1, 1, 1])
+    candidate = evidence / 'candidate' / path.name
+    source.write(candidate, hand)
+    source.write(evidence / 'source-left-hand-socket.json', dict(sourceSocket=socket,
+        authoredOverride='User requested left hand; original notify startcontrol remains provenance only.',
+        beforeAttachments=previous, basisEvidence=str(basis_path),
+        sourceClip='rpct00_att_battle_27_01', originalNotifyAction=4219911))
+    source.write(evidence / 'installation.json', dict(installed=False, documents=[dict(
+        effectAssetId=HAND, displayName=hand['displayName'], path=str(path.relative_to(ROOT)).replace('\\', '/'),
+        candidatePath=str(candidate.relative_to(ROOT)).replace('\\', '/'),
+        beforeSha256=hashlib.sha256(before).hexdigest(), candidateSha256=hashlib.sha256(candidate.read_bytes()).hexdigest(),
+        durationMs=4175, defaultAnchorKind='BOSS', followBoss=True,
+        categoryPath=['KoukuSaydon', '3\uad00\ubb38', '\ud328\ud134', '\ucfe0\ud06c\uc138\uc774\ud2bc', '\uc800\uc8fc\uc758\uc2dd'])],
+        inputHashes={str(path.relative_to(ROOT)).replace('\\', '/'): hashlib.sha256(before).hexdigest(),
+                     str(basis_path.relative_to(ROOT)).replace('\\', '/'): hashlib.sha256(basis_path.read_bytes()).hexdigest(),
+                     str(model.relative_to(ROOT)).replace('\\', '/'): hashlib.sha256(model.read_bytes()).hexdigest()},
+        manualVisualValidation='USER_PENDING'))
+    print(json.dumps(dict(staged=True, elements=3, bone='bip001-l-hand', socket='fx_l_hand_01')))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--evidence-root', type=Path, default=ROOT / 'out/KoukuRitualHandTrail20260913')
+    parser.add_argument('--left-hand-only', action='store_true', help='Stage the saved ritual with the source left-hand socket; leave pentagram untouched.')
     options = parser.parse_args()
-    build(options.evidence_root)
+    if options.left_hand_only:
+        stage_left_hand(options.evidence_root)
+    else:
+        build(options.evidence_root)

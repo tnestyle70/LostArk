@@ -161,8 +161,11 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 }
 
 void Client::CPlayerController::Update(
-	const bool_t gameplayCommandsEnabled, const bool_t debugPlacementEnabled)
+	const bool_t requestedGameplayCommandsEnabled, const bool_t debugPlacementEnabled)
 {
+	// Cancel local targeting/held intent and suppress new commands when this Client loses focus.
+	const bool_t gameplayCommandsEnabled = requestedGameplayCommandsEnabled &&
+		GetForegroundWindow() == g_hWnd;
 #ifdef _DEBUG
 	Update_DebugPlayerPlacement(debugPlacementEnabled && !gameplayCommandsEnabled);
 #else
@@ -890,12 +893,20 @@ bool_t Client::CPlayerController::Update_MarioControls(const bool_t gameplayComm
 	std::int8_t direction = left == right ? 0 : (left ? -1 : 1);
 	if (0 != direction)
 		m_iMarioFacing = direction;
+	// A focused authoring window can claim the keyboard without editing text.
+	// The explicit return shortcut may pass that focus, but never a text field,
+	// active widget, free camera, background Client or captured player.
+	const bool_t returnInputAllowed = active && gameplayCommandsEnabled &&
+		GetForegroundWindow() == g_hWnd && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive() && !ImGui::IsAnyItemActive() &&
+		!Is_PlayerControlCaptured(player);
+	const bool_t returnSubmitted = Update_MarioReturn(returnInputAllowed);
 #ifdef _DEBUG
-	const bool_t jumpSubmitted = Update_DebugMarioJump(inputAllowed);
+	const bool_t jumpSubmitted = Update_DebugMarioJump(inputAllowed && !returnSubmitted && !m_pendingMarioReturnSequence);
 #else
 	constexpr bool_t jumpSubmitted = false;
 #endif
-	if (jumpSubmitted || 0u == player.iCurrentHp || PLAYER_ACTION_STATE::NONE != player.eAction)
+	if (returnSubmitted || m_pendingMarioReturnSequence || jumpSubmitted || 0u == player.iCurrentHp || PLAYER_ACTION_STATE::NONE != player.eAction)
 		direction = 0;
 	const auto now = std::chrono::steady_clock::now();
 	const bool_t shouldSend = direction != m_iLastMarioMoveDirection ||
@@ -913,6 +924,57 @@ bool_t Client::CPlayerController::Update_MarioControls(const bool_t gameplayComm
 		}
 	}
 	return active;
+}
+
+bool_t Client::CPlayerController::Update_MarioReturn(const bool_t gameplayCommandsEnabled)
+{
+	using namespace LostArk::Shared;
+	const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_0) & 0x80);
+	const bool_t pressed = down && !m_wasMarioReturnDown;
+	m_wasMarioReturnDown = down;
+	if (m_pCommandSink)
+	{
+		S2C_MARIO_RETURN_RESULT result{};
+		while (m_pCommandSink->Consume_MarioReturnResult(result))
+		{
+			if (!m_pendingMarioReturnSequence || result.iClientSequence != m_pendingMarioReturnSequence ||
+				result.eWorldId != WORLD_ID::KAKULSAYDON_ARENA) continue;
+			m_pendingMarioReturnSequence = 0u;
+			switch (result.eResult)
+			{
+			case MARIO_RETURN_RESULT::ACCEPTED: m_MarioReturnStatus = "Returning to Gate 3. Phase 2 waits for landing and all three patterns."; break;
+			case MARIO_RETURN_RESULT::REJECTED_WRONG_WORLD: m_MarioReturnStatus = "Return requires the KoukuSaydon arena."; break;
+			case MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE: m_MarioReturnStatus = "Finish the current move or action before pressing 0 to return."; break;
+			case MARIO_RETURN_RESULT::REJECTED_STALE_SEQUENCE: m_MarioReturnStatus = "Server rejected an old return request."; break;
+			case MARIO_RETURN_RESULT::REJECTED_OUTSIDE_MARIO: m_MarioReturnStatus = "Return requires an active Mario entry."; break;
+			case MARIO_RETURN_RESULT::REJECTED_DESTINATION: m_MarioReturnStatus = "Gate 3 return is unavailable or blocked; the player remains in Mario."; break;
+			default: m_MarioReturnStatus = "Unsupported Mario return result."; break;
+			}
+		}
+	}
+	if (m_pendingMarioReturnSequence && std::chrono::steady_clock::now() - m_MarioReturnSentAt > std::chrono::seconds(5))
+	{
+		m_pendingMarioReturnSequence = 0u;
+		m_MarioReturnStatus = "No Server return reply. Press 0 again to retry.";
+	}
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!pressed || !player.isValid || player.isPreview) return false;
+	if (!player.iMarioStage)
+	{ m_MarioReturnStatus = "0 return requires an active Server Mario entry."; return false; }
+	if (!gameplayCommandsEnabled || m_GroundTargeting.Is_Active())
+	{ m_MarioReturnStatus = "0 return is blocked while editing, using free/cinematic camera, or player control is captured. Release 0 and retry in gameplay."; return false; }
+	if (m_pendingMarioReturnSequence) return false;
+	if (!player.iCurrentHp || player.eAction != PLAYER_ACTION_STATE::NONE)
+	{ m_MarioReturnStatus = "Finish the current move or action before pressing 0 to return."; return false; }
+	if (!m_pCommandSink)
+	{ m_MarioReturnStatus = "Mario return has no active Server command connection."; return false; }
+	if (!m_pCommandSink->Request_MarioReturn(m_nextMarioReturnSequence))
+	{ m_MarioReturnStatus = "Could not send the Mario return request."; return false; }
+	m_pendingMarioReturnSequence = m_nextMarioReturnSequence;
+	if (!++m_nextMarioReturnSequence) m_nextMarioReturnSequence = 1u;
+	m_MarioReturnSentAt = std::chrono::steady_clock::now();
+	m_MarioReturnStatus = "Waiting for Server approval to return to Gate 3...";
+	return true;
 }
 
 void Client::CPlayerController::Submit_InteractIfOffered(
@@ -945,6 +1007,8 @@ void Client::CPlayerController::Set_CommandSink(
 	{
 		m_iLastMarioMoveDirection = 0;
 		m_pendingVehicleRidingSequence = 0u;
+		m_pendingMarioReturnSequence = 0u;
+		m_MarioReturnStatus.clear();
 	}
 #ifdef _DEBUG
 	if (m_pCommandSink != commandSink)

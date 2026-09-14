@@ -97,6 +97,6 @@ bool_t CAreaLightAuthoringSession::Publish_Runtime(std::string& status) const
 {
     if(!Is_Open()||Is_ReadOnly()){status="Map light source is not writable.";return false;}
     const std::wstring area(Get_AreaId().begin(),Get_AreaId().end());
-    return CLightResourceCatalog::Run_Publisher(L"Tools/MapPipeline/Publish-MapAuthoring.ps1",L"-AreaId "+area+L" -Mode Publish",status);
+    return CLightResourceCatalog::Run_Publisher(L"Tools/MapPipeline/Publish-MapAuthoring.ps1",L"-AreaId "+area+L" -Scope Lights -Mode Publish",status);
 }
 NS_END

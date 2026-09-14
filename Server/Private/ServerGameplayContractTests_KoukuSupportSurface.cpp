@@ -260,6 +260,113 @@ REGION "blocked" "closed" 0 1
 		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().size() == (completed ? 4u : 0u),
 			completed ? "Natural Kouku completion retains the Albion visual tail" : "Explicit Kouku stop cancels the owned Albion objects");
 	}
+
+	// A blue-circle wave freezes one selected player and five independent nav points.
+	room->m_CombatObjectRuntime.Reset();
+	albionOwner.strPatternId = "KAKULSAYDON_TEST_ALBION";
+	albionOwner.iPatternSequence = 3u;
+	albionOwner.fSpawnPositionX = 8.f; albionOwner.fSpawnPositionY = 1.f; albionOwner.fSpawnPositionZ = 8.f;
+	room->m_ServerNavigation.Set_RuntimeSupportSurfaces({ { "albion.floor", 8.f, 8.f, 30.f, 1.6f } }, status);
+	room->m_Players.clear();
+	for (PLAYER_ID id = 1u; id <= 7u; ++id)
+	{
+		auto& target = room->m_Players[id];
+		target.iPlayerId = id; target.iNetEntityId = 100u + id;
+		target.iCurrentHp = id == 3u ? 0u : 100u; target.iMaximumHp = 100u;
+		target.isCombatReady = id != 4u;
+		target.eAction = id == 5u ? PLAYER_ACTION_STATE::DEAD :
+			id == 6u ? PLAYER_ACTION_STATE::FALLING : PLAYER_ACTION_STATE::NONE;
+		target.iMarioStage = id == 7u ? 1u : 0u;
+		target.fPositionX = id == 1u ? 6.f : 10.f; target.fPositionY = 99.f; target.fPositionZ = 6.f;
+	}
+	albion.iCountPerPlayer = 1u; albion.fPlayerEffectRadiusM = 0.f;
+	albion.bRandomPlayerOnly = true; albion.iArenaRandomCount = 5u;
+	albion.fArenaRandomRadiusM = 6.f; albion.fArenaHeightToleranceM = 1.f; albion.fArenaMinimumSpacingM = 3.2f;
+	queueAlbion(1600u);
+	const auto readPoses = [&]()
+	{
+		std::vector<std::array<float, 3u>> result;
+		for (const auto& object : room->m_CombatObjectRuntime.Get_LiveObjects())
+		{
+			const auto& pose = object.LiveState.CurrentPose;
+			result.push_back({ pose.fPositionX, pose.fPositionY, pose.fPositionZ });
+		}
+		return result;
+	};
+	const auto firstPoses = readPoses();
+	const auto& sixObjects = room->m_CombatObjectRuntime.Get_LiveObjects();
+	std::size_t targetedCount = 0u, arenaCount = 0u;
+	bool admittedSix = sixObjects.size() == 6u;
+	for (const auto& object : sixObjects)
+	{
+		const auto& pose = object.LiveState.CurrentPose;
+		SERVER_NAV_POINT sample{};
+		admittedSix = admittedSix && object.Hits.empty() && !object.bTrackLockedTargetUntilFirstPulse &&
+			room->m_ServerNavigation.Is_PointWalkableExact(pose.fPositionX, pose.fPositionZ) &&
+			room->m_ServerNavigation.Sample_Position(pose.fPositionX, pose.fPositionZ, sample) && pose.fPositionY == sample.y;
+		if (object.iLockedTargetNetEntityId != INVALID_NET_ENTITY_ID)
+		{
+			++targetedCount;
+			admittedSix = admittedSix && (object.iLockedTargetNetEntityId == 101u || object.iLockedTargetNetEntityId == 102u) &&
+				pose.fPositionZ == 6.f && pose.fPositionX == (object.iLockedTargetNetEntityId == 101u ? 6.f : 10.f);
+		}
+		else
+		{
+			++arenaCount;
+			const float x = pose.fPositionX - 8.f, z = pose.fPositionZ - 8.f;
+			admittedSix = admittedSix && x*x + z*z <= 36.001f;
+			for (const auto& otherObject : sixObjects)
+			{
+				if (otherObject.iCombatObjectId >= object.iCombatObjectId || otherObject.iLockedTargetNetEntityId != INVALID_NET_ENTITY_ID) continue;
+				const float dx = pose.fPositionX - otherObject.LiveState.CurrentPose.fPositionX;
+				const float dz = pose.fPositionZ - otherObject.LiveState.CurrentPose.fPositionZ;
+				admittedSix = admittedSix && dx*dx + dz*dz + .001f >= 3.2f * 3.2f;
+			}
+		}
+	}
+	tests.Require(admittedSix && targetedCount == 1u && arenaCount == 5u,
+		"Albion admits exactly five spaced nav points and one living ready non-Mario player on exact supported ground");
+	room->m_CombatObjectRuntime.Build_LiveSpawnMessages(1601u, restored);
+	tests.Require(restored.size() == 6u && std::all_of(restored.begin(), restored.end(), [&](const auto& spawn)
+		{ return spawn.fPositionY == 1.6f && spawn.iSpawnTick == 1600u && spawn.PinnedDefinitionRevision == albionOwner.PinnedDefinitionRevision; }),
+		"The six Albion reconnect spawns preserve their sampled floor, effect clock and pinned revision");
+	room->m_Players[1u].fPositionX += 1.f; room->m_Players[2u].fPositionX += 1.f;
+	room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, .1f, 1603u, albionDamage);
+	tests.Require(readPoses() == firstPoses && albionDamage.empty(),
+		"Moving either eligible player after spawn leaves all six Albion points fixed and deals no damage");
+	room->m_Players[1u].fPositionX -= 1.f; room->m_Players[2u].fPositionX -= 1.f;
+	room->m_CombatObjectRuntime.Reset();
+	queueAlbion(1600u);
+	tests.Require(readPoses() == firstPoses, "The same Albion trigger and pattern occurrence resolve a deterministic six-point volley");
+	std::set<NET_ENTITY_ID> selectedTargets;
+	bool wavesChanged = false;
+	for (std::uint32_t wave = 1u; wave <= 12u; ++wave)
+	{
+		room->m_CombatObjectRuntime.Reset();
+		albion.strTriggerId = "test.albion.logic.wave." + std::to_string(wave);
+		queueAlbion(1700u);
+		wavesChanged = wavesChanged || readPoses() != firstPoses;
+		for (const auto& object : room->m_CombatObjectRuntime.Get_LiveObjects())
+			if (object.iLockedTargetNetEntityId != INVALID_NET_ENTITY_ID) selectedTargets.insert(object.iLockedTargetNetEntityId);
+	}
+	tests.Require(wavesChanged && selectedTargets == std::set<NET_ENTITY_ID>{ 101u, 102u },
+		"Distinct authored Albion triggers vary the wave and can choose either eligible player");
+	const auto beforeRejectedWave = readPoses();
+	const auto beforeRejectedId = room->m_CombatObjectRuntime.Begin_Transaction().iNextCombatObjectId;
+	room->m_Players[1u].fPositionX = room->m_Players[2u].fPositionX = -1000.f;
+	queueAlbion(1800u);
+	tests.Require(readPoses() == beforeRejectedWave && room->m_CombatObjectRuntime.Begin_Transaction().iNextCombatObjectId == beforeRejectedId,
+		"A selected player outside navigation rejects all six newly staged Albion objects and preserves live IDs");
+	room->m_Players[1u].fPositionX = 6.f; room->m_Players[2u].fPositionX = 10.f;
+	albion.fArenaRandomRadiusM = 1.f; albion.fArenaMinimumSpacingM = 20.f;
+	queueAlbion(1801u);
+	tests.Require(readPoses() == beforeRejectedWave && room->m_CombatObjectRuntime.Begin_Transaction().iNextCombatObjectId == beforeRejectedId,
+		"An impossible five-point spacing request rejects the whole Albion wave and preserves live IDs");
+	albion.fArenaRandomRadiusM = 6.f; albion.fArenaMinimumSpacingM = 3.2f;
+	room->m_Players[1u].isCombatReady = room->m_Players[2u].isCombatReady = false;
+	queueAlbion(1802u);
+	tests.Require(readPoses() == beforeRejectedWave && room->m_CombatObjectRuntime.Begin_Transaction().iNextCombatObjectId == beforeRejectedId,
+		"No eligible arena player preserves the entire previous Albion wave instead of spawning only its random supplement");
 #endif
 	std::error_code cleanupError; fs::remove_all(fixture, cleanupError);
 	std::cout << "failures : " << tests.failures << std::endl;
