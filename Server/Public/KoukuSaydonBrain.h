@@ -60,6 +60,9 @@ namespace LostArk::Server
 		[[nodiscard]] static bool Validate_AnimationOnlyPattern(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			std::string& status);
+		[[nodiscard]] static bool Validate_SummonedPattern(
+			const BOSS_PATTERN_DEFINITION& owner, const BOSS_PATTERN_DEFINITION& child,
+			std::string& status);
 		[[nodiscard]] static const BOSS_PATTERN_DEFINITION*
 			Find_AnimationOnlyPattern(
 				const CGameplayCatalog& catalog,

@@ -83,38 +83,35 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 			"Failed action does not consume the one-shot trigger");
 #endif
 		{
-			// Exercise the actual caller: a wire-only round trip cannot detect lost staging.
+			// Exercise the real broadcast boundary: stale bootstrap rows cannot revive
+			// the old actor or move the party before the Client rejects the cue.
 			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
 			auto& player = room->m_Players[1u];
 			player.iPlayerId = 1u;
 			player.iCurrentHp = player.iMaximumHp = 100u;
-			bool playAndReplayPlace = room->Is_Ready();
-			bool stopAndMotionPreserve = room->Is_Ready();
+			bool allPreserve = room->Is_Ready();
+			bool admissionMatches = room->Is_Ready();
 			const WORLD_SEQUENCE_OPERATION operations[] = { WORLD_SEQUENCE_OPERATION::PLAY,
-				WORLD_SEQUENCE_OPERATION::REPLAY, WORLD_SEQUENCE_OPERATION::STOP, WORLD_SEQUENCE_OPERATION::PLAY };
-			for (unsigned scenario = 0u; scenario < 4u; ++scenario)
+				WORLD_SEQUENCE_OPERATION::REPLAY, WORLD_SEQUENCE_OPERATION::STOP,
+				WORLD_SEQUENCE_OPERATION::PLAY, WORLD_SEQUENCE_OPERATION::PLAY };
+			for (unsigned scenario = 0u; scenario < 5u; ++scenario)
 			{
 				player.fPositionX = 12.f; player.fPositionY = 34.f; player.fPositionZ = 56.f;
 				player.hasMoveGoal = true; player.TriggerMove.isActive = true;
 				player.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
 				player.iMarioStage = 1u; player.ePreMarioForm = PLAYER_MADNESS_FORM::NORMAL;
 				player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
-				room->Broadcast_WorldSequencePlay("world.sequence.instance.original_kouku", 1.f, 0.f, 0.f, 0.f, 0u,
-					scenario == 3u ? "world.existing.target" : "", operations[scenario]);
-				if (scenario < 2u)
-					playAndReplayPlace = playAndReplayPlace &&
-						std::abs(player.fPositionX + 1.166f) < .0001f && std::abs(player.fPositionY - 1.31f) < .0001f &&
-						std::abs(player.fPositionZ - 745.078f) < .0001f && !player.hasMoveGoal && !player.TriggerMove.isActive &&
-						player.eAction == PLAYER_ACTION_STATE::NONE && player.iMarioStage == 0u &&
-						player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && player.iCurrentHp == 100u;
-				else
-					stopAndMotionPreserve = stopAndMotionPreserve &&
-						player.fPositionX == 12.f && player.fPositionY == 34.f && player.fPositionZ == 56.f &&
-						player.hasMoveGoal && player.TriggerMove.isActive && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE &&
-						player.iMarioStage == 1u && player.eMadnessForm == PLAYER_MADNESS_FORM::CLOWN && player.iCurrentHp == 100u;
+				const bool accepted = room->Broadcast_WorldSequencePlay(
+					scenario == 4u ? "world.sequence.instance.circusfinale" : "world.sequence.instance.original_kouku",
+					1.f, 0.f, 0.f, 0.f, 0u, scenario == 3u ? "world.existing.target" : "", operations[scenario]);
+				admissionMatches = admissionMatches && accepted == (scenario == 2u || scenario == 4u);
+				allPreserve = allPreserve &&
+					player.fPositionX == 12.f && player.fPositionY == 34.f && player.fPositionZ == 56.f &&
+					player.hasMoveGoal && player.TriggerMove.isActive && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+					player.iMarioStage == 1u && player.eMadnessForm == PLAYER_MADNESS_FORM::CLOWN && player.iCurrentHp == 100u;
 			}
-			tests.Require(playAndReplayPlace, "Book PLAY and REPLAY both stage the party and retire prior movement");
-			tests.Require(stopAndMotionPreserve, "Book STOP and exact target motion preserve party position and movement");
+			tests.Require(admissionMatches, "Legacy PLAY/REPLAY/motion reject; STOP and other sequences remain admitted");
+			tests.Require(allPreserve, "Legacy rejection and ordinary sequence cues preserve all player movement and form state");
 		}
 		std::cout << "World playback contract failures: " << tests.failures << '\n';
 		return tests.failures == 0 ? 0 : 1;

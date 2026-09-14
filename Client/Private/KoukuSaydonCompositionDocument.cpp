@@ -48,6 +48,7 @@ namespace
 	constexpr std::string_view GENERATED_SUMMON_PREFIX = "kakulsaydon.g1.summon.";
 	constexpr std::size_t MAX_SUMMONS = 4096u;
 	constexpr std::size_t MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024u;
+    constexpr std::size_t MAX_SUMMON_PATTERN_SPAWNS = 4u;
 	constexpr std::string_view GENERATED_WORLD_PREFIX = "kakulsaydon.g1.world.";
 	constexpr std::size_t MAX_WORLDS = 4096u;
 	constexpr std::size_t MAX_WORLD_OCCURRENCES_PER_PATTERN = 128u;
@@ -350,7 +351,9 @@ namespace
 			((logic.fPushRangeM != 0.0 || logic.iPushMs != 0u) &&
 			 (logic.strLogicType != "RESULT" || logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE")))
 		{ outStatus = "Damage knockback needs both a distance of 0..20 m and time of 0..600000 ms; zero disables both."; return false; }
-		const bool_t hasPlayerEffectValues = logic.iCountPerPlayer != 0u || logic.fPlayerEffectRadiusM != 0.0 || logic.iEffectLifetimeMs != 0u;
+		const bool_t hasPlayerEffectValues = logic.iCountPerPlayer != 0u || logic.fPlayerEffectRadiusM != 0.0 || logic.iEffectLifetimeMs != 0u ||
+			logic.iArenaRandomCount != 0u || logic.fArenaRandomRadiusM != 0.0 || logic.fArenaHeightToleranceM != 0.0 ||
+			logic.fArenaMinimumSpacingM != 0.0 || logic.bRandomPlayerOnly;
 		if (hasPlayerEffectValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
 		{ outStatus = "Player effect layout belongs to ALBION_BLUE_CIRCLE."; return false; }
 		const bool_t hasTriggerValues = hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
@@ -553,6 +556,14 @@ namespace
 				!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 || logic.TeleportPosition != std::array<double, 3>{})
 			{ outStatus = "Albion needs 1..8 per player, radius 0 for one or (0,20] for a ring, and effect lifetime 1..600000 ms."; return false; }
+			if (logic.iArenaRandomCount > 32u ||
+				!std::isfinite(logic.fArenaRandomRadiusM) || logic.fArenaRandomRadiusM < 0.0 || logic.fArenaRandomRadiusM > 100.0 ||
+				!std::isfinite(logic.fArenaHeightToleranceM) || logic.fArenaHeightToleranceM < 0.0 || logic.fArenaHeightToleranceM > 10.0 ||
+				!std::isfinite(logic.fArenaMinimumSpacingM) || logic.fArenaMinimumSpacingM < 0.0 || logic.fArenaMinimumSpacingM > 20.0 ||
+				(logic.iArenaRandomCount == 0u && (logic.fArenaRandomRadiusM != 0.0 || logic.fArenaHeightToleranceM != 0.0 || logic.fArenaMinimumSpacingM != 0.0)) ||
+				(logic.iArenaRandomCount > 0u && (logic.fArenaRandomRadiusM <= 0.0 || logic.fArenaHeightToleranceM <= 0.0 || logic.fArenaMinimumSpacingM <= 0.0)) ||
+				(logic.bRandomPlayerOnly && (logic.iCountPerPlayer != 1u || logic.fPlayerEffectRadiusM != 0.0)))
+			{ outStatus = "Albion accepts 0..32 arena circles; enabled placement needs radius (0,100], height tolerance (0,10] and spacing (0,20] m. Disabled placement uses zeros. One random player requires one circle at that player's position."; return false; }
 		}
 		else if (logic.strTriggerKind == "OBJECT_CONTACT")
 		{
@@ -1531,22 +1542,30 @@ namespace
 					(!row.strWorldId.empty() && !worldIds.contains(row.strWorldId)) ||
 					(row.strAnchorKind != "WORLD" && !row.strWorldId.empty()))
 				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
-				const auto* resource = presentationResources.at(row.strResourceId);
+                const auto* resource = presentationResources.at(row.strResourceId);
+                // Camera shots own their world coordinates; Sound does not bind an Object.
+                const bool objectAnchored = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                    resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+                if (objectAnchored && row.strAnchorKind == "WORLD" && row.strWorldId.empty())
+                { outStatus = "World Object anchor requires a worldId; fixed world coordinates use MAP: " + row.strOccurrenceId; return false; }
 				if (!row.strSelectionGroupId.empty())
 				{
-					if (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
-						!Is_StableId(row.strSelectionGroupId))
-					{ outStatus = "Selection Group requires a stable ID on a Collider: " + row.strOccurrenceId; return false; }
-					if (row.strAnchorKind != "BOSS")
+					if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
+						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) || !Is_StableId(row.strSelectionGroupId))
+					{ outStatus = "Selection Group requires a stable ID on an Effect or Collider: " + row.strOccurrenceId; return false; }
+					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.strAnchorKind != "BOSS")
 					{ outStatus = "Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported."; return false; }
 					auto& group = selectionGroups[row.strSelectionGroupId];
 					if (nullptr == group.first) group.first = &row;
 					const auto& first = *group.first;
-					if (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
+					const auto* firstResource = presentationResources.at(first.strResourceId);
+					if (!firstResource || firstResource->eKind != resource->eKind)
+					{ outStatus = "Selection Group cannot mix Effect and Collider boxes: " + row.strSelectionGroupId; return false; }
+					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
 						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
 						row.strWorldId != first.strWorldId || row.strWorldOccurrenceId != first.strWorldOccurrenceId ||
 						row.iWorldEmissionIndex != first.iWorldEmissionIndex ||
-						(!row.bFollowBoss && row.iStartMs != first.iStartMs))
+						(!row.bFollowBoss && row.iStartMs != first.iStartMs)))
 					{ outStatus = "Selection Group Colliders must share an anchor frame: " + row.strSelectionGroupId; return false; }
 					++group.second;
 				}
@@ -1603,14 +1622,14 @@ namespace
 					{ outStatus = "OBJECT_CONTACT Collider must follow its boss Bone/pivot or use a WORLD track without a Bone."; return false; }
 				}
 				const bool_t rouletteRegion = resource->strColliderKind == "ROULETTE_CARD_REGION";
-				if (product && ((row.strAnchorKind == "WORLD" && row.strWorldId.empty()) ||
+				if (product && ((objectAnchored && row.strAnchorKind == "WORLD" && row.strWorldId.empty()) ||
 					(rouletteRegion && (row.strRegionId.empty() || row.strCardSymbol == "NONE" ||
 						row.strCardColor == "NONE" || row.strAnchorKind != "WORLD" || row.strWorldId.empty()))))
 				{ outStatus = "PRODUCT roulette region needs an explicit World, region ID, symbol and color: " + row.strOccurrenceId; return false; }
 			}
 			for (const auto& [groupId, group] : selectionGroups)
 				if (group.second < 2u)
-				{ outStatus = "Selection Group requires at least two Colliders in one Pattern: " + groupId; return false; }
+				{ outStatus = "Selection Group requires at least two boxes of one kind in one Pattern: " + groupId; return false; }
 			std::unordered_set<std::string> logicBoxIds;
 			std::optional<std::array<double, 3u>> captureGrip;
 			std::vector<std::string> rouletteInstances;
@@ -1818,8 +1837,7 @@ namespace
 				}
 			}
 
-			/* Summon boxes stay authoring-only: the Server consumer is a later
-			   slice, so a PRODUCT Pattern may keep them without projecting them. */
+            // An occurrence owns its optional actor plays; the reusable name remains shared.
 			std::unordered_set<std::string> summonBoxIds;
 			const std::string summonPrefix = pattern.strPatternId + ".summon.";
 			for (const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box : pattern.SummonOccurrences)
@@ -1836,12 +1854,20 @@ namespace
 					boxEndMs > MAX_TIME_MS || boxEndMs > lifetimeMs)
 				{
 					outStatus = "KoukuSaydon Summon box identity, Summon reference, or window exceeds the Pattern lifetime: " +
-						box.strOccurrenceId;
-					return false;
-				}
-			}
+	                    box.strOccurrenceId;
+                    return false;
+                }
+                if (box.PatternSpawns.size() > MAX_SUMMON_PATTERN_SPAWNS)
+                { outStatus = "A Summon box supports at most four Pattern spawns: " + box.strOccurrenceId; return false; }
+                std::unordered_set<std::string> spawnIds;
+                for (const auto& spawn : box.PatternSpawns)
+                    if (!Is_StableId(spawn.strSpawnId) || !spawnIds.insert(spawn.strSpawnId).second ||
+                        !Is_StableId(spawn.strPatternId) || !Valid_PresentationVector(spawn.PositionOffset, -1000.0, 1000.0) ||
+                        !std::isfinite(spawn.fYawOffsetDegrees) || spawn.fYawOffsetDegrees < -360.0 || spawn.fYawOffsetDegrees > 360.0)
+                    { outStatus = "Invalid Summon Pattern spawn identity or transform: " + box.strOccurrenceId; return false; }
+            }
 
-			/* A World box starts its sequence on the pattern clock; the sequence
+            /* A World box starts its sequence on the pattern clock; the sequence
 			   runs to its own end, so only the start must sit inside the Pattern. */
 			std::unordered_set<std::string> worldBoxIds;
 			const std::string worldPrefix = pattern.strPatternId + ".world.";
@@ -1940,6 +1966,8 @@ namespace
                         for (const auto& id : owner->PatternIds)
                         {
                             const auto child = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == id; });
+                            if (child != document.Patterns.end() && !child->strLoadError.empty())
+                            { outStatus = "Completion candidate " + id + " is unavailable: " + child->strLoadError; return false; }
                             if (child == document.Patterns.end() || id == pattern.strPatternId || child->Stages.empty() ||
                                 child->strGateId != pattern.strGateId || child->strTargetBossPlacementId != pattern.strTargetBossPlacementId || child->strActorProfileId != pattern.strActorProfileId)
                             { outStatus = "Completion candidate must be a distinct playable Pattern for the same Gate and boss."; return false; }
@@ -1973,6 +2001,14 @@ namespace
             for (const auto& pattern : document.Patterns)
                 if (!Validate_PatternFolder(document, pattern, outStatus) ||
                     !Validate_PatternChildren(document, pattern, outStatus)) return false;
+            for (const auto& pattern : document.Patterns)
+            {
+                if (!pattern.strLoadError.empty()) continue;
+                for (const auto& box : pattern.SummonOccurrences)
+                    for (const auto& spawn : box.PatternSpawns)
+                        if (!CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(document, pattern,
+                            spawn.strPatternId, outStatus)) return false;
+            }
             for (const auto& bundle : document.Bundles)
                 if (!bundles.insert(bundle.strBundleId).second || !Validate_Bundle(document, bundle, outStatus)) return false;
         }
@@ -2284,7 +2320,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "patternIds", "completionCount", "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "patternIds", "completionCount", "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs",
+					  "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly",
+					  "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -2328,6 +2366,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			const DATA_JSON_VALUE* const endsPattern = logicValue.Find("endsPatternOnSuccess");
 			const DATA_JSON_VALUE* const rearmOnExit = logicValue.Find("rearmOnExit");
 			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
+			const DATA_JSON_VALUE* const randomPlayerOnly = logicValue.Find("randomPlayerOnly");
 			if (!optionalText("judgementKind", stagedLogic.strJudgementKind) ||
 				!optionalText("insideOutcome", stagedLogic.strInsideOutcome) ||
 				!optionalUnsigned("sectorCount", 64u, stagedLogic.iSectorCount) ||
@@ -2368,6 +2407,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalUnsigned("countPerPlayer", 8u, stagedLogic.iCountPerPlayer) ||
 				!optionalFinite("radiusM", 0.0, 20.0, stagedLogic.fPlayerEffectRadiusM) ||
 				!optionalUnsigned("effectLifetimeMs", MAX_TIME_MS, stagedLogic.iEffectLifetimeMs) ||
+				!optionalUnsigned("arenaRandomCount", 32u, stagedLogic.iArenaRandomCount) ||
+				!optionalFinite("arenaRandomRadiusM", 0.0, 100.0, stagedLogic.fArenaRandomRadiusM) ||
+				!optionalFinite("arenaHeightToleranceM", 0.0, 10.0, stagedLogic.fArenaHeightToleranceM) ||
+				!optionalFinite("arenaMinimumSpacingM", 0.0, 20.0, stagedLogic.fArenaMinimumSpacingM) ||
+				(nullptr != randomPlayerOnly && !randomPlayerOnly->Is_Boolean()) ||
 				!optionalFinite("bossChargeDistanceM", 0.0, 1000.0, stagedLogic.fBossChargeDistanceM) ||
                 !optionalFinite("chargeYawOffsetDegrees", -360.0, 360.0, stagedLogic.fChargeYawOffsetDegrees) ||
 				!optionalText("hudMode", stagedLogic.strHudMode) ||
@@ -2383,6 +2427,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			}
 			if (rearmOnExit) stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
 			if (repeatAfterKnockback) stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
+			if (randomPlayerOnly) stagedLogic.bRandomPlayerOnly = randomPlayerOnly->Get_Boolean();
+			if ((logicValue.Find("arenaRandomCount") || logicValue.Find("arenaRandomRadiusM") ||
+				logicValue.Find("arenaHeightToleranceM") || logicValue.Find("arenaMinimumSpacingM") || randomPlayerOnly) &&
+				(stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
+			{ outStatus = "Arena circle placement and randomPlayerOnly belong to ALBION_BLUE_CIRCLE."; return false; }
 			if ((logicValue.Find("pushDirection") && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
 				(logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
 				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
@@ -2864,8 +2913,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			stagedPattern.SummonOccurrences.reserve(summonOccurrences->Get_Array().size());
 			for (const DATA_JSON_VALUE& boxValue : summonOccurrences->Get_Array())
 			{
-				if (!Has_ExactProperties(boxValue,
-						{ "occurrenceId", "summonId", "startMs", "durationMs" }))
+				if (!Has_Properties(boxValue,
+						{ "occurrenceId", "summonId", "startMs", "durationMs" }, { "patternSpawns" }))
 				{
 					outStatus = "KoukuSaydon Summon box has unexpected properties.";
 					return false;
@@ -2887,6 +2936,25 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				}
 				stagedBox.strOccurrenceId = boxId->Get_String();
 				stagedBox.strSummonId = boxSummonId->Get_String();
+                if (const auto* spawns = boxValue.Find("patternSpawns"))
+                {
+                    if (!spawns->Is_Array() || spawns->Get_Array().size() > MAX_SUMMON_PATTERN_SPAWNS)
+                    { outStatus = "Summon patternSpawns requires at most four rows."; return false; }
+                    for (const auto& value : spawns->Get_Array())
+                    {
+                        KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN spawn;
+                        const auto* id = Required(value, "spawnId", DATA_JSON_TYPE::STRING);
+                        const auto* target = Required(value, "patternId", DATA_JSON_TYPE::STRING);
+                        const auto* yaw = Required(value, "yawOffsetDegrees", DATA_JSON_TYPE::NUMBER);
+                        if (!Has_ExactProperties(value, { "spawnId", "patternId", "positionOffset", "yawOffsetDegrees" }) ||
+                            !id || !target || !yaw || !value.Find("positionOffset") ||
+                            !Read_PresentationVector(value, "positionOffset", spawn.PositionOffset, -1000.0, 1000.0) ||
+                            !Try_ParseFinite(*yaw, -360.0, 360.0, spawn.fYawOffsetDegrees))
+                        { outStatus = "Summon Pattern spawn fields or transform are invalid."; return false; }
+                        spawn.strSpawnId = id->Get_String(); spawn.strPatternId = target->Get_String();
+                        stagedBox.PatternSpawns.push_back(std::move(spawn));
+                    }
+                }
 				stagedPattern.SummonOccurrences.push_back(std::move(stagedBox));
 			}
 		}
@@ -3246,6 +3314,19 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
     for (size_t index = 0; index < staged.Patterns.size(); ++index)
     {
         auto& pattern = staged.Patterns[index];
+        if (!pattern.strLoadError.empty()) continue;
+        bool valid = true;
+        for (const auto& box : pattern.SummonOccurrences)
+            for (const auto& spawn : box.PatternSpawns)
+                if (!Validate_SummonPatternTarget(staged, pattern, spawn.strPatternId, outStatus)) { valid = false; break; }
+        if (valid) continue;
+        pattern.strLoadError = outStatus;
+        pattern.strPreservedJson = Preserve_Json(patterns->Get_Array()[index]);
+        pattern.strAuthoringStatus = "DRAFT";
+    }
+    for (size_t index = 0; index < staged.Patterns.size(); ++index)
+    {
+        auto& pattern = staged.Patterns[index];
         if (Validate_PatternChildren(staged, pattern, outStatus)) continue;
         pattern.strLoadError = outStatus;
         pattern.strPreservedJson = Preserve_Json(patterns->Get_Array()[index]);
@@ -3362,6 +3443,35 @@ bool_t Client::CKoukuSaydonCompositionDocument::Load_ImmutableActionReferences(
 	outReferences = std::move(staged);
 	outStatus = errors.empty() ? "Loaded KoukuSaydon resources." : errors;
 	return true;
+}
+
+bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& owner,
+    const std::string_view targetPatternId, std::string& outStatus)
+{
+    const auto target = std::find_if(document.Patterns.begin(), document.Patterns.end(),
+        [&](const auto& row) { return row.strPatternId == targetPatternId; });
+    const auto fail = [&](const char* reason) {
+        outStatus = "Summon Pattern " + std::string(targetPatternId) + ": " + reason; return false;
+    };
+    if (target == document.Patterns.end() || !target->strLoadError.empty())
+        return fail("target is missing or invalid.");
+    if (target->strPatternId == owner.strPatternId || target->strGateId != owner.strGateId ||
+        target->strActorProfileId != owner.strActorProfileId || target->strCategory != "MECHANIC")
+        return fail("choose another MECHANIC Pattern with the same Gate and actor.");
+    if (!target->PatternOccurrences.empty() || !target->LogicOccurrences.empty() || !target->SummonOccurrences.empty() ||
+        !target->WorldOccurrences.empty() || !target->SceneProfileOccurrences.empty() || !target->PresentationOccurrences.empty() ||
+        target->BossMotion || target->bEnterCombatOnFinish || target->bResetBossToSpawn || target->ResetBossYawDegrees ||
+        std::any_of(document.Folders.begin(), document.Folders.end(), [&](const auto& folder) {
+            return folder.strTimelinePatternId == target->strPatternId;
+        }) || std::any_of(target->Stages.begin(), target->Stages.end(), [](const auto& stage) { return stage.bRetargetOnEnter; }))
+        return fail("only Animation rows are supported; nested Summon, Parent, Logic, other lanes and boss movement are unavailable.");
+    if (!Pattern_Lifetime(*target) || std::none_of(target->Stages.begin(), target->Stages.end(),
+        [](const auto& stage) { return !stage.AnimationOccurrences.empty(); }))
+        return fail("target needs a nonempty Animation timeline.");
+    outStatus.clear();
+    return true;
 }
 
 bool_t Client::CKoukuSaydonCompositionDocument::Validate(
@@ -3524,9 +3634,18 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
             if (logic.strTriggerKind == "ENTER_AREA" && logic.fChargeYawOffsetDegrees != 0.0)
                 output << ",\n      \"chargeYawOffsetDegrees\": " << logic.fChargeYawOffsetDegrees;
 			if (logic.strTriggerKind == "ALBION_BLUE_CIRCLE")
+			{
 				output << ",\n      \"countPerPlayer\": " << logic.iCountPerPlayer
 					<< ",\n      \"radiusM\": " << logic.fPlayerEffectRadiusM
 					<< ",\n      \"effectLifetimeMs\": " << logic.iEffectLifetimeMs;
+				if (logic.iArenaRandomCount != 0u)
+					output << ",\n      \"arenaRandomCount\": " << logic.iArenaRandomCount
+						<< ",\n      \"arenaRandomRadiusM\": " << logic.fArenaRandomRadiusM
+						<< ",\n      \"arenaHeightToleranceM\": " << logic.fArenaHeightToleranceM
+						<< ",\n      \"arenaMinimumSpacingM\": " << logic.fArenaMinimumSpacingM;
+				if (logic.bRandomPlayerOnly)
+					output << ",\n      \"randomPlayerOnly\": true";
+			}
 			else if (logic.strTriggerKind == "OBJECT_CONTACT")
 			{
 				output << ",\n";
@@ -3709,8 +3828,22 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "          \"occurrenceId\": \"" << CDataJson::Escape(box.strOccurrenceId) << "\",\n"
 				<< "          \"summonId\": \"" << CDataJson::Escape(box.strSummonId) << "\",\n"
 				<< "          \"startMs\": " << box.iStartMs << ",\n"
-				<< "          \"durationMs\": " << box.iDurationMs << "\n"
-				<< "        }" << (boxIndex + 1u < pattern.SummonOccurrences.size() ? "," : "") << "\n";
+                << "          \"durationMs\": " << box.iDurationMs;
+            if (!box.PatternSpawns.empty())
+            {
+                output << ",\n          \"patternSpawns\": [";
+                for (std::size_t spawnIndex = 0u; spawnIndex < box.PatternSpawns.size(); ++spawnIndex)
+                {
+                    const auto& spawn = box.PatternSpawns[spawnIndex];
+                    if (spawnIndex) output << ",";
+                    output << "\n            { \"spawnId\": \"" << CDataJson::Escape(spawn.strSpawnId)
+                        << "\", \"patternId\": \"" << CDataJson::Escape(spawn.strPatternId) << "\", \"positionOffset\": ";
+                    Write_PresentationVector(output, spawn.PositionOffset);
+                    output << ", \"yawOffsetDegrees\": " << spawn.fYawOffsetDegrees << " }";
+                }
+                output << "\n          ]";
+            }
+            output << "\n        }" << (boxIndex + 1u < pattern.SummonOccurrences.size() ? "," : "") << "\n";
 		}
 		output << "      ],\n      \"worldOccurrences\": [\n";
 		for (std::size_t boxIndex = 0u; boxIndex < pattern.WorldOccurrences.size(); ++boxIndex)

@@ -798,12 +798,93 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			owner->iPatternSequence != pending.iPatternSequence || 0u == owner->iCurrentHp)
 			continue;
 		const auto& trigger = pending.Trigger;
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS)
+		{
+			const auto* catalog = Resolve_KoukuProductCatalog();
+			const auto* baseCatalog = m_GameplayCatalog.Resolve(owner->PinnedDefinitionRevision);
+			std::string status;
+			const auto* ownerPattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, owner->strPatternId, status) : nullptr;
+			if (!ownerPattern || !baseCatalog || owner->iOwnerBossNetEntityId != INVALID_NET_ENTITY_ID ||
+				!m_ServerNavigation.Is_Loaded() || trigger.PatternSpawns.empty() || trigger.PatternSpawns.size() > 4u)
+			{ m_strStatus = "Summon Patterns preserved all actors: owner, catalog or spawn list is unavailable: " + status; continue; }
+			const auto authoredTrigger = std::find_if(ownerPattern->MechanicTriggers.begin(), ownerPattern->MechanicTriggers.end(),
+				[&](const auto& row) { return row.strTriggerId == trigger.strTriggerId && row.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS; });
+			if (authoredTrigger == ownerPattern->MechanicTriggers.end())
+			{ m_strStatus = "Summon Patterns preserved all actors: the owning occurrence is unavailable"; continue; }
+			const float yaw = owner->fYawDegrees * 0.01745329251994329577f;
+			std::vector<SERVER_WORLD_ENTITY> clones;
+			NET_ENTITY_ID nextId = m_iNextNetEntityId;
+			bool admitted = true;
+			for (const auto& spawn : trigger.PatternSpawns)
+			{
+				const auto* childPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, spawn.strPatternId, status);
+				if (!childPattern || !CKoukuSaydonBrain::Validate_SummonedPattern(*ownerPattern, *childPattern, status))
+				{ admitted = false; break; }
+				std::uint64_t childDurationMs = 0u;
+				for (const auto& stage : childPattern->Stages) childDurationMs += stage.iDurationMs;
+				// A fixed Parent clock shortens pending duration to its absolute deadline.
+				// Admission compares against the original authored window, before tick rounding.
+				if (childDurationMs > authoredTrigger->iDurationMs)
+				{ status = "a summoned Pattern exceeds its occurrence lifetime"; admitted = false; break; }
+				WORLD_BOOTSTRAP_PLACEMENT placement{};
+				placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+				placement.strPlacementId = owner->strPlacementId + ".summon." + std::to_string(owner->iPatternSequence) + "." + trigger.strTriggerId + "." + spawn.strSpawnId;
+				placement.strArchetypeId = owner->strArchetypeId;
+				placement.strEncounterId = owner->strEncounterId;
+				placement.fPositionX = owner->fPositionX + spawn.PositionOffset[0] * std::cos(yaw) + spawn.PositionOffset[2] * std::sin(yaw);
+				placement.fPositionY = owner->fPositionY + spawn.PositionOffset[1];
+				placement.fPositionZ = owner->fPositionZ - spawn.PositionOffset[0] * std::sin(yaw) + spawn.PositionOffset[2] * std::cos(yaw);
+				placement.fYawDegrees = std::remainder(owner->fYawDegrees + spawn.fYawOffsetDegrees, 360.f);
+				SERVER_WORLD_ENTITY clone{};
+				if (nextId == INVALID_NET_ENTITY_ID || !std::isfinite(placement.fPositionX) || !std::isfinite(placement.fPositionY) ||
+					!std::isfinite(placement.fPositionZ) || !std::isfinite(placement.fYawDegrees) ||
+					!m_ServerNavigation.Is_PointWalkableExact(placement.fPositionX, placement.fPositionZ) ||
+					!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId))
+				{ status = "a summoned actor failed navigation or dependent-owner admission"; admitted = false; break; }
+				clone.fPositionX = clone.fSpawnPositionX = placement.fPositionX;
+				clone.fPositionY = clone.fSpawnPositionY = placement.fPositionY;
+				clone.fPositionZ = clone.fSpawnPositionZ = placement.fPositionZ;
+				clone.fYawDegrees = placement.fYawDegrees;
+				// Reuse the existing dependent clone lifetime and primary-loop exclusion.
+				clone.bKoukuGazeClone = true;
+				clone.bKoukuSummonClone = true;
+				clone.iKoukuCloneOwnerSequence = owner->iPatternSequence;
+				clone.iKoukuCloneEndTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick,
+					CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
+				if (!m_KoukuSaydonBrain.Begin_Pattern(clone, *childPattern, owner->PinnedDefinitionRevision, serverTick, status))
+				{ admitted = false; break; }
+				std::vector<std::uint8_t> payload;
+				if (!Build_WorldEntitySpawnedPayload(clone, payload))
+				{ status = "a summoned actor failed spawn wire validation"; admitted = false; break; }
+				clones.push_back(std::move(clone));
+				++nextId;
+			}
+			if (!admitted || clones.size() != trigger.PatternSpawns.size())
+			{ m_strStatus = "Summon Patterns preserved all actors: " + status; continue; }
+			m_WorldEntities.reserve(m_WorldEntities.size() + clones.size());
+			for (auto& clone : clones)
+			{
+				m_WorldEntities.push_back(std::move(clone));
+				Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+			}
+			m_iNextNetEntityId = nextId;
+			m_strStatus = "Summon Patterns started " + std::to_string(trigger.PatternSpawns.size()) + " independently animated clones";
+			continue;
+		}
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_BLUE_CIRCLE)
 		{
 			const CGameplayCatalog* catalog = m_GameplayCatalog.Resolve(owner->PinnedDefinitionRevision);
 			if (!catalog || !m_ServerNavigation.Is_Loaded() || trigger.iCountPerPlayer < 1u || trigger.iCountPerPlayer > 8u ||
 				!std::isfinite(trigger.fPlayerEffectRadiusM) || trigger.fPlayerEffectRadiusM < 0.f || trigger.fPlayerEffectRadiusM > 20.f ||
 				((trigger.iCountPerPlayer == 1u) != (trigger.fPlayerEffectRadiusM == 0.f)) ||
+				(trigger.bRandomPlayerOnly && trigger.iCountPerPlayer != 1u) || trigger.iArenaRandomCount > 32u ||
+				!std::isfinite(trigger.fArenaRandomRadiusM) || !std::isfinite(trigger.fArenaHeightToleranceM) ||
+				!std::isfinite(trigger.fArenaMinimumSpacingM) ||
+				(trigger.iArenaRandomCount == 0u ?
+					(trigger.fArenaRandomRadiusM != 0.f || trigger.fArenaHeightToleranceM != 0.f || trigger.fArenaMinimumSpacingM != 0.f) :
+					(trigger.fArenaRandomRadiusM <= 0.f || trigger.fArenaRandomRadiusM > 100.f ||
+					 trigger.fArenaHeightToleranceM <= 0.f || trigger.fArenaHeightToleranceM > 10.f ||
+					 trigger.fArenaMinimumSpacingM <= 0.f || trigger.fArenaMinimumSpacingM > 20.f)) ||
 				trigger.iEffectLifetimeMs < 1u || trigger.iEffectLifetimeMs > 600000u)
 			{ m_strStatus = "Albion volley preserved existing objects: invalid catalog, navigation or layout"; continue; }
 			BOSS_COMBAT_OBJECT_DEFINITION definition{};
@@ -821,25 +902,66 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			volley.iCountPerResolvedTarget = trigger.iCountPerPlayer;
 			volley.iMaximumTotalObjects = 64u;
 			volley.fRadiusM = trigger.fPlayerEffectRadiusM;
+			volley.iArenaRandomCount = trigger.iArenaRandomCount;
+			volley.fArenaRandomRadiusM = trigger.fArenaRandomRadiusM;
+			volley.fArenaHeightToleranceM = trigger.fArenaHeightToleranceM;
+			if (trigger.iArenaRandomCount != 0u)
+				volley.eArenaAnchorPolicy = BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION;
 			if (trigger.iCountPerPlayer > 1u)
 			{
 				volley.eLayout = BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL;
 				volley.fAngleStepDegrees = 360.f / static_cast<float>(trigger.iCountPerPlayer);
 			}
+			const auto eligiblePlayer = [](const SERVER_PLAYER& player)
+			{
+				return player.isCombatReady && player.iCurrentHp != 0u && player.iMarioStage == 0u &&
+					player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING;
+			};
+			PLAYER_ID selectedPlayerId = INVALID_PLAYER_ID;
+			if (trigger.bRandomPlayerOnly)
+			{
+				const std::uint64_t seed = Mix_DeterministicRandom(Hash_StableId(trigger.strTriggerId) ^
+					(static_cast<std::uint64_t>(owner->iNetEntityId) << 32u) ^ owner->iPatternSequence);
+				std::uint64_t selectedRank = (std::numeric_limits<std::uint64_t>::max)();
+				for (const auto& [playerId, player] : m_Players)
+				{
+					if (!eligiblePlayer(player)) continue;
+					const std::uint64_t rank = Mix_DeterministicRandom(seed ^ static_cast<std::uint64_t>(playerId));
+					if (selectedPlayerId == INVALID_PLAYER_ID || rank < selectedRank)
+					{ selectedPlayerId = playerId; selectedRank = rank; }
+				}
+				if (selectedPlayerId == INVALID_PLAYER_ID)
+				{ m_strStatus = "Albion volley preserved existing objects: no eligible arena player"; continue; }
+			}
+			BOSS_PATTERN_STAGE_ACTION arenaAction{};
+			arenaAction.strTargetId = trigger.strTriggerId;
+			arenaAction.Volley = volley;
+			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET> arenaOrigins;
+			if (!Resolve_ArenaRandomVolleyOrigins(*owner, arenaAction, definition, 0u, arenaOrigins,
+				trigger.fArenaMinimumSpacingM))
+			{ m_strStatus = "Albion volley preserved existing objects: " + m_strStatus; continue; }
 			auto transaction = m_CombatObjectRuntime.Begin_Transaction();
 			std::string failure;
 			bool admitted = true;
 			for (const auto& [playerId, player] : m_Players)
 			{
-				(void)playerId;
-				if (!player.isCombatReady || player.iCurrentHp == 0u || player.eAction == PLAYER_ACTION_STATE::DEAD || player.eAction == PLAYER_ACTION_STATE::FALLING)
+				if (!eligiblePlayer(player) || (trigger.bRandomPlayerOnly && playerId != selectedPlayerId))
 					continue;
 				SERVER_COMBAT_OBJECT_LOCKED_TARGET target{};
 				target.iNetEntityId = player.iNetEntityId;
 				target.fPositionX = player.fPositionX; target.fPositionY = player.fPositionY; target.fPositionZ = player.fPositionZ;
-				if (transaction.Objects.size() + trigger.iCountPerPlayer > volley.iMaximumTotalObjects ||
-					!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, *owner, &target, definition, &volley,
+				target.bTrackUntilFirstPulse = false;
+				if (transaction.Objects.size() + trigger.iCountPerPlayer + arenaOrigins.size() > volley.iMaximumTotalObjects)
+				{ failure = "the resolved volley exceeds the object limit"; admitted = false; break; }
+				if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, *owner, &target, definition, &volley,
 						*catalog, trigger.iCountPerPlayer, serverTick, failure))
+				{ admitted = false; break; }
+			}
+			for (const auto& origin : arenaOrigins)
+			{
+				if (!admitted) break;
+				if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, *owner, &origin, definition,
+					nullptr, *catalog, 1u, serverTick, failure))
 				{ admitted = false; break; }
 			}
 			// Validate the actual staged radial poses, then keep spawn/reconnect snapshots on the same floor.
@@ -979,9 +1101,19 @@ void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serv
 		if (live && nullptr != catalog && !clone->strPatternId.empty())
 		{
 			std::string status;
-			const auto result = m_KoukuSaydonBrain.Update(*clone, *catalog, serverTick, status);
-			live = KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION != result &&
-				KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD != result;
+			if (clone->bKoukuSummonClone)
+			{
+				const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, clone->strPatternId, status);
+				live = pattern && CKoukuSaydonBrain::Apply_StageRootMotion(*clone, *pattern, serverTick,
+					m_ServerNavigation, m_ServerCollisionSystem, status);
+			}
+			if (live)
+			{
+				const auto result = m_KoukuSaydonBrain.Update(*clone, *catalog, serverTick, status);
+				live = KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION != result &&
+					KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD != result;
+			}
+			if (!live) m_strStatus = "KoukuSaydon clone playback failed: " + status;
 		}
 		if (live)
 		{

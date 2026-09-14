@@ -19,7 +19,7 @@
     {
         nativeColor=ArtistNative2307(input);
         const float4 accumulated=ArtistNative2307Distortion(input);
-        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
         output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
         return output;
     }
@@ -35,7 +35,7 @@
     {
         nativeColor=ArtistNative2310(input);
         const float4 accumulated=ArtistNative2310Distortion(input);
-        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
         output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
         return output;
     }
@@ -95,7 +95,7 @@
     {
         nativeColor=ArtistNative2323(input);
         const float4 accumulated=ArtistNative2323Distortion(input);
-        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
         output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
         return output;
     }
@@ -115,7 +115,7 @@
     {
         nativeColor=ArtistNative2325(input);
         const float4 accumulated=ArtistNative2325Distortion(input);
-        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
         output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
         return output;
     }

@@ -3245,7 +3245,7 @@ float4 ArtistNative3603(ARTIST_NATIVE_INPUT input)
 float4 ArtistNative3604(ARTIST_NATIVE_INPUT input)
 {
     float4 source[10]; [unroll] for (uint i=0u; i<10u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
+    source[0]=float4(0.f,0.f,0.f,1.f); // Absolute source world position and neutral engine opacity.
     float4 output=0.f;
     source[1] = g_ArtistSourceMaterialParameters[7u];
     source[2] = g_ArtistSourceMaterialParameters[6u];
@@ -3285,7 +3285,7 @@ float4 ArtistNative3604(ARTIST_NATIVE_INPUT input)
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
     float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v7 = float4(input.sourceWorldPosition,1.f); // native texcoord5
     float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
     float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f;
     // 1: add r0.x, -v4.w, l(1.000000)

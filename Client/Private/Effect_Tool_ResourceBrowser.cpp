@@ -1859,6 +1859,71 @@ bool_t Client::CEffect_Tool::Render_ManualElementGroups(
     return true;
 }
 
+void Client::CEffect_Tool::Render_ActiveAuthoredElementRow(const EFFECT_ELEMENT_DESC& Element, const size_t iOrdinal)
+{
+    const auto eFamily = Resolve_AuthoringFamily(Element);
+					ImGui::PushID(Element.strElementId.c_str());
+					const bool_t bSelected =
+						EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
+						m_strSelectedElementId == Element.strElementId;
+					const float fRowWidth = (std::max)(1.f,
+						ImGui::GetContentRegionAvail().x - 54.f);
+					const bool_t bMarked = m_MarkedElementIds.contains(
+						Element.strElementId);
+					/* The row is where Elements get judged for deletion, so it has
+					   to say when what is on screen is the source playing rather
+					   than anything the authored values could change. */
+					const std::string RowLabel =
+						std::string(bMarked ? "[x] " : "") +
+						(Element.SourceRecipe.bEnabled ? "(src) " : "") +
+						FriendlyAuthoringElementLabel(
+							eFamily, iOrdinal, Element);
+					if (ImGui::Selectable(RowLabel.c_str(), bSelected || bMarked,
+						0, ImVec2(fRowWidth, 0.f)))
+					{
+						const ImGuiIO& Io = ImGui::GetIO();
+						if (Io.KeyCtrl || Io.KeyShift)
+						{
+							/* Marking keeps the current Detail draft. The first modifier
+                               click includes an already selected row in the group. */
+                            if (m_MarkedElementIds.empty() &&
+                                EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
+                                !m_strSelectedElementId.empty() && m_strSelectedElementId != Element.strElementId)
+                                m_MarkedElementIds.insert(m_strSelectedElementId);
+							if (!m_MarkedElementIds.insert(
+									Element.strElementId).second)
+							{
+								m_MarkedElementIds.erase(Element.strElementId);
+							}
+						}
+						else
+						{
+                            if (Try_SelectElement(m_ActiveDocument->strEffectAssetId, Element.strElementId))
+                                m_MarkedElementIds.clear();
+						}
+					}
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Stable Element: %s\n%s",
+							Element.strElementId.c_str(),
+							ElementPreviewAdmissionReason(Element));
+					ImGui::SameLine();
+					const bool_t bElementPreviewAdmitted =
+						Is_ElementPreviewAdmitted(Element);
+					ImGui::BeginDisabled(!bElementPreviewAdmitted);
+					if (ImGui::SmallButton("Solo"))
+					{
+						Try_SoloElement(m_ActiveDocument->strEffectAssetId,
+							Element.strElementId);
+					}
+					ImGui::EndDisabled();
+					if (!bElementPreviewAdmitted && ImGui::IsItemHovered(
+							ImGuiHoveredFlags_AllowWhenDisabled))
+					{
+						ImGui::SetTooltip("%s", ElementPreviewAdmissionReason(Element));
+					}
+					ImGui::PopID();
+}
+
 void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 {
 	ImGui::SeparatorText("Current Effect");
@@ -2037,6 +2102,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	{
 		return;
 	}
+    const bool hasElements = !m_ActiveDocument->Elements.empty();
+    if (hasElements) ImGui::Checkbox("Group by anchor", &m_bCurrentEffectGroupByAnchor);
+    if (hasElements && m_bCurrentEffectGroupByAnchor)
+        Render_CurrentEffectAttachmentGroups();
+    else
+    {
 	// Build the visible family rows once after all document-edit commands above.
 	// The view is frame-local, so reload/delete/reorder cannot leave a stale cache.
 	std::array<std::vector<const EFFECT_ELEMENT_DESC*>,
@@ -2097,72 +2168,14 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 				{
 					const EFFECT_ELEMENT_DESC& Element = *FamilyElements[static_cast<size_t>(iRow)];
 					const size_t iOrdinal = static_cast<size_t>(iRow) + 1u;
-					ImGui::PushID(Element.strElementId.c_str());
-					const bool_t bSelected =
-						EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-						m_strSelectedElementId == Element.strElementId;
-					const float fRowWidth = (std::max)(1.f,
-						ImGui::GetContentRegionAvail().x - 54.f);
-					const bool_t bMarked = m_MarkedElementIds.contains(
-						Element.strElementId);
-					/* The row is where Elements get judged for deletion, so it has
-					   to say when what is on screen is the source playing rather
-					   than anything the authored values could change. */
-					const std::string RowLabel =
-						std::string(bMarked ? "[x] " : "") +
-						(Element.SourceRecipe.bEnabled ? "(src) " : "") +
-						FriendlyAuthoringElementLabel(
-							eFamily, iOrdinal, Element);
-					if (ImGui::Selectable(RowLabel.c_str(), bSelected || bMarked,
-						0, ImVec2(fRowWidth, 0.f)))
-					{
-						const ImGuiIO& Io = ImGui::GetIO();
-						if (Io.KeyCtrl || Io.KeyShift)
-						{
-							/* Marking keeps the current Detail draft. The first modifier
-                               click includes an already selected row in the group. */
-                            if (m_MarkedElementIds.empty() &&
-                                EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-                                !m_strSelectedElementId.empty() && m_strSelectedElementId != Element.strElementId)
-                                m_MarkedElementIds.insert(m_strSelectedElementId);
-							if (!m_MarkedElementIds.insert(
-									Element.strElementId).second)
-							{
-								m_MarkedElementIds.erase(Element.strElementId);
-							}
-						}
-						else
-						{
-                            if (Try_SelectElement(m_ActiveDocument->strEffectAssetId, Element.strElementId))
-                                m_MarkedElementIds.clear();
-						}
-					}
-					if (ImGui::IsItemHovered())
-						ImGui::SetTooltip("Stable Element: %s\n%s",
-							Element.strElementId.c_str(),
-							ElementPreviewAdmissionReason(Element));
-					ImGui::SameLine();
-					const bool_t bElementPreviewAdmitted =
-						Is_ElementPreviewAdmitted(Element);
-					ImGui::BeginDisabled(!bElementPreviewAdmitted);
-					if (ImGui::SmallButton("Solo"))
-					{
-						Try_SoloElement(m_ActiveDocument->strEffectAssetId,
-							Element.strElementId);
-					}
-					ImGui::EndDisabled();
-					if (!bElementPreviewAdmitted && ImGui::IsItemHovered(
-							ImGuiHoveredFlags_AllowWhenDisabled))
-					{
-						ImGui::SetTooltip("%s", ElementPreviewAdmissionReason(Element));
-					}
-					ImGui::PopID();
+					Render_ActiveAuthoredElementRow(Element, iOrdinal);
 				}
 			}
 			ImGui::TreePop();
 		}
 		ImGui::PopID();
 	}
+    }
 	if (!m_ActiveDocument->ModelCues.empty())
 	{
 		const bool_t bModelOpen = ImGui::TreeNodeEx(("Model / Summon (" +
@@ -2274,144 +2287,61 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
             m_strSavedKoukuInventoryStatus.clear();
         }
         else m_strSavedKoukuInventoryStatus = "Previous saved Effect list preserved: " + status;
+        std::set<std::string> ids;
+        for (const auto& id : CEffectCatalog::Get_EffectAssetIds())
+            if (Is_KoukuEffectAssetId(id) && CEffectCatalog::Is_DirectAuthoredDocument(id)) ids.insert(id);
+        for (const auto& [id, source] : m_SavedKoukuEffectSources) ids.insert(id);
+        // Preserve references even when their source is currently missing.
+        for (const auto& [id, organization] : m_SavedEffectOrganization)
+            if (Is_KoukuEffectAssetId(id)) ids.insert(id);
+        std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW> views;
+        views.reserve(ids.size());
+        for (const auto& id : ids)
+        {
+            const auto organization = m_SavedEffectOrganization.find(id);
+            const auto source = m_SavedKoukuEffectSources.find(id);
+            const std::string name = organization != m_SavedEffectOrganization.end() && !organization->second.first.empty() ?
+                organization->second.first : source != m_SavedKoukuEffectSources.end() && !source->second.strDisplayName.empty() ?
+                    source->second.strDisplayName : id;
+            views.push_back(Describe_KoukuSavedEffect(id, name,
+                organization == m_SavedEffectOrganization.end() ? std::vector<std::string>{} : organization->second.second));
+        }
+        m_SavedKoukuEffectTree = Build_KoukuSavedEffectTree(std::move(views));
         m_bSavedEffectOrganizationLoaded = true;
     }
-    struct SAVED_EFFECT_LABEL final
+    std::map<std::string, EFFECT_TOOL_KOUKU_EFFECT_VIEW> worldLabels;
+    const auto LabelFor = [&](const std::string& id) -> const EFFECT_TOOL_KOUKU_EFFECT_VIEW&
     {
-        int gateOrder = 4;
-        std::string text;
-        std::string originalName;
-        std::string fullPath;
-    };
-    std::map<std::string, SAVED_EFFECT_LABEL> labels;
-    const auto LabelFor = [&](const std::string& id) -> const SAVED_EFFECT_LABEL&
-    {
-        auto [entry, inserted] = labels.try_emplace(id);
+        if (!bWorld) return m_SavedKoukuEffectTree.views.at(m_SavedKoukuEffectTree.assetIndices.at(id));
+        auto [entry, inserted] = worldLabels.try_emplace(id);
         if (!inserted) return entry->second;
-        auto& label = entry->second;
         const auto organization = m_SavedEffectOrganization.find(id);
-        const auto source = m_SavedKoukuEffectSources.find(id);
-        label.originalName = organization != m_SavedEffectOrganization.end() && !organization->second.first.empty() ?
-            organization->second.first : !bWorld && source != m_SavedKoukuEffectSources.end() &&
-                !source->second.strDisplayName.empty() ? source->second.strDisplayName : id;
-        label.text = label.originalName;
-        if (bWorld) return label;
-
-        std::vector<std::string> path;
-        if (organization != m_SavedEffectOrganization.end()) path = organization->second.second;
-        for (const auto& segment : path)
-        {
-            if (!label.fullPath.empty()) label.fullPath += " / ";
-            label.fullPath += segment;
-        }
-        if (!path.empty() && path.front() == "KoukuSaydon") path.erase(path.begin());
-        const auto GateOrder = [](const std::string& gate)
-        {
-            if (gate == "\x31\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 1") return 1;
-            if (gate == "\x32\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 2") return 2;
-            if (gate == "\x33\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 3") return 3;
-            if (gate == "\xEA\xB3\xB5\xED\x86\xB5" || gate == "Common") return 4;
-            return 0;
-        };
-        if (!path.empty()) label.gateOrder = GateOrder(path.front());
-        if (path.empty() || label.gateOrder == 0)
-        {
-            label.gateOrder = 4;
-            std::string category = "\xEA\xB8\xB0\xED\x83\x80\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
-            for (int gate = 1; gate <= 3; ++gate)
-            {
-                const std::string prefix = ".gate" + std::to_string(gate) + ".";
-                const auto found = id.find(prefix);
-                if (found == std::string::npos) continue;
-                label.gateOrder = gate;
-                const auto from = found + prefix.size();
-                category = id.substr(from, id.find('.', from) - from);
-                break;
-            }
-            const std::string gate = label.gateOrder <= 3 ? std::to_string(label.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
-            if (path.empty())
-            {
-                const bool intro = category == "intro";
-                if (category == "showtime") category = "\xEC\x87\xBC\xED\x83\x80\xEC\x9E\x84";
-                else if (category == "rainbow") category = "\xEB\xAC\xB4\xEC\xA7\x80\xEA\xB0\x9C";
-                else if (category == "mario") category = "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4";
-                else if (intro) category = "\xEC\x9E\x85\xEC\x9E\xA5";
-                else if (category == "downstrike" || category == "slam" || category == "staff") category = "\xEC\xA7\x80\xED\x8C\xA1\xEC\x9D\xB4\x20\xEB\x82\xB4\xEB\xA0\xA4\xEC\xB0\x8D\xEA\xB8\xB0\x20\xC2\xB7\x20\xED\x99\x94\xEC\x97\xBC";
-                else if (category == "spider") category = "\xEA\xB1\xB0\xEB\xAF\xB8\x20\xEC\xB9\xB4\xEC\x9A\xB4\xED\x84\xB0";
-                path = {gate, intro ? "\xEC\x97\xB0\xEC\xB6\x9C" : "\xED\x8C\xA8\xED\x84\xB4", category};
-            }
-            else path.insert(path.begin(), gate);
-        }
-        else path.front() = label.gateOrder <= 3 ? std::to_string(label.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
-        if (path.size() == 1u) path.push_back("\xEA\xB8\xB0\xED\x83\x80\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8");
-        if (path[1] == "Patterns") path[1] = "\xED\x8C\xA8\xED\x84\xB4";
-        else if (path[1] == "Cinematics") path[1] = "\xEC\x97\xB0\xEC\xB6\x9C";
-        if (label.fullPath.empty())
-            for (const auto& segment : path)
-            {
-                if (!label.fullPath.empty()) label.fullPath += " / ";
-                label.fullPath += segment;
-            }
-
-        std::string name = label.originalName;
-        const std::string gatePrefix = path.front() + "_";
-        if (name.starts_with(gatePrefix)) name.erase(0u, gatePrefix.size());
-        for (size_t index = 2u; index < path.size(); ++index)
-        {
-            const std::string prefix = path[index] + "_";
-            if (!name.starts_with(prefix)) break;
-            name.erase(0u, prefix.size());
-        }
-        if (name.empty()) name = label.originalName;
-        label.text = path[0] + " | " + path[1];
-        if (path.size() > 2u)
-        {
-            label.text += " | ";
-            for (size_t index = 2u; index < path.size(); ++index)
-            {
-                if (index > 2u) label.text += " / ";
-                label.text += path[index];
-            }
-        }
-        label.text += " | " + name;
-        return label;
+        entry->second.assetId = id;
+        entry->second.text = entry->second.originalName = organization != m_SavedEffectOrganization.end() &&
+            !organization->second.first.empty() ? organization->second.first : id;
+        return entry->second;
     };
     const auto MatchesSearch = [&](const std::string& id)
     {
-        if (strSearch.empty() || Contains_NoCase(id, strSearch) ||
-            (!bWorld && Contains_NoCase(LabelFor(id).text, strSearch))) return true;
-        if (!bWorld)
-        {
-            const auto source = m_SavedKoukuEffectSources.find(id);
-            if (source != m_SavedKoukuEffectSources.end() &&
-                Contains_NoCase(source->second.strDisplayName, strSearch)) return true;
-        }
+        if (strSearch.empty() || Contains_NoCase(id, strSearch)) return true;
         const auto found = m_SavedEffectOrganization.find(id);
         return found != m_SavedEffectOrganization.end() && (Contains_NoCase(found->second.first, strSearch) ||
             std::any_of(found->second.second.begin(), found->second.second.end(),
                 [&](const auto& name) { return Contains_NoCase(name, strSearch); }));
     };
-	std::vector<std::string> EffectIds;
-	for (const std::string& strEffectAssetId : CEffectCatalog::Get_EffectAssetIds())
-	{
-		if (MatchesOwner(strEffectAssetId) &&
-			CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId) &&
-			MatchesSearch(strEffectAssetId))
-		{
-			EffectIds.push_back(strEffectAssetId);
-		}
-	}
-	if (!bWorld)
-	{
-		for (const auto& [id, source] : m_SavedKoukuEffectSources)
-			if (MatchesSearch(id)) EffectIds.push_back(id);
-		// Retain saved references whose source is missing so the row can explain
-		// the failure. Discovery does not promote an authored file to Product.
-		for (const auto& [id, organization] : m_SavedEffectOrganization)
-			if (MatchesOwner(id) && MatchesSearch(id)) EffectIds.push_back(id);
-	}
-	std::ranges::sort(EffectIds);
-	EffectIds.erase(std::unique(EffectIds.begin(), EffectIds.end()), EffectIds.end());
+    std::vector<std::string> EffectIds;
+    if (bWorld)
+    {
+        for (const auto& id : CEffectCatalog::Get_EffectAssetIds())
+            if (MatchesOwner(id) && CEffectCatalog::Is_DirectAuthoredDocument(id) && MatchesSearch(id)) EffectIds.push_back(id);
+        std::ranges::sort(EffectIds);
+        EffectIds.erase(std::unique(EffectIds.begin(), EffectIds.end()), EffectIds.end());
+    }
+    const auto visible = [&](const std::size_t index) {
+        return Matches_KoukuSavedEffect(m_SavedKoukuEffectTree.views[index], strSearch);
+    };
+    const std::size_t visibleCount = bWorld ? EffectIds.size() : static_cast<std::size_t>(
+        std::count_if(m_SavedKoukuEffectTree.order.begin(), m_SavedKoukuEffectTree.order.end(), visible));
     if (bWorld)
     {
         ImGui::SetNextItemOpen(true, strSearch.empty() ? ImGuiCond_FirstUseEver : ImGuiCond_Always);
@@ -2420,15 +2350,7 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
     }
     else
     {
-        std::ranges::sort(EffectIds, [&](const auto& leftId, const auto& rightId)
-        {
-            const auto& left = LabelFor(leftId);
-            const auto& right = LabelFor(rightId);
-            if (left.gateOrder != right.gateOrder) return left.gateOrder < right.gateOrder;
-            if (left.text != right.text) return left.text < right.text;
-            return leftId < rightId;
-        });
-        ImGui::TextDisabled("KoukuSaydon Effects (%zu)", EffectIds.size());
+        ImGui::TextDisabled("KoukuSaydon Effects (%zu)", visibleCount);
     }
 
 	ImGui::TextWrapped("%s", bWorld ?
@@ -2446,7 +2368,7 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
 			m_pAuthoringSequencer->ClockMs() * .001);
 		ImGui::TextWrapped("%s", m_pAuthoringSequencer->Status().c_str());
 	}
-	if (EffectIds.empty())
+	if (visibleCount == 0u)
 		ImGui::TextDisabled("No saved %s Effect matches the search.", pOwnerLabel);
 	const auto RenderEffect = [&](const std::string& strEffectAssetId)
 	{
@@ -2568,8 +2490,13 @@ void Client::CEffect_Tool::Render_SavedAuthoredEffectSection(
         ImGui::TreePop();
         ImGui::PopID();
     };
-    // Each saved Effect is a top-level row; only its own actions expand.
-    for (const auto& id : EffectIds) RenderEffect(id);
+    if (bWorld) for (const auto& id : EffectIds) RenderEffect(id);
+    else
+    {
+        Render_KoukuSavedEffectTree(m_SavedKoukuEffectTree,
+            [&](const auto index) { RenderEffect(m_SavedKoukuEffectTree.views[index].assetId); },
+            !strSearch.empty(), {}, visible);
+    }
     if (bWorld) ImGui::TreePop();
 }
 

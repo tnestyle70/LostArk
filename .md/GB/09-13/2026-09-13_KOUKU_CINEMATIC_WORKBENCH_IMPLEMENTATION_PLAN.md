@@ -202,6 +202,12 @@ element 복제는 필요하지 않다.
 transform·시간을 보존하고 fill 곡선만 추가한다. 시작/중간/끝의 실제 native 반경과 source curve,
 Codec 저장·재로드를 확인하며 최종 색·가시성은 사용자 판정으로 남긴다.
 
+09-14 후속 요청은 같은 예고의 inner 곡선을 정본에 설치하고 사격 SpriteEmitter `_0`, `_17`,
+`_19`의 세 stable element를 제거하는 것이다. 기존 부채꼴 Decal의 ID·반경11m·45도·색·위치·
+1.5초 예고 수명은 유지한다. `--stage-sector-warning-only` 후보 생성 경로는 같은 입력에
+재실행해도 결과가 같아야 한다. V1_ELEMENT도 기존 renderer의 표시 범위만 제한하므로 같은
+SourceTransformTrack materialParameterTracks와 native packet 소비를 검증한다.
+
 ## G12. Effect Tool Play All의 불필요한 보스 모델 요구
 
 실제 V1 Play All은 `Start_WorldPreviewFromBeginning → Try_PlayRecoveryEffect →

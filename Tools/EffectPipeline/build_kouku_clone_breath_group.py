@@ -25,10 +25,136 @@ OUTPUT = ROOT / 'Data/Effects/Authored' / (ASSET + '.effect.json')
 ACTION_SOURCE = source.SOURCE / 'RemainingCharacterExtraction-20260829/ActionNameSources/MN_RPCT_07.action-effects.json'
 MODEL_CONTRACT = ROOT / 'out/KoukuActionEffects20260912/MN_RPCT_07.model_contract.json'
 MODULE_EVIDENCE = ROOT / 'out/KoukuAllEffects20260912'
+REPAIR_FIELDS = {
+    ('particlemodulerotation', 'startrotation'),
+    ('particlemodulemeshrotation_seeded', 'startrotation'),
+    ('particlemodulelocationprimitivecylinder', 'startradius'),
+    ('particlemodulelocationprimitivecylinder', 'velocityscale'),
+    ('particlemodulelocationprimitivesphere', 'startradius'),
+    ('particlemodulelocationprimitivesphere_seeded', 'velocityscale'),
+    ('particlemodulespawn', 'rate'),
+}
+
+
+def repair_source_defaults(document):
+    """Recover missing nested cooked fields in this source system only.
+
+    A serialized Distribution=None clears the UObject pointer, not the inherited
+    cooked lookup payload. Retain nonempty authored distributions and all other
+    data, including palette, timing, mesh TypeData and the source +X root basis.
+    """
+    instances = source.read(MODULE_EVIDENCE / 'source_module_inputs.json')['records']
+    defaults = {r['fullPath']: r for r in source.read(MODULE_EVIDENCE / 'source_class_defaults.json')['records']}
+    repairs = []
+    for element in document['elements']:
+        assert element['sourceNode'].split('|')[-1].startswith(SYSTEM + '.')
+        for module in element['sourceRecipe']['modules']:
+            for distribution in module['distributions']:
+                field = distribution['propertyPath']
+                if (module['className'], field) not in REPAIR_FIELDS:
+                    continue
+                if distribution['lookupTable'] or distribution['keys']:
+                    continue
+                instance = instances[module['objectPath']]
+                delta = {k.casefold(): v for k, v in instance['properties'][field]['value']['properties'].items()}
+                assert set(delta) == {'distribution'} and delta['distribution']['value'] == 0
+                chain, key = [], instance.get('archetypeFullPath') or 'engine.default__' + module['className']
+                while key:
+                    record = defaults[key]
+                    chain.append(record)
+                    key = record.get('archetypeFullPath')
+                inherited = {}
+                for record in reversed(chain):
+                    properties = {k.casefold(): v for k, v in record['properties'].items()}
+                    if field in properties:
+                        tag = properties[field]
+                        assert tag['structType'].casefold().startswith('rawdistribution')
+                        inherited.update({k.casefold(): v['value'] for k, v in tag['value']['properties'].items()})
+                assert inherited.get('lookuptable') and any(inherited['lookuptable'])
+                before = copy.deepcopy(distribution)
+                for authored, raw in (('operation', 'op'), ('lookupTableNumElements', 'lookuptablenumelements'),
+                        ('lookupTableChunkSize', 'lookuptablechunksize'), ('lookupTableTimeScale', 'lookuptabletimescale'),
+                        ('lookupTableStartTime', 'lookuptablestarttime'), ('lookupTable', 'lookuptable')):
+                    distribution[authored] = copy.deepcopy(inherited[raw])
+                repairs.append(dict(elementId=element['id'], sourceModule=module['objectPath'], propertyPath=field,
+                    sourceExportIndex=instance['exportIndex'], serializedDelta=delta,
+                    inheritedClassChain=[r['fullPath'] for r in chain], before=before, after=copy.deepcopy(distribution)))
+    return repairs
+
+
+def stage_authored_repair(evidence):
+    evidence = evidence.resolve()
+    assert evidence.is_relative_to(ROOT / 'out')
+    before = OUTPUT.read_bytes()
+    document = json.loads(before)
+    assert document['effectAssetId'] == ASSET and len(document['elements']) == 15
+    repairs = repair_source_defaults(document)
+    assert len(repairs) == 10, ('Unexpected current missing fields; preserve changed authoring', len(repairs))
+    assert not document.get('sourceModelPreview'), 'Preserve an existing authored actor preview'
+    document['sourceModelPreview'] = breath_model_preview()
+    candidate = evidence / 'candidate' / OUTPUT.name
+    source.write(candidate, document)
+    backup = evidence / 'baseline' / OUTPUT.name
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    backup.write_bytes(before)
+    composition_path = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
+    tree_path = ROOT / 'Data/Effects/EffectResourceTree.json'
+    composition, tree = source.read(composition_path), source.read(tree_path)
+    resource = next(r for r in composition['presentationResources'] if r['assetId'] == ASSET)
+    parent = next(r['parentId'] for r in tree['references'] if r['kind'] == 'V1' and r['assetId'] == ASSET)
+    reference_revision = next(a['referenceRevision'] for p in composition['patterns']
+        for s in p['stages'] for a in s['animationOccurrences'] if a['profileId'] == 'MN_RPCT_07')
+    source.write(evidence / 'pattern_template.json', dict(
+        operation='CREATE_NEW_PATTERN_WITH_FRESH_STABLE_IDS', displayName='기분나빠 | 브레스',
+        actorProfileId='MN_RPCT_05', gateId='GATE3', targetBossPlacementId='boss.kakulsaydon.g3.saydon',
+        category='MECHANIC', authoringStatus='DRAFT', resetBossToSpawn=False,
+        stage=dict(stageKind='ACTIVE', durationMs=5167, animation=dict(profileId='MN_RPCT_07',
+            sourceActionId=4219917, sourceStageId='stage-000', sourceSlotId='animation-000',
+            referenceRevision=reference_revision, runtimeClip='rpct00_att_battle_31_01',
+            startOffsetMs=0, sourceStartMs=0, playMs=5167, playRate=1, endPolicy='EXACT')),
+        presentationOccurrence=dict(resourceId=resource['resourceId'], startMs=1989, durationMs=3000,
+            positionOffset=[0, 0, 0], rotationDegrees=[0, 0, 0], scale=[1, 1, 1],
+            fadeInMs=0, fadeOutMs=0, dissolveStart=1, dissolveEnd=1, brightnessMultiplier=1, volume=1,
+            followBoss=False, debugRender=True, bone='', boneTarget='BODY', regionId='', cardSymbol='NONE',
+            cardColor='NONE', anchorKind='BOSS', worldId='', logicOccurrenceId='', worldOccurrenceId=''),
+        sourceBasis='Source SNAPSHOT_ROOT at notify 1.989096999 seconds; effect normalizes source +X to owner +Z once.',
+        existingPatternIdsUnchanged=[f'KAKULSAYDON_G1_PATTERN_{i}' for i in (44, 50, 51, 52, 53, 54, 55)],
+        compositionInputSha256=hashlib.sha256(composition_path.read_bytes()).hexdigest()))
+    source.write(evidence / 'source_default_repairs.json', dict(repairs=repairs,
+        cause='SERIALIZED_DISTRIBUTION_NONE_REPLACED_INHERITED_COOKED_FIELDS', sourceSystem=SYSTEM,
+        appearancePreserved=['native material palette and textures', 'all 15 elements and stable IDs',
+            'root yaw -90 and authored occurrence transforms', 'notify duration and all clocks']))
+    inputs = [OUTPUT, LIBRARY, ACTION_SOURCE, MODEL_CONTRACT, composition_path, tree_path,
+        MODULE_EVIDENCE / 'source_module_inputs.json', MODULE_EVIDENCE / 'source_class_defaults.json', Path(__file__)]
+    source.write(evidence / 'installation.json', dict(installed=False, stageOnly=True, documents=[dict(
+        effectAssetId=ASSET, displayName=document['displayName'], path=OUTPUT.relative_to(ROOT).as_posix(),
+        candidatePath=candidate.relative_to(ROOT).as_posix(), beforeSha256=hashlib.sha256(before).hexdigest(),
+        candidateSha256=hashlib.sha256(candidate.read_bytes()).hexdigest(), durationMs=resource['durationMs'],
+        defaultAnchorKind=resource['defaultAnchorKind'], resourceId=resource['resourceId'], parentId=parent)],
+        inputHashes={p.relative_to(ROOT).as_posix() if p.is_relative_to(ROOT) else p.as_posix():
+                     hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs},
+        sourceActionId=4219917, sourceNotifyId='action-4219917/stage-000/notify-008',
+        savedConsumers=[dict(patternId=p['patternId'], occurrenceId=o['occurrenceId']) for p in composition['patterns']
+                        for o in p['presentationOccurrences'] if o['resourceId'] == resource['resourceId']],
+        repairedFields=len(repairs), elements=15, nativeShaderChanges=False,
+        manualVisualValidation='USER_PENDING', clientRun=False))
+    print(json.dumps(dict(staged=True, repairedFields=len(repairs), candidate=str(candidate))))
 
 
 def receipt(path):
     return dict(path=path.resolve().as_posix(), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+
+
+def breath_model_preview():
+    preview = source.source_model_preview(ACTION_SOURCE, 4219917, [0], 'GATE3',
+        'MN_RPCT_05', 'boss.kakulsaydon.g3.saydon')
+    assert len(preview['animations']) == 1
+    animation = preview['animations'][0]
+    assert animation['runtimeClip'] == 'rpct00_att_battle_31_01' and animation['playMs'] == 5167
+    # This independent asset begins at the source breath notify, not the actor's
+    # preparation. Composition's full actor clip is a separate authored clock.
+    animation.update(sourceStartMs=1989, playMs=3000)
+    return preview
 
 
 def derive(install=False):
@@ -93,6 +219,10 @@ def derive(install=False):
             typedata.append(dict(sourceRecord=record, inheritedDefaults=chain, additionalRotationApplied=False))
     assert len(typedata) == 1
 
+    default_repairs = repair_source_defaults(doc)
+    assert len(default_repairs) == 10
+    doc['sourceModelPreview'] = breath_model_preview()
+
     resources = {r['assetId'] for e in elements for r in e['resources']}
     resources.update(t['assetId'] for e in elements for t in e['material']['sourceProfile']['textures'])
     missing = [r for r in sorted(resources) if not (ROOT / 'Client/Bin/Resources' / r).is_file()]
@@ -105,6 +235,7 @@ def derive(install=False):
         stageIndex=stage['stageIndex'], sourceAnimationClips=stage['animationClips'], notify=notify, decodedCue=cue))
     source.write(EVIDENCE / 'source_mesh_typedata.json', dict(records=typedata))
     source.write(EVIDENCE / 'parameter_projection.json', dict(parameters=parameters))
+    source.write(EVIDENCE / 'source_default_repairs.json', dict(repairs=default_repairs))
     candidate = EVIDENCE / 'candidate' / OUTPUT.name
     source.write(candidate, doc)
     if install:
@@ -144,4 +275,11 @@ def derive(install=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--install', action='store_true', help='Install the candidate after preserving existing authored edits')
-    derive(parser.parse_args().install)
+    parser.add_argument('--repair-authored', action='store_true', help='Stage only the missing source defaults in current authored data')
+    parser.add_argument('--evidence-root', type=Path, default=ROOT / 'out/KoukuCloneBreath20260914')
+    args = parser.parse_args()
+    if args.repair_authored:
+        assert not args.install, 'The current authored repair uses a separate CAS installer'
+        stage_authored_repair(args.evidence_root)
+    else:
+        derive(args.install)

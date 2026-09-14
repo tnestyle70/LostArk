@@ -491,6 +491,7 @@ namespace Client
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }
 		void Set_DebugMarioJumpEnabled(bool_t enabled) { m_debugMarioJumpEnabled = enabled; }
 		const std::string& Get_DebugMarioJumpStatus() const { return m_debugMarioJumpStatus; }
+		const std::string& Get_MarioReturnStatus() const { return m_MarioReturnStatus; }
 #endif
 
 		/* One-shot: consumed (cleared) by the next Update() regardless of
@@ -586,6 +587,13 @@ namespace Client
 		std::int8_t m_iLastMarioMoveDirection = 0;
 		std::uint32_t m_iNextMarioMoveSequence = 1u;
 		std::chrono::steady_clock::time_point m_MarioMoveSentAt{};
+
+		bool_t Update_MarioReturn(bool_t gameplayCommandsEnabled);
+		bool_t m_wasMarioReturnDown = false;
+		std::uint32_t m_nextMarioReturnSequence = 1u;
+		std::uint32_t m_pendingMarioReturnSequence = 0u;
+		std::chrono::steady_clock::time_point m_MarioReturnSentAt{};
+		std::string m_MarioReturnStatus;
 
 		bool_t m_wasInteractKeyDown = false;
 		inline static std::uint32_t s_iPreferredVehicleId = 0u;

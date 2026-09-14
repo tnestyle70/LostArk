@@ -522,7 +522,24 @@ void LostArk::Server::CGameRoom::Leave(
 	{
 		Stop_ValtanTimelineRow();
 	}
-	if (sessionId == m_KoukuSaydonPatternAudition.iOwnerSessionId) Clear_KoukuSaydonPatternAudition();
+	const bool koukuOwnerLeft = sessionId == m_KoukuSaydonPatternAudition.iOwnerSessionId;
+	const auto soloMarioDeparture = std::find_if(
+		m_KoukuSaydonPatternAudition.Members.begin(), m_KoukuSaydonPatternAudition.Members.end(),
+		[sessionId, koukuOwnerLeft](const auto& member) {
+			return member.bMarioSoloReturnRequired && !member.bCompletionChainSuccessQueued &&
+				(koukuOwnerLeft || member.iMarioEntrantSessionId == sessionId);
+		});
+	if (soloMarioDeparture != m_KoukuSaydonPatternAudition.Members.end())
+	{
+		m_strStatus = std::string("Mario solo ") +
+			(soloMarioDeparture->iMarioEntrantSessionId == sessionId ? "entrant " : "run owner ") +
+			(reason == PLAYER_DESPAWN_REASON::DISCONNECTED ? "disconnected" : "left the room") + " before phase 2";
+		// The departing owner cannot receive its receipt; keep the cause in the Server log.
+		std::cout << "[MarioSoloAbort] session=" << sessionId << " entrant=" << soloMarioDeparture->iMarioEntrantPlayerId
+			<< " reason=" << m_strStatus << '\n';
+		Clear_KoukuSaydonPatternAudition(false, m_strStatus);
+	}
+	else if (koukuOwnerLeft) Clear_KoukuSaydonPatternAudition();
 
 	std::erase_if(m_PendingKoukuSaydonPatternAuditionLifecycle,
 		[sessionId](const TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& edge)

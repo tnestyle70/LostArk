@@ -58,7 +58,7 @@ WORLD_SEQUENCE_MAX_TRACKS = 32
 WORLD_SEQUENCE_MAX_KEYS = 256
 WORLD_SEQUENCE_MAX_COMPONENT = 100_000.0
 WORLD_SEQUENCE_MIN_SCALE = 0.000001
-CAMERA_SHOT_MAX_COUNT = 64
+CAMERA_SHOT_MAX_COUNT = 128
 CAMERA_SHOT_MAX_BLEND_MS = 10_000
 CAMERA_SHOT_MAX_PRIORITY = 1_000
 CAMERA_SHOT_MAX_HALF_EXTENT = 1_000.0
@@ -2535,9 +2535,24 @@ def _validate_world_sequence_effect_tracks(
                 "effectTrackId", "slotId", "resourceKind", "resourceId", "timing",
                 "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale",
             ),
-            (),
+            ("followObject", "bone"),
             effect_context,
         )
+        if not isinstance(effect.get("followObject", False), bool):
+            raise CompositionError(f"{effect_context}.followObject must be boolean")
+        bone = _require_string(
+            effect.get("bone", ""), f"{effect_context}.bone", allow_empty=True
+        )
+        try:
+            bone_bytes = bone.encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise CompositionError(f"{effect_context}.bone must be valid UTF-8") from error
+        if len(bone_bytes) > 256 or any(
+            ord(character) < 0x20 or ord(character) == 0x7F for character in bone
+        ):
+            raise CompositionError(
+                f"{effect_context}.bone must be UTF-8 text <= 256 bytes without controls"
+            )
         effect_id = _require_owner_stable_id(
             effect["effectTrackId"], f"{effect_context}.effectTrackId", 128
         )
@@ -2552,7 +2567,7 @@ def _validate_world_sequence_effect_tracks(
         _require_owner_stable_id(
             effect["resourceId"], f"{effect_context}.resourceId", 128
         )
-        if effect["resourceKind"] not in ("LEAF", "GROUP"):
+        if effect["resourceKind"] not in ("LEAF", "GROUP", "V1_EFFECT"):
             raise CompositionError(f"{effect_context}.resourceKind is invalid")
         if effect["timing"] not in ("TIME", "MOTION_END"):
             raise CompositionError(f"{effect_context}.timing is invalid")
@@ -2796,12 +2811,22 @@ def _validate_world_sequence_source(
             _require_exact_fields(
                 track,
                 ("slotId", "clipName", "playbackRate", "loop", "holdLastFrame"),
-                ("startMs", "displayName"),
+                ("startMs", "displayName", "sourceStartMs"),
                 track_context,
             )
             slot_id = _require_owner_stable_id(
                 track["slotId"], f"{track_context}.slotId", 128
             )
+            # Source time belongs to the native clip, independently of the box.
+            # Its native duration is checked by the Map owner's prepared model.
+            source_start_ms = _require_nonnegative_int(
+                track.get("sourceStartMs", 0), f"{track_context}.sourceStartMs"
+            )
+            if source_start_ms > WORLD_SEQUENCE_MAX_DURATION_MS:
+                raise CompositionError(
+                    f"{track_context}.sourceStartMs exceeds "
+                    f"{WORLD_SEQUENCE_MAX_DURATION_MS}"
+                )
             start_ms = 0
             if "startMs" in track:
                 start_ms = _require_nonnegative_int(

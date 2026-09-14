@@ -7196,10 +7196,10 @@
                 "sourceClass": "",
                 "sourceObjectPath": "",
                 "componentCount": 1,
-                "operation": 1,
+                "operation": 2,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -7214,7 +7214,14 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -12063,10 +12070,10 @@
                 "sourceClass": "",
                 "sourceObjectPath": "",
                 "componentCount": 1,
-                "operation": 1,
+                "operation": 2,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -12081,7 +12088,14 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -13247,10 +13261,10 @@
                 "sourceClass": "",
                 "sourceObjectPath": "",
                 "componentCount": 1,
-                "operation": 1,
+                "operation": 2,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -13265,7 +13279,14 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0,
+                  0.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -15873,8 +15894,8 @@
                 "componentCount": 1,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -15889,7 +15910,12 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  20.0,
+                  20.0,
+                  20.0,
+                  20.0
+                ],
                 "keys": []
               },
               {
@@ -17795,8 +17821,8 @@
                 "componentCount": 1,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -17811,7 +17837,12 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  50.0,
+                  50.0,
+                  50.0,
+                  50.0
+                ],
                 "keys": []
               },
               {
@@ -22925,8 +22956,8 @@
                 "componentCount": 1,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -22941,7 +22972,12 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -23089,8 +23125,8 @@
                 "componentCount": 1,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -23105,7 +23141,12 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  20.0,
+                  20.0,
+                  20.0,
+                  20.0
+                ],
                 "keys": []
               },
               {
@@ -24768,10 +24809,10 @@
                 "sourceClass": "",
                 "sourceObjectPath": "",
                 "componentCount": 3,
-                "operation": 1,
+                "operation": 2,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -24786,7 +24827,22 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -27053,8 +27109,8 @@
                 "componentCount": 1,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -27069,7 +27125,12 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  50.0,
+                  50.0,
+                  50.0,
+                  50.0
+                ],
                 "keys": []
               },
               {
@@ -27079,8 +27140,8 @@
                 "componentCount": 1,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -27095,7 +27156,12 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -27311,5 +27377,20 @@
         "parameters": []
       }
     }
-  ]
+  ],
+  "sourceModelPreview": {
+    "gateId": "GATE3",
+    "actorProfileId": "MN_RPCT_05",
+    "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+    "animations": [
+      {
+        "runtimeClip": "rpct00_att_battle_31_01",
+        "startOffsetMs": 0,
+        "sourceStartMs": 1989,
+        "playMs": 3000,
+        "playRate": 1,
+        "endPolicy": "HOLD_LAST_POSE"
+      }
+    ]
+  }
 }

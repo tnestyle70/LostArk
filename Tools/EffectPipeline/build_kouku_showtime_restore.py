@@ -256,6 +256,172 @@ def acquire(evidence):
     return result
 
 
+def restore_ball_drop_source_defaults(document):
+    """Restore only the two source CDO vector fields lost by the leaf projection."""
+    import hashlib
+    assert document['effectAssetId'] == 'effect.kouku.gate3.showtime.ball.drop'
+    assert len(document['elements']) == 5
+    base = ROOT / 'out/KoukuAllEffects20260912'
+    defaults_path, instances_path = base / 'source_class_defaults.json', base / 'source_module_inputs.json'
+    defaults = source.read(defaults_path)['records']
+    instances = source.read(instances_path)['records']
+    changes = []
+    for emitter, module_name, class_name, property_name in (
+        ('particlespriteemitter_38', 'particlemodulelocationdirect_0', 'particlemodulelocationdirect', 'ScaleFactor'),
+        ('particlespriteemitter_4', 'particlemodulesize_3', 'particlemodulesize', 'StartSize')):
+        prefix = 'fx_mn_rpct_07_v.par_v_rpct_missiledrop_01_loc_int.'
+        elements = [e for e in document['elements'] if e['sourceNode'].endswith('|' + prefix + emitter)]
+        assert len(elements) == 1
+        element = elements[0]
+        module = next(m for m in element['sourceRecipe']['modules'] if m['objectPath'] == prefix + module_name)
+        assert module['className'] == class_name
+        assert next((v['value'] for v in module['literals'] if v['propertyPath'] == 'benabled'), True)
+        instance = instances[module['objectPath']]['properties'][property_name.lower()]
+        assert instance['structType'] == 'rawdistributionvector'
+        delta = instance['value']['properties']
+        assert list(delta) == ['distribution'] and delta['distribution']['value'] == 0
+        cdo = next(r for r in defaults if r['fullPath'] == 'engine.default__' + class_name)
+        inherited = cdo['properties'][property_name]['value']['properties']
+        assert inherited['LookupTable']['value'] == [1.] * 8
+        expected = dict(operation=inherited['Op']['value'],
+            lookupTableNumElements=inherited['LookupTableNumElements']['value'],
+            lookupTableChunkSize=inherited['LookupTableChunkSize']['value'],
+            lookupTableTimeScale=inherited['LookupTableTimeScale']['value'],
+            lookupTableStartTime=inherited['LookupTableStartTime']['value'],
+            lookupTable=inherited['LookupTable']['value'])
+        distribution = next(d for d in module['distributions'] if d['propertyPath'] == property_name.lower())
+        assert distribution['componentCount'] == 3 and not distribution['keys']
+        assert not distribution['lookupTable'] or all(distribution[k] == v for k, v in expected.items()), 'Preserve a changed authored distribution'
+        before = copy.deepcopy(distribution)
+        distribution.update(copy.deepcopy(expected))
+        changes.append(dict(elementId=element['id'], sourceModule=module['objectPath'], property=property_name,
+            sourceInstanceDelta=delta, sourceCDO=cdo['fullPath'], before=before, after=copy.deepcopy(distribution)))
+    return dict(changes=changes, inputHashes={p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in (defaults_path, instances_path)}, sourceKind='SOURCE_CDO_NESTED_RAW_DISTRIBUTION_INHERITANCE')
+
+
+def stage_ball_drop_source_defaults(evidence):
+    """Stage the current leaf without replacing user transform or provider edits."""
+    import hashlib
+    evidence = evidence.resolve()
+    assert evidence.is_relative_to((ROOT / 'out').resolve())
+    path = ROOT / 'Data/Effects/Authored/effect.kouku.gate3.showtime.ball.drop.effect.json'
+    before = path.read_bytes()
+    document = json.loads(before.decode('utf-8-sig'))
+    contract = restore_ball_drop_source_defaults(document)
+    relative = path.relative_to(ROOT).as_posix()
+    baseline = evidence / 'baseline' / relative
+    baseline.parent.mkdir(parents=True, exist_ok=True)
+    baseline.write_bytes(before)
+    candidate = evidence / 'candidate' / relative
+    source.write(candidate, document)
+    contract['inputHashes'][relative] = hashlib.sha256(before).hexdigest()
+    source.write(evidence / 'installation.json', dict(sourceWritten=False, stageOnly=True,
+        documents=[dict(effectAssetId=document['effectAssetId'], displayName=document['displayName'],
+            path=relative, candidatePath=candidate.relative_to(ROOT).as_posix(), durationMs=2000,
+            defaultAnchorKind='MAP', candidateSha256=hashlib.sha256(candidate.read_bytes()).hexdigest())],
+        preserved='Every field outside the two inherited distribution payloads, including user TRS and provider links',
+        manualVisualValidation='USER_PENDING', **contract))
+    print('Staged original ball size and provider path defaults; no Data writes')
+
+
+def stage_bomb_fuse(evidence):
+    """Stage the original skull-bomb fuse in its installed FBX bone frame."""
+    from extract_ue3_skeletal_mesh_sockets import parse_socket_contract
+    import hashlib
+
+    evidence = evidence.resolve()
+    assert evidence.is_relative_to((ROOT / 'out').resolve()), 'Evidence must remain under out'
+    leaf_path = ROOT / 'Data/Effects/Authored/effect.kouku.source.fx_mn_rhcn_01.par_x_rhcn_saprkloop_01.effect.json'
+    world_path = ROOT / 'Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json'
+    socket_path = source.SOURCE / 'WorldObjectExtraction-20260907/WorldProps/MN_RHCN_01/mesh/mn_rhcn_01_sk.props.txt'
+    socket = next(s for s in parse_socket_contract(socket_path)['sockets'] if s['socketName'] == 'fx_01')
+    assert socket['boneName'] == 'b_body'
+    position = socket['runtimeLocalTransform']['position']
+    assert abs(position[0] - .2) < 1.e-8 and position[1] == 0 and abs(position[2] - .521496) < 1.e-8
+    assert socket['runtimeLocalTransform']['rotationDegrees'] == [0, 0, 0]
+    assert socket['runtimeLocalTransform']['scale'] == [1, 1, 1]
+    leaf_raw, world_raw = leaf_path.read_bytes(), world_path.read_bytes()
+    leaf, world = json.loads(leaf_raw), json.loads(world_raw)
+    asset = 'effect.kouku.gate3.showtime.bomb.fuse'
+    candidate = copy.deepcopy(leaf)
+    assert len(candidate['elements']) == 3 and not candidate['modelCues']
+    candidate.update(effectAssetId=asset, displayName='쇼타임_해골 폭탄_심지 불꽃')
+    cdo_path = ROOT / 'out/KoukuAllEffects20260912/source_class_defaults.json'
+    raw_path = ROOT / 'out/KoukuAllEffects20260912/source_module_inputs.json'
+    cdo = next(r for r in source.read(cdo_path)['records'] if r['fullPath'] == 'engine.default__particlemodulecolor')
+    original = source.read(raw_path)['records']['fx_mn_rhcn_01.par_x_rhcn_saprkloop_01.particlemodulecolor_0']
+    for element in candidate['elements']:
+        element['id'] = asset + '.' + element['id'].rsplit('.', 1)[-1]
+        element['groupId'] = asset
+        assert not element['actionCueAttachment']['enabled'] and not element['transformInheritance']['enabled']
+        # This alias sustains the original emitters within the source notify's
+        # two-second window. It does not change the shared one-second library leaf.
+        element['detail']['timing']['lifeTimeSeconds'] = 2.0
+        element['sourceRecipe']['emitterLoopCount'] = 0
+        for module in element['sourceRecipe']['modules']:
+            if module['objectPath'] != original['fullPath']:
+                continue
+            for distribution in module['distributions']:
+                name = distribution['propertyPath']
+                assert name in ('startcolor', 'startalpha')
+                assert not distribution['lookupTable'] and not distribution['keys']
+                delta = original['properties'][name]['value']['properties']
+                assert set(delta) == {'distribution'} and delta['distribution']['value'] == 0
+                values = cdo['properties']['StartColor' if name == 'startcolor' else 'StartAlpha']['value']['properties']
+                for key, src in [('operation', 'Op'), ('lookupTableNumElements', 'LookupTableNumElements'),
+                                 ('lookupTableChunkSize', 'LookupTableChunkSize'), ('lookupTableTimeScale', 'LookupTableTimeScale'),
+                                 ('lookupTableStartTime', 'LookupTableStartTime'), ('lookupTable', 'LookupTable')]:
+                    distribution[key] = copy.deepcopy(values[src]['value'])
+    object_id = 'world.object.kouku.bingo_bomb'
+    resource = next(r for r in world['objectResources'] if r['objectId'] == object_id)
+    assert resource['modelAssetId'] == 'Character/KoukuSaton/MN_RHCN_01/MN_RHCN_01.wmodel' and resource['animated']
+    assert abs(resource['modelPreScale'] - .01) < 1.e-8
+    model_path = ROOT / 'Client/Bin/Resources' / resource['modelAssetId']
+    assert hashlib.sha256(model_path.read_bytes()).hexdigest() == '59c0e0c0ccfa6d05e413b52514badbb7a603f178f96935c9eb92a970168b8cde', 'Re-audit the installed bomb socket basis after model replacement'
+    selected = ['sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb',
+                'sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_respawn_1']
+    modified = copy.deepcopy(world)
+    for template in modified['templates']:
+        if template['sequenceId'] not in selected:
+            continue
+        assert template['durationMs'] == 2000 and not template.get('effectTracks')
+        # Source particle XYZ is already converted by Playback. The installed
+        # Blender/FBX bone local Z points down; -90 X restores its effect frame.
+        template['effectTracks'] = [dict(effectTrackId='effect.showtime.bomb.fuse', slotId='object',
+            resourceKind='V1_EFFECT', resourceId=asset, timing='TIME', followObject=True, bone='b_body',
+            startMs=0, durationMs=2000, positionOffset=[position[0], 0, -position[2]],
+            rotationDegrees=[-90, 0, 0], scale=[1, 1, 1])]
+    assert sum(bool(t.get('effectTracks')) for t in modified['templates'] if t['sequenceId'] in selected) == 2
+    modified['revision'] += 1
+    target = ROOT / 'Data/Effects/Authored' / (asset + '.effect.json')
+    assert not target.exists(), 'Existing authored fuse must be merged explicitly'
+    source.write(evidence / 'candidate' / target.relative_to(ROOT), candidate)
+    source.write(evidence / 'candidate' / world_path.relative_to(ROOT), modified)
+    for path, raw in [(leaf_path, leaf_raw), (world_path, world_raw)]:
+        destination = evidence / 'baseline' / path.relative_to(ROOT)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+        assert path.read_bytes() == raw, 'Concurrent authoring edit: ' + str(path)
+    hash_file = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    relative = lambda path: path.relative_to(ROOT).as_posix()
+    source.write(evidence / 'installation.json', dict(stageOnly=True, sourceWritten=False,
+        inputHashes={relative(p): hash_file(p) for p in [leaf_path, world_path, cdo_path, raw_path, model_path, ROOT / 'Data/Actors/BossCatalog.json']},
+        externalSourceInputs={str(socket_path): hash_file(socket_path)},
+        documents=[dict(effectAssetId=asset, displayName=candidate['displayName'], path=relative(target),
+            candidatePath=relative(evidence / 'candidate' / target.relative_to(ROOT)),
+            beforeSha256=None, candidateSha256=hash_file(evidence / 'candidate' / target.relative_to(ROOT)),
+            durationMs=2000, defaultAnchorKind='MAP', categoryPath=['Kouku', '3관문', '쇼타임', '폭탄'])],
+        worldSequence=dict(path=relative(world_path), candidatePath=relative(evidence / 'candidate' / world_path.relative_to(ROOT)),
+            beforeSha256=hashlib.sha256(world_raw).hexdigest(), afterSha256=hash_file(evidence / 'candidate' / world_path.relative_to(ROOT)),
+            templateIds=selected, resourceId=object_id, beforeRevision=world['revision'], afterRevision=modified['revision']),
+        sourceSocket=socket, installedSocketFrame=dict(position=[.2, 0, -.521496], rotationDegrees=[-90, 0, 0]),
+        preserved='Existing object resources, user TRS, all instances, other templates, source leaf and native materials',
+        lifetimePolicy='Authored continuous source emitters bounded by the original two-second Spark notify',
+        manualVisualValidation='USER_PENDING'))
+    print(relative(evidence / 'installation.json'))
+
+
 def project(evidence, material_patch, install):
     index, notifies, occurrences, records = acquire(evidence)
     calls = source_model_calls(evidence)
@@ -307,6 +473,8 @@ def project(evidence, material_patch, install):
                     runtimeClip='rpct00_' + clip['clipName'].lower(), startOffsetMs=0,
                     sourceStartMs=round(first_time * 1000), playMs=max(1, round((clip['lengthSeconds'] - first_time) * 1000)),
                     playRate=1, endPolicy='HOLD_LAST_POSE')])
+        if ordinal == 14:
+            restore_ball_drop_source_defaults(document)
         duration = math.ceil(max(e['detail']['timing']['startDelaySeconds'] + e['detail']['timing']['lifeTimeSeconds'] +
             max(e['detail']['particle']['lifeTimeSeconds']) for e in document['elements']) * 1000)
         source.write(evidence / 'candidate' / (target['asset'] + '.effect.json'), document)
@@ -342,8 +510,17 @@ if __name__ == '__main__':
     parser.add_argument('--acquire-only', action='store_true')
     parser.add_argument('--native-material-patch', type=Path)
     parser.add_argument('--install', action='store_true')
+    parser.add_argument('--repair-ball-drop-defaults', action='store_true',
+                        help='Stage the current ball leaf with inherited source size/path defaults; never installs')
+    parser.add_argument('--stage-bomb-fuse', action='store_true', help='Stage the skull-bomb source fuse and two WORLD tracks; never installs')
     args = parser.parse_args()
-    if args.acquire_only:
+    if args.stage_bomb_fuse:
+        assert not args.install and not args.acquire_only and args.native_material_patch is None and not args.repair_ball_drop_defaults
+        stage_bomb_fuse(args.evidence_root)
+    elif args.repair_ball_drop_defaults:
+        assert not args.install and not args.acquire_only and args.native_material_patch is None
+        stage_ball_drop_source_defaults(args.evidence_root)
+    elif args.acquire_only:
         acquire(args.evidence_root)
     else:
         project(args.evidence_root, args.native_material_patch, args.install)

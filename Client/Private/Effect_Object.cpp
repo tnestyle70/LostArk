@@ -869,6 +869,11 @@ void Client::CEffectObject::Set_ScreenPostCaptureAllowed(const bool_t allowed)
 	if (m_pRenderer) m_pRenderer->Set_ScreenPostCaptureAllowed(allowed);
 }
 
+void Client::CEffectObject::Set_ScreenPostPlaybackEnd(const f32_t endSeconds)
+{
+	if (m_pRenderer) m_pRenderer->Set_ScreenPostPlaybackEnd(endSeconds);
+}
+
 void Client::CEffectObject::Set_Visible(const bool_t bVisible)
 {
 	if (m_bRenderFailureIsolated && bVisible)

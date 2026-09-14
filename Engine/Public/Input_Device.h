@@ -22,7 +22,7 @@ public:
 public:
 	int8_t	Get_DIKeyState(uint8_t byKeyID)
 	{
-		if (m_bKeyboardBlocked)
+		if (IsKeyboardInputBlocked())
 			return 0;
 
 		return m_byKeyState[byKeyID];
@@ -30,7 +30,7 @@ public:
 
 	bool_t Get_DIKeyPressed(uint8_t byKeyID)
 	{
-		if (m_bKeyboardBlocked)
+		if (IsKeyboardInputBlocked())
 			return false;
 
 		return
@@ -40,11 +40,15 @@ public:
 
 	int8_t Get_DIKeyStateRaw(uint8_t byKeyID) const
 	{
+		if (!Has_InputFocus() || !m_bKeyboardStateReady)
+			return 0;
 		return m_byKeyState[byKeyID];
 	}
 
 	bool_t Get_DIKeyPressedRaw(uint8_t byKeyID) const
 	{
+		if (!Has_InputFocus() || !m_bKeyboardStateReady)
+			return false;
 		return
 			0 != (m_byKeyState[byKeyID] & 0x80) &&
 			0 == (m_byPreviousKeyState[byKeyID] & 0x80);
@@ -65,6 +69,10 @@ public:
 
 	int8_t Get_DIMouseStateRaw(DIM eMouse) const
 	{
+		const uint32_t index = ETOUI(eMouse);
+		if (!Has_InputFocus() || !m_bMouseStateReady || index >= ETOUI(DIM::END) ||
+			m_MouseFocusReleaseRequired[index])
+			return 0;
 		int virtualKey = 0;
 		switch (eMouse)
 		{
@@ -80,7 +88,7 @@ public:
 	// 현재 마우스의 특정 축 좌표를 반환
 	int32_t	Get_DIMouseMove(DIMM eMouseState)
 	{
-		if (m_bMouseBlocked)
+		if (IsMouseInputBlocked())
 			return 0;
 
 		switch (eMouseState)
@@ -122,18 +130,31 @@ public:
 
 	bool_t IsKeyboardInputBlocked() const
 	{
-		return m_bKeyboardBlocked;
+		return m_bKeyboardBlocked || !Has_InputFocus() || !m_bKeyboardStateReady;
 	}
 
 	bool_t IsMouseInputBlocked() const
 	{
-		return m_bMouseBlocked;
+		return m_bMouseBlocked || !Has_InputFocus() || !m_bMouseStateReady;
 	}
 public:
 	HRESULT Initialize(HINSTANCE hInst, HWND hWnd);
 	void	Update(void);
 
 private:
+	// Raw input bypasses UI capture only; it never bypasses window focus.
+	bool_t Has_InputFocus() const
+	{
+		return nullptr != m_hInputWindow && GetForegroundWindow() == m_hInputWindow;
+	}
+
+private:
+	HWND m_hInputWindow = nullptr;
+	bool_t m_bWindowFocused = false;
+	bool_t m_bKeyboardStateReady = false;
+	bool_t m_bMouseStateReady = false;
+	bool_t m_KeyFocusReleaseRequired[256] = {};
+	bool_t m_MouseFocusReleaseRequired[ETOUI(DIM::END)] = {};
 	ComPtr<IDirectInput8>			m_pInputSDK = {};
 
 private:

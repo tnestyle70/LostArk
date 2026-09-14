@@ -52,6 +52,17 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugTeleportResult(
 	return CNetworkManager::Get().Try_Consume_DebugTeleportResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_MarioReturn(const std::uint32_t clientSequence)
+{
+	return CNetworkManager::Get().Send_MarioReturn(clientSequence);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_MarioReturnResult(
+	LostArk::Shared::S2C_MARIO_RETURN_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_MarioReturnResult(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MarioMove(
 	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
 {

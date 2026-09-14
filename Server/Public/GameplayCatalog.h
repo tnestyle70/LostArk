@@ -750,7 +750,16 @@ namespace LostArk::Server
 		REAL_GAZE_TELEPORT,
 		CARD_MAZE_HIDE_NEXT,
 		CARD_MAZE_ENTER,
-		ALBION_BLUE_CIRCLE
+		ALBION_BLUE_CIRCLE,
+		SUMMON_PATTERNS
+	};
+
+	struct BOSS_PATTERN_SUMMON_PATTERN_SPAWN final
+	{
+		std::string strSpawnId;
+		std::string strPatternId;
+		std::array<float, 3u> PositionOffset{};
+		float fYawOffsetDegrees = 0.f;
 	};
 
 	struct BOSS_PATTERN_MECHANIC_TRIGGER final
@@ -769,6 +778,12 @@ namespace LostArk::Server
 		std::uint32_t iCountPerPlayer = 0u;
 		float fPlayerEffectRadiusM = 0.f;
 		std::uint32_t iEffectLifetimeMs = 0u;
+		std::uint32_t iArenaRandomCount = 0u;
+		float fArenaRandomRadiusM = 0.f;
+		float fArenaHeightToleranceM = 0.f;
+		float fArenaMinimumSpacingM = 0.f;
+		bool bRandomPlayerOnly = false;
+		std::vector<BOSS_PATTERN_SUMMON_PATTERN_SPAWN> PatternSpawns;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

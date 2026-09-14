@@ -247,6 +247,19 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	std::unordered_set<std::string> triggerIds;
 	for (const auto& trigger : pattern.MechanicTriggers)
 	{
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS)
+		{
+			std::unordered_set<std::string> spawnIds;
+			if (trigger.PatternSpawns.empty() || trigger.PatternSpawns.size() > 4u)
+			{ status = "Summon Pattern trigger requires one to four spawns"; return false; }
+			for (const auto& spawn : trigger.PatternSpawns)
+			{
+				if (spawn.strSpawnId.empty() || !spawnIds.insert(spawn.strSpawnId).second || spawn.strPatternId.empty() ||
+					spawn.strPatternId == pattern.strPatternId || !std::isfinite(spawn.fYawOffsetDegrees) || std::abs(spawn.fYawOffsetDegrees) > 360.f ||
+					std::any_of(spawn.PositionOffset.begin(), spawn.PositionOffset.end(), [](const float value) { return !std::isfinite(value) || std::abs(value) > 1000.f; }))
+				{ status = "Summon Pattern spawn identity or transform is invalid"; return false; }
+			}
+		}
 		if (trigger.strTriggerId.empty() || !triggerIds.insert(trigger.strTriggerId).second ||
 			trigger.iStartMs >= patternDurationMs || 0u == trigger.iDurationMs ||
 			static_cast<std::uint64_t>(trigger.iStartMs) + trigger.iDurationMs > patternDurationMs ||
@@ -454,6 +467,27 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			status = "KoukuSaydon pattern scene profile cue is invalid";
 			return false;
 		}
+	}
+	status.clear();
+	return true;
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Validate_SummonedPattern(
+	const BOSS_PATTERN_DEFINITION& owner, const BOSS_PATTERN_DEFINITION& child, std::string& status)
+{
+	if (!Validate_AnimationOnlyPattern(child, status)) return false;
+	if (owner.strPatternId == child.strPatternId || owner.strEncounterId != child.strEncounterId ||
+		owner.strGateId.empty() || owner.strGateId != child.strGateId ||
+		child.eCategory != BOSS_PATTERN_CATEGORY::MECHANIC || owner.strTargetBossPlacementId != child.strTargetBossPlacementId ||
+		owner.AuditionBossArchetypeIds.empty() || owner.AuditionBossArchetypeIds.size() != child.AuditionBossArchetypeIds.size() ||
+		!std::all_of(owner.AuditionBossArchetypeIds.begin(), owner.AuditionBossArchetypeIds.end(), [&](const auto& archetype) {
+			return std::find(child.AuditionBossArchetypeIds.begin(), child.AuditionBossArchetypeIds.end(), archetype) != child.AuditionBossArchetypeIds.end(); }) ||
+		child.BossMotion || child.bResetBossToSpawn || child.ResetBossYawDegrees || !child.LogicWindows.empty() ||
+		!child.MechanicTriggers.empty() || !child.WorldSequences.empty() || !child.SceneProfiles.empty() ||
+		std::any_of(child.Stages.begin(), child.Stages.end(), [](const auto& stage) { return !stage.Actions.empty(); }))
+	{
+		status = "Summoned Pattern requires another same-body, same-Gate animation-only Pattern without Logic, summons, World, scene profiles or boss reset: " + child.strPatternId;
+		return false;
 	}
 	status.clear();
 	return true;

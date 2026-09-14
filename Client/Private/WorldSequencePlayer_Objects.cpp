@@ -4,6 +4,7 @@
 #include "DeployPropObject.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "NpcPresentationAssetService.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "DirectXTK/DDSTextureLoader.h"
 #include "RuntimeAssetRoot.h"
@@ -42,11 +43,10 @@ bool Sample_ObjectEffectBone(const std::shared_ptr<CModel>& model,
     float position = 0.f, duration = 0.f;
     if (index == UINT32_MAX || !model->Get_AnimationProgress(index, position, duration) || duration <= 0.f)
     { error = "World Object Effect animation is unavailable: " + animation->clipName; return false; }
-    float ticks = (std::max)(0.f, sampleMs - animation->startMs) * .001f *
-        animation->playbackRate * model->Get_AnimationTickPerSecond(index);
-    if (sampleMs >= windowEnd && animation->holdLastFrame) ticks = duration;
-    else if (animation->loop) ticks = std::fmod(ticks, duration);
-    else if (ticks > duration) ticks = animation->holdLastFrame ? duration : 0.f;
+    float ticks = 0.f;
+    if (!CWorldSequenceDocument::Try_SampleAnimationTicks(*animation, sampleMs, windowEnd,
+        model->Get_AnimationTickPerSecond(index), duration, ticks))
+    { error = "World Object Effect animation source range is invalid: " + animation->clipName; return false; }
     const uint32_t boneIndex = static_cast<uint32_t>(model->Find_BoneIndex(bone.c_str()));
     if (!model->Sample_AnimationBoneCombinedMatrices(animation->clipName.c_str(), ticks,
         std::span<const uint32_t>(&boneIndex, 1u), std::span<float4x4_t>(&out, 1u)))
@@ -128,6 +128,7 @@ bool_t CWorldSequencePlayer::Resolve_BossBoneAnchor(const std::shared_ptr<CModel
         { status = "World Object boss BODY bone pose is not finite: " + bone; return false; }
     if (std::abs(XMVectorGetX(XMMatrixDeterminant(basis))) < .000001f)
     { status = "World Object boss BODY bone pose is singular: " + bone; return false; }
+    out.bodyModel = model;
     // The object sampler preserves the socket translation and normalizes its
     // axes. Import scale belongs to the prop; boss scale is already in this pose.
     return true;
@@ -312,6 +313,24 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
         }
     for (const auto& binding : instance.bindings)
     {
+        if (sequence && binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT)
+        {
+            // Reject trimmed native ranges before releasing an existing preview owner.
+            for (const auto& animation : sequence->animationTracks)
+            {
+                if (animation.slotId != binding.slotId || animation.sourceStartMs == 0u) continue;
+                uint64_t targetId = 0u;
+                const auto object = Try_ParseTargetId(binding, targetId) && targets.pDeployRuntime ?
+                    targets.pDeployRuntime->Find(targetId) : nullptr;
+                float duration = 0.f, seconds = 0.f;
+                if (object)
+                    for (const auto& clip : object->Get_AnimationClips())
+                        if (clip.name == animation.clipName) { duration = clip.durationSeconds; break; }
+                if (!CWorldSequenceDocument::Try_SampleAnimationTicks(animation, static_cast<float>(animation.startMs),
+                    static_cast<float>(sequence->durationMs), 1.f, duration, seconds))
+                { m_Status = "World sequence Deploy animation source range is unavailable: " + animation.clipName; return false; }
+            }
+        }
         if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
         const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
         if (!resource || resource->modelAssetId.empty())
@@ -408,10 +427,18 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             for (const auto& animation : sequence->animationTracks)
             {
                 if (animation.slotId != binding.slotId) continue;
-                bool found = false;
+                uint32_t index = UINT32_MAX;
                 for (uint32_t i = 0; i < model->second.model->Get_NumAnimations(); ++i)
-                    if (animation.clipName == model->second.model->Get_AnimationName(i)) found = true;
-                if (!found) { m_Status = "World Object clip is absent: " + animation.clipName; return false; }
+                    if (animation.clipName == model->second.model->Get_AnimationName(i)) { index = i; break; }
+                if (index == UINT32_MAX) { m_Status = "World Object clip is absent: " + animation.clipName; return false; }
+                if (animation.sourceStartMs != 0u)
+                {
+                    float position = 0.f, duration = 0.f, ticks = 0.f;
+                    if (!model->second.model->Get_AnimationProgress(index, position, duration) ||
+                        !CWorldSequenceDocument::Try_SampleAnimationTicks(animation, static_cast<float>(animation.startMs),
+                            static_cast<float>(sequence->durationMs), model->second.model->Get_AnimationTickPerSecond(index), duration, ticks))
+                    { m_Status = "World Object animation source start exceeds the native clip range: " + animation.clipName; return false; }
+                }
             }
         if (sequence)
             for (const auto& effect : sequence->effectTracks)
@@ -545,6 +572,8 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
     active.effects.clear();
     active.emissionAnchors.clear();
     for (auto& entry : active.objects)
+    {
+        entry.weaponReplacement.reset();
         if (entry.object)
         {
             entry.object->Hide();
@@ -563,6 +592,7 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
             CGameInstance::Get().Remove_GameObject_from_Layer(entry.levelIndex,
                 CWorldSequenceObject::LAYER_TAG, entry.object);
         }
+    }
     active.objects.clear();
 }
 
@@ -833,6 +863,12 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 { m_Status = found->object->Get_RenderStatus() + " / " + resource->objectId; return false; }
                 if (!found->object->Sample(stored, key.visible, animation, ageMs, windowEnd))
                 { m_Status = "World Object transform/animation sample failed: " + resource->objectId; return false; }
+                if (anchor.liveBossAnchor &&
+                    (resource->objectId == "world.object.kouku.saydon_showtime_gun_left" ||
+                     resource->objectId == "world.object.kouku.saydon_showtime_gun_right"))
+                    CNpcPresentationAssetService::Track_SaydonWeaponReplacement(found->weaponReplacement,
+                        anchor.bodyModel, found->object);
+                else found->weaponReplacement.reset();
             }
     }
     return true;

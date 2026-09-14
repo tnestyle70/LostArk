@@ -78,7 +78,9 @@ namespace LostArk::Shared
 	the next authoritative waypoint to player snapshots.
 	82 appends the ridden vehicle to player snapshots and the riding toggle
 	request/verdict. Both peers need 82. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 83;
+	// 83 adds Mario entry test state and retained entry presentation to bundles.
+	// 84 adds Server-authorized Mario return intent and typed result.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 84;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -341,7 +343,9 @@ namespace LostArk::Shared
 		// H key riding toggle and its typed verdict. The snapshot carries the
 		// ridden vehicle, so the verdict only reports why a request did nothing.
 		C2S_SET_VEHICLE_RIDING,
-		S2C_SET_VEHICLE_RIDING_RESULT
+		S2C_SET_VEHICLE_RIDING_RESULT,
+		C2S_MARIO_RETURN,
+		S2C_MARIO_RETURN_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -443,6 +447,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_MARIO_MOVE:
 		case PACKET_TYPE::C2S_SET_VEHICLE_RIDING:
 		case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
+		case PACKET_TYPE::C2S_MARIO_RETURN:
+		case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
 			return true;
 		default:
 			return  false;

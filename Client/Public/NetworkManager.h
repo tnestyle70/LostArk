@@ -206,6 +206,9 @@ public:
 	bool Try_Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result);
 	bool Send_DebugMarioJump(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction);
+	bool Send_MarioReturn(std::uint32_t clientSequence);
+	bool Try_Consume_MarioReturnResult(
+		LostArk::Shared::S2C_MARIO_RETURN_RESULT& result);
 	bool Send_MarioMove(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction);
 	bool Try_Consume_DebugMarioJumpResult(
 		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result);
@@ -522,6 +525,7 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT>
 		m_DebugTeleportResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT> m_DebugMarioJumpResults;
+	std::deque<LostArk::Shared::S2C_MARIO_RETURN_RESULT> m_MarioReturnResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;

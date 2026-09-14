@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "6a6dc13cef6146a68817b2a9eb2f5eb71be541eedbe2bfe36d052cd95d32b151",
+    "sourceManifestId": "89bb5df4f0da3f5d13283bd0e16928b5518247ca6e223aadcb441784818a8ea4",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -448,53 +448,78 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "c397612efc84bbcef8a57841b6646ade0887c5f0bd9771d3fbd5fed60fbba234",
-        "bytes": 42746
+        "sha256": "2e7acd780caccdbd0be7d412624e47617b430bd06e230057bfef989854824001",
+        "bytes": 91188
+      },
+      {
+        "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
+        "sha256": "2abaadcc1bc38dba540ea68aca401fefb14ac3dd641ff6d13db2e3a51200b3f3",
+        "bytes": 4893
+      },
+      {
+        "path": "Data/Effects/V2/Authored/bingo.bomb_1.effectv2.json",
+        "sha256": "afe4cfeacc386baefd0061180728415c8c0b53c6429a039916c9e9dd9fdc29f8",
+        "bytes": 4888
+      },
+      {
+        "path": "Data/Effects/V2/Authored/bingo.hammer_1.effectv2.json",
+        "sha256": "d8ff2df5229abdca01709448ac6d94b43891263bd1d694f5e2f5020004c0b39d",
+        "bytes": 4865
+      },
+      {
+        "path": "Data/Effects/V2/Authored/bingo.skull.red_1.effectv2.json",
+        "sha256": "7514d4d381271ac75293e1eb4f5bcb77749f62e07bcab0e721374fc8d8067c0f",
+        "bytes": 4826
+      },
+      {
+        "path": "Data/Effects/V2/Authored/bingo.skull.white_1.effectv2.json",
+        "sha256": "f8d1c7662b5340ce422bc85b5aa388f4e6cada75c5e62de476cfcf3e66a15bed",
+        "bytes": 4809
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.appear.card_1.effectv2.json",
-        "sha256": "c4056bb5bd857499e7b2ea2817db48d63891daea46dbc5195f56983e50b71349",
-        "bytes": 4253
+        "sha256": "a2295af5fd506fc8b4321f3945fee68458e1d007209d709c11229b06d54f9403",
+        "bytes": 4228
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.appear.smoke_1.effectv2.json",
-        "sha256": "b5c0c6a98abcaeb77c3a523d4021ac2e9e751e56d3aaeba6b2b156647d258888",
-        "bytes": 4306
+        "sha256": "1c79f9f11cafb15730c062c23b760e6b6815a7b2ee6026d80bba7f6ea7b06fbb",
+        "bytes": 4281
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.blue_1.effectv2.json",
-        "sha256": "35e75557c220d473efb29b1e7d705ded2e7a80e223836f8c3e4408dc137e4343",
-        "bytes": 4301
+        "sha256": "8b6414e8585be6323e94e710300abc976c305d54979cb194b26a971788af229f",
+        "bytes": 4276
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.green_1.effectv2.json",
-        "sha256": "785105935812f524d7c3f64e9b68cb718310c102b55f9d71ffa4b3404166536b",
-        "bytes": 4310
+        "sha256": "4015feef3a2725b5ae9e60ad2fac14b2841f5f5ff8b7fd3d9329cfab96d26f3b",
+        "bytes": 4285
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.orange_1.effectv2.json",
-        "sha256": "6efd914c3fce14f13503c2940bb071825e34428956370e1074c4219f1c708e90",
-        "bytes": 4306
+        "sha256": "ba16960cc47faa8b11b9170377ea449934789a5b347a31061800274ca6456b63",
+        "bytes": 4281
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.purple_1.effectv2.json",
-        "sha256": "a89aa31b21f181a902031e7514de9c1914b83891944500ce479e938be1afbe34",
-        "bytes": 4310
+        "sha256": "06394ccf4935a3fc7edf704c84ca64d306697ba8b9432184f9f826a11eb8f2b4",
+        "bytes": 4285
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.red_1.effectv2.json",
-        "sha256": "d6fac8d9f1821905f02da1f8bd707b8ac1c91ec646eac3ae78557d134e4dec19",
-        "bytes": 4310
+        "sha256": "e5702f191a67e69f33bbe37b81a70bead417ec18dd913f6e713fff3c0aeb393d",
+        "bytes": 4285
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.spread_1.effectv2.json",
-        "sha256": "c2959e7430b118b8d19768ca2784722bc8a014487f5470dd20d461971bfc2091",
-        "bytes": 4251
+        "sha256": "726bc072dc6473c51f90a7087fd8aeb2e26ea1590ba554caa89ec656c8afd48d",
+        "bytes": 4226
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.yellow_1.effectv2.json",
-        "sha256": "c04d514b3b9b3606be16705322056ebe05dff88b51162f2ca3f1f0d78e704b05",
-        "bytes": 4312
+        "sha256": "3ac0a445a4e76608ec173b68d48558e40d569aace736186344a6941e0655fa78",
+        "bytes": 4287
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.blur_1.effectv2.json",
@@ -503,8 +528,13 @@
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.blur_2.effectv2.json",
-        "sha256": "21220524d6f337c68d0fc79d6a3ff9f69d857ca4065d8b05afac2c2e455cb7ac",
-        "bytes": 4055
+        "sha256": "5f76f0b22d15e0640b6717297153897807a817a5ff330d049749dcaf19069f19",
+        "bytes": 4030
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.blur_3.effectv2.json",
+        "sha256": "e8a5014bc01a32e07c90f8d3b0435e91417106ff4d7d5e9303902a5da4e4cc2b",
+        "bytes": 4117
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.card.clober.black_1.effectv2.json",
@@ -583,8 +613,8 @@
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.dance.light.glow_1.effectv2.json",
-        "sha256": "f50afdc022aea7a10c7d405ef6c01ad5bf166c8b330b993d0d1c8dd970c700e8",
-        "bytes": 4178
+        "sha256": "33a74944b1490783372393d8fc0313f2b252428ee3dfb849478bba647024e6bb",
+        "bytes": 4153
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.dance.light_1.effectv2.json",
@@ -652,6 +682,11 @@
         "bytes": 3996
       },
       {
+        "path": "Data/Effects/V2/Authored/boss.kouku.fear.face_1.effectv2.json",
+        "sha256": "4be3e3986db91b2bd63ff1a4a66fc2ef9e3154935f86349702095654f5818236",
+        "bytes": 5433
+      },
+      {
         "path": "Data/Effects/V2/Authored/boss.kouku.find.core.big_1.effectv2.json",
         "sha256": "831dfc7439e4f15a9892c51263e9e7cbe82d3ebae791d817468fc523591556a1",
         "bytes": 4320
@@ -703,48 +738,183 @@
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.joker.hammer.burst_1.effectv2.json",
-        "sha256": "860771a64c3a452bfac58c1aef2c28753257d94e84cc4902687968d55297158e",
-        "bytes": 4298
+        "sha256": "5e272d072157b144f3473af834bc2f15af05b5aee6c7e2bb011c606711ba1569",
+        "bytes": 4273
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.joker.hammer.decal_1.effectv2.json",
-        "sha256": "28315aaea778e29bb1c0fadadadd2dc2b0ad48dca3ff07797a0739741043449d",
-        "bytes": 4175
+        "sha256": "563fd228cd0133488c5d2d3bd4c79a39d2f72810814123599f4d50aa7cc4dad0",
+        "bytes": 4150
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.joker.hammer.decal_2.effectv2.json",
-        "sha256": "dc2cb9816360b3be7606ea073b421c456ae2e06ee25d123cdd8f067a527216ed",
-        "bytes": 4232
+        "sha256": "435d79510b9d1ebab54ea8366275001430cc9c32dc3a7ddb90db53b28e555313",
+        "bytes": 4207
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.joker.hammer.decal_3.effectv2.json",
-        "sha256": "92f6751e504d660053a370c703f0f1b85ecdbfa103e58f1f8233a23779d7cf2c",
-        "bytes": 4129
+        "sha256": "f2ec84052adbe5d43f29f62b7844788973a9f5f9491cf1c9c374ebcb815ef4a8",
+        "bytes": 4104
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.beam_1.effectv2.json",
+        "sha256": "52a7e9f473b7af624a868e040a4cce4f3fa84d219625706b029ef589abeb50bc",
+        "bytes": 4434
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.beam_3.effectv2.json",
+        "sha256": "7f981052cb7f8b92354b53a92750a7d9f81f4d0a8c0566448eb0b97c8df9894d",
+        "bytes": 4447
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.converge_1.effectv2.json",
+        "sha256": "f43872cf6c9f8b1790c4866f280592f5940808bb9d9d227f8e1077d6376b9293",
+        "bytes": 4358
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.corn_1.effectv2.json",
+        "sha256": "7637daf57665ff249a9da55e6a73bfff2e695e65db958ff725a3201d160695a8",
+        "bytes": 4450
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.corn_2.effectv2.json",
+        "sha256": "ee00ebc2b9e0243485b57c4a492998de863bf772345dc8a3deeb9761e899f504",
+        "bytes": 4436
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.distortion_1.effectv2.json",
+        "sha256": "8bb54ff902aa1166b3e4b3aeadd83abe40b99117cbb73cc7f28197565ed86aa5",
+        "bytes": 4377
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.expansion_1.effectv2.json",
+        "sha256": "fa1891243021bce7c2b76435e2f0c9f63d454275f8e8bb30dec278623cc5540b",
+        "bytes": 4389
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.expansion_2.effectv2.json",
+        "sha256": "f16314449a8335793c066dd8422677107a8486a2f41dea543dc4b22820f1442f",
+        "bytes": 4323
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.glow_1.effectv2.json",
+        "sha256": "ce348dc8eb5885231238191a92864b72dd4d279bf8bb2d80f7efb713a7e0948a",
+        "bytes": 4308
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.glow_2.effectv2.json",
+        "sha256": "597f4f76e14b0f395bcc433a7efd37b4876fceb2ee441a6ce3f7c17359cae326",
+        "bytes": 4298
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.glow_3.effectv2.json",
+        "sha256": "40f022e64bd8dba8af0b4c449a6e712e4f091136e86e944e279b9f7dbcfea50e",
+        "bytes": 4291
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.glow_4.effectv2.json",
+        "sha256": "d91cbd9487113524ea75f813e9926499591dd455fcc77461f8f0034d369eb75f",
+        "bytes": 4283
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.laser.glow_5.effectv2.json",
+        "sha256": "3db03cac9e96e16b3dbce55c5cb0256485ae6af61172ea797c364e5e3adc0528",
+        "bytes": 4284
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.medusa.ball.blue_1.effectv2.json",
-        "sha256": "63f1cf352e3b9b0cf4f203567e9334b6d1b86115ed0d9eb24e3f92622842bc81",
-        "bytes": 4350
+        "sha256": "18c5a69da9da2b4f92b9ddb6de0c80b785c61213791b18980b7a0a55d41484fe",
+        "bytes": 4325
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.medusa.ball.red_1.effectv2.json",
-        "sha256": "ee53e95383386bf5929268b350dedf5fc5216e699a73031d546c5ee74d444423",
-        "bytes": 4349
+        "sha256": "0f8386e31359bbbf0c4ed763ca8032f1034bcdcefb25816f75074bb270d62c6c",
+        "bytes": 4324
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.medusa.blue_1.effectv2.json",
-        "sha256": "97be8318e055785a3f355a4059adbe43d01a89076117717342048a51928fe4d3",
-        "bytes": 4305
+        "sha256": "60251904f1b63aac07ee4ba684c5c38878833be0a318f01d5030974116e425d6",
+        "bytes": 4280
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.medusa.laser_1.effectv2.json",
-        "sha256": "8f035be111ed1c17e715a62dd938f4f17090121342e8685fc41e15092b2216d1",
-        "bytes": 4301
+        "sha256": "3790e4ec3e48f66712976fc1080255d449d35713e8ad28419fb52e766f9632ba",
+        "bytes": 4276
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.medusa.red_1.effectv2.json",
-        "sha256": "2d87e51cde51598129fa2a0cc4933f388e3e9d6897972a85cec791b8f75a7e94",
-        "bytes": 4304
+        "sha256": "a0f6e62e0564317428d31426c189172bb0f86fe0941e767b536717b80b30ac29",
+        "bytes": 4279
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.aura_1.effectv2.json",
+        "sha256": "093ed27ff1a6c4aef9c742b4f580f62cc13d8ec80248951dabf01371b8ef77a7",
+        "bytes": 4309
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.e_1.effectv2.json",
+        "sha256": "5a2ba87017d4106dab1fbf27749c8b7c534ed0ee084fa6139882ff6509d6d87d",
+        "bytes": 4208
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.e_2.effectv2.json",
+        "sha256": "6034825d1e9c9216ff57a6be1fb9668c7b2c89d1389a4036923903492862ecae",
+        "bytes": 4361
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.n_1.effectv2.json",
+        "sha256": "f4666a539cee60cd88ae78f6459388e5a34476ce53a1309b49531da9836c3c3c",
+        "bytes": 4208
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.n_2.effectv2.json",
+        "sha256": "b1ee0b8104a1f1d0693ddc4acf71395bf6fe9252c5cec0de1ac3a5608bf1678c",
+        "bytes": 4361
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.s_1.effectv2.json",
+        "sha256": "6847113c364115fc33635784cfca80da098f35aac872fe914c5f018f6218f6b3",
+        "bytes": 4205
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.s_2.effectv2.json",
+        "sha256": "633e4a0c2593639765c1d1e0c425cc76444de13c38456b329fb2e42462b93568",
+        "bytes": 4360
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.w_1.effectv2.json",
+        "sha256": "e126167366419997a277349c2eeeb0c088266632779680d7e413984ba653f0e2",
+        "bytes": 4206
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.decal.w_2.effectv2.json",
+        "sha256": "837186ec1663e1416204d495253901c52e5dd36f1497d98b1e70bf261e2f571e",
+        "bytes": 4361
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.star.back.ccl_1.effectv2.json",
+        "sha256": "22cc0536feaa4ce64cc71c61e31f927a002e18cd8c8bda133ffbc31fa7234b6c",
+        "bytes": 4225
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.star.back.cl_1.effectv2.json",
+        "sha256": "b0a1aac118a98e21f55d305d2d28190aa1b81797c8a80497535c9b2ff05a0dcc",
+        "bytes": 4223
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.star.front.ccl_1.effectv2.json",
+        "sha256": "3e3f9b781a8959b283c385039a675dbf929d8e5166bea5b524bd205c09e71d4f",
+        "bytes": 4224
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.pizza.star.front.cl_1.effectv2.json",
+        "sha256": "d71906d46d05fb25bb093a4fbede3f865e248f496c8555859d85177b9f4b39e6",
+        "bytes": 4222
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.radial_1.effectv2.json",
+        "sha256": "9719a4dd2f237f54332259a1abdac12efdc005f2e5314bbee606459fe449aaaf",
+        "bytes": 4130
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.axe.decal_1.effectv2.json",
@@ -1157,6 +1327,61 @@
         "bytes": 3552
       },
       {
+        "path": "Data/Effects/V2/Authored/esther.ninave.appear_1.effectv2.json",
+        "sha256": "edfe9772c72d1c6c8fcaf3a36493f330bdd5da4354b3d91cfa9d3341e64886ac",
+        "bytes": 4379
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.appear_2.effectv2.json",
+        "sha256": "e63a03271b882f7c8ffa73696a3bb14b9dd13fcb1dac785f16314eb1242f9fc9",
+        "bytes": 4298
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.arrow_1.effectv2.json",
+        "sha256": "15b11593dbfd3d6e56f01037f4220fc83e396260d659626fb971eb6a3eecc6f3",
+        "bytes": 4312
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.blur_1.effectv2.json",
+        "sha256": "a598463da99ef69e0b74db9b045b8320420d14935da70e7cb297c8b670503080",
+        "bytes": 4120
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.impact_1.effectv2.json",
+        "sha256": "22e02f0d0021f785e871c08efa538d831c4facb7d6616176e072ff28b34e60f0",
+        "bytes": 4491
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.impact_2.effectv2.json",
+        "sha256": "c0ba5803ba05f96a9ab96426cc7064397b6d6ccf43f78bb265c6b54a3837e1c2",
+        "bytes": 4489
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.impact_3.effectv2.json",
+        "sha256": "4effb194a5cd7491eeea618929b4c10b717827c912b50ea705202f193a237873",
+        "bytes": 4489
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.radial_1.effectv2.json",
+        "sha256": "cbf5ac75301d1894ca419932ee9d08309750134ee2640c5c3bc4d64c24ceac4c",
+        "bytes": 4134
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.thunder_1.effectv2.json",
+        "sha256": "a7f1bbf9f5382e5a428acca4e0fd0fa863295172064b69e3c517054369487d13",
+        "bytes": 4371
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.water_1.effectv2.json",
+        "sha256": "87c236bab7262cc7b359536284e6662ae6e583cc6a7a84b1e13fdc2422d3479d",
+        "bytes": 4351
+      },
+      {
+        "path": "Data/Effects/V2/Authored/esther.ninave.water_2.effectv2.json",
+        "sha256": "3bcc55bc60b5342e02a3dc3d26a1f7b4c3c05e27bfc0e0c49acda47edf11396c",
+        "bytes": 4291
+      },
+      {
         "path": "Data/Effects/V2/Authored/esther.thirain.appear_1.effectv2.json",
         "sha256": "dbacfa018dd8b61c4551d6e17e187faf06b35ce2a5596bd6e0cec50e905092b2",
         "bytes": 3485
@@ -1462,9 +1687,69 @@
         "bytes": 3275
       },
       {
+        "path": "Data/Effects/V2/Authored/kouku.gate1.authored.fade.black.effectv2.json",
+        "sha256": "f6cfd0a029495c2f17709ab8012f47a11e78201c6123cbad2af984c9aff3f99a",
+        "bytes": 2771
+      },
+      {
+        "path": "Data/Effects/V2/Authored/kouku.gate1.authored.p4.popup.transition.fade.effectv2.json",
+        "sha256": "28111101b817cc9ef1322ed9a09ac82f5d3e3382a7463462dd7db73c4d2a8c7c",
+        "bytes": 1273
+      },
+      {
+        "path": "Data/Effects/V2/Authored/kouku.gate1.full.fade.black.effectv2.json",
+        "sha256": "a7b734f4fb65e37cc19c2e30b1826eaf2551a92957114bf8ae9ac21d6ed4a9b3",
+        "bytes": 5722
+      },
+      {
+        "path": "Data/Effects/V2/Authored/kouku.gate2.clear.fade.black.effectv2.json",
+        "sha256": "eb20c7ba79f4031cb4b735a7485aa3f01b7f8159bf713f5ccec7bd33f499675e",
+        "bytes": 7177
+      },
+      {
+        "path": "Data/Effects/V2/Authored/kouku.gate2.intro.fade.black.effectv2.json",
+        "sha256": "5d7ffee37af5a3efb69c75d6da11961c68169662702283d45a4faf4ea73e41cb",
+        "bytes": 1779
+      },
+      {
+        "path": "Data/Effects/V2/Authored/kouku.gate2.maze.fade.black.effectv2.json",
+        "sha256": "ce8fbcebf86a604f9cdeecd1e2050425ed5a7edd520fad027a36fcb66795505d",
+        "bytes": 4807
+      },
+      {
+        "path": "Data/Effects/V2/Authored/kouku.gate3.intro.fade.black.effectv2.json",
+        "sha256": "dd5939d54a3a2ceee66f3e2de951d675b579750cdcc6ec4d9c45b6b852827f7e",
+        "bytes": 2677
+      },
+      {
         "path": "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
         "sha256": "b6801ae891302c5354a63cabc6a6ce31599cf16af670faf00ddfc8c6174c1d3b",
         "bytes": 88972
+      },
+      {
+        "path": "Data/Effects/V2/Groups/bingo.bomb.effectv2group.json",
+        "sha256": "fc9669e755a484c656a3ea5f4f168864aa55dcd0906bced807a5c090c22faacc",
+        "bytes": 623
+      },
+      {
+        "path": "Data/Effects/V2/Groups/bingo.bomb.mark.effectv2group.json",
+        "sha256": "5a0cf40e123099371611581b6da3141e48c7594b8c5bd8fed88f450673568b7c",
+        "bytes": 633
+      },
+      {
+        "path": "Data/Effects/V2/Groups/bingo.hammer.effectv2group.json",
+        "sha256": "d642c033cbf8184c148f5768494c2b9d7ded8434113feb43c08870599374dd47",
+        "bytes": 629
+      },
+      {
+        "path": "Data/Effects/V2/Groups/bingo.skull.red.effectv2group.json",
+        "sha256": "5c83da2c8f713517acc6bffa8ae7ed71953a6df3dbe33675518359c3b348ffb9",
+        "bytes": 634
+      },
+      {
+        "path": "Data/Effects/V2/Groups/bingo.skull.white.effectv2group.json",
+        "sha256": "f30b4ad3d64a20aa5f22ba61e2b1556600490f1ba4f157b89635a32822069438",
+        "bytes": 638
       },
       {
         "path": "Data/Effects/V2/Groups/boss.kouku.appear.effectv2group.json",
@@ -1532,6 +1817,11 @@
         "bytes": 6056
       },
       {
+        "path": "Data/Effects/V2/Groups/boss.kouku.fear.face.effectv2group.json",
+        "sha256": "c71c1e9c7a599925bc8d52176c3d24462a1ef1f1c4b0e102aae56c2bd4f93507",
+        "bytes": 644
+      },
+      {
         "path": "Data/Effects/V2/Groups/boss.kouku.find.core.effectv2group.json",
         "sha256": "3e91a1e07f3ffc594ed2cbf25305807c2b791c68b4feb18d92e0486ae4f006f1",
         "bytes": 1254
@@ -1552,6 +1842,11 @@
         "bytes": 3519
       },
       {
+        "path": "Data/Effects/V2/Groups/boss.kouku.laser.effectv2group.json",
+        "sha256": "65a7c02c0d543a9fc480e5c92b741cdbb682f0fdcb0136ccdc685a526a03dc48",
+        "bytes": 2885
+      },
+      {
         "path": "Data/Effects/V2/Groups/boss.kouku.medusa.blue.effectv2group.json",
         "sha256": "164a17b08abd4607550876cc961d895648094f05fbd9dd31e62e4cfba5c10f88",
         "bytes": 700
@@ -1565,6 +1860,41 @@
         "path": "Data/Effects/V2/Groups/boss.kouku.medusa.red.effectv2group.json",
         "sha256": "7c1913eab2cdcc7a0a42ca56c559f6746e52860313645d49e8d0a8af78443a67",
         "bytes": 697
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.aura.effectv2group.json",
+        "sha256": "74afbb61ba8fa05e4457cc5f88d51c45ed7827c2a39da2a0f85ca872b4fc6eeb",
+        "bytes": 420
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.e.effectv2group.json",
+        "sha256": "c33ea32ab912ec3e2fa4883357faca6c1e83ce2839b8c4a85a24b1b210558b98",
+        "bytes": 1774
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.n.effectv2group.json",
+        "sha256": "778af200d3c146400078a5452c47b722d064323a90273a55b9271230fc597fd4",
+        "bytes": 1774
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.s.effectv2group.json",
+        "sha256": "46db22bc3d892f37bca3a93138beab418919259a4f7c7e36408a1a2fa61a1d7a",
+        "bytes": 1774
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.star.ccl.effectv2group.json",
+        "sha256": "406f9ee55677e96aedd60231c251be896c4e7744301668305d3350e3d5113aa7",
+        "bytes": 714
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.star.cl.effectv2group.json",
+        "sha256": "c3c90f308d6a9d528adf9cb535fc2df192ad5a94aa6136124a60fd084a406fab",
+        "bytes": 711
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.pizza.w.effectv2group.json",
+        "sha256": "ae95178fa1dcc0ff76768f24f441df85aa515c8731554a3b42d071bb6fe84440",
+        "bytes": 1774
       },
       {
         "path": "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json",
@@ -1692,6 +2022,11 @@
         "bytes": 625
       },
       {
+        "path": "Data/Effects/V2/Groups/kouku.gate2.intro.fade.effectv2group.json",
+        "sha256": "493d21c50da5851d6b92bd7cb2f3c472363daa7e9ff4f149284fb746c9901378",
+        "bytes": 702
+      },
+      {
         "path": "Data/Encounters/Valtan/ValtanCinematicCamera.json",
         "sha256": "28bd078dcaa63718dbd21abb3b56119b52912a042054e110771e4cfdd978beed",
         "bytes": 36455
@@ -1713,18 +2048,18 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "68bf50e844342b37ed2826d83ded6cb1796b98fddf79b213479b79ddd1017006",
-        "bytes": 87255
+        "sha256": "d3b0056e23fa77500561468e32d54e2f4aec0f3043c60e7ec977309965a646c0",
+        "bytes": 1652277
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "939ba2d60933ac6eda877d49d250aa9502c5841c530ece544cba023d601a713b",
-        "bytes": 8393602
+        "sha256": "ea6a40e5fcf827606f49489fcbff6c42b22206ceb91129ddc234a2c4559bc5cd",
+        "bytes": 7965677
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "21c58c40409b1c32965fa3b94b99d01b18950a770504a87735dbdc3e1b51904c",
-        "bytes": 13815
+        "sha256": "ee67a96f30d8fd5144694c5dae09d861ae221af26444d46db4b97e498ac989fb",
+        "bytes": 34314
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -1766,13 +2101,13 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "4581a7ec7e45ca2cf59988dedf8c92299988c57f2d71175d0d870407a7549275",
-      "bytes": 3778088
+      "sha256": "80428ab847c54bbc0af11f27baac9f205fa46f73092f3581df00fe5f9ea22943",
+      "bytes": 3791987
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "58770b353021ee1bb90f9934462364569d070d5fc0510dfa8180fa45d7ca8f21",
-      "bytes": 2148
+      "sha256": "a745e38d7cef1e8e5d9bc896db0c5f99d693bad780131e3c94ee4a8440e11202",
+      "bytes": 2150
     },
     {
       "path": "Sequences/ValtanArena.sequencer.json",

@@ -312,6 +312,7 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 		XMLoadFloat4x4(bodyRoot->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(&m_PreviewParentMatrices[m_iPreviewParentMatrixIndex]));
 	weapon->Update(0.f);
+	weapon->Set_WeaponReplacementBody(bodyModel);
 	CNpcPresentationAssetService::Synchronize_SaydonHammerPose(bodyModel, weaponModel, m_PreviewWeaponRestPose);
 	float4x4_t weaponRoot;
 	if (weapon->Try_Get_PresentationRootMatrix(&weaponRoot))

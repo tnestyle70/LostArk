@@ -160,3 +160,92 @@ Play All 수정은 별도로 실제 문서·selector42개 검사와 TU 컴파일
 현재 소스의 codec/playback/native parameter 함수로 격리 probe를 컴파일·링크했다.17문서의 Load/Drawable/SaveAtomic/Reload, 60Hz 수명 종료와 앞뒤 Seek가 통과했다. 시작·중간·끝의 inner 값, 변하지 않는 다른127개 native parameter lane, 고정 월드 경계·중심·깊이, 끝값 도달 시 양수 alpha를 확인했다. 이는 실제 GPU 화면 판정이 아니다. 후보 재현과 반복 적용17/17, 재생성9+6문서 일치, 참조 리소스99개 존재와 비warning24개 보존을 확인했다. 근거는 `out/KoukuRadialFill20260913/native_validation.json`, `native_samples.csv`, `installation_validation.json`, `CPU/compile.log`, `CPU/link.log`다.
 
 변경 JSON/XML parse와 `git diff --check`는 통과했다. 새 C++/HLSL/Resources binary는 없다. 기존 Product의 material binding/parameter 소비자가 LocalDecal curve를 이미 지원하므로 EXE/CSO를 재빌드하지 않았다. 설치된17개 문서는 `radial_fill_installation.json`의 검증 candidate와 일치한다. 최종 프로세스 확인에서는 사용자가 실행한 `Client/Bin/Debug/Client.exe` PID9404와 TCP7777을 listen하는 Server PID58992가 있었다. 에이전트는 실행·종료·UI 조작·캡처하지 않았다. 이미 열려 있는 Effect draft가 있다면 편집을 보존하고 저장 문서를 다시 열어 확인한다. 최종 원형/도넛 외형·속도와 포탈 위치는 사용자가 직접 판정한다.
+
+
+## G11. 쇼타임 공 낙하의 원본 CDO 상속 복구 (2026-09-14)
+
+대상은 effect.kouku.gate3.showtime.ball.drop의 기존5요소다. 원본 hidden provider38의
+LocationDirect.ScaleFactor와 mesh4의 StartSize는 Distribution=None만 직렬화돼
+Engine CDO의 RawDistributionVector lookup=1을 상속해야 했다. 기존 projection의 빈
+lookup가 낙하곡선을0배로 만들고 mesh를 generic fallback.2배로 만들었다.
+현재 authored 문서의 정확히 두 distribution만 원본 CDO 값으로 복구한 후보를 stage했다.
+build_kouku_showtime_restore.py는 재생성에서도 ordinal14에 같은 복구를 적용한다.
+--repair-ball-drop-defaults 옵션은 사용자 TRS/ID/material/clock/provider를 보존해 out만 쓴다.
+
+실제 source Projectile421991201 byte3904의 ParticleData.scale1.25와 설치 mesh716정점,
+preScale.01을 확인했다. geometry 크기는 .800432×.671151×.671310m다. 실제 Playback의
+0.1667초 크기는 기존 .218678×.167788×.167828m에서1.093390×.838938×.839138m로
+5배가 된다. 이는 원본 StartSize1 복구이며 임의 확대가 아니다. 기존공은 localY1에 정지했고
+복구공은 source curve를 따라 X3.75/Y13.5에서 X.09964/Y1.30684까지 약.5초에 내려온다.
+사용자 meshY0/다른4요소Y1, 1.25배와 source X축 이동을 보존했다. 마지막 위치는 provider의
+수명 끝 직전 fixed-step sample이며 별도 gameplay 충돌/정확한 지면 도착을 새로 구현하지 않았다.
+
+actual Codec의 drawable/SaveAtomic/reopen 및2초 전체 CPU Playback·finite·반복seek가
+before/after 모두 PASS다. 내부 provider1은 숨김이고 draw4는 유지했다. candidate를 두
+수정 전 payload로 복원하면 현재 원본 전체와 같으며, 반복실행은 동일하고 사용자 변경된
+nonempty StartSize는 거절한다. 원본 archive, 다른Authored, Catalog/Tree/Composition와
+Resources를 직접 쓰지 않았다. 독립 actual Codec/Playback의 시간별 연기 birth-history 검증은 1,229개 검사, 실패 0개다.
+0.5초에 연기 33개의 첫 위치 Y13.4463, 마지막 Y1.99292, 공 Y1.30684였고,
+출생 위치의 경로 폭은 11.9051m다. 출생 후 자체 이동 최대 .0647926m, 현재 공과의
+분리 최대 12.7745m로 과거 낙하 경로에 연기가 남았다. mesh와 hidden provider의
+오차는 최대 9.53674e-7m, 0.5초 직접 seek의 재현 오차는 0이다. 원본 provider는
+0.5초 수명 후 다음 fixed step에서 사망하며, mesh는 마지막 표본 위치를 유지한다.
+peer-trail/result.log와 trail.csv가 근거이며 실제 GPU/화면 판정은 아니다.
+
+근거는 out/KoukuShowtimeBallDrop20260914/installation.json, validation.json,
+native.json, geometry-validation.json, source_projectile_leaf_parameters.json이다.
+Product C++/shader 변경과 Client/UI 실행·캡처·원작 화면 동등성 판정은 없다.
+
+
+실제 적용: Client/Server 종료 상태에서 위 원본 hash와 후보 hash를 대조한 CAS로 기존 Authored 파일 한 개에 반영했다. `out/KoukuShowtimeBallDrop20260914/installed/receipt.json`의 installed=true와 디스크 after SHA가 근거다. Catalog/Tree/Composition ID나 사용자 박스 값은 변경하지 않았다. Open Editor의 숫자 입력 assertion과 최종 EXE/게시 기록은 [Sequence G24 결과](../09-14/2026-09-14_KOUKU_SEQUENCE_PLAYBACK_EDITOR_IMPLEMENTATION_RESULT.md)에 연결한다.
+
+
+## G12. 기분나빠·폭탄·저주의식·앵콜 블랙홀빔 적용
+
+사용자가 마지막 편집을 Save하고 Client·Server를 종료했다고 알린 뒤 실제 종료 상태와 파일 SHA를 확인했다. `out/KoukuFourEffects20260914/installed/receipt.json`의 CAS로 저작10파일을 적용했다. Gameplay는611→612, WorldSequence는1845→1846이다. 기존59패턴,293 World instance,318 objectResource와 사용자 TRS는 동일하며 독립 Pattern60/61/62를 추가했다. Catalog/Tree/Composition에 새 FX 두 개와 Client project/filter의96.DataFiles None 두 항목을 등록했다. 통합 before/after 및 입력 freshness 독립검토1242검사를 통과했다.
+
+| 새 재생 항목 | 원본 연결 | 저작 길이 |
+|---|---|---|
+| P60 기분나빠 \| 브레스 | action4219917,31_01 5167ms, notify008 브레스1989~4989ms | 5167ms |
+| P61 저주의식 \| 왼손 트레일 | action4219911,27_01,fx_l_hand_01/bip001-l-hand | 4667ms |
+| P62 빙고 \| 앵콜세이튼 \| 블랙홀빔 | action4219983,35_01 1000ms→35_04 2500ms,원본5notify | 4509ms |
+| 기존 WORLD bingo_bomb 기본 idle/Respawn | 원본 Spark→FX_01/b_body→3 emitter | 각2000ms |
+
+### G12-01. 기분나빠 브레스
+
+원본15요소와 고유 흰 분출·붉은 끝부분을 유지했다. exact module instance에 Distribution=None만 저장돼 nested CDO cooked table을 잃었던10필드(StartRotation, primitive radius/velocityScale, Spawn.Rate)를 복구했다. 원본 재질15개와 root yaw-90, 기존 분신 이동 P50/53/54/55 및 Parent P52는 바꾸지 않았다. 단독 EffectTool은31_01 sourceStart1989ms부터 재생하여 준비 동작과 브레스 clock이 엇갈리지 않는다. 실제226정점×37 mesh pose=8362표본, 실제CModel5 clips/57 bone poses,5582 particle frame 표본과 SourceProfile/리소스27개 SHA 확인을 통과했다. 설치asset은 `effect.kouku.gate3.clone.breath`이며 증거는 `out/KoukuCloneBreath20260914/verification.json`이다.
+
+### G12-02. 쇼타임 해골 폭탄
+
+이미지 모델 MN_RHCN_01은 fm_d_rhcn_00 낙하 공과 다르다. 원본 PSK513점과 설치2127 skinned 정점의 위치 대응 오차2.813e-7m, D/N/S 원본 DDS일치, 실제 CMaterial native program30의7입력을 확인했다. 설치 geometry .671310×.871840×.670530m와 사용자의scale2를 유지했다. 현재 표시 크기계산은1.342621×1.743679×1.341060m이며, 원본 actor DrawScale까지 동일하다는 판정은 아니다.
+
+누락된 심지 PS3요소를 `effect.kouku.gate3.showtime.bomb.fuse`로 연결했다. 실제 source FX_01+[20,0,52.1496]cm와 설치b_body basis를 대조하여 offset[.2,0,-.521496],Rx(-90)을 적용했다. 심지 가장 가까운 실제 정점과4.545mm다. 기존idle/Respawn 두 template만 effectTrack을 받았으며 다른모션/배치는 같다. 실제CModel/CMaterial/Codec/Playback77980검사, yaw0/90/180 및seek오차0을 확인했다. 증거는 `out/KoukuShowtimeBomb20260914/validation.json`이다.
+
+### G12-03. 저주의식 왼손과 Ribbon UV1
+
+원본 WaterRibbon shader2836/3007은 이미 있었지만, source VS가 넘기는 TEXCOORD0.zw를 runtime adapter가0으로 채웠다. PS의 폭 edge mask가항상0이어서 CPU trail점이 존재해도 띠가사라졌다. 원본 PS·texture·scalar 식은 유지하고 exact VS확인후 primary/distortion 양쪽에UV1을 전달했다. 기존 carrier의(distance/tiling,width)를 UV1(width,distance/tiling)으로 연결했다. 이는 원본 PS소비자와현재geometry의축을대조한adapter이며, 원본 CPU vertexbuffer packing 자체를회수했다는판정은아니다.
+
+원본startcontrol/b_wp_1이력을보존하고 사용자지정왼손은 원본fx_l_hand_01 socket의15cmX와 실제bip001-l-hand,Rx(-90)을사용했다. 같은기존asset `effect.kouku.gate3.ritual.hand.trail.full.restore`의세요소재질/recipe/사용자TRS는유지했다. 실제CModel/production sourceAnchor/Playback20226검사, 세yaw간위치오차1.94e-6m,폭·색·age·dynamic오차4.8e-7 및되감기동일성을확인했다. 두Ribbon alpha1/폭.304127·1.36m/길이6.63906·2.07602m를관찰했다. 별도UV/마스크249검사와2primary+2distortion의 generator재생성본문일치도통과했다. 증거는 `out/KoukuRitualLeftTrail20260914/peer-native/validation.json`, `single-flash-peer-review.json`, `peer-regenerated/receipt.json`이다.
+
+### G12-04. 앵콜세이튼 블랙홀빔
+
+새asset `effect.kouku.bingo.encore.blackhole.beam.full.restore`는 준비14,ZoomBlur1,light1,dust2,양눈21씩42의60요소다. actual source action4219983의첫준비·발사만포함하고반복stage2/3은제외했다. 검정원판/빔/무지개flare의native30프로그램과원본DDS46개를유지했다. 설치165bone근거에맞춘socket/basis를사용하고원본눈notify의비등방scale(1,1,1.2)는축교환후(1,1.2,1)이다.
+
+원본nested CDO누락131분포를exact instance근거로상속했다. 원본notify보다긴10emitter는기존Timing소비경로로spawning을0.999675초에끝내고원본2·3초curveclock은보존한다. 꺼져있던native3328 ZoomBlur의기존typed carrier를원본0.3초창에연결했다. 실제Codec/roundtrip/productStage/CModel/productionPlayback636129검사실패0,양눈모든emitter발생,최대particle225/light1/post1,post활성2.01667~2.300초,종료4.508703초/5초잔류0이다. yaw·이동대조오차1.14441e-5m,seek오차0이다. 증거는 `out/KoukuEncoreBlackhole20260914/validation.json`이다.
+
+### G12-05. 빌드와 화면 경계
+
+정규 Debug Product `out/BuildPipeline/runs/20260914T092030409Z-debug-product.json`이PASS다. 변경HLSL을포함한CSO7개가갱신됐고OBJ/PCH/EXE/DLL 재생성은0개다. 이후project변경은새저작JSON의None등록뿐이며C++/HLSL추가변경은없다. Source/후보수치와리소스준비검증은실제화면승인이아니다. Client/UI실행·조작·캡처·GPU Draw 또는시각적PASS는수행하지않았다. 최종외형·텍스처위상·밀도는사용자가확인한다.
+
+
+## G13. 최종 publish 및 설치 확인
+
+네 이펙트의 저작 설치, 재생 연결, publish와 필요한 셰이더 빌드를 완료했다. 최종 검증 정본은 `out/KoukuFourEffects20260914/final-validation.json`이며 결과는 PASS다.
+
+- Gameplay 612의 새 P60·P61·P62가 게시된 encounter의 playAllPatternIds와 presentation bindings에 모두 존재하고 unavailableReason은 비어 있다. 기존 59개 패턴은 보존했다.
+- WorldSequence 1846의 실제 Client runtime JSON이 authoring과 같고, 폭탄 idle/Respawn 두 모션의 심지 effectTrack도 게시됐다.
+- KoukuSaydon owner의 product, map, world, gameplay balance 네 domain과 Composition publish가 모두 통과했다. 로그는 `publish-kouku.log`, `publish-composition.log`다.
+- 설치한 10개 파일의 SHA, JSON/XML parse, 세이튼 P8/P36의 반시계 90도 회전, 빌드 후 HLSL 원본 SHA를 확인했다. Sequence 58은 유지했다.
+- Debug Product 빌드에서 필요한 CSO 7개가 갱신됐다. C++ 변경이 없어 기존 Client.exe와 Server.exe는 다시 링크하지 않았다. 최종 확인 때 두 프로그램은 종료 상태였다.
+
+사용자가 직접 실행할 대상은 `Client/Bin/Debug/Client.exe`와 `Server/Bin/Debug/Server.exe`다. 3관문 패턴 목록에서 P60·P61·P62를 재생하고, 폭탄은 기존 WORLD 오브젝트의 기본 또는 Respawn 모션에서 심지를 확인할 수 있다. 이번 네 이펙트의 최종 시각 판정은 사용자 확인 전이며, 기존 1관문 시퀀스의 완료 확인과 구분한다.

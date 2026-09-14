@@ -1022,6 +1022,11 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 	if (player.bPatternBound || INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
 		(PLAYER_ACTION_STATE::NONE != player.eAction && PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction))
 		return;
+	// Returning directly from an Intro box must not immediately admit that stage again.
+	if (player.TriggerMove.isActive && std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&player](const auto& lane) {
+		return player.TriggerMove.strSourcePlacementId == lane.exit && !std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(),
+			[&lane](const auto& next) { return next.stage == lane.stage && std::string_view(next.arrival) == lane.exit; });
+	})) return;
 	for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
 	{
 		const auto* intro = Find_Placement("Mario" + std::to_string(stage) + "_Intro");
@@ -1057,6 +1062,83 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 			<< " layout=" << static_cast<unsigned>(layout) << '\n';
 		return;
 	}
+}
+
+void LostArk::Server::CGameRoom::Handle_MarioReturn(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_RETURN& request)
+{
+	using namespace LostArk::Shared;
+	const auto session = Find_Session(sessionId);
+	if (!session) return;
+	S2C_MARIO_RETURN_RESULT result{};
+	result.iClientSequence = request.iClientSequence;
+	result.eWorldId = m_eWorldId;
+	result.eResult = MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto player = binding == m_PlayerIdBySessionId.end() ? m_Players.end() : m_Players.find(binding->second);
+	if (player != m_Players.end() && player->second.iSessionId == sessionId)
+		result = Apply_MarioReturn(player->second, request);
+	CPacketWriter writer;
+	if (!Write_Message(writer, result) || !session->Send_Frame(
+		PACKET_TYPE::S2C_MARIO_RETURN_RESULT, writer.Get_Buffer())) session->Request_Close();
+}
+
+LostArk::Shared::S2C_MARIO_RETURN_RESULT LostArk::Server::CGameRoom::Apply_MarioReturn(
+	SERVER_PLAYER& player, const LostArk::Shared::C2S_MARIO_RETURN& request)
+{
+	using namespace LostArk::Shared;
+	S2C_MARIO_RETURN_RESULT result{};
+	result.iClientSequence = request.iClientSequence;
+	result.eWorldId = m_eWorldId;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || request.eWorldId != m_eWorldId)
+	{ result.eResult = MARIO_RETURN_RESULT::REJECTED_WRONG_WORLD; return result; }
+	const auto& previous = player.LastMarioReturnResult;
+	if (request.iClientSequence && request.iClientSequence == previous.iClientSequence) return previous;
+	if (!Is_NewerSequence(request.iClientSequence, previous.iClientSequence))
+	{ result.eResult = MARIO_RETURN_RESULT::REJECTED_STALE_SEQUENCE; return result; }
+	const auto reject = [&player, &result](const MARIO_RETURN_RESULT reason) {
+		result.eResult = reason; player.LastMarioReturnResult = result; return result;
+	};
+	if (!player.iMarioStage || player.iMarioStage > 4u) return reject(MARIO_RETURN_RESULT::REJECTED_OUTSIDE_MARIO);
+	if (!player.isCombatReady || !player.iCurrentHp || player.eAction != PLAYER_ACTION_STATE::NONE ||
+		player.TriggerMove.isActive || player.bPatternBound || player.fKnockbackRemainingSeconds > 0.f ||
+		player.iAttachmentOwnerNetEntityId != INVALID_NET_ENTITY_ID)
+		return reject(MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE);
+	// Resolve the terminal authored exit of this stage; the Client supplies no target.
+	const auto lane = std::find_if(MARIO_LANES.begin(), MARIO_LANES.end(), [&player](const auto& candidate) {
+		return candidate.stage == player.iMarioStage && !std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(),
+			[&candidate](const auto& next) { return next.stage == candidate.stage && std::string_view(next.arrival) == candidate.exit; });
+	});
+	const auto* exit = lane == MARIO_LANES.end() ? nullptr : Find_Placement(lane->exit);
+	const auto* gate3 = Find_Placement("stage.kakul.sl05");
+	if (!exit || !exit->isEnabled || exit->eKind != WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ||
+		exit->TriggerActions.size() != 1u || !gate3 || gate3->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN)
+		return reject(MARIO_RETURN_RESULT::REJECTED_DESTINATION);
+	const auto& action = exit->TriggerActions.front();
+	SERVER_NAV_POINT ground{};
+	if (action.eKind != WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER || !std::isfinite(action.fDurationSeconds) ||
+		action.fDurationSeconds <= 0.f || !std::isfinite(action.fArcHeight) ||
+		!std::isfinite(action.fTargetX) || !std::isfinite(action.fTargetY) || !std::isfinite(action.fTargetZ) ||
+		std::abs(action.fTargetX - gate3->fPositionX) > .05f || std::abs(action.fTargetZ - gate3->fPositionZ) > .05f ||
+		!m_ServerNavigation.Is_PointWalkableExact(action.fTargetX, action.fTargetZ) ||
+		!m_ServerNavigation.Sample_Position(action.fTargetX, action.fTargetZ, ground) ||
+		std::abs(action.fTargetY - ground.y) > .25f)
+		return reject(MARIO_RETURN_RESULT::REJECTED_DESTINATION);
+	Refresh_PlayerBlockingBodies();
+	if (!m_ServerCollisionSystem.Is_PlayerPositionClear(ground.x, ground.y, ground.z, player.iNetEntityId))
+		return reject(MARIO_RETURN_RESULT::REJECTED_DESTINATION);
+	SERVER_PLAYER candidate = player;
+	WORLD_TRIGGER_ACTION move = action;
+	move.fTargetY = ground.y;
+	if (!CServerTriggerSystem::Begin_MovePlayer(candidate, move, m_iServerTick ? m_iServerTick : 1u))
+		return reject(MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE);
+	candidate.TriggerMove.strSourcePlacementId = exit->strPlacementId;
+	Update_MarioControlState(candidate);
+	result.eResult = MARIO_RETURN_RESULT::ACCEPTED;
+	candidate.LastMarioReturnResult = result;
+	player = std::move(candidate);
+	m_strStatus = "Mario return started; phase progression waits for the authoritative landing";
+	return result;
 }
 
 void LostArk::Server::CGameRoom::Handle_MarioMove(

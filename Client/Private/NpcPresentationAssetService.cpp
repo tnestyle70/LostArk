@@ -6,6 +6,7 @@
 #include "Model.h"
 #include "Npc.h"
 #include "RuntimeAssetRoot.h"
+#include "WorldSequenceObject.h"
 
 #include <filesystem>
 #include <algorithm>
@@ -18,12 +19,23 @@
 #include <utility>
 #include <vector>
 
+namespace Client
+{
+struct SAYDON_WEAPON_REPLACEMENT
+{
+	std::weak_ptr<Engine::CModel> body;
+	std::weak_ptr<CWorldSequenceObject> object;
+};
+}
+
 namespace
 {
 	std::mutex g_NpcAssetMutex;
 	std::map<uint32_t, std::set<std::string, std::less<>>> g_ReadyArchetypes;
 	std::map<uint32_t, std::set<std::string, std::less<>>> g_ReadyAnimSets;
 	std::unordered_set<uint32_t> g_NpcObjectReadyLevels;
+	// WORLD sampling and weapon rendering both run on the presentation thread.
+	std::vector<std::weak_ptr<const Client::SAYDON_WEAPON_REPLACEMENT>> g_SaydonWeaponReplacements;
 
     std::string Resolve_SaydonWeaponClip(const std::string_view bodyClip)
     {
@@ -54,6 +66,34 @@ namespace
 		return Engine::wstring_t(TEXT("Prototype_Component_Model_AnimSet_")) +
 			stem;
 	}
+}
+
+void Client::CNpcPresentationAssetService::Track_SaydonWeaponReplacement(
+	std::shared_ptr<const SAYDON_WEAPON_REPLACEMENT>& registration,
+	const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<CWorldSequenceObject>& object)
+{
+	if (!body || !object)
+	{
+		registration.reset();
+		return;
+	}
+	if (registration && registration->body.lock() == body && registration->object.lock() == object) return;
+	registration.reset();
+	std::erase_if(g_SaydonWeaponReplacements, [](const auto& value) { return value.expired(); });
+	auto replacement = std::make_shared<const SAYDON_WEAPON_REPLACEMENT>(SAYDON_WEAPON_REPLACEMENT{body, object});
+	g_SaydonWeaponReplacements.push_back(replacement);
+	registration = std::move(replacement);
+}
+
+bool_t Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(
+	const std::shared_ptr<Engine::CModel>& body)
+{
+	std::erase_if(g_SaydonWeaponReplacements, [](const auto& value) { return value.expired(); });
+	if (!body) return false;
+	for (const auto& value : g_SaydonWeaponReplacements)
+		if (const auto replacement = value.lock(); replacement && replacement->body.lock() == body)
+			if (const auto object = replacement->object.lock(); object && object->Is_Visible()) return true;
+	return false;
 }
 
 void Client::CNpcPresentationAssetService::Synchronize_SaydonHammerPose(

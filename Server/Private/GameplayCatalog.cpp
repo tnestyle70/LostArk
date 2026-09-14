@@ -1,4 +1,5 @@
 #include "GameplayCatalog.h"
+#include "KoukuSaydonBrain.h"
 
 #include <Windows.h>
 #include <bcrypt.h>
@@ -3049,7 +3050,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
 			std::uint32_t mode = 0u;
-			if ((16u != fields.size() && 17u != fields.size() && 20u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+			if ((16u != fields.size() && 17u != fields.size() && 20u != fields.size() && 25u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
 				!IsStableId(fields[3]) || !ParseNumber(fields[5], trigger.iStartMs) ||
 				!ParseNumber(fields[6], trigger.iDurationMs) || 0u == trigger.iDurationMs ||
 				!ParseNumber(fields[7], mode) || mode >= static_cast<std::uint32_t>(LostArk::Shared::KOUKU_HUD_MODE::END) ||
@@ -3064,11 +3065,29 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (fields.size() >= 17u && (!ParseNumber(fields[16], trigger.fFaceCenterYawOffsetDegrees) ||
 				!std::isfinite(trigger.fFaceCenterYawOffsetDegrees)))
 			{ m_strStatus = "KoukuSaydon face-center offset is invalid"; return false; }
-			if (20u == fields.size() && (!ParseNumber(fields[17], trigger.iCountPerPlayer) ||
+			if (fields.size() >= 20u && (!ParseNumber(fields[17], trigger.iCountPerPlayer) ||
 				!ParseNumber(fields[18], trigger.fPlayerEffectRadiusM) || !std::isfinite(trigger.fPlayerEffectRadiusM) ||
 				!ParseNumber(fields[19], trigger.iEffectLifetimeMs)))
 			{ m_strStatus = "KoukuSaydon player effect values are invalid"; return false; }
-			if (fields[4] != "ALBION_BLUE_CIRCLE" && (trigger.iCountPerPlayer != 0u || trigger.fPlayerEffectRadiusM != 0.f || trigger.iEffectLifetimeMs != 0u))
+			if (25u == fields.size())
+			{
+				if (!ParseNumber(fields[20], trigger.iArenaRandomCount) || trigger.iArenaRandomCount > 32u ||
+					!ParseNumber(fields[21], trigger.fArenaRandomRadiusM) || !std::isfinite(trigger.fArenaRandomRadiusM) ||
+					!ParseNumber(fields[22], trigger.fArenaHeightToleranceM) || !std::isfinite(trigger.fArenaHeightToleranceM) ||
+					!ParseNumber(fields[23], trigger.fArenaMinimumSpacingM) || !std::isfinite(trigger.fArenaMinimumSpacingM) ||
+					(fields[24] != "0" && fields[24] != "1") ||
+					trigger.fArenaRandomRadiusM < 0.f || trigger.fArenaRandomRadiusM > 100.f ||
+					trigger.fArenaHeightToleranceM < 0.f || trigger.fArenaHeightToleranceM > 10.f ||
+					trigger.fArenaMinimumSpacingM < 0.f || trigger.fArenaMinimumSpacingM > 20.f ||
+					(trigger.iArenaRandomCount > 0u && (trigger.fArenaRandomRadiusM <= 0.f || trigger.fArenaHeightToleranceM <= 0.f || trigger.fArenaMinimumSpacingM <= 0.f)) ||
+					(trigger.iArenaRandomCount == 0u && (trigger.fArenaRandomRadiusM != 0.f || trigger.fArenaHeightToleranceM != 0.f || trigger.fArenaMinimumSpacingM != 0.f)))
+				{ m_strStatus = "KoukuSaydon arena random layout is invalid"; return false; }
+				trigger.bRandomPlayerOnly = fields[24] == "1";
+				if (trigger.bRandomPlayerOnly && (trigger.iCountPerPlayer != 1u || trigger.fPlayerEffectRadiusM != 0.f))
+				{ m_strStatus = "KoukuSaydon random player layout is invalid"; return false; }
+			}
+			if (fields[4] != "ALBION_BLUE_CIRCLE" && (trigger.iCountPerPlayer != 0u || trigger.fPlayerEffectRadiusM != 0.f || trigger.iEffectLifetimeMs != 0u ||
+				trigger.iArenaRandomCount != 0u || trigger.bRandomPlayerOnly))
 			{ m_strStatus = "Non-Albion trigger carries player effect values"; return false; }
 			trigger.strTriggerId = std::string(fields[3]);
 			trigger.eHudMode = static_cast<LostArk::Shared::KOUKU_HUD_MODE>(mode);
@@ -3086,6 +3105,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						return false;
 					trigger.ClockHours.push_back(hour);
 				}
+			}
+			else if (fields[4] == "SUMMON_PATTERNS")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS;
+				if (mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+					trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
+				{ m_strStatus = "Summon Pattern trigger carries unrelated values"; return false; }
 			}
 			else if (fields[4] == "ALBION_BLUE_CIRCLE")
 			{
@@ -3119,6 +3145,35 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners->second.end() == owner || owner->MechanicTriggers.size() >= 64u)
 				return false;
 			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNSUMMONSPAWN" == fields[0])
+		{
+			BOSS_PATTERN_SUMMON_PATTERN_SPAWN spawn{};
+			if (fields.size() != 10u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]) || fields[2] == fields[5])
+			{ m_strStatus = "Summon Pattern spawn identity is invalid"; return false; }
+			for (std::size_t axis = 0u; axis < 3u; ++axis)
+				if (!ParseNumber(fields[6u + axis], spawn.PositionOffset[axis]) ||
+					!std::isfinite(spawn.PositionOffset[axis]) || std::abs(spawn.PositionOffset[axis]) > 1000.f)
+				{ m_strStatus = "Summon Pattern local offset is invalid"; return false; }
+			if (!ParseNumber(fields[9], spawn.fYawOffsetDegrees) || !std::isfinite(spawn.fYawOffsetDegrees) ||
+				std::abs(spawn.fYawOffsetDegrees) > 360.f)
+			{ m_strStatus = "Summon Pattern yaw offset is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Summon Pattern encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end())
+			{ m_strStatus = "Summon Pattern owner is missing"; return false; }
+			const auto trigger = std::find_if(owner->MechanicTriggers.begin(), owner->MechanicTriggers.end(),
+				[&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == owner->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS ||
+				trigger->PatternSpawns.size() >= 4u || std::any_of(trigger->PatternSpawns.begin(), trigger->PatternSpawns.end(),
+					[&](const auto& row) { return row.strSpawnId == fields[4]; }))
+			{ m_strStatus = "Summon Pattern trigger or spawn cardinality is invalid"; return false; }
+			spawn.strSpawnId = std::string(fields[4]); spawn.strPatternId = std::string(fields[5]);
+			trigger->PatternSpawns.push_back(std::move(spawn));
 		}
 		else if (!fields.empty() && "PATTERNFIXEDTIMELINE" == fields[0])
 		{
@@ -5439,6 +5494,24 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		std::unordered_set<std::uint64_t> healthMechanicOrderKeys;
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
+			for (const auto& trigger : pattern.MechanicTriggers)
+			{
+				if (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS) continue;
+				if (!isKoukuSaydonGateOne || trigger.PatternSpawns.empty() || trigger.PatternSpawns.size() > 4u)
+				{ m_strStatus = "Summon Pattern trigger requires one to four spawns"; return false; }
+				for (const auto& spawn : trigger.PatternSpawns)
+				{
+					const auto child = std::find_if(foundPatterns->second.begin(), foundPatterns->second.end(),
+						[&](const auto& row) { return row.strPatternId == spawn.strPatternId; });
+					if (child == foundPatterns->second.end())
+					{ m_strStatus = "Summoned Pattern is unavailable: " + spawn.strPatternId; return false; }
+					if (!CKoukuSaydonBrain::Validate_SummonedPattern(pattern, *child, m_strStatus)) return false;
+					std::uint64_t childDurationMs = 0u;
+					for (const auto& stage : child->Stages) childDurationMs += stage.iDurationMs;
+					if (childDurationMs > trigger.iDurationMs)
+					{ m_strStatus = "Summoned Pattern exceeds its occurrence lifetime: " + spawn.strPatternId; return false; }
+				}
+			}
 			for (const std::string& auditionArchetypeId :
 				pattern.AuditionBossArchetypeIds)
 			{

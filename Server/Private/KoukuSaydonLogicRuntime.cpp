@@ -1000,7 +1000,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		else
 		{
 			auto scheduled = trigger;
-			if (pattern.bFixedTimelineClock && trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT)
+			if (pattern.bFixedTimelineClock &&
+				(trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT ||
+				 trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS))
 			{
 				const auto deadline = Add_Ticks(ledger.iPatternStartTick, Ticks_FromMs(trigger.iStartMs + trigger.iDurationMs));
 				if (Has_ReachedTick(serverTick, deadline)) continue;

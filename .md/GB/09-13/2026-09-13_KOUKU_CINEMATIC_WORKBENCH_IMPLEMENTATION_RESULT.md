@@ -173,6 +173,29 @@ sourceTransformTrack으로 넣었다. source basis1.7과 사용자 scale2는 중
 기존 예고 수명1.5초와 fade를 유지하며 0/2.75/5.5/8.25/11m의 내부 반경, native packet과
 저장·재생의 113개 검사를 통과했다. `out/KoukuSectorFill20260913/validation.json` 참조.
 
+### G09 09-14 실제 설치와 사격 Sprite 제거
+
+09-13 후보와 별도로 실제 정본을 다시 읽었다. `sector.warning.shot`은 아직 inner=.66 고정이며
+예고1개+사격 Sprite3개였다. 사용자가 도넛과 같은 확장과 Sprite3개 삭제를 요청하고 EXE를
+종료한 뒤, `kouku.showtime.warning.sector`의 inner 곡선을 설치했다. 삭제한 ID는
+`kouku.207274005.bb19206744ae8c60c97f`, `kouku.207274005.7ec0d88461ee250102b5`,
+`kouku.207274005.206ba6a1771800befa31`이다. 다른 리소스의 emitter는 변경하지 않았다.
+
+기존 생성기에 opt-in `--stage-sector-warning-only`를 추가했다. 동일 입력의 재생성·CAS 교체와
+기존 예고 값 보존을 확인했다. native3602 row0.z를0/.25/.5/.75/1로 보간해
+0/.325/.65/.975/1.3초에 반경0/2.75/5.5/8.25/11m를 전달한다. 예고 수명1.5초와
+fade0/.2/1.3/1.5, 반경·각도·색·배치·SourceRecipe를 유지한다. V1_ELEMENT는 제출 범위만
+고르므로 동일한 material parameter track이 실제 native packet까지 전달된다.
+
+실제 Codec 저장·재로드, parameter packing, 정방향·역방향 CPU 재생113검사 실패0,
+JSON deep preservation과 생성 재실행 동일성 및 diff 검사 PASS다. Playback의 보수적인
+문서 길이는 detail1.5+particle1.5=3초지만 보이는 예고/fade는1.5초다. Composition의 신규
+박스 기본 길이만4000→1500ms로 맞추고 기존 박스 시각·길이는 보존했다.
+
+설치 SHA256은 `47655414aa4c5c444a8dd156c1c2487039782f4b1ed7c076c2814e73a580ac3e`이며
+근거는 `out/KoukuSectorWarning20260914/installation.json`, `run.log`, `composition-default.json`이다.
+새 shader·C++ runtime·Resources binary는 추가하지 않았다. 사용자 최종 화면 판정은 대기다.
+
 ## G10. 최종 검증과 적용 경계
 
 격리 Engine은 실제 79 TU의 변경 의존을 컴파일하고 DLL/lib 링크를 통과했다. Client는 최신

@@ -58,11 +58,9 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
         if (index == UINT32_MAX || !m_Model->Get_AnimationProgress(index, position, duration) || duration <= 0.f)
             return false;
         const f32_t ticksPerSecond = m_Model->Get_AnimationTickPerSecond(index);
-        f32_t ticks = (std::max)(0.f, localMs - animation->startMs) * 0.001f *
-            animation->playbackRate * ticksPerSecond;
-        if (localMs >= windowEndMs && animation->holdLastFrame) ticks = duration;
-        else if (animation->loop) ticks = std::fmod(ticks, duration);
-        else if (ticks > duration) ticks = animation->holdLastFrame ? duration : 0.f;
+        f32_t ticks = 0.f;
+        if (!CWorldSequenceDocument::Try_SampleAnimationTicks(*animation, localMs, windowEndMs,
+            ticksPerSecond, duration, ticks)) return false;
         m_Model->Set_Animation(index, false);
         m_Model->Skip_Blend();
         if (!m_Model->Set_AnimTrackPosition(index, ticks)) return false;

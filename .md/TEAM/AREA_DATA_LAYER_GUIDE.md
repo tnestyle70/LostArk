@@ -226,6 +226,14 @@ optional `anchorKind`는 고정 `WORLD` 또는 살아 있는 복제 플레이어
 Animation track의 optional `displayName`은 빈 값 또는 최대 128 UTF-8 byte의 표시 이름이다.
 실제 WModel lookup은 기존 `clipName`만 사용한다. Object Tool의 이름 편집과 Timeline은
 `displayName`을 사용하며 비어 있으면 `clipName`을 표시한다. 표시 이름 변경이 재생 연결을 바꾸지 않는다.
+
+Animation track의 optional `sourceStartMs`는 원본 clip에서 건너뛸 시간(0..600000ms, 기본 0)이다.
+`startMs`는 Motion timeline의 box 시작이고 `sourceStartMs`는 playbackRate 적용 전 원본 시각이다.
+다음 같은 slot box 또는 Motion 끝이 재생 구간을 닫는다. 양수 offset의 loop는 그 source 시작부터
+native clip 끝까지 반복한다. native 범위를 벗어난 offset은 준비/샘플에서 거부하고 기존 preview를
+유지한다. Object 자세·Effect 소켓 이력·Deploy가 같은 offset을 소비하며 기본 0의 기존 계산은
+보존한다. Object Tool의 `Animation Clips → Source Start (ms)`에서 편집하고 Map publisher로 배포한다.
+
 Physics의 `Apply Vertical Arc`는 높이 H와 Lifetime T로 기존 velocity Y=4H/T,
 acceleration Y=-8H/T²를 저장한다. 생성 개수·간격을 보존하고 첫 생성의 높이 곡선을 Timeline에
 표시한다. 이후 생성도 전체 상태 종료시각을 공유한다. 별도 PhysX simulation이나 저장 곡선 schema는 없다.
@@ -311,6 +319,15 @@ optional `unlit`은 bool이며 생략값은 false다. true인 binding은 동일 
 조명과 곱하지 않고 emission으로 출력하며 직접 diffuse/specular 기여는 0이다. 움직이는 발광
 소품에 사용하는 저작 선택이고 원본의 static lightmap을 복제하지 않는다. 다른 binding과 정적
 배경의 조명 정책은 유지하며, Save/Load·동등성·publisher가 이 값을 보존·검사한다.
+
+Object Detail의 `Circular Spacing`은 `Orbit Radius (m)`를 직접 편집하거나
+`Radial Offset from Saved (m)`로 마지막 Save/Reload 대비 증감량을 편집한다.
+양수는 원형 줄을 중심에서 바깥으로 이동하며 `Restore Saved Radius`는 선택 Motion의
+반경만 저장값으로 복원한다. 드래그·입력·값 위의 마우스 휠은 현재 clock의 Object Preview를
+즉시 시작·갱신한다. 저장은 기존 Save/publisher 경로를 따른다.
+3관문 기본 외곽불과 같은 Motion의 Preview는 기본불을 잠시 숨기고 Stop 때 복원한다.
+F1 Gate Controls의 `Despawn Fire Object`는 기본 외곽불 owner를 제거하며,
+다음 명시적인 Gate 3 활성화 때 다시 생성한다.
 
 Object Tool의 부모 선택은 공통 모델·텍스처·크기·Anchor와 연결된 Motion 목록만 표시하고,
 자식 선택은 해당 Motion의 Detail과 Sequencer를 표시한다. `Create Object`는 부모만 만들고
@@ -435,7 +452,11 @@ Valtan은 catalog가 이 pair를 선언하므로 누락·손상을 정상적인 
 쿠크 `LV_LUT_MIDNIGHTC_ED`도 같은 pair를 선언한다. formatVersion 2는 `PROJECT_AUTHORED` 문서이며
 0~512개의 Directional/Point/Spot에 stable `lightId`, `displayName`, `groupId`, `enabled`, 위치·회전·range·falloff·cone·RGBA·brightness를 저장한다.
 Rendering Workbench의 Map 목록은 player 위치를 기준으로 point/spot을 생성하고, 변경값을 Area source에 저장한다.
-Publish는 기존 Map publisher, 제품 로드는 `CMapLightPresentationRuntime`을 사용한다. 잘못된 새 source/preview는 이전 문서를 보존한다.
+목록 위의 `Save Map Lights`는 선택과 무관하게 해당 Map의 전체 추가·편집·삭제를 저장한다.
+삭제 후에도 Map 저장 대상이 유지된다. `Publish Map Lights`는 기존 Map publisher의
+`-Scope Lights`로 maplights 한 파일만 검증·게시하고 현재 맵을 reload한다. CLI도
+`Publish-MapAuthoring.ps1 -AreaId <AreaId> -Scope Lights -Mode Validate|Publish|Check`를 사용한다.
+제품 로드는 `CMapLightPresentationRuntime`을 사용한다. 잘못된 새 source/preview는 이전 문서를 보존한다.
 같은 v2 map light는 Composition Light 탭에 읽기 전용 정의로 표시된다. Append는 stable lightId를 참조하며
 조명 값을 LightResources.json에 복제하지 않는다. Composition에서 사용하는 map light의 삭제는 참조 해제 전 거부한다.
 Default Directional Light는 Scene Profile의 기존 방향광을 편집하는 목록 행이다. maplights에 별도 기본광을 추가하지 않는다.

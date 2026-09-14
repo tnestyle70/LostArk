@@ -224,13 +224,16 @@ void CEffect_Tool::Attach_AuthoringSaved()
         m_strDocumentStatus += " Effect saved; tree placement needs retry: " + status;
 }
 
-bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root,
-    std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error)
+bool CEffect_Tool::Resolve_AuthoringOccurrenceDocument(const EFFECT_RESOURCE_KEY& key,
+    EFFECT_DOCUMENT_DESC& document, std::string& error) const
 {
     if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || !key.Is_Valid())
     { error = "Invalid V1 Effect reference."; return false; }
-    EFFECT_DOCUMENT_DESC document;
-    if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId == key.strStableId)
+    // An explicit staged document already contains the intended Detail/Model edits.
+    // Reapplying the old active draft here would overwrite the transaction candidate.
+    if (m_pAuthoringRefreshDocument && m_pAuthoringRefreshDocument->strEffectAssetId == key.strStableId)
+        document = *m_pAuthoringRefreshDocument;
+    else if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId == key.strStableId)
     {
         document = *m_ActiveDocument;
         if (m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(document))
@@ -248,6 +251,14 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     }
     if (document.strEffectAssetId != key.strStableId)
     { error = "Saved Effect identity does not match the selected row."; return false; }
+    return true;
+}
+
+bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::vector<std::string>& elementIds, const float4x4_t& root,
+    std::shared_ptr<CEffectObject>& object, uint32_t& previewStartMs, uint32_t& previewEndMs, std::string& error)
+{
+    EFFECT_DOCUMENT_DESC document;
+    if (!Resolve_AuthoringOccurrenceDocument(key, document, error)) return false;
     if (!elementIds.empty())
     {
         if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;

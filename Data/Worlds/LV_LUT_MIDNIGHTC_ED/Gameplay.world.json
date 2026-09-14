@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 8793,
+  "revision": 8795,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -21,7 +21,7 @@
       "kind": "triggerBox",
       "position": [48.4529991, 5.42626988e-16, -81.762001],
       "yawDegrees": 45.5,
-      "enabled": true,
+      "enabled": false,
       "halfExtents": [3, 1, 3],
       "triggerOnce": true,
       "events": [
@@ -97,7 +97,7 @@
       "halfExtents": [2, 0.5, 2],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [2.89700007, 1.31799996, 740.494019], "durationSeconds": 1.5, "arcHeight": 0, "koukuHudMode": "NONE" }
+        { "type": "movePlayer", "targetPosition": [-2, 1.317626, 942], "durationSeconds": 1.5, "arcHeight": 0, "koukuHudMode": "NONE" }
       ]
     },
     {
@@ -231,7 +231,7 @@
       "halfExtents": [2, 1, 2],
       "triggerOnce": true,
       "events": [
-        { "type": "movePlayer", "targetPosition": [0.703000009, 1.29900515, 738.098999], "durationSeconds": 1.5, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [-2, 1.317626, 942], "durationSeconds": 1.5, "arcHeight": 0 }
       ]
     },
     {
@@ -333,7 +333,7 @@
       "halfExtents": [1, 0.5, 1],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [-1.69099998, 1.31762564, 735.915039], "durationSeconds": 1.5, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [-2, 1.317626, 942], "durationSeconds": 1.5, "arcHeight": 0 }
       ]
     },
     {
@@ -523,7 +523,7 @@
       "halfExtents": [1, 0.5, 1],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [-3.90100002, 1.31762564, 733.617004], "durationSeconds": 1.5, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [-2, 1.317626, 942], "durationSeconds": 1.5, "arcHeight": 0 }
       ]
     },
     {
@@ -1019,7 +1019,7 @@
       "kind": "boss",
       "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [-0.0700000003, 1.32000005, 737.530017],
+      "position": [6.43, 1.3, 730],
       "yawDegrees": 237,
       "enabled": false
     },

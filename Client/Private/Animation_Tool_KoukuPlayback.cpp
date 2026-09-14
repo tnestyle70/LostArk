@@ -650,10 +650,12 @@ bool_t Client::CAnimation_Tool::Stop_KoukuCompositionPreview(
 	m_PendingKoukuSaydonCompositionPatternPreview = {};
 	if (!m_bKoukuCompositionTimelinePlaying)
 	{
-		strOutStatus = hadPending ? "Composition preview request cancelled." :
-			"No KoukuSaydon composition preview is playing.";
+		// Resource/WORLD handoff also calls Stop. An inactive backend owns no
+		// status to replace, so preserve the caller's actual admission result.
+		if (!hadPending) { strOutStatus.clear(); return false; }
+		strOutStatus = "Composition preview request cancelled.";
 		m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
-		return hadPending;
+		return true;
 	}
 	Stop_KoukuSaydonPatternPreview(
 		m_KoukuSaydonPatternPreviewModel.lock(), "Composition preview stopped.");

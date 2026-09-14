@@ -138,7 +138,7 @@ def prepare(output):
     target_position = by_occurrence['7']['positionOffset'][:]
     floor = floor_sample(target_position)
     variants = [variant('gun.muzzle', 'world', '쇼타임 총구 발사 / WORLD 총구'),
-                variant('gun.signature', 'world', '쇼타임 총구 섬광 / WORLD 총구'),
+                variant('gun.signature', 'world', '3관문_세이튼_쇼타임_발사 섬광 한 손'),
                 variant('target.fixed', 'ground', '쇼타임 고정 표적 / MAP 바닥', .02),
                 variant('target.tracking', 'ground', '쇼타임 노란 추적 표적 / MAP 바닥', .12),
                 variant('target.end', 'ground', '쇼타임 노란 표적 종료 / MAP 바닥', .12)]

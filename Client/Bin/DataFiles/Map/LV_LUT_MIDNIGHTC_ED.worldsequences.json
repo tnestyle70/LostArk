@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 1764,
+  "revision": 1846,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -120129,45 +120129,7 @@
         { "slotId": "object", "clipName": "Hook_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
       ]
     },
-    {
-      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb",
-      "displayName": "월드오브젝트_빙고폭탄",
-      "category": "WorldObject",
-      "durationMs": 2000,
-      "interpolation": "SMOOTH_STEP",
-      "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
-      },
-      "tracks": [
-        {
-          "slotId": "object",
-          "keys": [
-            {
-              "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 2000,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            }
-          ]
-        }
-      ],
-      "animationTracks": [
-        { "slotId": "object", "clipName": "Bomb_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
-      ]
-    },
+    {"sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb", "displayName": "월드오브젝트_빙고폭탄", "category": "WorldObject", "durationMs": 2000, "interpolation": "SMOOTH_STEP", "objectMotion": {"velocity": [0, 0, 0], "acceleration": [0, 0, 0], "angularVelocityDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "revolutionOffset": [0, 0, 0], "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1}, "tracks": [{"slotId": "object", "keys": [{"timeMs": 0, "positionOffset": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scaleMultiplier": [1, 1, 1], "visible": true}, {"timeMs": 2000, "positionOffset": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scaleMultiplier": [1, 1, 1], "visible": true}]}], "animationTracks": [{"slotId": "object", "clipName": "Bomb_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true}], "effectTracks": [{"effectTrackId": "effect.showtime.bomb.fuse", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.showtime.bomb.fuse", "timing": "TIME", "followObject": true, "bone": "b_body", "startMs": 0, "durationMs": 2000, "positionOffset": [0.2, 0, -0.521496], "rotationDegrees": [-90, 0, 0], "scale": [1, 1, 1]}]},
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo",
       "displayName": "월드오브젝트_빙고",
@@ -122074,45 +122036,7 @@
         { "slotId": "object", "clipName": "Bomb_att_battle_1_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
-    {
-      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_respawn_1",
-      "displayName": "월드오브젝트_빙고폭탄낙하",
-      "category": "WorldObject",
-      "durationMs": 2000,
-      "interpolation": "LINEAR",
-      "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
-      },
-      "tracks": [
-        {
-          "slotId": "object",
-          "keys": [
-            {
-              "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 2000,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            }
-          ]
-        }
-      ],
-      "animationTracks": [
-        { "slotId": "object", "clipName": "Bomb_respawn_1", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
-      ]
-    },
+    {"sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_respawn_1", "displayName": "월드오브젝트_빙고폭탄낙하", "category": "WorldObject", "durationMs": 2000, "interpolation": "LINEAR", "objectMotion": {"velocity": [0, 0, 0], "acceleration": [0, 0, 0], "angularVelocityDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "revolutionOffset": [0, 0, 0], "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1}, "tracks": [{"slotId": "object", "keys": [{"timeMs": 0, "positionOffset": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scaleMultiplier": [1, 1, 1], "visible": true}, {"timeMs": 2000, "positionOffset": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scaleMultiplier": [1, 1, 1], "visible": true}]}], "animationTracks": [{"slotId": "object", "clipName": "Bomb_respawn_1", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true}], "effectTracks": [{"effectTrackId": "effect.showtime.bomb.fuse", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.showtime.bomb.fuse", "timing": "TIME", "followObject": true, "bone": "b_body", "startMs": 0, "durationMs": 2000, "positionOffset": [0.2, 0, -0.521496], "rotationDegrees": [-90, 0, 0], "scale": [1, 1, 1]}]},
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.card_saved_chain",
       "displayName": "카드_기존연속모션",
@@ -122674,7 +122598,7 @@
       "sequenceId": "sequence.kouku.odd_doll.att_battle_2_01",
       "displayName": "회전 화염 뿜기 (모델 동작)",
       "category": "Animation",
-      "durationMs": 11334,
+      "durationMs": 17314,
       "interpolation": "LINEAR",
       "objectMotion": {
         "velocity": [0, 0, 0],
@@ -122686,17 +122610,19 @@
       },
       "tracks": [],
       "animationTracks": [
-        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
+        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true },
+        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 1539, "playbackRate": 0.6013333333333334, "loop": false, "holdLastFrame": true, "sourceStartMs": 1539 },
+        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 16539, "playbackRate": 1, "loop": false, "holdLastFrame": true, "sourceStartMs": 10559 }
       ],
       "effectTracks": [
-        { "effectTrackId": "effect.doll.flame", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.doll.flame.full.restore", "timing": "TIME", "followObject": true, "bone": "", "startMs": 0, "durationMs": 11334, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] }
+        { "effectTrackId": "effect.doll.flame", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.doll.flame.object-sustain15", "timing": "TIME", "followObject": true, "bone": "", "startMs": 0, "durationMs": 17314, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] }
       ]
     },
     {
       "sequenceId": "sequence.kouku.odd_doll.large.att_battle_2_01",
       "displayName": "회전 화염 뿜기 (모델 동작)",
       "category": "Animation",
-      "durationMs": 11315,
+      "durationMs": 17314,
       "interpolation": "LINEAR",
       "objectMotion": {
         "velocity": [0, 0, 0],
@@ -122708,10 +122634,12 @@
       },
       "tracks": [],
       "animationTracks": [
-        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
+        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true },
+        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 1539, "playbackRate": 0.6013333333333334, "loop": false, "holdLastFrame": true, "sourceStartMs": 1539 },
+        { "slotId": "object", "clipName": "att_battle_2_01", "startMs": 16539, "playbackRate": 1, "loop": false, "holdLastFrame": true, "sourceStartMs": 10559 }
       ],
       "effectTracks": [
-        { "effectTrackId": "effect.doll.flame", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.doll.flame.full.restore", "timing": "TIME", "followObject": true, "bone": "", "startMs": 0, "durationMs": 11334, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 90, 0], "scale": [1, 1, 1] }
+        { "effectTrackId": "effect.doll.flame", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.doll.flame.object-sustain15", "timing": "TIME", "followObject": true, "bone": "", "startMs": 0, "durationMs": 17314, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 90, 0], "scale": [1, 1, 1] }
       ]
     },
     {
@@ -194006,19 +193934,19 @@
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, 24, 0],
         "revolutionDegreesPerSecond": [0, 24, 0],
-        "revolutionOffset": [12.6000004, 0, 0],
+        "revolutionOffset": [13.1000004, 0, 0],
         "count": 10, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
         "emissions": [
-          {"positionOffset": [10.193614, 0, -7.40609407], "yawDegrees": -324, "startDelayMs": 0},
-          {"positionOffset": [3.89361405, 0, -11.9833117], "yawDegrees": -288, "startDelayMs": 0},
-          {"positionOffset": [-3.89361405, 0, -11.9833117], "yawDegrees": -252, "startDelayMs": 0},
-          {"positionOffset": [-10.193614, 0, -7.40609407], "yawDegrees": -216, "startDelayMs": 0},
-          {"positionOffset": [-12.6000004, 0, 0], "yawDegrees": -180, "startDelayMs": 0},
-          {"positionOffset": [-10.193614, 0, 7.40609407], "yawDegrees": -144, "startDelayMs": 0},
-          {"positionOffset": [-3.89361405, 0, 11.9833117], "yawDegrees": -108, "startDelayMs": 0},
-          {"positionOffset": [3.89361405, 0, 11.9833117], "yawDegrees": -72, "startDelayMs": 0},
-          {"positionOffset": [10.193614, 0, 7.40609407], "yawDegrees": -36, "startDelayMs": 0},
-          {"positionOffset": [12.6000004, 0, 0], "yawDegrees": 0, "startDelayMs": 0}
+          {"positionOffset": [10.5981207, 0, -7.69998693], "yawDegrees": -324, "startDelayMs": 0},
+          {"positionOffset": [4.04812145, 0, -12.4588366], "yawDegrees": -288, "startDelayMs": 0},
+          {"positionOffset": [-4.04812145, 0, -12.4588366], "yawDegrees": -252, "startDelayMs": 0},
+          {"positionOffset": [-10.5981207, 0, -7.69998693], "yawDegrees": -216, "startDelayMs": 0},
+          {"positionOffset": [-13.1000004, 0, 0], "yawDegrees": -180, "startDelayMs": 0},
+          {"positionOffset": [-10.5981207, 0, 7.69998693], "yawDegrees": -144, "startDelayMs": 0},
+          {"positionOffset": [-4.04812145, 0, 12.4588366], "yawDegrees": -108, "startDelayMs": 0},
+          {"positionOffset": [4.04812145, 0, 12.4588366], "yawDegrees": -72, "startDelayMs": 0},
+          {"positionOffset": [10.5981207, 0, 7.69998693], "yawDegrees": -36, "startDelayMs": 0},
+          {"positionOffset": [13.1000004, 0, 0], "yawDegrees": 0, "startDelayMs": 0}
         ]
       },
       "tracks": [
@@ -194055,19 +193983,19 @@
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, -24, 0],
         "revolutionDegreesPerSecond": [0, -24, 0],
-        "revolutionOffset": [13.6000004, 0, 0],
+        "revolutionOffset": [13.0499992, 0, 0],
         "count": 10, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
         "emissions": [
-          {"positionOffset": [12.9343681, 0, -4.202631], "yawDegrees": -342, "startDelayMs": 0},
-          {"positionOffset": [7.99387932, 0, -11.0026312], "yawDegrees": -306, "startDelayMs": 0},
-          {"positionOffset": [0, 0, -13.6000004], "yawDegrees": -270, "startDelayMs": 0},
-          {"positionOffset": [-7.99387932, 0, -11.0026312], "yawDegrees": -234, "startDelayMs": 0},
-          {"positionOffset": [-12.9343681, 0, -4.202631], "yawDegrees": -198, "startDelayMs": 0},
-          {"positionOffset": [-12.9343681, 0, 4.202631], "yawDegrees": -162, "startDelayMs": 0},
-          {"positionOffset": [-7.99387932, 0, 11.0026312], "yawDegrees": -126, "startDelayMs": 0},
-          {"positionOffset": [0, 0, 13.6000004], "yawDegrees": -90, "startDelayMs": 0},
-          {"positionOffset": [7.99387932, 0, 11.0026312], "yawDegrees": -54, "startDelayMs": 0},
-          {"positionOffset": [12.9343681, 0, 4.202631], "yawDegrees": -18, "startDelayMs": 0}
+          {"positionOffset": [12.4112864, 0, -4.03267097], "yawDegrees": -342, "startDelayMs": 0},
+          {"positionOffset": [7.67059708, 0, -10.5576706], "yawDegrees": -306, "startDelayMs": 0},
+          {"positionOffset": [0, 0, -13.0499992], "yawDegrees": -270, "startDelayMs": 0},
+          {"positionOffset": [-7.67059708, 0, -10.5576706], "yawDegrees": -234, "startDelayMs": 0},
+          {"positionOffset": [-12.4112864, 0, -4.03267097], "yawDegrees": -198, "startDelayMs": 0},
+          {"positionOffset": [-12.4112864, 0, 4.03267097], "yawDegrees": -162, "startDelayMs": 0},
+          {"positionOffset": [-7.67059708, 0, 10.5576706], "yawDegrees": -126, "startDelayMs": 0},
+          {"positionOffset": [0, 0, 13.0499992], "yawDegrees": -90, "startDelayMs": 0},
+          {"positionOffset": [7.67059708, 0, 10.5576706], "yawDegrees": -54, "startDelayMs": 0},
+          {"positionOffset": [12.4112864, 0, 4.03267097], "yawDegrees": -18, "startDelayMs": 0}
         ]
       },
       "tracks": [
@@ -194107,16 +194035,16 @@
         "revolutionOffset": [12.6999998, 0, 0],
         "count": 10, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
         "emissions": [
-          {"positionOffset": [10.9985218, 0, -6.3499999], "yawDegrees": -330, "startDelayMs": 0},
-          {"positionOffset": [5.16555595, 0, -11.6020279], "yawDegrees": -294, "startDelayMs": 0},
-          {"positionOffset": [-2.64047861, 0, -12.4224749], "yawDegrees": -258, "startDelayMs": 0},
-          {"positionOffset": [-9.43793869, 0, -8.49795818], "yawDegrees": -222, "startDelayMs": 0},
-          {"positionOffset": [-12.6304283, 0, -1.32751143], "yawDegrees": -186, "startDelayMs": 0},
-          {"positionOffset": [-10.9985218, 0, 6.3499999], "yawDegrees": -150, "startDelayMs": 0},
-          {"positionOffset": [-5.16555595, 0, 11.6020279], "yawDegrees": -114, "startDelayMs": 0},
-          {"positionOffset": [2.64047861, 0, 12.4224749], "yawDegrees": -78, "startDelayMs": 0},
-          {"positionOffset": [9.43793869, 0, 8.49795818], "yawDegrees": -42, "startDelayMs": 0},
-          {"positionOffset": [12.6304283, 0, 1.32751143], "yawDegrees": -6, "startDelayMs": 0}
+          {"positionOffset": [10.9985199, 0, -6.3499999], "yawDegrees": -330, "startDelayMs": 0},
+          {"positionOffset": [5.16555643, 0, -11.6020288], "yawDegrees": -294, "startDelayMs": 0},
+          {"positionOffset": [-2.64047909, 0, -12.4224758], "yawDegrees": -258, "startDelayMs": 0},
+          {"positionOffset": [-9.43793869, 0, -8.49795723], "yawDegrees": -222, "startDelayMs": 0},
+          {"positionOffset": [-12.6304283, 0, -1.32751155], "yawDegrees": -186, "startDelayMs": 0},
+          {"positionOffset": [-10.9985199, 0, 6.3499999], "yawDegrees": -150, "startDelayMs": 0},
+          {"positionOffset": [-5.16555643, 0, 11.6020288], "yawDegrees": -114, "startDelayMs": 0},
+          {"positionOffset": [2.64047909, 0, 12.4224758], "yawDegrees": -78, "startDelayMs": 0},
+          {"positionOffset": [9.43793869, 0, 8.49795723], "yawDegrees": -42, "startDelayMs": 0},
+          {"positionOffset": [12.6304283, 0, 1.32751155], "yawDegrees": -6, "startDelayMs": 0}
         ]
       },
       "tracks": [
@@ -194153,19 +194081,19 @@
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, -24, 0],
         "revolutionDegreesPerSecond": [0, -24, 0],
-        "revolutionOffset": [11.6999998, 0, 0],
+        "revolutionOffset": [12.1000013, 0, 0],
         "count": 10, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
         "emissions": [
-          {"positionOffset": [11.4443274, 0, -2.43256688], "yawDegrees": -348, "startDelayMs": 0},
-          {"positionOffset": [7.82882786, 0, -8.6947937], "yawDegrees": -312, "startDelayMs": 0},
-          {"positionOffset": [1.222983, 0, -11.6359062], "yawDegrees": -276, "startDelayMs": 0},
-          {"positionOffset": [-5.8499999, 0, -10.1324968], "yawDegrees": -240, "startDelayMs": 0},
-          {"positionOffset": [-10.6884823, 0, -4.7588191], "yawDegrees": -204, "startDelayMs": 0},
-          {"positionOffset": [-11.4443274, 0, 2.43256688], "yawDegrees": -168, "startDelayMs": 0},
-          {"positionOffset": [-7.82882786, 0, 8.6947937], "yawDegrees": -132, "startDelayMs": 0},
-          {"positionOffset": [-1.222983, 0, 11.6359062], "yawDegrees": -96, "startDelayMs": 0},
-          {"positionOffset": [5.8499999, 0, 10.1324968], "yawDegrees": -60, "startDelayMs": 0},
-          {"positionOffset": [10.6884823, 0, 4.7588191], "yawDegrees": -24, "startDelayMs": 0}
+          {"positionOffset": [11.8355894, 0, -2.51573205], "yawDegrees": -348, "startDelayMs": 0},
+          {"positionOffset": [8.09648132, 0, -8.99205399], "yawDegrees": -312, "startDelayMs": 0},
+          {"positionOffset": [1.26479459, 0, -12.0337172], "yawDegrees": -276, "startDelayMs": 0},
+          {"positionOffset": [-6.05000067, 0, -10.4789085], "yawDegrees": -240, "startDelayMs": 0},
+          {"positionOffset": [-11.0539036, 0, -4.92151451], "yawDegrees": -204, "startDelayMs": 0},
+          {"positionOffset": [-11.8355894, 0, 2.51573205], "yawDegrees": -168, "startDelayMs": 0},
+          {"positionOffset": [-8.09648132, 0, 8.99205399], "yawDegrees": -132, "startDelayMs": 0},
+          {"positionOffset": [-1.26479459, 0, 12.0337172], "yawDegrees": -96, "startDelayMs": 0},
+          {"positionOffset": [6.05000067, 0, 10.4789085], "yawDegrees": -60, "startDelayMs": 0},
+          {"positionOffset": [11.0539036, 0, 4.92151451], "yawDegrees": -24, "startDelayMs": 0}
         ]
       },
       "tracks": [
@@ -194202,19 +194130,19 @@
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, 24, 0],
         "revolutionDegreesPerSecond": [0, 24, 0],
-        "revolutionOffset": [10.8000002, 0, 0],
+        "revolutionOffset": [11.9499998, 0, 0],
         "count": 10, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
         "emissions": [
-          {"positionOffset": [9.86629105, 0, -4.39275599], "yawDegrees": -336, "startDelayMs": 0},
-          {"positionOffset": [5.4000001, 0, -9.35307407], "yawDegrees": -300, "startDelayMs": 0},
-          {"positionOffset": [-1.12890697, 0, -10.7408361], "yawDegrees": -264, "startDelayMs": 0},
-          {"positionOffset": [-7.22661114, 0, -8.02596378], "yawDegrees": -228, "startDelayMs": 0},
-          {"positionOffset": [-10.5639944, 0, -2.24544597], "yawDegrees": -192, "startDelayMs": 0},
-          {"positionOffset": [-9.86629105, 0, 4.39275599], "yawDegrees": -156, "startDelayMs": 0},
-          {"positionOffset": [-5.4000001, 0, 9.35307407], "yawDegrees": -120, "startDelayMs": 0},
-          {"positionOffset": [1.12890697, 0, 10.7408361], "yawDegrees": -84, "startDelayMs": 0},
-          {"positionOffset": [7.22661114, 0, 8.02596378], "yawDegrees": -48, "startDelayMs": 0},
-          {"positionOffset": [10.5639944, 0, 2.24544597], "yawDegrees": -12, "startDelayMs": 0}
+          {"positionOffset": [10.9168682, 0, -4.86050129], "yawDegrees": -336, "startDelayMs": 0},
+          {"positionOffset": [5.9749999, 0, -10.349], "yawDegrees": -300, "startDelayMs": 0},
+          {"positionOffset": [-1.24911427, 0, -11.8845329], "yawDegrees": -264, "startDelayMs": 0},
+          {"positionOffset": [-7.99610853, 0, -8.88057804], "yawDegrees": -228, "startDelayMs": 0},
+          {"positionOffset": [-11.6888638, 0, -2.4845438], "yawDegrees": -192, "startDelayMs": 0},
+          {"positionOffset": [-10.9168682, 0, 4.86050129], "yawDegrees": -156, "startDelayMs": 0},
+          {"positionOffset": [-5.9749999, 0, 10.349], "yawDegrees": -120, "startDelayMs": 0},
+          {"positionOffset": [1.24911427, 0, 11.8845329], "yawDegrees": -84, "startDelayMs": 0},
+          {"positionOffset": [7.99610853, 0, 8.88057804], "yawDegrees": -48, "startDelayMs": 0},
+          {"positionOffset": [11.6888638, 0, 2.4845438], "yawDegrees": -12, "startDelayMs": 0}
         ]
       },
       "tracks": [
@@ -194251,19 +194179,19 @@
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, -24, 0],
         "revolutionDegreesPerSecond": [0, -24, 0],
-        "revolutionOffset": [10.8000002, 0, 0],
+        "revolutionOffset": [11.8000002, 0, 0],
         "count": 10, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
         "emissions": [
-          {"positionOffset": [10.7408361, 0, -1.12890697], "yawDegrees": -354, "startDelayMs": 0},
-          {"positionOffset": [8.02596378, 0, -7.22661114], "yawDegrees": -318, "startDelayMs": 0},
-          {"positionOffset": [2.24544597, 0, -10.5639944], "yawDegrees": -282, "startDelayMs": 0},
-          {"positionOffset": [-4.39275599, 0, -9.86629105], "yawDegrees": -246, "startDelayMs": 0},
-          {"positionOffset": [-9.35307407, 0, -5.4000001], "yawDegrees": -210, "startDelayMs": 0},
-          {"positionOffset": [-10.7408361, 0, 1.12890697], "yawDegrees": -174, "startDelayMs": 0},
-          {"positionOffset": [-8.02596378, 0, 7.22661114], "yawDegrees": -138, "startDelayMs": 0},
-          {"positionOffset": [-2.24544597, 0, 10.5639944], "yawDegrees": -102, "startDelayMs": 0},
-          {"positionOffset": [4.39275599, 0, 9.86629105], "yawDegrees": -66, "startDelayMs": 0},
-          {"positionOffset": [9.35307407, 0, 5.4000001], "yawDegrees": -30, "startDelayMs": 0}
+          {"positionOffset": [11.7353563, 0, -1.23343527], "yawDegrees": -354, "startDelayMs": 0},
+          {"positionOffset": [8.76910782, 0, -7.89574099], "yawDegrees": -318, "startDelayMs": 0},
+          {"positionOffset": [2.45335746, 0, -11.5421429], "yawDegrees": -282, "startDelayMs": 0},
+          {"positionOffset": [-4.79949236, 0, -10.7798367], "yawDegrees": -246, "startDelayMs": 0},
+          {"positionOffset": [-10.2190971, 0, -5.9000001], "yawDegrees": -210, "startDelayMs": 0},
+          {"positionOffset": [-11.7353563, 0, 1.23343527], "yawDegrees": -174, "startDelayMs": 0},
+          {"positionOffset": [-8.76910782, 0, 7.89574099], "yawDegrees": -138, "startDelayMs": 0},
+          {"positionOffset": [-2.45335746, 0, 11.5421429], "yawDegrees": -102, "startDelayMs": 0},
+          {"positionOffset": [4.79949236, 0, 10.7798367], "yawDegrees": -66, "startDelayMs": 0},
+          {"positionOffset": [10.2190971, 0, 5.9000001], "yawDegrees": -30, "startDelayMs": 0}
         ]
       },
       "tracks": [

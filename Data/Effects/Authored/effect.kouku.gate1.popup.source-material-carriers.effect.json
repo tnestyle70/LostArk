@@ -2064,8 +2064,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 46.55200000000001,
+          "startDelaySeconds": 20.851807070504652,
+          "lifeTimeSeconds": 25.700192929495355,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

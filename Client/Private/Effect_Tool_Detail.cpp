@@ -43,6 +43,68 @@
 #include "Transform.h"
 #include "EffectAuthoringSequencer.h"
 
+bool_t Client::CEffect_Tool::Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta)
+{
+    if (!m_ActiveDocument || (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+        m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
+    { m_strElementStatus = "Open an authored Current Effect before moving an anchor group."; return false; }
+    if (Has_UnappliedDetailDraft())
+    { m_strElementStatus = "Apply or Revert the open Detail draft before moving an anchor group; its edits are preserved."; return false; }
+    auto staged = *m_ActiveDocument;
+    if (!Translate_AttachmentElementGroup(staged, groupKey, delta, m_strElementStatus)) return false;
+    if (!Try_CommitDocument(std::move(staged))) return false;
+    Reset_DetailDraft();
+    m_strElementStatus = m_strDocumentStatus = "Updated the anchor group's local center in Current Effect memory. Save Changes keeps every member's offset.";
+    return true;
+}
+
+void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
+{
+    const auto groups = Build_AttachmentElementGroups(*m_ActiveDocument);
+    std::string movedGroup;
+    float3_t translation{};
+    for (const auto& group : groups)
+    {
+        ImGui::PushID(group.key.c_str());
+        const bool selected = std::all_of(group.elementIds.begin(), group.elementIds.end(),
+            [&](const auto& id) { return m_MarkedElementIds.contains(id); });
+        const std::string label = group.label + " (" + std::to_string(group.elementIds.size()) + ")";
+        const bool opened = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_DefaultOpen | (selected ? ImGuiTreeNodeFlags_Selected : 0));
+        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+            m_MarkedElementIds = decltype(m_MarkedElementIds)(group.elementIds.begin(), group.elementIds.end());
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!m_bActiveDocumentDrawable || !m_pAuthoringSequencer);
+        if (ImGui::SmallButton("Play Group")) (void)Try_PreviewElementsTimeline(group.elementIds, true);
+        ImGui::EndDisabled();
+        if (opened)
+        {
+            ImGui::BeginDisabled(!group.editable || Has_UnappliedDetailDraft());
+            auto center = group.center;
+            if (ImGui::InputFloat3(group.rootLocal ? "Group Center (effect-local m)" : "Group Center (bone-local m)",
+                &center.x, "%.3f"))
+            {
+                movedGroup = group.key;
+                translation = float3_t(center.x - group.center.x, center.y - group.center.y, center.z - group.center.z);
+            }
+            ImGui::EndDisabled();
+            if (!group.editable) ImGui::TextWrapped("%s", group.editReason.c_str());
+            else if (Has_UnappliedDetailDraft()) ImGui::TextDisabled("Apply or Revert the open Detail draft first; its edits are preserved.");
+            else ImGui::TextDisabled("Changes move this complete group in memory. Save Changes persists it. Individual offsets, rotations and sizes are preserved.");
+            for (size_t i = 0; i < group.elementIds.size(); ++i)
+            {
+                const auto found = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
+                    [&](const auto& element) { return element.strElementId == group.elementIds[i]; });
+                if (found != m_ActiveDocument->Elements.end()) Render_ActiveAuthoredElementRow(*found, i + 1u);
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+    // Commit only after the complete view releases every pointer into the old document.
+    if (!movedGroup.empty()) (void)Try_TranslateAttachmentGroup(movedGroup, translation);
+}
+
 void Client::CEffect_Tool::Render_ProjectileDestinationControls()
 {
     if (!m_ActiveDocument || m_ActiveDocument->strEffectAssetId !=
@@ -52,7 +114,7 @@ void Client::CEffect_Tool::Render_ProjectileDestinationControls()
     if (!Resolve_ElectricPreviewDestinations(*m_ActiveDocument, destinations, error))
     { ImGui::TextWrapped("%s", error.c_str()); return; }
     ImGui::SeparatorText("\xea\xb0\x90\xec\xa0\x84\xeb\xb9\x94\x20\xeb\x8f\x84\xec\xb0\xa9\xec\xa0\x90");
-    ImGui::TextWrapped("\xec\xa0\x84\xeb\xb0\xa9\x20\x2f\x20\xec\x9a\xb0\xec\xb8\xa1\x20\x2f\x20\xeb\x86\x92\xec\x9d\xb4\x20\x28\x6d\x29\x2e\x20\x45\x6e\x74\x65\x72\xeb\xa1\x9c\x20\xeb\xb9\x84\xed\x96\x89\xc2\xb7\xed\x8f\xad\xeb\xb0\x9c\xc2\xb7\xeb\x9d\xbc\xec\x9d\xb4\xed\x8a\xb8\xeb\xa5\xbc\x20\xed\x95\xa8\xea\xbb\x98\x20\xec\x9d\xb4\xeb\x8f\x99\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e\x20\x53\x61\x76\x65\x20\x43\x68\x61\x6e\x67\x65\x73\xeb\xa1\x9c\x20\xec\xa0\x80\xec\x9e\xa5\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e");
+    ImGui::TextWrapped("\xec\xa0\x84\xeb\xb0\xa9\x20\x2f\x20\xec\x9a\xb0\xec\xb8\xa1\x20\x2f\x20\xeb\x86\x92\xec\x9d\xb4\x20\x28\x6d\x29\x2e\x20\xec\x88\x98\xec\xa0\x95\xed\x95\x98\xeb\xa9\xb4\x20\xeb\xb9\x84\xed\x96\x89\xc2\xb7\xed\x8f\xad\xeb\xb0\x9c\xc2\xb7\xeb\x9d\xbc\xec\x9d\xb4\xed\x8a\xb8\xea\xb0\x80\x20\xed\x95\xa8\xea\xbb\x98\x20\xec\x9d\xb4\xeb\x8f\x99\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e\x20\x53\x61\x76\x65\x20\x43\x68\x61\x6e\x67\x65\x73\xeb\xa1\x9c\x20\xec\xa0\x80\xec\x9e\xa5\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e");
     ImGui::TextDisabled("\xec\x9b\x90\xeb\xb3\xb8\x20\xec\xa0\x84\xed\x88\xac\xec\x9d\x98\x20\xec\xa1\xb0\xec\xa4\x80\x20\xec\x9c\x84\xec\xb9\x98\xeb\xa5\xbc\x20\xeb\x8c\x80\xec\x8b\xa0\xed\x95\x98\xeb\x8a\x94\x20\xed\x8e\xb8\xec\xa7\x91\xec\x9a\xa9\x20\xeb\x8f\x84\xec\xb0\xa9\xec\xa0\x90\xec\x9e\x85\xeb\x8b\x88\xeb\x8b\xa4\x2e");
     ImGui::BeginDisabled(Has_UnappliedDetailDraft());
     for (size_t branch = 0; branch < destinations.size(); ++branch)
@@ -60,7 +122,7 @@ void Client::CEffect_Tool::Render_ProjectileDestinationControls()
         auto value = destinations[branch];
         value.x *= .01f; value.y *= .01f; value.z *= .01f;
         const std::string label = "\xeb\x8f\x84\xec\xb0\xa9\xec\xa0\x90\x20" + std::to_string(branch + 1);
-        if (!ImGui::InputFloat3(label.c_str(), &value.x, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue)) continue;
+        if (!ImGui::InputFloat3(label.c_str(), &value.x, "%.2f")) continue;
         value.x *= 100.f; value.y *= 100.f; value.z *= 100.f;
         auto staged = *m_ActiveDocument;
         if (!Change_ElectricPreviewDestination(staged, branch, value, error))

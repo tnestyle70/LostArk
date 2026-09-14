@@ -149,6 +149,151 @@ namespace
     }
 }
 
+Client::EFFECT_TOOL_KOUKU_EFFECT_VIEW Client::Describe_KoukuSavedEffect(
+    const std::string& id, const std::string& displayName, std::vector<std::string> path)
+{
+    EFFECT_TOOL_KOUKU_EFFECT_VIEW label;
+    label.assetId = id;
+    label.originalName = displayName.empty() ? id : displayName;
+    for (const auto& segment : path)
+    {
+        if (!label.fullPath.empty()) label.fullPath += " / ";
+        label.fullPath += segment;
+    }
+    if (!path.empty() && path.front() == "KoukuSaydon") path.erase(path.begin());
+    const auto GateOrder = [](const std::string& gate)
+    {
+        if (gate == "\x31\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 1") return 1;
+        if (gate == "\x32\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 2") return 2;
+        if (gate == "\x33\xEA\xB4\x80\xEB\xAC\xB8" || gate == "Gate 3") return 3;
+        if (gate == "\xEA\xB3\xB5\xED\x86\xB5" || gate == "Common") return 4;
+        return 0;
+    };
+    // Bingo belongs below gate 3; retain its authored category in the leaf path.
+    if (!path.empty() && (path.front() == "BINGO" || path.front() == "Bingo" || path.front() == "\xEB\xB9\x99\xEA\xB3\xA0"))
+        path.insert(path.begin(), "Gate 3");
+    if (!path.empty()) label.gateOrder = GateOrder(path.front());
+    if (path.empty() || label.gateOrder == 0)
+    {
+        label.gateOrder = 4;
+        std::string category = "\xEA\xB8\xB0\xED\x83\x80\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
+        for (int gate = 1; gate <= 3; ++gate)
+        {
+            const std::string prefix = ".gate" + std::to_string(gate) + ".";
+            const auto found = id.find(prefix);
+            if (found == std::string::npos) continue;
+            label.gateOrder = gate;
+            const auto from = found + prefix.size();
+            category = id.substr(from, id.find('.', from) - from);
+            break;
+        }
+        const std::string gate = label.gateOrder <= 3 ? std::to_string(label.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
+        if (path.empty())
+        {
+            const bool intro = category == "intro";
+            if (category == "showtime") category = "\xEC\x87\xBC\xED\x83\x80\xEC\x9E\x84";
+            else if (category == "rainbow") category = "\xEB\xAC\xB4\xEC\xA7\x80\xEA\xB0\x9C";
+            else if (category == "mario") category = "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4";
+            else if (intro) category = "\xEC\x9E\x85\xEC\x9E\xA5";
+            else if (category == "downstrike" || category == "slam" || category == "staff") category = "\xEC\xA7\x80\xED\x8C\xA1\xEC\x9D\xB4\x20\xEB\x82\xB4\xEB\xA0\xA4\xEC\xB0\x8D\xEA\xB8\xB0\x20\xC2\xB7\x20\xED\x99\x94\xEC\x97\xBC";
+            else if (category == "spider") category = "\xEA\xB1\xB0\xEB\xAF\xB8\x20\xEC\xB9\xB4\xEC\x9A\xB4\xED\x84\xB0";
+            path = {gate, intro ? "\xEC\x97\xB0\xEC\xB6\x9C" : "\xED\x8C\xA8\xED\x84\xB4", category};
+        }
+        else path.insert(path.begin(), gate);
+    }
+    else path.front() = label.gateOrder <= 3 ? std::to_string(label.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
+    if (path.size() == 1u) path.push_back("\xEA\xB8\xB0\xED\x83\x80\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8");
+    if (path[1] == "Patterns") path[1] = "\xED\x8C\xA8\xED\x84\xB4";
+    else if (path[1] == "Cinematics") path[1] = "\xEC\x97\xB0\xEC\xB6\x9C";
+    if (label.fullPath.empty())
+        for (const auto& segment : path)
+        {
+            if (!label.fullPath.empty()) label.fullPath += " / ";
+            label.fullPath += segment;
+        }
+
+    std::string name = label.originalName;
+    const std::string gatePrefix = path.front() + "_";
+    if (name.starts_with(gatePrefix)) name.erase(0u, gatePrefix.size());
+    for (size_t index = 2u; index < path.size(); ++index)
+    {
+        const std::string prefix = path[index] + "_";
+        if (!name.starts_with(prefix)) break;
+        name.erase(0u, prefix.size());
+    }
+    if (name.empty()) name = label.originalName;
+    label.text = path[1];
+    if (path.size() > 2u)
+    {
+        label.text += " | ";
+        for (size_t index = 2u; index < path.size(); ++index)
+        {
+            if (index > 2u) label.text += " / ";
+            label.text += path[index];
+        }
+    }
+    label.text += " | " + name;
+    return label;
+}
+
+bool Client::Matches_KoukuSavedEffect(const EFFECT_TOOL_KOUKU_EFFECT_VIEW& view,
+    const std::string& search)
+{
+    const std::string gate = view.gateOrder <= 3 ? std::to_string(view.gateOrder) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
+    return search.empty() || Contains(gate, search) || Contains(view.assetId, search) || Contains(view.text, search) ||
+        Contains(view.originalName, search) || Contains(view.fullPath, search);
+}
+
+std::vector<std::size_t> Client::Order_KoukuSavedEffects(
+    const std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW>& views)
+{
+    std::vector<std::size_t> order;
+    order.reserve(views.size());
+    for (std::size_t index = 0u; index < views.size(); ++index) order.push_back(index);
+    std::stable_sort(order.begin(), order.end(), [&](const auto leftIndex, const auto rightIndex) {
+        const auto& left = views[leftIndex]; const auto& right = views[rightIndex];
+        if (left.gateOrder != right.gateOrder) return left.gateOrder < right.gateOrder;
+        if (left.text != right.text) return left.text < right.text;
+        return left.assetId < right.assetId;
+    });
+    return order;
+}
+
+Client::EFFECT_TOOL_KOUKU_EFFECT_TREE Client::Build_KoukuSavedEffectTree(std::vector<EFFECT_TOOL_KOUKU_EFFECT_VIEW> views)
+{
+    EFFECT_TOOL_KOUKU_EFFECT_TREE tree;
+    tree.views = std::move(views);
+    tree.order = Order_KoukuSavedEffects(tree.views);
+    for (std::size_t index = 0u; index < tree.views.size(); ++index)
+        tree.assetIndices.emplace(tree.views[index].assetId, index);
+    return tree;
+}
+
+void Client::Render_KoukuSavedEffectTree(const EFFECT_TOOL_KOUKU_EFFECT_TREE& tree,
+    const std::function<void(std::size_t)>& renderLeaf, const bool expandAll,
+    const std::string_view revealAssetId, const std::function<bool(std::size_t)>& isVisible)
+{
+    const auto& views = tree.views;
+    const auto& order = tree.order;
+    for (int gate = 1; gate <= 4; ++gate)
+    {
+        const std::string label = gate <= 3 ? std::to_string(gate) + "\xEA\xB4\x80\xEB\xAC\xB8" : "\xEA\xB3\xB5\xED\x86\xB5";
+        std::size_t count = 0u; bool reveal = false;
+        for (const auto index : order) if (views[index].gateOrder == gate && (!isVisible || isVisible(index)))
+        { ++count; reveal |= !revealAssetId.empty() && views[index].assetId == revealAssetId; }
+        ImGui::PushID(gate);
+        if (expandAll || reveal) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+        if (ImGui::TreeNodeEx("##KoukuEffectGate", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth,
+            "%s (%zu)", label.c_str(), count))
+        {
+            for (const auto index : order)
+                if (views[index].gateOrder == gate && (!isVisible || isVisible(index))) renderLeaf(index);
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+}
+
 bool Client::CEffectAuthoringResourceTree::Read_Source(const std::filesystem::path& Path,
     std::string& Bytes, bool& Exists, std::string& Error)
 {

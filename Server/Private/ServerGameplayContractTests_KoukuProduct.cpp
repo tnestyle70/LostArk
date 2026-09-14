@@ -42,7 +42,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 #ifdef _DEBUG
     // These use the published composition, real room and the same command
     // admission/terminal receipts consumed by Complete Play and its F1 test.
-    const auto marioScenario = [&](const bool enterPortal) {
+    enum class MARIO_SCENARIO { NO_ENTRY, RETURN_AFTER_CHAIN, RETURN_EARLY, PARTY, DEATH, DISCONNECT, LAST_TICK_ENTRY };
+    std::uint32_t noEntryCompletionTick = 0u;
+    const auto marioScenario = [&](const MARIO_SCENARIO scenario) {
+        const bool enterPortal = scenario != MARIO_SCENARIO::NO_ENTRY;
+        const bool abortScenario = scenario == MARIO_SCENARIO::DEATH || scenario == MARIO_SCENARIO::DISCONNECT;
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
         SERVER_WORLD_ENTITY boss{};
@@ -55,7 +59,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         player.iPlayerId = 923u; player.iNetEntityId = 924u; player.iSessionId = 925u;
         player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
         player.fPositionX = boss.fPositionX; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
-        if (enterPortal) room->m_Players.emplace(player.iPlayerId, player);
+        if (!enterPortal || scenario == MARIO_SCENARIO::LAST_TICK_ENTRY) player.fPositionX += 25.f;
+        room->m_Players.emplace(player.iPlayerId, player);
+        if (scenario == MARIO_SCENARIO::DISCONNECT) {
+            // A disconnected transport may already be expired; the room bindings still own departure cleanup.
+            room->m_Sessions.emplace(player.iSessionId, std::weak_ptr<CClientSession>{});
+            room->m_PlayerIdBySessionId.emplace(player.iSessionId, player.iPlayerId);
+            room->m_PlayerIdByEntityId.emplace(player.iNetEntityId, player.iPlayerId);
+        }
+        if (scenario == MARIO_SCENARIO::PARTY) {
+            auto other = player; other.iPlayerId = 926u; other.iNetEntityId = 927u; other.iSessionId = 928u;
+            other.fPositionX += 25.f; room->m_Players.emplace(other.iPlayerId, other);
+        }
         C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
         request.iRequestSequence = 1u;
         request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
@@ -81,20 +96,53 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         const bool queued = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED == room->Evaluate_KoukuSaydonPatternAudition(925u, request, result);
         if (!queued) { std::cerr << "Mario admission: " << result.strReason << '\n'; tests.Require(false, "Admit actual Mario phase 1 with its dependency closure"); return std::vector<std::string>{}; }
         std::vector<std::string> selected;
-        std::uint32_t completed = 0u, phase2Tick = 0u;
-        bool bounded = true, retained = false, wire = false;
-        for (std::uint32_t tick = 1u; tick < 2200u; ++tick) {
+        std::uint32_t completed = 0u, phase2Tick = 0u, completionTick = 0u, returnTick = 0u;
+        bool bounded = true, retained = false, wire = false, returnStarted = false, aborted = false, waited = false;
+        bool entryCommitted = false, landedBeforeThree = false;
+        for (std::uint32_t tick = 1u; tick < 2400u; ++tick) {
             room->m_iServerTick = tick;
+            if (returnStarted && room->m_Players.contains(player.iPlayerId) && room->m_Players.at(player.iPlayerId).TriggerMove.isActive)
+                room->Update_Players(1.f / 30.f);
+            if (scenario == MARIO_SCENARIO::LAST_TICK_ENTRY && tick == noEntryCompletionTick &&
+                !room->m_KoukuSaydonPatternAudition.Members.empty()) {
+                const auto& anchor = room->m_KoukuSaydonPatternAudition.Members.front().MarioEntryAnchor;
+                if (anchor) {
+                    auto& entrant = room->m_Players.at(player.iPlayerId);
+                    entrant.fPositionX = anchor->fPositionX; entrant.fPositionY = anchor->fPositionY; entrant.fPositionZ = anchor->fPositionZ;
+                }
+            }
             room->Prepare_KoukuAuditionTick(tick);
             auto* live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
+            if (room->m_KoukuSaydonPatternAudition.Members.empty()) {
+                const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(player.iSessionId);
+                if (scenario == MARIO_SCENARIO::DISCONNECT) {
+                    aborted = room->Is_Ready() && room->m_Players.empty() && room->m_Sessions.empty() &&
+                        room->m_PlayerIdBySessionId.empty() && room->m_PlayerIdByEntityId.empty() && !live &&
+                        room->m_iNextMarioEntryStage == 1u && room->m_PendingKoukuSaydonPatternAuditionLifecycle.empty() &&
+                        receipt == room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
+                        room->Get_Status() == "Replayable arena reset after the room became empty";
+                } else {
+                    aborted = scenario == MARIO_SCENARIO::DEATH && room->Get_Status().find("entrant died") != std::string::npos &&
+                        receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() && receipt->second.LastLifecycle &&
+                        receipt->second.LastLifecycle->eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED &&
+                        receipt->second.LastLifecycle->strReason == room->Get_Status();
+                }
+                bounded = bounded && aborted; break;
+            }
             if (!live || !room->Update_KoukuSaydonBoss(*live, tick) || room->m_KoukuSaydonPatternAudition.Members.empty()) { bounded = false; break; }
             room->Commit_KoukuMarioEntries();
+            // Committing the entry can append Mario objects and reallocate world entities.
+            live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
+            if (!live) { bounded = false; break; }
             const auto& member = room->m_KoukuSaydonPatternAudition.Members.front();
+            entryCommitted = entryCommitted || member.bMarioEntryConsumed;
             if (member.bCompletionChainStarted && selected.empty())
                 selected.assign(member.PatternIds.begin() + member.iCompletionChainFirstIndex,
                     member.PatternIds.begin() + member.iCompletionChainFirstIndex + member.iCompletionChainCount);
             bounded = bounded && member.iCompletionChainCompleted >= completed && member.iCompletionChainCompleted <= completed + 1u;
             completed = member.iCompletionChainCompleted;
+            if (completed == 3u && !completionTick) completionTick = tick;
+            if (member.bMarioReturnCompleted && !returnTick) { returnTick = tick; landedBeforeThree = completed < 3u; }
             if (completed < 3u && member.bCompletionChainStarted) {
                 bounded = bounded && std::find(member.PatternIds.begin(), member.PatternIds.end(), "KAKULSAYDON_G1_PATTERN_33") == member.PatternIds.end();
                 retained = retained || member.MarioEntryAnchor.has_value();
@@ -103,7 +151,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 if (room->Build_KoukuBundleState(state) && Write_Message(writer, state)) {
                     CPacketReader reader(writer.Get_Buffer());
                     wire = Read_Message(reader, decodedState) && decodedState.Members.front().iBossNetEntityId == bossId &&
-                        (enterPortal ? decodedState.Members.front().strMarioEntryPatternId.empty() :
+                        (member.bMarioEntryConsumed ? decodedState.Members.front().strMarioEntryPatternId.empty() :
                             decodedState.Members.front().strMarioEntryPatternId == request.strPatternId && decodedState.Members.front().iMarioEntryStage == 3u);
                     auto truncated = writer.Get_Buffer(); truncated.pop_back(); CPacketReader shortReader(truncated);
                     wire = wire && !Read_Message(shortReader, decodedState) && decodedState.iRunEpoch == state.iRunEpoch;
@@ -115,17 +163,78 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                     wire = wire && !Read_Message(oldStateReader, decodedState) && !Write_Message(invalidStateWriter, invalidState);
                 }
             }
-            if (member.PatternIds[member.iPatternIndex] == "KAKULSAYDON_G1_PATTERN_33") { phase2Tick = tick; break; }
+            if (member.bCompletionChainAwaitingReturn && member.bMarioSoloReturnRequired && !member.bMarioReturnCompleted) {
+                waited = waited || tick > completionTick;
+                bounded = bounded && live->strPatternId.empty() && !member.bCompletionChainSuccessQueued &&
+                    std::find(member.PatternIds.begin(), member.PatternIds.end(), "KAKULSAYDON_G1_PATTERN_33") == member.PatternIds.end();
+                if (abortScenario && tick == completionTick + 5u) {
+                    if (scenario == MARIO_SCENARIO::DEATH) { auto& entrant = room->m_Players.at(player.iPlayerId); entrant.iCurrentHp = 0u; entrant.eAction = PLAYER_ACTION_STATE::DEAD; }
+                    else room->Leave(player.iSessionId, PLAYER_DESPAWN_REASON::DISCONNECTED, false);
+                    continue;
+                }
+            }
+            const bool returnEarly = scenario == MARIO_SCENARIO::RETURN_EARLY && member.bMarioEntryConsumed;
+            const bool returnAfter = (scenario == MARIO_SCENARIO::RETURN_AFTER_CHAIN || scenario == MARIO_SCENARIO::LAST_TICK_ENTRY) &&
+                completionTick && tick >= completionTick + 60u;
+            if (!returnStarted && (returnEarly || returnAfter)) {
+                auto& entrant = room->m_Players.at(player.iPlayerId);
+                bool began = false;
+                if (returnEarly) {
+                    C2S_MARIO_RETURN command{}; command.iClientSequence = 1u; command.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+                    began = room->Apply_MarioReturn(entrant, command).eResult == MARIO_RETURN_RESULT::ACCEPTED;
+                    const auto motion = entrant.TriggerMove;
+                    began = began && room->Apply_MarioReturn(entrant, command).eResult == MARIO_RETURN_RESULT::ACCEPTED &&
+                        entrant.TriggerMove.fElapsedSeconds == motion.fElapsedSeconds;
+                } else {
+                    const auto* exit = room->Find_Placement("Mario3_Trigger_12");
+                    began = exit && exit->TriggerActions.size() == 1u && CServerTriggerSystem::Begin_MovePlayer(entrant, exit->TriggerActions.front(), tick);
+                    if (began) { entrant.TriggerMove.strSourcePlacementId = exit->strPlacementId; room->Update_MarioControlState(entrant); }
+                }
+                tests.Require(began && entrant.TriggerMove.isActive && !member.bMarioReturnCompleted,
+                    "Start terminal return through authored motion and keep the solo gate closed before landing");
+                if (!began) { bounded = false; break; }
+                room->Complete_KoukuMarioReturn(entrant, "Mario3_Trigger_12", tick);
+                bounded = bounded && !member.bMarioReturnCompleted;
+                returnStarted = true;
+            }
+            if (member.PatternIds[member.iPatternIndex] == "KAKULSAYDON_G1_PATTERN_33") {
+                phase2Tick = tick;
+                if (member.bMarioReturnCompleted) {
+                    room->Complete_KoukuMarioReturn(room->m_Players.at(player.iPlayerId), "Mario3_Trigger_12", tick);
+                    room->Prepare_KoukuAuditionTick(tick);
+                }
+                bounded = bounded && std::count(member.PatternIds.begin(), member.PatternIds.end(), "KAKULSAYDON_G1_PATTERN_33") == 1;
+                break;
+            }
         }
+        if (scenario == MARIO_SCENARIO::NO_ENTRY) noEntryCompletionTick = completionTick;
         tests.Require(bounded && retained && wire && selected.size() == 3u && std::set<std::string>(selected.begin(), selected.end()).size() == 3u &&
-            completed == 3u && phase2Tick > 610u, "Complete three distinct real patterns before Mario phase 2 without the former fixed timeout");
-        tests.Require(enterPortal ? room->m_Players.at(player.iPlayerId).iMarioStage == 3u && room->m_iNextMarioEntryStage == 4u :
-            room->m_iNextMarioEntryStage == 3u, "Consume typed Mario entry once and advance only the authoritative successful-entry count");
+            completed == 3u && (abortScenario ? aborted && !phase2Tick : phase2Tick > 610u),
+            "Count three distinct real pattern receipts and admit phase 2 only when its participant gate succeeds");
+        const auto expectedNextStage = scenario == MARIO_SCENARIO::DISCONNECT ? 1u : (enterPortal ? 4u : 3u);
+        tests.Require(entryCommitted == enterPortal && room->m_iNextMarioEntryStage == expectedNextStage,
+            "Advance the successful-entry count once and reset it after the last real session leaves");
+        if (scenario == MARIO_SCENARIO::RETURN_AFTER_CHAIN || scenario == MARIO_SCENARIO::LAST_TICK_ENTRY)
+            tests.Require(waited && returnTick > completionTick && phase2Tick >= returnTick && !room->m_Players.at(player.iPlayerId).iMarioStage,
+                "Wait for the solo entrant's actual terminal landing even when entry commits on the last child tick");
+        if (scenario == MARIO_SCENARIO::RETURN_EARLY)
+            tests.Require(landedBeforeThree && phase2Tick == completionTick + 1u,
+                "A solo return completed first still waits for three patterns and queues phase 2 once");
+        if (scenario == MARIO_SCENARIO::NO_ENTRY || scenario == MARIO_SCENARIO::PARTY)
+            tests.Require(!waited && !returnStarted && phase2Tick == completionTick + 1u,
+                "No entrant and a multiplayer entry both keep the existing immediate three-pattern success path");
+        if (abortScenario)
+            tests.Require(waited && aborted && !phase2Tick, "A solo entrant death or disconnect aborts explicitly without phase-2 success");
         return selected;
     };
-    const auto firstMarioOrder = marioScenario(false);
-    const auto secondMarioOrder = marioScenario(true);
+    const auto firstMarioOrder = marioScenario(MARIO_SCENARIO::NO_ENTRY);
+    const auto secondMarioOrder = marioScenario(MARIO_SCENARIO::RETURN_AFTER_CHAIN);
     tests.Require(!firstMarioOrder.empty() && firstMarioOrder == secondMarioOrder, "Replay the same Mario test seed through the same Server completion path");
+    (void)marioScenario(MARIO_SCENARIO::RETURN_EARLY);
+    (void)marioScenario(MARIO_SCENARIO::PARTY);
+    (void)marioScenario(MARIO_SCENARIO::DEATH);
+    (void)marioScenario(MARIO_SCENARIO::DISCONNECT);
+    (void)marioScenario(MARIO_SCENARIO::LAST_TICK_ENTRY);
     for (std::uint8_t stage = 1u; stage <= 4u; ++stage) {
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         SERVER_PLAYER player{}; player.iPlayerId = 930u; player.iNetEntityId = 931u;

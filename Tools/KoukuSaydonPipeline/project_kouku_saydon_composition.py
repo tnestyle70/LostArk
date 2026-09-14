@@ -158,7 +158,7 @@ LOGIC_KIND_VALUE_KEYS = {
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
                            "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection"}
-LOGIC_TRIGGER_VALUE_KEYS = {"countPerPlayer", "radiusM", "effectLifetimeMs", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
+LOGIC_TRIGGER_VALUE_KEYS = {"countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
@@ -604,13 +604,25 @@ def _validate_logic_definition(
             }:
                 raise CompositionError(f"{context} HUD_ENTER requires a supported hudMode")
         elif kind == "ALBION_BLUE_CIRCLE":
-            if extra != {"triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs"}:
+            required = {"triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs"}
+            arena_keys = {"arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly"}
+            if not required <= extra or extra - required - arena_keys:
                 raise CompositionError(f"{context} Albion needs countPerPlayer, radiusM and effectLifetimeMs")
             count = _integer(logic["countPerPlayer"], f"{context} countPerPlayer", 1, 8)
             radius = _number(logic["radiusM"], f"{context} radiusM", 0, 20)
             _integer(logic["effectLifetimeMs"], f"{context} effectLifetimeMs", 1, 600000)
             if (count == 1) != (radius == 0):
                 raise CompositionError(f"{context} one circle uses radius 0; multiple circles need a positive radius")
+            arena_count = _integer(logic.get("arenaRandomCount", 0), f"{context} arenaRandomCount", 0, 32)
+            arena_radius = _number(logic.get("arenaRandomRadiusM", 0), f"{context} arenaRandomRadiusM", 0, 100)
+            height = _number(logic.get("arenaHeightToleranceM", 0), f"{context} arenaHeightToleranceM", 0, 10)
+            spacing = _number(logic.get("arenaMinimumSpacingM", 0), f"{context} arenaMinimumSpacingM", 0, 20)
+            random_player = _boolean(logic.get("randomPlayerOnly", False), f"{context} randomPlayerOnly")
+            if (arena_count > 0 and min(arena_radius, height, spacing) <= 0) or (
+                    arena_count == 0 and any((arena_radius, height, spacing))):
+                raise CompositionError(f"{context} arena supplement needs count, radius, height tolerance and spacing together")
+            if random_player and (count != 1 or radius != 0):
+                raise CompositionError(f"{context} randomPlayerOnly needs one circle at the chosen player's position")
         elif kind == "ANIMATION_BLEND":
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} ANIMATION_BLEND carries unrelated values")
@@ -893,6 +905,39 @@ def _pattern_duration(pattern: dict[str, Any]) -> int:
     return pattern.get("durationMs", 0) or sum(stage["durationMs"] for stage in pattern["stages"])
 
 
+def _validate_summon_pattern_spawns(document, owner):
+    patterns = {row["patternId"]: row for row in document["patterns"]}
+    for box in owner.get("summonOccurrences", []):
+        seen = set()
+        if box.get("patternSpawns") and box["startMs"] + box["durationMs"] > _pattern_duration(owner):
+            raise CompositionError("Summon spawn lifetime must remain inside its owner Pattern")
+        for spawn in _array(box.get("patternSpawns", []), "Summon patternSpawns", 4):
+            _exact_keys(spawn, {"spawnId", "patternId", "positionOffset", "yawOffsetDegrees"}, "Summon Pattern spawn")
+            identity = _stable_id(spawn["spawnId"], "Summon spawnId")
+            target_id = _stable_id(spawn["patternId"], "Summon patternId")
+            if identity in seen:
+                raise CompositionError("Summon spawnId must be unique within its box")
+            seen.add(identity)
+            offset = spawn["positionOffset"]
+            if not isinstance(offset, list) or len(offset) != 3:
+                raise CompositionError("Summon positionOffset needs X/Y/Z")
+            for value in offset:
+                _number(value, "Summon positionOffset", -1000, 1000)
+            _number(spawn["yawOffsetDegrees"], "Summon yawOffsetDegrees", -360, 360)
+            child = patterns.get(target_id)
+            if child is None or child is owner or target_id == owner["patternId"] or (
+                    _pattern_target_metadata(child) != _pattern_target_metadata(owner)):
+                raise CompositionError("Summon Pattern must be another same-Gate, same-actor Pattern")
+            if child["category"] != "MECHANIC" or not child["stages"] or any(
+                    child.get(key) for key in ("patternOccurrences", "logicOccurrences", "summonOccurrences",
+                        "worldOccurrences", "sceneProfileOccurrences", "presentationOccurrences", "bossMotion", "resetBossToSpawn",
+                        "enterCombatOnFinish")) or "resetBossYawDegrees" in child or any(
+                            stage.get("retargetOnEnter", False) for stage in child["stages"]):
+                raise CompositionError("Summon Pattern currently requires animation-only MECHANIC stages")
+            if _pattern_duration(child) > box["durationMs"]:
+                raise CompositionError("Summon lifetime must contain its child Pattern duration")
+
+
 def _derived_occurrence(identity: str, pattern_id: str, kind: str) -> bool:
     if kind == "animation" and re.fullmatch(re.escape(pattern_id) + r"\.idle\.[1-9][0-9]*", identity): return True
     return bool(re.fullmatch(re.escape(pattern_id) + r"\.pattern\.[1-9][0-9]*\.r[0-9]+\." +
@@ -1000,7 +1045,7 @@ def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str
     _validate_pattern_children(document, parent)
     if not parent.get("patternOccurrences") and not parent.get("durationMs"):
         return document
-    _validate_collider_selection_groups(parent, {row["resourceId"]: row
+    _validate_presentation_selection_groups(parent, {row["resourceId"]: row
         for row in document.get("presentationResources", [])})
     for row in parent.get("presentationOccurrences", []):
         row.pop("selectionGroupId", None)
@@ -1748,8 +1793,9 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         _validate_boxes(
             pattern, pattern_id, context, "nextSummonOccurrenceOrdinal", "summonOccurrences",
             SUMMON_OCCURRENCE_KEYS, "summon", MAX_SUMMON_OCCURRENCES_PER_PATTERN,
-            "summonId", summon_ids,
+            "summonId", summon_ids, optional_keys={"patternSpawns"},
         )
+        _validate_summon_pattern_spawns(document, pattern)
         world_boxes = _validate_boxes(
             pattern, pattern_id, context, "nextWorldOccurrenceOrdinal", "worldOccurrences",
             WORLD_OCCURRENCE_KEYS, "world", MAX_WORLD_OCCURRENCES_PER_PATTERN,
@@ -2165,6 +2211,11 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
 def _pattern_dependencies(source: dict[str, Any], pattern: dict[str, Any]) -> set[str]:
     definitions = {row["logicId"]: row for row in source.get("logics", [])}
     result: set[str] = set()
+    for box in _array(pattern.get("summonOccurrences", []), "Summon occurrences", MAX_SUMMON_OCCURRENCES_PER_PATTERN):
+        if not isinstance(box, dict): raise CompositionError("Summon occurrence must be an object")
+        for spawn in _array(box.get("patternSpawns", []), "Summon patternSpawns", 4):
+            if not isinstance(spawn, dict): raise CompositionError("Summon Pattern spawn must be an object")
+            result.add(_stable_id(spawn.get("patternId"), "Summon patternId"))
     for box in _array(pattern.get("patternOccurrences", []), "Pattern occurrences", 128):
         if not isinstance(box, dict): raise CompositionError("Pattern occurrence must be an object")
         result.add(_stable_id(box.get("patternId"), "child patternId"))
@@ -3864,6 +3915,24 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 "countPerPlayer": logic.get("countPerPlayer", 0),
                 "radiusM": float(logic.get("radiusM", 0.0)),
                 "effectLifetimeMs": logic.get("effectLifetimeMs", 0),
+                "arenaRandomCount": logic.get("arenaRandomCount", 0),
+                "arenaRandomRadiusM": float(logic.get("arenaRandomRadiusM", 0.0)),
+                "arenaHeightToleranceM": float(logic.get("arenaHeightToleranceM", 0.0)),
+                "arenaMinimumSpacingM": float(logic.get("arenaMinimumSpacingM", 0.0)),
+                "randomPlayerOnly": logic.get("randomPlayerOnly", False),
+            })
+        for box in source.get("summonOccurrences", []):
+            if not box.get("patternSpawns"):
+                continue
+            mechanic_triggers.append({
+                "triggerId": box["occurrenceId"], "kind": "SUMMON_PATTERNS",
+                "startMs": box["startMs"], "durationMs": box["durationMs"],
+                "hudMode": "NONE", "teleportPosition": [0.0, 0.0, 0.0],
+                "clonePatternId": "", "clockHours": [], "faceCenterYawOffsetDegrees": 0.0,
+                "countPerPlayer": 0, "radiusM": 0.0, "effectLifetimeMs": 0,
+                "arenaRandomCount": 0, "arenaRandomRadiusM": 0.0,
+                "arenaHeightToleranceM": 0.0, "arenaMinimumSpacingM": 0.0, "randomPlayerOnly": False,
+                "patternSpawns": copy.deepcopy(box["patternSpawns"]),
             })
         patterns.append(
             {
@@ -4033,28 +4102,31 @@ def _resolve_collider_world_occurrence(pattern, collider):
     return candidates[0]
 
 
-def _validate_collider_selection_groups(pattern: dict[str, Any], resources: dict[str, Any]) -> None:
+def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: dict[str, Any]) -> None:
     selection_groups = {}
     for box in pattern.get("presentationOccurrences", []):
         group_id = box.get("selectionGroupId", "")
         if group_id == "":
             continue
-        _stable_id(group_id, "Collider selectionGroupId")
-        if resources.get(box["resourceId"], {}).get("kind") != "COLLIDER":
-            raise CompositionError("Selection Group requires Collider occurrences")
-        normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
-        if normalized["anchorKind"] != "BOSS":
-            raise CompositionError("Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported")
-        frame = tuple(normalized[key] for key in (
-            "anchorKind", "followBoss", "bone", "boneTarget", "worldId", "worldOccurrenceId", "worldEmissionIndex"))
-        if not normalized["followBoss"]:
-            frame += (normalized["startMs"],)
+        _stable_id(group_id, "presentation selectionGroupId")
+        kind = resources.get(box["resourceId"], {}).get("kind")
+        if kind not in {"COLLIDER", "EFFECT"}:
+            raise CompositionError("Selection Group requires Effect or Collider occurrences")
+        frame = (kind,)
+        if kind == "COLLIDER":
+            normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
+            if normalized["anchorKind"] != "BOSS":
+                raise CompositionError("Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported")
+            frame += tuple(normalized[key] for key in (
+                "anchorKind", "followBoss", "bone", "boneTarget", "worldId", "worldOccurrenceId", "worldEmissionIndex"))
+            if not normalized["followBoss"]:
+                frame += (normalized["startMs"],)
         group = selection_groups.setdefault(group_id, [frame, 0])
         if group[0] != frame:
-            raise CompositionError("Selection Group Colliders must share an anchor frame")
+            raise CompositionError("Selection Group must use one kind; Colliders must share an anchor frame")
         group[1] += 1
     if any(count < 2 for _, count in selection_groups.values()):
-        raise CompositionError("Selection Group requires at least two Colliders in one Pattern")
+        raise CompositionError("Selection Group requires at least two boxes of one kind in one Pattern")
 
 
 def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[str, Any], duration: int, worlds: dict[str, Any]) -> None:
@@ -4073,6 +4145,13 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if box["resourceId"] not in resources:
             raise CompositionError("presentation occurrence names an unknown resourceId")
         normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
+        needs_world_object = resources[box["resourceId"]]["kind"] in {"EFFECT", "LIGHT", "COLLIDER"}
+        if normalized["anchorKind"] == "WORLD" and (
+                not isinstance(normalized["worldId"], str) or
+                (normalized["worldId"] and normalized["worldId"] not in worlds) or
+                (needs_world_object and not normalized["worldId"])):
+            raise CompositionError(
+                f"WORLD presentation requires a nonempty known worldId: {box['occurrenceId']}")
         world_occurrence_id = normalized["worldOccurrenceId"]
         if world_occurrence_id != "":
             _stable_id(world_occurrence_id, "presentation worldOccurrenceId")
@@ -4145,7 +4224,7 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if normalized["boneTarget"] == "WEAPON" and (resources[box["resourceId"]]["kind"] not in {"COLLIDER", "EFFECT"} or
                 normalized["anchorKind"] != "BOSS" or not normalized["bone"] or not normalized["followBoss"]):
             raise CompositionError("WEAPON boneTarget requires a following BOSS Collider/Effect and a named bone")
-    _validate_collider_selection_groups(pattern, resources)
+    _validate_presentation_selection_groups(pattern, resources)
 
 
 def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, Any], suppress_root_motion=False) -> dict[str, Any]:

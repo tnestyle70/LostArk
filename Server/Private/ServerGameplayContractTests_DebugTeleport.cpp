@@ -217,6 +217,133 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			}
 		}
 #endif
+		/* Product Return uses the same authored terminal move in Debug and Release.
+		   A packet carries no destination, and acceptance cannot skip its flight. */
+		for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
+		{
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			const char* terminals[] = { "", "Mario1_Trigger_5", "Mario2_Trigger_7", "Mario3_Trigger_12", "Mario4_Tigger_13" };
+			const auto* entrance = room->Find_Placement("Mario" + std::to_string(stage) + "_go");
+			const auto* terminal = room->Find_Placement(terminals[stage]);
+			const auto* intro = room->Find_Placement("Mario" + std::to_string(stage) + "_Intro");
+			const auto* gate3 = room->Find_Placement("stage.kakul.sl05");
+			SERVER_NAV_POINT origin{}, landing{};
+			const bool ready = room->Is_Ready() && entrance && entrance->TriggerActions.size() == 1u &&
+				terminal && terminal->TriggerActions.size() == 1u && gate3 && intro &&
+				room->m_ServerNavigation.Sample_Position(intro->fPositionX, intro->fPositionZ, origin) &&
+				room->m_ServerNavigation.Sample_Position(gate3->fPositionX, gate3->fPositionZ, landing);
+			tests.Require(ready, "Mario Return loads each stage's real entrance, terminal and Gate 3 ground");
+			if (!ready) continue;
+			const auto& action = terminal->TriggerActions.front();
+			tests.Require(action.eKind == WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER &&
+				std::abs(action.fTargetX - gate3->fPositionX) < .05f &&
+				std::abs(action.fTargetZ - gate3->fPositionZ) < .05f &&
+				std::abs(action.fTargetY - landing.y) < .25f,
+				"All four published Mario terminal actions return to corrected Gate 3 ground");
+			auto& player = room->m_Players[123u];
+			player.iPlayerId = 123u; player.iNetEntityId = 456u; player.iSessionId = 789u;
+			player.iCurrentHp = player.iMaximumHp = 100u; player.isCombatReady = true;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.fPositionX = origin.x; player.fPositionY = origin.y; player.fPositionZ = origin.z;
+			player.iMarioStage = stage; player.ePreMarioForm = PLAYER_MADNESS_FORM::NORMAL;
+			player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+			player.eKoukuAreaHudMode = KOUKU_HUD_MODE::MARIO;
+			tests.Require(room->Configure_MarioRail(player, entrance->strPlacementId),
+				"Mario Return fixture uses each entrance's admitted rail");
+			tests.Require(CServerTriggerSystem::Contains_Placement(*intro, player),
+				"Return starts inside the actual Intro box to guard against automatic re-entry");
+			player.hasMoveGoal = true; player.MovePath.push_back(origin);
+			const auto original = player;
+			const auto sameState = [](const SERVER_PLAYER& a, const SERVER_PLAYER& b) {
+				return a.fPositionX == b.fPositionX && a.fPositionY == b.fPositionY && a.fPositionZ == b.fPositionZ &&
+					a.fYawDegrees == b.fYawDegrees && a.iCurrentHp == b.iCurrentHp && a.iMaximumHp == b.iMaximumHp &&
+					a.eCharacterClass == b.eCharacterClass && a.isCombatReady == b.isCombatReady &&
+					a.eAction == b.eAction && a.iCurrentSkillId == b.iCurrentSkillId && a.iActionStartTick == b.iActionStartTick &&
+					a.hasMoveGoal == b.hasMoveGoal && a.iMovePathIndex == b.iMovePathIndex && a.MovePath.size() == b.MovePath.size() &&
+					std::equal(a.MovePath.begin(), a.MovePath.end(), b.MovePath.begin(), [](const auto& x, const auto& y) {
+						return x.x == y.x && x.y == y.y && x.z == y.z; }) &&
+					a.iMarioStage == b.iMarioStage && a.eMadnessForm == b.eMadnessForm && a.eKoukuAreaHudMode == b.eKoukuAreaHudMode &&
+					a.bMarioRailReady == b.bMarioRailReady && a.strMarioRailArrivalId == b.strMarioRailArrivalId &&
+					a.iMarioMoveExpiryTick == b.iMarioMoveExpiryTick && a.bPatternBound == b.bPatternBound &&
+					a.iAttachmentOwnerNetEntityId == b.iAttachmentOwnerNetEntityId &&
+					a.fKnockbackRemainingSeconds == b.fKnockbackRemainingSeconds &&
+					a.TriggerMove.isActive == b.TriggerMove.isActive &&
+					a.TriggerMove.strSourcePlacementId == b.TriggerMove.strSourcePlacementId &&
+					a.TriggerMove.fStartX == b.TriggerMove.fStartX && a.TriggerMove.fStartY == b.TriggerMove.fStartY && a.TriggerMove.fStartZ == b.TriggerMove.fStartZ &&
+					a.TriggerMove.fTargetX == b.TriggerMove.fTargetX && a.TriggerMove.fTargetY == b.TriggerMove.fTargetY && a.TriggerMove.fTargetZ == b.TriggerMove.fTargetZ &&
+					a.TriggerMove.fDurationSeconds == b.TriggerMove.fDurationSeconds && a.TriggerMove.fElapsedSeconds == b.TriggerMove.fElapsedSeconds;
+			};
+			C2S_MARIO_RETURN request{}; request.iClientSequence = 10u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			const auto accepted = room->Apply_MarioReturn(player, request);
+			tests.Require(accepted.eResult == MARIO_RETURN_RESULT::ACCEPTED && accepted.iClientSequence == 10u &&
+				accepted.eWorldId == WORLD_ID::KAKULSAYDON_ARENA && player.TriggerMove.isActive &&
+				player.TriggerMove.strSourcePlacementId == terminal->strPlacementId &&
+				player.TriggerMove.fStartX == origin.x && player.TriggerMove.fStartZ == origin.z &&
+				player.TriggerMove.fTargetX == action.fTargetX && player.TriggerMove.fTargetY == landing.y &&
+				player.TriggerMove.fTargetZ == action.fTargetZ && player.TriggerMove.fDurationSeconds == action.fDurationSeconds &&
+				player.TriggerMove.fArcHeight == action.fArcHeight && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+				!player.iMarioStage && !player.bMarioRailReady && player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL &&
+				player.fPositionX == origin.x && player.fPositionY == origin.y && player.fPositionZ == origin.z &&
+				!player.hasMoveGoal && player.MovePath.empty() && player.iCurrentHp == 100u,
+				"Mario Return starts the real terminal flight and restores form without teleporting or damaging the player");
+			if (accepted.eResult != MARIO_RETURN_RESULT::ACCEPTED) continue;
+			room->Update_Players((std::min)(.1f, action.fDurationSeconds * .25f));
+			const auto inFlight = player;
+			bool stayedOutsideMario = player.iMarioStage == 0u;
+			const auto duplicate = room->Apply_MarioReturn(player, request);
+			tests.Require(duplicate.eResult == MARIO_RETURN_RESULT::ACCEPTED && sameState(player, inFlight) &&
+				player.TriggerMove.fElapsedSeconds > 0.f,
+				"Accepted Mario Return retransmission preserves elapsed flight and all current state");
+			request.iClientSequence = 11u;
+			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_OUTSIDE_MARIO &&
+				sameState(player, inFlight), "New Return during terminal flight cannot restart it");
+			for (unsigned tick = 0u, limit = static_cast<unsigned>(std::ceil(action.fDurationSeconds * 30.f)) + 2u;
+				tick < limit && player.TriggerMove.isActive; ++tick)
+			{
+				room->Update_Players(1.f / 30.f);
+				stayedOutsideMario &= player.iMarioStage == 0u;
+			}
+			tests.Require(stayedOutsideMario, "Return flight from every Intro stays outside Mario on every player update");
+			tests.Require(!player.TriggerMove.isActive && player.eAction == PLAYER_ACTION_STATE::NONE &&
+				player.fPositionX == action.fTargetX && player.fPositionY == landing.y && player.fPositionZ == action.fTargetZ &&
+				!player.iMarioStage && player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && player.iCurrentHp == 100u &&
+				player.eCharacterClass == CHARACTER_CLASS_ID::LANCE_MASTER,
+				"Mario Return completes through ordinary player updates on the published Gate 3 landing");
+			const auto landed = player; request.iClientSequence = 12u;
+			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_OUTSIDE_MARIO &&
+				sameState(player, landed), "Return outside Mario preserves the completed landing");
+			player = original; player.LastMarioReturnResult = accepted;
+			request.iClientSequence = 9u;
+			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_STALE_SEQUENCE &&
+				sameState(player, original), "Stale Return preserves live Mario movement and form");
+			request.iClientSequence = 11u; request.eWorldId = WORLD_ID::BERN;
+			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_WRONG_WORLD &&
+				sameState(player, original), "Cross-world Return cannot change the current Mario state");
+			request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			for (unsigned state = 0u; state < 6u; ++state)
+			{
+				player = original;
+				if (state == 0u) player.iCurrentHp = 0u;
+				if (state == 1u) { player.eAction = PLAYER_ACTION_STATE::SKILL; player.iCurrentSkillId = 34010u; }
+				if (state == 2u) player.bPatternBound = true;
+				if (state == 3u) player.iAttachmentOwnerNetEntityId = 987u;
+				if (state == 4u) player.isCombatReady = false;
+				if (state == 5u) player.fKnockbackRemainingSeconds = .5f;
+				const auto before = player;
+				tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE &&
+					sameState(player, before), "Dead, acting, bound, attached, inactive or knocked-back player cannot use Return to escape state");
+			}
+			player = original;
+			SERVER_WORLD_ENTITY blocker{}; blocker.iNetEntityId = 987650u; blocker.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+			blocker.fPositionX = landing.x; blocker.fPositionY = landing.y; blocker.fPositionZ = landing.z;
+			room->m_WorldEntities.push_back(blocker);
+			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION &&
+				sameState(player, original), "Occupied Gate 3 landing rejects Return transactionally");
+			room->m_WorldEntities.pop_back(); player = original;
+			room->m_ServerNavigation = CServerNavigation{};
+			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION &&
+				sameState(player, original), "Missing destination navigation rejects Return without clearing the current Mario state");
+		}
 		for (const char* entranceId : { "Mario1_go", "Mario2_go", "Mario3_go", "Mario4_go" })
 		{
 			const std::uint8_t stage = static_cast<std::uint8_t>(entranceId[5] - '0');
@@ -684,11 +811,14 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			room->Update_MarioControlState(player);
 			player.TriggerMove.isActive = true;
 			player.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
-			tests.Require(room->Place_PartyForCutscene("world.sequence.instance.original_kouku") == 1u &&
-				player.iMarioStage == 0u && player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL &&
-				!player.TriggerMove.isActive && player.eAction == PLAYER_ACTION_STATE::NONE &&
+			// Update_MarioControlState may reacquire the authored lane at this position.
+			const auto stageBeforeRetiredCue = player.iMarioStage;
+			const auto formBeforeRetiredCue = player.eMadnessForm;
+			tests.Require(!room->Broadcast_WorldSequencePlay("world.sequence.instance.original_kouku") &&
+				player.iMarioStage == stageBeforeRetiredCue && player.eMadnessForm == formBeforeRetiredCue &&
+				player.TriggerMove.isActive && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE &&
 				player.iCurrentHp == 100u,
-				"Party cutscene relocation restores pre-Mario form and retires old jump without HP change");
+				"Retired cutscene rejects without changing the current player movement or form");
 #endif
 		}
 		{

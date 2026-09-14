@@ -3,7 +3,7 @@
   "formatVersion": 2,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "provenance": "PROJECT_AUTHORED",
-  "nextLightOrdinal": 8,
+  "nextLightOrdinal": 9,
   "lights": [
     {"lightId": "light.LV_LUT_MIDNIGHTC_ED.1", "displayName": "월드_1관문스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": false, "position": [-0.170000002,35.4700012,943.030029], "rotationDegrees": [90,0,0], "rangeMeters": 59.7999992, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 22.2600002, "color": [1,0.458823532,0.164705887,1], "brightness": 2.95000005},
     {"lightId": "light.LV_LUT_MIDNIGHTC_ED.2", "displayName": "2관문_촛불1", "kind": "POINT", "groupId": "default", "enabled": true, "position": [17.8700008,21.8600006,330.869995], "rotationDegrees": [0,0,0], "rangeMeters": 22, "falloffExponent": 2, "innerConeDegrees": 0, "outerConeDegrees": 0, "color": [1,0.490196079,0.352941185,1], "brightness": 8.5},
@@ -126,6 +126,6 @@
     {"lightId": "light.kouku.source.sl05.228", "displayName": "원본 SL05 spotlight_2_lc", "kind": "SPOT", "groupId": "source_baked_character", "enabled": true, "position": [4.19913673,6.47238445,929.65271], "rotationDegrees": [60.0073242,-21.9946194,0], "rangeMeters": 15, "falloffExponent": 2, "innerConeDegrees": 10, "outerConeDegrees": 50, "color": [0.403921574,1,0.745098054,1], "brightness": 1.79999995, "receiver": "UNBAKED"},
     {"lightId": "light.LV_LUT_MIDNIGHTC_ED.5", "displayName": "스포트라이트_1관문세이튼연출", "kind": "SPOT", "groupId": "default", "enabled": false, "position": [0.0599999987,9.317626,942.140015], "rotationDegrees": [90,0,0], "rangeMeters": 16, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 19.1000004, "color": [1,1,1,1], "brightness": 16},
     {"lightId": "light.LV_LUT_MIDNIGHTC_ED.6", "displayName": "월드_3관문스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": true, "position": [-0.170000002,35.4799995,943], "rotationDegrees": [90,0,0], "rangeMeters": 60, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 22.2600002, "color": [0,0.847058833,1,1], "brightness": 5.94999981},
-    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.7", "displayName": "월드_3관문_백색_스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": false, "position": [-0.170000002,36.9700012,943], "rotationDegrees": [90,0,0], "rangeMeters": 60, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 26, "color": [1,1,1,1], "brightness": 55.7000008}
+    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.8", "displayName": "1관문_시퀀스연출스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": false, "position": [0,9.317626,737.280029], "rotationDegrees": [90,0,0], "rangeMeters": 16, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 21.3500004, "color": [1,1,1,1], "brightness": 15}
   ]
 }

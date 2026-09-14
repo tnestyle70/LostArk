@@ -180,6 +180,145 @@ def build(evidence, install):
     print(json.dumps(dict(installed=install, documents=len(rows), elements=sum(r['elementCount'] for r in rows))))
 
 
+def stage_shared_firebreath(evidence, shared_path):
+    """Stage current ring/backstep edits using one reviewed neutral flame payload.
+
+    Source leaves and user files are never installed here. The parent publisher
+    consumes the exact input hashes and performs its existing guarded commit.
+    """
+    from build_kouku_shared_firebreath import copy_shared_firebreath_elements
+
+    evidence, shared_path = evidence.resolve(), shared_path.resolve()
+    assert evidence.is_relative_to((ROOT / 'out').resolve()), 'Candidates must stay under out'
+    assert shared_path.is_relative_to(ROOT.resolve()), 'Shared input must have a repository-relative identity'
+    shared = source.read(shared_path)
+    identity_system = dict(uniformScaleMultiplier=1, yawOffsetDegrees=0,
+                           directionYawDegrees=0, initialSpeedMultiplier=1)
+    assert shared['particleSystem'] == identity_system
+    assert len(shared['elements']) == 25
+    assert all(element['detail']['transform']['position'] == [0, 0, 0] and
+        element['detail']['transform']['rotationDegrees'] == [0, 0, 0] and
+        element['detail']['transform']['scale'] == [1.7] * 3 and
+        not element['actionCueAttachment']['enabled'] and
+        not element.get('sourceTransformTrack') and not element.get('runtimeCarrier')
+        for element in shared['elements']), 'Review a changed shared flame frame before integration'
+    inputs = {shared_path.relative_to(ROOT).as_posix(): hashlib.sha256(shared_path.read_bytes()).hexdigest()}
+    documents, writes = [], []
+    ring_source = 'fx_mn_rpct_05_g.par_g_rpct_05_firering_01_loc_int.'
+    flame_source = 'fx_mn_rpct_05_l.par_l_rpct_05_sk_01_loc_int.'
+    for suffix in ('ring', 'ring.flame', 'flame', 'full'):
+        path = AUTHORED / (PREFIX + suffix + '.effect.json')
+        before = path.read_bytes()
+        document = json.loads(before.decode('utf-8-sig'))
+        candidate = copy.deepcopy(document)
+        assert document['effectAssetId'] == PREFIX + suffix
+        assert document['particleSystem'] == identity_system
+        assert not document.get('sourceContract') and not document.get('sourceModelPreview')
+        assert not document['modelCues'], 'Preserve user-authored model ownership'
+        ring_ids, old_flames = [], []
+        for element in candidate['elements']:
+            system = element['sourcePresentation']['sourceObjectPath']
+            if system.startswith(ring_source):
+                transform = element['detail']['transform']
+                assert not element['actionCueAttachment']['enabled']
+                assert not element.get('sourceTransformTrack') and not element.get('runtimeCarrier')
+                assert not element.get('transformInheritance', {}).get('enabled')
+                assert transform['position'] == [0, 1.1, 1.575] and transform['scale'] == [.7] * 3
+                # Scale around the ground origin, including the source hoop's
+                # 225 cm eccentricity. Its centre rises 1.1 -> 2.2 m while the
+                # bottom keeps its near-zero authored ground clearance.
+                transform['position'] = [value * 2 for value in transform['position']]
+                transform['scale'] = [value * 2 for value in transform['scale']]
+                ring_ids.append(element['id'])
+            elif system.startswith(flame_source) and element['sourceRecipe']['rendererShape'] != 'decal':
+                transform = element['detail']['transform']
+                assert not element['actionCueAttachment']['enabled']
+                assert not element.get('sourceTransformTrack') and not element.get('runtimeCarrier')
+                assert not element.get('transformInheritance', {}).get('enabled')
+                assert transform['position'] == [0, 1.1, 0]
+                assert transform['rotationDegrees'] == [0, -90, 0] and transform['scale'] == [2] * 3
+                old_flames.append(element)
+        assert len(ring_ids) == (10 if suffix.startswith('ring') else 0)
+        assert len(old_flames) == (0 if suffix == 'ring' else 11)
+        replacement = []
+        if old_flames:
+            assert len({element['groupId'] for element in old_flames}) == 1
+            origin = [0, 2.2 if suffix == 'ring.flame' else 1.1, 0]
+            replacement = copy_shared_firebreath_elements(shared, old_flames[0]['groupId'], origin)
+            old_ids = {element['id'] for element in old_flames}
+            first_id = old_flames[0]['id']
+            candidate['elements'] = [item for element in candidate['elements']
+                for item in (replacement if element['id'] == first_id else
+                             [] if element['id'] in old_ids else [element])]
+            # The helper owns the common recipe/frame; no legacy cannon yaw or
+            # scale is reapplied after its stable reference remap.
+            assert replacement == copy_shared_firebreath_elements(shared, old_flames[0]['groupId'], origin)
+        else:
+            origin = None
+        kept = {element['id'] for element in document['elements']} - set(ring_ids) - {
+            element['id'] for element in old_flames}
+        assert [element for element in document['elements'] if element['id'] in kept] == [
+            element for element in candidate['elements'] if element['id'] in kept]
+        assert len(kept) == (3 if suffix == 'full' else 0), 'Unexpected authored members must be reviewed'
+        assert len({element['id'] for element in candidate['elements']}) == len(candidate['elements'])
+        checked = inspect_document(candidate)
+        relative = path.relative_to(ROOT).as_posix()
+        inputs[relative] = hashlib.sha256(before).hexdigest()
+        baseline = evidence / 'baseline' / relative
+        baseline.parent.mkdir(parents=True, exist_ok=True)
+        baseline.write_bytes(before)
+        target = evidence / 'candidate' / relative
+        source.write(target, candidate)
+        documents.append(dict(effectAssetId=candidate['effectAssetId'], path=relative,
+            candidatePath=target.relative_to(ROOT).as_posix(), displayName=candidate['displayName'],
+            defaultAnchorKind='BOSS', **checked))
+        writes.append(dict(path=relative, baselineSha256=inputs[relative],
+            candidateSha256=hashlib.sha256(target.read_bytes()).hexdigest(),
+            ringElementIds=ring_ids, removedFlameIds=[element['id'] for element in old_flames],
+            sharedFlameIds=[element['id'] for element in replacement], sharedFlameOriginM=origin,
+            preservedOtherElementIds=sorted(kept)))
+    # The user also selected the ball-riding library flame for replacement.
+    # Keep its stable asset/tree identity, but explicitly record that its old
+    # nine-element appearance is being replaced by the shared authored flame.
+    ball_asset = 'effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_firebreath_breath_01_loc_int'
+    ball_path = AUTHORED / (ball_asset + '.effect.json')
+    before = ball_path.read_bytes()
+    ball = json.loads(before.decode('utf-8-sig'))
+    assert ball['effectAssetId'] == ball_asset and len(ball['elements']) == 9
+    assert ball['particleSystem'] == identity_system and not ball['modelCues']
+    assert not ball.get('sourceContract') and not ball.get('sourceModelPreview')
+    assert all(not element['actionCueAttachment']['enabled'] and
+        element['sourcePresentation']['sourceObjectPath'].startswith(ball_asset.removeprefix('effect.kouku.source.') + '.')
+        for element in ball['elements'])
+    candidate = copy.deepcopy(ball)
+    candidate['displayName'] = '공굴리기_공통 불뿜기'
+    candidate['elements'] = copy_shared_firebreath_elements(shared, ball_asset, [0, 0, 0])
+    checked = inspect_document(candidate)
+    relative = ball_path.relative_to(ROOT).as_posix()
+    inputs[relative] = hashlib.sha256(before).hexdigest()
+    baseline = evidence / 'baseline' / relative
+    baseline.parent.mkdir(parents=True, exist_ok=True)
+    baseline.write_bytes(before)
+    target = evidence / 'candidate' / relative
+    source.write(target, candidate)
+    documents.append(dict(effectAssetId=ball_asset, path=relative,
+        candidatePath=target.relative_to(ROOT).as_posix(), displayName=candidate['displayName'],
+        defaultAnchorKind='BOSS', **checked))
+    writes.append(dict(path=relative, baselineSha256=inputs[relative],
+        candidateSha256=hashlib.sha256(target.read_bytes()).hexdigest(), ringElementIds=[],
+        removedFlameIds=[element['id'] for element in ball['elements']],
+        sharedFlameIds=[element['id'] for element in candidate['elements']], sharedFlameOriginM=[0, 0, 0],
+        replacementPolicy='USER_REQUESTED_SHARED_APPEARANCE; original source archive and baseline preserved'))
+    end_path = AUTHORED / (PREFIX + 'ring.end.effect.json')
+    inputs[end_path.relative_to(ROOT).as_posix()] = hashlib.sha256(end_path.read_bytes()).hexdigest()
+    source.write(evidence / 'installation.json', dict(installed=False, stageOnly=True,
+        documents=documents, writes=writes, inputHashes=inputs, sharedEffectAssetId=shared['effectAssetId'],
+        ringScaleMultiplier=2, scalingPivotM=[0, 0, 0], ringCenterBeforeM=[0, 1.1, 0],
+        ringCenterAfterM=[0, 2.2, 0], sourceHoopCenterOffsetCm=225,
+        preservedRingEnd=True, manualVisualValidation='USER_PENDING'))
+    print('Staged shared firebreath in four groups and ground-aligned 2x hoop in two; no Data writes')
+
+
 def stage_flame_origin_repair(evidence, samples_path):
     """Keep current authoring and restore the distance-driven fire layer only.
 
@@ -274,8 +413,13 @@ if __name__ == '__main__':
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--flame-motion-samples', type=Path,
                         help='Stage three current flame repairs from actual CModel head samples; never installs')
+    parser.add_argument('--shared-firebreath', type=Path,
+                        help='Stage current ring/backstep groups with the reviewed neutral shared flame; never installs')
     args = parser.parse_args()
-    if args.flame_motion_samples:
+    if args.shared_firebreath:
+        assert not args.install and not args.flame_motion_samples, 'Shared flame integration is a separate stage-only operation'
+        stage_shared_firebreath(args.evidence_root, args.shared_firebreath)
+    elif args.flame_motion_samples:
         assert not args.install, 'The live authoring repair is candidate-only'
         stage_flame_origin_repair(args.evidence_root, args.flame_motion_samples)
     else:

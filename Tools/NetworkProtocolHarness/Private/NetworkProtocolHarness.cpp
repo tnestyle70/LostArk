@@ -2282,10 +2282,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 82u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 82");
+			"Mario direction packet retains its appended identity in protocol 84");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2595,6 +2595,94 @@ namespace
 		}
 	}
 
+	void Test_MarioReturnProtocol(TEST_RUNNER& testRunner)
+	{
+		using namespace LostArk::Shared;
+		const C2S_MARIO_RETURN request{ 41u, WORLD_ID::KAKULSAYDON_ARENA };
+		CPacketWriter writer;
+		testRunner.Require(Write_Message(writer, request) && writer.Get_Buffer().size() == 6u,
+			"Mario return transmits only sequence and world, never destination");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_MARIO_RETURN decoded{};
+		testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+			decoded.iClientSequence == request.iClientSequence && decoded.eWorldId == request.eWorldId,
+			"Mario return request round trip");
+		for (int invalidCase = 0; invalidCase < 3; ++invalidCase)
+		{
+			auto invalid = request;
+			if (invalidCase == 0) invalid.iClientSequence = 0u;
+			if (invalidCase == 1) invalid.eWorldId = WORLD_ID::END;
+			if (invalidCase == 2) invalid.eWorldId = static_cast<WORLD_ID>(65535u);
+			CPacketWriter rejected;
+			testRunner.Require(!Write_Message(rejected, invalid) && rejected.Get_Buffer().empty(),
+				"Mario return rejects invalid identity before writing");
+			CPacketWriter bytes;
+			bytes.Write_U32(invalid.iClientSequence);
+			bytes.Write_U16(static_cast<std::uint16_t>(invalid.eWorldId));
+			CPacketReader invalidReader{ bytes.Get_Buffer() };
+			auto unchanged = request;
+			testRunner.Require(!Read_Message(invalidReader, unchanged) &&
+				unchanged.iClientSequence == request.iClientSequence && unchanged.eWorldId == request.eWorldId,
+				"Invalid Mario return preserves caller output");
+		}
+		for (std::size_t size = 0; size < writer.Get_Buffer().size(); ++size)
+		{
+			std::vector<std::uint8_t> bytes(writer.Get_Buffer().begin(), writer.Get_Buffer().begin() + size);
+			CPacketReader shortReader{ bytes };
+			auto unchanged = request;
+			testRunner.Require(!Read_Message(shortReader, unchanged) &&
+				unchanged.iClientSequence == request.iClientSequence && unchanged.eWorldId == request.eWorldId,
+				"Every truncated Mario return request preserves output");
+		}
+		for (std::uint8_t value = 0u; value < static_cast<std::uint8_t>(MARIO_RETURN_RESULT::END); ++value)
+		{
+			S2C_MARIO_RETURN_RESULT result{ request.iClientSequence, request.eWorldId,
+				static_cast<MARIO_RETURN_RESULT>(value) };
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) && resultWriter.Get_Buffer().size() == 7u,
+				"Mario return result is bounded and has no position payload");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_MARIO_RETURN_RESULT verdict{};
+			testRunner.Require(Read_Message(resultReader, verdict) && resultReader.Get_RemainingSize() == 0u &&
+				verdict.iClientSequence == result.iClientSequence && verdict.eWorldId == result.eWorldId && verdict.eResult == result.eResult,
+				"Every Mario return verdict round trips");
+			for (std::size_t size = 0; size < resultWriter.Get_Buffer().size(); ++size)
+			{
+				std::vector<std::uint8_t> bytes(resultWriter.Get_Buffer().begin(), resultWriter.Get_Buffer().begin() + size);
+				CPacketReader shortReader{ bytes };
+				auto unchanged = result;
+				testRunner.Require(!Read_Message(shortReader, unchanged) &&
+					unchanged.iClientSequence == result.iClientSequence && unchanged.eWorldId == result.eWorldId && unchanged.eResult == result.eResult,
+					"Every truncated Mario return result preserves output");
+			}
+		}
+		for (int invalidCase = 0; invalidCase < 4; ++invalidCase)
+		{
+			S2C_MARIO_RETURN_RESULT invalid{ request.iClientSequence, request.eWorldId, MARIO_RETURN_RESULT::ACCEPTED };
+			if (invalidCase == 0) invalid.iClientSequence = 0u;
+			if (invalidCase == 1) invalid.eWorldId = WORLD_ID::END;
+			if (invalidCase == 2) invalid.eResult = MARIO_RETURN_RESULT::END;
+			if (invalidCase == 3) invalid.eResult = static_cast<MARIO_RETURN_RESULT>(255u);
+			CPacketWriter rejected;
+			testRunner.Require(!Write_Message(rejected, invalid) && rejected.Get_Buffer().empty(),
+				"Mario return result validates before writing");
+			CPacketWriter bytes;
+			bytes.Write_U32(invalid.iClientSequence);
+			bytes.Write_U16(static_cast<std::uint16_t>(invalid.eWorldId));
+			bytes.Write_U8(static_cast<std::uint8_t>(invalid.eResult));
+			CPacketReader invalidReader{ bytes.Get_Buffer() };
+			S2C_MARIO_RETURN_RESULT unchanged{ 99u, WORLD_ID::BERN, MARIO_RETURN_RESULT::REJECTED_DESTINATION };
+			testRunner.Require(!Read_Message(invalidReader, unchanged) && unchanged.iClientSequence == 99u &&
+				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
+				"Invalid Mario return verdict preserves caller output");
+		}
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
+			"Protocol 84 appends Mario return without changing existing packet identities");
+	}
+
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
 	{
 		C2S_DEBUG_MARIO_JUMP request{};
@@ -2709,14 +2797,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 82u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 82 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 84 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2866,14 +2954,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 82u,
+			NETWORK_PROTOCOL_VERSION == 84u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 82u, "World Object owner lifecycle and fear use protocol 82");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u, "World Object owner lifecycle and fear use protocol 84");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2886,7 +2974,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) == 80u &&
 			static_cast<std::uint8_t>(PLAYER_ACTION_STATE::FEAR) == 9u &&
 			static_cast<std::uint8_t>(PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP) == 2u,
-			"Protocol 82 preserves main identities and bundle state");
+			"Protocol 84 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -3226,8 +3314,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 82u,
-			"Protocol 82 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 84u,
+			"Protocol 84 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3343,8 +3431,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(82u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 82");
+			testRunner.Require(84u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 84");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3841,7 +3929,7 @@ namespace
         constexpr std::size_t playerFearBytes = 4 + 2;
 		// Protocol 81 appends the acknowledgement and ordinary movement state.
 		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
-		// Protocol 82 appends the ridden vehicle id.
+		// Protocol 84 appends the ridden vehicle id.
 		constexpr std::size_t playerVehicleBytes = 4;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
@@ -6679,7 +6767,7 @@ namespace
 		}
 
 		testRunner.Require(
-			82u == NETWORK_PROTOCOL_VERSION,
+			84u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 80");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6707,8 +6795,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			82u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 82");
+			84u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 84");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -7939,8 +8027,21 @@ namespace
 		S2C_KOUKUSAYDON_BUNDLE_STATE run; run.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; run.strEncounterId = selected.Scope.strEncounterId;
 		run.strBundleId = bundle.strBundleId; run.iRunEpoch = 19; run.iCommonStartTick = 100; run.iServerTick = 105;
 		run.PinnedGameplayRevision = revision; run.iPinnedSourceRevision = SOURCE_REVISION;
-		run.Members = {{"member.1", 101u, "KAKULSAYDON_G1_A", 1u, 100u, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE},
-			{"member.2", 102u, "KAKULSAYDON_G1_B", 0u, 110u, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING}};
+		KOUKUSAYDON_BUNDLE_MEMBER_STATE activeMember{};
+		activeMember.strMemberId = "member.1";
+		activeMember.iBossNetEntityId = 101u;
+		activeMember.strPatternId = "KAKULSAYDON_G1_A";
+		activeMember.iPatternSequence = 1u;
+		activeMember.iStartTick = 100u;
+		activeMember.eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE;
+		KOUKUSAYDON_BUNDLE_MEMBER_STATE pendingMember{};
+		pendingMember.strMemberId = "member.2";
+		pendingMember.iBossNetEntityId = 102u;
+		pendingMember.strPatternId = "KAKULSAYDON_G1_B";
+		pendingMember.iPatternSequence = 0u;
+		pendingMember.iStartTick = 110u;
+		pendingMember.eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
+		run.Members = {activeMember, pendingMember};
 		CPacketWriter runWriter; const bool runWritten = Write_Message(runWriter, run); CPacketReader runReader(runWriter.Get_Buffer()); decltype(run) decodedRun;
 		testRunner.Require(runWritten && Read_Message(runReader, decodedRun) && decodedRun.Members.size() == 2u && decodedRun.Members[1].iStartTick == 110u, "Bundle replication preserves common clock and delayed member");
 		auto duplicateRun = run; duplicateRun.Members[1].iBossNetEntityId = 101u; CPacketWriter duplicateWriter;
@@ -7983,6 +8084,11 @@ int main(const int argumentCount, char* arguments[])
 		Test_WorldObjectMotionProtocol(testRunner);
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--mario-return-only")
+	{
+		Test_MarioReturnProtocol(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--mario-controls-only")
 	{
 		Test_MarioMoveProtocol(testRunner);
@@ -7990,11 +8096,13 @@ int main(const int argumentCount, char* arguments[])
 	Test_MarioStageSnapshotProtocol(testRunner);
 		Test_CardMazeSnapshotProtocol(testRunner);
 		Test_DebugMarioJumpProtocol(testRunner);
+		Test_MarioReturnProtocol(testRunner);
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-mario-jump-only")
 	{
 		Test_DebugMarioJumpProtocol(testRunner);
+		Test_MarioReturnProtocol(testRunner);
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-teleport-only")
@@ -8032,6 +8140,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_VehicleRidingProtocol(testRunner);
 	Test_KoukuInteractionProtocol(testRunner);
 	Test_DebugMarioJumpProtocol(testRunner);
+	Test_MarioReturnProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_MarioMoveProtocol(testRunner);
 	Test_FearSnapshotProtocol(testRunner);

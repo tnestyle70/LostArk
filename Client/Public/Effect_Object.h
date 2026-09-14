@@ -180,6 +180,7 @@ public:
 	bool_t Has_CapturedScreenPost(const std::string& elementId) const;
 	HRESULT Get_ScreenPostCaptureResult(const std::string& elementId) const;
 	void Set_ScreenPostCaptureAllowed(bool_t allowed);
+	void Set_ScreenPostPlaybackEnd(f32_t endSeconds);
 	void Set_Visible(bool_t bVisible);
 	void Reset();
 	bool_t Is_Finished() const
