@@ -30,6 +30,7 @@
 #include "Transform.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iterator>
@@ -3121,32 +3122,87 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
 void Client::CKoukuSaydonPresentationPlayer::Sync_MazeMark(
     CARD& mark, const std::string& asset, const float4x4_t& pivot)
 {
+    if (!IsCardMazeMarkGroup(asset))
+    {
+        // Bingo and other floor marks keep the original single-attempt path.
+        if (mark.assetId != asset)
+        {
+            if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
+            mark = {}; mark.assetId = asset;
+            std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
+            if (Ensure_EffectResource("GROUP", asset, effects))
+                if (const auto* group = effects->Find_Group(asset))
+                {
+                    EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+                    playback.PivotWorld = pivot;
+                    playback.fDurationSeconds = 0.f;
+                    playback.bProductOwned = true;
+                    mark.handle = CEffectV2Runtime::Play_Group(*group, effects, playback, m_Device, m_Context);
+                }
+            if (!mark.handle) m_strStatus = "Maze floor mark unavailable: " + asset;
+        }
+        if (mark.handle)
+        {
+            CEffectV2Runtime::Set_GroupPivot(mark.handle, pivot);
+            std::string failure;
+            if (CEffectV2Runtime::Consume_GroupFailure(mark.handle, failure))
+            {
+                CEffectV2Runtime::Stop_Group(mark.handle); mark.handle = 0u;
+                m_strStatus = "Maze floor mark failed: " + asset + ": " + failure;
+            }
+        }
+        return;
+    }
     if (mark.assetId != asset)
     {
         if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
-        mark = {}; mark.assetId = asset;
-        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
-        if (Ensure_EffectResource("GROUP", asset, effects))
-            if (const auto* group = effects->Find_Group(asset))
-            {
-                EFFECT_V2_GROUP_PLAYBACK_DESC playback;
-                playback.PivotWorld = pivot;
-                playback.fDurationSeconds = 0.f;
-                playback.bProductOwned = true;
-                mark.handle = CEffectV2Runtime::Play_Group(*group, effects, playback, m_Device, m_Context);
-            }
-        if (!mark.handle) m_strStatus = "Maze floor mark unavailable: " + asset;
+        mark = {};
+        mark.assetId = asset;
     }
+    const auto generation = CEffectV2Runtime::Cache_Generation();
+    const auto nowMs = static_cast<std::uint64_t>(std::chrono::duration_cast<
+        std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    mark.mazeRetry.ObserveGeneration(generation);
     if (mark.handle)
     {
         CEffectV2Runtime::Set_GroupPivot(mark.handle, pivot);
         std::string failure;
-        if (CEffectV2Runtime::Consume_GroupFailure(mark.handle, failure))
-        {
-            CEffectV2Runtime::Stop_Group(mark.handle); mark.handle = 0u;
-            m_strStatus = "Maze floor mark failed: " + asset + ": " + failure;
-        }
+        if (!CEffectV2Runtime::Consume_GroupFailure(mark.handle, failure)) return;
+        CEffectV2Runtime::Stop_Group(mark.handle);
+        mark.handle = 0u;
+        mark.mazeRetry.Defer(nowMs);
+        m_strStatus = "Maze floor mark failed: " + asset + ": " + failure;
+        return;
     }
+    if (!mark.mazeRetry.TryBegin(nowMs)) return;
+    const std::string resourceKey = "GROUP:" + asset;
+    if (mark.mazeRetry.attempts > 1u)
+    {
+        // Only this resource is read again, at most twice per mark occurrence/generation.
+        m_EffectResourceFailures.erase(resourceKey);
+        m_EffectResources.erase(resourceKey);
+    }
+    std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
+    if (!Ensure_EffectResource("GROUP", asset, effects))
+    {
+        const std::string reason = m_strStatus;
+        m_strStatus = "Maze floor mark unavailable: " + asset + ": " + reason;
+        return;
+    }
+    const auto* group = effects ? effects->Find_Group(asset) : nullptr;
+    if (!group)
+    {
+        m_strStatus = "Maze floor mark group missing from snapshot: " + asset;
+        return;
+    }
+    EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+    playback.PivotWorld = pivot;
+    playback.fDurationSeconds = 0.f;
+    playback.bProductOwned = true;
+    mark.handle = CEffectV2Runtime::Play_Group(*group, effects, playback, m_Device, m_Context);
+    // A handle may fail on the next frame; do not reset the attempt budget here.
+    if (!mark.handle)
+        m_strStatus = "Maze floor mark spawn failed: " + asset + ": " + CEffectV2Runtime::Last_Error();
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(

@@ -59,6 +59,7 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
+	virtual int32_t Get_BlendSortPriority() const override;
 	virtual HRESULT Render_Shadow() override;
 
 	uint64_t Get_PlacementId() const { return m_iPlacementId; }

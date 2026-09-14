@@ -1272,6 +1272,10 @@ namespace LostArk::Server
 		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
 		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
 		void Update_CardMaze(std::uint32_t tick);
+		/* Before the run: raises the clown box for players inside the maze and
+		latches its destruction. Clear forgets it and removes a living box. */
+		void Update_CardMazeClownBox(std::uint32_t tick);
+		void Clear_CardMazeClownBox();
 		/* Advances the bingo bomb clock: a mark whose deadline passed is
 		planted where its carrier stands, and a carrier that left the room
 		takes its mark with it. */
@@ -1437,6 +1441,9 @@ namespace LostArk::Server
 		std::uint32_t m_iCardMazeCycleMs = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, std::pair<float, float>> m_CardMazePreviousPositions;
 		std::map<LostArk::Shared::PLAYER_ID, std::uint32_t> m_CardMazeContactTicks;
+		LostArk::Shared::NET_ENTITY_ID m_iCardMazeClownBoxId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t m_iCardMazeClownBoxDueTick = 0u;
+		bool m_bCardMazeClownBoxDestroyed = false;
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CCombatObjectRuntime m_CombatObjectRuntime;
 		CMonsterBrain m_MonsterBrain;

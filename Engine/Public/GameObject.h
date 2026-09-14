@@ -28,6 +28,8 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta);
 	virtual HRESULT Render();
 	virtual HRESULT Render_Group(RENDERGROUP group);
+	// Lower values draw first within BLEND; equal values retain distance order.
+	virtual int32_t Get_BlendSortPriority() const { return 0; }
 	virtual HRESULT Render_DeferredOverlay();
 	virtual HRESULT Render_Shadow();
 

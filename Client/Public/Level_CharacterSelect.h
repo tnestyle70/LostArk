@@ -160,14 +160,6 @@ private:
 	void Hide_ClassList();
 	void Hide_ArenaSpawnButtons();
 
-#ifdef _DEBUG
-	/* O opens a visual-only preview of the same "군단장 레이드 입장" panel
-	   Level_Bern's guide NPC uses (CRaidEntryPreviewView, shared so this isn't
-	   a second runtime of the same role) -- there is no NPC, no walk, and no
-	   real entry command here, purely so the panel's layout can be checked
-	   from Character Select too. Entrance/Decline just close it. */
-	void Update_RaidEntryDebugPreviewKey();
-#endif
 
 public:
 	/* SpawnMonsterButton/BossSpawnButton/SpawnCancelButton's small labels ("몬스터 소환"/"보스
@@ -323,7 +315,6 @@ private:
 	bool_t m_preserveServerConnectionForTransfer = false;
 #ifdef _DEBUG
 	unique_ptr<CRaidEntryPreviewView> m_pDebugRaidEntryPreviewView;
-	bool_t m_wasODownForRaidEntryDebugPreview = false;
 #endif
 	string m_strStatus =
 		"Waiting for the Lobby-approved Server character.";

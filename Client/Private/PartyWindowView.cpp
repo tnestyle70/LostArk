@@ -60,6 +60,7 @@ Client::CPartyWindowView::CPartyWindowView(
 	// "161기 최후의 4인"
 	, m_strPartyTitle{ "161\xea\xb8\xb0 \xec\xb5\x9c\xed\x9b\x84\xec\x9d\x98 4\xec\x9d\xb8" }
 {
+	m_SlotIds = m_pView->Get_SlotIds();
 	/* A CUI_Sprite is visible from construction, unlike the old drawlist path that simply drew
 	nothing while the roster was empty. */
 	Hide_AllRows();
@@ -112,10 +113,16 @@ void Client::CPartyWindowView::Render()
 	if (m_Members.empty())
 	{
 		Hide_AllRows();
+		m_Drag.Reset();
 		return;
 	}
 
 	m_pView->Set_SlotVisible("PartyWindow_TitleBg", true);
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pView->Get_SlotRect("PartyWindow_TitleBg", fX, fY, fWidth, fHeight))
+			m_Drag.Update(*m_pView, m_SlotIds, fX, fY, fWidth, fHeight);
+	}
 
 	for (size_t iRow = 0; iRow < MAX_ROWS; ++iRow)
 	{

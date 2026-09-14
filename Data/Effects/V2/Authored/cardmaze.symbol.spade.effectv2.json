@@ -2,7 +2,7 @@
   "schema": "lostark.effect-v2",
   "formatVersion": 1,
   "effectId": "cardmaze.symbol.spade",
-  "effectType": "Decal",
+  "effectType": "Texture",
   "slots": {
     "mesh": "",
     "base": "Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47_1.dds",
@@ -27,26 +27,26 @@
     },
     "rotation": {
       "start": [
-        0,
+        90,
         -90,
         0
       ],
       "end": [
-        0,
-        0,
+        90,
+        -90,
         0
       ],
       "lerp": false
     },
     "scale": {
       "start": [
-        1,
-        1,
+        2,
+        2,
         1
       ],
       "end": [
-        1,
-        1,
+        2,
+        2,
         1
       ],
       "lerp": false

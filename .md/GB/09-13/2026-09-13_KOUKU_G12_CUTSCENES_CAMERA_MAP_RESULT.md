@@ -1,5 +1,7 @@
 # 쿠크 2관문 진입·3관문 진입 전체·빙고 최종 엔딩 — 카메라·맵 애니메이션 1차 결과
 
+2026-09-14 PR #384 병합에서는 사용자가 완성본으로 지정한 `codex/sequence-capture-focus`의 Sequence/World 정본을 보존했다. 아래 G15의 추가130소품·14 WORLD 및 P3 카메라7컷 설치는 해당 작업 당시 기록이며 현재 통합본의 설치 상태가 아니다. 현재 P3는 WORLD17개·CAMERA5개다. 병합 기준과 검증은 [PR384 동기화 결과](../09-14/2026-09-14_PR384_CANONICAL_SEQUENCE_SYNC_RESULT.md)를 따른다.
+
 계획은 `.md/GB/09-12/2026-09-12_KOUKU_SOURCE_SEQUENCE_RESTORE_IMPLEMENTATION_PLAN.md`의 G12다.
 이번 결과는 그 계획의 **카메라·맵 애니메이션 부분**만 다룬다. 배우(세이튼·쿠크·무기·부착) 저작, 조명·암전·재질·FX는
 이 결과에 포함하지 않는다. 사용자 화면 판정은 남아 있다.
@@ -155,3 +157,89 @@ P7 카메라에는 뼈 부착이 없다(c4·c4_1은 더미 c4_p, c6은 c6_p에 h
 - 되돌린 것: World 문서에서 Object Resource 165 / 템플릿 16 / 인스턴스 16 제거(revision 1739, 8,246,254바이트, 툴 Save 형식 유지), Composition에서 P3 world 박스 16개·등록 16개 제거(P3 박스 17개, `nextWorldOccurrenceOrdinal` 18, revision 21). 3관문 사본(G13-R4)과 카메라는 그대로.
 - 남는 사실: 팀장 backdrop 모듈이 계산한 조각 위치는 카메라 더미의 원본 Transform + RelativeLocation/Rotation 합성이며, 카메라 3·4에서 보이는 결과가 원본 영상의 받침 구조와 다르다. 부모 회전(cameraactor_1 yaw −135°, _11~_15 yaw −59~−205°)이 조각의 상대 위치에 적용되는 방식 또는 `bignorebaserotation` 처리가 의심 지점이지만 이번엔 확정하지 않았다. 후보는 `out/KoukuGateCutscenes20260913/backdrops/`에 남아 있고 정본에는 없다.
 - 이번 작업으로 확정된 규칙(인스턴스당 target 유일, World 문서 툴 형식, Composition World ID 규칙)은 유효하며 gotchas에 남긴다.
+
+## G15-R1. 2관문 진입 카메라·무대 소품 — 원인과 적용 (2026-09-14 Claude)
+
+계획서 G15와 측정 기록 G15-11(`.md/GB/09-12/2026-09-12_KOUKU_SOURCE_SEQUENCE_RESTORE_IMPLEMENTATION_PLAN.md`)을 실행했다. 원인이 코드·데이터로 확정된 두 가지만 고쳤다.
+
+### 최초 불일치 1 — P3 카메라 박스가 병합으로 5개로 되돌아감
+
+- 원본 Director 활성 컷은 cam1(−1.01초)·cam2(2.10)·cam3(13.95)·cam4(19.49)·cam6(23.95)이다. 카메라 액터에 부모 부착은 없다.
+- 카메라 파일(revision 84)의 샷 7개는 `make_cameras` 재생성과 키 수·시각·eye·lookAt·FOV 모두 0.0 차이다. cam4는 64키 제한으로 샷 4·5·6에 나뉜다. 같은 생성기끼리 비교했으므로 원본 의미 자체의 증명은 아니다.
+- 병합 `400439b2`(2026-09-14 02:24)가 Composition을 G13 이전 5박스(revision 41)로 되돌렸다. 카메라 파일은 7분할 그대로 남았다.
+  - 박스 4(19.49초, 4460ms)는 샷 4의 2224ms 뒤 마지막 키에 멈춰 있었다.
+  - 박스 5(23.95초, 3050ms)는 cam6가 아니라 cam4 중간 샷 5를 재생했다.
+  - 샷 6·7은 쓰이지 않았다.
+- 투영 계산: 박스 5 구간은 촛대가 화면 안에 들어오는 넓은 후퇴 구도이고, 샷 7(cam6)은 테이블 위 근접 구도다. 원본 영상 23~24초 넓은 구도와 25~26초 쿠크 근접 순서와 맞는 쪽은 7박스 배치다.
+
+적용(`Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`, revision 43→44):
+- 리소스: camera.4를 2224ms로 바꿨다. camera.5는 1104ms로 바꾸고 표시명을 cam4로 고쳤다. camera.6(1132ms, cam4)과 camera.7(3050ms, cam6)을 추가했다.
+- 박스 7개: 0–2100, 2100–13950, 13950–19490, 19490–21714, 21714–22818, 22818–23950, 23950–27000ms. `.presentation.9`, `.presentation.10`을 추가했고 `nextPresentationOccurrenceOrdinal`은 9→11이다.
+
+### 최초 불일치 2 — 무대 소품 165개를 되돌렸던 원인은 부모 Matinee 트랙 누락
+
+- 165개 모두 hard attach다. 부모 저장 Transform × 상대 Transform이 자식 저장 월드값과 최대 0.013cm·0.039°로 맞는다.
+- 회전 변환은 맵 importer와 소품 도구가 무작위 200개 rotator에서 8.9e-16 차이로 같다.
+- 원인: `build_gate_cutscenes_g12.install_backdrops`와 `build_gate2_intro_composition.build`가 부모를 `world_pose(rows, None, actor, t)`로 샘플했다. group이 None이면 부모 더미의 Move 트랙이 하나도 적용되지 않는다. G13-R3의 "부모 더미가 움직이지 않음"은 이 호출 결과였고 원본과 다르다.
+- 원본 부모 동작(모두 활성 Move 트랙):
+  - `d1~d8`(카드 80장): 0.62초에 약 92m 올라가고 23.0~25.5초에 내려온다. 원본 영상 22~26초 카드 비와 시각이 맞는다.
+  - `기둥1~5`(floor16 판 25장): 11.2~16.5초에 접혔다 펴진다. 23.5초에 책 페이지(Y −108.5)와 테이블 윗면(−101.4) 사이에서 테이블 가장자리를 두른다. 원본 23~24초 테이블 아래 받침과 같은 자리다.
+  - `데스크기둥`(판 25장): 0.88초에 멀리 갔다가 24.56~25.4초에 돌아온다.
+- floor16 판과 DECO19 촛대는 두께 0의 세로 판 메쉬다. 트랙 없이 저장 자세에 두면 G13-R6 화면처럼 세운 붉은 띠와 줄지어 뜬 카드가 된다.
+
+적용:
+
+| 파일 | 변경 |
+|---|---|
+| `Tools/KoukuSaydonPipeline/build_gate2_intro_composition.py` | `parent_pose_sampler(rows)` 추가(부모 자신의 Matinee group으로 `world_pose`). `build()`의 소품 호출 교체 |
+| `Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py` | `install_backdrops`의 샘플러 교체 |
+| `Tools/KoukuSaydonPipeline/build_gate2_intro_backdrops.py` | `exclude_bone_attached` 옵션과 receipt 기록. 부모 그룹 표시명("매달린 카드 dN", "테이블 받침 기둥N", "책상 다리 데스크기둥"). 구간 분할을 트랙별 256키 기준으로 변경(트랙 최대 185키 → 부모당 템플릿 1개, 박스 0~27000ms, 이음매 없음) |
+| `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json` | revision 1766→1767. Object Resource 130, 템플릿 14, 인스턴스 14, 키 16,112. 기존 바이트는 두고 배열 끝에 새 행만 끼웠다(G13 전체 writer는 현재 `mapMaterialBindings.unlit`에서 통과하지 못함). 8,023,551→12,950,927바이트 |
+| 같은 Composition | `worlds` 등록 14개, P3 `worldOccurrences` 14개(0~27000ms), `nextWorldOccurrenceOrdinal` 18→32 |
+
+설치하지 않은 소품: 세이튼 `bip001-l-hand`에 붙는 `tabetcdum` 35장. 부모가 bake된 세이튼 손 포즈를 따르는데, 6.8~9.8초 부모 위쪽 축이 수직에서 약 80° 기울어 원본 영상의 "눕힌 책 위 미니 세트"와 맞지 않는다. 세이튼 bake 문제일 가능성이 있어 도구 receipt에 제외 사유를 남겼다.
+
+### 자동 검증 (에이전트 실행분)
+
+| 검사 | 결과 |
+|---|---|
+| 스플라이스 동등성: 새 World 재파싱 == 기존 문서 + 새 행(정확히 일치), 새 행 텍스트 == 툴 Save 정규화(float32) | PASS |
+| 스플라이스 동등성: 새 Composition 재파싱 == 기존 + 의도한 변경(정확히 일치), World ID·인스턴스 짝 규칙, 카메라 박스 연속 | PASS |
+| 새로 추출한 SCENE04A 행으로 계산한 원본 위치 vs 저장 키(판·다리 252표본, 카드 위치) | 최대 0.02mm, 회전 0.0° |
+| `validate_world_rows`(stable ID, 키 2~256, 쿼터니언, 인스턴스당 target 유일, 템플릿 251/256) | PASS |
+| 설치 직전 두 파일 baseline 바이트 일치 | PASS |
+| `Publish-MapAuthoring.ps1 -Scope Area` Validate / Publish / Check | 모두 exit 0(배치 3369, 출력 8). 런타임 `worldsequences.json` 12,950,927바이트 |
+| 도구 3파일 `py_compile`, `git diff --check` | PASS |
+
+C++·셰이더 변경이 없어 빌드하지 않았다. Client/UI 실행과 화면 판정은 하지 않았다.
+
+### 확인했고 바꾸지 않은 것
+
+- **Table:** 설치 클립의 움직임 구간은 11.27~12.533초(역재생 닫힘)와 15.667~16.967초(펼침)이다. 그 사이와 17초 이후는 포즈를 유지한다. 원본 키(11.0 reverse, 15.66 forward)와 PSA 47프레임 길이에 맞고, 15.66초는 30Hz bake로 7ms 늦다. 원본 비bake 모델(`out/KoukuGate2Restore20260911`)이 이 PC에 없어 뼈 단위 비교는 못 했다.
+- **Book:** 15.20~17.20초에 펼치고 이후 유지한다.
+- **촛대 2개:** visible 전 구간 true, scale 1이다. 23.95초 이후 넓은 구도에서 화면 안에 들고 카메라를 향한다(`|n·v|` 0.85~0.91). 재질 family는 `bg-source-opaque-masked`다. 녹화에서 안 보인 원인은 배치 데이터가 아니라 재질·렌더 쪽 후보이며 확정하지 않았다(팀장 영역).
+
+### 확정하지 못해 건드리지 않은 것
+
+- **손에 든 책(5~11초):** 원본은 눕혀져 있고 현재는 세워져 있다. 저장 키는 원본 Move 트랙 평가와 최대 2.4° 차이다. bake는 AnimTree `evt2_animblending_mix_scale`의 `dummy001` SkelControl(`scale`, `b_up`)을 이미 적용한다. 원인을 찾지 못했다.
+- **0~2.1초 검은 무대, 19.5~22초 쿠크 등 노출:** G13-R4 기록(조명·씬 프로필, 배우 bake) 뒤로 새 증거가 없다.
+- **같은 병합 `400439b2`의 다른 되돌림(G15 범위 밖, 수정하지 않음):** P7 `3관문_진입`이 18,658ms 도착 구간과 카메라 8개로 돌아갔다(G13은 35,368ms·카메라 18개). G12 `빙고_최종엔딩씬` 자리(PATTERN_8)는 현재 다른 `1관문_연출` 패턴이다. 카메라 파일에는 G13 샷이 남아 있다.
+
+### 사용자 확인 (대기)
+
+1. Client를 새로 실행한다. 월드 시퀀스 문서가 바뀌었으므로 기존 실행 중 창은 새 데이터를 읽지 않는다.
+2. `KoukuSaydon → F1 → Open Sequencer Benchmark`에서 Sequence 목록의 GATE2 `2관문_진입컷씬`을 고르고 Play Sequence를 누른다.
+3. 확인 시각:
+   - 0~23초: 테이블 위에 떠 있던 카드 줄이 없어야 한다.
+   - 11~16.5초: 테이블 받침 판이 접혔다 펴진다.
+   - 17초 이후: 받침 판이 책 페이지와 테이블 사이에서 테이블을 두른다.
+   - 19.5~24초: 쿠크 근접 → 후퇴 → 넓은 구도가 이어진다.
+   - 23~25.5초: 카드가 위에서 내려온다.
+   - 24~27초: cam6 근접 구도로 끝난다.
+4. 편집 위치: 소품은 World Object Tool의 Object Resources `2관문 진입 무대 / …`(130개)와 모션 `2관문 진입 무대 / 매달린 카드 dN · 테이블 받침 기둥N · 책상 다리 데스크기둥`(14개)에서 고치고 Object Save로 저장한다. 카메라는 해당 CAMERA 박스 → Open Composition Camera → Save Camera. 박스 시각은 Sequence의 Save.
+
+### 인계
+
+- Git 대상: 위 Data 2파일, 도구 3파일, 계획서 G15-11, 이 결과. Area 게시 출력 `Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json`(LFS)도 같은 변경 단위다.
+- 새 Resources 파일은 없다. 소품은 기존 `Map/LV_LUT_MIDNIGHTC_ED/MAP_*_BG_RAD_KOUKUSATON_{FLOOR16A~D,CARD01*}_SM*` 모델을 쓴다.
+- 커밋·푸시는 하지 않았다.

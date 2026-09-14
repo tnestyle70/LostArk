@@ -453,6 +453,10 @@ namespace Client
 		/* Death-screen revive button. Not polled input, so it is a direct call
 		instead of something Update() discovers each frame. */
 		bool_t Request_Revive();
+		/* Vehicle window's mount / dismount button (vehicleId 0 = dismount): the same Server
+		round trip and pending sequence as the H key. False while a request is outstanding or
+		the local player can't ride right now. */
+		bool_t Request_VehicleRiding(std::uint32_t vehicleId);
 		/* Debug F1 choice of the vehicle H mounts. Zero, or a vehicle without a
 		rider pose for the class, falls back to the first catalog vehicle that has one. */
 		static void Set_PreferredVehicleId(std::uint32_t vehicleId) { s_iPreferredVehicleId = vehicleId; }
@@ -564,6 +568,7 @@ namespace Client
 		/* Consumes riding verdicts and turns an H press into a mount or dismount
 		intent. The first catalog vehicle with a rider pose for the class mounts. */
 		void Update_VehicleRiding(bool_t inputAllowed, bool_t useRawKeyboard);
+		bool_t Send_VehicleRidingRequest(std::uint32_t vehicleId);
 		/* True on the frame G goes down. The controller does not know whether
 		   an offer is standing -- Update checks that before submitting. */
 		bool_t Poll_InteractKey(

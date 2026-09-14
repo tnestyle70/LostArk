@@ -829,15 +829,32 @@ void Client::CPlayerController::Update_VehicleRiding(
 			return;
 		}
 	}
-	if (!m_pCommandSink->Request_SetVehicleRiding(m_nextVehicleRidingSequence, requested))
+	(void)Send_VehicleRidingRequest(requested);
+}
+
+bool_t Client::CPlayerController::Request_VehicleRiding(const std::uint32_t vehicleId)
+{
+	if (nullptr == m_pCommandSink || 0u != m_pendingVehicleRidingSequence)
+		return false;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.isPreview || vehicleId == player.iVehicleId ||
+		nullptr == m_pLocalCharacter.lock())
+		return false;
+	return Send_VehicleRidingRequest(vehicleId);
+}
+
+bool_t Client::CPlayerController::Send_VehicleRidingRequest(const std::uint32_t vehicleId)
+{
+	if (!m_pCommandSink->Request_SetVehicleRiding(m_nextVehicleRidingSequence, vehicleId))
 	{
 		Log_VehicleRiding("Could not send the riding request.");
-		return;
+		return false;
 	}
 	m_pendingVehicleRidingSequence = m_nextVehicleRidingSequence;
-	m_vehicleRidingSentAt = now;
+	m_vehicleRidingSentAt = std::chrono::steady_clock::now();
 	if (0u == ++m_nextVehicleRidingSequence)
 		m_nextVehicleRidingSequence = 1u;
+	return true;
 }
 
 bool_t Client::CPlayerController::Poll_InteractKey(

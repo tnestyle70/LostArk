@@ -371,6 +371,12 @@ namespace LostArk::Server
 		static constexpr const char* SPAWN_GROUP_TAG = "cardmaze.targets";
 		/* The box a hammer swing must reach to take the telescope. */
 		static constexpr const char* TELESCOPE_PLACEMENT_ID = "cardmaze.telescope";
+		/* Original triggers 2201/2202: one second after entry a clown box (NPC
+		480720) rises on the telescope, and only its destruction opens the
+		telescope. Its own group tag keeps the generic monster damage rules. */
+		static constexpr const char* CLOWN_BOX_ARCHETYPE_ID = "MONSTER_KOUKU_CLOWN_BOX";
+		static constexpr const char* CLOWN_BOX_SPAWN_GROUP_TAG = "cardmaze.clownbox";
+		static constexpr std::uint32_t CLOWN_BOX_SPAWN_DELAY_TICKS = 30u;
 		/* The CardMiro navigation region: 116 x 114 cells of 0.5 m, and the
 		centre cell the telescope stands on. */
 		static constexpr float MAZE_MIN_X = -24.97f;

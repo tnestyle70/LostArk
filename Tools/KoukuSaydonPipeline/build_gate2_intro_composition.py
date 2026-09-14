@@ -157,6 +157,18 @@ def group_actor(rows, group, matinee=329):
             if rows[v]["p"].get("objvalue")]
 
 
+def parent_pose_sampler(rows, matinee=329, interp_data=394):
+    """Pose of a set-piece parent including its own Matinee group.
+
+    world_pose(rows, None, ...) skips every Move track, which left the SCENE04A
+    camera dummies (pillars, desk legs, cards) at their editor placement."""
+    groups = rows[interp_data]["p"]["interpgroups"]
+    def sample(actor, seconds):
+        group = next((g for g in groups if actor in group_actor(rows, g, matinee)), None)
+        return world_pose(rows, group, actor, seconds, matinee, interp_data)
+    return sample
+
+
 def world_pose(rows, group, actor, seconds, matinee=329, interp_data=394):
     p = rows[actor]["p"]
     location = vec(p.get("location"))
@@ -752,7 +764,7 @@ def build(install):
     world_windows=[(0,DURATION)]*len(worlds)
     attached=attachment_worlds(rows)
     resources+=attached[0];templates+=attached[1];instances+=attached[2];worlds+=attached[3];world_windows+=attached[4]
-    backdrops=build_backdrops(rows,imports,lambda actor,t:world_pose(rows,None,actor,t))
+    backdrops=build_backdrops(rows,imports,parent_pose_sampler(rows),exclude_bone_attached=True)
     resources+=backdrops['resources'];templates+=backdrops['templates'];instances+=backdrops['instances']
     worlds+=backdrops['worlds'];world_windows+=backdrops['windows']
     write(EVIDENCE/'backdrops.result.json',backdrops['receipt'])

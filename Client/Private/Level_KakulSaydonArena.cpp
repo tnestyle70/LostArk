@@ -135,6 +135,10 @@ namespace
 		"world.sequence.instance.original_kouku";
 	constexpr uint64_t KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID = 5ull;
 	constexpr uint64_t KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID = 7ull;
+	/* The card maze telescope visual and the Server clown box archetype that
+	   must be broken before it appears (original triggers 2201/2202). */
+	constexpr uint64_t KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID = 8ull;
+	constexpr const char* CARD_MAZE_CLOWN_BOX_ARCHETYPE_ID = "MONSTER_KOUKU_CLOWN_BOX";
 	/* Every instance whose id starts with this belongs to the same show. */
 	constexpr const char* KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX =
 		"world.sequence.instance.original_";
@@ -1137,12 +1141,15 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		   only exists once its lever is pulled, so suppress it here rather than
 		   waiting for the first sequence frame and flashing an unfolded bridge. */
 		std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> hiddenBridges;
-		hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size() + 2u);
+		hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size() + 3u);
 		for (const uint64_t placementId : KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS)
 			hiddenBridges.emplace_back(placementId, DEPLOY_PROP_STATE::DESPAWNED);
 		// The Sequence owns these cinematic copies; no idle duplicate is placed in the arena.
 		hiddenBridges.emplace_back(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
 		hiddenBridges.emplace_back(KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
+		// The telescope appears only after the clown box is broken.
+		if (m_DeployRuntime.Find(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID))
+			hiddenBridges.emplace_back(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
 		if (!m_DeployRuntime.Set_States(hiddenBridges))
 		{
 			OutputDebugStringA((
@@ -2010,7 +2017,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 		CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE)
 	{
 		std::wstring text;
-		if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole)
+		if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole && m_bCardMazeClownBoxAlive)
+			text = L"[ Q ] Break the clown box at the maze center";
+		else if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole && m_bCardMazeTelescopeShown)
 			text = L"[ Q ] Strike the telescope at the maze center (G is not used)";
 		if (maze.CardMaze.flags & 1u) text = L"[ TELESCOPE ON ]";
 		else if (maze.CardMaze.flags & 2u) text = L"[ ESCAPED / HAMMER TELESCOPE TO VIEW ]";
@@ -3508,6 +3517,35 @@ void Client::CLevel_KakulSaydonArena::Release_CameraShot()
 
 void Client::CLevel_KakulSaydonArena::Update_CardMazePresentation(f32_t dt)
 {
+	/* Telescope visibility from replicated truth only: a clown box seen alive and
+	   then gone, or a dealt maze role, shows it; leaving MAZE mode forgets it. */
+	{
+		const bool localMaze = LostArk::Shared::KOUKU_HUD_MODE::MAZE ==
+			CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode;
+		const bool running = LostArk::Shared::CARD_MAZE_ROLE::NONE !=
+			CCombatHUDViewModel::Get().Get_KoukuGimmick().eCardMazeRole;
+		bool boxAlive = false;
+		if (localMaze || running)
+		{
+			m_Replication.Collect_KoukuMazeTargets(m_CardMazeTargetScratch);
+			boxAlive = std::any_of(m_CardMazeTargetScratch.begin(), m_CardMazeTargetScratch.end(),
+				[](const KOUKU_MAZE_TARGET_VIEW& target)
+				{ return target.archetypeId == CARD_MAZE_CLOWN_BOX_ARCHETYPE_ID; });
+		}
+		if (m_bCardMazeClownBoxAlive && !boxAlive) m_bCardMazeClownBoxDefeated = true;
+		if (boxAlive || (!localMaze && !running)) m_bCardMazeClownBoxDefeated = false;
+		m_bCardMazeClownBoxAlive = boxAlive;
+		const bool showTelescope = running || (localMaze && m_bCardMazeClownBoxDefeated);
+		if (showTelescope != m_bCardMazeTelescopeShown)
+		{
+			// One attempt per change: a missing row or rejected state is logged, not retried per frame.
+			m_bCardMazeTelescopeShown = showTelescope;
+			if (m_DeployRuntime.Find(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID) &&
+				!m_DeployRuntime.Set_State(KAKULSAYDON_CARD_MAZE_TELESCOPE_PLACEMENT_ID,
+					showTelescope ? DEPLOY_PROP_STATE::INTACT : DEPLOY_PROP_STATE::DESPAWNED))
+				OutputDebugStringA(("[CardMaze][Telescope] " + m_DeployRuntime.Get_Status() + "\n").c_str());
+		}
+	}
 	const auto tick = m_Replication.Get_LastServerTick();
 	if (m_iCardMazeLastSnapshotTick != tick)
 	{ m_iCardMazeLastSnapshotTick = tick; m_fCardMazeSnapshotSeconds = 0.f; }
@@ -3543,8 +3581,12 @@ bool_t Client::CLevel_KakulSaydonArena::Load_EntranceTriggerMarkers()
 		OutputDebugStringA(("[KoukuEntranceMarker] " + status + "\n").c_str());
 		return false;
 	}
-	static constexpr std::array<std::string_view, 5> triggerIds = {
-		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2" };
+	static constexpr std::array<std::string_view, 23> triggerIds = {
+		"jump.1", "jump.2", "jump.3", "paper.1", "paper.2",
+		"Mario1_Trigger_1", "Mario1_Trigger_3", "Mario1_Trigger_5", "Mario2_Trigger_2", "Mario2_Trigger_4",
+		"Mario2_Trigger_7", "Mario3_Trigger_4", "Mario3_Trigger_5", "Mario3_Trigger_6", "Mario3_Trigger_8",
+		"Mario3_Trigger_10", "Mario3_Trigger_12", "Mario4_Tigger_2", "Mario4_Tigger_3", "Mario4_Tigger_5",
+		"Mario4_Tigger_6", "Mario4_Tigger_7", "Mario4_Tigger_13" };
 	std::vector<ENTRANCE_TRIGGER_MARKER> staged;
 	for (const std::string_view id : triggerIds)
 	{

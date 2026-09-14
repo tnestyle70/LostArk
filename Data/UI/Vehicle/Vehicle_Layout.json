@@ -1,0 +1,1498 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "VH_WinBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 853.3333,
+        "y": 124.0,
+        "width": 384.0,
+        "height": 312.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_WindowBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_TopDeco",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 914.9333,
+        "y": 156.0,
+        "width": 260.8,
+        "height": 14.4
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_TopDeco.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Close",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1212.5333,
+        "y": 132.0,
+        "width": 15.2,
+        "height": 12.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Close_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Bg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 172.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_RowBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Over",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 172.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Over.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Selected",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 172.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Selected.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Equip",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 172.8,
+        "width": 130.4,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_EquipRibbon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 895.7333,
+        "y": 179.2,
+        "width": 35.2,
+        "height": 35.2
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Icons/vehicle_6705.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Slot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 893.3333,
+        "y": 176.8,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_SlotBorder.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row0_Star",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 867.7333,
+        "y": 184.8,
+        "width": 19.2,
+        "height": 17.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Star_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Bg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 220.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_RowBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Over",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 220.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Over.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Selected",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 220.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Selected.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Equip",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 220.8,
+        "width": 130.4,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_EquipRibbon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 895.7333,
+        "y": 227.2,
+        "width": 35.2,
+        "height": 35.2
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Icons/vehicle_7104.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Slot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 893.3333,
+        "y": 224.8,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_SlotBorder.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row1_Star",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 867.7333,
+        "y": 232.8,
+        "width": 19.2,
+        "height": 17.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Star_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Bg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 268.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_RowBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Over",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 268.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Over.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Selected",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 268.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Selected.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Equip",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 268.8,
+        "width": 130.4,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_EquipRibbon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 895.7333,
+        "y": 275.2,
+        "width": 35.2,
+        "height": 35.2
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Icons/vehicle_9370.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Slot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 893.3333,
+        "y": 272.8,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_SlotBorder.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row2_Star",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 867.7333,
+        "y": 280.8,
+        "width": 19.2,
+        "height": 17.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Star_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Bg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 316.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_RowBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Over",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 316.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Over.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Selected",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 316.0,
+        "width": 361.6,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Row_Selected.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Equip",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.5333,
+        "y": 316.8,
+        "width": 130.4,
+        "height": 48.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_EquipRibbon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 895.7333,
+        "y": 323.2,
+        "width": 35.2,
+        "height": 35.2
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Icons/vehicle_7209.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Slot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 893.3333,
+        "y": 320.8,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_SlotBorder.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_Row3_Star",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 867.7333,
+        "y": 328.8,
+        "width": 19.2,
+        "height": 17.6
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Star_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_MountBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1060.5333,
+        "y": 396.0,
+        "width": 82.4,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Btn_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "VH_CloseBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1145.3333,
+        "y": 396.0,
+        "width": 82.4,
+        "height": 28.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Vehicle/Vehicle_Btn_Normal.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    }
+  ]
+}
