@@ -50,6 +50,9 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
+	// A Level placement may submit once after its final camera sample.
+	void Use_ExplicitRenderSubmission() { m_bExplicitRenderSubmission = true; }
+	HRESULT Submit_RenderGroups();
 	virtual HRESULT Render() override;
 	HRESULT Render_NonBlendModelCues();
 	HRESULT Render_WorldMarks();
@@ -281,6 +284,7 @@ private:
 	HRESULT m_hRenderFailure = S_OK;
 	bool_t m_bPlaying = true;
 	bool_t m_bVisible = true;
+	bool_t m_bExplicitRenderSubmission = false;
 	bool_t m_bNonBlendModelCuePassPending = false;
 	bool_t m_bWorldMarkPassPending = false;
 	uint64_t m_iRenderSubmissionSerial = 0u;

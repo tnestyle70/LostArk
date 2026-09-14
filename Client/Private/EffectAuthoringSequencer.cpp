@@ -504,6 +504,14 @@ void CEffectAuthoringSequencer::Render_PreviewPlacementControls()
 {
     ImGui::PushID("SceneEffectPlacement");
     ImGui::SeparatorText("Play All / Append Anchor");
+    if (m_KoukuEffectPreview && m_KoukuEffectPreview->model &&
+        !m_KoukuEffectPreview->worldContextPatternId.empty())
+    {
+        const auto& preview = *m_KoukuEffectPreview;
+        ImGui::TextWrapped("Model props: %s / %zu objects", preview.worldContextPatternId.c_str(), preview.model->Props().size());
+        if (preview.worldOccurrenceId.empty())
+            ImGui::TextWrapped("Effect follows its internal bones. Tune Left/Right separately in Current Effect > Group by anchor > Group Center, then Save Changes.");
+    }
     int mode = m_ScenePreviewWorldRoot ? 1 : 0;
     if (ImGui::Combo("Placement", &mode, "Player at Play\0World (fixed)\0"))
     {
@@ -609,17 +617,21 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     const std::optional<std::uint32_t> previewDurationMs, const EFFECT_DOCUMENT_DESC* sourceDocument)
 {
     m_PendingKoukuEffectPreview.reset();
-    const bool useProps = m_UseKouku && m_PreviewSavedHandProps && assetId.starts_with("effect.kouku.");
-    const std::string worldContext = useProps ? m_ExplicitKoukuPatternId : std::string{};
-    const std::string worldOccurrence = useProps ? m_PreviewWorldOccurrenceId : std::string{};
     const bool sourceModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
+    const bool useProps = m_UseKouku && m_PreviewSavedHandProps && assetId.starts_with("effect.kouku.");
+    std::string worldContext = useProps ? m_ExplicitKoukuPatternId : std::string{};
+    // Internal bone attachments retain the actor root when switching from a
+    // neutral WORLD preview; its previously selected gun is not their parent.
+    const std::string worldOccurrence = useProps && !sourceModel ? m_PreviewWorldOccurrenceId : std::string{};
     if (useProps && worldContext.empty())
     { m_Status = "Select one saved Kouku Pattern for the prop reference, then Play All or Play Group."; return false; }
-    if (!worldOccurrence.empty() && (sourceModel || m_PreviewPropPatternId != worldContext))
-    { m_Status = sourceModel ? "This Effect already follows source bones. Choose Source model / internal bones, or open the neutral WORLD variant." :
-        "Object anchors belong to another Pattern. Load its saved Object anchors first."; return false; }
+    if (!worldOccurrence.empty() && m_PreviewPropPatternId != worldContext)
+    { m_Status = "Object anchors belong to another Pattern. Load its saved Object anchors first."; return false; }
     if (useProps && !sourceModel && worldOccurrence.empty())
     { m_Status = "For this neutral WORLD Effect, load saved Object anchors and choose the left or right gun."; return false; }
+    if (!useProps && sourceDocument && sourceDocument->SourceModelPreview &&
+        !CEffectCompositionModelPreview::Resolve_SourcePropPattern(*sourceDocument, worldContext, m_Status))
+        return false;
     const bool reuseTarget = reusePlayerAnchor && m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == assetId &&
         m_KoukuEffectPreview->placementRevision == m_PreviewPlacementRevision &&
         m_KoukuEffectPreview->worldContextPatternId == worldContext &&
@@ -1787,10 +1799,11 @@ void CEffectAuthoringSequencer::Render_ModelView()
     { Stop(); m_UseKouku = source == 1; m_AnimationRows.clear(); m_CustomAnimation = false; m_ClockMs = 0; m_Dirty = true; }
     if (m_UseKouku)
     {
-        ImGui::TextWrapped("Play All uses the Effect's saved source boss. Shared Effects without one use the single boss pattern selected here.");
+        ImGui::TextWrapped("Source-attached Effects use their saved boss and animation. Play All automatically includes props from their unique linked Pattern; internal left/right bone groups stay independent.");
         if (ImGui::BeginChild("KoukuPatternList", {0.f, 220.f}, ImGuiChildFlags_Borders)) Draw_KoukuInventory();
         ImGui::EndChild();
-        ImGui::Checkbox("Show saved hand props (Play All / Play Group)", &m_PreviewSavedHandProps);
+        ImGui::Checkbox("Use selected Pattern props (Play All / Play Group)", &m_PreviewSavedHandProps);
+        ImGui::TextWrapped("Enable this to override automatic source props, or to select a gun for a neutral WORLD Effect.");
         if (m_PreviewSavedHandProps)
         {
             ImGui::TextWrapped("Prop Pattern: %s", m_ExplicitKoukuPatternId.empty() ?
@@ -1816,7 +1829,7 @@ void CEffectAuthoringSequencer::Render_ModelView()
                 [&](const auto& prop) { return prop.occurrenceId == m_PreviewWorldOccurrenceId; });
             const std::string propLabel = selectedProp == m_PreviewPropChoices.end() ? "Source model / internal bones" :
                 selectedProp->displayName + " / " + selectedProp->bone + " [" + selectedProp->occurrenceId + "]";
-            if (ImGui::BeginCombo("Effect preview anchor", propLabel.c_str()))
+            if (ImGui::BeginCombo("Neutral Effect preview anchor", propLabel.c_str()))
             {
                 if (ImGui::Selectable("Source model / internal bones", m_PreviewWorldOccurrenceId.empty())) m_PreviewWorldOccurrenceId.clear();
                 if (m_PreviewPropPatternId == m_ExplicitKoukuPatternId)

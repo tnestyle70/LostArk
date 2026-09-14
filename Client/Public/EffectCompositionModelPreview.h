@@ -41,6 +41,8 @@ public:
     bool Reload();
     bool Select_SourceEffect(const EFFECT_DOCUMENT_DESC& effect,
         const std::string& worldContextPatternId = {});
+    static bool Resolve_SourcePropPattern(const EFFECT_DOCUMENT_DESC& effect,
+        std::string& patternId, std::string& status);
     bool Select_WorldEffectContext(const std::string& patternId);
     bool Resolve_WorldPropPivot(const std::string& occurrenceId, float4x4_t& out) const;
     static bool Stage_ActorWorldProps(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
