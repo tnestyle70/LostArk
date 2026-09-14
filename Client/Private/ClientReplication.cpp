@@ -3847,7 +3847,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	}
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,
-		snapshot.DamageEvents);
+		snapshot.DamageEvents,
+		CNetworkManager::Get().Get_LocalPlayerId());
 	CCombatHUDViewModel::Get().Apply_EstherGauge(
 		snapshot.iEstherGauge,
 		snapshot.iEstherGaugeMaximum);
