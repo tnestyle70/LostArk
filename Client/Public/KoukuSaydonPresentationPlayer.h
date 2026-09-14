@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "CardMazeVisualPolicy.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "KoukuSaydonPreviewRootMotion.h"
 #include "Network/PacketMessages.h"
@@ -204,7 +205,13 @@ private:
     bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
-    struct CARD final { std::string assetId; std::uint32_t handle = 0; };
+    struct CARD final
+    {
+        std::string assetId;
+        std::uint32_t handle = 0;
+        // Used only by the eight cardmaze mark/exit groups.
+        CARD_MAZE_MARK_RETRY mazeRetry;
+    };
     void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
     void Update_FearPresentation(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);

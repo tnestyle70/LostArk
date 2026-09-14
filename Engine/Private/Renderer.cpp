@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "BlendSortKey.h"
 #pragma push_macro("new")
 #undef new
 #include "DirectXTK/DDSTextureLoader.h"
@@ -1182,24 +1183,35 @@ HRESULT CRenderer::Render_Blend()
 	   first. The queue itself is left alone; only the draw order is sorted, so
 	   nothing else that walks the render group sees a different sequence.
 
+	   An object may request an earlier slot through Get_BlendSortPriority():
+	   lower priorities draw first and equal priorities keep far-to-near order.
+	   Without a camera every distance ties, so only the priority reorders and
+	   stable_sort keeps the submission order.
+
 	   The scratch buffer is a function-local static because rendering runs on
 	   one thread and the alternative is a heap allocation every frame. */
-	static vector<pair<f32_t, CGameObject*>> SortedBlendObjects;
-	SortedBlendObjects.clear();
-	const float4_t* pCamPosition = CGameInstance::Get().Get_CamPosition();
-	if (nullptr != pCamPosition)
+	struct BLEND_ENTRY final
 	{
-		SortedBlendObjects.reserve(
-			m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size());
-		const vector_t vCamera = XMLoadFloat4(pCamPosition);
-		for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size(); ++renderIndex)
+		Engine::BLEND_SORT_KEY key;
+		CGameObject* pObject;
+	};
+	static vector<BLEND_ENTRY> SortedBlendObjects;
+	SortedBlendObjects.clear();
+	auto& BlendObjects = m_RenderObjects[ETOUI(RENDERGROUP::BLEND)];
+	SortedBlendObjects.reserve(BlendObjects.size());
+	const float4_t* pCamPosition = CGameInstance::Get().Get_CamPosition();
+	const vector_t vCamera =
+		nullptr != pCamPosition ? XMLoadFloat4(pCamPosition) : XMVectorZero();
+	for (size_t renderIndex = 0; renderIndex < BlendObjects.size(); ++renderIndex)
+	{
+		CGameObject* const pRenderObject = BlendObjects[renderIndex].get();
+		if (nullptr == pRenderObject)
+			continue;
+		/* No transform is not an error here: the object still has to draw,
+		   it just cannot be placed in the ordering, so it goes first. */
+		f32_t fDistanceSquared = FLT_MAX;
+		if (nullptr != pCamPosition)
 		{
-			CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::BLEND)][renderIndex].get();
-			if (nullptr == pRenderObject)
-				continue;
-			/* No transform is not an error here: the object still has to draw,
-			   it just cannot be placed in the ordering, so it goes first. */
-			f32_t fDistanceSquared = FLT_MAX;
 			const shared_ptr<CTransform> pTransform =
 				dynamic_pointer_cast<CTransform>(
 					pRenderObject->Get_Component(g_strTransformComTag));
@@ -1212,53 +1224,30 @@ HRESULT CRenderer::Render_Blend()
 				if (!std::isfinite(fDistanceSquared))
 					fDistanceSquared = FLT_MAX;
 			}
-			SortedBlendObjects.emplace_back(
-				fDistanceSquared, pRenderObject);
 		}
-		std::stable_sort(
-			SortedBlendObjects.begin(), SortedBlendObjects.end(),
-			[](const pair<f32_t, CGameObject*>& lhs,
-				const pair<f32_t, CGameObject*>& rhs)
-			{
-				return lhs.first > rhs.first;
-			});
-		for (const auto& [fDistanceSquared, pRenderObject] :
-			SortedBlendObjects)
-		{
-			UNREFERENCED_PARAMETER(fDistanceSquared);
-			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::BLEND);
-			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
-			{
-				WriteRendererFailure(
-					"Render_Blend_Object",
-					hResult,
-					typeid(*pRenderObject).name());
-				hFirstFailure = hResult;
-			}
-		}
-		m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].clear();
-		return hFirstFailure;
+		SortedBlendObjects.push_back(
+			{ { pRenderObject->Get_BlendSortPriority(), fDistanceSquared }, pRenderObject });
 	}
-
-	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].size(); ++renderIndex)
+	std::stable_sort(
+		SortedBlendObjects.begin(), SortedBlendObjects.end(),
+		[](const BLEND_ENTRY& lhs, const BLEND_ENTRY& rhs)
+		{
+			return Engine::BlendSortBefore(lhs.key, rhs.key);
+		});
+	for (const BLEND_ENTRY& Entry : SortedBlendObjects)
 	{
-		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::BLEND)][renderIndex].get();
-		if (nullptr != pRenderObject)
+		const HRESULT hResult = Entry.pObject->Render_Group(RENDERGROUP::BLEND);
+		if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
 		{
-			const HRESULT hResult = pRenderObject->Render_Group(RENDERGROUP::BLEND);
-			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
-			{
-				WriteRendererFailure(
-					"Render_Blend_Object",
-					hResult,
-					typeid(*pRenderObject).name());
-				hFirstFailure = hResult;
-			}
+			WriteRendererFailure(
+				"Render_Blend_Object",
+				hResult,
+				typeid(*Entry.pObject).name());
+			hFirstFailure = hResult;
 		}
 	}
-
-	m_RenderObjects[ETOUI(RENDERGROUP::BLEND)].clear();
-
+	BlendObjects.clear();
+	SortedBlendObjects.clear();
 	return hFirstFailure;
 }
 
