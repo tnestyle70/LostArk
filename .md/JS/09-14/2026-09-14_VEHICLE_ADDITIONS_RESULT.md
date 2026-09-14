@@ -73,6 +73,23 @@
 - 사용자 관찰: 모코보드 "발판위에 잘 올라갔어", 별빛 최종 "잘 나와".
 - 백업: `out/VehicleAdditions20260913/SereneStarlightBlessing.v1_0.wmodel`, `RainbowMokoboard.pmshb-rig.wmodel`.
 
+## 탈것 2종 추가 (09-14 오후)
+
+| 항목 | 아우프슈텐-R | 바다 유니콘 튜브 |
+|---|---|---|
+| EFTable_Vehicle | 8302 `MN_PMSHE_00-2`, RidingMode 13 `HEAVYWALKER_BM9` | 8906 `MN_PMSUT_00-6`, RidingMode 17 `TUBE` |
+| 재질 | `mn_pmshe_00-2_mi` → 기존 program 85(Base/Light PS ID 일치) | `mn_pmsut_00-6_mi` → 기존 program 24 |
+| 모델 | self-rigged, 본 63, 클립 9, validate OK | self-rigged, 본 12, 클립 14, validate OK |
+| 탑승자 | `ride_heavywalker_bm9_idle/run_normal_1` (차원술사 `…_bm9_idle` / `…_bm9_run_`로 잘림) | `ride_tube_idle/run_normal_1` |
+
+- RidingMode 번호→이름은 `NU1V7NCQ4YAE9ZPJVNOQS.u`의 `ActionConditionRidingModeOutput` enum을 직접 읽어 확정했다(기존 1/3/5/46과 일치).
+- program 24/85는 `v4.zw`를 쓰지 않아 UV1 보강 불필요.
+- 탑승자 애니셋 8개 `compare_attach.py` 전부 OK. 작업 스크립트 `out/VehicleAdditions20260914b/cook_riders.ps1`.
+- `VehicleCatalog.json` 6종, `VehicleProfiles.json` 6행, `Publish-VehicleProfiles.ps1 -Mode Publish` 성공. C++·셰이더 변경 없음.
+- 창술사 튜브 idle은 원본 약 28.7fps를 30fps로 구웠다.
+- 사용자 관찰: "다 잘 나와".
+- Drive 전달: `Character/Vehicle/{Aufstehen,SeaUnicornTube}/`, 4직업 `AnimSets/<Class>_Ride{HeavywalkerBm9,Tube}AnimSet.wmodel`.
+
 ## 다른 PC 준비
 
 - Server PC는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server`(또는 `Publish-VehicleProfiles.ps1 -Mode Publish`) 후 재시작한다.
