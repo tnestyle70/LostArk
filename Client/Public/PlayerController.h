@@ -561,8 +561,15 @@ namespace Client
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
 		/* Consumes riding verdicts and turns an H press into a mount or dismount
-		intent. The first catalog vehicle with a rider pose for the class mounts. */
+		intent, and an R press while mounted into a dismount. The first catalog
+		vehicle with a rider pose for the class mounts. */
 		void Update_VehicleRiding(bool_t inputAllowed, bool_t useRawKeyboard);
+		/* While mounted, Space/Q/W/E submit the ridden vehicle's skill on that slot
+		as an ordinary skill intent; the Server decides whether it starts. */
+		void Poll_VehicleSkillSlots(
+			bool_t isKeyboardBlocked,
+			bool_t useRawKeyboard,
+			const shared_ptr<CCharacter>& character);
 		/* True on the frame G goes down. The controller does not know whether
 		   an offer is standing -- Update checks that before submitting. */
 		bool_t Poll_InteractKey(
@@ -590,6 +597,8 @@ namespace Client
 		bool_t m_wasInteractKeyDown = false;
 		inline static std::uint32_t s_iPreferredVehicleId = 0u;
 		bool_t m_wasVehicleKeyDown = false;
+		bool_t m_wasVehicleDismountKeyDown = false;
+		std::array<bool_t, 4> m_wasVehicleSkillKeyDown{};
 		std::uint32_t m_nextVehicleRidingSequence = 1u;
 		std::uint32_t m_pendingVehicleRidingSequence = 0u;
 		std::chrono::steady_clock::time_point m_vehicleRidingSentAt{};

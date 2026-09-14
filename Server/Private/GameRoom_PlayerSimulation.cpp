@@ -748,6 +748,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.fActionElapsedSeconds = 0.f;
 			player.PendingCommand.Clear();
 		}
+		Update_VehicleSkill(player, fixedDeltaSeconds);
 		m_PlayerSkillSystem.Update(
 			player,
 			m_WorldEntities,

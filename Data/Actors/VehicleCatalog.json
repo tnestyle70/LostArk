@@ -1,6 +1,6 @@
 {
   "schema": "lostark.vehicle-catalog",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "vehicles": [
     {
       "vehicleId": 6705,
@@ -15,6 +15,52 @@
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_horse_idle_normal_1", "runClip": "wgl_ride_horse_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_horse_idle_normal_1", "runClip": "sdm_ride_horse_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_horse_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_horse_run_normal_1" }
+      ],
+      "skills": [
+        {
+          "skillId": 96030,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_dash"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_dash"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_dash"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_dash"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_dash"] }
+          ]
+        },
+        {
+          "skillId": 96000,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_victorypose"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_victorypose"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_victorypose"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_victorypose"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_victorypose"] }
+          ]
+        },
+        {
+          "skillId": 96010,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_relaxation"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_relaxation"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_relaxation"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_relaxation"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_relaxation"] }
+          ]
+        },
+        {
+          "skillId": 96020,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_backkick"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_backkick"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_backkick"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_backkick"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_backkick"] }
+          ]
+        }
       ],
       "modelMaterialOverrides": [
         {
@@ -184,146 +230,6 @@
       "runtimeStatus": "supported"
     },
     {
-      "vehicleId": 7104,
-      "archetypeId": "VEHICLE_RAPTOR_SILVER_BATTLE",
-      "modelAssetId": "Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel",
-      "modelPreScale": 0.0001,
-      "seatBone": "b_cockpit",
-      "vehicleIdleClip": "npc_idle_normal_1",
-      "vehicleRunClip": "npc_run_normal_1",
-      "riders": [
-        { "characterClass": "LANCE_MASTER", "idleClip": "flm_ride_raptor_idle_normal_1", "runClip": "flm_ride_raptor_run_normal_1" },
-        { "characterClass": "WARLORD", "idleClip": "wgl_ride_raptor_idle_normal_1", "runClip": "wgl_ride_raptor_run_normal_1" },
-        { "characterClass": "ARTIST", "idleClip": "sdm_ride_raptor_idle_normal_1", "runClip": "sdm_ride_raptor_run_normal_1" },
-        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_raptor_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_raptor_run_normal_1" }
-      ],
-      "modelMaterialOverrides": [
-        {
-          "modelAssetId": "Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel",
-          "materialName": "mn_isrx_02_mi",
-          "sourceMaterial": "mn_isrx_02.mat.mn_isrx_02-4_mi",
-          "family": "source.character.monster-d9d6c02905c3.v1",
-          "parameters": {
-            "1.use_dyeing_sp": [0.0, 0.0, 0.0, 0.0],
-            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
-            "beckmannspecular_constant_max": [3.3499999046325684, 3.3499999046325684, 3.3499999046325684, 3.3499999046325684],
-            "buffcolor": [0.0, 0.0, 0.0, 1.0],
-            "constantoutline": [0.0, 0.0, 0.0, 0.0],
-            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
-            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
-            "diffusecolor": [1.0, 1.0, 1.0, 1.0],
-            "diffusecolor_a": [1.874220848083496, 5.48394250869751, 2.5401103496551514, 1.0],
-            "diffusecolor_b": [1.4126918315887451, 2.011061906814575, 2.9669981002807617, 1.0],
-            "diffusecolor_c": [1.0, 1.0, 1.0, 1.0],
-            "emissive_color": [0.04892421141266823, 0.019424619153141975, 0.27623292803764343, 1.0],
-            "emissive_flicker_speed": [0.6000000238418579, 0.6000000238418579, 0.6000000238418579, 0.6000000238418579],
-            "emissive_intensity": [1.0, 1.0, 1.0, 1.0],
-            "emissive_intensitymin": [0.10000000149011612, 0.10000000149011612, 0.10000000149011612, 0.10000000149011612],
-            "fresnel_radius": [0.949999988079071, 0.949999988079071, 0.949999988079071, 0.949999988079071],
-            "fresnel_rimlightintensity": [0.5, 0.5, 0.5, 0.5],
-            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
-            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
-            "hit_color": [0.0, 0.0, 0.0, 0.0],
-            "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0],
-            "ibl_color_top": [1.0, 1.0, 1.0, 1.0],
-            "ibl_exposer": [5.0, 5.0, 5.0, 5.0],
-            "ibl_intensity": [1.0, 1.0, 1.0, 1.0],
-            "ibl_normal_smooth": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
-            "ibl_reflect_lodbias": [80.0, 80.0, 80.0, 80.0],
-            "mask_variation_visible": [1.0, 1.0, 1.0, 1.0],
-            "metalicness_power": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
-            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
-            "orennayar": [1.0, 1.0, 1.0, 1.0],
-            "orennayar_brightness": [1.0, 1.0, 1.0, 1.0],
-            "pbr_specular_intensity": [10.0, 10.0, 10.0, 10.0],
-            "pbr_specular_power": [6.0, 6.0, 6.0, 6.0],
-            "roughness_power": [3.0, 3.0, 3.0, 3.0],
-            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
-            "shadowfactor": [0.5, 0.5, 0.5, 0.5],
-            "specular_power_limit": [0.9200000166893005, 0.9200000166893005, 0.9200000166893005, 0.9200000166893005],
-            "state": [0.0, 0.0, 0.0, 0.0],
-            "state_noise": [1.0, 0.0, 0.0, 1.0],
-            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
-            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
-            "transcolor": [0.0, 0.0, 0.0, 1.0],
-            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
-          },
-          "textures": [
-            { "expressionIndex": 0, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_n.tga", "colorSpace": "linear" },
-            { "expressionIndex": 1, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_s_cm.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 2, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_d.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 3, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_s.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 5, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_em.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 7, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_m.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 8, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
-          ]
-        },
-        {
-          "modelAssetId": "Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel",
-          "materialName": "mn_isrx_00_mi",
-          "sourceMaterial": "mn_isrx_02.mat.mn_isrx_00-4_mi",
-          "family": "source.character.monster-be5bc0ded311.v1",
-          "parameters": {
-            "1.use_dyeing_sp": [0.0, 0.0, 0.0, 0.0],
-            "beckmannspecular_constant_max": [3.3499999046325684, 3.3499999046325684, 3.3499999046325684, 3.3499999046325684],
-            "buffcolor": [0.0, 0.0, 0.0, 1.0],
-            "constantoutline": [0.0, 0.0, 0.0, 0.0],
-            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
-            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
-            "diffusecolor": [1.308823585510254, 1.308823585510254, 1.308823585510254, 1.0],
-            "diffusecolor_a": [2.066021680831909, 2.066021680831909, 2.066021680831909, 1.0],
-            "diffusecolor_b": [1.2965281009674072, 1.3185185194015503, 1.305368423461914, 1.0],
-            "diffusecolor_c": [1.4471545219421387, 0.7946568727493286, 0.3658536672592163, 1.0],
-            "fresnel_radius": [0.949999988079071, 0.949999988079071, 0.949999988079071, 0.949999988079071],
-            "fresnel_rimlightintensity": [0.5, 0.5, 0.5, 0.5],
-            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
-            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
-            "hit_color": [0.0, 0.0, 0.0, 0.0],
-            "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0],
-            "ibl_color_top": [1.0, 1.0, 1.0, 1.0],
-            "ibl_exposer": [5.0, 5.0, 5.0, 5.0],
-            "ibl_intensity": [1.0, 1.0, 1.0, 1.0],
-            "ibl_normal_smooth": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
-            "ibl_reflect_lodbias": [80.0, 80.0, 80.0, 80.0],
-            "mask_variation_visible": [1.0, 1.0, 0.0, 0.0],
-            "metalicness_power": [0.5, 0.5, 0.5, 0.5],
-            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
-            "orennayar": [1.0, 1.0, 1.0, 1.0],
-            "orennayar_brightness": [1.0, 1.0, 1.0, 1.0],
-            "pbr_specular_intensity": [10.0, 10.0, 10.0, 10.0],
-            "pbr_specular_power": [6.0, 6.0, 6.0, 6.0],
-            "roughness_power": [4.0, 4.0, 4.0, 4.0],
-            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
-            "shadowfactor": [0.5, 0.5, 0.5, 0.5],
-            "specular_power_limit": [0.9200000166893005, 0.9200000166893005, 0.9200000166893005, 0.9200000166893005],
-            "state": [0.0, 0.0, 0.0, 0.0],
-            "state_noise": [1.0, 0.0, 0.0, 1.0],
-            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
-            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
-            "transcolor": [0.0, 0.0, 0.0, 1.0],
-            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
-          },
-          "textures": [
-            { "expressionIndex": 0, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_n.tga", "colorSpace": "linear" },
-            { "expressionIndex": 1, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_cm.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 2, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_d.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 3, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_s.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 5, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 6, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_m.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 7, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
-          ]
-        }
-      ],
-      "runtimeStatus": "supported"
-    },
-    {
       "vehicleId": 9370,
       "archetypeId": "VEHICLE_STARLIGHT_BLESSING_SERENE",
       "modelAssetId": "Character/Vehicle/SereneStarlightBlessing/SereneStarlightBlessing.wmodel",
@@ -336,6 +242,52 @@
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_swing_idle_normal_1", "runClip": "wgl_ride_swing_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_swing_idle_normal_1", "runClip": "sdm_ride_swing_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_swing_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_swing_run_normal_1" }
+      ],
+      "skills": [
+        {
+          "skillId": 98380,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_dash"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_dash"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_dash"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_dash"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_dash"] }
+          ]
+        },
+        {
+          "skillId": 98381,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_nightmoon"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_nightmoon"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_nightmoon"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_nightmoon"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_nightmoon"] }
+          ]
+        },
+        {
+          "skillId": 98382,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_swing_01", "npc_sk_swing_02", "npc_sk_swing_03"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_swing_01", "flm_ride_swing_sk_swing_02", "flm_ride_swing_sk_swing_03"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_swing_01", "wgl_ride_swing_sk_swing_02", "wgl_ride_swing_sk_swing_03"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_swing_01", "sdm_ride_swing_sk_swing_02", "sdm_ride_swing_sk_swing_03"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_swing_01", "pc_sp_m_00_sk_ride_swing_sk_swing_02", "pc_sp_m_00_sk_ride_swing_sk_swing_03"] }
+          ]
+        },
+        {
+          "skillId": 98383,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_night"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_night"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_night"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_night"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_night"] }
+          ]
+        }
       ],
       "modelMaterialOverrides": [
         {
@@ -453,6 +405,19 @@
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_hoverboard_idle_normal_1", "runClip": "sdm_ride_hoverboard_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_hoverboard_idle_norm", "runClip": "pc_sp_m_00_sk_ride_hoverboard_run_norma" }
       ],
+      "skills": [
+        {
+          "skillId": 95722,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_feelsgoodspeeding"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_hoverboard_sk_feelsgoodspeedin"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_hoverboard_sk_feelsgoodspeedin"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_hoverboard_sk_feelsgoodspeedin"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_hoverboard_sk_feelsg"] }
+          ]
+        }
+      ],
       "modelMaterialOverrides": [
         {
           "modelAssetId": "Character/Vehicle/RainbowMokoboard/RainbowMokoboard.wmodel",
@@ -532,6 +497,52 @@
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_heavywalker_bm9_idle_normal_1", "runClip": "wgl_ride_heavywalker_bm9_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_heavywalker_bm9_idle_normal_1", "runClip": "sdm_ride_heavywalker_bm9_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_heavywalker_bm9_idle", "runClip": "pc_sp_m_00_sk_ride_heavywalker_bm9_run_" }
+      ],
+      "skills": [
+        {
+          "skillId": 97300,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_powershoulder"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_powershould"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_powershould"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_powershould"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_p"] }
+          ]
+        },
+        {
+          "skillId": 97310,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_hifriend"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_hifriend"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_hifriend"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_hifriend"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_h"] }
+          ]
+        },
+        {
+          "skillId": 97320,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_shyness"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_shyness"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_shyness"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_shyness"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_s"] }
+          ]
+        },
+        {
+          "skillId": 97330,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_cheerup"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_cheerup"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_cheerup"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_cheerup"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_c"] }
+          ]
+        }
       ],
       "modelMaterialOverrides": [
         {
@@ -613,6 +624,52 @@
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_tube_idle_normal_1", "runClip": "sdm_ride_tube_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_tube_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_tube_run_normal_1" }
       ],
+      "skills": [
+        {
+          "skillId": 97730,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_summerseason"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_summerseason"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_summerseason"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_summerseason"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_summerseason"] }
+          ]
+        },
+        {
+          "skillId": 97731,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_tubespin"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_tubespin"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_tubespin"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_tubespin"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_tubespin"] }
+          ]
+        },
+        {
+          "skillId": 97732,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_waterjump_01", "npc_sk_waterjump_02", "npc_sk_waterjump_03"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_waterjump_01", "flm_ride_tube_sk_waterjump_02", "flm_ride_tube_sk_waterjump_03"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_waterjump_01", "wgl_ride_tube_sk_waterjump_02", "wgl_ride_tube_sk_waterjump_03"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_waterjump_01", "sdm_ride_tube_sk_waterjump_02", "sdm_ride_tube_sk_waterjump_03"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_waterjump_01", "pc_sp_m_00_sk_ride_tube_sk_waterjump_02", "pc_sp_m_00_sk_ride_tube_sk_waterjump_03"] }
+          ]
+        },
+        {
+          "skillId": 97733,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_waterfall_01", "npc_sk_waterfall_02-2"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_waterfall_01", "flm_ride_tube_sk_waterfall_02-2"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_waterfall_01", "wgl_ride_tube_sk_waterfall_02-2"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_waterfall_01", "sdm_ride_tube_sk_waterfall_02-2"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_waterfall_01", "pc_sp_m_00_sk_ride_tube_sk_waterfall_02"] }
+          ]
+        }
+      ],
       "modelMaterialOverrides": [
         {
           "modelAssetId": "Character/Vehicle/SeaUnicornTube/SeaUnicornTube.wmodel",
@@ -686,6 +743,52 @@
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_dragon_2_idle_normal_1", "runClip": "wgl_ride_dragon_2_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_dragon_2_idle_normal_1", "runClip": "sdm_ride_dragon_2_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_dragon_2_idle_normal", "runClip": "pc_sp_m_00_sk_ride_dragon_2_run_normal_" }
+      ],
+      "skills": [
+        {
+          "skillId": 98520,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_dash"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_dash"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_dash"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_dash"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_dash"] }
+          ]
+        },
+        {
+          "skillId": 98521,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_roar"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_roar"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_roar"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_roar"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_roar"] }
+          ]
+        },
+        {
+          "skillId": 98522,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_breath_01", "npc_sk_breath_02"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_breath_01", "flm_ride_dragon_2_sk_breath_02"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_breath_01", "wgl_ride_dragon_2_sk_breath_02"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_breath_01", "sdm_ride_dragon_2_sk_breath_02"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_breath_0", "pc_sp_m_00_sk_ride_dragon_2_sk_breath~1"] }
+          ]
+        },
+        {
+          "skillId": 98523,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_look"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_look"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_look"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_look"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_look"] }
+          ]
+        }
       ],
       "modelMaterialOverrides": [
         {

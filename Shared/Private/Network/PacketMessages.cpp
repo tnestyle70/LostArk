@@ -167,7 +167,8 @@ namespace
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
 			(LostArk::Shared::INVALID_VEHICLE_ID == snapshot.iVehicleId ||
 			 (snapshot.iCurrentHp != 0u &&
-			  LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
+			  (LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction ||
+			   LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == snapshot.eAction) &&
 			  LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL == snapshot.eMadnessForm &&
 			  !snapshot.isPatternBound && snapshot.iMarioStage == 0u)) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(snapshot.eMechanicCardSymbol) &&
@@ -268,7 +269,12 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == snapshot.eAction &&
 				snapshot.iSkillId < LostArk::Shared::KOUKU_HUD_SLOT_COUNT &&
 				0 != snapshot.iActionStartTick) ||
+			 (LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == snapshot.eAction &&
+				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
+				snapshot.iVehicleId != LostArk::Shared::INVALID_VEHICLE_ID &&
+				0 != snapshot.iActionStartTick) ||
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction &&

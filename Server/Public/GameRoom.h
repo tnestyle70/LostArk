@@ -407,6 +407,16 @@ namespace LostArk::Server
 		/* Dismounts every player the world, catalog or current state no longer
 		lets ride. Runs once per tick before the snapshot is committed. */
 		void Enforce_VehicleRidingState();
+		/* A skill press while mounted. Only a skill of the ridden vehicle starts,
+		from an idle mount, off cooldown and with a newer sequence; it faces the
+		player's current yaw. */
+		bool Try_StartVehicleSkill(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_USE_SKILL& command);
+		/* Advances a running vehicle skill one fixed tick: authored root motion is
+		clamped to walkable ground and collision, and the action ends at its length. */
+		void Update_VehicleSkill(SERVER_PLAYER& player, float fixedDeltaSeconds);
+		void End_VehicleSkill(SERVER_PLAYER& player);
 		/* One quick-slot press while this session's player shows an interaction
 		HUD. DANCE answers the open pose window; the other modes only record the
 		press until their skills own a Server judgement. */

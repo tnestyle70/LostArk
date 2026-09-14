@@ -127,6 +127,8 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
 	m_wasVehicleKeyDown = false;
+	m_wasVehicleDismountKeyDown = false;
+	m_wasVehicleSkillKeyDown.fill(false);
 	m_wasKeyDown.fill(false);
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
@@ -391,6 +393,10 @@ void Client::CPlayerController::Update(
 		character,
 		requestedSkillId,
 		releasedSkillId);
+	Poll_VehicleSkillSlots(
+		suppressKeyboard || !gameplayCommandsEnabled || !isMounted,
+		useRawKeyboard,
+		character);
 
 	if (LostArk::Shared::KOUKU_HUD_MODE::NONE != CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
 	{
@@ -792,18 +798,26 @@ void Client::CPlayerController::Update_VehicleRiding(
 		m_pendingVehicleRidingSequence = 0u;
 	}
 
-	const int8_t state = m_CaptureInputGate.Is_Blocked(DIK_H) ?
-		static_cast<int8_t>(0) :
-		(useRawKeyboard ?
-			CGameInstance::Get().Get_DIKeyStateRaw(DIK_H) :
-			CGameInstance::Get().Get_DIKeyState(DIK_H));
-	const bool_t isDown = 0 != (state & 0x80);
-	const bool_t pressed = inputAllowed && isDown && !m_wasVehicleKeyDown;
+	const auto readKey = [this, useRawKeyboard](const uint8_t keyCode)
+	{
+		const int8_t state = m_CaptureInputGate.Is_Blocked(keyCode) ?
+			static_cast<int8_t>(0) :
+			(useRawKeyboard ?
+				CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
+				CGameInstance::Get().Get_DIKeyState(keyCode));
+		return 0 != (state & 0x80);
+	};
+	const bool_t isDown = readKey(DIK_H);
+	const bool_t isDismountDown = readKey(DIK_R);
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t dismountPressed = inputAllowed && isDismountDown && !m_wasVehicleDismountKeyDown &&
+		INVALID_VEHICLE_ID != player.iVehicleId;
+	const bool_t pressed = (inputAllowed && isDown && !m_wasVehicleKeyDown) || dismountPressed;
 	m_wasVehicleKeyDown = isDown;
+	m_wasVehicleDismountKeyDown = isDismountDown;
 	if (!pressed || 0u != m_pendingVehicleRidingSequence || nullptr == m_pCommandSink)
 		return;
 
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const shared_ptr<CCharacter> character = m_pLocalCharacter.lock();
 	if (!player.isValid || player.isPreview || nullptr == character)
 		return;
@@ -835,6 +849,58 @@ void Client::CPlayerController::Update_VehicleRiding(
 	m_vehicleRidingSentAt = now;
 	if (0u == ++m_nextVehicleRidingSequence)
 		m_nextVehicleRidingSequence = 1u;
+}
+
+void Client::CPlayerController::Poll_VehicleSkillSlots(
+	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard,
+	const shared_ptr<CCharacter>& character)
+{
+	struct VEHICLE_SLOT_KEY
+	{
+		const char* pInputSlot;
+		uint8_t byKeyCode;
+	};
+	static constexpr VEHICLE_SLOT_KEY VehicleSlotKeys[] =
+	{
+		{ "SPACE", DIK_SPACE },
+		{ "Q", DIK_Q },
+		{ "W", DIK_W },
+		{ "E", DIK_E },
+	};
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const VEHICLE_ACTOR_ENTRY* vehicle = CActorCatalog::Find_Vehicle(player.iVehicleId);
+	bool_t submitted = false;
+	for (std::size_t index = 0u; index < std::size(VehicleSlotKeys); ++index)
+	{
+		const VEHICLE_SLOT_KEY& slot = VehicleSlotKeys[index];
+		const int8_t state = m_CaptureInputGate.Is_Blocked(slot.byKeyCode) ?
+			static_cast<int8_t>(0) :
+			(useRawKeyboard ?
+				CGameInstance::Get().Get_DIKeyStateRaw(slot.byKeyCode) :
+				CGameInstance::Get().Get_DIKeyState(slot.byKeyCode));
+		const bool_t isDown = 0 != (state & 0x80);
+		const bool_t pressed = isDown && !m_wasVehicleSkillKeyDown[index];
+		m_wasVehicleSkillKeyDown[index] = isDown;
+		if (isKeyboardBlocked || !pressed || submitted || nullptr == vehicle ||
+			nullptr == character || nullptr == m_pCommandSink)
+		{
+			continue;
+		}
+		const VEHICLE_SKILL_ENTRY* skill = vehicle->Find_SkillBySlot(slot.pInputSlot);
+		const shared_ptr<CTransform> transform = character->Get_Transform();
+		if (nullptr == skill || nullptr == transform)
+			continue;
+		const vector_t position = transform->Get_State(STATE::POSITION);
+		const vector_t look = XMVector3Normalize(transform->Get_State(STATE::LOOK));
+		submitted = m_pCommandSink->Request_UseSkill(
+			m_iNextActionSequence,
+			skill->skillId,
+			XMVectorGetX(position) + XMVectorGetX(look) * 5.f,
+			XMVectorGetZ(position) + XMVectorGetZ(look) * 5.f);
+		if (submitted && 0u == ++m_iNextActionSequence)
+			m_iNextActionSequence = 1u;
+	}
 }
 
 bool_t Client::CPlayerController::Poll_InteractKey(

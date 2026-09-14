@@ -4156,7 +4156,8 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		PLAYER_LOCOMOTION_STATE::MOVING;
 
 	character->Apply_LocalMoveSnapshot(LocalMoveSnapshot(player, serverTick),
-		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL);
+		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL ||
+		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL);
 	if (!character->Apply_NetworkState(
 		position,
 		player.fYawDegrees,

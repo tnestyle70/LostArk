@@ -105,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v82 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v84 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -325,7 +325,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 82의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 84의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
