@@ -381,3 +381,62 @@ F1 → Action Workbench → Composition Actions → Sequence에서 각 Pattern�
   - 수정 도구로 구운 결과가 교체 모델(`977F01E7…`)과 바이트가 같다. `git diff --check` 0.
   - 이 PC에서는 한글 경로 변환기 실패와 입력 폴더 `out/KoukuGate2Restore20260911` 부재로 그대로 실행되지 않는다(우회 코드 미반영).
   - 원본 백업: `cards_candidate/tool_fix_apply/backup/build_gate2_card_eruption.py`.
+
+## G12. Boss Pattern Tree에 컷신 전용 패턴 3개 추가 (2026-09-15, 적용, 화면 판정 전)
+
+- **사용자 요청:** Sequence의 `2관문_진입컷씬`·`2관문_클리어`·`빙고_최종엔딩씬`을 `세이튼_1관문연출`처럼 Boss 패턴으로 만든다.
+  - 카메라와 맵 애니메이션만 넣는다. 이름은 같게 하되 `2관문_클리어`만 `2관문클리어_3관문진입`으로 바꾼다.
+  - 3관문으로 날아가는 터널 이펙트는 이펙트 레인에 넣는다(팀장 확인 편의).
+- **변경:** `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` rev 707 → 708(SHA `4193D83B…` → `406B857F…`).
+  - `KAKULSAYDON_G1_PATTERN_63` `2관문_진입컷씬`(GATE2, 쿠크, 27,000ms): WORLD 31 + CAMERA 7. 원본 EFFECT 3개는 제외했다.
+  - `KAKULSAYDON_G1_PATTERN_64` `2관문클리어_3관문진입`(GATE2, 쿠크, 35,368ms): WORLD 3(대형 세이튼·쿠크·세이튼 도착 컷신 모델) + CAMERA 18 + EFFECT 3(`efseqact_matinee_10.1/10.2/10.3` 터널 포함 원본 이펙트, 117ms 시작·35,251ms). 암전·원본 이펙트 4·5는 제외했다.
+  - `KAKULSAYDON_G1_PATTERN_65` `빙고_최종엔딩씬`(BINGO, 빙고 세이튼, 49,083ms): CAMERA 12.
+  - 박스 시작·길이·설정은 원본 원문 블록 그대로다. 원본의 `folderId`(Boss 파일에서는 다른 폴더)와 `enterCombatOnFinish`는 복사하지 않았다.
+  - 추가 행:
+    - worlds 17: 2관문 진입 무대 부모 트랙 14개는 원래 ID, 컷신 모델 3개는 `kakulsaydon.g1.world.23~25`. 같은 내용의 기존 17행은 재사용했다.
+    - presentationResources 37: ID가 다른 내용과 겹친 카메라 2개는 `kakulsaydon.g1.presentation.64·65`. 같은 내용의 기존 3행은 재사용했다.
+  - 헤더: nextPatternOrdinal 63→66, nextWorldOrdinal 23→26, nextPresentationResourceOrdinal 64→66. 기존 행·다른 최상위 항목은 그대로다.
+- **자동 검증:** 원문 복사 결과가 기대 JSON과 전체 일치하고, `Validate_Shape` 규칙 재현을 통과했다.
+  - 재현한 규칙: ID 형식·중복, 서수, 참조 존재, 박스 수명, CAMERA 겹침 없음, 원본과 같은 WORLD 시각·인스턴스.
+  - `git diff --check` 0.
+- **스크립트·백업:** `out/KoukuFourCutscenes20260915/boss_cutscene_patterns/add_boss_cutscene_patterns.py`, `backup_boss_composition_rev707.json`.
+- **하지 않은 것:** Sequence 원본 패턴·이펙트 파일 수정, Publish All Patterns, 빌드, 커밋.
+- **미확정:**
+  - 실행 중 Client의 Boss 탭 로드 결과와 화면.
+  - 이펙트 1·2·3 안의 터널 외 파티클(91 중 12, 86 중 10, 49 중 10만 터널)이 함께 재생된다.
+  - 전투 Composition `worlds[]`에 컷신 모델·무대 부모 트랙 참조가 늘어, 해당 오브젝트를 World Object Tool에서 Save하면 `Publish_AllPatterns`가 이어진다.
+
+## G13. 쇼타임 컷신 카메라와 Boss 패턴 `쇼타임_연출` 추가 (2026-09-15, 적용, 화면 판정 전)
+
+- **사용자 요청:** 3관문 `세이튼_쇼타임` 폴더에 `쇼타임_연출` 패턴을 만들고 우선 카메라만 넣는다.
+- **원본:** `LV_LUT_MIDNIGHTC_ED_SCENE02B` `efseqact_matinee_15`(export 23, interpdata export 49, 이벤트 `37081_311`).
+  - 게임 패키지 `B9AVB2VAZIQRPQCJVKAVYRAVOKYPY8MD.upk`, SHA-256 `27e93bef…` 확인.
+  - 감독 트랙은 `c1` 한 카메라만 쓴다. 길이는 InterpData `edsectionend` 5.0초를 썼다(매티니 길이 값은 저장돼 있지 않다).
+- **카메라 생성:** 기존 컷신 카메라와 같은 `build_gate2_intro_composition.make_cameras`를 썼다(좌표 변환, 16:9 수직 FOV, 샷당 64키).
+  - 샷 4개가 끊김 없이 이어진다: `kouku.gate3.showtime.camera.1~4`(0–1280–2496–3728–5000ms).
+  - 원본 매티니의 세이튼 위치 (0.04, 1.31, 941.9)는 3관문 세이튼 스폰 (−0.07, 1.32, 942.33)과 0.44m 차이다. 카메라는 월드 좌표로 고정된다.
+- **변경:**
+  - `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json` rev 87 → 88, 샷 110 → 114.
+    - 기존 바이트 형식(`json.dumps(indent=2)`+CRLF)과 동일함을 확인한 뒤 끝에 추가했다.
+  - `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` rev 708 → 709.
+    - `KAKULSAYDON_G1_PATTERN_66` `쇼타임_연출`(GATE3, MN_RPCT_05, `boss.kakulsaydon.g3.saydon`, `kakulsaydon.folder.12`, 5000ms)에 CAMERA 4박스를 넣었다.
+    - CAMERA 리소스 4개를 추가했다.
+- **자동 검증:**
+  - 카메라 파서 규칙 재현(키 수·첫 키 0·증가·끝 키=길이·좌표·시선 거리·FOV·up 비평행)을 통과했다.
+  - Composition 기대 JSON 일치, ID·중복·박스 연속성 검사, `git diff --check` 0.
+- **스크립트·백업:** `out/KoukuFourCutscenes20260915/showtime_pattern/`(`add_showtime_camera_pattern.py`, `backup_camerashots_rev87.json`, `backup_boss_composition_rev708.json`).
+- **없는 것:** 원본 슬로모(2.53~2.77초 0.45배), 카메라 흔들림 3종, 자막, 세이튼 연기 애니메이션, 무기 모델. runtime camerashots 게시 안 함.
+- **미확정:** 전투 중 쇼타임 시 세이튼이 스폰 자리에 있지 않으면 구도가 어긋난다(월드 고정 카메라). 화면 판정 없음.
+
+## G14. Boss `카드미로` 폴더에 컷신 패턴 `카드미로연출` 추가 (2026-09-15, 적용, 화면 판정 전)
+
+- **사용자 결정:** 기존 `쿠크_카드미로연출`(PATTERN_28, 쿠크 보스 몸체 애니메이션 + 카드미로 진입 로직)은 그대로 둔다. 원본 애니메이션과 카메라로 `카드미로연출`을 하나 더 만든다.
+- **원본:** Sequence `2관문_카드미로`(PATTERN_6, SCENE04A `efseqact_matinee_1`, 11,950ms).
+- **변경:** `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` rev 709 → 710(SHA `F1BB78C7…` → `212AB070…`).
+  - `KAKULSAYDON_G1_PATTERN_67` `카드미로연출`(GATE2, 쿠크, `kakulsaydon.folder.4`, 11,950ms).
+    - World 1: `2관문_카드미로 / Kouku` 컷신 쿠크 모델(원본 매티니 이동·클립 `kouku.gate2.maze.kouku`). World 행 `kakulsaydon.g1.world.26`.
+    - CAMERA 7: `kouku.gate2.maze.camera.1~7`. 리소스 7개를 원래 ID로 추가했다.
+  - 암전·원본 이펙트 1은 제외했다. 번들 `카드미로_동시`에는 넣지 않았다(멤버는 PATTERN_28 그대로).
+- **자동 검증:** 원문 블록 복사 결과가 기대 JSON과 전체 일치했다. ID·서수·참조·박스 수명·CAMERA 겹침 검사 통과, `git diff --check` 0.
+- **스크립트·백업:** `out/KoukuFourCutscenes20260915/cardmaze_pattern/`(`add_cardmaze_cutscene_pattern.py`, `backup_boss_composition_rev709.json`).
+- **참고:** 원본 카메라와 컷신 쿠크 모델은 원본 위치 (−0.59, 10.62, 308.93)에서 맞는다. 2관문 쿠크 보스 스폰 (6.36, 10.56, 321.29)과는 약 14m 떨어져 있다. 플레이어 4명 이동·사운드·카메라 흔들림·미로 카메라 전환은 없다. 화면 판정 없음.
