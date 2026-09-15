@@ -49,3 +49,51 @@ Document와 Python projector는 같은 종류 그룹과 두 개 이상 멤버를
 ## G06. Shift 클릭 추가 선택 별칭 (2026-09-14)
 
 Composition Sequencer의 기존 Ctrl-click/빈 영역 Ctrl-drag 선택 modifier에 Shift를 같은 별칭으로 추가한다. Render_Timeline 시작에서 `additiveSelection = io.KeyCtrl || io.KeyShift`를 한 번 계산하고 Stage/Animation/Logic/Summon/World/Scene Profile/child Pattern/Effect의 8개 클릭 경로, modifier 중 drag 차단, Effect 기존 선택 유지와 마키 clear에 동일하게 사용한다. Set Group·Duplicate의 데이터 및 anchor/ID 동작, Ctrl+D와 방향키 분기는 바꾸지 않는다. 안내 문구에 Ctrl/Shift를 표시한다. 기존 Workbench.cpp 한 파일만 수정하고 해당 TU를 out에서 최소 컴파일한다. JSON과 Client/UI는 조작하지 않는다.
+
+### G06.1. Effect 그룹 중심 이동·같은 시각 복제·저장 (2026-09-14)
+
+사용자가 Composition에 묶어 둔 Effect들을 Box Detail에서 함께 공간 이동하고, 같은 시각에
+그룹을 복제한 뒤 위치를 바꾸어 저장할 수 있게 한다. 이번 공간 입력은 XYZ translation이며
+기존 Collider의 Y 회전 기능을 Effect에 추가하지 않는다. 그룹 선택과 타임라인 이동은 기존
+`selectionGroupId`를 사용하고 새 schema·그룹 runtime·부모 Transform은 만들지 않는다.
+
+`Client/Public/KoukuSaydonActionWorkbench.h`와 `Client/Private/KoukuSaydonActionWorkbench.cpp`의
+기존 Effect group detail과 presentation geometry overlay 경로를 확장한다. 선택된 각 Effect의
+저장 occurrence에 현재 staged placement를 적용하여 유효 위치를 읽고, 공통 좌표 기준인지
+검사한다. 고정 MAP은 시작 시각이 달라도 같은 world 좌표를 쓰므로 함께 이동할 수 있다.
+BOSS/WORLD는 같은 anchor 종류·bone/target·follow와 해당 WORLD occurrence/emission 기준을
+요구하며, frozen anchor는 시작 시각도 같아야 한다. 서로 다른 좌표 기준은 공간 이동만
+이유를 표시하고 거절하며 기존 그룹 선택·시간 이동·복제 기능은 유지한다.
+
+표시하는 group center는 멤버 PositionOffset의 산술 평균이다. 새 중심과 기존 중심의 차이를
+`std::array<double, 3u>` translation으로 계산하여 모든 멤버의 위치에 똑같이 더한다.
+전체 후보의 stable ID·resource·placement와 유한 범위를 검사한 뒤 작은 geometry overlay를
+함께 stage한다. invalid 입력에서는 일부 멤버만 바꾸지 않는다. 각 Effect의 회전·크기·anchor·
+시작 시각·수명과 부모 WORLD·Logic은 보존한다. 기존 geometry preview queue와 Player의
+현재 anchor/history 소비 경로를 재사용하고, 표시 준비 실패를 문서 저장 실패와 혼동하지 않는다.
+
+Effect group detail의 `Duplicate Group (same time)`은 기존 `Duplicate_TimelineSelection`에
+기본값 false인 optional `atOriginalTime`을 전달한다. 기존 호출과 Ctrl+D는 계속 원래의
+후속 시각 복제를 사용한다. 새 모드는 기존 그룹·소유 참조의 선택 확장을 마친 뒤 Stage가 없고
+최종 선택이 Effect뿐인지 검증한다. 유효하면 `insertMs=first`, `delta=0`으로 각 멤버의 원래
+시작 시각과 상대 간격을 보존한다. 기존 occurrence 발급과 group ID remap으로 복제본을 원본과
+분리하고, 이미 구현된 old→new occurrence 대응의 staged placement 복사를 그대로 사용한다.
+따라서 Save 전 이동한 geometry도 복제본에 반영된다. Effect만 선택한 경우 기존 WORLD 총은
+계속 공유하며 새 WORLD 객체를 자동 생성하지 않는다.
+
+같은 detail에 노출하는 `Save`는 기존 Workbench `Save`를 호출한다. 저장은 현재 draft와
+staged geometry 전체를 한 candidate에 적용한 뒤 기존 `Save_Atomic`으로 처리하며, 별도 그룹
+파일이나 멤버별 저장은 없다. validation 또는 freshness/CAS 실패에는 draft·overlay·기존
+디스크를 유지한다. 사용자 Effect/Composition JSON은 에이전트가 외부에서 수정하지 않는다.
+
+새 C++ 파일과 project/filter 등록은 없다. 집중 검증은 MAP의 서로 다른 시작 시각 이동,
+BOSS/WORLD 공통 기준·frozen 시각 제약, 전체 후보 invalid/overflow 보존, 기존 회전·크기·
+시각 불변, Save 전 geometry의 같은 시각 복제·새 group ID·WORLD 개수 불변, Save/Reopen과
+외부 저장 충돌 보존을 확인한다. 현재 소스 컴파일과 preview 실패 결과의 실제 소비는 구현 후
+RESULT에 기록하며 기존 검사 결과를 새 기능의 PASS로 대신하지 않는다. 사용자 입력 경로는
+Effect 그룹 선택 → Group center XYZ → Duplicate Group (same time) → 새 그룹 위치 조절 →
+Save다. 실제 UI 조작과 화면 판정은 사용자가 수행한다.
+
+같은 시각 복제 뒤에는 신규 occurrence ID를 모르는 기존 preview snapshot을 재사용하지 않는다.
+현재 pending/live/cursor 시각과 paused 상태를 보존한 Request_PatternPreview를 다시 요청하여
+새 그룹과 staged geometry 전체를 준비한다. 준비 실패는 복제 자체와 구분해 표시한다.

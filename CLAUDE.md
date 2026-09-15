@@ -692,13 +692,22 @@ Result `PLAY_WORLD_OBJECT_MOTION`은 Server가 Collider와 저작 target 원의 
 같은 카드 객체에 저장 Motion ID를 적용한다. target WORLD를 먼저 배치하고 판정 창 동안 유지해야 한다.
 저장·수명 제한은 팀 Area 가이드를 따른다. Client/UI 실행과 화면 판정은 사용자가 한다.
 
-F1의 `Player Follow Camera` 위치·각도·focus·FOV·응답값은 현재 맵의 카메라에 실시간 반영된다.
-`Save camera settings`만 다음 진입을 위한 JSON을 저장하며 Reload/Reset도 현재 카메라에 바로 반영한다.
-선택한 맵이 현재 맵과 다르거나 카메라 연출이 진행 중이면 live preview는 적용하지 않는다.
-팀 공유 follow 시점은 `Data/Camera/KoukuSaydon.camera.json`과 `Data/Camera/CharacterSelect.camera.json`에 저장한다.
-두 맵은 같은 플레이어 상대 위치·회전·FOV·응답값으로 시작하며, 이후 각 맵의 Save는 해당 파일만 변경한다.
-팀원은 pull 후 맵에 재진입하면 저장값을 읽는다. 이미 진입한 맵은 F1 → Player Follow Camera → 해당 Camera map →
-Reload saved로 반영한다. 카메라 JSON은 별도 publish 없이 프로젝트 Data 정본을 직접 읽는다.
+F1의 `Player Follow Camera`는 Character Select, Bern, Valtan, KoukuSaydon을 선택한다.
+`FOV X at 16:9 (deg)`의 저장·엔진 입력은 환산된 수직 `fovYDegrees`다.
+바로 아래 `Character size`는 기존 catalog presentation scale에 곱하는 0.25~4배 표현 크기다.
+몸·장비·본 부착의 같은 presentation root에 적용하며 Server 충돌·공격 범위는 변경하지 않는다.
+크기는 같은 맵별 JSON의 optional `characterSizeMultiplier`에 저장하고 생략 시 1을 사용한다.
+`Reset size`는 catalog 기준 1배로 돌아간다. 원작의 최종 actor scale을 자동 추정하는 기능은 아니다.
+위치·회전·focus·응답은 `Advanced camera pose`에 있다. `Source baseline`과 `Before restoration`은
+카메라 전체 설정을 바꾸고 현재 맵에 바로 반영한다. 두 preset은 편집한 Character size를 보존한다.
+연출 중이거나 다른 맵을 선택했으면 live preview는 적용하지 않는다. `Save camera settings`는
+다음 진입을 위해 선택 JSON만 저장하며, 로드 후 외부 변경을 발견하면 draft와 파일을 보존하고 거절한다.
+`Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이 별도 publish 없는 정본이다.
+재진입 또는 F1 → Player Follow Camera → 해당 Camera map → `Reload saved`로 읽는다.
+공통 source 기준은 수평50도/16m, Valtan은55도/18m, Kouku는1관문 volume의50도/19m다.
+Bern의 현재 저장값은 사용자 비교 결과에 따라55도/16m이며 Source baseline의50도와 구분한다.
+쿠크2·3관문은 현재1관문 기준의 시험 적용이며 원작 지역별 일치가 확인된 값이 아니다.
+마리오·카드미로·컷신의 기존 개별 카메라와 presentation priority는 유지한다.
 
 MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
 source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은
@@ -713,6 +722,18 @@ Anchor Light의 Map(fixed world)은 패턴 box 수명 동안의 고정 월드 �
 플레이어 위치 복사는 명시적인 Place above player (+8m) 버튼으로만 한다. Default Directional Light는 선택 Level
 base profile의 기존 광원을 편집·저장하며 maplights에 복제하지 않는다. Light Sequencer는 선택 항목을
 Play/Pause/Seek/Stop하고 Scene/Map의 임시 preview를 종료 시 복구한다. 품질 패널은 Level별 FXAA/SSAO 등을 저장한다.
+Rendering Workbench → Benchmark → Rendering restoration은 Bern/Character Select/Valtan/Kouku의
+`Before` / `Restored source profile` / `Return to entry` 비교를 제공한다. 기존 설정은 before profile에
+보존하고 네 맵의 base profile에는 원본 후처리 입력을 연결한다. 도구를 닫으면 같은 Level에서
+도구가 여전히 소유한 preview만 복귀한다. 외부 scene 전환·Runtime Reload는 새 소유자의 상태를 유지한다.
+`RenderingProfiles.json`의 quality에는 optional `colorAdjustment`(bloomTint RGBA, desaturation)가 있고,
+환경 영역에는 optional priority와 postProcess(bloomThreshold, bloomIntensity, bloomTint, desaturation)가 있다.
+생략 시 기존 출력과 같다. quality 및 region postProcess의 optional `sourcePostProcess`는
+UE3 customizable toneScale/range/toe와 highlights/midtones/shadows/colorize/desaturation,
+Resources 상대 `colorGradingLut`를 저장한다. LUT는256×16,16³ linear8bit texture이며 빈 경로는
+neutral 입력이다. 원본 순서로 GPU LUT를 생성하고 source tone/lookup을 적용한다. 해당 블록이
+없으면 기존 Hable 경로를 사용한다. 이 계약은 DOF·빛줄기·환경 이펙트까지 복원하는 뜻이 아니다.
+`Publish-RenderingProfiles.ps1 -Mode Publish`가 strict 검증 후 runtime을 배포한다.
 Character/Boss 재사용 조명은 `Data/Rendering/Authored/LightResources.json`을 저장하고
 `Tools/RenderingPipeline/Publish-LightResources.ps1 -Mode Publish`로 `Client/Bin/DataFiles/Rendering/LightResources.runtime.json`에 배포한다.
 쿠크 Action Workbench의 Light 탭은 이 리소스와 같은 Area의 v2 map light ID를 참조해 lifetime과 Map/Character/Boss anchor를 배치한다.

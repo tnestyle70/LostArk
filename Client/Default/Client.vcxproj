@@ -1174,6 +1174,8 @@
     <ClInclude Include="..\Public\ArenaCameraProfile.h" />
     <ClCompile Include="..\Private\ArenaCameraProfile.cpp" />
     <None Include="..\..\Data\Camera\CharacterSelect.camera.json" />
+    <None Include="..\..\Data\Camera\Valtan.camera.json" />
+    <None Include="..\..\Data\Camera\Bern.camera.json" />
     <None Include="..\..\Data\Camera\KoukuSaydon.camera.json" />
   </ItemGroup>
   <ItemGroup>
@@ -2306,5 +2308,12 @@
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.fuse.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.blackhole.beam.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.saydon.disappear.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.rectangle.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.rectangle.impact.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.default-aura.normal.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.default-aura.ghost.effect.json" />
   </ItemGroup>
 </Project>

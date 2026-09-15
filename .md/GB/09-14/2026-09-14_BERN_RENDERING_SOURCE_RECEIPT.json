@@ -1,0 +1,2053 @@
+{
+  "evidenceOnly": true,
+  "classification": "source property restoration candidate; not native CPU/render pipeline equivalence",
+  "sourceInventory": [
+    {
+      "logicalName": "EFGAME",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NU1V7NCQ4YAE9ZPJVNOQS.u",
+      "sha256": "cd1a52f16bfc7402113da129a66b5b9a550da4a4ed8ff4c66ccdffcc764160d3",
+      "enumeratedExportCount": 14475,
+      "selectedObjectCount": 35,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "ENGINE",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\NE1FENCQ4UNE9ZPRENOQS.u",
+      "sha256": "52387152ad4879e716f36e9f969a3fde2eb1f80b78bd1ce45796983e5fa409e5",
+      "enumeratedExportCount": 32875,
+      "selectedObjectCount": 58,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_EVENT01",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\A89UCXG9YCXGOJ5NUAX9YU9UX8XOU7E.upk",
+      "sha256": "4cc1f1642ffc229b2ecb7fd03e8c98f59e35606db17ce7729734de875b060f88",
+      "enumeratedExportCount": 2519,
+      "selectedObjectCount": 3,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_LAND01",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6D.upk",
+      "sha256": "a682e279fa5d39421d2b0c4936847e5fe73b1506ccee2c4f1020cf9b61e4abb2",
+      "enumeratedExportCount": 9169,
+      "selectedObjectCount": 1,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_LAND02",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\978TBWF8XBWFNI4MT9W8XT8T94NP6K.upk",
+      "sha256": "02713354f39a28a22de40ac5526417ef31d11a1ff37a16ad4e6f1ab423dea3a0",
+      "enumeratedExportCount": 11062,
+      "selectedObjectCount": 1,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_PS",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\534P7SB4T7SBJE0IP5S4TP4PXI.upk",
+      "sha256": "1494866ea6e94e2a679ebfeba8c2018e7703cb972406ba52ee5d639bc0303d56",
+      "enumeratedExportCount": 1559,
+      "selectedObjectCount": 31,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SCENE03E",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\B9AVDYHAZDYHPK6OVBYAZVAVOKYPY8TY.upk",
+      "sha256": "b97b18d267060ad3510ae105685346c65c2070e9ab88b0da993a171aaf97f839",
+      "enumeratedExportCount": 1900,
+      "selectedObjectCount": 106,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL00",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK744.upk",
+      "sha256": "53f68efdd2aca0f9ac70583956c7bca29bd1f6331fefd5b1021554a6fb961b08",
+      "enumeratedExportCount": 8025,
+      "selectedObjectCount": 21,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL01",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74B.upk",
+      "sha256": "38bfb5bdebb67c0d1f73d100e573389b5075c6b8230869f952f1d8fb6d8257cc",
+      "enumeratedExportCount": 8089,
+      "selectedObjectCount": 35,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL02",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74I.upk",
+      "sha256": "64a92b875056e4c52f074a59e5a267217ab37e00b820b647f27182d8c779e86b",
+      "enumeratedExportCount": 9557,
+      "selectedObjectCount": 38,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL03",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74P.upk",
+      "sha256": "2d481b9a9eeee1655362f0ab5fa12a8360f09d7f0818c6a2eb00b33ecdb428dc",
+      "enumeratedExportCount": 7485,
+      "selectedObjectCount": 42,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL04",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74W.upk",
+      "sha256": "10ff533bd0a9ccc9df18509f0dcc3a28943a850d9e5674e63201dff7f46fa04b",
+      "enumeratedExportCount": 8574,
+      "selectedObjectCount": 22,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL05",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK743.upk",
+      "sha256": "72b4f5059cf45dfd4ebf37bcd5cbc573519c9ea61b6ccf5ef051cfaf9d964b10",
+      "enumeratedExportCount": 2730,
+      "selectedObjectCount": 88,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL06",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74A.upk",
+      "sha256": "99fcd07e0362b2486eb866c02efc6167af531cda4daee0d10e7d87e8aeabacbb",
+      "enumeratedExportCount": 9060,
+      "selectedObjectCount": 45,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL07",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74H.upk",
+      "sha256": "741257cfeb52142e519679753f1958e9d785da38a538d7d726ae39c9260d3b6a",
+      "enumeratedExportCount": 4943,
+      "selectedObjectCount": 27,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL08",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74O.upk",
+      "sha256": "51a556d95f992cc5f84df0aee2b41c7545046ae18d9756a5384851eff0e7a8a2",
+      "enumeratedExportCount": 6838,
+      "selectedObjectCount": 35,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL09",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK74V.upk",
+      "sha256": "8896a019b002f28ee270207bc83e8ffb65242a5c7f843ccbf39ac8a444b3ebbe",
+      "enumeratedExportCount": 7608,
+      "selectedObjectCount": 55,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_SL10",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R9UD6V9UDLG2KR7U6VR6RK7B4.upk",
+      "sha256": "4935b373fce002bef31aeaae960f2d22dbe0653d29d8418be678c48a21791289",
+      "enumeratedExportCount": 567,
+      "selectedObjectCount": 5,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_LOBBY_CLASSSELECT_SL00",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\756R7S99Q6LG72KKKU7UGR6RK744.upk",
+      "sha256": "55191fbeb0ebf2228c030a7807e7db287144ead3182a7921809f84f529c2d33c",
+      "enumeratedExportCount": 1112,
+      "selectedObjectCount": 16,
+      "unresolvedTaggedPropertyCount": 0
+    },
+    {
+      "logicalName": "LV_LOBBY_PS",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\201M2N44L1GUFEFDGRR263T.upk",
+      "sha256": "0344f0284a0bd9b4d2cd6d0c104bd40cb516b51bd8c997c979c17a3c6c43293e",
+      "enumeratedExportCount": 1101,
+      "selectedObjectCount": 50,
+      "unresolvedTaggedPropertyCount": 0
+    }
+  ],
+  "scenes": [
+    {
+      "logicalName": "LV_BER_BERNCASTLE_T_PS",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\534P7SB4T7SBJE0IP5S4TP4PXI.upk",
+      "sha256": "1494866ea6e94e2a679ebfeba8c2018e7703cb972406ba52ee5d639bc0303d56",
+      "worldExportRef": 1559,
+      "worldPostProcessChain": "efpostprocess.postprocesschain.defaultscenepostprocess",
+      "baseCandidateFields": {
+        "benablebloom": {
+          "value": true,
+          "source": "WorldInfo/class-default"
+        },
+        "bloom_scale": {
+          "value": 1.25,
+          "source": "WorldInfo/instance"
+        },
+        "bloom_threshold": {
+          "value": 0.4000000059604645,
+          "source": "WorldInfo/instance"
+        },
+        "bloom_tint": {
+          "value": {
+            "r": 255,
+            "g": 192,
+            "b": 157,
+            "a": 0
+          },
+          "source": "WorldInfo/instance"
+        },
+        "benabledof": {
+          "value": true,
+          "source": "WorldInfo/instance"
+        },
+        "dof_blurkernelsize": {
+          "value": 0.10000000149011612,
+          "source": "WorldInfo/instance"
+        },
+        "dof_falloffexponent": {
+          "value": 3.0,
+          "source": "WorldInfo/instance"
+        },
+        "dof_focusinnerradius": {
+          "value": 5000.0,
+          "source": "WorldInfo/instance"
+        },
+        "dof_focusdistance": {
+          "value": 0.0,
+          "source": "WorldInfo/class-default"
+        },
+        "scene_highlights": {
+          "value": {
+            "x": 0.949999988079071,
+            "y": 0.9700000286102295,
+            "z": 0.949999988079071
+          },
+          "source": "WorldInfo/instance"
+        },
+        "scene_midtones": {
+          "value": {
+            "x": 1.0,
+            "y": 1.0499999523162842,
+            "z": 0.8500000238418579
+          },
+          "source": "WorldInfo/instance"
+        },
+        "scene_shadows": {
+          "value": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "source": "WorldInfo/class-default"
+        },
+        "scene_desaturation": {
+          "value": 0.10000000149011612,
+          "source": "WorldInfo/instance"
+        },
+        "scene_tonemapperscale": {
+          "value": 1.0,
+          "source": "WorldInfo/class-default"
+        },
+        "scene_tonemapperrange": {
+          "value": 8.0,
+          "source": "WorldInfo/class-default"
+        },
+        "scene_tonemappertoefactor": {
+          "value": 1.0,
+          "source": "WorldInfo/class-default"
+        },
+        "scene_imagegrainscale": {
+          "value": 0.019999999552965164,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "colorgrading_lookuptable": {
+          "value": 0,
+          "source": "WorldInfo/class-default"
+        },
+        "ballowambientocclusion": {
+          "value": true,
+          "source": "WorldInfo/class-default"
+        },
+        "ambientocclusion_occlusionpower": {
+          "value": 2.5,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "ambientocclusion_occlusionscale": {
+          "value": 1.0,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        }
+      },
+      "ambientOcclusionChain": {
+        "occlusioncolor": {
+          "r": 0.0,
+          "g": 0.0,
+          "b": 0.0,
+          "a": 1.0
+        },
+        "occlusionpower": 2.5,
+        "occlusionscale": 1.0,
+        "minocclusion": 0.0,
+        "occlusionradius": 70.0,
+        "occlusionquality": "AO_Medium",
+        "occlusionfadeoutmindistance": 1500.0,
+        "occlusionfadeoutmaxdistance": 200000.0,
+        "halodistancethreshold": 15.0,
+        "halodistancescale": 0.014999999664723873,
+        "haloocclusion": 0.0,
+        "edgedistancethreshold": 0.0,
+        "edgedistancescale": 0.0,
+        "filterdistancescale": 1.0,
+        "historyweightconvergencetime": 0.07000000029802322,
+        "baffectslightingonly": true,
+        "scenedpg": "SDPG_World",
+        "banglebasedssao": true,
+        "historyconvergencetime": 0.05000000074505806,
+        "buseworldsettings": true,
+        "nodeposy": 100,
+        "nodeposx": 1158,
+        "drawwidth": 167,
+        "drawheight": 48,
+        "outdrawy": 134,
+        "indrawy": 134
+      },
+      "regions": [
+        {
+          "exportRef": 112,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_0",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 0.009999999776482582,
+            "dof_falloffexponent": 3.0,
+            "dof_focusinnerradius": 3000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.20000000298023224,
+            "scene_tonemapperscale": 0.699999988079071,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 26,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                -3730.255859375,
+                -39704.2880859375,
+                -3072.0
+              ],
+              "max": [
+                27287.89404296875,
+                -8315.349609375,
+                12287.9990234375
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                -37.30255859375,
+                -30.72,
+                83.15349609375001
+              ],
+              "max": [
+                272.87894042968753,
+                122.879990234375,
+                397.04288085937503
+              ]
+            }
+          }
+        },
+        {
+          "exportRef": 113,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_1",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": true,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.5,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 4.0,
+            "dof_falloffexponent": 2.0,
+            "dof_focusinnerradius": 4000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.25,
+            "scene_tonemapperscale": 0.6000000238418579,
+            "scene_tonemappertoefactor": 0.800000011920929,
+            "scene_imagegrainscale": 0.0,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 27,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                -148072.98388671875,
+                -80583.9921875,
+                -33672.0
+              ],
+              "max": [
+                -74584.984375,
+                11336.0,
+                35720.00390625
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                -1480.7298388671875,
+                -336.72,
+                -113.36
+              ],
+              "max": [
+                -745.84984375,
+                357.2000390625,
+                805.8399218750001
+              ]
+            }
+          }
+        },
+        {
+          "exportRef": 114,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_2",
+          "enabled": true,
+          "priority": 1.0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 0.009999999776482582,
+            "dof_falloffexponent": 3.0,
+            "dof_focusinnerradius": 3000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 0.8500000238418579
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.20000000298023224,
+            "scene_tonemapperscale": 0.6499999761581421,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 28,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                -1210.255859375,
+                -38792.2890625,
+                -3072.0
+              ],
+              "max": [
+                10831.8955078125,
+                -19611.349609375,
+                12287.9990234375
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                -12.10255859375,
+                -30.72,
+                196.11349609375
+              ],
+              "max": [
+                108.318955078125,
+                122.879990234375,
+                387.92289062500004
+              ]
+            }
+          }
+        },
+        {
+          "exportRef": 115,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_3",
+          "enabled": true,
+          "priority": 2.0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.5,
+            "bloom_tint": {
+              "r": 255,
+              "g": 168,
+              "b": 128,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 0.009999999776482582,
+            "dof_falloffexponent": 3.0,
+            "dof_focusinnerradius": 3000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.100000023841858,
+              "y": 1.0,
+              "z": 0.8999999761581421
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.10000000149011612,
+            "scene_tonemapperscale": 0.6000000238418579,
+            "scene_tonemapperrange": 8.0,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": "lv_att_heartkt.tex.lv_att_heartkt_lut_01",
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 29,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                19637.7421875,
+                -30983.2890625,
+                -3072.0
+              ],
+              "max": [
+                25695.8935546875,
+                -24292.3486328125,
+                12287.9990234375
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                196.377421875,
+                -30.72,
+                242.923486328125
+              ],
+              "max": [
+                256.958935546875,
+                122.879990234375,
+                309.832890625
+              ]
+            }
+          }
+        },
+        {
+          "exportRef": 116,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_4",
+          "enabled": true,
+          "priority": 2.0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.5,
+            "bloom_tint": {
+              "r": 255,
+              "g": 168,
+              "b": 128,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 0.009999999776482582,
+            "dof_falloffexponent": 3.0,
+            "dof_focusinnerradius": 3000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.100000023841858,
+              "y": 1.0,
+              "z": 0.8999999761581421
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.10000000149011612,
+            "scene_tonemapperscale": 0.6000000238418579,
+            "scene_tonemapperrange": 8.0,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": "lv_att_heartkt.tex.lv_att_heartkt_lut_01",
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 30,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                11957.7421875,
+                -38191.2890625,
+                -3072.0
+              ],
+              "max": [
+                18015.8935546875,
+                -31500.3486328125,
+                12287.9990234375
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                119.577421875,
+                -30.72,
+                315.003486328125
+              ],
+              "max": [
+                180.158935546875,
+                122.879990234375,
+                381.912890625
+              ]
+            }
+          }
+        }
+      ],
+      "lightmass": {
+        "classification": "BAKED_AUTHORING_INPUT_NOT_PROVEN_ADDITIVE_LIVE_AMBIENT",
+        "serialized": {
+          "environmentcolor": {
+            "r": 205,
+            "g": 223,
+            "b": 255,
+            "a": 0
+          },
+          "environmentintensity": 0.8999999761581421,
+          "buseambientocclusion": true,
+          "maxocclusiondistance": 40.0
+        }
+      }
+    },
+    {
+      "logicalName": "LV_LOBBY_PS",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\201M2N44L1GUFEFDGRR263T.upk",
+      "sha256": "0344f0284a0bd9b4d2cd6d0c104bd40cb516b51bd8c997c979c17a3c6c43293e",
+      "worldExportRef": 1101,
+      "worldPostProcessChain": "bg_pcselect02.postprocesschain.charactercloseupscene",
+      "baseCandidateFields": {
+        "benablebloom": {
+          "value": true,
+          "source": "WorldInfo/class-default"
+        },
+        "bloom_scale": {
+          "value": 0.8999999761581421,
+          "source": "WorldInfo/class-default"
+        },
+        "bloom_threshold": {
+          "value": 0.699999988079071,
+          "source": "WorldInfo/class-default"
+        },
+        "bloom_tint": {
+          "value": {
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "a": 0
+          },
+          "source": "WorldInfo/class-default"
+        },
+        "benabledof": {
+          "value": false,
+          "source": "WorldInfo/class-default"
+        },
+        "dof_blurkernelsize": {
+          "value": 16.0,
+          "source": "WorldInfo/class-default"
+        },
+        "dof_falloffexponent": {
+          "value": 4.0,
+          "source": "WorldInfo/class-default"
+        },
+        "dof_focusinnerradius": {
+          "value": 2000.0,
+          "source": "WorldInfo/class-default"
+        },
+        "dof_focusdistance": {
+          "value": 0.0,
+          "source": "WorldInfo/class-default"
+        },
+        "scene_highlights": {
+          "value": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "source": "WorldInfo/class-default"
+        },
+        "scene_midtones": {
+          "value": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+          },
+          "source": "WorldInfo/class-default"
+        },
+        "scene_shadows": {
+          "value": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "source": "WorldInfo/class-default"
+        },
+        "scene_desaturation": {
+          "value": 0.0,
+          "source": "WorldInfo/class-default"
+        },
+        "scene_tonemapperscale": {
+          "value": 1.0,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "scene_tonemapperrange": {
+          "value": 8.0,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "scene_tonemappertoefactor": {
+          "value": 0.5,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "scene_imagegrainscale": {
+          "value": 0.20000000298023224,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "colorgrading_lookuptable": {
+          "value": 0,
+          "source": "inactive WorldInfo field; runtime effect fallback not resolved",
+          "worldOverrideEnabled": false
+        },
+        "ballowambientocclusion": {
+          "value": true,
+          "source": "WorldInfo/class-default"
+        },
+        "ambientocclusion_occlusionpower": {
+          "value": 2.0,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        },
+        "ambientocclusion_occlusionscale": {
+          "value": 1.0,
+          "source": "chain effect + effect CDO",
+          "worldOverrideEnabled": false
+        }
+      },
+      "ambientOcclusionChain": {
+        "occlusioncolor": {
+          "r": 0.0,
+          "g": 0.0,
+          "b": 0.0,
+          "a": 1.0
+        },
+        "occlusionpower": 2.0,
+        "occlusionscale": 1.0,
+        "minocclusion": 0.029999999329447746,
+        "occlusionradius": 25.0,
+        "occlusionquality": "ao_high",
+        "occlusionfadeoutmindistance": 500.0,
+        "occlusionfadeoutmaxdistance": 4000.0,
+        "halodistancethreshold": 40.0,
+        "halodistancescale": 1.0,
+        "haloocclusion": 0.03999999910593033,
+        "edgedistancethreshold": 10.0,
+        "edgedistancescale": 0.003000000026077032,
+        "filterdistancescale": 10.0,
+        "historyweightconvergencetime": 0.07000000029802322,
+        "baffectslightingonly": true,
+        "scenedpg": "SDPG_World",
+        "occlusionbias": 0.20000000298023224,
+        "banglebasedssao": true,
+        "buseworldsettings": true,
+        "nodeposy": 101,
+        "nodeposx": 512,
+        "drawwidth": 167,
+        "drawheight": 48,
+        "outdrawy": 135,
+        "indrawy": 135
+      },
+      "regions": [
+        {
+          "exportRef": 150,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_0",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 43,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                4023.75634765625,
+                34623.91015625,
+                -875.8963623046875
+              ],
+              "max": [
+                10828.52099609375,
+                36375.66796875,
+                875.8651123046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                40.2375634765625,
+                -8.758963623046876,
+                -363.7566796875
+              ],
+              "max": [
+                108.28520996093751,
+                8.758651123046874,
+                -346.2391015625
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 151,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_1",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.30000001192092896,
+            "bloom_tint": {
+              "r": 255,
+              "g": 190,
+              "b": 117,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 1.0,
+            "dof_falloffexponent": 3.0,
+            "dof_focusinnerradius": 1200.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.029999999329447746,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "scene_tonemapperscale": 0.6000000238418579,
+            "scene_tonemapperrange": 8.0,
+            "scene_tonemappertoefactor": 1.0,
+            "colorgrading_lookuptable": -358,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 44,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                -212503.34375,
+                199970.65625,
+                -22772.44140625
+              ],
+              "max": [
+                -195630.65625,
+                216843.34375,
+                -5899.5546875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                -2125.0334375,
+                -227.72441406250002,
+                -2168.4334375
+              ],
+              "max": [
+                -1956.3065625,
+                -58.995546875,
+                -1999.7065625
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 152,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_13",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 45,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                28194.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                29945.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -299.4587890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -281.9412109375
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 153,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_14",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 46,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                26043.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                27794.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -277.9487890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -260.4312109375
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 154,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_15",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 47,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                24072.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                25823.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -258.2387890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -240.72121093750002
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 155,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_16",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 48,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                30344.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                32095.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -320.9587890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -303.4412109375
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 156,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_17",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 49,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                21954.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                23705.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -237.0587890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -219.5412109375
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 157,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_18",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 50,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                41090.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                42841.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -428.4187890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -410.9012109375
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 158,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_19",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 51,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                4023.75634765625,
+                32479.91015625,
+                -875.8963623046875
+              ],
+              "max": [
+                10828.52099609375,
+                34231.66796875,
+                875.8651123046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                40.2375634765625,
+                -8.758963623046876,
+                -342.3166796875
+              ],
+              "max": [
+                108.28520996093751,
+                8.758651123046874,
+                -324.7991015625
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 159,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_2",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 52,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                36732.4921875,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                38484.25,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -384.84250000000003
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -367.32492187500003
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 160,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_22",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 53,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                19826.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                21577.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -215.7787890625
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -198.2612109375
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 161,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_4",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 1.0,
+          "blendTimeOut": 1.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 0.10000000149011612,
+            "dof_falloffexponent": 3.0,
+            "dof_focusinnerradius": 2400.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_midtones": {
+              "x": 1.2000000476837158,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.25,
+            "scene_tonemapperscale": 1.0,
+            "scene_tonemappertoefactor": 1.0,
+            "colorgrading_lookuptable": 0,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 54,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                -212503.34375,
+                231714.65625,
+                -22772.44140625
+              ],
+              "max": [
+                -195630.65625,
+                248587.34375,
+                -5899.5546875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                -2125.0334375,
+                -227.72441406250002,
+                -2485.8734375
+              ],
+              "max": [
+                -1956.3065625,
+                -58.995546875,
+                -2317.1465625
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 162,
+          "objectPath": "theworld.persistentlevel.efenvironmentinfovolume_6",
+          "enabled": true,
+          "priority": 0,
+          "blendTimeIn": 0.0,
+          "blendTimeOut": 0.0,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": false,
+            "dof_blurkernelsize": 16.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 0.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "ballowambientocclusion": true,
+            "ambientocclusion_occlusionpower": 0.800000011920929
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 55,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                3947.2998046875,
+                38914.12109375,
+                -874.8807373046875
+              ],
+              "max": [
+                10752.064453125,
+                40665.87890625,
+                876.8807373046875
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                39.472998046875,
+                -8.748807373046875,
+                -406.65878906250003
+              ],
+              "max": [
+                107.52064453125,
+                8.768807373046876,
+                -389.14121093750003
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        },
+        {
+          "exportRef": 770,
+          "objectPath": "theworld.persistentlevel.postprocessvolume_0",
+          "enabled": true,
+          "priority": 50.0,
+          "blendTimeIn": null,
+          "blendTimeOut": null,
+          "overrideChainFlag": false,
+          "activeFields": {
+            "benablebloom": true,
+            "bloom_scale": 0.8999999761581421,
+            "bloom_threshold": 0.699999988079071,
+            "bloom_tint": {
+              "r": 255,
+              "g": 255,
+              "b": 255,
+              "a": 0
+            },
+            "benabledof": true,
+            "dof_blurkernelsize": 1.0,
+            "dof_falloffexponent": 4.0,
+            "dof_focusinnerradius": 2000.0,
+            "dof_focusdistance": 360.0,
+            "scene_highlights": {
+              "x": 0.8999999761581421,
+              "y": 0.8999999761581421,
+              "z": 0.8999999761581421
+            },
+            "scene_midtones": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            },
+            "scene_shadows": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scene_desaturation": 0.0,
+            "colorgrading_lookuptable": 0,
+            "ballowambientocclusion": true
+          },
+          "inactiveLutReference": null,
+          "bounds": {
+            "status": "union-aabb-necessary-not-sufficient-containment",
+            "componentRef": 63,
+            "convexElementCount": 1,
+            "worldSourceCm": {
+              "min": [
+                7880.767822265625,
+                -15695.666015625,
+                -2459.0534057617188
+              ],
+              "max": [
+                13845.18212890625,
+                -12768.288330078125,
+                2264.5109252929688
+              ]
+            },
+            "worldClientM": {
+              "min": [
+                78.80767822265625,
+                -24.590534057617187,
+                127.68288330078126
+              ],
+              "max": [
+                138.4518212890625,
+                22.64510925292969,
+                156.95666015625
+              ]
+            },
+            "csProbeAabbContainment": {
+              "csFocusApprox": false,
+              "csEyeApprox": false
+            }
+          }
+        }
+      ],
+      "lightmass": {
+        "classification": "BAKED_AUTHORING_INPUT_NOT_PROVEN_ADDITIVE_LIVE_AMBIENT",
+        "serialized": {
+          "environmentcolor": {
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "a": 0
+          },
+          "environmentintensity": 0.5,
+          "buseambientocclusion": true,
+          "maxocclusiondistance": 40.0
+        }
+      }
+    }
+  ],
+  "lut": {
+    "source": {
+      "logicalName": "LV_ATT_HEARTKT",
+      "source": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\201MXMM1QAPX8MVME7E9961.upk",
+      "sha256": "530097ca51f9716260ebd8a680eefeb3301b73a023d6bb4df351d68b2c4d5780",
+      "exportCount": 325,
+      "rows": [
+        {
+          "index": 324,
+          "name": "tex.lv_att_heartkt_lut_01",
+          "cls": "texture2d",
+          "properties": {
+            "sizex": 256,
+            "sizey": 16,
+            "originalsizex": 256,
+            "originalsizey": 16,
+            "format": "pf_a8r8g8b8",
+            "srgb": false,
+            "lodgroup": "texturegroup_colorlookuptable",
+            "mipgensettings": "tmgs_nomipmaps"
+          }
+        }
+      ]
+    },
+    "existingResourcePath": null,
+    "note": "Exact basename search in current Client/Bin/Resources and C:/LostArkExtract found no matching LUT DDS/TGA; Bern region3/4 reference has override=false, so do not activate."
+  },
+  "sunExclusionEvidence": "Bern.sun-exclusion.json",
+  "vignetteEvidence": "vignette-material-inputs.json",
+  "boundaries": [
+    "WorldInfo Lightmass environment color/intensity describes baked authoring; adding it as live ambient on top of original RNM is an adapter and may double count.",
+    "Bern main dominant directional actor explicitly excludes DDLExcludeVolume_1. Per-primitive native exclusion consumption not recovered.",
+    "CS focus and eye near (-772,-141,197) are outside all 14 Lobby persistent PP/EFEnvironment volume AABBs. Those region overrides are not base CS inputs.",
+    "Bern region3/4 LUT object exists but its ColorGradingLUT override is false; reference presence is not activation.",
+    "Region bOverrideWorldPostProcessChain flag native semantics unresolved. The class has no separate chain pointer; true must not be interpreted as null-chain replacement.",
+    "Native tone/LUT shader operators were numerically validated in previous 2026-09-11 RESULT, but that out evidence directory is absent on this PC. CPU SceneHighlights/Midtones/Shadows/Desaturation and ToneScale/Range packing remains unresolved.",
+    "Current Hable/exposure/bloom/SSAO adapters do not establish original algorithm equality. Original SSAO radius is in cm and cannot replace current shader radius directly.",
+    "Bern source DOF enabled; CS world DOF disabled. Original DOF buffer chain, light shafts, vignette material programs, image grain and PP order remain unimplemented boundaries.",
+    "AABB exclusion is definitive for points outside. Points inside still require convex shape containment and native camera-versus-player selection/blend semantics.",
+    "Source library-specific region identity remains unproven; do not label a volume library solely from shape or lighting values.",
+    "No Client/UI execution, screen capture, product code/resource changes, original source modification, or visual fidelity PASS performed."
+  ],
+  "productMapping": {
+    "beforeSha256": "e92633b0c2f13d4287a06a254ae4c6b557fb9da45e3bbb3de806d0a9ac556ee3",
+    "mappings": [
+      {
+        "baseProfile": "scene.bern.neutral-day.v1",
+        "beforeProfile": "scene.bern.before-restoration.v1",
+        "sourceProfile": "scene.bern.source-rendering.v1",
+        "sourcePackage": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\534P7SB4T7SBJE0IP5S4TP4PXI.upk",
+        "sourceSha256": "1494866ea6e94e2a679ebfeba8c2018e7703cb972406ba52ee5d639bc0303d56",
+        "worldExport": 1559,
+        "status": "source-input-adapter-not-native-postprocess-equivalence",
+        "mappedFields": [
+          "bloomEnabled",
+          "bloomThreshold",
+          "bloomIntensity",
+          "bloomTint RGB / 255",
+          "display-space desaturation"
+        ],
+        "preserved": [
+          "exposure",
+          "Hable curve",
+          "whitePoint",
+          "gamma",
+          "SSAO",
+          "FXAA",
+          "lights",
+          "fog",
+          "RNM",
+          "effect authored intensity"
+        ],
+        "regionCount": 5
+      },
+      {
+        "baseProfile": "scene.character-select.warm-high-key.v1",
+        "beforeProfile": "scene.character-select.before-restoration.v1",
+        "sourceProfile": "scene.character-select.source-rendering.v1",
+        "sourcePackage": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\201M2N44L1GUFEFDGRR263T.upk",
+        "sourceSha256": "0344f0284a0bd9b4d2cd6d0c104bd40cb516b51bd8c997c979c17a3c6c43293e",
+        "worldExport": 1101,
+        "status": "source-input-adapter-not-native-postprocess-equivalence",
+        "mappedFields": [
+          "bloomEnabled",
+          "bloomThreshold",
+          "bloomIntensity",
+          "bloomTint RGB / 255",
+          "display-space desaturation"
+        ],
+        "preserved": [
+          "exposure",
+          "Hable curve",
+          "whitePoint",
+          "gamma",
+          "SSAO",
+          "FXAA",
+          "lights",
+          "fog",
+          "RNM",
+          "effect authored intensity"
+        ],
+        "regionCount": 0
+      }
+    ]
+  }
+}

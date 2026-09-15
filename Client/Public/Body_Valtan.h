@@ -36,11 +36,13 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
 
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
+	bool_t m_hasTranslucentMeshes = { false };
 	const uint32_t* m_pParentState = { nullptr };
 	uint32_t m_iPrototypeLevelIndex = {};
 	wstring_t m_strModelPrototypeTag;
@@ -49,6 +51,7 @@ private:
 private:
 	HRESULT Ready_Components();
 	HRESULT Bind_ShaderResources();
+	HRESULT Render_Translucent();
 	HRESULT Bind_ShadowShaderResources();
 
 public:

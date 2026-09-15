@@ -114,6 +114,18 @@ struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
 	}
 };
 
+/* One native LookInfo particle attachment; units are metres after source conversion.
+   Stable occurrence IDs distinguish simultaneous uses of the same ParticleSystem. */
+struct BOSS_DEFAULT_PARTICLE_ENTRY final
+{
+	std::string occurrenceId;
+	std::string effectAssetId;
+	std::string boneName;
+	float3_t position{};
+	float3_t rotationDegrees{};
+	float3_t scale{ 1.f, 1.f, 1.f };
+};
+
 struct BOSS_ACTOR_ENTRY final
 {
 	struct PRESENTATION_CLIPS final
@@ -149,6 +161,7 @@ struct BOSS_ACTOR_ENTRY final
 	than array position or a prototype tag, join Server state to presentation. */
 	std::vector<BOSS_ARMOR_PART_ENTRY> armorParts;
 	std::vector<BOSS_COMBAT_OBJECT_VISUAL_ENTRY> combatObjectVisuals;
+	std::vector<BOSS_DEFAULT_PARTICLE_ENTRY> defaultParticles;
 	std::string animationSetId;
 	std::string serverProfileId;
 	std::string clientPresentationId;

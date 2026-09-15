@@ -811,3 +811,255 @@ head translation 오차0, 보스 +Z 전방 오차0, 본1.7 → pivot1.0 → shar
 원래 두 생성기의 최종 지정 출력에도 같은 교체를 연결했고, 신규 stage 생성기를 추가했다. py_compile와 diff 검사를 통과했다. `out/KoukuDirectionalFlame20260914/installation.json`의 최신 input hash를 확인해 닫힌 Client/Server 상태에서 네 파일을 CAS로 적용했다. `installed/receipt.json`은 installed=true이며 원본 백업을 보존한다. 공유 원본25요소는 수정하지 않았다.
 
 최종 KoukuSaydon owner publish의 네 domain은 sourceRevision610에서 정상 재사용됐고 Composition Publish도 통과했다. Authored Effect는 기존 Catalog의 DIRECT_AUTHORED_DOCUMENT 경로로 실제 수정 파일을 읽는다. stable ID·게시 계약이 같으므로 Effect 외형 변경을 이유로 불필요한 Gameplay revision을 올리지 않았다. C++ 변경은 없으며 같은 작업의 Open Editor 수정·레거시 호출 제거 Product Debug와 Server 검사 결과는09-14 Sequence G24에 기록했다. 자료는 `verification.json`, `native-playback.log`, `final-kouku-publish610.log`, `final-composition-publish.log` 및 `out/ThreewayBonePeer20260914/candidate-peer-review.json`이다.
+
+
+## G17. 쇼타임 쿠크세이튼 사라지기 독립 Effect 설치 — 2026-09-14
+
+`effect.kouku.gate3.showtime.saydon.disappear`를 새 Authored 문서로 설치했다.
+Effect Tool의 쇼타임 분류에서 `쿠크세이튼_사라지기`로 선택할 수 있도록 Catalog와 Tree,
+Client project/filter의 `96.DataFiles` None 항목까지 총 5파일을 등록했다.
+설치 기록은 `out/KoukuShowtimeDisappear20260914/registration_receipt.json`이며
+`installed=true`, `compositionWritten=false`다. 기존 Authored와 실행 중 Composition의
+Pattern·배치·미저장 편집을 덮어쓰거나 새 occurrence를 외부에서 추가하지 않았다.
+
+사용자가 지목한 P35 animation.8은 리허설 action4219985 stage007의
+`rpct00_att_battle_24_03`이다. 사라짐 연출의 원본은 바로 앞 stage006
+`rpct00_att_battle_28_09`이며, 본편 action4219939 stage008과 같다.
+원본 HidePawn 1.804677초 뒤 Light notify016은 1.811208010초,
+BallRead notify017은 1.811830997초에 발생한다. HidePawn은 출처 시각의 근거이며,
+이번 독립 Effect 문서에 보스 visibility 제어를 추가한 것은 아니다.
+
+원본 `Par_MP_Light_05_L` Light 1개와 `Par_V_RPCT_BallRead_Exp_01_LOC_INT`
+particle 11개를 가져왔다. Light 시작을 0초로 옮기고 particle의 상대 지연
+0.000622988초(0.622988ms)를 유지했다. Light는 root snapshot·위치 (0,1.5,0),
+particle은 `FX_buff_01`/`b_root` follow·원본 위치 0·scale 1.2다.
+기존 stage 후보의 source recipe·notify attachment·원본 수명을 보존하고,
+11개 particle의 native material은 같은 sourceObjectPath를 가진 현재
+`showtime.ball.red`에서 갱신했다. 별도 폭발·연기나 추가 확대는 합성하지 않았다.
+
+문서는 입자와 Light에 필요한 version13을 사용한다. version15 전용 carrier와
+runtimeExtensions를 추가하지 않는다. SourceModelPreview는 설치된 MN_RPCT_05의
+`rpct00_att_battle_28_09`, sourceStart1811ms·play319ms·HOLD_LAST_POSE다.
+최종 Authored와 검증 후보의 SHA256은
+`81024f0d1ef9cd57fbe2db9567e7e1c97b1d18d94e85fa3803159292a6839320`으로 일치한다.
+
+실제 codec의 Load/Validate_Drawable/Save_Atomic/reopen에서 전체 문서와 source preview를
+보존했다. 현재 Playback 소스를 out에 복사해 격리 컴파일했고, 재사용 codec object는
+현재 소스 해시 일치를 확인했다. 설치 WModel을 실제 CModel로 읽어 `b_root`와 원본 clip의
+1811~2130ms pose를 샘플했다. 이후 HOLD pose, 연속 60Hz 재생·종료와 역방향·반복 seek의
+결정성을 확인했다. 합성 anchor를 사용하지 않았으며 particle 11개 emitter가 모두 발생했다.
+최대 particle은 54개이고 전체 Effect 길이는 tail을 포함해 2.200623초다.
+
+Light의 실제 평가 색은 (3,1,1,1.5), range는 2m, 최대 intensity는 14.9719다.
+초기 reset frame 뒤 60Hz sample에서 16.667~783.333ms에 평가되며 원본 0.8초 수명과
+상승·감쇠 곡선을 유지한다. root snapshot 위치도 고정됐다. 증거는 같은 out 폴더의
+`verify_receipt.json`, `verify_native.log`, `native/roundtrip/light_samples.csv`다.
+입력·설치 파일·컴파일 소스 해시는 검증 전후 동일했다. WARP는 CModel의 리소스 생성에만
+사용했으며 Client/UI·창·swapchain·draw와 전체 renderer resource stage는 실행하지 않았다.
+시각 외형과 보스 동작의 최종 일치는 사용자 확인 대기다.
+
+현재 목록 metadata의 Discover/Refresh와 runtime `CEffectCatalog::Load`는 별도 경로다.
+새 항목이 목록에 보이는 것만으로 기존 Client의 Composition 재생 catalog가 갱신되지는 않는다.
+사용자가 편집을 저장하고 다음 Client 실행에서 Composition의 실제 재생을 확인해야 한다.
+사라지기 설치 당시 EXE 빌드는 사용자 요청으로 보류했고, 후속 사각형 예고·3회 폭발 요청에서
+보류가 해제됐다. 후속 G18-04의 최종 Product 빌드에 이 사라지기 항목도 포함됐으며,
+설치·native CPU 검증 성공을 Product 빌드나 사용자 visual PASS로 대신 기록하지 않는다.
+
+## G18. 쇼타임 사각형 예고와 3회 공습 폭발 등록 — 2026-09-14
+
+신규 Authored 2개를 설치했다. 예고는 `effect.kouku.gate3.showtime.rectangle.warning`의
+LocalDecal 1개, 폭발은 `effect.kouku.gate3.showtime.rectangle.impact`의 particle 48개다.
+두 문서는 version 13이며 새 runtime carrier나 schema를 만들지 않았다.
+Catalog는 `DIRECT_AUTHORED_DOCUMENT`, Tree는 아래 분류·leaf 이름으로 등록했고
+Client project/filter의 `96.DataFiles` None 항목도 추가했다.
+
+| 분류 | 목록 이름 | 기본 앵커 | 수정 후 신규 Append 길이 |
+|---|---|---|---|
+| KoukuSaydon → 3관문 → 패턴 → 세이튼 → 쇼타임 → 사각형 장판 | 쇼타임_사각형_예고 | MAP | 4000ms, 실제 표시 2초 |
+| 같은 분류 | 쇼타임_사각형_폭발 | MAP | 5801ms |
+
+표의 길이는 Pattern/World의 남은 배치 시간이 충분할 때의 기본값이며 기존 창 clamp는 유지한다.
+
+전체 displayName은 각각 `쇼타임 / 사각형 장판 | 쇼타임_사각형_예고`와
+`쇼타임 / 사각형 장판 | 쇼타임_사각형_폭발`이다. Tree에서는 분류 접두사를 다시 반복하지 않는다.
+`out/KoukuShowtimeRectangle20260914/registration_receipt.json`은 6파일 설치,
+`installed=true`, `compositionWritten=false`를 기록한다. 실행 중 사용자 Composition의
+Pattern·occurrence·미저장 편집과 기존 authored 파일을 이 등록 작업에서 변경하지 않았다.
+
+### G18-01. 원본 영역·named timing·세 발생 실측
+
+원본 연결은 MN_RPCT_07 action 4219939 stage011/028 또는 리허설 4219985 stage009의
+SkillEffect 421991223 → Projectile 421991210이다. source는 10105-byte
+`CEFSequenceSummonsProjectileFixArea`이며, SkillDecal 2113의
+`GR_Mon_Rectangle_cond_EX_01` → `FX_O_De_CondSquare_02_01_Tr`를 사용한다.
+정확한 원본 파일·hash·offset·reflection 결과는 같은 out의 `source_contract.json`에 보존했다.
+
+SkillEffect 421991224의 AreaRange 1800, AreaAngle 300, AreaOffsetX -900을 확인했다.
+`HitAreaWire`는 AreaAngle에 0.01×0.5를 곱해 half width를 만들고 `ClientReplication`은
+half width×2×100으로 역변환한다. 따라서 전체 폭은 3m, 길이는 18m이며 반폭 1.5m·반길이
+9m다. 화면 비율로 크기를 추정하지 않았다. Source StartSize `[300,1800,300]`cm는
+LocalDecal 평면의 Size.x/Size.y=3/18로 소비되고 최종 world X/Z=3/18m가 된다.
+projector depth는 원본 Near/Far -300/+300cm를 반영한 6m다.
+
+FixArea의 StartIndexDecal은 EFGAME ScriptStruct export 11151의 이름·타입·연결 순서로
+해독했다. DecalTableIndex 2113은 byte 9989, SkillEffectId 421991224는 byte 9993이다.
+시간 필드는 Time 0초, Duration 2초, DecalBlendInTime 1.5초, DecalScaleTime 0초,
+DecalFillTime 1.5초, DecalBlendOutTime 0.5초다. 끝에서 164byte 전의 2.3초는 마지막
+sound Timer였으므로 예고 수명으로 사용하지 않았다.
+
+기존 SourceTransformTrack에서 바깥 3×18m 크기를 고정하고 `inner`를 0→1로 1.5초 동안
+선형 보간한다. alphaScale은 0초 0 → 1.5초 1 → 2초 0이다. named timing은 원본 실측이며
+linear key와 종료 기준 alpha 곡선은 기존 프로젝트 소비자로의 투영이다. 원본 native
+시간 보간 구현 전체를 확보한 것으로 기록하지 않는다. 원본 active color (1,0.5,0,3)를
+사용했고 deactive color (1,0.25,0,1)는 출처 기록으로 보존했다.
+
+원본 `Par_V_RPCT_AirStrike_Exp_01_LOC_INT`는 2.0/2.4/2.7초에 세 번 발생한다.
+UE 위치는 (-600,0,0)/(0,0,0)/(600,0,0)cm, yaw는 90도, scale은 1이다.
+공통 독립 전방 변환을 한 번 적용해 runtime 위치 (0,0,-6)/(0,0,0)/(0,0,6)m,
+yaw 0도로 놓았다. 길이 축은 예고와 같은 Z다. 별도 판정 421991225/226/227의
+6×3m 영역도 전체 길이를 [-9,-3]/[-3,3]/[3,9]m로 나누어 같은 중심을 가진다.
+
+현재 `showtime.airstrike.impact`의 16요소를 세 독립 occurrence로 복제해 ID 48개를 만들었다.
+독립 Effect 시작은 0/0.400000095/0.700000048초이며 원본 source 시각은 provenance에 남긴다.
+각 복사본의 sourceRecipe·native material·mesh·원본 tail을 보존했고 emitter loop로 반복하지
+않았다. 전체 길이 5801ms는 마지막 발생의 particle tail을 포함한다. 원본의 별도 Missile
+1.0/1.4/1.7초, light/post/shake/sound 및 gameplay의 무작위 대상 선정은 이번 두 항목 범위에
+포함하지 않았다. 사용자가 독립 MAP 위치를 저작하는 항목이다.
+
+후속 CPU 원본 대조에서 새 element ID만 부여하면 난수 seed identity도 바뀌는 것을 확인했다.
+세 복사본은 기존 portable-copy 계약의 `sourceNode=authored-copy:<원본 ID>`를 사용하도록
+보완했다. 새 stable element ID 48개는 유지하며 원본 RNG identity를 별도로 보존한다.
+수정 후 폭발 Authored SHA256은
+`08e4496858f66e20552409136ce5bd676aacac0dafa45d459ad0b18da13910bd`이며 CPU 재검증을 통과했다.
+초기 `registration_receipt.json`의 폭발 hash는 이 보완 전 설치 기록이므로 최신 파일 hash와
+혼동하지 않는다. 예고의 visual 활성 구간·생성 manifest 길이 2초와 현행 Playback의 보수적인
+전체 duration 4초도 별개다. 신규 Append는 Playback과 같은 4000ms를 사용하도록 수정했고
+내부 전체 시계가 길다는 이유로 예고나 inner를 4초로 늘리지 않는다.
+
+### G18-02. 재질 연결과 확인한 범위
+
+사각형 원본 MIC의 native 3607을 기존 LocalDecal table·Kouku shader dispatch에 추가했다.
+`native_install_receipt.json`의 격리 `fxc /T fx_5_0 /O1`은 exit code 0이다.
+기존 native program 865개와 함수 block 1185개 보존 검사를 통과했고 compiler warning 존재도
+기록했다. 이 설치 단계는 제품 EXE·CSO를 쓰지 않았으며 전체 Product 빌드 성공과 구분한다.
+`installed_texture_preflight.json`은 기존 white·caustic DDS의 실제 경로·hash를 확인했다.
+
+원본 `engineresources.defaulttexture` noise 입력은 기존 설치된
+`fx_tex_00.fx_a_blankwhite_01`로 중립화했다. 이는 원본 caustic 애니메이션·geometry·color를
+유지하며 유한 차분 UV warp를 없애는 프로젝트 재구성이다. 원본 engine noise에 따른 UV
+흔들림까지 복원한 것은 아니다. 이 경계는 `engine_noise_adapter.json`에 명시했다.
+
+선택 Python 문법, 신규·관련 JSON/XML parse와 선택 Effect source/등록 검사는 PASS다.
+`registration_validation.json`은 사라지기 및 이번 예고·폭발의 실제 asset ID·hash·category·
+leaf·요소 수·version·source 검사·project XML 일치를 기록한다. `changed_json_xml_parse.json`은
+검사한 JSON/XML 11파일에서 오류 0을 기록한다. 전체 Effect source 검사는 기존
+`effect.kouku.gate1.blade-dance.circle.impact`의 v15 carrier 계약 오류로 막혔다.
+따라서 선택 항목 PASS를 전체 Effect library PASS로 확대하지 않았고 기존 문서를 수정하지 않았다.
+
+### G18-03. 실제 CPU 재생 검증과 사용자 배치 경로
+
+`verify_receipt.json`과 `verify_native.log`는 최종 실제 Codec/Playback·decal projection·
+native material parameter packet 검사 PASS를 기록한다. Load/Validate/Save_Atomic 뒤
+canonical reopen 전체 동등성을 확인했고 candidate와 설치 Authored도 일치한다.
+현재 source copy와 재사용 object의 source hash를 확인했으며 기존 recipe/material/resource/
+particle field 보존 288검사를 포함한다.
+
+예고의 실제 projection은 7시점에서 X 3m·Z 18m·depth Y 6m로 고정됐고 native 3607의
+inner는 0초 0·1.5초 1이었다. active color를 포함한 최종 alpha는 0/1.5/2초에 0/3/0이다.
+2.05초에는 평가 요소 0개이며 visual 창은 2초, 기존 보수적 Playback clock은 4초다.
+후자는 source decal emitter duration과 particle lifetime tail을 합치는 현재 CPU 정책이다.
+
+48요소의 60Hz 재생에서 세 그룹 각각 16요소를 관측했고 최초 관측 시각은
+0.016667/0.416667/0.716667초, 최대 살아 있는 particle은 413개였다.
+원본과 쌍으로 비교한 1236개 particle은 RNG identity를 보존했고 지정한 Z offset을 뺀
+최대 위치 오차는 0m다. 전체 clock은 5.80000019초로 millisecond 올림값 5801ms에 해당한다.
+격리 검사 전체 783836항목을 통과했으며 원본 material·recipe·입자 동작과 codec 왕복도
+보존했다. GPU draw·runtime resource Stage·Client/UI 실행·최종 시각 판정은 이 검사 범위가 아니다.
+
+현재 목록 Refresh와 Composition의 runtime Catalog Load는 별도다. 사용자가 편집을 저장하고
+이번 빌드 결과로 Client를 다시 실행한 뒤 위 분류에서 두 항목을 선택한다. 예고를 Append한
+시각을 T라 하면 같은 MAP 위치·회전의 폭발은 T+2000ms에 Append한다. 폭발 문서 자체가
+0/0.4/0.7초의 세 발생을 가지므로 추가 반복은 필요 없다. 두 박스를 Set Group한 뒤 기존
+그룹 위치 편집·같은 시각 복제·Save로 여러 지점에 배치할 수 있다. 외부 등록이 사용자
+Composition에 이 박스들을 자동 추가한 것은 아니다.
+
+후속으로 Workbench의 새 Append 길이가 Detail start+life+afterImage만 합산해 source tail을
+누락하는 문제를 확인했다. 사라지기 1001ms와 세 폭발 2000ms를 실제 Playback의
+2201ms/5801ms로 계산하도록 `KoukuSaydonActionWorkbench.cpp`를 수정했다.
+내부 `V1_ElementDurationMs`는 Effect Tool과 같은 source particle carrier 판별을 공통
+`CEffectPlayback::Calculate_ElementEndSeconds`에 전달한다. `Refresh_V1ResourceDuration`은
+실제 Catalog의 V1_EFFECT/V1_ELEMENT를 읽고 visible 요소·ModelCue의 종료 또는 정확한
+선택 요소 종료를 구한다. asset/element 누락이나 비유한 값은 실패 메시지를 유지한다.
+
+Create·Stage·신규 Append·standalone Preview·목록 요소 확장과 Created resource 재사용이
+같은 계산을 소비한다. 기존 Pattern/World의 남은 배치 시간 제한과 원자 candidate commit은
+유지한다. 이미 놓인 사용자 occurrence의 duration·배치는 보존하고, Sequence Preview도
+기존 occurrence를 복사한 경우에는 신규 기본 길이를 재적용하지 않는다.
+예고는 보수적인 4000ms box를 만들더라도 폭발을 그 끝이 아닌 시작+2000ms에 놓는다.
+
+Append 후속 수정의 native 검사와 이를 포함한 최종 Product 빌드는 아래 G18-04/05에서 PASS로 확인했다.
+Client/UI를 에이전트가 실행·조작하거나 화면을 캡처하지 않았으며, 노란색 외형·채움·
+세 폭발의 최종 화면 일치는 사용자 확인 전이다.
+
+
+## G18-04. 최종 Product 빌드와 실행 준비 — 2026-09-14 23:26 KST
+
+사용자의 후속 전체 빌드 지시에 따라 Client/Server가 모두 종료된 상태를 확인하고
+정본 Product runner로 Engine → Shared → Server → Client Debug x64를 빌드·배포했다.
+최종 명령은 다음과 같다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Profile Product -Configuration Debug -BuildLogDirectory out/KoukuShowtimeRectangle20260914/FinalProductBuild
+```
+
+최초 사각형 native 설치를 포함한 Product 빌드는 65.025초에 PASS했고 Client 41 OBJ와
+4 CSO를 생성했다. 증거는 out/BuildPipeline/runs/20260914T141357915Z-debug-product.json이다.
+후속 V1 수명 보정까지 반영한 최종 Product 빌드는 13.758초에 PASS했으며 Workbench OBJ
+1개와 Client.exe를 갱신했다. 최종 정본 receipt는
+out/BuildPipeline/runs/20260914T142608661Z-debug-product.json이다.
+컴파일·링크 실패와 필수 runtime input 누락은 없으며 기존 문자 집합 경고는 남아 있다.
+중간의 별도 카메라 작업 소스·빌드 결과도 되돌리지 않았다.
+
+| 최종 산출물 | 확인값 |
+|---|---|
+| Client/Bin/Debug/Client.exe | 2026-09-14 23:26:07 KST, 58,626,048 bytes |
+| EXE SHA256 | d5f0fdfb776b34ced5620a51ecff3529cf77ae3b987b4b7b8d03fa360a5e4fad |
+| Workbench CPP SHA256 | ee025d9d02b98db3347610f7850c4dfc0a2fb0970c652f96658c91b68e3b50dc |
+| 최종 source/data 입력 32개 | 빌드 전후 SHA 동일 |
+| 사각형 Decal CSO SHA256 | e8dd2bc5751a0b5292ee82caa4ecc7b44a54f202bed7296c42408daded6e457b |
+
+out/KoukuShowtimeRectangle20260914/final_product_receipt.json은 위 산출물과 source hash를
+기록한다. 최종 EXE 안의 Duplicate Group (same time), Resources.Tree.Rebuild,
+Level.Kouku.Markers.Prepare와 native 3607 profile 문자열도 확인했다. 기존 양손 총 소품
+미리보기, Resources 목록 캐시·화면 밖 마커 최적화, 그룹 XYZ 이동·같은 시각 복제·저장이
+이번 빌드에 함께 포함된다. 이번의 FPS와 시각 결과를 사용자 확인 전 PASS로 추가하지 않는다.
+
+최신 신규 3문서 등록·source 검사 및 JSON/XML parse는 PASS이고 RNG 보완 뒤 등록 receipt의
+현재 SHA도 갱신했다. 전체 Effect library 검사의 기존 다른 v15 문서 실패와 원본 engine
+noise 대체 입력 경계는 G18-02에 유지한다. 이 두 사항을 전체 원본 완전 복원으로 확대하지 않는다.
+Client/Server를 에이전트가 실행하지 않았으며 화면 검증은 사용자에게 남긴다. 사용자 실행은
+Server CMD/서버 실행 상태 확인 뒤 Client (no build) 또는 위 Debug/Client.exe를 사용한다.
+Effect Tool의 KoukuSaydon → 3관문 → 패턴 → 세이튼 → 쇼타임에서 사라지기를,
+같은 위치의 사각형 장판 분류에서 예고·폭발을 확인한다. Composition에서는 G18-03의
+T / T+2000ms 및 MAP 그룹 배치 순서를 사용한다.
+
+
+### G18-05. V1 Append·Preview 수명 소비 검증
+
+out/EffectAppendDuration20260914/receipt.json의 실제 Catalog Load/Find와 Playback clock,
+최신 Workbench 함수 본문을 사용한 native 검사는 200항목 PASS다. 신규 기본 길이는
+사라지기 2201ms, 사각형 예고 4000ms, 사각형 폭발 5801ms이며 모든 61 V1_ELEMENT도
+같은 종료 계산을 사용한다. 예고의 실제 표시 시간은 계속 2초다.
+
+Create, Stage의 기존 resource 재사용, Created/Source Append, 새 standalone Preview와
+Sequence Configure가 최신 길이를 소비했다. 기존 occurrence의 777ms 사용자 수명,
+fade·brightness·위치·회전·크기는 유지됐다. 신규 박스만 기존 Pattern/World의 남은 길이로
+제한하며 기존 박스 시간을 자동 확대하지 않는다. 누락 asset/element, 비유한 값과 commit
+거절에서 기존 resource·candidate·draft·pending preview 보존도 확인했다.
+
+사용한 Catalog/Codec/Playback은 현재 실제 코드이고 Workbench 본문은 최신 CPP에서
+추출했다. commit 성공/거절, MAP spawn 위치와 기존 preview dispatcher는 명시적 시험
+대체점이다. 이 검사를 실제 UI 입력이나 전체 Composition Save 트랜잭션으로 기록하지
+않는다. 기존 그룹 Collect/Translate/Duplicate, Save와 pending geometry overlay 본문은
+이전 179검사 PASS 시점과 hash가 동일하다. 검증 전후 소스·DLL·사용자 Data도 동일했다.
+최종 git diff --check는 PASS이며 제품 EXE와 사용자 저작물을 추가 변경하지 않았다.

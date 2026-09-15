@@ -25,7 +25,7 @@ LevelCatalog scenario
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
-| `LV_LUT_HEARTRB_ED` | 279 assets / 13,184 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, source stone material/baked lighting 7 placements, BossProfile, ValtanEncounter |
+| `LV_LUT_HEARTRB_ED` | 717 assets / 13,184 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair/rail source surfaces, source-exact outer towers, map point light 22, source stone material/baked lighting 443 placements, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
@@ -34,7 +34,7 @@ LevelCatalog scenario
 
 ## 3. 레이어별 생략 규칙
 
-발탄 중앙 석재 7배치는 `MapCatalog.json`의 `sourceMaterials/materials` 쌍으로 선언한
+발탄 바닥·바위 443배치는 `MapCatalog.json`의 `sourceMaterials/materials` 쌍으로 선언한
 `LV_LUT_HEARTRB_ED.mapmaterials.json` formatVersion 2를 소비한다. 선택 family
 `bg_base_opa_overlay`는 기본/overlay D/N 네 입력과 배치별 원본 COLOR0, UV1 및 tangent
 handedness가 필요하다. `placementLighting`은 sourcePlacementId와 variant assetId별
@@ -46,6 +46,13 @@ catalog는 `Data/Maps/Imported`, placement/materials는 `Data/Maps/Authoring`에
 때는 Git 제외 `Resources/Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/`와
 `Resources/Map/Lighting/Valtan/`도 필요하다. 기존 Deploy·파괴·Server gameplay 계약은
 이 표면 재질 문서에 포함되지 않는다.
+
+정적 Deploy 모델의 named surface는 `BossCatalog.modelMaterialOverrides`에서도 기존 map material
+family를 사용할 수 있다. `modelAssetId + materialName`을 `CMapAssetCatalog::Parse_ModelSurface`의
+동일 parser로 검사하고 CModel/CMaterial과 `MapAssetRenderUtils`로 그린다. 별도 surface parser를
+두지 않는다. 이 경로는 opaque/deferred 및 back cull만 지원하며 per-placement `bakedLighting`은
+거부한다. source character 재질 행은 기존 경로를 유지한다. 중앙 발탄 A/B의 원본 두 material slot은
+이 계약을 사용하며 기존 Destroy/Fracture 판정과 배치 scale은 보존한다.
 
 | 레이어 | 없을 때 | 불완전할 때 |
 |---|---|---|

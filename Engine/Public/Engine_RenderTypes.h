@@ -6,6 +6,10 @@
 #include "Engine_Enum.h"
 #include <wrl/client.h>
 #include <cstddef>
+#include <array>
+#include <string>
+#include <memory>
+#include <vector>
 
 namespace Engine
 {
@@ -58,6 +62,30 @@ namespace Engine
 		SHADOW_SETTINGS		Settings = {};
 	}SHADOW_LIGHT_DESC;
 
+
+	// Source LUT pixels are immutable, linear UNORM samples in a 16-cube atlas.
+	struct SOURCE_COLOR_GRADING_LUT final
+	{
+		std::string strAssetId;
+		std::array<float4_t, 256u * 16u> Pixels{};
+	};
+	struct SOURCE_COLOR_GRADING_LAYER final
+	{
+		std::shared_ptr<const SOURCE_COLOR_GRADING_LUT> pLut;
+		f32_t fWeight = 1.f; // A null LUT denotes the neutral cube.
+	};
+	struct SOURCE_POST_PROCESS_SETTINGS final
+	{
+		bool_t bEnabled = false;
+		f32_t fToneScale = 1.f, fToneRange = 8.f, fToneToe = 1.f;
+		float3_t vHighlights{ 1.f, 1.f, 1.f }, vMidtones{ 1.f, 1.f, 1.f };
+		float3_t vShadows{}, vColorize{ 1.f, 1.f, 1.f };
+		f32_t fDesaturation = 0.f;
+		// Authored profiles contain zero (neutral) or one layer. Runtime volume
+		// transitions blend the original LUTs before applying the grading math.
+		std::vector<SOURCE_COLOR_GRADING_LAYER> LutLayers;
+	};
+
 	typedef struct tagRenderQualitySettings
 	{
 		bool_t	bSSAOEnabled = true;
@@ -78,6 +106,10 @@ namespace Engine
 		f32_t	fFXAASubpixel = 0.75f;
 		f32_t	fFXAAEdgeThreshold = 0.166f;
 		f32_t	fFXAAEdgeThresholdMin = 0.0833f;
+		// Optional scene color adjustment; identity preserves existing profiles.
+		float4_t vBloomTint = { 1.f, 1.f, 1.f, 1.f };
+		f32_t fSceneDesaturation = 0.f;
+		SOURCE_POST_PROCESS_SETTINGS SourcePostProcess{};
 	}RENDER_QUALITY_SETTINGS;
 
 	enum class MATERIAL_DEBUG_VIEW : uint32_t

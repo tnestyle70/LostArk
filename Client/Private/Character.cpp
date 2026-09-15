@@ -1464,12 +1464,24 @@ shared_ptr<CModel> CCharacter::Get_BodyModel() const
 	return m_pBodyModel;
 }
 
+bool_t CCharacter::Set_PresentationSizeMultiplier(const f32_t multiplier)
+{
+	if (!std::isfinite(multiplier) || multiplier < 0.25f || multiplier > 4.f)
+		return false;
+	if (m_fPresentationSizeMultiplier != multiplier)
+	{
+		m_fPresentationSizeMultiplier = multiplier;
+		Update_PresentationRootMatrix();
+	}
+	return true;
+}
+
 bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 {
 	if (nullptr == pOut || nullptr == m_pTransformCom)
 		return false;
 	XMStoreFloat4x4(pOut,
-		XMMatrixScaling(m_fPresentationScale, m_fPresentationScale, m_fPresentationScale) *
+		XMMatrixScaling(Get_PresentationScale(), Get_PresentationScale(), Get_PresentationScale()) *
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
 		XMMatrixTranslation(m_vVehicleSeatOffset.x, m_vVehicleSeatOffset.y, m_vVehicleSeatOffset.z));
 	return true;

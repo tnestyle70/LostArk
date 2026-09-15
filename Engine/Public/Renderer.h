@@ -80,6 +80,14 @@ private:
 	uint32_t								m_iScenePostWidth = {};
 	uint32_t								m_iScenePostHeight = {};
 	uint32_t								m_iScenePostFinalTarget = {};
+	struct SOURCE_GRADING_CACHE_ENTRY final
+	{
+		SOURCE_POST_PROCESS_SETTINGS Settings;
+		f32_t fGamma = 2.2f;
+		ComPtr<ID3D11ShaderResourceView> pTexture;
+	};
+	vector<SOURCE_GRADING_CACHE_ENTRY> m_SourceGradingCache;
+	ComPtr<ID3D11ShaderResourceView> m_pSourceGradingLut;
 	RENDER_QUALITY_SETTINGS				m_RenderQualitySettings = {};
 	MATERIAL_RENDER_SETTINGS m_MaterialRenderSettings = {};
 	RENDER_ENVIRONMENT_STATE m_RenderEnvironment;
@@ -121,6 +129,8 @@ private:
 	HRESULT Render_UI();
 
 private:
+	HRESULT Stage_SourceGradingLut(const SOURCE_POST_PROCESS_SETTINGS& source, f32_t gamma,
+		ComPtr<ID3D11ShaderResourceView>& output);
 	HRESULT Ready_Shadow_Resources();
 	HRESULT Ready_SourceLightMask(uint32_t width, uint32_t height);
 	HRESULT Ready_Bloom_DSV();

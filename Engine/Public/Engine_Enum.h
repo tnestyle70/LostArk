@@ -42,6 +42,9 @@ namespace Engine
 		SOURCE_DIRECTIONAL = 19,
 		SOURCE_POINT = 20,
 		SOURCE_SPOT = 21,
+		// 22-27 are the existing appended instanced-light passes.
+		SOURCE_LUT_BAKE = 28,
+		SOURCE_LUT_BAKE_NEUTRAL = 29,
 		END
 	};
 

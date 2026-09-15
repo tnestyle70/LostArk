@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
 #include "DeployPropRuntime.h"
 #include "EncounterPatternReference.h"
@@ -47,6 +48,12 @@ public:
 	virtual HRESULT Render() override;
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
+	{ return m_FollowCameraProfile; }
+	const std::string& Get_FollowCameraProfileStatus() const
+	{ return m_strFollowCameraProfileStatus; }
+	bool_t Set_FollowCameraProfile(const ARENA_CAMERA_PROFILE& profile,
+		std::string& outStatus);
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
@@ -238,6 +245,9 @@ private:
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 	weak_ptr<CCharacter> m_pCameraTarget;
+	ARENA_CAMERA_PROFILE m_FollowCameraProfile =
+		CArenaCameraProfile::Default(ARENA_CAMERA_MAP::VALTAN);
+	std::string m_strFollowCameraProfileStatus;
 	weak_ptr<CTransform> m_pCinematicRestoreTarget;
 	bool_t m_bCinematicRestoreFollowRequested = false;
 	bool_t m_bCinematicCameraApplied = false;

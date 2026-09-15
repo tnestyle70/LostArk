@@ -182,7 +182,8 @@
     {"id": "kouku.category.5612ed573dd3bcc3c244", "parentId": "kouku.category.3987fa02cce6b3352094", "kind": "CATEGORY", "displayName": "폭탄"},
     {"id": "kouku.category.fa2cab44f7cefadb55a3", "parentId": "kouku.category.08d402c24ebfae39fbc7", "kind": "CATEGORY", "displayName": "저주의식"},
     {"id": "kouku.category.f20d85c12b1f39e952da", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "빙고"},
-    {"id": "kouku.category.29d760822330b86c7936", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "앵콜세이튼"}
+    {"id": "kouku.category.29d760822330b86c7936", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "앵콜세이튼"},
+    {"id": "kouku.category.503e8dff75a3ee404bf5", "parentId": "kouku.category.3af3bc051c90cf62aa71", "kind": "CATEGORY", "displayName": "사각형 장판"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -958,6 +959,9 @@
     {"kind": "V1", "assetId": "effect.kouku.gate1.authored.p4.scene-image-collapse", "displayName": "1관문_장면 캡처·수축", "parentId": "kouku.category.c23993a78a16e7073331"},
     {"kind": "V2_LEAF", "assetId": "kouku.gate1.authored.p4.popup.transition.fade", "displayName": "1관문_캡처 암전·팝업북 페이드인", "parentId": "root.v2"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.bomb.fuse", "displayName": "쇼타임_해골 폭탄_심지 불꽃", "parentId": "kouku.category.5612ed573dd3bcc3c244"},
-    {"kind": "V1", "assetId": "effect.kouku.bingo.encore.blackhole.beam.full.restore", "displayName": "빙고 | 앵콜세이튼 | 블랙홀빔", "parentId": "kouku.category.29d760822330b86c7936"}
+    {"kind": "V1", "assetId": "effect.kouku.bingo.encore.blackhole.beam.full.restore", "displayName": "빙고 | 앵콜세이튼 | 블랙홀빔", "parentId": "kouku.category.29d760822330b86c7936"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.saydon.disappear", "displayName": "쿠크세이튼_사라지기", "parentId": "kouku.category.3af3bc051c90cf62aa71"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.rectangle.warning", "displayName": "쇼타임_사각형_예고", "parentId": "kouku.category.503e8dff75a3ee404bf5"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.rectangle.impact", "displayName": "쇼타임_사각형_폭발", "parentId": "kouku.category.503e8dff75a3ee404bf5"}
   ]
 }

@@ -450,6 +450,14 @@ private:
 	/* Gameplay/network identity stays m_strArchetypeId.  This second ID names
 	   only the atomically committed body/weapon/armour presentation group. */
 	std::string m_strPresentationPartArchetypeId = "BOSS_VALTAN";
+	struct DEFAULT_PARTICLE_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		uint64_t iWorldRootHandle = 0u;
+
+	};
+	std::vector<DEFAULT_PARTICLE_OCCURRENCE> m_DefaultParticleOccurrences;
+	bool_t m_bDefaultParticlesAttempted = false;
 	LostArk::Shared::NET_ENTITY_ID m_iOwnerBossNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	bool_t m_isRaidBgmEnabled = false;
@@ -704,6 +712,8 @@ private:
 		bool_t bAnimationEdgeChanged,
 		std::size_t iCurrentClipOccurrenceIndex,
 		std::size_t& iOutClipOccurrenceIndex);
+	void Stop_DefaultParticles();
+	void Update_DefaultParticles(f32_t fTimeDelta);
 	void Load_PatternEffectCues();
 	bool_t Reload_PatternEffectCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);

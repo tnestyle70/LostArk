@@ -151,6 +151,10 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		return RejectAsset(archetypeId, "body geometry/skeleton/weapon socket unavailable: " +
 			pActor->bodyModel);
 	}
+	for (const auto& particle : pActor->defaultParticles)
+		if (!bodyModel->Has_Bone(particle.boneName.c_str()))
+			return RejectAsset(archetypeId, "default particle bone unavailable: " +
+				particle.occurrenceId + " / " + particle.boneName);
 	if (hasAnimSetFile)
 	{
 		const unique_ptr<CModel> animSetModel = CModel::Create(

@@ -1,5 +1,42 @@
 # LostArk merge 회귀 방지 정본
 
+### 원본 정적 메시의 접선 부호는 두 좌표계 변환을 함께 계산한다
+
+- UE packed TangentZ.W의 부호를 glTF tangent.w에 그대로 복사하지 않는다.
+  UE→glTF `(x,z,y)`는 반사이므로 glTF W는 원본 부호의 음수다. 공통 cooker의
+  glTF→runtime `(x,y,-z)`에서 다시 반사되어 최종 runtime W는 원본 부호와 같아진다.
+- 원본 T/N과 `B=cross(N,T)*W`, 비퇴화 UV 미분으로 얻은 B를 독립 대조한다.
+  최종 WModel의 T/B/N과 position/UV/COLOR/index를 검사하고 정상 모델까지 일괄 반전하지 않는다.
+- 상세 교정·설치 범위는 [맵·발탄 결과](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md)에 둔다.
+
+### 유령 재질과 기본 부착 오라는 원본 blend·수명 계약을 소비한다
+
+- Valtan source program84의 master는 BLEND_Translucent다. opaque/deferred의 ordered coverage로
+  대신하면 픽셀 소실이 발생한다. 기존 native character forward pass를 사용하며 source의
+  post-render depth와 approximate sort까지 재현했는지는 별도 기록한다.
+- LookInfo 기본 particle은 action notify와 다른 입력이다. 실제 본 이름·local TRS와 owner
+  생존 수명을 연결하고 normal/ghost 교체·죽음·숨김·release에서 handle을 정리한다.
+- source EmitterLoops의 생략/0을 Python `value or 1`로 유한1회로 바꾸지 않는다.
+  지속 오라는 기존 Effect_Playback의 owner-sustained 실행으로 처리하며 매프레임 전체 Seek나
+  duration마다 강제 reset으로 입자 이력을 버리지 않는다. 기존 유한 효과의 종료 정책은 보존한다.
+
+### 원본 카메라·후처리 값은 축·상속·실제 소비자를 함께 확인한다
+
+- 원본 수평 FOV를 DirectX 수직 FOV에 그대로 넣지 않는다. 16:9 변환과 현재 viewport aspect를
+  구분한다. 카메라 pose까지 바뀌면 캐릭터와 지면의 투영 비율이 달라져 전체 Effect scale로 보정하지 않는다.
+- WorldInfo/PostProcessVolume의 저장값은 클래스 기본값과 override flag까지 합쳐야 한다.
+  LUT 이름이 있어도 override=false이면 켜지 않는다. Character Select는 SL00만 보지 않고
+  LV_LOBBY_PS의 실제 CharacterCloseupScene chain을 확인한다.
+- Lightmass EnvironmentColor는 bake 입력이다. RNM 위에 더하는 runtime ambient와 동일하다고
+  단정하지 않는다. SOURCE_CHARACTER 광원은 marker5라는 이유로 baked map monster 표면을 재조명하면
+  안 된다. material baked binding과 실제 픽셀 RNM flag를 함께 검사한다.
+- 원본 tone/LUT packing과 Hable exposure/임의 gamma는 다른 계산이다. 원본 chain 이름에
+  epic이 들어 있어도 실제 enum과 CPU 분기를 확인한다. LUTBlend의 native A8R8G8B8과
+  float 중간 출력, CPU pow와 GPU 명령 정밀도를 구분한다. disassembly에0으로 표시된
+  상수도 DXBC bit를 확인한다. 현재 pow floor의0x322bcc77은1e-8이다.
+  native shader 수치 동치와 사용자 화면 판정을 구분한다. 미지원 태양광 제외영역·안개/발광
+  합성과 입력 출처는 대응 09-14/09-15 렌더링 RESULT에 둔다.
+
 ### Cooked distribution의 range header를 방향 XYZ로 읽지 않는다
 
 - `lookupTable`의 앞 2개 값은 값 범위 header다. 실제 vector payload와 `componentCount`,
@@ -1190,6 +1227,13 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 
 ### 렌더링 hot path는 실제 소비 입력과 큐 수명을 함께 보존한다
 
+- 정적 월드 표시를 다른 구역까지 늘릴 때는 화면 밖 occurrence의 sample·입자 준비 비용을 함께 검사한다.
+  particle별 최종 clip 검사는 이미 실행한 CPU 재생·준비를 되돌리지 않는다. 숨긴 표시의 7초 시계와
+  재진입 tail은 보존하고, 작은 카메라 왕복은 가시성 여유 영역으로 흡수한다.
+- 최종 카메라 이후에 가시성을 확정하면 이미 끝난 자동 Late_Update의 제출을 그대로 기대하지 않는다.
+  해당 owner만 기존 제출 함수를 명시 호출하고 자동 제출을 비활성화해 첫 표시 누락과 이중 제출을 함께 막는다.
+  쿠크 marker의 실제 연결·수치 검증은 09-14 KOUKU_MARKER_VISIBILITY_PERFORMANCE RESULT를 따른다.
+
 - source family별 재질 준비를 줄일 때 PS의 family 분기 앞 공통 처리도 검사한다. `Shader_VtxMeshBinary`의 opaque/shadow presentation dither는 source BG에도 `g_Opacity`를 읽는다. native 재질이 raw UV를 쓴다는 이유로 opacity까지 생략하면 소품이 잘못 사라진다. source on/off, diffuse override와 직전 shader 상태를 실제 MRT/depth로 비교한다.
 - per-draw 진단 목록은 닫힌 도구에서도 문자열 검색·삭제·할당 비용을 만들 수 있다. 실제 UI 조회가 있는 동안만 수집하고 level 변경·만료와 재열기 동작을 유지한다.
 - list 렌더 큐를 capacity 재사용 vector로 바꾸면 callback append가 iterator/reference를 무효화할 수 있다. index로 순회하고 객체 수명은 queue의 shared_ptr로 보존한다. sorted BLEND의 snapshot 순서와 실패/pass 종료 clear를 별도로 유지한다.
@@ -1388,7 +1432,7 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 ### Workbench의 반복 계산과 실패 리소스 이름 조회를 구분한다
 
 - UI draw의 이름·상태 표시는 이미 로드된 view나 명시 선택 시 확보한 metadata를 사용한다. 성공만 cache하는 Catalog::Find를 매 프레임 호출하면 손상된 파일 하나가 반복 I/O를 만들 수 있다. 펼친 metadata → Find_Loaded → 저장 stable ID 표시를 사용하고, 실제로 확인한 이름만 Rename 대상으로 제공한다.
-- 이전 camera 실패 cache가 남아 있는지와 실제 camera Load scope를 먼저 확인한다. 문자열·category·트리 계산 비용이 큰 경우를 실패한 로드의 재시도로 단정하지 않는다. kind/version 필터를 텍스트 검색 전에 적용하고 불변 메뉴 문자열은 매 frame 정규화하지 않는다.
+- 이전 camera 실패 cache가 남아 있는지와 실제 camera Load scope를 먼저 확인한다. 문자열·category·트리 계산 비용이 큰 경우를 실패한 로드의 재시도로 단정하지 않는다. kind/version 필터를 텍스트 검색 전에 적용하고 불변 메뉴 문자열은 매 frame 정규화하지 않는다. Composition Effect 목록은 inventory Refresh와 version/owner/search 변경 때만 필터·목록·분류 트리를 다시 만들고, Created 목록은 draft generation도 검사한다. category는 참조로 읽고 owner 결과를 재사용한다. 선택은 stable source ID로 조회하며 펼친 Element를 캐시 목록에 매 frame 누적하지 않는다. 검색·Locate·Refresh·이름 변경 때 캐시 갱신과 동적 duration 보존을 함께 검사한다.
 - inclusive Composition Build 시간은 자식 비용을 포함한다. metadata 검색의 CPU 비교를 전체 UI 시간이나 실제 FPS 개선량으로 보고하지 않는다. pane별 계측과 사용자가 저장한 같은 조건의 profiler를 대조한다. [Workbench 결과 G17](09-13/2026-09-13_KOUKU_CINEMATIC_WORKBENCH_IMPLEMENTATION_RESULT.md).
 
 ### 짧은 발사 섬광과 움직이는 BG 불
@@ -1523,7 +1567,7 @@ Effect의 `anchorKind=WORLD` 참조는 부착할 대상이며 소유한 placemen
 
 ### 본 그룹 위치와 총구 WORLD 위치의 좌표계
 
-원본 V1의 Element를 본별로 묶을 때 본 이름만 같다고 동일 좌표계로 간주하지 않는다. follow/orientation, model cue, runtime anchor slot, socket basis와 transform owner를 함께 구분한다. 공통 local translation은 기존 S*R*T 뒤 본으로 전달되며, position lerp는 시작과 끝에 같은 delta를 더한다. source track과 master inheritance는 별도 owner다. 파생 한 손 WORLD용 총구 좌표를 원본 양손 본-local 위치에 그대로 넣지 않는다. Effect Tool Model Reference의 기본은 actor/animation뿐이며 저장된 총 배치는 명시 Pattern 문맥으로 포함해야 한다. [본 그룹 구현 결과](09-11/2026-09-11_EFFECT_TOOL_SOLO_AND_SELECTED_GROUP_PLAYBACK_RESULT.md).
+원본 V1의 Element를 본별로 묶을 때 본 이름만 같다고 동일 좌표계로 간주하지 않는다. follow/orientation, model cue, runtime anchor slot, socket basis와 transform owner를 함께 구분한다. 공통 local translation은 기존 S*R*T 뒤 본으로 전달되며, position lerp는 시작과 끝에 같은 delta를 더한다. source track과 master inheritance는 별도 owner다. 파생 한 손 WORLD용 총구 좌표를 원본 양손 본-local 위치에 그대로 넣지 않는다. Effect Tool Model Reference는 source actor/animation을 유지하고, source Effect의 정확한 사용 관계에서 지원 본 소품을 가진 유일한 Pattern을 Play All/Play Group에 자동 참조한다. 여러 후보는 명시 Pattern 선택을 요구한다. 양손 내부 본을 앞서 선택한 한 손의 단일 총 WORLD root에 중첩하지 않는다. [본 그룹 구현 결과](09-11/2026-09-11_EFFECT_TOOL_SOLO_AND_SELECTED_GROUP_PLAYBACK_RESULT.md).
 
 
 ### Effect 숫자 입력과 미설치 capture 후보
@@ -1542,3 +1586,30 @@ Effect의 `anchorKind=WORLD` 참조는 부착할 대상이며 소유한 placemen
 - source socket의 cm→m 외에 설치 WModel 본 basis를 검증한다. 폭탄 심지 FX_01의 양의 source Z를 설치 b_body에 그대로 더하면 아래로 간다.
 - Distribution=None만 저장된 RawDistribution은 원본 archetype/CDO cooked table을 확인한다. exact occurrence의 빈 필드만 복구하고 기존 저작 분포를 보존한다.
 - 원리와 검증 경계는 [렌더링이펙트복원V2.md](렌더링이펙트복원V2.md)의 같은 날짜 항목, 개별 증거는 09-13 KOUKU_PATTERN_RADIAL_MOTION RESULT를 따른다.
+
+- Composition Effect 그룹의 공간 이동에서 MAP는 고정 세계좌표라 멤버 시작 시간이 달라도 공통 delta를 적용할 수 있다. BOSS/WORLD는 실제 같은 anchor/bone/occurrence/emission/Follow 기준을 검사하며, frozen이면 시작 시점도 같아야 한다. 모든 후보를 먼저 검증하고 기존 staged geometry를 함께 갱신한다. 같은 시각 그룹 복제는 새 occurrence/group ID와 현재 미저장 위치를 함께 복사하고, 이미 실행 중인 preview의 문서 snapshot에도 새 ID를 다시 admit해야 한다. Pattern ID만 같다고 이전 snapshot을 재사용하면 복제본의 위치 편집이 무시된다. Save는 기존 Save_Atomic을 사용하며 이 editor metadata를 새 runtime 부모 Transform으로 소비하지 않는다.
+
+
+### 새 Effect 목록 발견과 Composition 재생 catalog는 별도다
+
+새 Authored의 metadata Discover/Refresh 성공을 runtime catalog Load 완료로 보지 않는다.
+실행 중 Composition의 미저장 편집을 보존하고 외부 등록은 Authored·Catalog·Tree 범위에 둔다.
+현재 Composition의 신규 asset 재생은 사용자 저장 후 Client 재시작으로 확인한다.
+선택 clip에 사라짐 notify가 없으면 바로 앞 clip의 HidePawn·Light·particle 시각을 함께 찾는다.
+root snapshot과 bone follow는 서로 다른 공간이므로 각 notify의 slot·socket·scale을 보존한다.
+원본 앞 clip의 이펙트를 선택 clip root에 임의 중첩하지 않는다.
+[쇼타임 사라지기 G17 결과](09-12/2026-09-12_KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT.md#g17-쇼타임-쿠크세이튼-사라지기-독립-effect-설치--2026-09-14).
+
+### FixArea 예고는 필드 이름·영역 소비자·발생 단위로 읽는다
+
+직사각형 AreaAngle은 기존 HitAreaWire의 halfWidth 계산과 역변환을 대조해 전체 폭인지
+확인한다. 반폭으로 가정하거나 screenshot 비율로 크기를 정하지 않는다. FixArea footer의
+시간은 원본 ScriptStruct의 필드 이름·타입·연결 순서로 읽는다. 고정 `len-164`는 다른
+Timer의 sound 시각일 수 있으므로 DecalFillTime·Duration 대신 사용하지 않는다.
+같은 particle이 세 번 보이면 timer·TRS·판정 영역으로 별도 source occurrence인지 확인하고
+ID·상대 시작·위치를 각각 보존한다. emitter loop 변경으로 서로 다른 발생을 합치지 않는다.
+독립 복제로 element ID를 새로 발급할 때는 기존 portable-copy의 `authored-copy:<원본 ID>`도
+유지해 원본 RNG identity가 바뀌지 않게 한다. ID 고유성 성공만으로 particle 분포 보존을 판정하지 않는다.
+Append의 기본 길이도 Detail 수명 합산 대신 기존 Playback의 source particle tail 계산을 재사용하며 이미 저장된 사용자 occurrence 길이는 보존한다.
+원본 named timing과 프로젝트 보간 투영은 구분한다. 구체 수치는
+[사각형 장판 G18 결과](09-12/2026-09-12_KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT.md#g18-쇼타임-사각형-예고와-3회-공습-폭발-등록--2026-09-14)에 둔다.

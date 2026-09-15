@@ -197,6 +197,10 @@ bool_t CCamera::End_PresentationOverrideToPose(const uint64_t iOwnerId,
 
 void CCamera::Update_PipeLine()
 {
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	if (std::isfinite(viewport.x) && std::isfinite(viewport.y) &&
+		viewport.x > 0.f && viewport.y > 0.f)
+		m_fAspect = viewport.x / viewport.y;
 	if (m_bPresentationOverrideActive && nullptr != m_pTransformCom)
 	{
 		const matrix_t appliedWorld =

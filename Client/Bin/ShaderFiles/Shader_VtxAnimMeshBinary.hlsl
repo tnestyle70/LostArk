@@ -483,7 +483,7 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFa
     return output;
 }
 
-// Source BLEND_Translucent hair drawn after scene lighting. The same native base
+// Source BLEND_Translucent surfaces drawn after scene lighting. The same native base
 // and light programs as the deferred marker-5 path run here per forward light.
 float4 g_SourceCharacterLightConstants[64];
 #include "Shader_SourceCharacterLightPrograms.hlsli"
@@ -518,6 +518,14 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     light.values[5] = float4(dot(t, direction), dot(b, direction), dot(n, direction), 1.f);
     light.values[7] = float4(dot(t, view), dot(b, view), dot(n, view), 1.f);
     light.values[8] = float4(input.vWorldPos.xzy * 100.f, 1.f);
+    if (84u == g_SourceCharacterProgram)
+    {
+        // Ghost's native direct VS uses UV/light/view/position in 2/3/5/6.
+        light.values[2] = float4(input.vTexcoord, 0.f, 0.f);
+        light.values[3] = light.values[5];
+        light.values[5] = light.values[7];
+        light.values[6] = light.values[8];
+    }
     light.projection[0] = viewProjection[0] * 0.01f;
     light.projection[1] = viewProjection[2] * 0.01f;
     light.projection[2] = viewProjection[1] * 0.01f;
@@ -529,7 +537,8 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
 
 SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
-    if (18u != g_SourceCharacterProgram && 88u != g_SourceCharacterProgram) discard;
+    if (18u != g_SourceCharacterProgram && 84u != g_SourceCharacterProgram &&
+        88u != g_SourceCharacterProgram) discard;
     const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
     const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
         input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
@@ -574,7 +583,9 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
             lit = SourceCharacterLight18(lightInput);
 #endif
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
-        if (88u == g_SourceCharacterProgram)
+        if (84u == g_SourceCharacterProgram)
+            lit = SourceCharacterLight84(lightInput);
+        else if (88u == g_SourceCharacterProgram)
             lit = SourceCharacterLight88(lightInput);
 #endif
         if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;

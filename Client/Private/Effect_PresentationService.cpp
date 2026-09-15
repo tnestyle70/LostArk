@@ -4733,7 +4733,10 @@ bool_t Client::CEffectPresentationService::Spawn(
 			(Desc.bUseWorldRoot &&
 			 Desc.iLevelOwnerIndex == CGameInstance::Get().Get_CurrentLevelID() &&
 			 !Desc.strLevelPlacementId.empty())) &&
-		(!Desc.bExternallySampled || Desc.bLevelOwned);
+		(!Desc.bExternallySampled || Desc.bLevelOwned) &&
+		(!Desc.bOwnerSustainedSourceLoops ||
+			(Desc.bUseWorldRoot && !Desc.bLevelOwned && !Desc.bExternallySampled &&
+				Owner.pBoss && !Owner.pCharacter && Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL));
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
@@ -4862,7 +4865,8 @@ bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
 {
 	OutHandle = {};
 	if (CueDesc.strEffectAssetId.empty() || CueDesc.strOccurrenceId.empty() ||
-		0u == CueDesc.iActionStartTick || nullptr == CueDesc.pBossOwner.lock() ||
+		(0u == CueDesc.iActionStartTick && !CueDesc.bOwnerSustainedSourceLoops) ||
+		nullptr == CueDesc.pBossOwner.lock() ||
 		!CueDesc.pOwner.expired() || CueDesc.bLevelOwned || CueDesc.bUseWorldRoot ||
 		0u != CueDesc.iWorldRootHandle || !Is_NonDegenerateAffineMatrix(RootWorld) ||
 		!Is_ValidCueScaleDescriptor(CueDesc.eScalePolicy, CueDesc.vWorldScale))
@@ -4997,6 +5001,67 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 		}
 	}
 	return false;
+}
+
+HRESULT Client::CEffectPresentationService::Submit_LevelPlacementSample(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const bool_t visible)
+{
+	if (!Handle.Is_Valid())
+	{
+		g_strStatus = "Level placement sample needs a valid Effect handle.";
+		return E_INVALIDARG;
+	}
+	const auto effect = std::find_if(g_ActiveEffects.begin(), g_ActiveEffects.end(),
+		[Handle](const ACTIVE_EFFECT& value) { return value.iWorldRootHandle == Handle.iValue; });
+	if (effect == g_ActiveEffects.end())
+	{
+		const bool_t pending = std::any_of(g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+			[Handle](const PENDING_EFFECT_SPAWN& value) { return value.Desc.iWorldRootHandle == Handle.iValue; });
+		g_strStatus = pending ? "Level placement Effect is waiting for spawn commit." :
+			"Level placement Effect handle is no longer active.";
+		return pending ? S_FALSE : E_FAIL;
+	}
+	// Reject other Effect owners without changing their visibility or submission.
+	if (!effect->pObject || !effect->bLevelOwned || !effect->bExternallySampled ||
+		effect->iLevelIndex != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		g_strStatus = "Level placement sample needs a current Level-owned externally sampled Effect.";
+		return E_INVALIDARG;
+	}
+	effect->pObject->Use_ExplicitRenderSubmission();
+	if (!visible)
+	{
+		effect->pObject->Set_Visible(false);
+		effect->bPendingInitialSeek = false;
+		return S_OK;
+	}
+	const auto fail = [&](const HRESULT result, std::string reason)
+	{
+		effect->pObject->Set_Visible(false);
+		effect->bPendingInitialSeek = false;
+		g_strStatus = std::move(reason);
+		return result;
+	};
+	if (effect->bFollowAnchorMissing)
+		return fail(E_FAIL, "Level placement Effect lost its world root.");
+	if (effect->pObject->Is_RenderFailureIsolated())
+		return fail(effect->pObject->Get_IsolatedRenderFailure(), effect->pObject->Get_Status());
+	if (effect->bPendingInitialSeek)
+	{
+		if (!effect->ExternalTransformProvider)
+			return fail(E_INVALIDARG, "Level placement sample needs its transform-history provider.");
+		std::string historyError;
+		if (!Commit_ExternalTransformHistorySample(*effect, historyError))
+		{
+			effect->bExternalHistorySampled = false;
+			return fail(E_FAIL, "Level placement transform-history sample failed: " + historyError);
+		}
+	}
+	effect->pObject->Set_Visible(true);
+	const HRESULT result = effect->pObject->Submit_RenderGroups();
+	if (FAILED(result))
+		return fail(result, effect->pObject->Get_Status());
+	return result;
 }
 
 HRESULT Client::CEffectPresentationService::Commit_WorldRootCaptureSample(
@@ -5202,7 +5267,10 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			(!Desc.bUseWorldRoot || Desc.iLevelOwnerIndex !=
 			 CGameInstance::Get().Get_CurrentLevelID() ||
 			 Desc.strLevelPlacementId.empty())) ||
-		(Desc.bExternallySampled && !Desc.bLevelOwned))
+		(Desc.bExternallySampled && !Desc.bLevelOwned) ||
+		(Desc.bOwnerSustainedSourceLoops &&
+			(!Desc.bUseWorldRoot || Desc.bLevelOwned || Desc.bExternallySampled ||
+				!Owner.pBoss || Owner.pCharacter || Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL)))
     {
         strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
         g_strStatus = strOutStatus;
@@ -5355,6 +5423,13 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
+    if (Desc.bOwnerSustainedSourceLoops &&
+        !pEffect->Enable_OwnerSustainedSourceLoops(strOutStatus))
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+        g_strStatus = strOutStatus;
+        return false;
+    }
     if (Desc.bExternalModelCueAnchors) pEffect->Use_ExternalModelCueAnchors();
     if (!Desc.strElementId.empty() && !pEffect->Select_OccurrenceElement(Desc.strElementId, strOutStatus))
     {

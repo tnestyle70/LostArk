@@ -57,6 +57,22 @@ float       g_fBloomScatter;
 float       g_fToneMapExposure;
 float       g_fToneMapWhitePoint;
 float       g_fToneMapGamma;
+float4      g_vSceneBloomTint = float4(1.f, 1.f, 1.f, 1.f);
+float       g_fSceneDesaturation = 0.f;
+int         g_iSourcePostProcessEnabled = 0;
+float4      g_vSourceToneCurve = float4(.22f, 1.0275f, .255447f, 1.f);
+float       g_fSourceToneToe = 1.f;
+Texture2D   g_SourceGradingLut;
+Texture2D   g_SourceLutInputs[4];
+float4      g_vSourceLutWeights;
+float       g_fSourceNeutralLutWeight = 1.f;
+float4      g_vSourceGradingParameters[7];
+SamplerState SourceGradingSampler
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
 uint        g_iFXAAEnabled;
 float       g_fFXAASubpixel;
 float       g_fFXAAEdgeThreshold;
@@ -527,8 +543,10 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
 // or marker-5 native rows (those are checked in their material light pass).
 bool Reject_LightReceiver(PS_IN input, DEFERRED_LIGHT_INPUT light)
 {
-    if (light.flags.x == 1u) return g_SourceCharacterRow == 0u;
-    if (light.flags.x != 2u) return false;
+    if (light.flags.x == 1u && g_SourceCharacterRow == 0u) return true;
+    // Native static map rows share the character carrier; their RNM must
+    // exclude baked source lights just like the ordinary map families.
+    if (light.flags.x != 1u && light.flags.x != 2u) return false;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
     const float marker = g_DepthTexture.Load(pixel).w;
     if (g_SourceCharacterRow != 0u)
@@ -1305,6 +1323,70 @@ float3 Tonemap_Hable(float3 vColor)
             (vColor * (A * vColor + B) + D * F)) - E / F;
 }
 
+// Recovered EFEngine CPU pack + FUberPostProcessBlendPixelShader02000.
+VS_OUT VS_SOURCE_LUT_BAKE(VS_IN input)
+{
+    VS_OUT output;
+    output.vPosition = float4(input.vPosition.xy * 2.f, 0.f, 1.f);
+    output.vTexcoord = input.vTexcoord;
+    return output;
+}
+
+float4 Grade_SourceLut(float4 color)
+{
+    float3 graded = saturate(color.rgb - g_vSourceGradingParameters[0].rgb) * g_vSourceGradingParameters[1].rgb;
+    graded = pow(max(graded, 1.e-8f), g_vSourceGradingParameters[2].rgb);
+    float gray = dot(graded, g_vSourceGradingParameters[3].rgb);
+    graded = graded * g_vSourceGradingParameters[0].w + gray;
+    graded = graded * g_vSourceGradingParameters[5].rgb + g_vSourceGradingParameters[6].rgb;
+    color.rgb = graded * g_vSourceGradingParameters[4].rgb;
+    return pow(max(color, 1.e-8f), 2.2f * g_vSourceGradingParameters[5].w);
+}
+
+float4 PS_SOURCE_LUT_BAKE_NEUTRAL(PS_IN input) : SV_TARGET0
+{
+    float2 coordinate = input.vTexcoord - float2(.5f / 256.f, .5f / 16.f);
+    float red = frac(coordinate.x * 16.f);
+    float blue = coordinate.x - red * (1.f / 16.f);
+    float4 color = float4(float3(red, coordinate.y, blue) * g_fSourceNeutralLutWeight * (16.f / 15.f), 0.f);
+    return Grade_SourceLut(color);
+}
+
+float4 PS_SOURCE_LUT_BAKE(PS_IN input) : SV_TARGET0
+{
+    // FLUTBlender: a neutral lattice plus original LUTs, graded before lookup.
+    float2 coordinate = input.vTexcoord - float2(.5f / 256.f, .5f / 16.f);
+    float red = frac(coordinate.x * 16.f);
+    float blue = coordinate.x - red * (1.f / 16.f);
+    float4 color = float4(float3(red, coordinate.y, blue) * g_fSourceNeutralLutWeight * (16.f / 15.f), 0.f);
+    color += g_SourceLutInputs[0].SampleLevel(SourceGradingSampler, input.vTexcoord, 0.f) * g_vSourceLutWeights.x;
+    color += g_SourceLutInputs[1].SampleLevel(SourceGradingSampler, input.vTexcoord, 0.f) * g_vSourceLutWeights.y;
+    color += g_SourceLutInputs[2].SampleLevel(SourceGradingSampler, input.vTexcoord, 0.f) * g_vSourceLutWeights.z;
+    color += g_SourceLutInputs[3].SampleLevel(SourceGradingSampler, input.vTexcoord, 0.f) * g_vSourceLutWeights.w;
+    return Grade_SourceLut(color);
+}
+
+float3 Tonemap_SourceCustomizable(float3 color)
+{
+    color = max(color, 0.f);
+    float3 rational = color / abs(color + g_vSourceToneCurve.x) * g_vSourceToneCurve.y;
+    float3 linearGamma = pow(color * g_vSourceToneCurve.w, 1.f / 2.2f);
+    float3 shoulder = saturate((color - g_vSourceToneCurve.z) * 10000.f);
+    return saturate(lerp(lerp(linearGamma, rational, shoulder), rational, saturate(g_fSourceToneToe)));
+}
+
+float3 Sample_SourceGradingLut(float3 color)
+{
+    // Blue selects adjacent horizontal slices, red/green use bilinear filtering.
+    // 14.9999 keeps blue=1 in slice14, with interpolation weight exactly1.
+    float slice = floor(color.b * 14.9999f);
+    float2 uv = float2(slice / 16.f + color.r * (15.f / 256.f) + .5f / 256.f,
+        color.g * (15.f / 16.f) + .5f / 16.f);
+    float3 low = g_SourceGradingLut.SampleLevel(SourceGradingSampler, uv, 0.f).rgb;
+    float3 high = g_SourceGradingLut.SampleLevel(SourceGradingSampler, uv + float2(1.f/16.f,0.f), 0.f).rgb;
+    return lerp(low, high, color.b * 15.f - slice);
+}
+
 float3 Resolve_FinalLDR(float2 vTexcoord)
 {
     float3 vScene = Sanitize_HDR(g_SceneHDRTexture.Sample(
@@ -1316,13 +1398,21 @@ float3 Resolve_FinalLDR(float2 vTexcoord)
             PostProcessSampler, clamp(vTexcoord, 0.f, 1.f)).rgb);
     }
 
-    float3 vSceneWithBloom = vScene + vBloom;
+    float3 vSceneWithBloom = vScene + vBloom * g_vSceneBloomTint.rgb;
+    if (g_iSourcePostProcessEnabled != 0)
+        return Sample_SourceGradingLut(Tonemap_SourceCustomizable(
+            Sanitize_HDR(vSceneWithBloom * g_fToneMapExposure)));
     float3 vWhiteScale = max(Tonemap_Hable(
         max(g_fToneMapWhitePoint, 1.f).xxx), 0.00001f);
     float3 vMapped = Tonemap_Hable(vSceneWithBloom *
         max(g_fToneMapExposure, 0.01f)) / vWhiteScale;
-    return pow(saturate(vMapped),
+    float3 displayColor = pow(saturate(vMapped),
         1.f / max(g_fToneMapGamma, 1.f));
+    // Display-space adapter, not the original game's packed LUT transform.
+    // Keep the old return path exact when optional color adjustment is absent.
+    if (g_fSceneDesaturation <= 0.f) return displayColor;
+    float luminance = dot(displayColor, float3(0.299f, 0.587f, 0.114f));
+    return lerp(displayColor, luminance.xxx, saturate(g_fSceneDesaturation));
 }
 
 float Final_Luminance(float3 vColor)
@@ -1882,6 +1972,27 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_SPOT();
+    }
+
+    // Appended28: source grading atlas. Existing draw pass indices are stable.
+    pass SourceLutBake
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SOURCE_LUT_BAKE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SOURCE_LUT_BAKE();
+    }
+
+    pass SourceLutBakeNeutral
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SOURCE_LUT_BAKE();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_SOURCE_LUT_BAKE_NEUTRAL();
     }
 
 }

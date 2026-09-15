@@ -398,7 +398,10 @@ for ordinal, selection in enumerate(selections):
         kouku_ground = decal and sid in (
             'ef9cad5cf42011438c3b2ff2ecf7baee',
             'b123a95ca0a96e488268a58a2998fa43',
-            '76df7d394e7b4242b700d26cf69db77b')
+            '76df7d394e7b4242b700d26cf69db77b',
+            # GroundEffect 2113 rectangle retains the same LocalDecal
+            # VS, world-position input and engine-owned CB0[0..3] prefix.
+            '2dd9378b07e40a4893bb599b57c0d913')
         if kouku_ground:
             # GroundEffect's LocalDecal VS exports absolute world position at
             # TEXCOORD5. Its PS adds a pre-view translation before the existing

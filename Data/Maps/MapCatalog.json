@@ -46,7 +46,7 @@
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
       "gameplayDocument": "Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json",
       "placementCount": 13184,
-      "assetCount": 280,
+      "assetCount": 717,
       "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED",
       "sourceMaterials": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapmaterials.json",
       "materials": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapmaterials.json"

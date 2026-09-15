@@ -62,6 +62,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
+	// A real boss world-root owner may sustain source EmitterLoops=0 until teardown.
+	bool_t bOwnerSustainedSourceLoops = false;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
 	// External occurrence end age; zero retains the authored screen-post duration.
@@ -368,6 +370,11 @@ public:
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider = {},
 		bool_t bRebuildHistory = false,
 		f32_t fPlaybackEndSeconds = 0.f);
+	// The owner calls once after the final camera, before rendering the world.
+	// Level-owned external placements keep their objects while hidden; visible
+	// samples commit before using the ordinary Effect rendergroup submission.
+	static HRESULT Submit_LevelPlacementSample(
+		EFFECT_WORLD_ROOT_HANDLE Handle, bool_t visible);
 	// Completes only this external preview handle after its final WORLD sample.
 	static HRESULT Commit_WorldRootCaptureSample(EFFECT_WORLD_ROOT_HANDLE Handle);
 	static void Set_ScreenPostCaptureAllowed(EFFECT_WORLD_ROOT_HANDLE Handle, bool_t allowed);

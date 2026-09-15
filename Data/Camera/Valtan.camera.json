@@ -1,0 +1,19 @@
+{
+  "schema": "lostark.arena-camera",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "positionOffset": [
+    -9.0,
+    12.627922061357857,
+    9.0
+  ],
+  "rotationDegrees": [
+    45,
+    135,
+    0
+  ],
+  "focusDistance": 18,
+  "fovYDegrees": 32.64206322821485,
+  "followResponse": 18,
+  "characterSizeMultiplier": 1
+}

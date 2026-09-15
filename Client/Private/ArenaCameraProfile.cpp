@@ -23,6 +23,8 @@ namespace
 		{
 		case ARENA_CAMERA_MAP::CHARACTER_SELECT: return "LV_LOBBY_CLASSSELECT_SL00";
 		case ARENA_CAMERA_MAP::KOUKU_SAYDON: return "LV_LUT_MIDNIGHTC_ED";
+		case ARENA_CAMERA_MAP::BERN: return "LV_BER_BERNCASTLE";
+		case ARENA_CAMERA_MAP::VALTAN: return "LV_LUT_HEARTRB_ED";
 		default: return nullptr;
 		}
 	}
@@ -62,9 +64,9 @@ namespace
 		if (!CDataJson::Parse(text, root, status, limits))
 			return false;
 		const char* area = AreaId(map);
-		if (nullptr == area || !root.Is_Object() || root.Get_Object().size() != 8u)
+		if (nullptr == area || !root.Is_Object() || root.Get_Object().size() != (root.Find("characterSizeMultiplier") ? 9u : 8u))
 		{
-			status = "Arena camera document must contain exactly the eight supported fields.";
+			status = "Arena camera document requires eight supported fields and optional characterSizeMultiplier.";
 			return false;
 		}
 		const auto* schema = root.Find("schema");
@@ -83,7 +85,9 @@ namespace
 			!ReadVector(root.Find("rotationDegrees"), staged.rotationDegrees) ||
 			!ReadFloat(root.Find("focusDistance"), staged.focusDistance) ||
 			!ReadFloat(root.Find("fovYDegrees"), staged.fovYDegrees) ||
-			!ReadFloat(root.Find("followResponse"), staged.followResponse))
+			!ReadFloat(root.Find("followResponse"), staged.followResponse) ||
+			(root.Find("characterSizeMultiplier") &&
+				!ReadFloat(root.Find("characterSizeMultiplier"), staged.characterSizeMultiplier)))
 		{
 			status = "Arena camera pose and lens fields must contain finite numbers.";
 			return false;
@@ -132,7 +136,8 @@ namespace
 			<< profile.rotationDegrees.x << ", " << profile.rotationDegrees.y << ", "
 			<< profile.rotationDegrees.z << "],\n  \"focusDistance\": " << profile.focusDistance
 			<< ",\n  \"fovYDegrees\": " << profile.fovYDegrees
-			<< ",\n  \"followResponse\": " << profile.followResponse << "\n}\n";
+			<< ",\n  \"followResponse\": " << profile.followResponse
+			<< ",\n  \"characterSizeMultiplier\": " << profile.characterSizeMultiplier << "\n}\n";
 		return output.str();
 	}
 }
@@ -145,6 +150,10 @@ std::filesystem::path CArenaCameraProfile::Path(const ARENA_CAMERA_MAP map)
 		return CProjectDataRoot::Resolve(L"Camera/CharacterSelect.camera.json");
 	case ARENA_CAMERA_MAP::KOUKU_SAYDON:
 		return CProjectDataRoot::Resolve(L"Camera/KoukuSaydon.camera.json");
+	case ARENA_CAMERA_MAP::BERN:
+		return CProjectDataRoot::Resolve(L"Camera/Bern.camera.json");
+	case ARENA_CAMERA_MAP::VALTAN:
+		return CProjectDataRoot::Resolve(L"Camera/Valtan.camera.json");
 	default: return {};
 	}
 }
@@ -153,18 +162,56 @@ ARENA_CAMERA_PROFILE CArenaCameraProfile::Default(const ARENA_CAMERA_MAP map)
 {
 	if (nullptr == AreaId(map))
 		throw std::invalid_argument("Unknown arena camera map.");
-	const bool_t characterSelect = ARENA_CAMERA_MAP::CHARACTER_SELECT == map;
+	// EFTable_IsometricCamera and the raid EFChangePlayerCameraVolume defaults.
+	// UE centimetres (X,Y,Z) map to runtime metres (X,Z,-Y). The lens is
+	// horizontal at 16:9 in the source; DirectXMath consumes vertical degrees.
+	const f32_t distance = map == ARENA_CAMERA_MAP::VALTAN ? 18.f :
+		map == ARENA_CAMERA_MAP::KOUKU_SAYDON ? 19.f : 16.f;
+	const f32_t horizontalFov = map == ARENA_CAMERA_MAP::VALTAN ? 55.f : 50.f;
 	ARENA_CAMERA_PROFILE profile;
-	profile.positionOffset = { 0.4f, 7.5f, 4.5f };
-	const f32_t deltaY = (characterSelect ? 1.05f : 1.2f) - profile.positionOffset.y;
-	const f32_t horizontalDistance = std::hypot(profile.positionOffset.x, profile.positionOffset.z);
-	profile.rotationDegrees = {
-		XMConvertToDegrees(std::atan2(-deltaY, horizontalDistance)),
-		XMConvertToDegrees(std::atan2(-profile.positionOffset.x, -profile.positionOffset.z)), 0.f
-	};
-	profile.focusDistance = std::hypot(deltaY, horizontalDistance);
-	profile.fovYDegrees = characterSelect ? 45.f : 60.f;
-	profile.followResponse = 12.f;
+	profile.positionOffset = { -distance * 0.5f, distance * std::sqrt(0.5f) - 0.1f,
+		distance * 0.5f };
+	profile.rotationDegrees = { 45.f, 135.f, 0.f };
+	profile.focusDistance = distance;
+	profile.fovYDegrees = XMConvertToDegrees(2.f * std::atan(
+		std::tan(XMConvertToRadians(horizontalFov) * 0.5f) / (16.f / 9.f)));
+	// Project follow damping is independent of the source lens/boom restoration.
+	profile.followResponse = map == ARENA_CAMERA_MAP::BERN ? 0.f :
+		map == ARENA_CAMERA_MAP::VALTAN ? 18.f : 12.f;
+	return profile;
+}
+
+ARENA_CAMERA_PROFILE CArenaCameraProfile::BeforeRestoration(const ARENA_CAMERA_MAP map)
+{
+	ARENA_CAMERA_PROFILE profile;
+	switch (map)
+	{
+	case ARENA_CAMERA_MAP::CHARACTER_SELECT:
+		profile.positionOffset = { 0.f, 6.f, 4.f };
+		profile.rotationDegrees = { 55.f, -180.f, 0.f };
+		profile.focusDistance = 7.f;
+		profile.fovYDegrees = 70.f;
+		profile.followResponse = 12.f;
+		break;
+	case ARENA_CAMERA_MAP::KOUKU_SAYDON:
+		profile.positionOffset = { -3.1500001f, 7.75f, 3.1500001f };
+		profile.rotationDegrees = { 53.1100006f, 132.f, -1.75f };
+		profile.focusDistance = 7.75241899f;
+		profile.fovYDegrees = 60.f;
+		profile.followResponse = 12.f;
+		break;
+	case ARENA_CAMERA_MAP::BERN:
+	case ARENA_CAMERA_MAP::VALTAN:
+		profile.positionOffset = { 0.4f, 7.5f, 4.5f };
+		profile.rotationDegrees = {
+			XMConvertToDegrees(std::atan2(6.3f, std::hypot(0.4f, 4.5f))),
+			XMConvertToDegrees(std::atan2(-0.4f, -4.5f)), 0.f };
+		profile.focusDistance = std::sqrt(0.4f * 0.4f + 6.3f * 6.3f + 4.5f * 4.5f);
+		profile.fovYDegrees = 60.f;
+		profile.followResponse = map == ARENA_CAMERA_MAP::BERN ? 0.f : 18.f;
+		break;
+	default: throw std::invalid_argument("Unknown arena camera map.");
+	}
 	return profile;
 }
 
@@ -184,6 +231,8 @@ bool_t CArenaCameraProfile::Validate(const ARENA_CAMERA_PROFILE& profile, std::s
 		status = "Vertical FOV must be finite and within 10..150 degrees.";
 	else if (!InRange(profile.followResponse, 0.f, 60.f))
 		status = "Follow response must be finite and within 0..60 (0 is immediate).";
+	else if (!InRange(profile.characterSizeMultiplier, 0.25f, 4.f))
+		status = "Character size multiplier must be finite and within 0.25..4.";
 	else
 	{
 		status.clear();
@@ -206,7 +255,7 @@ float3_t CArenaCameraProfile::LookOffset(const ARENA_CAMERA_PROFILE& profile)
 }
 
 bool_t CArenaCameraProfile::Load(const ARENA_CAMERA_MAP map, ARENA_CAMERA_PROFILE& outProfile,
-	std::string& status)
+	std::string& status, std::string* sourceBaseline)
 {
 	const auto path = Path(map);
 	if (path.empty())
@@ -219,12 +268,13 @@ bool_t CArenaCameraProfile::Load(const ARENA_CAMERA_MAP map, ARENA_CAMERA_PROFIL
 	if (!ReadText(path, text, status) || !Parse(text, map, staged, status))
 		return false;
 	outProfile = staged;
+	if (nullptr != sourceBaseline) *sourceBaseline = text;
 	status = "Loaded arena camera profile: " + path.string();
 	return true;
 }
 
 bool_t CArenaCameraProfile::Save(const ARENA_CAMERA_MAP map, const ARENA_CAMERA_PROFILE& profile,
-	std::string& status)
+	std::string& status, std::string* sourceBaseline)
 {
 	const auto path = Path(map);
 	if (path.empty())
@@ -240,6 +290,12 @@ bool_t CArenaCameraProfile::Save(const ARENA_CAMERA_MAP map, const ARENA_CAMERA_
 	if (error || (existed && !ReadText(path, previous, status)))
 	{
 		if (error) status = "Cannot inspect arena camera destination: " + error.message();
+		return false;
+	}
+	if (nullptr != sourceBaseline && (previous != *sourceBaseline ||
+		(existed && sourceBaseline->empty())))
+	{
+		status = "Camera file changed since Load. Draft and disk preserved; Reload saved before editing again.";
 		return false;
 	}
 	std::filesystem::create_directories(path.parent_path(), error);
@@ -288,6 +344,7 @@ bool_t CArenaCameraProfile::Save(const ARENA_CAMERA_MAP map, const ARENA_CAMERA_
 		(existed ? MOVEFILE_REPLACE_EXISTING : 0u) | MOVEFILE_WRITE_THROUGH))
 		return reject("Arena camera atomic replace failed (Win32 " +
 			std::to_string(GetLastError()) + "); previous file preserved.");
+	if (nullptr != sourceBaseline) *sourceBaseline = text;
 	status = "Saved arena camera profile: " + path.string();
 	return true;
 }

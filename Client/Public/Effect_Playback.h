@@ -431,6 +431,8 @@ public:
 	bool_t Query_ParticleRuntimeProbe(
 		std::string_view strElementId,
 		EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const;
+	// Runtime owner-lifetime contract; authored finite previews retain their duration.
+	bool_t Enable_OwnerSustainedSourceLoops(std::string& strOutError);
 	bool_t Is_Finished() const;
 	f32_t Get_DurationSeconds() const { return m_fDurationSeconds; }
 	f64_t Get_FixedStepClockSeconds() const;
@@ -711,6 +713,7 @@ private:
 	f32_t m_fSampleTimeSeconds = 0.f;
 	f64_t m_fAccumulatorSeconds = 0.0;
 	f32_t m_fDurationSeconds = 0.f;
+	bool_t m_bOwnerSustainedSourceLoops = false;
 	uint64_t m_iSimulationStep = 0u;
 	bool_t m_bSourceVisualProgramActive = false;
 	bool_t m_bPreviousRootPositionInitialized = false;

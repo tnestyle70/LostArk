@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -351,13 +352,14 @@ namespace Client
 			std::string_view patternId,
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
-			std::string& outStatus);
+			std::string& outStatus, bool_t atOriginalTime = false);
 		// Collider groups are authoring selection metadata; geometry remains on each occurrence.
 		bool_t Set_ColliderSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
-		// Effect groups share selection and timing only; each occurrence retains its anchor.
+		// Effect groups retain each anchor; a shared frame also supports placement translation.
 		bool_t Set_EffectSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
+		bool_t Translate_SelectedEffects(const std::array<double, 3u>& translation, std::string& outStatus);
 		bool_t Transform_SelectedColliders(const std::array<double, 3u>& translation,
 			double yawDeltaDegrees, std::string& outStatus);
 		// Total lifetime is the sum of Stage clocks; only the final Stage is resized.
@@ -712,6 +714,9 @@ namespace Client
 		void Render_CameraWindow();
 		bool_t Move_PresentationTimelineSelection(std::string_view patternId, const std::vector<std::string>& occurrenceIds,
 			std::int64_t deltaMs, std::uint64_t generation, std::string& outStatus);
+		bool_t Collect_EffectPlacements(std::string_view patternId,
+			const std::vector<std::string>& occurrenceIds,
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>& outBoxes, std::string& outStatus) const;
 		bool_t Collect_ColliderPlacements(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds,
 			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>& outBoxes, std::string& outStatus) const;
@@ -792,6 +797,28 @@ namespace Client
 		bool_t m_bNewSummonBoxToPatternEnd = true;
 		int32_t m_iSummonBoxStartMs = 0;
 		int32_t m_iSummonBoxDurationMs = 1000;
+		struct EFFECT_RESOURCE_CATEGORY_NODE final
+		{
+			std::map<std::string, EFFECT_RESOURCE_CATEGORY_NODE> children;
+			std::vector<std::size_t> rows;
+			bool selected = false, kouku = false;
+		};
+		// Per-workbench display projections. Refresh replaces the inventory; draft edits
+		// invalidate only the small Created list. No cached value is saved as identity.
+		struct EFFECT_RESOURCE_VIEW_CACHE final
+		{
+			bool valid = false, treeValid = false;
+			int version = -1;
+			std::uint64_t draftGeneration = 0u;
+			std::string owner, search;
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> rows;
+			std::unordered_map<std::string, std::size_t> sourceIndices;
+			EFFECT_RESOURCE_CATEGORY_NODE categories;
+			EFFECT_TOOL_KOUKU_EFFECT_TREE koukuTree;
+			std::vector<std::size_t> koukuRows;
+		};
+		EFFECT_RESOURCE_VIEW_CACHE m_EffectSourceView, m_CreatedEffectView;
+		std::unordered_map<std::string, std::string> m_EffectResourceOwners;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> m_PresentationResourceInventory;
 		std::string m_strPresentationResourceStatus;
 		std::string m_strSelectedPresentationResourceId;

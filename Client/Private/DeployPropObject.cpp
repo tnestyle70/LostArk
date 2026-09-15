@@ -1,6 +1,7 @@
 #include "DeployPropObject.h"
 
 #include "DeferredMaterialRenderUtils.h"
+#include "MapAssetRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
@@ -1239,6 +1240,17 @@ HRESULT CDeployPropObject::Render_Static(
 	const uint32_t fullSurfaceEmissiveMaskMode = 0u;
 	for (uint32_t index = 0; index < model->Get_NumMeshes(); ++index)
 	{
+		const auto* surface = model->Get_MaterialSurface(index);
+		if (surface && surface->family != MODEL_SURFACE_FAMILY::LEGACY)
+		{
+			MAP_ASSET_RENDER_PROFILE profile{};
+			profile.opacity = opacity;
+			profile.emissiveIntensity = emissiveIntensity;
+			if (FAILED(CMapAssetRenderUtils::Bind_Material(model, shader, index, profile, 0.f)) ||
+				FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index)))
+				return E_FAIL;
+			continue;
+		}
 		const uint32_t hasNormal =
 			model->Has_MaterialTexture(index, aiTextureType_NORMALS) ? 1u : 0u;
 		const bool_t ownsEmissive =
@@ -1432,6 +1444,11 @@ bool_t CDeployPropObject::Is_BasePresentationSuppressed() const
 
 bool_t CDeployPropObject::Should_RenderDeferredEmissiveOverlay() const
 {
+	// Native crack surfaces own their source emission; the older authored mask
+	// must not add another glow over those same slabs.
+	const auto* crack = m_pIntactModelCom ? m_pIntactModelCom->Get_MaterialSurface(1u) : nullptr;
+	if (crack && crack->family != MODEL_SURFACE_FAMILY::LEGACY)
+		return false;
 	return m_bDeferredEmissiveOverlay &&
 		DEPLOY_PROP_MODEL_KIND::STATIC == m_ModelKind &&
 		DEPLOY_PROP_STATE::INTACT == m_State &&

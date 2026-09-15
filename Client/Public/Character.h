@@ -119,9 +119,11 @@ public:
 	bool_t Is_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind) const;
 	void Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind, bool_t isVisible);
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
-	/* The uniform scale the catalog admits this class at. Bone matrices are model space,
-	so anything measured off them has to be multiplied by this to be a world size. */
-	f32_t Get_PresentationScale() const { return m_fPresentationScale; }
+	/* Effective visual scale: catalog admission times this map's size control.
+	Bone-space measurements use the same product as the body and equipment root. */
+	f32_t Get_PresentationScale() const { return m_fPresentationScale * m_fPresentationSizeMultiplier; }
+	f32_t Get_CatalogPresentationScale() const { return m_fPresentationScale; }
+	bool_t Set_PresentationSizeMultiplier(f32_t multiplier);
 	uint32_t Get_PrototypeLevelIndex() const
 	{
 		return m_iPrototypeLevelIndex;
@@ -382,6 +384,7 @@ private:
 	uint32_t m_iPrototypeLevelIndex = {};
 	f32_t m_fMoveSpeed = { 5.f };
 	f32_t m_fPresentationScale = 1.f;
+	f32_t m_fPresentationSizeMultiplier = 1.f;
 	// Part parent pointers refer to this instance member for their whole lifetime.
 	float4x4_t m_PresentationRootMatrix = {};
 	bool_t m_isMoving = { false };
