@@ -105,13 +105,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -1889,13 +1889,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -3780,13 +3780,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -5593,13 +5593,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -7417,13 +7417,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -7683,7 +7683,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -9514,13 +9514,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -9780,7 +9780,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.5,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -11640,13 +11640,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.3,
+            0.3,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            90.0,
-            0.0
+            -90.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -11906,7 +11906,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.5,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {

@@ -3112,7 +3112,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 5.5,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -5311,7 +5311,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 5.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -14030,7 +14030,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.30000001192092896,
-        "emitterLoopCount": 40,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -15905,7 +15905,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 5.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -18125,7 +18125,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 5.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,

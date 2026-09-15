@@ -147,6 +147,9 @@ float4 ArtistNativeSample9(float2 uv, float lod, bool explicitLod)
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 448
 #include "Shader_EffectArtistNativeGroup448.hlsli"
 #endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP)
+#include "Shader_EffectVehicleModelNative.hlsli"
+#endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 512
 #include "Shader_EffectArtistNativeGroup512.hlsli"
 #endif
@@ -513,6 +516,9 @@ float4 Shade_ArtistModelNative(uint profile, ARTIST_NATIVE_INPUT input)
 #endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 448
     case 461u: return ArtistNative461(input);
+#endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP)
+    case 3828u: return ArtistNative3828(input);
 #endif
     default: clip(-1.f); return 0.f;
     }

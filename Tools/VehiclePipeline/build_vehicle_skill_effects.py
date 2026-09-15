@@ -152,12 +152,23 @@ def wmodel_bones(asset_id):
     return [bone['name'] for bone in skeleton_bones(data, sections)]
 
 
+# Skeletal meshes a PlaySkeletalMesh notify spawns, restored as V1 model cues.
+MODEL_CUE_MESHES = {
+    'mn_pmstg_00.mesh.mn_pmstg_00_parts1_sk': dict(contract='TerpeionWing', vehicle='Terpeion', cueId='terpeion.wing',
+        package='MN_PMSTG_00', mesh='mesh.mn_pmstg_00_parts1_sk',
+        model='Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel'),
+}
+
+
 def socket_contracts(evidence):
     catalog = {v['archetypeId']: v for v in source.read(CATALOG)['vehicles']}
     spec = source.read(SPEC)
     contracts = {}
-    for vehicle in spec['vehicles']:
-        logical, mesh_path = SOURCE_MESHES[vehicle['name']]
+    meshes = [(vehicle['name'], *SOURCE_MESHES[vehicle['name']],
+               next(v for v in catalog.values() if v['vehicleId'] == vehicle['vehicleId'])['modelAssetId'])
+              for vehicle in spec['vehicles']]
+    meshes += [(row['contract'], row['package'], row['mesh'], row['model']) for row in MODEL_CUE_MESHES.values()]
+    for name, logical, mesh_path, model in meshes:
         package = load_package(resolve_physical_package(UMODEL, RELEASE, logical, 'kr'), ue3.LOSTARK_KR_AES_KEY)
         mesh = source.record_from_export(package, logical.lower(), find_export(package, mesh_path))
         sockets = []
@@ -174,20 +185,57 @@ def socket_contracts(evidence):
             sockets.append(dict(sourceIndex=order, socketName=prop(props, 'socketname'), boneName=prop(props, 'bonename'),
                 sourceObject=row['fullPath'],
                 sourceTransform=dict(positionUeUnits=position, rotationUnrealUnits=rotator, scale=factors),
-                runtimeLocalTransform=dict(position=[v * 0.01 for v in position],
-                    rotationDegrees=[v * 360.0 / 65536.0 for v in rotator], scale=factors),
-                transformEvidence='EXPLICIT_SOCKET_PROPERTIES'))
+                # Vehicle WModels are cooked through the Blender psk importer, which
+                # mirrors bone-local Y. Aufstehen FX_*_Engine_01 (+67 cm Y on
+                # bip002-spine) lands in front of the torso raw and behind it,
+                # beside b_engine_00/01, once mirrored. A Y mirror negates yaw and roll.
+                runtimeLocalTransform=dict(position=[position[0] * 0.01, -position[1] * 0.01, position[2] * 0.01],
+                    rotationDegrees=[rotator[0] * 360.0 / 65536.0, -rotator[1] * 360.0 / 65536.0, -rotator[2] * 360.0 / 65536.0],
+                    scale=factors),
+                transformEvidence='EXPLICIT_SOCKET_PROPERTIES_BONE_Y_MIRRORED'))
         folded = [s['socketName'].casefold() for s in sockets]
-        assert len(folded) == len(set(folded)), ('socket names are not unique', vehicle['name'])
-        model = next(v for v in catalog.values() if v['vehicleId'] == vehicle['vehicleId'])['modelAssetId']
+        assert len(folded) == len(set(folded)), ('socket names are not unique', name)
         bones = wmodel_bones(model)
         contract = dict(schema='lostark.ue3-skeletal-mesh-sockets', formatVersion=1,
             source=dict(package=logical, skeletalMesh=mesh_path, sourcePackage=str(package.path),
                 positionUnitScale=0.01, rotationUnitScaleDegrees=360.0 / 65536.0),
             runtimeModel=dict(assetId=model, bones=bones), sockets=sockets)
-        source.write(evidence / 'sockets' / (vehicle['name'] + '.socket-contract.json'), contract)
-        contracts[vehicle['name']] = contract
+        source.write(evidence / 'sockets' / (name + '.socket-contract.json'), contract)
+        contracts[name] = contract
     return contracts
+
+
+def skeletal_mesh_particles(notify, skin):
+    """Particle entries a PlaySkeletalMesh notify attaches to its spawned mesh.
+
+    Entry layout after the CEFAN_Particle class FString: int32 flag, 8 bytes,
+    skin FString (empty for the base skin), float start, float duration, then a
+    CEFParticleData block with the same layout as PlayParticleEffect. The skin's
+    own entries replace the base entries when present.
+    """
+    raw = base64.b64decode(notify['serializedPayload']['data'])
+    marker = b'\x0f\0\0\0CEFAN_Particle\0'
+    starts = []
+    at = raw.find(marker)
+    while at >= 0:
+        starts.append(at)
+        at = raw.find(marker, at + len(marker))
+    entries = []
+    for index, at in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else len(raw)
+        _, cursor = fstring(raw, at)
+        flag = struct.unpack_from('<i', raw, cursor)[0]
+        assert flag == 1, (notify['notifyId'], 'CEFAN_Particle flag', flag)
+        entry_skin, cursor = fstring(raw, cursor + 12)
+        start, duration = struct.unpack_from('<ff', raw, cursor)
+        block = raw[cursor + 8:end]
+        assert block.startswith(b'\x10\0\0\0CEFParticleData\0'), notify['notifyId']
+        reference = re.search(rb"ParticleSystem'([^']+)'\0", block)
+        assert reference, notify['notifyId']
+        entries.append(dict(skin=entry_skin, startSeconds=start, durationSeconds=duration, block=block,
+            system=reference.group(1).decode('ascii')))
+    own = [e for e in entries if e['skin'].lower() == skin.lower()]
+    return own or [e for e in entries if not e['skin']]
 
 
 def decode_vehicle_cue(decode, payload, contract):
@@ -258,6 +306,27 @@ def selected_actions(actions_root, evidence):
                 assert clip in clip_names[skill['skillId']], (vehicle['name'], skill['skillId'], stage['stageIndex'], clip)
                 notifies = []
                 for notify in stage['notifies']:
+                    mesh = next((r['objectPath'].lower() for r in notify['assetReferences'] if r['className'] == 'SkeletalMesh'), None)
+                    if notify['sourceType'] == 'PlaySkeletalMesh' and mesh in MODEL_CUE_MESHES:
+                        cue = MODEL_CUE_MESHES[mesh]
+                        header = b'CEFActionNotify_PlayParticleEffect\0'
+                        header += b'\0' * (47 - len(header)) + b'\x01'
+                        for number, entry in enumerate(skeletal_mesh_particles(notify, skin)):
+                            data = header + entry['block']
+                            row = dict(notifyId=f"{notify['notifyId']}/mesh-particle-{number:02d}", sourceType='PlayParticleEffect',
+                                category='particle', authority='PRESENTATION', resolutionStatus='SOURCE_SKELETAL_MESH_PARTICLE',
+                                localTimeSeconds=notify['localTimeSeconds'] + entry['startSeconds'],
+                                sourceEndSeconds=0.0, durationSeconds=entry['durationSeconds'],
+                                assetReferences=[dict(className='ParticleSystem', objectPath=entry['system'])],
+                                serializedLabels=['FX', 'CEFParticleData', f"ParticleSystem'{entry['system']}'"],
+                                serializedPayload=dict(encoding='base64', data=base64.b64encode(data).decode('ascii'),
+                                    vehicleName=cue['contract'], vehicleSkin=skin, vehicleParticleSystem=entry['system'],
+                                    vehicleSelection='SKELETAL_MESH_PARTICLE', modelCueId=cue['cueId'],
+                                    sourceSkeletalMeshNotify=notify['notifyId'], sourceEntrySkin=entry['skin']))
+                            skin_rows.append(dict(vehicle=vehicle['name'], skin=skin, notifyId=row['notifyId'],
+                                selection='SKELETAL_MESH_PARTICLE:' + (entry['skin'] or 'base'), particleSystem=entry['system']))
+                            notifies.append(row)
+                        continue
                     if notify['sourceType'] != 'PlayParticleEffect':
                         continue
                     system, selection = skin_system(notify['serializedLabels'], skin)
@@ -321,13 +390,8 @@ STARTUP_PACKAGE = 'startup'
 TEXTURE_ROOT = 'Effect/Vehicle/FullRestore/Textures'
 
 
-def native_materials(evidence, first, last):
-    """Recover original native programs with the Kouku pattern pipeline.
-
-    Only this process's module globals are redirected: the installed game
-    packages replace CanonicalSource, and textures land under Effect/Vehicle.
-    The generated tables are written to a candidate header inside evidence.
-    """
+def native_environment():
+    """Redirect the Kouku pattern extractor to the installed game packages (this process only)."""
     import build_kouku_pattern_native as pattern
     import build_kouku_gate3_rainbow_native as rainbow
     rainbow.UMODEL = pattern.UMODEL = UMODEL
@@ -347,23 +411,6 @@ def native_materials(evidence, first, last):
             return original_pkg(STARTUP_PACKAGE)
         return original_pkg(name)
     pattern.pkg = rainbow.pkg = package
-
-    root = evidence / 'material'
-    root.mkdir(parents=True, exist_ok=True)
-    excluded = []
-    occurrences = []
-    for occurrence in source.read(evidence / 'source_occurrences.json'):
-        if not occurrence['sourceMaterial'] and occurrence['rendererShape'] != 'mesh':
-            excluded.append(dict(elementId=occurrence['elementId'], sourceEmitter=occurrence['sourceEmitter'],
-                rendererShape=occurrence['rendererShape'], reason='SOURCE_NULL_MATERIAL_NON_MESH_EMITTER'))
-            continue
-        occurrences.append(occurrence)
-    source.write(root / 'source_occurrences.json', occurrences)
-    source.write(root / 'native_input_exclusions.json', excluded)
-    for name in ('source_module_inputs.json', 'source_class_defaults.json'):
-        target = root / name
-        if not target.is_file() or target.read_bytes() != (evidence / name).read_bytes():
-            target.write_bytes((evidence / name).read_bytes())
 
     def textures(material_evidence, out):
         required = source.read(out / 'required_native_textures.json')
@@ -410,7 +457,43 @@ def native_materials(evidence, first, last):
                 shutil.copyfile(source_file, destination)
         source.prepare_textures(out, out / 'required_native_textures.json')
     pattern.prepare_textures = textures
-    pattern.prepare(root, first, last)
+    pattern.prepare_textures = textures
+    return pattern
+
+
+def native_materials_prepare(pattern, root, first, last, reuse_roots=()):
+    pattern.prepare(root, first, last, list(reuse_roots))
+
+
+def native_materials(evidence, first, last):
+    """Recover original native programs with the Kouku pattern pipeline.
+
+    Only this process's module globals are redirected: the installed game
+    packages replace CanonicalSource, and textures land under Effect/Vehicle.
+    The generated tables are written to a candidate header inside evidence.
+    """
+    pattern = native_environment()
+    root = evidence / 'material'
+    root.mkdir(parents=True, exist_ok=True)
+    excluded = []
+    occurrences = []
+    for occurrence in source.read(evidence / 'source_occurrences.json'):
+        if not occurrence['sourceMaterial'] and occurrence['rendererShape'] != 'mesh':
+            excluded.append(dict(elementId=occurrence['elementId'], sourceEmitter=occurrence['sourceEmitter'],
+                rendererShape=occurrence['rendererShape'], reason='SOURCE_NULL_MATERIAL_NON_MESH_EMITTER'))
+            continue
+        occurrences.append(occurrence)
+    source.write(root / 'source_occurrences.json', occurrences)
+    source.write(root / 'native_input_exclusions.json', excluded)
+    for name in ('source_module_inputs.json', 'source_class_defaults.json'):
+        target = root / name
+        if not target.is_file() or target.read_bytes() != (evidence / name).read_bytes():
+            target.write_bytes((evidence / name).read_bytes())
+
+    # Programs already installed from an earlier cohort keep their IDs; only new
+    # source material x vertex factory permutations take IDs from `first`.
+    reviewed = root / 'reviewed'
+    native_materials_prepare(pattern, root, first, last, [reviewed] if (reviewed / 'native_runtime_contract.json').is_file() else [])
     contract = source.read(root / 'native' / 'native_runtime_contract.json')
     failures = source.read(root / 'native' / 'source_material_failures.json')
     summary = dict(programs=len(contract['programs']), deferred=len(contract['deferredPrograms']), sourceFailures=len(failures),
@@ -422,6 +505,162 @@ def native_materials(evidence, first, last):
 
 
 VEHICLE_NATIVE_FIRST, VEHICLE_NATIVE_LAST = 3712, 3967
+WING_MATERIALS = ['mn_pmstg_00.mat.mn_pmstg_00-2_aa_mi']
+WING_FIRST = 3828
+
+
+def wing_native_materials(evidence):
+    """Recover the skinned model-cue program of the Terpeion wing skin material.
+
+    The shared pattern extractor selects only particle and static-mesh vertex
+    factories. Its 'mesh' branch is fed with the material map's GPU-skin factory
+    renamed to the local factory, then the selection is restored to the
+    original fgpuskinvertexfactory / skeletalMesh identity before generation.
+    """
+    pattern = native_environment()
+    root = evidence / 'wing' / 'material'
+    root.mkdir(parents=True, exist_ok=True)
+    required = 'vehicle.terpeion.wing.particlemodulerequired'
+    source.write(root / 'source_module_inputs.json', dict(records={required: dict(fullPath=required,
+        classPath='engine.particlemodulerequired', className='particlemodulerequired', archetypeFullPath=None, properties={}, references=[])}))
+    source.write(root / 'source_class_defaults.json', source.read(evidence / 'source_class_defaults.json'))
+    source.write(root / 'source_occurrences.json', [dict(elementId='vehicle.terpeion.wing.' + path.rsplit('.', 1)[-1],
+        sourceMaterial=path, rendererShape='mesh', sourceMesh='', moduleOrder=[required], sourceEmitter=required, actionId=0)
+        for path in WING_MATERIALS])
+    parse = pattern.sm.parse_material_map
+
+    def skinned_as_local(*args, **kwargs):
+        result = parse(*args, **kwargs)
+        result['vertexFactories'] = [f for f in result['vertexFactories'] if f['vertexFactoryType'] != 'flocalvertexfactory']
+        for factory in result['vertexFactories']:
+            if factory['vertexFactoryType'] == 'fgpuskinvertexfactory':
+                factory['vertexFactoryType'] = 'flocalvertexfactory'
+        return result
+    pattern.sm.parse_material_map = skinned_as_local
+    # The wing MIC is a static permutation: its texture expressions index the
+    # MIC's own cooked reference array (normal, diffuse, flat_black, cloud, ...),
+    # not the parent's three-entry default array the shared resolver reads.
+    obj = pattern.obj
+    parents = {}
+    for path in WING_MATERIALS:
+        row = pattern.material(path)
+        mic = obj(path)
+        count = struct.unpack_from('<I', mic['tail'], 36)[0]
+        assert count <= 256 and len(mic['tail']) >= 40 + 4 * count
+        parents[row['parentMaterial']] = (mic, count, row['baseId'])
+
+    def permutation_parent(path):
+        original = obj(path)
+        if path not in parents:
+            return original
+        mic, count, base_id = parents[path]
+        tail = original['tail']
+        rebuilt = struct.pack('<I', 1) + tail[4:16] + bytes.fromhex(base_id) + tail[32:36] + mic['tail'][36:40 + 4 * count]
+        return dict(original, tail=rebuilt, package=mic['package'], sourceStaticPermutationTextures=mic['path'])
+    pattern.obj = permutation_parent
+    try:
+        native_materials_prepare(pattern, root, WING_FIRST, VEHICLE_NATIVE_LAST)
+    except AssertionError as error:
+        # prepare() lowers the renamed 'mesh' selection once; the skinned
+        # selection is regenerated below.
+        print('Expected local-factory generation failure:', str(error)[:200])
+    pattern.obj = obj
+    pattern.sm.parse_material_map = parse
+    out = root / 'native'
+    selection = source.read(out / 'selected_runtime_material_programs.json')
+    for program in selection['programs']:
+        assert program['sourceVF'] == 'flocalvertexfactory'
+        program.update(sourceVF='fgpuskinvertexfactory', rendererShape='skeletalMesh')
+    source.write(out / 'selected_runtime_material_programs.json', selection)
+    pattern.generate_native(root, WING_FIRST, VEHICLE_NATIVE_LAST)
+    contract = source.read(out / 'native_runtime_contract.json')
+    print(json.dumps(dict(programs=[(p['program'], p['sourceMaterial'], p['rendererShape'], p['nativeBlend']) for p in contract['programs']],
+        deferred=contract['deferredPrograms']), ensure_ascii=False))
+
+
+WING_BASE_PS = '5f33bef7c823444d8983ab12adf5b7bb'
+WING_LIGHT_TYPE = 'tlightpixelshaderfdirectionallightpolicyfnostaticshadowingpolicy'
+WING_SHADER = ROOT / 'Client/Bin/ShaderFiles/Shader_EffectVehicleModelNative.hlsli'
+
+
+def wing_light_program(evidence):
+    """Translate the wing MIC's directional light PS into ArtistNative3828Light.
+
+    The dump comes from build_vehicle_source_material.py extract (same material
+    map as program 3828). Both PS read one uniform expression set, so each light
+    row reuses the base program's packed parameter expression for the same
+    expression index. Light inputs: v2 UV, v3 tangent light, v5 tangent view;
+    CB0[0].x opacity and CB0[19] light colour are engine rows.
+    """
+    dump = source.read(evidence / 'wing' / 'source_light' / (WING_MATERIALS[0] + '.json'))
+    base_program = dump['programs']['tbasepasspixelshaderfnolightmappolicyskylight']
+    light = dump['programs'][WING_LIGHT_TYPE]
+    assert base_program['shaderId'] == WING_BASE_PS
+    assert light['bindings']['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 19]
+    generator = (ROOT / 'Tools/EffectPipeline/generate_artist_native_runtime_shader.py').read_text(encoding='utf-8')
+    helpers = {'re': re}
+    exec(generator[generator.index('def args(s):'):generator.index('ns = {name:')], helpers)
+    text = WING_SHADER.read_text(encoding='utf-8')
+    base_body = text[text.index('float4 ArtistNative3828(ARTIST_NATIVE_INPUT input)'):]
+    base_body = base_body[:base_body.index('\n}\n')]
+    assignments = {}
+    for row, lane, value in re.findall(r'^    source\[(\d+)\](?:\.([xyzw]))? = (.*);$', base_body, re.M):
+        assert not lane or (value.startswith('(') and value.endswith(').x')), value
+        assignments[(int(row), lane)] = value[1:-3] if lane else value
+    expression = {}
+    for binding in base_program['bindings']['vectors']:
+        expression[('vector', binding['expressionIndexOrGroup'])] = assignments[(binding['baseIndex'] // 16, '')]
+    for binding in base_program['bindings']['scalarGroups']:
+        for index, lane in enumerate('xyzw'):
+            key = (binding['baseIndex'] // 16, lane)
+            if key in assignments:
+                expression[('scalar', binding['expressionIndexOrGroup'], index)] = assignments[key]
+    rows = light['bindings']['constantBufferClosure']['declaredConstantBuffer0Float4Count'] if 'declaredConstantBuffer0Float4Count' in light['bindings']['constantBufferClosure'] else 20
+    lines = [f'// {WING_MATERIALS[0]}: directional light PS {light["shaderId"]}; parameter rows reuse program 3828 packing.',
+             'float4 ArtistNative3828Light(ARTIST_NATIVE_INPUT input, float3 tangentLight, float3 lightColor)', '{',
+             f'    float4 source[{rows}]; [unroll] for (uint i=0u; i<{rows}u; ++i) source[i]=0.f;',
+             '    source[0]=float4(input.color.a,0.f,0.f,0.f);',
+             '    source[19]=float4(lightColor,1.f);']
+    for binding in light['bindings']['vectors']:
+        lines.append(f'    source[{binding["baseIndex"] // 16}] = {expression[("vector", binding["expressionIndexOrGroup"])]};')
+    for binding in light['bindings']['scalarGroups']:
+        for index, lane in enumerate('xyzw'):
+            key = ('scalar', binding['expressionIndexOrGroup'], index)
+            if key in expression:
+                lines.append(f'    source[{binding["baseIndex"] // 16}].{lane} = ({expression[key]}).x;')
+    temps = next(int(d.split()[1]) for d in light['disassembly']['declarations'] if d.startswith('dcl_temps'))
+    lines += ['    float4 passValues[5]; [unroll] for(uint passIndex=0u;passIndex<5u;++passIndex) passValues[passIndex]=0.f;',
+              '    passValues[0]=float4(.5f,-.5f,.5f,.5f);',
+              '    passValues[3]=float4(0.f,0.f,0.f,1.f); // Neutral source diffuse override, as program 3828.',
+              '    passValues[4]=float4(0.f,0.f,0.f,1.f); // Neutral specular override, as program 3828.',
+              '    float4 v2 = float4(input.uv,0.f,0.f); // native texcoord0',
+              '    float4 v3 = float4(tangentLight,0.f); // native tangent light vector',
+              '    float4 v5 = float4(input.tangentView,0.f); // native tangent camera vector',
+              '    float4 ' + ', '.join(f'r{i}=0.f' for i in range(temps)) + ';',
+              '    float4 output=0.f;']
+    texture_map = {binding['baseIndex']: binding['expressionIndexOrGroup'] for binding in light['bindings']['textures']}
+    for number, instruction in enumerate(light['disassembly']['instructions'], 1):
+        if re.search(r'\bo[1-9]\.', instruction):
+            continue
+        if instruction.startswith('sample'):
+            op, _, tail = instruction.partition(' ')
+            a = helpers['args'](tail)
+            register, swizzle = re.match(r't(\d+)\.([xyzw]+)', a[2]).groups()
+            sample = (f'ArtistNativeSample{texture_map[int(register)]}((' + helpers['operand'](a[1]) + ').xy, ('
+                + helpers['operand'](a[4]) + ').x, ' + ('true' if 'sample_l' in op else 'false') + ')')
+            translated = helpers['result_mask'](a[0], sample + '.' + swizzle)
+        else:
+            translated = helpers['translated'](instruction, {}, 'base')
+        translated = re.sub(r'\bo0\b', 'output', translated)
+        lines += [f'    // {number}: {instruction}', '    ' + translated]
+    lines += ['}', '']
+    function = '\n'.join(lines)
+    marker = '// ' + WING_MATERIALS[0] + ': directional light PS'
+    head = text[:text.index(marker)] if marker in text else text
+    updated = head + function
+    if updated != text:
+        WING_SHADER.write_text(updated, encoding='utf-8', newline='\n')
+    print('ArtistNative3828Light', len(light['disassembly']['instructions']), 'instructions, changed', updated != text)
 
 
 def install_native(evidence):
@@ -436,12 +675,29 @@ def install_native(evidence):
     folder = evidence / 'material' / 'native'
     reviewed = evidence / 'material' / 'reviewed'
     merged = source.read(folder / 'merged_native_runtime_contract.json')
-    rows = merged['programs']
+    everything = merged['programs']
+    assert len({row['program'] for row in everything}) == len(everything)
+    assert {row['program'] for row in everything} <= set(range(VEHICLE_NATIVE_FIRST, VEHICLE_NATIVE_LAST + 1))
+    # Programs reused from the installed cohort keep their installed tables and
+    # shader bodies; only fresh permutations are written to shared sources. The
+    # projection patch still covers every occurrence, staged on a candidate header.
+    reused_path = folder / 'reused_native_programs.json'
+    reused = {row['program'] for row in source.read(reused_path)['programs']} if reused_path.is_file() else set()
+    rows = [row for row in everything if row['program'] not in reused]
     owned = {row['program'] for row in rows}
-    assert len(owned) == len(rows) and owned <= set(range(VEHICLE_NATIVE_FIRST, VEHICLE_NATIVE_LAST + 1))
-    source.write(reviewed / 'native_runtime_contract.json', dict(programs=rows, deferredPrograms=[]))
+    source.write(reviewed / 'native_runtime_contract.json', dict(programs=everything, deferredPrograms=[]))
     source.write(reviewed / 'native_deferred_programs.json', merged['deferredPrograms'])
-    materials.install(reviewed / 'native_runtime_contract.json', reviewed, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
+    header = ROOT / 'Client/Public/Effect_ArtistMaterial.h'
+    from native_material_tables import read_material_bytes
+    candidate = folder / 'Effect_ArtistMaterial.projection.candidate.h'
+    candidate.write_bytes(read_material_bytes(header))
+    materials.install(reviewed / 'native_runtime_contract.json', reviewed, candidate)
+    if not rows:
+        print('No fresh native programs; installed sources unchanged')
+        return
+    fresh = evidence / 'material' / 'fresh'
+    source.write(fresh / 'native_runtime_contract.json', dict(programs=rows, deferredPrograms=[]))
+    materials.install(fresh / 'native_runtime_contract.json', fresh, header)
 
     generated = (folder / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
     bodies = {int(i): block for block, i in re.findall(
@@ -449,7 +705,7 @@ def install_native(evidence):
     companion = (folder / 'KoukuGenericDistortionPrograms.hlsli').read_text(encoding='utf8')
     distortions = {int(i): block for block, i in re.findall(
         r'(float4 ArtistNative(\d+)Distortion\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\})', companion, re.S)}
-    assert set(bodies) >= owned and {r['program'] for r in rows if r.get('distortionPass')} == set(distortions)
+    assert set(bodies) >= owned and {r['program'] for r in rows if r.get('distortionPass')} <= set(distortions)
 
     def carrier(row):
         return {'mesh': 'MESH', 'decal': 'DECAL', 'animationTrail': 'TRAIL', 'animTrail': 'TRAIL', 'ribbon': 'TRAIL',
@@ -566,6 +822,78 @@ def played_stages(evidence):
     return kept, skipped
 
 
+WING_BONE_BASIS_INVERSE = 100.0
+
+
+def material_scalar_event(notify):
+    """AnimEvent_MaterialParamterScalar: int32 flag, float start, float duration, name FString, float from, float to.
+
+    The event is nested in the notify listed before it (PlaySkeletalMesh or
+    PlaySkeletalMeshMaterialParam); its start is relative to that notify.
+    """
+    raw = base64.b64decode(notify['serializedPayload']['data'])
+    assert raw.startswith(b'CEFActionNotify_AnimEvent_MaterialParamterScalar\0'), notify['notifyId']
+    flag, start, duration = struct.unpack_from('<iff', raw, 49)
+    name, cursor = fstring(raw, 61)
+    begin, end = struct.unpack_from('<ff', raw, cursor)
+    assert flag == 1 and duration > 0, notify['notifyId']
+    return dict(name=name, start=start, duration=duration, begin=begin, end=end)
+
+
+def model_cue_material_tracks(notifies, mesh_index):
+    """Scalar keys at cue-local time from the material events of one PlaySkeletalMesh notify."""
+    origin = notifies[mesh_index]['localTimeSeconds']
+    segments = collections.defaultdict(list)
+    for index, notify in enumerate(notifies):
+        if notify['sourceType'] != 'AnimEvent_MaterialParamterScalar':
+            continue
+        parent = notifies[index - 1]
+        if parent['sourceType'] not in ('PlaySkeletalMesh', 'PlaySkeletalMeshMaterialParam'):
+            continue
+        if parent['sourceType'] == 'PlaySkeletalMesh' and index - 1 != mesh_index:
+            continue
+        event = material_scalar_event(notify)
+        start = parent['localTimeSeconds'] - origin + event['start']
+        segments[event['name']].append((start, start + event['duration'], event['begin'], event['end']))
+    tracks = []
+    for name, rows in sorted(segments.items()):
+        keys = []
+        for start, end, begin, finish in sorted(rows):
+            assert not keys or start >= keys[-1][0], (name, rows)
+            keys += [(start, begin), (end, finish)]
+        tracks.append(dict(name=name, kind='SCALAR', keys=[dict(timeSeconds=t, value=[v], arriveTangent=[0.0],
+            leaveTangent=[0.0], interpolation='linear') for t, v in keys]))
+    return tracks
+
+
+def model_cues(evidence, stage, identity):
+    """V1 model cues for the PlaySkeletalMesh notifies of one played source stage."""
+    actions = source.read(evidence / 'actions' / (stage['vehicle'] + '.action-effects.json'))['actions']
+    action = next(a for a in actions if a['actionId'] == stage['skillId'])
+    notifies = next(s for s in action['stages'] if s['stageIndex'] == stage['stageIndex'])['notifies']
+    cues = []
+    for mesh_index, notify in enumerate(notifies):
+        mesh = next((r['objectPath'].lower() for r in notify['assetReferences'] if r['className'] == 'SkeletalMesh'), None)
+        if notify['sourceType'] != 'PlaySkeletalMesh' or mesh not in MODEL_CUE_MESHES:
+            continue
+        row = MODEL_CUE_MESHES[mesh]
+        clip = 'npc_' + notify['serializedLabels'][10].lower()
+        assert notify['serializedLabels'][10].lower().startswith('sk_'), notify['notifyId']
+        patch = source.read(evidence / 'wing' / 'material' / 'native' / 'native_material_patch.json')
+        cues.append(dict(cueId=row['cueId'], modelAssetId=row['model'], clipName=clip,
+            startDelaySeconds=notify['localTimeSeconds'], durationSeconds=notify['durationSeconds'],
+            opacity=1, colorMultiply=[1, 1, 1, 1], holdLastFrame=False, alphaMode='TRANSLUCENT', visible=True,
+            localTransform=dict(position=[0, 0, 0], rotationDegrees=[0, 0, 0], revolutionDegreesPerSecond=[0, 0, 0],
+                scale=[1, 1, 1], velocityPerSecond=[0, 0, 0]),
+            assetPreTransform=dict(scale=[0.0001] * 3, rotationDegrees=[0, -90, 0]),
+            material=copy.deepcopy(patch['programs'][0]['material'])))
+        tracks = model_cue_material_tracks(notifies, mesh_index)
+        if tracks:
+            cues[-1]['materialParameterTracks'] = tracks
+    assert len({c['cueId'] for c in cues}) == len(cues), identity
+    return cues
+
+
 def project_documents(evidence, install):
     import build_kouku_showtime_restore as library
     from build_kouku_action_effect_groups import project_light_occurrences
@@ -655,6 +983,18 @@ def project_documents(evidence, install):
                 required = next(key for key in emitter['moduleOrder'] if 'particlemodulerequired' in key)
                 if 'emitterloops' not in {k.lower() for k in index.objects[required].properties}:
                     element['sourceRecipe']['emitterLoopCount'] = 0
+            # The runtime bounds emission by EmitterDuration x EmitterLoops only.
+            # A notify window shorter than that deactivates the source system at
+            # its end (Aufstehen boosters: 10 s x 1 in a 0.73 s window); loop 0
+            # lets the element lifetime end emission without changing EmitterTime.
+            for element in document['elements']:
+                recipe, timing = element['sourceRecipe'], element['detail']['timing']
+                if element['kind'] == 'light' or recipe['emitterLoopCount'] == 0:
+                    continue
+                emitter = next(o for o in own if o['sourceEmitter'] == element['sourcePresentation']['sourceObjectPath'])
+                if emitter['sourceDurationSeconds'] > 0 and (recipe['emitterDelaySeconds'] +
+                        recipe['emitterDurationSeconds'] * recipe['emitterLoopCount']) > timing['lifeTimeSeconds']:
+                    recipe['emitterLoopCount'] = 0
             document.update(effectAssetId=asset, displayName=f"{catalog[stage['vehicleId']]['archetypeId']} {stage['inputSlot']} {stage['clip']}")
             document.pop('sourceModelPreview', None)
             expanded = []
@@ -666,6 +1006,20 @@ def project_documents(evidence, install):
                 if occurrence['sourceMesh']:
                     element['resources'] = [dict(slotId='meshModel', assetId=meshes[occurrence['sourceMesh']])]
             library.bind_source_providers(document, index, expanded)
+            document['modelCues'] = model_cues(evidence, stage, identity)
+            for element in document['elements']:
+                attachment = element['actionCueAttachment']
+                notify = next(n for n in own_notifies if n['notifyId'] == element['sourcePresentation']['sourceEventId'])
+                cue_id = notify['serializedPayload'].get('modelCueId')
+                if not cue_id:
+                    continue
+                assert any(c['cueId'] == cue_id for c in document['modelCues']), (asset, cue_id)
+                # Model-cue anchors are socket x bone x cue world without the
+                # vehicle bone normalization, so the 0.01 wing bone basis is undone here.
+                socket = attachment['socketLocalTransform']
+                attachment.update(modelCueId=cue_id, runtimeAnchorSlotId=cue_id + '/' + attachment['runtimeAnchorSlotId'],
+                    socketLocalTransform=dict(socket, position=[v * WING_BONE_BASIS_INVERSE for v in socket['position']],
+                        scale=[v * WING_BONE_BASIS_INVERSE for v in socket['scale']]))
             for element in document['elements']:
                 for resource in element['resources'] + element['material'].get('sourceProfile', {}).get('textures', []):
                     assert (RESOURCES / resource['assetId']).is_file(), resource
@@ -769,8 +1123,14 @@ if __name__ == '__main__':
     parser.add_argument('--project', action='store_true')
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--catalog', action='store_true')
+    parser.add_argument('--wing-native', action='store_true')
+    parser.add_argument('--wing-light', action='store_true')
     options = parser.parse_args()
-    if options.catalog:
+    if options.wing_light:
+        wing_light_program(options.evidence_root.resolve())
+    elif options.wing_native:
+        wing_native_materials(options.evidence_root.resolve())
+    elif options.catalog:
         write_skill_cues(options.evidence_root)
     elif options.project:
         project_documents(options.evidence_root, options.install)

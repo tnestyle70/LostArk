@@ -263,6 +263,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				return false;
 			}
 		}
+		std::vector<ARTIST_PARAMETER_DESC> MaterialTrackBindings;
+		if (!Build_ArtistModelCueMaterialTrackBindings(Cue, MaterialTrackBindings, strOutError))
+			return false;
 	}
 
 	std::unordered_set<std::string> ElementIds;

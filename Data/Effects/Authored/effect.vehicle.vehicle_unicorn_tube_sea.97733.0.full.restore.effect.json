@@ -3343,7 +3343,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 2.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,

@@ -4615,7 +4615,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -5860,7 +5860,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.15000000596046448,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -7004,7 +7004,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.15000000596046448,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.15000000596046448,
@@ -8290,7 +8290,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.15000000596046448,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -9586,7 +9586,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.15000000596046448,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -10882,7 +10882,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.15000000596046448,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -14762,7 +14762,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -17604,7 +17604,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.20000000298023224,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -19003,7 +19003,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 10.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -20309,13 +20309,13 @@
         "socketLocalTransform": {
           "position": [
             0.27,
-            0.015,
+            -0.015,
             0.035
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -20575,7 +20575,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 3.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -21897,13 +21897,13 @@
         "socketLocalTransform": {
           "position": [
             0.27,
-            0.015,
+            -0.015,
             0.035
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -22163,7 +22163,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 3.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -23614,13 +23614,13 @@
         "socketLocalTransform": {
           "position": [
             0.27,
-            0.015,
+            -0.015,
             0.035
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -23880,7 +23880,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 3.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -25302,13 +25302,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            -0.15,
+            0.15,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            -180.0,
-            90.0
+            180.0,
+            -90.0
           ],
           "scale": [
             1.0,
@@ -27199,13 +27199,13 @@
         "socketLocalTransform": {
           "position": [
             0.27,
-            0.015,
+            -0.015,
             0.035
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -27465,7 +27465,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 3.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -28787,13 +28787,13 @@
         "socketLocalTransform": {
           "position": [
             0.27,
-            0.015,
+            -0.015,
             0.035
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -29053,7 +29053,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 3.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -30504,13 +30504,13 @@
         "socketLocalTransform": {
           "position": [
             0.27,
-            0.015,
+            -0.015,
             0.035
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,
@@ -30770,7 +30770,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 3.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,

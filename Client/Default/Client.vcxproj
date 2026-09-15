@@ -2366,4 +2366,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98522.1.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98523.0.full.restore.effect.json"></None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectVehicleModelNative.hlsli" />
+  </ItemGroup>
 </Project>

@@ -9,7 +9,421 @@
     "directionYawDegrees": 0,
     "initialSpeedMultiplier": 1
   },
-  "modelCues": [],
+  "modelCues": [
+    {
+      "cueId": "terpeion.wing",
+      "modelAssetId": "Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel",
+      "clipName": "npc_sk_relaxation",
+      "startDelaySeconds": 0.0,
+      "durationSeconds": 6.3333330154418945,
+      "opacity": 1,
+      "colorMultiply": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "holdLastFrame": false,
+      "alphaMode": "TRANSLUCENT",
+      "visible": true,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "velocityPerSecond": [
+          0,
+          0,
+          0
+        ]
+      },
+      "assetPreTransform": {
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ],
+        "rotationDegrees": [
+          0,
+          -90,
+          0
+        ]
+      },
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "mn_pmstg_00.mat.mn_pmstg_00-2_aa_mi",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.efbasematerial.prologue.ch.preset.preset.ghost.trn.e4c70d64f5ee",
+          "runtimeShaderProfileId": "effect.ue3.kouku-3828-native.v1",
+          "parentMaterialPath": "efbasematerial_prologue.ch.preset.preset_ghost_trn_",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "texture_normal",
+              "sourceObjectPath": "mn_pmstg_00.tex.mn_pmstg_00-2_n",
+              "assetId": "Effect/Vehicle/FullRestore/Textures/mn_pmstg_00/mn_pmstg_00-2_n.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "texture_diffuse",
+              "sourceObjectPath": "mn_pmstg_00.tex.mn_pmstg_00-2_d",
+              "assetId": "Effect/Vehicle/FullRestore/Textures/mn_pmstg_00/mn_pmstg_00-2_d.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "texture_color_fx_skin",
+              "sourceObjectPath": "mn_pmstg_00.tex.mn_pmstg_00-2_cm",
+              "assetId": "Effect/Vehicle/FullRestore/Textures/mn_pmstg_00/mn_pmstg_00-2_cm.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_3",
+              "sourceObjectPath": "efmaster_material_prologue.tex.cloud",
+              "assetId": "Effect/Warlord/Textures/EFMASTER_MATERIAL_PROLOGUE/cloud.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_4",
+              "sourceObjectPath": "efmaster_material_prologue.tex.statefx_default",
+              "assetId": "Effect/Artist/Textures/EFMASTER_MATERIAL_PROLOGUE/statefx_default.dds",
+              "addressU": "clamp",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "rimlight_power",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "rimlight_intensity",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "fx_color_desaturation_actiontool",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "fx_color_desaturation_buffsettool",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "constantoutline",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "opacity_power",
+              "group": "None",
+              "value": 5.0
+            },
+            {
+              "name": "opacity",
+              "group": "None",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "dead",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "wave_intensity",
+              "group": "None",
+              "value": 0.10000000149011612
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "transcolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "buffcolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "rimlight_color",
+              "group": "None",
+              "value": [
+                0.9606741666793823,
+                0.9606741666793823,
+                0.9606741666793823,
+                1.0
+              ]
+            },
+            {
+              "name": "diffusecolor",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "diffusecolor_a",
+              "group": "None",
+              "value": [
+                1.2569324970245361,
+                1.0314377546310425,
+                0.7152909636497498,
+                1.0
+              ]
+            },
+            {
+              "name": "diffusecolor_b",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "diffusecolor_c",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "diffuse_color",
+              "group": "None",
+              "value": [
+                1.0,
+                0.8350558876991272,
+                0.5414533615112305,
+                1.0
+              ]
+            },
+            {
+              "name": "fx_color_intensity_buffsettool",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "fx_color_intensity_actiontool",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "state",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "name": "hit_color",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "name": "specular_color",
+              "group": "None",
+              "value": [
+                0.7078651785850525,
+                0.7078651785850525,
+                0.7078651785850525,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "1.use_parts_highlight",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_color_variation",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.use_state_material",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "1.use_emissive",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_mask_variation",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "opacity_uv2",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "1.use_opacity_falloff",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "opacity_uv2_range",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "materialParameterTracks": [
+        {
+          "name": "dead",
+          "kind": "SCALAR",
+          "keys": [
+            {
+              "timeSeconds": 0.0,
+              "value": [
+                1.0
+              ],
+              "arriveTangent": [
+                0.0
+              ],
+              "leaveTangent": [
+                0.0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "timeSeconds": 0.5,
+              "value": [
+                0.0
+              ],
+              "arriveTangent": [
+                0.0
+              ],
+              "leaveTangent": [
+                0.0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "timeSeconds": 6.326982021331787,
+              "value": [
+                0.0
+              ],
+              "arriveTangent": [
+                0.0
+              ],
+              "leaveTangent": [
+                0.0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "timeSeconds": 6.426982022821903,
+              "value": [
+                1.0
+              ],
+              "arriveTangent": [
+                0.0
+              ],
+              "leaveTangent": [
+                0.0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "elements": [
     {
       "id": "kouku.960100.1a7112201c43341b3ccc",

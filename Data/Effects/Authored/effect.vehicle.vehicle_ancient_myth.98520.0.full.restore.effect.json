@@ -3370,13 +3370,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            0.0,
+            -0.0,
             0.0
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            0.0
+            -0.0,
+            -0.0
           ],
           "scale": [
             1.0,

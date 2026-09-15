@@ -3327,7 +3327,10 @@ namespace EffectDocumentRendererDetail
 				A.vAssetPreScale.z != B.vAssetPreScale.z ||
 				A.vAssetPreRotationDegrees.x != B.vAssetPreRotationDegrees.x ||
 				A.vAssetPreRotationDegrees.y != B.vAssetPreRotationDegrees.y ||
-				A.vAssetPreRotationDegrees.z != B.vAssetPreRotationDegrees.z)
+				A.vAssetPreRotationDegrees.z != B.vAssetPreRotationDegrees.z ||
+				!std::equal(A.MaterialParameterTracks.begin(), A.MaterialParameterTracks.end(),
+					B.MaterialParameterTracks.begin(), B.MaterialParameterTracks.end(),
+					[](const auto& L, const auto& R) { return L.strName == R.strName && L.bVector == R.bVector; }))
 			{
 				return false;
 			}

@@ -404,6 +404,10 @@ namespace Client::EffectDocumentCodecDetail
         Client::EFFECT_SOURCE_TRANSFORM_TRACK& Out, std::string& Error);
 	void Write_SourceTransformTrack(std::ostringstream& Output,
         const Client::EFFECT_SOURCE_TRANSFORM_TRACK& Track);
+	bool_t Read_MaterialParameterTracks(const Client::DATA_JSON_VALUE& Value,
+        std::vector<Client::EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK>& Out, std::string& Error);
+	void Write_MaterialParameterTracks(std::ostringstream& Output,
+        const std::vector<Client::EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK>& Tracks);
 	bool_t Read_SourceRecipe(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_CASCADE_RECIPE_DESC& Out,

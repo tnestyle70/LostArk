@@ -22176,13 +22176,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            0.0,
+            -0.0,
             0.0
           ],
           "rotationDegrees": [
             -90.0,
-            45.0,
-            90.0
+            -45.0,
+            -90.0
           ],
           "scale": [
             1.0,
@@ -24173,13 +24173,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            0.0,
+            -0.0,
             0.0
           ],
           "rotationDegrees": [
             -90.0,
-            45.0,
-            90.0
+            -45.0,
+            -90.0
           ],
           "scale": [
             1.0,
@@ -26170,13 +26170,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            0.0,
+            -0.0,
             0.0
           ],
           "rotationDegrees": [
             90.0,
-            -90.0,
-            -90.0
+            90.0,
+            90.0
           ],
           "scale": [
             1.0,
@@ -28167,13 +28167,13 @@
         "socketLocalTransform": {
           "position": [
             0.0,
-            0.0,
+            -0.0,
             0.0
           ],
           "rotationDegrees": [
             90.0,
-            -90.0,
-            -90.0
+            90.0,
+            90.0
           ],
           "scale": [
             1.0,

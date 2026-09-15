@@ -2,6 +2,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "Effect_NativeScreenPostMaterial.h"
 #include "GameInstance.h"
+#include "MapAssetRenderUtils.h"
 #include "Model.h"
 #include "Shader.h"
 #include "VIBuffer_ParticleRect.h"
@@ -374,9 +375,12 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
     return S_OK;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
+HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(const EFFECT_MODEL_CUE_DESC& Cue,
 	const ELEMENT_RESOURCE& Resource, const f32_t fLocalTimeSeconds)
 {
+	std::array<float4_t, 32u> ArtistParameters = Resource.ArtistSourceMaterialParameters;
+	if (!Apply_ArtistModelCueMaterialTrackSamples(Cue, Resource.ArtistMaterialTrackBindings, fLocalTimeSeconds, ArtistParameters))
+		return Fail_RenderOperation("Model Cue material parameter track sample is invalid: " + Cue.strCueId, E_INVALIDARG, true);
     if (Resource.iSourceMaterialProfile == 178u)
         for (const auto& element : Get_StagedDocument().Elements)
         {
@@ -397,6 +401,10 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
 		Ambient.z += Light.vAmbient.z;
 	}
 	const auto& Shader = m_pAnimatedModelShader;
+	// The Terpeion wing skin adds its native directional light PS per forward light.
+	if (Resource.iSourceMaterialProfile == 3828u &&
+		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(Shader)))
+		return Fail_RenderOperation("Model Cue forward light binding failed: " + Cue.strCueId, E_FAIL, true);
 	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
 	if (Resource.bSourceRequiresSceneDepth)
 	{
@@ -409,7 +417,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
 		return Fail_RenderOperation("Animated model-cue scene-depth binding failed.", E_FAIL, true);
 
 	if (FAILED(Shader->Bind_RawValue("g_ArtistModelCueProfile", &Resource.iSourceMaterialProfile, sizeof(Resource.iSourceMaterialProfile))) ||
-		FAILED(Shader->Bind_RawValue("g_ArtistSourceMaterialParameters", Resource.ArtistSourceMaterialParameters.data(), sizeof(Resource.ArtistSourceMaterialParameters))) ||
+		FAILED(Shader->Bind_RawValue("g_ArtistSourceMaterialParameters", ArtistParameters.data(), sizeof(ArtistParameters))) ||
 		FAILED(Shader->Bind_RawValue("g_ArtistSourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))) ||
 		FAILED(Shader->Bind_RawValue("g_ArtistModelAmbient", &Ambient, sizeof(Ambient))) ||
 		FAILED(Shader->Bind_RawValue("g_LanceVASourceMaterialParameters", Resource.LanceVASourceMaterialParameters.data(), sizeof(Resource.LanceVASourceMaterialParameters))) ||
@@ -497,7 +505,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 		for (uint32_t iMesh = 0u; iMesh < Model.Get_NumMeshes(); ++iMesh)
 		{
 			hResult = Resource->second.pMaterialResource ?
-				Bind_ModelCueNativeMaterial(*Resource->second.pMaterialResource, fLocalTime) :
+				Bind_ModelCueNativeMaterial(Cue, *Resource->second.pMaterialResource, fLocalTime) :
 				Bind_DeferredMaterialInputs(Model, m_pAnimatedModelShader, iMesh);
 			if (FAILED(hResult))
 				return Fail_RenderOperation(
