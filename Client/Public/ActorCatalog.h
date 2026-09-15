@@ -213,6 +213,32 @@ struct VEHICLE_RIDER_ENTRY final
 	std::string runClip;
 };
 
+struct VEHICLE_SKILL_RIDER_ENTRY final
+{
+	LostArk::Shared::CHARACTER_CLASS_ID characterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::vector<std::string> clips;
+};
+
+/* One vehicle skill's presentation: the quick slot it sits on and the clip chains
+the vehicle and each rider class play back to back while the Server runs it. */
+struct VEHICLE_SKILL_ENTRY final
+{
+	std::uint32_t skillId = 0u;
+	std::string inputSlot;
+	std::vector<std::string> vehicleClips;
+	std::vector<VEHICLE_SKILL_RIDER_ENTRY> riders;
+
+	const VEHICLE_SKILL_RIDER_ENTRY* Find_Rider(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const
+	{
+		for (const VEHICLE_SKILL_RIDER_ENTRY& rider : riders)
+			if (rider.characterClass == characterClass)
+				return &rider;
+		return nullptr;
+	}
+};
+
 /* A rideable vehicle's presentation. vehicleId is the EFTable_Vehicle key the
 Server replicates; everything else stays on the Client. */
 struct VEHICLE_ACTOR_ENTRY final
@@ -225,6 +251,7 @@ struct VEHICLE_ACTOR_ENTRY final
 	std::string vehicleIdleClip;
 	std::string vehicleRunClip;
 	std::vector<VEHICLE_RIDER_ENTRY> riders;
+	std::vector<VEHICLE_SKILL_ENTRY> skills;
 	std::string runtimeStatus;
 
 	const VEHICLE_RIDER_ENTRY* Find_Rider(
@@ -233,6 +260,22 @@ struct VEHICLE_ACTOR_ENTRY final
 		for (const VEHICLE_RIDER_ENTRY& rider : riders)
 			if (rider.characterClass == characterClass)
 				return &rider;
+		return nullptr;
+	}
+
+	const VEHICLE_SKILL_ENTRY* Find_Skill(const std::uint32_t skillId) const
+	{
+		for (const VEHICLE_SKILL_ENTRY& skill : skills)
+			if (skill.skillId == skillId)
+				return &skill;
+		return nullptr;
+	}
+
+	const VEHICLE_SKILL_ENTRY* Find_SkillBySlot(const std::string_view inputSlot) const
+	{
+		for (const VEHICLE_SKILL_ENTRY& skill : skills)
+			if (skill.inputSlot == inputSlot)
+				return &skill;
 		return nullptr;
 	}
 };

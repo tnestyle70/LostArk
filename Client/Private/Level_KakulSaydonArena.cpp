@@ -1462,6 +1462,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
 			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
+			/* Each gate is its own combat-analysis total (retail counts per 관문). */
+			CCombatHUDViewModel::Get().Reset_CombatAnalysis();
 			CCombatHUDViewModel::Get().Set_BossHidden(m_bSequenceCombatPending || nullptr == gate.pHudFocusArchetypeId);
 			CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(
 				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",

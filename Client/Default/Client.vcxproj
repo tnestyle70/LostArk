@@ -162,6 +162,7 @@
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
     <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
     <ClInclude Include="..\Public\PartyInteractionView.h" />
+    <ClInclude Include="..\Public\CombatAnalysisFrameView.h" />
     <ClInclude Include="..\Public\VehicleWindowView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
@@ -409,6 +410,7 @@
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
+    <ClCompile Include="..\Private\CombatAnalysisFrameView.cpp" />
     <ClCompile Include="..\Private\VehicleWindowView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />

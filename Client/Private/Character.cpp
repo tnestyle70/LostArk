@@ -1682,6 +1682,57 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eNetworkAction = action;
 		return true;
 	}
+	if (PLAYER_ACTION_STATE::VEHICLE_SKILL == action)
+	{
+		if (INVALID_SKILL_ID == skillId || 0u == actionStartTick)
+			return false;
+		f32_t age = 0.f;
+		if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, actionStartTick, SERVER_TICK_HZ, age))
+			return false;
+		if (m_eNetworkAction != action || m_iLastNetworkActionStartTick != actionStartTick)
+		{
+			m_pChain = nullptr; m_iChainStage = 0; m_iChainStep = 0;
+			m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+			m_fActionPresentationSeconds = 0.f;
+			Commit_PendingClipChains();
+			m_iLastNetworkActionStartTick = actionStartTick;
+			m_iCurrentEffectSkillId = INVALID_SKILL_ID; m_iEffectActionStartTick = 0u;
+		}
+		const VEHICLE_ACTOR_ENTRY* vehicle = CActorCatalog::Find_Vehicle(m_iVehicleId);
+		const VEHICLE_SKILL_ENTRY* vehicleSkill = nullptr == vehicle ? nullptr : vehicle->Find_Skill(skillId);
+		const VEHICLE_SKILL_RIDER_ENTRY* rider =
+			nullptr == vehicleSkill ? nullptr : vehicleSkill->Find_Rider(m_eCharacterClass);
+		if (nullptr != rider)
+		{
+			f32_t remaining = age;
+			for (std::size_t step = 0u; step < rider->clips.size(); ++step)
+			{
+				CLIP_STEP clip{};
+				clip.clip = rider->clips[step];
+				std::uint32_t animation = UINT32_MAX;
+				f32_t duration = 0.f;
+				if (!Resolve_ClipTiming(clip, animation, duration))
+					break;
+				if (remaining >= duration && step + 1u < rider->clips.size())
+				{
+					remaining -= duration;
+					continue;
+				}
+				if (m_pBodyModel->Get_CurrentAnimIndex() == animation || Start_Clip(clip))
+				{
+					const f32_t seconds = (std::min)(remaining, (std::max)(0.f, duration - .0001f));
+					m_pBodyModel->Set_AnimTrackPosition(
+						animation, seconds * m_pBodyModel->Get_AnimationTickPerSecond(animation));
+					m_pBodyModel->Play_Animation(0.f);
+				}
+				break;
+			}
+		}
+		if (nullptr != vehicleSkill && nullptr != m_pVehiclePart)
+			(void)m_pVehiclePart->Seek_SkillChain(vehicleSkill->vehicleClips, age);
+		m_eNetworkAction = action;
+		return true;
+	}
 	if (PLAYER_ACTION_STATE::SKILL == action)
 	{
 		if (INVALID_SKILL_ID == skillId || 0u == actionStartTick)
@@ -1946,8 +1997,11 @@ bool_t CCharacter::Apply_NetworkAction(
 		PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::FEAR == m_eNetworkAction ||
-		PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction)
+		PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::VEHICLE_SKILL == m_eNetworkAction)
 	{
+		if (nullptr != m_pVehiclePart)
+			m_pVehiclePart->Resume_Locomotion();
 		m_pChain = nullptr;
 		m_iChainStage = 0;
 		m_iChainStep = 0;
@@ -3503,7 +3557,8 @@ void CCharacter::Commit_Locomotion(bool_t isMoving)
 	locomotion when the Server releases ESTHER_CAST. */
 	if (Is_PlayingSkill() ||
 		LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
-		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
+		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
+		LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == m_eNetworkAction)
 	{
 		return;
 	}

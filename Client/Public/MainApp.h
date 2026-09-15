@@ -48,6 +48,7 @@ class CWorldSequenceDocument;
 class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
+class CCombatAnalysisFrameView;
 class CCharacterInfoWindowView;
 class CAvatarBookWindowView;
 class CVehicleWindowView;
@@ -483,6 +484,10 @@ private:
 	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
 	STATIC UI document so the always-on HUD draws underneath all of them. */
 	unique_ptr<CUILayoutRuntime> m_pHUDRuntimeView = { nullptr };
+	/* Combat analyzer frame (bottom-right): its own STATIC document created right after the
+	HUD so it draws over the HUD and under every runtime window. Driven by Update_CombatHUD
+	from CCombatHUDViewModel::Get_CombatAnalysis(). */
+	unique_ptr<CCombatAnalysisFrameView> m_pCombatAnalysisView = { nullptr };
 	/* One KoukuSaydon interaction mode (KoukuHudModes.json "modes[]"): which
 	appended emblem slot to show and which icons fill Q..F, in list order unless the
 	gimmick state reorders them. Slots without a skill stay the plain empty slot. */

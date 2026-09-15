@@ -54,6 +54,7 @@
 #include "UILabelFont.h"
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
+#include "CombatAnalysisFrameView.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -851,6 +852,7 @@ HRESULT CMainApp::Initialize()
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/HUD/HUD_Layout.json");
 	Hide_CombatHUD();
+	m_pCombatAnalysisView = std::make_unique<CCombatAnalysisFrameView>(m_pDevice, m_pContext);
 	Load_KoukuHudModes();
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
@@ -2787,6 +2789,8 @@ HRESULT CMainApp::Render()
 	RenderRaidClearText();
 	RenderItemAnnounceText();
 	RenderDamageNumbers();
+	if (nullptr != m_pCombatAnalysisView)
+		m_pCombatAnalysisView->Render_Text();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
 	RenderLobbyButtonText();
@@ -2906,6 +2910,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 	{
 		Hide_CombatHUD();
+		if (nullptr != m_pCombatAnalysisView)
+			m_pCombatAnalysisView->Hide();
 		/* m_pInventoryView's CUI_Sprite slots live under LEVEL::STATIC too (so the panel
 		survives a Bern<->Valtan transition instead of resetting) -- they keep showing their
 		last state across a level change unless told otherwise, same as this HUD's own. */
@@ -3275,6 +3281,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	Update_SpecialQuickSlots();
+	if (nullptr != m_pCombatAnalysisView)
+		m_pCombatAnalysisView->Update(fTimeDelta, player);
 	Update_KoukuHudMode();
 	Update_VehicleHud();
 	if (nullptr != m_pInventoryView)

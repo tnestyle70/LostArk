@@ -1457,6 +1457,10 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 ### 탈것·NPC 재질의 UV와 shader cache 해석
 
 - NPC 파이프라인으로 쿠킹한 skinned `.wmodel`은 1.0이라 UV1이 없다. 원본 MIC가 program 5/7/18/19를 쓰면 `CModel`이 "source character requires native extra UV channels"로 모델 전체를 거부하고, 탈것·NPC 표현이 소리 없이 격리된다. 원본 PSK의 EXTRAUVS 유무를 확인하고, set이 1개면 UE3 clamp 규칙대로 해당 submesh UV1=UV0를 `Tools/VehiclePipeline/cook_single_set_uv1.py`로 추가한다. extra set이 있으면 `cook_ocular_uv_channels.py`처럼 원본 채널을 join한다.
+- UV1을 요구하지 않는 program도 셰이더 안에서 `v4.zw`(TexCoord[1])를 샘플할 수 있다. 별빛의 가호 외피 program 88은 panning 발광을 UV1로 읽어, UV1이 0이면 텍스처 한 점이 ×10 발광으로 칠해져 진한 파랑이 된다. 생성 셰이더의 `v4.zw/wz` 사용을 확인하고, PSK에 EXTRAUVS0가 있으면 `Tools/VehiclePipeline/cook_psk_extra_uv1.py`로 삼각형 단위 join한다.
+- `build_npc.py`의 non-self-rigged 경로는 메시를 master armature에 rebind하므로 inverse bind가 master의 ref pose가 된다. 메시와 master의 본 translation이 다르면(모코보드 `b_body_00` 50cm vs `MN_PMSHB_00` 19.41cm) 메시만 그 차이만큼 떠서 좌석 본과 어긋난다. 메시 PSK와 master PSK의 REFSKELT를 비교하고, 다르면 같은 AnimSet으로 `master.selfRigged=true`(master file=메시 PSK) 재쿠킹한다.
+- 생성 SourceCharacter 셰이더의 leading/trailing unowned cb0 행과 varying 배치는 program마다 다르다. 반투명 88은 cb0[0].w 엔진 opacity, cb0[18..20] sky light, cb0[21].x 반투명 모드를 쓰고, v5=fog·v6=tangent view·v7=up(program 18 배치)이다. 새 program 설치 후 0으로 남은 엔진 행과 `MakeSourceCharacterInput` 배치를 사용처 기준으로 대조한다.
+- SourceCharacter program은 번호 구간별 CSO 변형(`*_SourceGroupNNN.hlsl`)으로 컴파일된다. 마지막 그룹 밖 번호를 `install`하면 `needs a registered CSO cohort`로 거부되고, 도구만 고치면 런타임 `CShader::Stage_ProgramVariants`가 그 program을 어떤 변형에도 배정하지 못한다. `Engine/Private/Shader.cpp` 범위, `native_shader_dispatch.py` 그룹 표, `Model.cpp` 상한, 변형 probe 반복 범위를 같은 변경에서 늘린다.
 
 - UE3 static parameter set의 `FNormalParameter`는 FName 8 + CompressionSettings 1 + bOverride 4 + GUID 16 = 29바이트다. 공용 shader cache oracle은 32바이트로 읽어 normal 파라미터가 있는 MIC(예: 랩터 `monster_base_msk_high`)에서 `ShaderCache FName index is invalid`로 실패한다. `Tools/VehiclePipeline/build_vehicle_source_material.py`는 도구 안에서만 29바이트로 보정한다. NPC 파이프라인 쿠킹본의 재질 슬롯 이름은 LookInfo 교체 MIC 이름이 아니라 메시 기본 이름이므로 catalog `materialName`은 `rows … @슬롯이름`으로 지정한다.
 

@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "fd608115956aee9aa0abac1ce0d655b53608a5bdd4394bbe425b993396191406",
+  "compositionRevision": "b8383e85441cb74d0b1ec61c08a3bc3dae4458c1b979ee4fb6f50024a3992950",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "fd608115956aee9aa0abac1ce0d655b53608a5bdd4394bbe425b993396191406",
+    "sourceManifestId": "b8383e85441cb74d0b1ec61c08a3bc3dae4458c1b979ee4fb6f50024a3992950",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -1202,23 +1202,23 @@
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.club.effectv2.json",
-        "sha256": "d48534981540112b1c8df7b5a572f6e4238162a55892a6b3fc1dbd81a94e4f8a",
-        "bytes": 4843
+        "sha256": "b530de1a7381f348e7a57173d7f997b3e280ab9ddffc2743d6f18a91a56a9d06",
+        "bytes": 4849
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.diamond.effectv2.json",
-        "sha256": "c41423a810507c0f5d9429602f448a2915aaeefb7862be3c261ce8e16082bea8",
-        "bytes": 4846
+        "sha256": "9c61d0b92723019dd2a69cd459b8854dd75fc1ea783939ec9cb03686cdf889ea",
+        "bytes": 4852
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.heart.effectv2.json",
-        "sha256": "61e93d22f76604d24813d39afbd7569a862a46630d6682cd53dd4326a439de3f",
-        "bytes": 4840
+        "sha256": "ce12b4478f24e4fab7d28abff74ff9a9a00a3faca5c8278bb80d3e58b2acfaa8",
+        "bytes": 4846
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.spade.effectv2.json",
-        "sha256": "53bf502f848790a47db3fa90e8114c5d8e336a14ae0faa7a365930c5772214ed",
-        "bytes": 4844
+        "sha256": "51da3b1025b3c7ef6e1c24bfb41a10b43958d8d020a31f8bbcd43e819bfbcf13",
+        "bytes": 4850
       },
       {
         "path": "Data/Effects/V2/Authored/esther.balthorr.appear_1.effectv2.json",

@@ -203,7 +203,7 @@ def write_partitioned_dispatch(path, text=None):
     return tuple(files)
 
 
-SOURCE_CHARACTER_PROGRAM_GROUPS = ((1, 8), (9, 16), (17, 24), (25, 32), (80, 83), (84, 88))
+SOURCE_CHARACTER_PROGRAM_GROUPS = ((1, 8), (9, 16), (17, 24), (25, 32), (80, 83), (84, 89))
 _SOURCE_GROUP_INCLUDE = re.compile(r'#include "(Shader_SourceCharacter(?:Base|Light)Group\d+\.hlsli)"\n')
 _SOURCE_GROUP_GUARD = re.compile(
     r'^#if !defined\(SOURCE_CHARACTER_PROGRAM_GROUP\) \|\| SOURCE_CHARACTER_PROGRAM_GROUP == \d+\n'

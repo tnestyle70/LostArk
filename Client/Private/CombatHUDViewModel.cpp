@@ -442,11 +442,31 @@ void Client::CCombatHUDViewModel::Debug_Set_Esther_Preview(const bool enable)
 
 void Client::CCombatHUDViewModel::Apply_DamageEvents(
 	const std::uint32_t serverTick,
-	const std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+	const std::vector<LostArk::Shared::DAMAGE_EVENT>& events,
+	const LostArk::Shared::PLAYER_ID localPlayerId)
 {
 	constexpr std::size_t MAX_RETAINED_DAMAGE_EVENTS = 128u;
 	for (const LostArk::Shared::DAMAGE_EVENT& event : events)
 	{
+		if (LostArk::Shared::INVALID_PLAYER_ID != localPlayerId &&
+			event.iSourcePlayerId == localPlayerId && event.isOutgoing)
+		{
+			/* Own hit: the raid's clock starts on the first one; nothing resets until the
+			level is left. */
+			if (!m_CombatAnalysis.isActive)
+			{
+				m_CombatAnalysis.isActive = true;
+				m_CombatAnalysis.iStartTick = serverTick;
+			}
+			m_CombatAnalysis.iLastHitTick = serverTick;
+			m_CombatAnalysis.iTotalDamage += event.iAmount;
+			m_CombatAnalysis.iTotalStagger += event.iStaggerAmount;
+			if (event.isCounterSuccess)
+				++m_CombatAnalysis.iCounterSuccesses;
+		}
+		/* A stagger-only / counter-only event carries no number to float. */
+		if (0u == event.iAmount)
+			continue;
 		HUD_DAMAGE_EVENT retained{};
 		retained.iServerTick = serverTick;
 		retained.Event = event;
@@ -468,6 +488,7 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_Boss = {};
 	m_bBossDeadRaw = false;
 	m_DamageEvents.clear();
+	m_CombatAnalysis = {};
 	m_iEstherGauge = 0;
 	m_iEstherGaugeMaximum = 0;
 	m_EstherCutinRequest = {};

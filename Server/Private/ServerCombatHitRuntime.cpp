@@ -73,9 +73,14 @@ namespace
 		const float y,
 		const float z,
 		const bool outgoing,
-		std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+		std::vector<LostArk::Shared::DAMAGE_EVENT>& events,
+		const LostArk::Shared::PLAYER_ID sourcePlayerId = LostArk::Shared::INVALID_PLAYER_ID,
+		const std::uint32_t staggerAmount = 0u,
+		const bool counterSuccess = false)
 	{
-		if (0u == amount || events.size() >= LostArk::Shared::MAX_DAMAGE_EVENTS)
+		/* A counter or stagger-only hit still reaches the combat analyzer. */
+		if ((0u == amount && 0u == staggerAmount && !counterSuccess) ||
+			events.size() >= LostArk::Shared::MAX_DAMAGE_EVENTS)
 			return;
 		LostArk::Shared::DAMAGE_EVENT event{};
 		event.iTargetNetEntityId = targetId;
@@ -84,6 +89,9 @@ namespace
 		event.fPositionY = y;
 		event.fPositionZ = z;
 		event.isOutgoing = outgoing;
+		event.iSourcePlayerId = sourcePlayerId;
+		event.iStaggerAmount = staggerAmount;
+		event.isCounterSuccess = counterSuccess;
 		events.push_back(event);
 	}
 }
@@ -103,6 +111,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	}
 
 	std::uint32_t damage = 0u;
+	std::uint32_t staggerDealt = 0u;
+	bool counterTriggered = false;
 	if (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind)
 	{
 		/* Product Valtan still carries the original armour plates because pattern
@@ -131,6 +141,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		const BOSS_HIT_RESULT bossHit =
 			CBossCombatRuntime::Apply_PlayerHit(target, incoming);
 		damage = bossHit.iHealthDamage;
+		staggerDealt = bossHit.iStaggerDamage;
+		counterTriggered = bossHit.bCounterTriggered;
 		if (bossHit.bPartDestroyed)
 		{
 			MirrorTypedPartBreakToLegacyArmor(
@@ -165,7 +177,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		PushDamageEvent(
 			target.iNetEntityId, damage,
 			target.fPositionX, target.fPositionY, target.fPositionZ,
-			true, outDamageEvents);
+			true, outDamageEvents,
+			hit.iSourcePlayerId, staggerDealt, counterTriggered);
 	}
 
 	const float pushDistance = 0u == hit.iPushMs ?

@@ -3847,7 +3847,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	}
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,
-		snapshot.DamageEvents);
+		snapshot.DamageEvents,
+		CNetworkManager::Get().Get_LocalPlayerId());
 	CCombatHUDViewModel::Get().Apply_EstherGauge(
 		snapshot.iEstherGauge,
 		snapshot.iEstherGaugeMaximum);
@@ -4162,7 +4163,8 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		PLAYER_LOCOMOTION_STATE::MOVING;
 
 	character->Apply_LocalMoveSnapshot(LocalMoveSnapshot(player, serverTick),
-		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL);
+		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL ||
+		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL);
 	if (!character->Apply_NetworkState(
 		position,
 		player.fYawDegrees,

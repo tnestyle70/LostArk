@@ -1,0 +1,10 @@
+{
+    "mn_pmshe_00_n":  "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_n.tga",
+    "mn_pmshe_00_cm":  "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_cm.tga",
+    "mn_pmshe_00_d-1":  "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_d-1.tga",
+    "mn_pmshe_00_s":  "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_s.tga",
+    "mn_pmshe_00_e":  "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_e.tga",
+    "hdr07_1":  "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+    "statefx_default":  "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+    "brdf_beckmann_spec":  "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds"
+}

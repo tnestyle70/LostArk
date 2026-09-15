@@ -918,11 +918,25 @@ namespace
 			nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.vehicle-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 1.0 ||
+			pVersion->Get_Number() != 2.0 ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
 		}
+
+		const auto readClips = [](const DATA_JSON_VALUE* pClips, std::vector<std::string>& outClips)
+		{
+			if (nullptr == pClips || !pClips->Is_Array() ||
+				pClips->Get_Array().empty() || pClips->Get_Array().size() > 16u)
+				return false;
+			for (const DATA_JSON_VALUE& clip : pClips->Get_Array())
+			{
+				if (!clip.Is_String() || clip.Get_String().empty())
+					return false;
+				outClips.push_back(clip.Get_String());
+			}
+			return true;
+		};
 
 		std::set<std::uint32_t> vehicleIds;
 		std::set<std::string> archetypes;
@@ -930,10 +944,11 @@ namespace
 		ModelMaterials stagedMaterials;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 10u != value.Get_Object().size())
+			if (!value.Is_Object() || 11u != value.Get_Object().size())
 				return false;
 			VEHICLE_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pRiders = value.Find("riders");
+			const DATA_JSON_VALUE* pSkills = value.Find("skills");
 			if (!ReadRequiredU32(value, "vehicleId", entry.vehicleId) || 0u == entry.vehicleId ||
 				!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!IsStableId(entry.archetypeId) ||
@@ -973,6 +988,48 @@ namespace
 					return false;
 				}
 				entry.riders.push_back(std::move(rider));
+			}
+			if (nullptr == pSkills || !pSkills->Is_Array() || pSkills->Get_Array().size() > 4u)
+				return false;
+			std::set<std::string> skillSlots;
+			for (const DATA_JSON_VALUE& skillValue : pSkills->Get_Array())
+			{
+				VEHICLE_SKILL_ENTRY skill;
+				const DATA_JSON_VALUE* pSkillRiders = skillValue.Find("riders");
+				if (!skillValue.Is_Object() || 4u != skillValue.Get_Object().size() ||
+					!ReadRequiredU32(skillValue, "skillId", skill.skillId) ||
+					0u == skill.skillId ||
+					!ReadRequiredString(skillValue, "inputSlot", skill.inputSlot) ||
+					(skill.inputSlot != "SPACE" && skill.inputSlot != "Q" &&
+					 skill.inputSlot != "W" && skill.inputSlot != "E") ||
+					!skillSlots.insert(skill.inputSlot).second ||
+					nullptr != entry.Find_Skill(skill.skillId) ||
+					!readClips(skillValue.Find("vehicleClips"), skill.vehicleClips) ||
+					nullptr == pSkillRiders || !pSkillRiders->Is_Array() ||
+					pSkillRiders->Get_Array().size() > 16u)
+				{
+					return false;
+				}
+				std::set<LostArk::Shared::CHARACTER_CLASS_ID> skillRiderClasses;
+				for (const DATA_JSON_VALUE& riderValue : pSkillRiders->Get_Array())
+				{
+					VEHICLE_SKILL_RIDER_ENTRY rider;
+					std::string characterClass;
+					if (!riderValue.Is_Object() || 2u != riderValue.Get_Object().size() ||
+						!ReadRequiredString(riderValue, "characterClass", characterClass) ||
+						!readClips(riderValue.Find("clips"), rider.clips))
+					{
+						return false;
+					}
+					rider.characterClass = ParseClass(characterClass);
+					if (LostArk::Shared::CHARACTER_CLASS_ID::END == rider.characterClass ||
+						!skillRiderClasses.insert(rider.characterClass).second)
+					{
+						return false;
+					}
+					skill.riders.push_back(std::move(rider));
+				}
+				entry.skills.push_back(std::move(skill));
 			}
 			if (!ParseModelMaterialOverrides(value, stagedMaterials))
 				return false;

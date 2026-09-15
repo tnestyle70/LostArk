@@ -5,12 +5,16 @@
 #include "GameInstance.h"
 #include "MapAssetRenderUtils.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
 {
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
 	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
+	constexpr f32_t LOCOMOTION_BLEND_SECONDS = 0.12f;
+	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
+	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 
 	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
@@ -58,6 +62,8 @@ HRESULT CPart_Vehicle::Initialize(void* pArg)
 	}
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
 		m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
+	if (m_pModelCom->Has_Bone(ROOT_MOTION_BONE))
+		(void)m_pModelCom->Enable_RootMotionSuppression(ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
 	return S_OK;
 }
 
@@ -68,8 +74,69 @@ bool_t CPart_Vehicle::Set_Moving(const bool_t isMoving)
 	if (m_isMoving == isMoving)
 		return true;
 	m_isMoving = isMoving;
+	if (m_isPlayingSkill)
+		return true;
 	return m_pModelCom->Set_Animation(
-		(isMoving ? m_strRunClip : m_strIdleClip).c_str(), true);
+		(isMoving ? m_strRunClip : m_strIdleClip).c_str(), true, LOCOMOTION_BLEND_SECONDS);
+}
+
+bool_t CPart_Vehicle::Seek_SkillChain(
+	const std::vector<std::string>& clips,
+	const f32_t actionAgeSeconds)
+{
+	if (nullptr == m_pModelCom || clips.empty() ||
+		!std::isfinite(actionAgeSeconds) || actionAgeSeconds < 0.f)
+	{
+		return false;
+	}
+	f32_t remaining = actionAgeSeconds;
+	for (std::size_t step = 0u; step < clips.size(); ++step)
+	{
+		uint32_t animation = UINT32_MAX;
+		for (uint32_t index = 0u; index < m_pModelCom->Get_NumAnimations(); ++index)
+		{
+			const char_t* pName = m_pModelCom->Get_AnimationName(index);
+			if (nullptr != pName && clips[step] == pName)
+			{
+				animation = index;
+				break;
+			}
+		}
+		f32_t position = 0.f;
+		f32_t duration = 0.f;
+		const f32_t ticksPerSecond = UINT32_MAX == animation ? 0.f :
+			m_pModelCom->Get_AnimationTickPerSecond(animation);
+		if (UINT32_MAX == animation ||
+			!m_pModelCom->Get_AnimationProgress(animation, position, duration) ||
+			!std::isfinite(duration) || duration <= 0.f ||
+			!std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f)
+		{
+			return false;
+		}
+		const f32_t seconds = duration / ticksPerSecond;
+		if (remaining < seconds || step + 1u == clips.size())
+		{
+			if (!m_isPlayingSkill || m_pModelCom->Get_CurrentAnimIndex() != animation)
+			{
+				if (!m_pModelCom->Set_Animation(clips[step].c_str(), false, LOCOMOTION_BLEND_SECONDS))
+					return false;
+			}
+			m_isPlayingSkill = true;
+			const f32_t local = (std::min)(remaining, (std::max)(0.f, seconds - 0.0001f));
+			return m_pModelCom->Set_AnimTrackPosition(animation, local * ticksPerSecond);
+		}
+		remaining -= seconds;
+	}
+	return false;
+}
+
+void CPart_Vehicle::Resume_Locomotion()
+{
+	if (nullptr == m_pModelCom || !m_isPlayingSkill)
+		return;
+	m_isPlayingSkill = false;
+	(void)m_pModelCom->Set_Animation(
+		(m_isMoving ? m_strRunClip : m_strIdleClip).c_str(), true, LOCOMOTION_BLEND_SECONDS);
 }
 
 bool_t CPart_Vehicle::Try_Get_SeatWorldPosition(float3_t& outPosition) const

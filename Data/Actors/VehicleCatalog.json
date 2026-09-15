@@ -1,6 +1,6 @@
 {
   "schema": "lostark.vehicle-catalog",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "vehicles": [
     {
       "vehicleId": 6705,
@@ -15,6 +15,52 @@
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_horse_idle_normal_1", "runClip": "wgl_ride_horse_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_horse_idle_normal_1", "runClip": "sdm_ride_horse_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_horse_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_horse_run_normal_1" }
+      ],
+      "skills": [
+        {
+          "skillId": 96030,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_dash"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_dash"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_dash"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_dash"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_dash"] }
+          ]
+        },
+        {
+          "skillId": 96000,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_victorypose"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_victorypose"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_victorypose"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_victorypose"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_victorypose"] }
+          ]
+        },
+        {
+          "skillId": 96010,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_relaxation"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_relaxation"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_relaxation"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_relaxation"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_relaxation"] }
+          ]
+        },
+        {
+          "skillId": 96020,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_backkick"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_horse_sk_backkick"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_backkick"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_backkick"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_backkick"] }
+          ]
+        }
       ],
       "modelMaterialOverrides": [
         {
@@ -184,146 +230,6 @@
       "runtimeStatus": "supported"
     },
     {
-      "vehicleId": 7104,
-      "archetypeId": "VEHICLE_RAPTOR_SILVER_BATTLE",
-      "modelAssetId": "Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel",
-      "modelPreScale": 0.0001,
-      "seatBone": "b_cockpit",
-      "vehicleIdleClip": "npc_idle_normal_1",
-      "vehicleRunClip": "npc_run_normal_1",
-      "riders": [
-        { "characterClass": "LANCE_MASTER", "idleClip": "flm_ride_raptor_idle_normal_1", "runClip": "flm_ride_raptor_run_normal_1" },
-        { "characterClass": "WARLORD", "idleClip": "wgl_ride_raptor_idle_normal_1", "runClip": "wgl_ride_raptor_run_normal_1" },
-        { "characterClass": "ARTIST", "idleClip": "sdm_ride_raptor_idle_normal_1", "runClip": "sdm_ride_raptor_run_normal_1" },
-        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_raptor_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_raptor_run_normal_1" }
-      ],
-      "modelMaterialOverrides": [
-        {
-          "modelAssetId": "Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel",
-          "materialName": "mn_isrx_02_mi",
-          "sourceMaterial": "mn_isrx_02.mat.mn_isrx_02-4_mi",
-          "family": "source.character.monster-d9d6c02905c3.v1",
-          "parameters": {
-            "1.use_dyeing_sp": [0.0, 0.0, 0.0, 0.0],
-            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
-            "beckmannspecular_constant_max": [3.3499999046325684, 3.3499999046325684, 3.3499999046325684, 3.3499999046325684],
-            "buffcolor": [0.0, 0.0, 0.0, 1.0],
-            "constantoutline": [0.0, 0.0, 0.0, 0.0],
-            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
-            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
-            "diffusecolor": [1.0, 1.0, 1.0, 1.0],
-            "diffusecolor_a": [1.874220848083496, 5.48394250869751, 2.5401103496551514, 1.0],
-            "diffusecolor_b": [1.4126918315887451, 2.011061906814575, 2.9669981002807617, 1.0],
-            "diffusecolor_c": [1.0, 1.0, 1.0, 1.0],
-            "emissive_color": [0.04892421141266823, 0.019424619153141975, 0.27623292803764343, 1.0],
-            "emissive_flicker_speed": [0.6000000238418579, 0.6000000238418579, 0.6000000238418579, 0.6000000238418579],
-            "emissive_intensity": [1.0, 1.0, 1.0, 1.0],
-            "emissive_intensitymin": [0.10000000149011612, 0.10000000149011612, 0.10000000149011612, 0.10000000149011612],
-            "fresnel_radius": [0.949999988079071, 0.949999988079071, 0.949999988079071, 0.949999988079071],
-            "fresnel_rimlightintensity": [0.5, 0.5, 0.5, 0.5],
-            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
-            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
-            "hit_color": [0.0, 0.0, 0.0, 0.0],
-            "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0],
-            "ibl_color_top": [1.0, 1.0, 1.0, 1.0],
-            "ibl_exposer": [5.0, 5.0, 5.0, 5.0],
-            "ibl_intensity": [1.0, 1.0, 1.0, 1.0],
-            "ibl_normal_smooth": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
-            "ibl_reflect_lodbias": [80.0, 80.0, 80.0, 80.0],
-            "mask_variation_visible": [1.0, 1.0, 1.0, 1.0],
-            "metalicness_power": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
-            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
-            "orennayar": [1.0, 1.0, 1.0, 1.0],
-            "orennayar_brightness": [1.0, 1.0, 1.0, 1.0],
-            "pbr_specular_intensity": [10.0, 10.0, 10.0, 10.0],
-            "pbr_specular_power": [6.0, 6.0, 6.0, 6.0],
-            "roughness_power": [3.0, 3.0, 3.0, 3.0],
-            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
-            "shadowfactor": [0.5, 0.5, 0.5, 0.5],
-            "specular_power_limit": [0.9200000166893005, 0.9200000166893005, 0.9200000166893005, 0.9200000166893005],
-            "state": [0.0, 0.0, 0.0, 0.0],
-            "state_noise": [1.0, 0.0, 0.0, 1.0],
-            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
-            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
-            "transcolor": [0.0, 0.0, 0.0, 1.0],
-            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
-          },
-          "textures": [
-            { "expressionIndex": 0, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_n.tga", "colorSpace": "linear" },
-            { "expressionIndex": 1, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_s_cm.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 2, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_d.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 3, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_s.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 5, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_em.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 7, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_02_m.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 8, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
-          ]
-        },
-        {
-          "modelAssetId": "Character/Vehicle/SilverBattleRaptor/SilverBattleRaptor.wmodel",
-          "materialName": "mn_isrx_00_mi",
-          "sourceMaterial": "mn_isrx_02.mat.mn_isrx_00-4_mi",
-          "family": "source.character.monster-be5bc0ded311.v1",
-          "parameters": {
-            "1.use_dyeing_sp": [0.0, 0.0, 0.0, 0.0],
-            "beckmannspecular_constant_max": [3.3499999046325684, 3.3499999046325684, 3.3499999046325684, 3.3499999046325684],
-            "buffcolor": [0.0, 0.0, 0.0, 1.0],
-            "constantoutline": [0.0, 0.0, 0.0, 0.0],
-            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
-            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
-            "diffusecolor": [1.308823585510254, 1.308823585510254, 1.308823585510254, 1.0],
-            "diffusecolor_a": [2.066021680831909, 2.066021680831909, 2.066021680831909, 1.0],
-            "diffusecolor_b": [1.2965281009674072, 1.3185185194015503, 1.305368423461914, 1.0],
-            "diffusecolor_c": [1.4471545219421387, 0.7946568727493286, 0.3658536672592163, 1.0],
-            "fresnel_radius": [0.949999988079071, 0.949999988079071, 0.949999988079071, 0.949999988079071],
-            "fresnel_rimlightintensity": [0.5, 0.5, 0.5, 0.5],
-            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
-            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
-            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
-            "hit_color": [0.0, 0.0, 0.0, 0.0],
-            "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0],
-            "ibl_color_top": [1.0, 1.0, 1.0, 1.0],
-            "ibl_exposer": [5.0, 5.0, 5.0, 5.0],
-            "ibl_intensity": [1.0, 1.0, 1.0, 1.0],
-            "ibl_normal_smooth": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
-            "ibl_reflect_lodbias": [80.0, 80.0, 80.0, 80.0],
-            "mask_variation_visible": [1.0, 1.0, 0.0, 0.0],
-            "metalicness_power": [0.5, 0.5, 0.5, 0.5],
-            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
-            "orennayar": [1.0, 1.0, 1.0, 1.0],
-            "orennayar_brightness": [1.0, 1.0, 1.0, 1.0],
-            "pbr_specular_intensity": [10.0, 10.0, 10.0, 10.0],
-            "pbr_specular_power": [6.0, 6.0, 6.0, 6.0],
-            "roughness_power": [4.0, 4.0, 4.0, 4.0],
-            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
-            "shadowfactor": [0.5, 0.5, 0.5, 0.5],
-            "specular_power_limit": [0.9200000166893005, 0.9200000166893005, 0.9200000166893005, 0.9200000166893005],
-            "state": [0.0, 0.0, 0.0, 0.0],
-            "state_noise": [1.0, 0.0, 0.0, 1.0],
-            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
-            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
-            "transcolor": [0.0, 0.0, 0.0, 1.0],
-            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
-          },
-          "textures": [
-            { "expressionIndex": 0, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_n.tga", "colorSpace": "linear" },
-            { "expressionIndex": 1, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_cm.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 2, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_d.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 3, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_s.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 5, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 6, "assetId": "Character/Vehicle/SilverBattleRaptor/SourceMaterials/mn_isrx_00_m.tga", "colorSpace": "srgb" },
-            { "expressionIndex": 7, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
-          ]
-        }
-      ],
-      "runtimeStatus": "supported"
-    },
-    {
       "vehicleId": 9370,
       "archetypeId": "VEHICLE_STARLIGHT_BLESSING_SERENE",
       "modelAssetId": "Character/Vehicle/SereneStarlightBlessing/SereneStarlightBlessing.wmodel",
@@ -336,6 +242,52 @@
         { "characterClass": "WARLORD", "idleClip": "wgl_ride_swing_idle_normal_1", "runClip": "wgl_ride_swing_run_normal_1" },
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_swing_idle_normal_1", "runClip": "sdm_ride_swing_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_swing_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_swing_run_normal_1" }
+      ],
+      "skills": [
+        {
+          "skillId": 98380,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_dash"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_dash"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_dash"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_dash"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_dash"] }
+          ]
+        },
+        {
+          "skillId": 98381,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_nightmoon"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_nightmoon"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_nightmoon"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_nightmoon"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_nightmoon"] }
+          ]
+        },
+        {
+          "skillId": 98382,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_swing_01", "npc_sk_swing_02", "npc_sk_swing_03"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_swing_01", "flm_ride_swing_sk_swing_02", "flm_ride_swing_sk_swing_03"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_swing_01", "wgl_ride_swing_sk_swing_02", "wgl_ride_swing_sk_swing_03"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_swing_01", "sdm_ride_swing_sk_swing_02", "sdm_ride_swing_sk_swing_03"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_swing_01", "pc_sp_m_00_sk_ride_swing_sk_swing_02", "pc_sp_m_00_sk_ride_swing_sk_swing_03"] }
+          ]
+        },
+        {
+          "skillId": 98383,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_night"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_swing_sk_night"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_night"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_night"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_night"] }
+          ]
+        }
       ],
       "modelMaterialOverrides": [
         {
@@ -453,6 +405,19 @@
         { "characterClass": "ARTIST", "idleClip": "sdm_ride_hoverboard_idle_normal_1", "runClip": "sdm_ride_hoverboard_run_normal_1" },
         { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_hoverboard_idle_norm", "runClip": "pc_sp_m_00_sk_ride_hoverboard_run_norma" }
       ],
+      "skills": [
+        {
+          "skillId": 95722,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_feelsgoodspeeding"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_hoverboard_sk_feelsgoodspeedin"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_hoverboard_sk_feelsgoodspeedin"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_hoverboard_sk_feelsgoodspeedin"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_hoverboard_sk_feelsg"] }
+          ]
+        }
+      ],
       "modelMaterialOverrides": [
         {
           "modelAssetId": "Character/Vehicle/RainbowMokoboard/RainbowMokoboard.wmodel",
@@ -514,6 +479,616 @@
             { "expressionIndex": 5, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
             { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
             { "expressionIndex": 7, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
+          ]
+        }
+      ],
+      "runtimeStatus": "supported"
+    },
+    {
+      "vehicleId": 8302,
+      "archetypeId": "VEHICLE_AUFSTEHEN_R",
+      "modelAssetId": "Character/Vehicle/Aufstehen/Aufstehen.wmodel",
+      "modelPreScale": 0.0001,
+      "seatBone": "b_cockpit",
+      "vehicleIdleClip": "npc_idle_normal_1",
+      "vehicleRunClip": "npc_run_normal_1",
+      "riders": [
+        { "characterClass": "LANCE_MASTER", "idleClip": "flm_ride_heavywalker_bm9_idle_normal_1", "runClip": "flm_ride_heavywalker_bm9_run_normal_1" },
+        { "characterClass": "WARLORD", "idleClip": "wgl_ride_heavywalker_bm9_idle_normal_1", "runClip": "wgl_ride_heavywalker_bm9_run_normal_1" },
+        { "characterClass": "ARTIST", "idleClip": "sdm_ride_heavywalker_bm9_idle_normal_1", "runClip": "sdm_ride_heavywalker_bm9_run_normal_1" },
+        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_heavywalker_bm9_idle", "runClip": "pc_sp_m_00_sk_ride_heavywalker_bm9_run_" }
+      ],
+      "skills": [
+        {
+          "skillId": 97300,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_powershoulder"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_powershould"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_powershould"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_powershould"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_p"] }
+          ]
+        },
+        {
+          "skillId": 97310,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_hifriend"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_hifriend"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_hifriend"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_hifriend"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_h"] }
+          ]
+        },
+        {
+          "skillId": 97320,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_shyness"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_shyness"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_shyness"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_shyness"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_s"] }
+          ]
+        },
+        {
+          "skillId": 97330,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_cheerup"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_heavywalker_bm9_sk_cheerup"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_cheerup"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_cheerup"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_c"] }
+          ]
+        }
+      ],
+      "modelMaterialOverrides": [
+        {
+          "modelAssetId": "Character/Vehicle/Aufstehen/Aufstehen.wmodel",
+          "materialName": "mn_pmshe_00_mi",
+          "sourceMaterial": "mn_pmshe_00.mat.mn_pmshe_00-2_mi",
+          "family": "source.vehicle.terpeion-body.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [0.0, 0.0, 0.0, 0.0],
+            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
+            "beckmannspecular_constant_max": [3.3499999046325684, 3.3499999046325684, 3.3499999046325684, 3.3499999046325684],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor": [1.0, 1.0, 1.0, 1.0],
+            "diffusecolor_a": [1.0, 0.055283427238464355, 0.058797597885131836, 1.0],
+            "diffusecolor_b": [0.2195197194814682, 0.20835965871810913, 0.20835965871810913, 1.0],
+            "diffusecolor_c": [1.0, 1.0, 1.0, 1.0],
+            "emissive_color": [0.10615606606006622, 0.5234431624412537, 0.701169490814209, 1.0],
+            "emissive_flicker_speed": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
+            "emissive_intensity": [2.0, 2.0, 2.0, 2.0],
+            "emissive_intensitymin": [0.5, 0.5, 0.5, 0.5],
+            "fresnel_radius": [0.949999988079071, 0.949999988079071, 0.949999988079071, 0.949999988079071],
+            "fresnel_rimlightintensity": [0.5, 0.5, 0.5, 0.5],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0],
+            "ibl_color_top": [1.0, 1.0, 1.0, 1.0],
+            "ibl_exposer": [5.0, 5.0, 5.0, 5.0],
+            "ibl_intensity": [1.0, 1.0, 1.0, 1.0],
+            "ibl_normal_smooth": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
+            "ibl_reflect_lodbias": [80.0, 80.0, 80.0, 80.0],
+            "metalicness_power": [0.5, 0.5, 0.5, 0.5],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "orennayar": [1.0, 1.0, 1.0, 1.0],
+            "orennayar_brightness": [1.0, 1.0, 1.0, 1.0],
+            "pbr_specular_intensity": [10.0, 10.0, 10.0, 10.0],
+            "pbr_specular_power": [6.0, 6.0, 6.0, 6.0],
+            "roughness_power": [3.5, 3.5, 3.5, 3.5],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "shadowfactor": [0.5, 0.5, 0.5, 0.5],
+            "specular_power_limit": [0.9200000166893005, 0.9200000166893005, 0.9200000166893005, 0.9200000166893005],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "state_noise": [1.0, 0.0, 0.0, 1.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_d-1.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_s.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/Vehicle/Aufstehen/SourceMaterials/mn_pmshe_00_e.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 7, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
+          ]
+        }
+      ],
+      "runtimeStatus": "supported"
+    },
+    {
+      "vehicleId": 8906,
+      "archetypeId": "VEHICLE_UNICORN_TUBE_SEA",
+      "modelAssetId": "Character/Vehicle/SeaUnicornTube/SeaUnicornTube.wmodel",
+      "modelPreScale": 0.0001,
+      "seatBone": "b_cockpit",
+      "vehicleIdleClip": "npc_idle_normal_1",
+      "vehicleRunClip": "npc_run_normal_1",
+      "riders": [
+        { "characterClass": "LANCE_MASTER", "idleClip": "flm_ride_tube_idle_normal_1", "runClip": "flm_ride_tube_run_normal_1" },
+        { "characterClass": "WARLORD", "idleClip": "wgl_ride_tube_idle_normal_1", "runClip": "wgl_ride_tube_run_normal_1" },
+        { "characterClass": "ARTIST", "idleClip": "sdm_ride_tube_idle_normal_1", "runClip": "sdm_ride_tube_run_normal_1" },
+        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_tube_idle_normal_1", "runClip": "pc_sp_m_00_sk_ride_tube_run_normal_1" }
+      ],
+      "skills": [
+        {
+          "skillId": 97730,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_summerseason"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_summerseason"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_summerseason"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_summerseason"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_summerseason"] }
+          ]
+        },
+        {
+          "skillId": 97731,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_tubespin"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_tubespin"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_tubespin"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_tubespin"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_tubespin"] }
+          ]
+        },
+        {
+          "skillId": 97732,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_waterjump_01", "npc_sk_waterjump_02", "npc_sk_waterjump_03"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_waterjump_01", "flm_ride_tube_sk_waterjump_02", "flm_ride_tube_sk_waterjump_03"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_waterjump_01", "wgl_ride_tube_sk_waterjump_02", "wgl_ride_tube_sk_waterjump_03"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_waterjump_01", "sdm_ride_tube_sk_waterjump_02", "sdm_ride_tube_sk_waterjump_03"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_waterjump_01", "pc_sp_m_00_sk_ride_tube_sk_waterjump_02", "pc_sp_m_00_sk_ride_tube_sk_waterjump_03"] }
+          ]
+        },
+        {
+          "skillId": 97733,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_waterfall_01", "npc_sk_waterfall_02-2"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_tube_sk_waterfall_01", "flm_ride_tube_sk_waterfall_02-2"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_waterfall_01", "wgl_ride_tube_sk_waterfall_02-2"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_waterfall_01", "sdm_ride_tube_sk_waterfall_02-2"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_waterfall_01", "pc_sp_m_00_sk_ride_tube_sk_waterfall_02"] }
+          ]
+        }
+      ],
+      "modelMaterialOverrides": [
+        {
+          "modelAssetId": "Character/Vehicle/SeaUnicornTube/SeaUnicornTube.wmodel",
+          "materialName": "mn_pmsut_00_mi",
+          "sourceMaterial": "mn_pmsut_00.mat.mn_pmsut_00-6_mi",
+          "family": "source.character.monster-d621a47e69ad.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [0.0, 0.0, 0.0, 0.0],
+            "beckmannspecular_constant_max": [3.3499999046325684, 3.3499999046325684, 3.3499999046325684, 3.3499999046325684],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor": [1.0, 1.0, 1.0, 1.0],
+            "diffusecolor_a": [0.9900995492935181, 1.654197096824646, 1.7920268774032593, 0.5280898809432983],
+            "diffusecolor_b": [0.33652013540267944, 1.9448171854019165, 2.3505325317382812, 0.6235954761505127],
+            "diffusecolor_c": [4.021774768829346, 2.722019910812378, 0.6000592112541199, 1.0],
+            "fresnel_radius": [0.949999988079071, 0.949999988079071, 0.949999988079071, 0.949999988079071],
+            "fresnel_rimlightintensity": [0.5, 0.5, 0.5, 0.5],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "ibl_color_bottom": [1.0, 1.0, 1.0, 1.0],
+            "ibl_color_top": [1.0, 1.0, 1.0, 1.0],
+            "ibl_exposer": [5.0, 5.0, 5.0, 5.0],
+            "ibl_intensity": [1.0, 1.0, 1.0, 1.0],
+            "ibl_normal_smooth": [0.699999988079071, 0.699999988079071, 0.699999988079071, 0.699999988079071],
+            "ibl_reflect_lodbias": [80.0, 80.0, 80.0, 80.0],
+            "metalicness_power": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "orennayar": [1.0, 1.0, 1.0, 1.0],
+            "orennayar_brightness": [1.0, 1.0, 1.0, 1.0],
+            "pbr_specular_intensity": [10.0, 10.0, 10.0, 10.0],
+            "pbr_specular_power": [6.0, 6.0, 6.0, 6.0],
+            "roughness_power": [3.0, 3.0, 3.0, 3.0],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "shadowfactor": [0.5, 0.5, 0.5, 0.5],
+            "specular_power_limit": [0.9200000166893005, 0.9200000166893005, 0.9200000166893005, 0.9200000166893005],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "state_noise": [1.0, 0.0, 0.0, 1.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_d8.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_s.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds", "colorSpace": "linear" }
+          ]
+        }
+      ],
+      "runtimeStatus": "supported"
+    },
+    {
+      "vehicleId": 9524,
+      "archetypeId": "VEHICLE_ANCIENT_MYTH",
+      "modelAssetId": "Character/Vehicle/AncientMyth/AncientMyth.wmodel",
+      "modelPreScale": 0.0001,
+      "seatBone": "b_cockpit",
+      "vehicleIdleClip": "npc_idle_normal_1",
+      "vehicleRunClip": "npc_run_normal_1",
+      "riders": [
+        { "characterClass": "LANCE_MASTER", "idleClip": "flm_ride_dragon_2_idle_normal_1", "runClip": "flm_ride_dragon_2_run_normal_1" },
+        { "characterClass": "WARLORD", "idleClip": "wgl_ride_dragon_2_idle_normal_1", "runClip": "wgl_ride_dragon_2_run_normal_1" },
+        { "characterClass": "ARTIST", "idleClip": "sdm_ride_dragon_2_idle_normal_1", "runClip": "sdm_ride_dragon_2_run_normal_1" },
+        { "characterClass": "DIMENSIONMASTER", "idleClip": "pc_sp_m_00_sk_ride_dragon_2_idle_normal", "runClip": "pc_sp_m_00_sk_ride_dragon_2_run_normal_" }
+      ],
+      "skills": [
+        {
+          "skillId": 98520,
+          "inputSlot": "SPACE",
+          "vehicleClips": ["npc_sk_dash"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_dash"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_dash"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_dash"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_dash"] }
+          ]
+        },
+        {
+          "skillId": 98521,
+          "inputSlot": "Q",
+          "vehicleClips": ["npc_sk_roar"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_roar"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_roar"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_roar"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_roar"] }
+          ]
+        },
+        {
+          "skillId": 98522,
+          "inputSlot": "W",
+          "vehicleClips": ["npc_sk_breath_01", "npc_sk_breath_02"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_breath_01", "flm_ride_dragon_2_sk_breath_02"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_breath_01", "wgl_ride_dragon_2_sk_breath_02"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_breath_01", "sdm_ride_dragon_2_sk_breath_02"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_breath_0", "pc_sp_m_00_sk_ride_dragon_2_sk_breath~1"] }
+          ]
+        },
+        {
+          "skillId": 98523,
+          "inputSlot": "E",
+          "vehicleClips": ["npc_sk_look"],
+          "riders": [
+            { "characterClass": "LANCE_MASTER", "clips": ["flm_ride_dragon_2_sk_look"] },
+            { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_look"] },
+            { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_look"] },
+            { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_look"] }
+          ]
+        }
+      ],
+      "modelMaterialOverrides": [
+        {
+          "modelAssetId": "Character/Vehicle/AncientMyth/AncientMyth.wmodel",
+          "materialName": "mn_pmsdz_00_01_mi",
+          "sourceMaterial": "mn_pmsdz_00.mat.mn_pmsdz_00-1_01_mi",
+          "family": "source.vehicle.ancient-myth-realpbr.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
+            "basecolor_color": [0.302125483751297, 0.2195197194814682, 0.13609854876995087, 1.0],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor_a": [0.949999988079071, 0.6000000238418579, 0.25, 2.0],
+            "diffusecolor_b": [0.1159418448805809, 0.5162697434425354, 0.7458288669586182, 1.5],
+            "diffusecolor_c": [1.0, 0.800000011920929, 0.699999988079071, 0.75],
+            "dye_roughness_power_tensition": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "emissive_color": [0.6679294109344482, 0.9313730001449585, 1.0, 1.0],
+            "emissive_flicker_speed": [0.44999998807907104, 0.44999998807907104, 0.44999998807907104, 0.44999998807907104],
+            "emissive_intensity": [2.0, 2.0, 2.0, 2.0],
+            "emissive_intensitymin": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "fx_distortion_intensity": [5.0, 5.0, 5.0, 5.0],
+            "fx_panning_color": [1.0, 0.00812608003616333, 0.0, 0.8999999761581421],
+            "fx_panning_intensity": [0.5, 0.5, 0.5, 0.5],
+            "fx_panningspeed_tiling": [0.009999999776482582, 0.009999999776482582, 1.5, 0.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "metallic_power": [0.3499999940395355, 0.3499999940395355, 0.3499999940395355, 0.3499999940395355],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_brightness": [0.0, 0.0, 0.0, 0.0],
+            "occlusion_color": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_power": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "occlusionbasecolor_blend_intensity": [0.0, 0.0, 0.0, 0.0],
+            "pbr_add_basecolor_to_emissive": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "pbr_specular": [0.25, 0.25, 0.25, 0.25],
+            "roughness_power": [0.5, 0.5, 0.5, 0.5],
+            "roughness_power_a": [2.5, 2.5, 2.5, 2.5],
+            "roughness_power_b": [2.5, 2.5, 2.5, 2.5],
+            "roughness_power_c": [4.0, 4.0, 4.0, 4.0],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "ssslocalthickness": [0.0, 0.0, 0.0, 0.0],
+            "ssstintcolor": [1.0, 1.0, 1.0, 1.0],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-1_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-1-1_d.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-1_orm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-1-1_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-1-1_e.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00_fx.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" }
+          ]
+        },
+        {
+          "modelAssetId": "Character/Vehicle/AncientMyth/AncientMyth.wmodel",
+          "materialName": "mn_pmsdz_00_02_mi",
+          "sourceMaterial": "mn_pmsdz_00.mat.mn_pmsdz_00-1_02_mi",
+          "family": "source.vehicle.ancient-myth-realpbr.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
+            "basecolor_color": [0.302125483751297, 0.2195197194814682, 0.13609854876995087, 3.0],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor_a": [0.949999988079071, 0.6000000238418579, 0.25, 2.0],
+            "diffusecolor_b": [0.9489649534225464, 0.5989418029785156, 0.24680042266845703, 3.0],
+            "diffusecolor_c": [1.0, 0.800000011920929, 0.699999988079071, 0.75],
+            "dye_roughness_power_tensition": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "emissive_color": [0.07474681735038757, 0.7955508232116699, 0.7883357405662537, 1.0],
+            "emissive_flicker_speed": [0.44999998807907104, 0.44999998807907104, 0.44999998807907104, 0.44999998807907104],
+            "emissive_intensity": [1.0, 1.0, 1.0, 1.0],
+            "emissive_intensitymin": [0.25, 0.25, 0.25, 0.25],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "fx_distortion_intensity": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_panning_color": [0.0, 0.8716533184051514, 1.0, 0.5],
+            "fx_panning_intensity": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_panningspeed_tiling": [0.019999999552965164, 0.05000000074505806, 2.5, 0.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "metallic_power": [0.3499999940395355, 0.3499999940395355, 0.3499999940395355, 0.3499999940395355],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_brightness": [0.0, 0.0, 0.0, 0.0],
+            "occlusion_color": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_power": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "occlusionbasecolor_blend_intensity": [0.0, 0.0, 0.0, 0.0],
+            "pbr_add_basecolor_to_emissive": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "pbr_specular": [0.25, 0.25, 0.25, 0.25],
+            "roughness_power": [0.5, 0.5, 0.5, 0.5],
+            "roughness_power_a": [2.5, 2.5, 2.5, 2.5],
+            "roughness_power_b": [2.0, 2.0, 2.0, 2.0],
+            "roughness_power_c": [4.0, 4.0, 4.0, 4.0],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "ssslocalthickness": [0.0, 0.0, 0.0, 0.0],
+            "ssstintcolor": [1.0, 1.0, 1.0, 1.0],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-2_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-2-1_d.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-2_orm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-2_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-2_e.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00_fx.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" }
+          ]
+        },
+        {
+          "modelAssetId": "Character/Vehicle/AncientMyth/AncientMyth.wmodel",
+          "materialName": "mn_pmsdz_00_03_mi",
+          "sourceMaterial": "mn_pmsdz_00.mat.mn_pmsdz_00-1_03_mi",
+          "family": "source.vehicle.ancient-myth-realpbr.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
+            "basecolor_color": [0.302125483751297, 0.2195197194814682, 0.13609854876995087, 5.0],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor_a": [0.9489649534225464, 0.5989418029785156, 0.24680042266845703, 2.5],
+            "diffusecolor_b": [0.8277257680892944, 0.5417983531951904, 0.28012436628341675, 0.4000000059604645],
+            "diffusecolor_c": [0.9005193114280701, 0.7864381074905396, 0.6716664433479309, 1.0],
+            "dye_roughness_power_tensition": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "emissive_color": [0.7734521627426147, 0.6129134893417358, 0.4145152270793915, 1.0],
+            "emissive_flicker_speed": [0.44999998807907104, 0.44999998807907104, 0.44999998807907104, 0.44999998807907104],
+            "emissive_intensity": [1.0, 1.0, 1.0, 1.0],
+            "emissive_intensitymin": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "fx_distortion_intensity": [0.10000000149011612, 0.10000000149011612, 0.10000000149011612, 0.10000000149011612],
+            "fx_panning_color": [0.7667436003684998, 0.6186857223510742, 0.12474094331264496, 0.8000000715255737],
+            "fx_panning_intensity": [10.0, 10.0, 10.0, 10.0],
+            "fx_panningspeed_tiling": [0.20000000298023224, 0.10000000149011612, 7.0, 0.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "metallic_power": [0.3499999940395355, 0.3499999940395355, 0.3499999940395355, 0.3499999940395355],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_brightness": [0.0, 0.0, 0.0, 0.0],
+            "occlusion_color": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_power": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "occlusionbasecolor_blend_intensity": [0.0, 0.0, 0.0, 0.0],
+            "pbr_add_basecolor_to_emissive": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "pbr_specular": [0.25, 0.25, 0.25, 0.25],
+            "roughness_power": [0.5, 0.5, 0.5, 0.5],
+            "roughness_power_a": [2.5, 2.5, 2.5, 2.5],
+            "roughness_power_b": [2.0, 2.0, 2.0, 2.0],
+            "roughness_power_c": [2.5, 2.5, 2.5, 2.5],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "ssslocalthickness": [0.0, 0.0, 0.0, 0.0],
+            "ssstintcolor": [1.0, 1.0, 1.0, 1.0],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-3_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-3-2_d.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-3_orm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-3_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-3_e.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00_fx1.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" }
+          ]
+        },
+        {
+          "modelAssetId": "Character/Vehicle/AncientMyth/AncientMyth.wmodel",
+          "materialName": "mn_pmsdz_00_04_mi",
+          "sourceMaterial": "mn_pmsdz_00.mat.mn_pmsdz_00-1_04_mi",
+          "family": "source.vehicle.ancient-myth-realpbr.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
+            "basecolor_color": [0.302125483751297, 0.2195197194814682, 0.13609854876995087, 3.0],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor_a": [0.949999988079071, 0.6000000238418579, 0.25, 2.0],
+            "diffusecolor_b": [0.9489649534225464, 0.5989418029785156, 0.24680042266845703, 3.0],
+            "diffusecolor_c": [0.8277257680892944, 0.5417983531951904, 0.28012436628341675, 0.4000000059604645],
+            "dye_roughness_power_tensition": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "emissive_color": [0.07474681735038757, 0.7955508232116699, 0.7883357405662537, 1.0],
+            "emissive_flicker_speed": [0.44999998807907104, 0.44999998807907104, 0.44999998807907104, 0.44999998807907104],
+            "emissive_intensity": [1.0, 1.0, 1.0, 1.0],
+            "emissive_intensitymin": [0.25, 0.25, 0.25, 0.25],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "fx_distortion_intensity": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_panning_color": [0.0, 0.8716533184051514, 1.0, 0.5],
+            "fx_panning_intensity": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_panningspeed_tiling": [0.019999999552965164, 0.05000000074505806, 2.5, 0.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "metallic_power": [0.3499999940395355, 0.3499999940395355, 0.3499999940395355, 0.3499999940395355],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_brightness": [0.0, 0.0, 0.0, 0.0],
+            "occlusion_color": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_power": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "occlusionbasecolor_blend_intensity": [0.0, 0.0, 0.0, 0.0],
+            "pbr_add_basecolor_to_emissive": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "pbr_specular": [0.25, 0.25, 0.25, 0.25],
+            "roughness_power": [0.5, 0.5, 0.5, 0.5],
+            "roughness_power_a": [2.5, 2.5, 2.5, 2.5],
+            "roughness_power_b": [2.0, 2.0, 2.0, 2.0],
+            "roughness_power_c": [2.0, 2.0, 2.0, 2.0],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "ssslocalthickness": [0.0, 0.0, 0.0, 0.0],
+            "ssstintcolor": [1.0, 1.0, 1.0, 1.0],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-4_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-4-1_d.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-4_orm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-4_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-4_e.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00_fx.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" }
+          ]
+        },
+        {
+          "modelAssetId": "Character/Vehicle/AncientMyth/AncientMyth.wmodel",
+          "materialName": "mn_pmsdz_00_05_mi",
+          "sourceMaterial": "mn_pmsdz_00.mat.mn_pmsdz_00-1_05_mi",
+          "family": "source.vehicle.ancient-myth-realpbr.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [0.0, 0.0, 0.0, 0.0],
+            "basecolor_color": [0.302125483751297, 0.2195197194814682, 0.13609854876995087, 3.0],
+            "buffcolor": [0.0, 0.0, 0.0, 1.0],
+            "constantoutline": [0.0, 0.0, 0.0, 0.0],
+            "constantoutline_blink": [0.5, 0.5, 0.5, 0.5],
+            "constantoutline_color": [0.0, 0.0, 0.0, 1.0],
+            "diffusecolor_a": [0.949999988079071, 0.6000000238418579, 0.25, 2.0],
+            "diffusecolor_b": [0.9489649534225464, 0.5989418029785156, 0.24680042266845703, 3.0],
+            "diffusecolor_c": [1.0, 0.800000011920929, 0.699999988079071, 0.75],
+            "dye_roughness_power_tensition": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "emissive_color": [0.07474681735038757, 0.7955508232116699, 0.7883357405662537, 1.0],
+            "emissive_flicker_speed": [0.44999998807907104, 0.44999998807907104, 0.44999998807907104, 0.44999998807907104],
+            "emissive_intensity": [1.0, 1.0, 1.0, 1.0],
+            "emissive_intensitymin": [0.25, 0.25, 0.25, 0.25],
+            "fx_color_desaturation_actiontool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_desaturation_buffsettool": [0.0, 0.0, 0.0, 0.0],
+            "fx_color_intensity_actiontool": [0.0, 0.0, 0.0, 1.0],
+            "fx_color_intensity_buffsettool": [0.0, 0.0, 0.0, 1.0],
+            "fx_distortion_intensity": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_panning_color": [0.0, 0.8716533184051514, 1.0, 0.5],
+            "fx_panning_intensity": [0.20000000298023224, 0.20000000298023224, 0.20000000298023224, 0.20000000298023224],
+            "fx_panningspeed_tiling": [0.019999999552965164, 0.05000000074505806, 2.5, 0.0],
+            "hit_color": [0.0, 0.0, 0.0, 0.0],
+            "metallic_power": [0.3499999940395355, 0.3499999940395355, 0.3499999940395355, 0.3499999940395355],
+            "normaltex_intensity": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_brightness": [0.0, 0.0, 0.0, 0.0],
+            "occlusion_color": [1.0, 1.0, 1.0, 1.0],
+            "occlusion_power": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "occlusionbasecolor_blend_intensity": [0.0, 0.0, 0.0, 0.0],
+            "pbr_add_basecolor_to_emissive": [0.15000000596046448, 0.15000000596046448, 0.15000000596046448, 0.15000000596046448],
+            "pbr_specular": [0.25, 0.25, 0.25, 0.25],
+            "roughness_power": [0.5, 0.5, 0.5, 0.5],
+            "roughness_power_a": [2.5, 2.5, 2.5, 2.5],
+            "roughness_power_b": [2.0, 2.0, 2.0, 2.0],
+            "roughness_power_c": [4.0, 4.0, 4.0, 4.0],
+            "selectioncolor": [0.0, 0.0, 0.0, 1.0],
+            "ssslocalthickness": [0.0, 0.0, 0.0, 0.0],
+            "ssstintcolor": [1.0, 1.0, 1.0, 1.0],
+            "state": [0.0, 0.0, 0.0, 0.0],
+            "trans_rim_hard": [1.0, 1.0, 1.0, 1.0],
+            "trans_rim_inradius": [0.0, 0.0, 0.0, 0.0],
+            "transcolor": [0.0, 0.0, 0.0, 1.0],
+            "transcolor_rimlight ": [1.0, 1.0, 1.0, 1.0]
+          },
+          "textures": [
+            { "expressionIndex": 0, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-5_n.tga", "colorSpace": "linear" },
+            { "expressionIndex": 1, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-5-1_d.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 2, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-5_orm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 3, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-5_cm.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 4, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00-5_e.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 5, "assetId": "Character/Vehicle/AncientMyth/SourceMaterials/mn_pmsdz_00_fx.tga", "colorSpace": "srgb" },
+            { "expressionIndex": 6, "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga", "colorSpace": "srgb" }
           ]
         }
       ],

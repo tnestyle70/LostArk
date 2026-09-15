@@ -167,7 +167,8 @@ namespace
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
 			(LostArk::Shared::INVALID_VEHICLE_ID == snapshot.iVehicleId ||
 			 (snapshot.iCurrentHp != 0u &&
-			  LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
+			  (LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction ||
+			   LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == snapshot.eAction) &&
 			  LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL == snapshot.eMadnessForm &&
 			  !snapshot.isPatternBound && snapshot.iMarioStage == 0u)) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(snapshot.eMechanicCardSymbol) &&
@@ -268,7 +269,12 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == snapshot.eAction &&
 				snapshot.iSkillId < LostArk::Shared::KOUKU_HUD_SLOT_COUNT &&
 				0 != snapshot.iActionStartTick) ||
+			 (LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == snapshot.eAction &&
+				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
+				snapshot.iVehicleId != LostArk::Shared::INVALID_VEHICLE_ID &&
+				0 != snapshot.iActionStartTick) ||
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction &&
@@ -535,7 +541,9 @@ namespace
 		return
 			damage.iTargetNetEntityId !=
 				LostArk::Shared::INVALID_NET_ENTITY_ID &&
-			0 != damage.iAmount &&
+			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess) &&
+			/* Stagger and counters are things a player did to a boss. */
+			((0 == damage.iStaggerAmount && !damage.isCounterSuccess) || damage.isOutgoing) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&
 			/* A shard is something a hunter earned, so it is always outgoing. */
 			(LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == damage.eCardMazeSuit ||
@@ -3049,6 +3057,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(damage.fPositionZ);
 		writer.Write_U8(damage.isOutgoing ? 1u : 0u);
 		writer.Write_U8(static_cast<std::uint8_t>(damage.eCardMazeSuit));
+		writer.Write_U32(damage.iSourcePlayerId);
+		writer.Write_U32(damage.iStaggerAmount);
+		writer.Write_U8(damage.isCounterSuccess ? 1u : 0u);
 	}
 	writer.Write_U32(message.Bingo.iWhiteMask);
 	writer.Write_U32(message.Bingo.iRedMask);
@@ -3376,6 +3387,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		DAMAGE_EVENT damage{};
 		std::uint8_t rawOutgoing = 0;
 		std::uint8_t rawShardSuit = 0;
+		std::uint8_t rawCounter = 0;
 		if (!reader.Read_U32(damage.iTargetNetEntityId) ||
 			!reader.Read_U32(damage.iAmount) ||
 			!reader.Read_F32(damage.fPositionX) ||
@@ -3384,12 +3396,17 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawOutgoing) ||
 			rawOutgoing > 1u ||
 			!reader.Read_U8(rawShardSuit) ||
-			rawShardSuit >= static_cast<std::uint8_t>(MECHANIC_CARD_SYMBOL::END))
+			rawShardSuit >= static_cast<std::uint8_t>(MECHANIC_CARD_SYMBOL::END) ||
+			!reader.Read_U32(damage.iSourcePlayerId) ||
+			!reader.Read_U32(damage.iStaggerAmount) ||
+			!reader.Read_U8(rawCounter) ||
+			rawCounter > 1u)
 		{
 			return false;
 		}
 		damage.isOutgoing = 0u != rawOutgoing;
 		damage.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawShardSuit);
+		damage.isCounterSuccess = 0u != rawCounter;
 		if (!Is_Valid_DamageEvent(damage))
 			return false;
 		decoded.DamageEvents.push_back(damage);
