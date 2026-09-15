@@ -700,6 +700,14 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 	const wstring_t& strLayerTag,
 	const std::string& areaId)
 {
+	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::BERN,
+		m_FollowCameraProfile, m_strFollowCameraProfileStatus))
+	{
+		OutputDebugStringA(("[Level_Bern][FollowCamera] " +
+			m_strFollowCameraProfileStatus + "\n").c_str());
+	}
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
 	float3_t minimum{};
 	float3_t maximum{};
 	float3_t focus(0.f, 0.f, 0.f);
@@ -732,17 +740,17 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 		focus.y + distance * 0.65f,
 		focus.z - distance);
 	float3_t initialAt = focus;
-	const auto applyPlayerFraming = [&initialEye, &initialAt](
+	const auto applyPlayerFraming = [&initialEye, &initialAt, &positionOffset, &lookOffset](
 		const float3_t& position)
 	{
 		initialEye = float3_t(
-			position.x + 0.4f,
-			position.y + 7.5f,
-			position.z + 4.5f);
+			position.x + positionOffset.x,
+			position.y + positionOffset.y,
+			position.z + positionOffset.z);
 		initialAt = float3_t(
-			position.x,
-			position.y + 1.2f,
-			position.z);
+			position.x + lookOffset.x,
+			position.y + lookOffset.y,
+			position.z + lookOffset.z);
 	};
 	LostArk::Shared::S2C_PLAYER_SPAWNED approvedSpawn{};
 	if (CNetworkManager::Get().Try_Get_LocalSpawn(approvedSpawn))
@@ -786,7 +794,7 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 
 	cameraDesc.vAt = initialAt;
 
-	cameraDesc.fFovy = 60.f;
+	cameraDesc.fFovy = m_FollowCameraProfile.fovYDegrees;
 	cameraDesc.fNear = 0.1f;
 	cameraDesc.fFar =
 		(std::max)(2000.f, span * 8.f);
@@ -803,13 +811,10 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 	 */
 	cameraDesc.pFollowTarget = nullptr;
 
-	cameraDesc.vPositionOffset =
-		float3_t(0.4f, 7.5f, 4.5f);
-
-	cameraDesc.vLookOffset =
-		float3_t(0.f, 1.2f, 0.f);
-
-	cameraDesc.fFollowResponse = 0.f;
+	cameraDesc.vPositionOffset = positionOffset;
+	cameraDesc.vLookOffset = lookOffset;
+	cameraDesc.fFollowResponse = m_FollowCameraProfile.followResponse;
+	cameraDesc.fFollowRollDegrees = m_FollowCameraProfile.rotationDegrees.z;
 	cameraDesc.isFollowEnabled = false;
 
 	shared_ptr<CGameObject> gameObject;
@@ -842,6 +847,27 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 	return S_OK;
 }
 
+bool_t CLevel_Bern::Set_FollowCameraProfile(
+	const ARENA_CAMERA_PROFILE& profile,
+	std::string& outStatus)
+{
+	if (!CArenaCameraProfile::Validate(profile, outStatus))
+		return false;
+	if (nullptr == m_pCamera || !m_pCamera->Set_FollowPose(
+		profile.positionOffset, CArenaCameraProfile::LookOffset(profile),
+		profile.rotationDegrees.z, profile.fovYDegrees, profile.followResponse))
+	{
+		outStatus = "The active follow camera could not apply these settings.";
+		return false;
+	}
+	m_FollowCameraProfile = profile;
+	if (const auto character = Get_LocalCharacter())
+		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
+	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
+	m_strFollowCameraProfileStatus = outStatus;
+	return true;
+}
+
 bool_t CLevel_Bern::Bind_CameraToLocalCharacter()
 {
 	if (nullptr == m_pCamera)
@@ -868,6 +894,7 @@ bool_t CLevel_Bern::Bind_CameraToLocalCharacter()
 	 * 이미 같은 Character에 연결되어 있으면 매 프레임
 	 * Camera Target을 다시 설정하지 않는다.
 	 */
+	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 
@@ -878,9 +905,6 @@ bool_t CLevel_Bern::Bind_CameraToLocalCharacter()
 		return false;
 
 	m_pCameraTarget = localCharacter;
-
-	m_pCamera->Set_PositionOffset(
-		float3_t(0.4f, 7.5f, 4.5f));
 
 	m_pCamera->Set_FollowTarget(transform);
 	m_pCamera->Set_FollowEnabled(true);

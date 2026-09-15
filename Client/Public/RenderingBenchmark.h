@@ -10,6 +10,8 @@
 
 NS_BEGIN(Client)
 
+class CRenderingProfileService;
+
 struct RENDERING_BENCHMARK_RUN final
 {
 	string strLabel;
@@ -49,11 +51,19 @@ public:
 		string& strOutStatus);
 	/* Called once per frame. Finalizes the run when enough frames exist. */
 	void Update(Engine::CProfiler* pProfiler);
+	/* Session profile comparison owns only its last successful activation. */
+	void Update_RestorationPreview(CRenderingProfileService& Profiles, bool_t bToolVisible);
+	void Notify_ProfileReload();
 	void Render_Section(
 		Engine::CProfiler* pProfiler,
-		const string& strQualitySummary);
+		const string& strQualitySummary,
+		CRenderingProfileService& Profiles);
 
 private:
+	bool_t Render_RestorationSection(CRenderingProfileService& Profiles);
+	bool_t Activate_RestorationProfile(CRenderingProfileService& Profiles, const string& strProfileId);
+	bool_t Return_ToEntryProfile(CRenderingProfileService& Profiles);
+	void Release_RestorationOwnership();
 	bool_t Finalize(Engine::CProfiler& Profiler);
 	static bool_t Save_Json(
 		const vector<RENDERING_BENCHMARK_RUN>& Runs,
@@ -76,6 +86,11 @@ private:
 	array<char_t, 64> m_LabelBuffer = { "baseline" };
 	int32_t m_iFrameInput = 300;
 	vector<RENDERING_BENCHMARK_RUN> m_Runs;
+	uint32_t m_iRestorationLevel = 0u;
+	string m_strRestorationEntryProfileId;
+	string m_strRestorationLastProfileId;
+	string m_strRestorationLevelQualityId;
+	string m_strRestorationStatus = "Choose a session comparison profile. No automatic Save or Publish.";
 };
 
 NS_END

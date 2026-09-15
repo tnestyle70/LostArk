@@ -341,20 +341,32 @@ F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, �
 player·오래된 request sequence는 실행하지 않는다. 표시 이름은 실행 ID가 아니다.
 사용법과 저작/배포 경계는 `AREA_DATA_LAYER_GUIDE.md`의 F1 Sequence Viewer 항목을 따른다.
 
-맵별 플레이어 시점은 같은 F1 항목의 `Move Player` 아래 `Player Follow Camera`에서 설정한다.
-`Camera map`은 Character Select / KoukuSaydon 두 맵만 선택하며 Valtan profile은 수정하지 않는다.
-Position offset은 플레이어 기준 월드 XYZ(m), Rotation은 Pitch/Yaw/Roll(deg), Pitch +는 아래,
-Yaw 0은 +Z다. FOV와 응답(0이면 즉시 follow)도 함께 저장한다. `Apply / Follow current map`은
-현재 선택한 활성 맵의 카메라만 바꾸고 follow로 복귀하며, 연출 카메라가 사용 중이면 비활성이다.
-`Save camera settings`는 선택한 JSON만 저장하고 다음 진입 때 자동 적용한다. `Reload saved`와
-`Reset draft`는 편집값만 바꾸므로 현재 화면에 적용하려면 Apply를 누른다.
+맵별 플레이어 시점은 F1의 `Player Follow Camera`에서 설정한다. `Camera map`은
+Character Select / KoukuSaydon / Bern / Valtan이다. 기본 편집 `FOV X at 16:9 (deg)`는 수평각이며
+JSON과 DirectX 카메라는 환산된 수직 `fovYDegrees`를 소비한다. 실제 viewport의 수평각도 표시한다.
+FOV 아래 `Character size`는 catalog presentation scale에 곱하는 0.25~4배 표현 크기다.
+`Reset size`는 1배로 복귀하며 몸·장비·본 부착이 같은 root를 소비한다. Server Transform,
+충돌·공격 반경은 이 값의 소비자가 아니다. 맵별 optional `characterSizeMultiplier`를 생략하면
+1을 사용하고, 생성·class 교체·재입장 때 저장된 값을 다시 적용한다.
+`Advanced camera pose`의 Position offset은 플레이어 기준 월드 XYZ(m), Rotation은
+Pitch/Yaw/Roll(deg), Pitch +는 아래, Yaw 0은 +Z다. 응답0은 즉시 follow다.
+슬라이더 변경·`Reload saved`·두 preset은 활성 맵에 즉시 적용하고 follow로 복귀한다.
+다른 맵 선택 또는 연출 override 중에는 preview를 적용하지 않는다.
 
-정본은 `Data/Camera/CharacterSelect.camera.json`, `Data/Camera/KoukuSaydon.camera.json`이다.
-`CArenaCameraProfile`은 schema/version/areaId와 유한 범위를 검증하고 실패 시 기존 값·파일을
-보존한다. 각 Level이 생성·class 변경·follow 복귀에서 profile을 소비하며 Kouku 연출 종료
-위치·주시점·FOV도 같은 값으로 돌아온다. 연출 자체의 roll은 기존 override를 따르고 follow 복귀
-후 저장한 roll을 적용한다. Character Select에서는 카메라 튜닝만 추가하며 `Move Player`는
-비활성이다. 새 Server command와 Resources 전달물은 없다.
+`Source baseline`은 공통50도/16m, 발탄55도/18m, 쿠크1관문50도/19m와 원본 방향을 적용한다.
+쿠크2·3관문의 현재 baseline은1관문 값의 시험 적용이며 source match는 미확인이다.
+`Before restoration`은 복원 전 네 맵의 실제 카메라 설정으로 되돌린다. 두 버튼은 pose와 lens를
+함께 교체하고 저장은 하지 않으며 Character size 입력을 보존한다. FOV 슬라이더만 움직이면
+나머지 pose와 모든 asset scale을 유지한다. Bern 저장값55도는 사용자의 비교값이며 source50도와 구분한다.
+`Save camera settings`는 선택 JSON만 저장하고 다음 진입 때 자동 적용한다. 로드 이후 디스크가 바뀌면
+저장을 거절하고 draft와 파일을 보존한다. `Read current camera`는 현재 적용된 follow profile을 가져온다.
+
+정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이다. publisher 없이
+직접 읽는다. `CArenaCameraProfile`의 schema/version/areaId·유한 범위 검증을 통과한 profile만
+Level이 생성·class 변경·follow 복귀에 소비한다. Valtan/Kouku 연출 종료도 같은 profile로 돌아온다.
+마리오·카드미로·컷신의 개별 카메라와 기존 presentation priority는 유지한다. Character Select의
+`Move Player`는 계속 비활성이며 Bern 카메라 패널은 플레이어 배치 명령을 추가하지 않는다.
+새 Server command와 Resources 전달물은 없다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
@@ -1257,6 +1269,14 @@ Core/Animator/Derived는 표시 분류이며 등록 총수는 Flow의 1~255슬�
 Effect 시각 기준의 global bloom scatter 정본은 `Data/Rendering/Authored/RenderingProfiles.json`의 exact
 `bloomScatter: 1.0`이다. Rendering publisher는 float32 경계 검증 뒤 같은 값을 runtime JSON에 투영하며 Editor
 Save 뒤 별도 Effect publish나 사용자 sidecar로 이 값을 다시 선택하지 않는다.
+
+Rendering quality의 optional `colorAdjustment`는 `bloomTint:[R,G,B,1]`(RGB0..1)과
+`desaturation:0..1`을 가진다. 기본값은 white/0이며 이전 profile 출력이 유지된다.
+`environmentRegions`의 optional `priority`는 큰 값이 우선하고 같은 값이면 작은 convex AABB를 선택한다.
+optional `postProcess`는 bloomThreshold(0..64), bloomIntensity(0..16), bloomTint, desaturation
+네 필드를 모두 요구한다. 진입/이탈은 기존 region blend 시간을 사용하며 base quality로 복귀한다.
+Bern/Character Select의 source-rendering과 before-restoration profile은 Benchmark의 session 비교용이다.
+자동 Save/Publish하지 않으며 native tone/LUT/DOF 복원과 현재 Hable adapter를 구분한다.
 
 플레이어 profile의 defense는 발탄 incoming damage에 실제로 사용된다. 원작 Server 공식이 client
 payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며

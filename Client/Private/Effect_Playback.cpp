@@ -3514,6 +3514,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
+	m_bOwnerSustainedSourceLoops = false;
 	Reset();
 	strOutError.clear();
 	return true;
@@ -3674,6 +3675,7 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_fSampleTimeSeconds = 0.f;
 	m_fAccumulatorSeconds = 0.0;
 	m_fDurationSeconds = 0.f;
+	m_bOwnerSustainedSourceLoops = false;
 	m_iSimulationStep = 0u;
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedExecutionPlan = std::move(StagedPlan);
@@ -4333,7 +4335,9 @@ bool_t Client::CEffectPlayback::Step(
 		if (Is_ParticleSimulationElement(
 				Element, Is_SourceVisualProgramElementAdmitted(Element)) &&
 			fEmitterElapsed >= 0.f &&
-			(fEmitterElapsed <= fSourceEmissionDuration || bFirstManualBurstStep))
+			(fEmitterElapsed <= fSourceEmissionDuration || bFirstManualBurstStep ||
+				(m_bOwnerSustainedSourceLoops && Element.SourceRecipe.bEnabled &&
+					Element.SourceRecipe.iEmitterLoopCount == 0u)))
 		{
 			if (Element.SourceRecipe.bEnabled)
 			{
@@ -7912,7 +7916,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 		}
 		const bool_t bPresentationActive = bManualBurstOnly ?
 			!State.Particles.empty() : fPresentationTime >= 0.f &&
-				fPresentationTime < fPresentationLifeTimeSeconds;
+				(fPresentationTime < fPresentationLifeTimeSeconds ||
+					m_bOwnerSustainedSourceLoops);
 		const bool_t bGpuVisualOccurrence = Is_GpuVisualOccurrence(Element);
 		const size_t iGpuOccurrence = m_Frame.GpuOccurrences.size();
 		if (bGpuVisualOccurrence)
@@ -8739,9 +8744,34 @@ float3_t Client::CEffectPlayback::Sample_AuthoredInitialVelocity(
 	return Scale3(vDirection, fSpeed);
 }
 
+bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& strOutError)
+{
+	const auto& document = Get_StagedDocument();
+	if (document.Elements.empty() || !document.ModelCues.empty() ||
+		std::any_of(document.Elements.begin(), document.Elements.end(),
+			[this](const EFFECT_ELEMENT_DESC& element)
+			{
+				return !Is_PlaybackElementAdmitted(element) ||
+					element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+					!element.SourceRecipe.bEnabled ||
+					element.SourceRecipe.strRendererShape != "sprite" ||
+					element.SourceRecipe.iEmitterLoopCount != 0u ||
+					!std::isfinite(element.SourceRecipe.fEmitterDurationSeconds) ||
+					element.SourceRecipe.fEmitterDurationSeconds <= 0.f;
+			}))
+	{
+		strOutError = "Owner-sustained playback requires only admitted source sprite emitters with EmitterLoops=0.";
+		return false;
+	}
+	m_bOwnerSustainedSourceLoops = true;
+	m_bFrameInputsDirty = true;
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectPlayback::Is_Finished() const
 {
-	if (m_fSampleTimeSeconds < m_fDurationSeconds)
+	if (m_bOwnerSustainedSourceLoops || m_fSampleTimeSeconds < m_fDurationSeconds)
 		return false;
 	for (const auto& Pair : m_States)
 	{

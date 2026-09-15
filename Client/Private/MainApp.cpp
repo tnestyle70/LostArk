@@ -1398,6 +1398,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 #ifdef _DEBUG
 	UpdateLightingPreview();
+	if (m_pRenderingBenchmark)
+		m_pRenderingBenchmark->Update_RestorationPreview(m_RenderingProfiles,
+			m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::RENDERING) &&
+			m_bRenderingQualityWindowVisible);
 #endif
 	if (ETOUI(LEVEL::LOADING) !=
 		CGameInstance::Get().Get_CurrentLevelID())
@@ -7794,7 +7798,11 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		controller = &characterSelect->Get_DebugPlayerController();
 	}
 	if (nullptr == camera || nullptr == controller)
+	{
+		if (LEVEL::BERN == level)
+			RenderArenaFollowCameraSettings();
 		return;
+	}
 	const auto setSpeed = [valtan, kouku, characterSelect, camera](const f32_t speed)
 	{
 		if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
@@ -7851,23 +7859,34 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	const uint32_t level = CGameInstance::Get().Get_CurrentLevelID();
 	auto* characterSelect = level == ETOUI(LEVEL::CHARACTER_SELECT) ? CLevel_CharacterSelect::Get_Active() : nullptr;
 	auto* kouku = level == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	auto* bern = level == ETOUI(LEVEL::BERN) ? CLevel_Bern::Get_Active() : nullptr;
+	auto* valtan = level == ETOUI(LEVEL::VALTAN_ARENA) ? CLevel_ValtanArena::Get_Active() : nullptr;
 	if (m_iArenaCameraLastLevel != level)
 	{
 		m_iArenaCameraLastLevel = level;
 		if (characterSelect) m_iArenaCameraSelectedMap = 0;
 		else if (kouku) m_iArenaCameraSelectedMap = 1;
+		else if (bern) m_iArenaCameraSelectedMap = 2;
+		else if (valtan) m_iArenaCameraSelectedMap = 3;
 	}
 	ImGui::PushID("ArenaFollowCameraSettings");
 	ImGui::SeparatorText("Player Follow Camera");
-	const char* names[] = { "Character Select", "KoukuSaydon" };
+	const char* names[] = { "Character Select", "KoukuSaydon", "Bern", "Valtan" };
+	const ARENA_CAMERA_MAP maps[] = { ARENA_CAMERA_MAP::CHARACTER_SELECT,
+		ARENA_CAMERA_MAP::KOUKU_SAYDON, ARENA_CAMERA_MAP::BERN, ARENA_CAMERA_MAP::VALTAN };
 	ImGui::Combo("Camera map", &m_iArenaCameraSelectedMap, names, IM_ARRAYSIZE(names));
 	const size_t index = static_cast<size_t>(m_iArenaCameraSelectedMap);
-	const ARENA_CAMERA_MAP map = index == 0u ? ARENA_CAMERA_MAP::CHARACTER_SELECT : ARENA_CAMERA_MAP::KOUKU_SAYDON;
+	const ARENA_CAMERA_MAP map = maps[index];
 	auto& draft = m_ArenaCameraDrafts[index];
 	auto& status = m_ArenaCameraDraftStatus[index];
-	const bool active = (index == 0u && characterSelect) || (index == 1u && kouku);
-	const auto camera = index == 0u ? (characterSelect ? characterSelect->Get_DebugCamera() : nullptr) :
-		(kouku ? kouku->Get_DebugCamera() : nullptr);
+	auto& baseline = m_ArenaCameraSourceBaselines[index];
+	const bool active = (index == 0u && characterSelect) || (index == 1u && kouku) ||
+		(index == 2u && bern) || (index == 3u && valtan);
+	shared_ptr<CCamera_Free> camera;
+	if (index == 0u && characterSelect) camera = characterSelect->Get_DebugCamera();
+	else if (index == 1u && kouku) camera = kouku->Get_DebugCamera();
+	else if (index == 2u && bern) camera = bern->Get_DebugCamera();
+	else if (index == 3u && valtan) camera = valtan->Get_DebugCamera();
 	const auto useCurrent = [&]()
 	{
 		if (index == 0u && characterSelect)
@@ -7880,32 +7899,106 @@ void CMainApp::RenderArenaFollowCameraSettings()
 			draft = kouku->Get_FollowCameraProfile();
 			status = kouku->Get_FollowCameraProfileStatus();
 		}
+		else if (index == 2u && bern)
+		{
+			draft = bern->Get_FollowCameraProfile();
+			status = bern->Get_FollowCameraProfileStatus();
+		}
+		else if (index == 3u && valtan)
+		{
+			draft = valtan->Get_FollowCameraProfile();
+			status = valtan->Get_FollowCameraProfileStatus();
+		}
 	};
 	if (!m_ArenaCameraDraftLoaded[index])
 	{
 		draft = CArenaCameraProfile::Default(map);
-		if (active) useCurrent();
-		else (void)CArenaCameraProfile::Load(map, draft, status);
+		(void)CArenaCameraProfile::Load(map, draft, status, &baseline);
 		m_ArenaCameraDraftLoaded[index] = true;
 	}
 	const bool canPreview = active && camera && !camera->Is_PresentationOverrideActive();
 	const auto preview = [&]()
 	{
 		if (!canPreview) return;
-		const bool applied = index == 0u ? characterSelect->Set_FollowCameraProfile(draft, status) :
-			kouku->Set_FollowCameraProfile(draft, status);
+		bool applied = false;
+		if (index == 0u) applied = characterSelect->Set_FollowCameraProfile(draft, status);
+		else if (index == 1u) applied = kouku->Set_FollowCameraProfile(draft, status);
+		else if (index == 2u) applied = bern->Set_FollowCameraProfile(draft, status);
+		else if (index == 3u) applied = valtan->Set_FollowCameraProfile(draft, status);
 		if (applied) camera->Set_FollowEnabled(true);
 	};
 	bool edited = false;
-	ImGui::TextDisabled("World axes relative to player. Pitch +: down; Yaw 0: +Z.");
-	edited |= ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
-		"%.3f", ImGuiSliderFlags_AlwaysClamp);
-	edited |= ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	edited |= ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	edited |= ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	edited |= ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	edited |= ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	edited |= ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	const auto horizontalFov = [](f32_t vertical, f32_t aspect)
+	{
+		return XMConvertToDegrees(2.f * std::atan(std::tan(XMConvertToRadians(vertical) * 0.5f) * aspect));
+	};
+	const f32_t referenceAspect = 16.f / 9.f;
+	f32_t referenceFov = horizontalFov(draft.fovYDegrees, referenceAspect);
+	ImGui::TextWrapped("Smaller FOV shows a closer view; larger FOV shows more of the scene.");
+	if (ImGui::SliderFloat("FOV X at 16:9 (deg)", &referenceFov,
+		horizontalFov(10.f, referenceAspect), horizontalFov(150.f, referenceAspect),
+		"%.2f", ImGuiSliderFlags_AlwaysClamp))
+	{
+		draft.fovYDegrees = XMConvertToDegrees(2.f * std::atan(
+			std::tan(XMConvertToRadians(referenceFov) * 0.5f) / referenceAspect));
+		draft.fovYDegrees = std::clamp(draft.fovYDegrees, 10.f, 150.f);
+		edited = true;
+	}
+	edited |= ImGui::SliderFloat("Character size", &draft.characterSizeMultiplier,
+		0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::SameLine();
+	if (ImGui::Button("Reset size"))
+	{
+		draft.characterSizeMultiplier = 1.f;
+		edited = true;
+	}
+	shared_ptr<CCharacter> character;
+	if (index == 0u && characterSelect) character = characterSelect->Get_LocalCharacter();
+	else if (index == 1u && kouku) character = kouku->Get_LocalCharacter();
+	else if (index == 2u && bern) character = bern->Get_LocalCharacter();
+	else if (index == 3u && valtan) character = valtan->Get_LocalCharacter();
+	if (character)
+		ImGui::Text("Catalog scale: %.3f | Current visual scale: %.3f",
+			character->Get_CatalogPresentationScale(), character->Get_PresentationScale());
+	ImGui::TextDisabled("Size 1 uses the admitted class model. Body, equipment and sockets share the visual scale.");
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t aspect = viewport.x > 0.f && viewport.y > 0.f ? viewport.x / viewport.y : referenceAspect;
+	ImGui::Text("Vertical: %.3f deg | Horizontal at %.3f: %.3f deg",
+		draft.fovYDegrees, aspect, horizontalFov(draft.fovYDegrees, aspect));
+	ImGui::Text("Eye-to-focus: %.3f m | Pitch: %.2f deg | Yaw: %.2f deg",
+		draft.focusDistance, draft.rotationDegrees.x, draft.rotationDegrees.y);
+	ImGui::TextDisabled("Camera distance and pitch also affect screen size. Character size does not change combat ranges.");
+	if (ImGui::Button("Source baseline"))
+	{
+		const f32_t characterSize = draft.characterSizeMultiplier;
+		draft = CArenaCameraProfile::Default(map);
+		draft.characterSizeMultiplier = characterSize;
+		edited = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Before restoration"))
+	{
+		const f32_t characterSize = draft.characterSizeMultiplier;
+		draft = CArenaCameraProfile::BeforeRestoration(map);
+		draft.characterSizeMultiplier = characterSize;
+		edited = true;
+	}
+	ImGui::TextDisabled("Presets replace camera pose and lens, preserving character size. Save persists this map's settings.");
+	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
+		ImGui::TextWrapped("Source baseline: Gate 1 volume, 50 deg / 19 m. Gates 2/3 use this trial baseline; their source match is unverified. Mario, maze and cinematic shots keep their own cameras.");
+	if (ImGui::TreeNode("Advanced camera pose"))
+	{
+		ImGui::TextDisabled("World axes relative to player. Pitch +: down; Yaw 0: +Z.");
+		edited |= ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
+			"%.3f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::TreePop();
+	}
 	if (edited) preview();
 	ImGui::TextDisabled("Changes preview live. Save keeps them for the next entry. Response 0: immediate follow.");
 	ImGui::BeginDisabled(!canPreview);
@@ -7918,18 +8011,11 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		ImGui::TextDisabled("Live follow-camera preview is unavailable during a camera sequence.");
 	if (ImGui::Button("Save camera settings"))
 	{
-		if (CArenaCameraProfile::Save(map, draft, status))
+		if (CArenaCameraProfile::Save(map, draft, status, &baseline))
 			status += " Saved for the next entry.";
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Reload saved") && CArenaCameraProfile::Load(map, draft, status)) preview();
-	ImGui::SameLine();
-	if (ImGui::Button("Reset draft"))
-	{
-		draft = CArenaCameraProfile::Default(map);
-		status = "Default values loaded. Save to keep them.";
-		preview();
-	}
+	if (ImGui::Button("Reload saved") && CArenaCameraProfile::Load(map, draft, status, &baseline)) preview();
 	ImGui::TextWrapped("%s", CArenaCameraProfile::Path(map).generic_string().c_str());
 	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 	ImGui::PopID();
@@ -9982,17 +10068,17 @@ void CMainApp::RenderRenderingWorkbench()
 		"Quality edits are saved with the selected Level base; pattern scene changes retain Level quality.");
 	if (nullptr != m_pRenderingBenchmark)
 	{
-		const RENDER_QUALITY_SETTINGS& Quality =
-			m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
-		const string strQualitySummary = "profile=" + m_strRenderingDraftProfileId +
+		const auto& game = CGameInstance::Get();
+		const RENDER_QUALITY_SETTINGS Quality = game.Get_RenderQualitySettings();
+		const string strQualitySummary = "profile=" + m_RenderingProfiles.Get_ActiveProfileId() +
 			" ssao=" + (Quality.bSSAOEnabled ? "on" : "off") +
 			" bloom=" + (Quality.bBloomEnabled ? "on" : "off") +
 			" fxaa=" + (Quality.bFXAAEnabled ? "on" : "off") +
-			" shadow=" + (pActiveProfile->ShadowSettings.bEnabled ? "on" : "off") +
-			" fog=" + (pActiveProfile->Fog.bEnabled ? "on" : "off") +
+			" shadow=" + (game.Get_ShadowLightDesc().Settings.bEnabled ? "on" : "off") +
+			" fog=" + (game.Get_HeightFogSettings().bEnabled ? "on" : "off") +
 			" exposure=" + std::to_string(Quality.fExposure);
 		m_pRenderingBenchmark->Render_Section(
-			CGameInstance::Get().Get_Profiler(), strQualitySummary);
+			CGameInstance::Get().Get_Profiler(), strQualitySummary, m_RenderingProfiles);
 	}
 
 	ImGui::SeparatorText("Map Materials");
@@ -10223,6 +10309,8 @@ void CMainApp::RenderRenderingWorkbench()
 	{
 		if (m_RenderingProfiles.Reload_Runtime(m_strRenderingStatus))
 		{
+			if (m_pRenderingBenchmark)
+				m_pRenderingBenchmark->Notify_ProfileReload();
 			m_RenderQualityDraft = m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
 			if (const SCENE_RENDERING_PROFILE* pProfile =
 				m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))

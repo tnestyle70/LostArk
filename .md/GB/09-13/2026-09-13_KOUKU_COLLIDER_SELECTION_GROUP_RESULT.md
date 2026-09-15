@@ -80,3 +80,79 @@ Effect anchor 그룹, saved prop preview, WORLD Append 변경 포함을 확인�
 증거는 `out/KoukuFlameUnification20260914/user-build-verification.json`과
 09-12 KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT의G15-02다.
 사용자는 시퀀스 재생을 확인했으며 각 이펙트의 최종 시각 판정은 별도 사용자 확인 범위다.
+
+### G06.1. Effect 그룹 공간 이동과 같은 시각 복제 후속 (2026-09-14)
+
+사용자가 쇼타임의 바닥 고정 조준점·공 낙하·충돌 폭발·화염 장판을 함께 이동하고 여러
+위치에 복제·저장할 수 있도록 기존 Workbench CPP와 헤더를 확장했다. 저장본에서
+P35.effectgroup.182는 낙하178/충돌179/화염180 세 MAP 박스이며, fixed target91도 MAP다.
+사용자가 계속 편집 중이므로 이 관찰값을 덮어쓰거나 외부에서 그룹을 자동 재지정하지 않았다.
+
+Box Detail의 Effect selection에 `Group position (world m)` 또는 공통 anchor의
+`Group center offset (m)`를 추가했다. 현재 staged placement를 포함한 모든 멤버 중심의
+평균을 표시하고, 새 위치와 차이만 모든 occurrence의 PositionOffset에 적용한다.
+전체 후보를 먼저 검증하므로 잘못된 수치에서 일부 멤버만 바꾸지 않는다. 회전·크기·anchor·
+시각·수명은 유지한다. MAP는 서로 다른 시작 시각도 같은 세계좌표이며 BOSS/WORLD는
+같은 anchor/bone/target/world occurrence/emission/Follow 기준을 요구한다. frozen BOSS/WORLD는
+시작 시각도 같아야 한다. 다른 기준이 섞이면 위치 입력에 사유를 표시하고 기존 선택·시간
+이동·복제는 계속 유지한다.
+
+`Duplicate Group (same time)`은 기존 Duplicate_TimelineSelection의 기본 false 옵션
+atOriginalTime을 사용한다. 소유 참조 확장 뒤 Effect만 남은 경우 insertMs=first/delta=0으로
+현재 시각·수명·전체 Pattern 길이를 보존한다. 기존 old→new occurrence 매핑으로 미저장
+위치까지 복사하고 새 group ID를 발급해 복제본을 선택한다. 원본과 기존 WORLD 참조는
+유지된다. 기존 Ctrl+D는 후속 시간 복제 그대로다. `Save Composition`/`Save Sequence`는
+기존 문서 Save를 호출해 모든 미저장 문서 편집과 staged geometry를 함께 저장한다.
+별도 group Transform/schema/runtime/리소스 원본 수정은 없다.
+
+독립 검토에서 새 그룹 복제 후 기존 preview snapshot이 새 occurrence ID를 모르는 경로를
+찾아 수정했다. 같은 시각 복제 성공 뒤 pending→현재 동일 Pattern 재생→cursor 순으로
+clock/paused를 보존하고 Request_PatternPreview를 다시 요청한다. 이 경로는 전체 staged
+geometry를 포함한 새 문서를 검증·확장한 뒤 준비하므로, 이후 복제 그룹 위치 입력을 받을 수
+있다. preview 준비 실패 시 복제 draft와 이전 preview는 유지하고 unavailable 상태를 표시한다.
+최종 재검토에서는 추가 결함을 발견하지 않았다.
+
+위치 preview는 기존 Workbench queue → MainApp → Player의 V1/V2 anchor/history 경로를
+사용한다. MainApp의 최종 Sample_Preview/Player.Status/Set_PreviewState가 Player 오류를
+전달한다. 같은 프레임의 순차 geometry 소비를 runtime 전체 rollback이 보장되는 batch로
+기록하지 않는다. 저장은 기존 Save_Atomic의 검증·freshness/CAS·원본 보존 계약을 유지한다.
+
+최종 Workbench CPP의 out 격리 컴파일이 Product 문자 집합 설정으로 통과했다. 파일의
+UTF-8 BOM 없음/CRLF와 git diff --check를 확인했다. 이전 양손 자동 소품과 마커 관련10개
+소스는 직전 제품 빌드의 hash와 그대로 일치하며 Resources 캐시를 포함한 Workbench 위에
+이번 변경만 추가했다. 근거는 `out/EffectGroupPlacement20260914/compile_receipt.json`,
+`compile.log`와 변경 직전 `.before` 파일들이다. 새 C++ 파일/project 등록은 없다.
+
+최종 Collect/Translate/Duplicate 함수 본문을 추출한 native focused probe는179검사에서
+실패0이다. 실제 P35 MAP3개와 서로 다른 시작 시각의 공통 이동, 상대 위치·회전·크기·시각
+보존, invalid/overflow/mixed frame 거절, staged 위치 복제, 새 occurrence/group ID,
+pending/live/cursor의 preview clock·paused 보존, 새 ID snapshot 뒤 위치 편집을 확인했다.
+실제 occurrence codec 행을 직렬화·재해독해 position/selectionGroupId를 포함한 행을
+대조했다. Workbench Save와 overlay 함수 본문은 변경 전과 같음을 확인했다. 전체
+Save_Atomic 파일 트랜잭션과 실제 GPU/UI 입력을 실행한 검사는 아니다. 증거는
+`out/EffectGroupPlacement20260914/placement_probe.run.log`, `placement_probe.receipt.json`,
+`placement_rows.roundtrip.json`이다.
+
+사용자가 **편집 중이므로 EXE 빌드를 잠시 보류**하도록 요청했다. Client6236/Server51620의
+실행파일은 교체하지 않았고, 이번 기능은 소스·격리 컴파일·집중 검사까지 완료된 상태다.
+제품 반영은 사용자의 후속 빌드 지시 뒤 진행한다. 그 뒤 Effect4박스 선택 → Set Group →
+Group position XYZ → Duplicate Group (same time) → 복제본 위치 변경 → Save Composition →
+재열람의 실제 입력과 화면 배치는 사용자가 확인한다. 에이전트가 사용자 Effect/Composition
+JSON을 수정하거나 Client/UI를 실행·조작·캡처하지 않았다.
+
+
+## G06.2. 후속 빌드 승인과 제품 반영 — 2026-09-14 23:26 KST
+
+사용자의 “전부 복원 시킨 다음에, 빌드까지 깔끔하게 돌려줘” 지시로 위의 빌드 보류가
+해제됐다. 실행 중인 Client/Server가 없음을 확인하고 Debug Product 빌드와 배포를 마쳤다.
+그룹 XYZ 이동·같은 시각 복제·Save와 기존 Resources 캐시·양손 소품·마커 최적화가 포함된다.
+후속 V1 Append 수명 수정도 포함되며 기존 그룹 세 함수와 저장 계약은 유지한다.
+
+최종 실행 파일은 Client/Bin/Debug/Client.exe, 23:26:07 KST, 58,626,048 bytes,
+SHA256 d5f0fdfb776b34ced5620a51ecff3529cf77ae3b987b4b7b8d03fa360a5e4fad다.
+정본 Product receipt는 out/BuildPipeline/runs/20260914T142608661Z-debug-product.json이다.
+32개 입력의 빌드 전후 hash 동일, 그룹 복제·캐시·마커·native 3607 EXE 문자열 포함은
+out/KoukuShowtimeRectangle20260914/final_product_receipt.json에 기록했다.
+컴파일·링크와 필수 runtime input은 PASS이며 기존 문자 집합 경고는 남아 있다.
+Client/Server는 에이전트가 실행하지 않았다. 사용자 저장·재열람·그룹 위치의 실제 화면
+확인은 위 G06.1 절차로 진행하며, 빌드 성공을 사용자 visual PASS로 기록하지 않는다.

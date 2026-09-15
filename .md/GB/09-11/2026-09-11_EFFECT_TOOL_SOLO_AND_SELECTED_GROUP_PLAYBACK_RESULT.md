@@ -260,3 +260,23 @@ Client PID6392를 확인했다. 두 수정 CPP와 헤더가 실제 compiler depe
 raw 후보 검사 문자열도 확인했다. 근거는 `out/DualHandPreview20260914/user-build-verification.json`과
 `Client/Default/x64/Debug/Client.log`다. 에이전트가 빌드·재실행한 것은 아니며 최종 화면과
 사용자의 그룹 위치·저장 조작은 아직 확인되지 않았다.
+
+### G07 브랜치 전환 뒤 소스 복구와 새 제품 빌드
+
+20:16:56 EXE에는 위 변경이 들어 있었지만, 이후 Git reflog에서 작업 브랜치의
+`4de76dd6`에서 main을 거쳐 `pattern-3`의 `16d62e74`로 이동한 것을 확인했다.
+20:23:45 EXE는 자동 소품 및 마커 최적화가 없는 소스로 다시 만들어졌다. 사용자의
+지팡이 세이튼 관찰은 이 실행파일에서 발생했으며 앞선 EXE 확인을 이 새 파일의 증거로
+사용하지 않는다. 사용자가 양쪽 변경의 복구를 요청해 해당 코드와 문서를 현재
+`pattern-3`에 복구했다. 기존 39검사 입력의 세 소스 hash와 복구본이 일치한다.
+
+사용자가 EXE 종료 후 빌드까지 승인하여 20:45:00 KST 정본 Debug Product가 PASS했다.
+이번 빌드는 양손 자동 소품, 화면 밖 마커 최적화와 Composition Resources 캐시를 함께
+포함한다. Product receipt는 `out/BuildPipeline/runs/20260914T114500918Z-debug-product.json`,
+로그는 `out/CompositionResourceCache20260914/ProductBuild`다. 기존 경고는 남지만
+컴파일·링크 오류 및 runtime input 누락은 없다. Client와 Server는 에이전트가 실행하지 않았다.
+
+사용자가 최종 저장한 양손 Group Center는 좌우 각각 `[1.25, 0.5, -0.95]`이며 좌우 각11개
+본 부착과 원본 animation은 유지됐다. 사용자 Effect JSON을 복구본으로 덮어쓰지 않았고,
+Composition도 종료 직전 20:42:20에 저장된 revision620을 유지했다. 최종 총 표시와
+Group Center의 총구 정렬은 새 EXE에서 사용자 확인으로 남는다.

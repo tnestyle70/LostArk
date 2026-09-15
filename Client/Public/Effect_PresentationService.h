@@ -62,6 +62,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
+	// A real boss world-root owner may sustain source EmitterLoops=0 until teardown.
+	bool_t bOwnerSustainedSourceLoops = false;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
 	// External occurrence end age; zero retains the authored screen-post duration.

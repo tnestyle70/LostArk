@@ -345,6 +345,51 @@ bool_t CMapAssetCatalog::Load_MaterialOverrides()
 		m_Status = "Map material document parse failed: " + error;
 		return false;
 	}
+	return Parse_MaterialOverrides(root);
+}
+
+bool_t CMapAssetCatalog::Parse_ModelSurface(const DATA_JSON_VALUE& row,
+	Engine::MODEL_MATERIAL_OVERRIDE& out, std::string& status)
+{
+	const auto* asset = row.Find("assetId");
+	if (!row.Is_Object() || !asset || !asset->Is_String() || asset->Get_String().empty() ||
+		row.Find("bakedLighting"))
+	{
+		status = "Actor surface requires a model identity and cannot own placement lighting.";
+		return false;
+	}
+	CMapAssetCatalog staged;
+	staged.m_AreaId = "actor.materials";
+	MAP_ASSET_ENTRY entry{};
+	entry.id = asset->Get_String();
+	staged.m_EntryLookup.emplace(entry.id, 0u);
+	staged.m_Entries.push_back(std::move(entry));
+	const auto document = DATA_JSON_VALUE::Object({
+		{ "schema", DATA_JSON_VALUE::String("lostark.map-materials") },
+		{ "formatVersion", DATA_JSON_VALUE::Number(2.0) },
+		{ "areaId", DATA_JSON_VALUE::String(staged.m_AreaId) },
+		{ "materials", DATA_JSON_VALUE::Array({ row }) } });
+	if (!staged.Parse_MaterialOverrides(document) || staged.m_Entries[0].materialOverrides.size() != 1u)
+	{
+		status = staged.Get_Status();
+		return false;
+	}
+	const auto& material = staged.m_Entries[0].materialOverrides.front();
+	if ((material.surface.renderMode != Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED &&
+		 material.surface.renderMode != Engine::MODEL_SURFACE_RENDER_MODE::INHERIT) ||
+		(material.surface.cullMode != Engine::MODEL_SURFACE_CULL_MODE::CULL_BACK &&
+		 material.surface.cullMode != Engine::MODEL_SURFACE_CULL_MODE::INHERIT))
+	{
+		status = "Actor static surfaces currently require a deferred render mode.";
+		return false;
+	}
+	out = material;
+	status.clear();
+	return true;
+}
+
+bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
+{
 	const auto exactFields = [](const DATA_JSON_VALUE& value,
 		const std::unordered_set<std::string>& fields)
 	{

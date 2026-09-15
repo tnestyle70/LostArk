@@ -570,3 +570,436 @@ if __name__ == '__main__':
     stage(parser.parse_args().output)
 
 ```
+
+
+## G17. 쇼타임 쿠크세이튼 사라지기 독립 Effect — 2026-09-14
+
+사용자가 첨부한 P35 animation.8은 리허설4219985 stage007의 `rpct00_att_battle_24_03`이다.
+실제 사라짐은 바로 앞 stage006 `rpct00_att_battle_28_09`의 HidePawn1.804677초 뒤,
+Light notify016의1.811208초와 BallRead notify017의1.811831초다. 본편4219939 stage008과 같다.
+
+새 `effect.kouku.gate3.showtime.saydon.disappear`를 `쇼타임 | 쿠크세이튼_사라지기`로 등록한다.
+원본11개 BallRead emitter와 동시 Light1개를 0초 기준으로 묶고 상대 발생 간격을 보존한다.
+FX_buff_01/b_root의 원본 위치0·배율1.2와 root snapshot Light 위치(0,1.5,0)를 유지한다.
+현행 ball.red의 native material/resource를 재사용하고 sourceModelPreview는 해당 클립의 발생 직후 구간을 참조한다.
+새 authored, Catalog, Tree와 Client project/filter None 등록만 변경한다. 실행 중 Composition과 기존 authored는 덮어쓰지 않는다.
+
+검증은 선택 문서의 실제 codec/저장 재개방·CPU 재생, 기존 DDS/native shader 의존성,
+JSON/XML parse와 diff 검사다. 사용자 EXE 빌드 보류를 유지하며 Client/UI를 실행하지 않는다.
+목록 Refresh와 runtime catalog 재로드는 다르므로 Composition 실제 재생은 편집 저장 후 다음 Client 실행에서 확인한다.
+
+
+## G18. 쇼타임 노란 사각형 예고와 3회 공습 폭발 — 2026-09-14
+
+추가 요청은 원본 크기의 노란 직사각형 예고에 inner 차오름을 연결하고, 같은 장판 범위의
+공습 폭발을 원본 3회 시각·위치로 묶는 것이다. 원본 Projectile421991210은 SkillDecal2113
+`GR_Mon_Rectangle_cond_EX_01`과 `FX_O_De_CondSquare_02_01_Tr`를 사용한다.
+확인한 세 AirStrike_Exp 발생은2.0/2.4/2.7초, 원본UE위치는(-600,0,0)/(0,0,0)/(600,0,0)이다.
+선행 Missile은1.0/1.4/1.7초의 별도 발생이며 사용자가 요청한 폭발 묶음과 구분한다.
+
+기존 GroundEffect LocalDecal·materialParameterTracks 경로로 사각형의 정식 재질을 연결한다.
+예고의 확정 크기·타이밍은 SkillEffect421991224와 원본 FixArea footer의 실제 계약을 읽은 뒤 사용한다.
+장판의 바깥 크기를 고정하고 원본 재질 inner 입력에 차오름 곡선을 넣는다.
+폭발은 현행 showtime.airstrike.impact16개 요소를 원본 위치·회전·시각별 독립48개로 복제한다.
+각 sourceRecipe와 native 재질, particle tail을 보존하며 emitter loop 횟수 변경으로 3회를 흉내내지 않는다.
+
+등록 이름은 `쇼타임 / 사각형 장판 | 쇼타임_사각형_예고`와
+`쇼타임 / 사각형 장판 | 쇼타임_사각형_폭발`이다. Tree의 반복되는 분류 접두사는 실제 UI 투영 규칙에 맞게 단축한다.
+새 authored2개, Catalog·Tree·project/filter None과 필요한 native table/shader만 변경한다.
+새 C++ runtime 경로는 만들지 않는다. 새 Python 생성기가 필요하면 실제 source 획득·검증·stage를 소유한다.
+
+사용자는 후속 메시지로 EXE 빌드 보류를 해제하고 전체 반영 후 빌드까지 요청했다.
+원본 수치, 실제 codec/playback·리소스 준비, 변경 shader/CPP와 JSON/XML/diff를 검증한 뒤 공식 Product 빌드를 수행한다.
+실행 중 Client의 미저장 편집은 여전히 보존해야 하므로 외부 Composition 쓰기나 임의 프로세스 종료는 하지 않는다.
+
+### G18-01. 원본 수치와 기존 소비자 연결
+
+`421991210.loa`의 FixArea StartIndexDecal은 EFGAME의
+`EFSummonsFixAreaStartIndexDecal` ScriptStruct 이름·타입·연결 순서와 대조한다.
+확정 입력은 Time 0초, Duration 2초, DecalBlendInTime 1.5초, DecalScaleTime 0초,
+DecalFillTime 1.5초, DecalBlendOutTime 0.5초다. `len-164`의 2.3초는 마지막 sound
+Timer이므로 예고 수명으로 사용하지 않는다. `source_contract.json`의 hash와 byte offset으로
+읽은 값을 다시 검사한 뒤 생성한다. alpha 0→1→0과 inner 선형 보간은 확인한 named timing을
+기존 SourceTransformTrack에 투영하는 방식이며 원본 native 시간 보간 코드 전체를 복원했다는 뜻은 아니다.
+
+SkillEffect 421991224의 AreaRange 1800·AreaAngle 300·AreaOffsetX -900을 사용한다.
+`HitAreaWire`의 halfWidth 계산과 `ClientReplication`의 역변환에서 AreaAngle이 전체 폭임을
+확인했으므로 예고는 폭 3m·길이 18m다. LocalDecal의 StartSize x/y는 projector의 두 평면 축이다.
+따라서 source StartSize `[300,1800,300]`에서 Size.x=3·Size.y=18을 만들고 기존 renderer가
+world X=3·Z=18로 소비한다. particle 크기에 UE world 좌표 변환을 다시 적용하지 않는다.
+바깥 projector는 고정하고 native 3607의 `inner`만 0→1로 1.5초 동안 채운다.
+
+폭발의 원본 UE X -600/0/+600cm는 공통 독립 전방 변환을 한 번 적용해 runtime Z -6/0/+6m로
+놓는다. 원본 yaw 90도와 독립 전방 yaw -90도가 상쇄되어 최종 yaw는 0도다.
+2.0/2.4/2.7초의 세 발생을 별도 ID·16요소씩 유지하고 독립 Effect의 시작만 0/0.4/0.7초로
+옮긴다. 원본 sourceRecipe·native material·tail은 유지한다. 선행 Missile과 sound·shake,
+원본 gameplay의 무작위 대상 선택은 이 두 독립 MAP Effect에 추가하지 않는다.
+
+### G18-02. 신규 생성 파일과 루틴 책임
+
+파일은 `Tools/EffectPipeline/build_kouku_showtime_rectangle_groups.py`다. CLI의 `stage()`가
+직접 호출자이며 기존 warning builder의 `independent_document`·`constant_distribution`과
+backstep builder의 `inspect_document`를 재사용한다. 출력은 `out/` 아래 candidate 2개와
+`installation.json`이다. 실제 등록은 검증된 후보를 기존 Authored·Catalog·Tree에 연결하는 별도
+설치 단계가 소유한다. 생성기는 실행 중 Composition이나 기존 Authored를 직접 쓰지 않는다.
+새 C++ 선언·runtime·schema는 없으며 생성된 Authored 2개는 Client project/filter의
+`96.DataFiles` None 항목으로 등록한다. Python 자체는 C++ compile 항목에 추가하지 않는다.
+
+| 선언·입력 | 한 줄 책임 |
+|---|---|
+| `argparse`, `Path` | 명시 출력 경로를 받아 저장소 `out/` 경계 안으로 제한한다. |
+| `copy` | 기존 template의 recipe·재질을 보존하면서 독립 문서를 만든다. |
+| `hashlib`, `struct` | 계약서의 출처 hash와 원본 little-endian 필드 값을 다시 확인한다. |
+| `json` | UTF-8 JSON을 읽고 NaN을 거부하는 후보·기록을 쓴다. |
+| `warning`, `inspect_document` | 기존 독립 ID 변환·상수 분포·리소스 및 tail 검사 경로를 재사용한다. |
+| `ROOT`, `DEFAULT_OUTPUT` | 저장소 경계와 이번 source receipt/candidate 작업 위치를 정한다. |
+| `PREFIX`, `SOURCE_MATERIAL`, `NATIVE_ID` | 두 stable asset ID와 정확한 원본 재질·native 3607 결합을 검사한다. |
+| `contract`, `timing`, `calls` | 원본 크기·named timing·서로 다른 세 폭발 occurrence의 입력을 전달한다. |
+| `template`, `native_material` | 현재 설치된 particle recipe와 검증된 사각형 LocalDecal 재질을 제공한다. |
+| `entries`, `inputHashes` | 생성 문서의 요소·수명·리소스 검사와 재현 입력 hash를 기록한다. |
+
+`read()`는 파일 bytes를 JSON으로 해석하고 실패를 그대로 전달한다. `write()`는 후보의 부모
+폴더를 만든 뒤 UTF-8·유효 숫자만 저장한다. `verify_source()`는 schema/version, Projectile
+길이·hash, 이름으로 해독한 필드의 원본 byte 값, 세 timer·particle token, 위치·방향·scale,
+area 크기와 GroundEffect 재질·색 hash를 순서대로 검사한다. 불일치하면 assertion으로 중단하며
+다른 원본이나 generic 수치로 대체하지 않는다. 성공하면 named timing과 세 impact 호출을 반환한다.
+
+`key()`는 기존 distribution 형식의 linear key와 0 tangent를 만든다. `rectangle_warning()`은
+circle template의 독립 문서를 만든 뒤 1개 LocalDecal인지 검사하고 native 3607을 결합한다.
+fixed TRS·2초 수명·3×18m 평면·active color를 설정하고 recipe의 lifetime/startsize를 같은
+단위 계약으로 맞춘다. 기존 단일 source track에 alpha/inner 곡선을 넣고 material scalar를
+설정한다. 내부 attachment·inheritance가 꺼졌음을 확인해 중복 source basis를 제거하고 반환한다.
+
+`rectangle_impacts()`는 16요소 template을 세 번 기존 ID remap 경로로 복제한다. 각 발생마다
+원본 시작 간격·공간 변환값·원본 source 시각을 설정한다. 각 복사본의 sourceRecipe와 재질은
+그대로 두고 portable-copy의 `authored-copy:<원본 ID>`로 sourceNode를 연결해 RNG identity를
+보존한다. attachment/inheritance가 꺼졌는지 검사하고 최종 48개 요소와 48개 고유 ID를
+확인한 문서만 반환한다. emitter loop 증가는 사용하지 않는다.
+
+`stage()`는 먼저 출력 경계를 검사하고 원본 계약 검증을 완료한다. 정확한 native 3607 재질과
+기존 circle/airstrike template을 읽어 두 생성 함수를 호출한다. 각 candidate를 저장하고
+`inspect_document()`로 resource 누락·particle tail을 확인한다. 예고 metadata는 정확히
+2000ms, 폭발은 tail을 포함한 5801ms를 기록한다. 최종 manifest에는 입력 hash,
+`installed=false`, `stageOnly=true`, `compositionWritten=false`, `USER_PENDING`을 남긴다.
+도중 실패 시 live Data는 바뀌지 않으며 남은 out 후보는 설치 성공 증거로 사용하지 않는다.
+
+이 manifest의 예고 2000ms는 시각 활성 구간이다. Composition의 신규 Preview/Append 길이는
+G18-04에서 실제 Playback 종료 계산을 재사용해 4000ms로 결정한다. 보수적인 재생 시계와
+시각 활성 창을 구분하며 예고 source timing·inner 곡선을 늘리지 않는다.
+
+검사는 Python 문법·선택 JSON/XML와 원본 byte/ID/리소스 대조, 실제 Codec/Playback,
+native 3607의 격리 FXC를 수행한다. 전체 Effect source 검사에서 발생한 기존 문서 오류는
+선택 후보 검사와 구분하고, 공식 Product 빌드와 사용자 화면 확인 결과는 RESULT에 따로 적는다.
+Composition에서는 같은 MAP 위치·회전으로 예고를 Append한 시각보다 2초 뒤에 폭발을 Append한다.
+둘을 함께 배치할 때 기존 Set Group·그룹 위치 편집·복제와 Save를 사용한다.
+
+### G18-03. 신규 생성기 전체 코드
+
+아래는 이 G의 실제 신규 파일 전체 코드다. 원본 receipt와 native 재질 입력을 준비한 뒤
+`python Tools/EffectPipeline/build_kouku_showtime_rectangle_groups.py`로 out 후보를 재생성한다.
+
+```python
+"""Stage the original 421991210 rectangle warning and three impact occurrences.
+
+The decoded source receipt owns original field offsets, times and area dimensions.
+This composes existing LocalDecal/particle contracts; it never writes live drafts.
+"""
+import argparse
+import copy
+import hashlib
+import json
+from pathlib import Path
+import struct
+
+import build_kouku_showtime_warning_groups as warning
+from build_kouku_backstep_flame_groups import inspect_document
+
+ROOT = warning.ROOT
+PREFIX = 'effect.kouku.gate3.showtime.rectangle.'
+SOURCE_MATERIAL = 'fx_m_mi_o_00.fx_mi.fx_o_de_condsquare_02_01_tr'
+NATIVE_ID = 'effect.ue3.kouku-3607-native.v1'
+DEFAULT_OUTPUT = ROOT / 'out/KoukuShowtimeRectangle20260914'
+
+
+def read(path):
+    return json.loads(path.read_bytes())
+
+
+def write(path, document):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes((json.dumps(document, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf8'))
+
+
+def verify_source(contract):
+    """Recheck the exact decoded records against their source bytes before stage."""
+    assert contract['schema'] == 'lostark.readonly-source-contract.showtime-rectangle'
+    assert contract['version'] == 1
+    raw = Path(contract['sourceProjectile']['path']).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == contract['sourceProjectile']['sha256']
+    assert len(raw) == contract['sourceProjectile']['byteSize'] == 10105
+    for field in contract['startIndexDecal']['fields']:
+        fmt = '<f' if field['type'] == 'FloatProperty' else '<I'
+        assert struct.unpack_from(fmt, raw, field['byteOffset'])[0] == field['value']
+    names = contract['startIndexDecal']['sourceNamedTiming']
+    assert names == dict(Time=0.0, Duration=2.0, DecalBlendInTime=1.5,
+                         DecalScaleTime=0.0, DecalFillTime=1.5, DecalBlendOutTime=0.5)
+    impacts = [c for c in contract['calls'] if c['role'] == 'impact']
+    assert len(impacts) == 3
+    for index, call in enumerate(impacts):
+        assert struct.unpack_from('<f', raw, call['timerValueByteOffset'])[0] == call['timeSeconds']
+        offset = call['particleTokenByteOffset']
+        count = struct.unpack_from('<I', raw, offset)[0]
+        token = raw[offset + 4:offset + 3 + count].decode('ascii')
+        assert token.split("'")[1].lower() == call['particleSystem'].lower()
+        assert call['runtimeIndependentPositionM'] == [0, 0, (index - 1) * 6]
+        assert call['sourceScale'] == [1, 1, 1] and call['runtimeIndependentYawDegrees'] == 0
+    area = contract['areaRows'][0]
+    assert (area['AreaRange'], area['AreaAngle'], area['AreaOffsetX']) == (1800, 300, -900)
+    assert contract['geometry']['fullLengthM'] == 18 and contract['geometry']['fullWidthM'] == 3
+    ground = contract['groundEffect']
+    payload = Path(ground['path']).read_bytes()
+    assert hashlib.sha256(payload).hexdigest() == ground['sha256']
+    assert ground['sourceMaterial'] == SOURCE_MATERIAL
+    assert list(struct.unpack_from('<4f', payload, ground['fieldOffsets']['activeColor'])) == ground['activeColor']
+    return names, impacts
+
+
+def key(time, values):
+    return dict(timeSeconds=time, value=values, arriveTangent=[0] * len(values),
+                leaveTangent=[0] * len(values), interpolation='linear')
+
+
+def rectangle_warning(contract, native_material, template):
+    """Keep the full projector fixed while the native inner parameter fills it."""
+    name = '쇼타임 / 사각형 장판 | 쇼타임_사각형_예고'
+    doc = warning.independent_document(template, PREFIX + 'warning', name)
+    assert len(doc['elements']) == 1 and not doc.get('modelCues')
+    element = doc['elements'][0]
+    identity = 'project.groundeffect.adapter.showtime.rectangle'
+    element.update(id=PREFIX + 'warning.decal', groupId=PREFIX + 'warning',
+                   displayName='쇼타임_사각형_예고', sourceNode=identity + '|' + SOURCE_MATERIAL,
+                   resources=[], material=copy.deepcopy(native_material))
+    assert element['material']['sourceMaterialPath'] == SOURCE_MATERIAL
+    assert element['material']['sourceProfile']['runtimeShaderProfileId'] == NATIVE_ID
+    detail, recipe = element['detail'], element['sourceRecipe']
+    width, length = contract['geometry']['fullWidthM'], contract['geometry']['fullLengthM']
+    timing = contract['startIndexDecal']['sourceNamedTiming']
+    duration = timing['Duration']
+    detail['transform'].update(position=[0, 0, 0], rotationDegrees=[0, 0, 0], scale=[1, 1, 1])
+    assert not any(detail['linearLerp'][field] for field in ('position', 'rotation', 'scale'))
+    detail['timing'].update(startDelaySeconds=0, lifeTimeSeconds=duration)
+    detail['color']['multiply'] = contract['groundEffect']['activeColor']
+    detail['decal'].update(size=[width, length], depth=6, receiverMode='upwardSurfaces', normalCutoff=.5)
+    detail['particle'].update(lifeTimeSeconds=[duration] * 2, startSize=[width, length],
+                              endSize=[width, length], localSpace=True)
+    recipe.update(emitterDelaySeconds=0, emitterDurationSeconds=duration, emitterLoopCount=1)
+    for module in recipe['modules']:
+        for literal in module['literals']:
+            if literal['propertyPath'] == 'emitterduration':
+                literal['value'] = duration
+            if literal['propertyPath'] == 'rotation.degrees.roll':
+                literal['value'] = 0
+        for distribution in module['distributions']:
+            prop = distribution['propertyPath']
+            if prop == 'lifetime':
+                distribution.update(warning.constant_distribution(prop, [duration]))
+            elif prop == 'startsize':
+                # LocalDecal's particle Size.x/Size.y are the X/Z projector axes.
+                distribution.update(warning.constant_distribution(prop, [width * 100, length * 100, width * 100]))
+    track = element['sourceTransformTrack']
+    track.update(sourceOccurrenceId=identity, sourceTimeOriginSeconds=0)
+    assert len(track['nodes']) == 1 and track['nodes'][0]['scaleUE3'] == [1, 1, 1]
+    track['nodes'][0]['sourceObjectPath'] = identity
+    track['alphaScaleKeys'] = [key(t, [alpha] * 3) for t, alpha in
+                              contract['startIndexDecal']['runtimeProjection']['alphaKeys']]
+    track['materialParameterTracks'] = [dict(name='inner', kind='SCALAR',
+        keys=[key(0, [0]), key(timing['DecalFillTime'], [1])])]
+    overrides = dict(inner=0, decal_drawscale_x=width, decal_drawscale_y=length)
+    profile = element['material']['sourceProfile']
+    assert set(overrides) <= {p['name'] for p in profile['scalars']}
+    for param in profile['scalars']:
+        if param['name'] in overrides:
+            param['value'] = overrides[param['name']]
+    attachment = element['actionCueAttachment']
+    assert not attachment['enabled'] and not element['transformInheritance']['enabled']
+    attachment.pop('snapshotRootSourceBasisYawDegrees', None)
+    return doc
+
+
+def rectangle_impacts(contract, template):
+    """Clone each original occurrence with its own IDs, offset and emission clock."""
+    asset = PREFIX + 'impact'
+    doc = copy.deepcopy(template)
+    doc.update(effectAssetId=asset, displayName='쇼타임 / 사각형 장판 | 쇼타임_사각형_폭발', elements=[])
+    assert len(template['elements']) == 16 and not template.get('sourceModelPreview')
+    calls = [c for c in contract['calls'] if c['role'] == 'impact']
+    first = calls[0]['timeSeconds']
+    for index, call in enumerate(calls, 1):
+        group = asset + '.burst' + str(index)
+        own = warning.independent_document(template, group, '공습 폭발 ' + str(index))
+        for element, original in zip(own['elements'], template['elements'], strict=True):
+            # Preserve the original RNG identity through the portable-copy contract.
+            origin = original['sourceNode']
+            element['sourceNode'] = origin if origin.startswith('authored-copy:') else 'authored-copy:' + original['id']
+            assert not element['actionCueAttachment']['enabled']
+            assert not element['transformInheritance']['enabled']
+            element['actionCueAttachment'].pop('snapshotRootSourceBasisYawDegrees', None)
+            element['detail']['timing']['startDelaySeconds'] += call['timeSeconds'] - first
+            element['detail']['transform'].update(position=call['runtimeIndependentPositionM'],
+                rotationDegrees=[0, call['runtimeIndependentYawDegrees'], 0], scale=call['sourceScale'])
+            element['sourcePresentation']['sourceTimeSeconds'] = call['timeSeconds']
+            doc['elements'].append(element)
+    assert len(doc['elements']) == 48
+    assert len({e['id'] for e in doc['elements']}) == 48
+    return doc
+
+
+def stage(output):
+    output = output.resolve()
+    assert output.is_relative_to(ROOT / 'out'), 'Stage output must remain under out/'
+    contract = read(output / 'source_contract.json')
+    timing, calls = verify_source(contract)
+    native_path = output / 'native/native_material_patch.json'
+    material = next(p['material'] for p in read(native_path)['programs'] if p['program'] == 3607)
+    authored = ROOT / 'Data/Effects/Authored'
+    warning_path = authored / 'effect.kouku.gate3.showtime.circle.warning.effect.json'
+    impact_path = authored / 'effect.kouku.gate3.showtime.airstrike.impact.effect.json'
+    docs = [rectangle_warning(contract, material, read(warning_path)), rectangle_impacts(contract, read(impact_path))]
+    entries = []
+    for doc in docs:
+        path = output / 'candidate' / (doc['effectAssetId'] + '.effect.json')
+        write(path, doc)
+        validation = inspect_document(doc)
+        if doc['effectAssetId'].endswith('.warning'):
+            validation['durationMs'] = round(timing['Duration'] * 1000)
+        entries.append(dict(effectAssetId=doc['effectAssetId'], displayName=doc['displayName'],
+            path=path.relative_to(ROOT).as_posix(), defaultAnchorKind='MAP', **validation))
+    write(output / 'installation.json', dict(installed=False, stageOnly=True, documents=entries,
+        sourceProjectileId=421991210, sourceSkillDecalId=2113, sourceWarningAreaSkillEffectId=421991224,
+        geometry=contract['geometry'], sourceWarningTiming=timing,
+        independentImpactStartSeconds=[c['timeSeconds'] - calls[0]['timeSeconds'] for c in calls],
+        inputHashes={p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                     for p in (warning_path, impact_path, native_path, output / 'source_contract.json')},
+        compositionWritten=False, manualVisualValidation='USER_PENDING'))
+    print(json.dumps(entries, ensure_ascii=False))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(__doc__)
+    parser.add_argument('--output', type=Path, default=DEFAULT_OUTPUT)
+    stage(parser.parse_args().output)
+```
+
+### G18-04. 신규 Effect Append에서 source particle tail 보존
+
+Workbench의 기존 선택 길이 계산은 Detail의 startDelay+lifeTime+afterImage만 사용하므로
+사라지기를 1001ms, 세 폭발을 2000ms로 잘랐다. 실제 Playback 종료는 각각 2201ms,
+5801ms이며 source emitter/particle tail을 포함한다. 새 리소스의 Preview와 Append가 같은
+끝 시각을 사용하도록 `CEffectPlayback::Calculate_ElementEndSeconds`와 기존
+SourceParticleCarrier 판별을 재사용한다. 새 수명 계산식이나 별도 Playback은 만들지 않는다.
+
+신규 V1_EFFECT/V1_ELEMENT 선택과 Preview/Append, Created resource를 재사용해 다시
+Append할 때 현재 Effect 문서의 실제 종료를 계산한다. 요소 단위에서는 같은 source carrier
+판별을 전달하고 전체 Effect는 각 요소 종료와 model cue 종료의 최대값을 사용한다.
+값은 기존 editor 시간 범위에서 올림한 millisecond로 변환한다. 읽기·validation 실패는
+기존 상태 메시지로 남기고 불완전한 리소스나 occurrence를 추가하지 않는다.
+
+변경 대상은 새 Preview/Append의 기본 길이와 resource metadata다. 이미 존재하는 occurrence의
+사용자 duration·start·fade·배치와 timeline 편집 결과를 자동 수정하지 않는다. 예고의 새 Append
+길이는 기존 Playback의 보수적 4000ms이지만 실제 표시·채움은 여전히 2초/1.5초다.
+폭발은 예고 box 끝이 아니라 예고 시작+2000ms에 놓는다. 기존 Pattern/World의 남은 창으로
+clamp하는 배치 규칙은 유지하며 전체 tail을 쓰려면 그만큼의 timeline 길이가 필요하다.
+실제 helper·caller는 다음 절과 같고 최소 컴파일 결과는 RESULT에 기록한다.
+
+### G18-05. Workbench 종료 계산의 실제 helper·호출부
+
+변경 파일은 `Client/Private/KoukuSaydonActionWorkbench.cpp` 하나다. 기존 public static
+계산을 쓰기 위해 `Effect_Playback.h`를 include한다. 아래 두 함수는 파일 내부 helper이며
+새 header 선언·C++ 파일·project/filter 항목은 없다. 원본 emitter·particle·trail 종료 규칙은
+기존 `CEffectPlayback::Calculate_ElementEndSeconds`가 계속 소유한다.
+
+| 선언·값 | 한 줄 책임 |
+|---|---|
+| `V1_ElementDurationMs(element)` | 실제 source carrier 판별로 공통 Playback 종료를 구하고 유효 millisecond를 반환한다. |
+| `sourceParticleCarrier` | Effect Tool과 같은 enabled source recipe의 sprite/mesh/decal 판별을 전달한다. |
+| `seconds` | 공통 종료 계산 결과이며 비유한 값·음수면 실패를 뜻하는 0을 반환한다. |
+| `Refresh_V1ResourceDuration(resource, outStatus)` | 현행 Catalog 문서를 stable asset/element ID로 읽어 리소스 기본 길이만 갱신한다. |
+| `durationMs`, `elementFound` | 검사 중인 최대 종료·선택 element 존재 여부를 보관하고 성공 뒤에만 입력 resource에 반영한다. |
+
+`Refresh_V1ResourceDuration()`은 EFFECT의 V1_EFFECT/V1_ELEMENT만 대상으로 한다. Catalog가
+없으면 구체 asset과 catalog status를 반환한다. V1_ELEMENT는 정확한 element ID를 찾고
+V1_EFFECT는 visible 요소·visible ModelCue의 최대 종료를 구한다. 요소 누락·비유한 종료는
+실패 이유를 보존하며 입력 duration은 그대로다. 정상 종료는 기존 1..600000ms 범위에서
+올림해 저장한다. 아래는 두 helper의 실제 전체 코드다.
+
+```cpp
+	std::uint32_t V1_ElementDurationMs(const EFFECT_ELEMENT_DESC& element)
+	{
+		// Match Effect Tool's Element_PreviewEndSeconds carrier admission.
+		const auto& recipe = element.SourceRecipe;
+		const bool sourceParticleCarrier = recipe.bEnabled &&
+			(recipe.strRendererShape == "sprite" || recipe.strRendererShape == "mesh" || recipe.strRendererShape == "decal");
+		const auto seconds = CEffectPlayback::Calculate_ElementEndSeconds(element, sourceParticleCarrier);
+		if (!std::isfinite(seconds) || seconds < 0.f) return 0u;
+		return static_cast<std::uint32_t>(std::clamp(std::ceil(1000.0 * seconds),
+			1.0, static_cast<double>(MAX_EDITOR_TIME_MS)));
+	}
+
+	bool Refresh_V1ResourceDuration(KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
+		std::string& outStatus)
+	{
+		if (resource.eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+			(resource.strResourceKind != "V1_EFFECT" && resource.strResourceKind != "V1_ELEMENT")) return true;
+		const auto document = CEffectCatalog::Find(resource.strAssetId);
+		if (!document)
+		{
+			outStatus = "Effect duration unavailable: " + resource.strAssetId + "; " + CEffectCatalog::Get_Status();
+			return false;
+		}
+		std::uint32_t durationMs = 1u;
+		bool elementFound = resource.strResourceKind == "V1_EFFECT";
+		for (const auto& element : document->Elements)
+		{
+			if (resource.strResourceKind == "V1_ELEMENT" ? element.strElementId != resource.strElementId : !element.bVisible) continue;
+			elementFound = true;
+			const auto elementMs = V1_ElementDurationMs(element);
+			if (!elementMs)
+			{
+				outStatus = "Effect duration is not finite: " + element.strElementId;
+				return false;
+			}
+			durationMs = (std::max)(durationMs, elementMs);
+		}
+		if (!elementFound)
+		{
+			outStatus = "Effect element duration unavailable: " + resource.strAssetId + " | " + resource.strElementId;
+			return false;
+		}
+		if (resource.strResourceKind == "V1_EFFECT")
+			for (const auto& cue : document->ModelCues)
+				if (cue.bVisible)
+					durationMs = (std::max)(durationMs, static_cast<std::uint32_t>(std::clamp(
+						std::ceil(1000.0 * (cue.fStartDelaySeconds + cue.fDurationSeconds)),
+						1.0, static_cast<double>(MAX_EDITOR_TIME_MS))));
+		resource.iDurationMs = durationMs;
+		return true;
+	}
+```
+
+`Create_PresentationResource()`는 새 ID 발급 전에 복사한 source 길이를 갱신한다.
+`Stage_PresentationSource()`는 검증한 currentSource를 사용해 새 resource를 만들거나 동일
+asset/kind/element의 candidate resource metadata만 갱신한다. 이 staging의 실제 commit은
+기존 caller가 계속 소유한다.
+
+`Append_PresentationCandidate()`는 Created 항목의 저장된 기본 길이도 그대로 신뢰하지 않고
+currentResource 복사본에서 다시 계산한다. 그 값으로 새 row의 길이를 정한 뒤 기존
+Pattern 남은 창으로 clamp한다. Sequence 배치는 같은 currentResource를
+`Configure_SequenceEffectOccurrence()`에 전달하고 기존 원자 candidate commit을 사용한다.
+기존 occurrence를 순회해 수명을 바꾸지 않는다.
+
+`Queue_PresentationPreview()`는 선택된 기존 Effect occurrence가 있으면 원래 box로
+`Request_PatternPreview()`를 호출하고 먼저 반환한다. 새 standalone Preview만 currentResource
+길이를 갱신한다. `Queue_SequenceEffectPreview()`는 위 Stage를 재사용하며 이미 선택한
+occurrence는 복사한 duration·TRS를 유지한다. `Configure_SequenceEffectOccurrence()`는 새
+row에만 호출한다. `Render_PresentationResources()`의 source 선택/확장도 같은 helper와
+요소 계산을 사용해 목록과 V1_ELEMENT 기본 길이를 맞춘다.

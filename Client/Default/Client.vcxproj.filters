@@ -2717,6 +2717,12 @@
     <None Include="..\..\Data\Camera\CharacterSelect.camera.json">
       <Filter>96.DataFiles\Camera</Filter>
     </None>
+    <None Include="..\..\Data\Camera\Valtan.camera.json">
+      <Filter>96.DataFiles\Camera</Filter>
+    </None>
+    <None Include="..\..\Data\Camera\Bern.camera.json">
+      <Filter>96.DataFiles\Camera</Filter>
+    </None>
     <None Include="..\..\Data\Camera\KoukuSaydon.camera.json">
       <Filter>96.DataFiles\Camera</Filter>
     </None>
@@ -3869,5 +3875,16 @@
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.fuse.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.blackhole.beam.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.saydon.disappear.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.rectangle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.rectangle.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.default-aura.normal.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.default-aura.ghost.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
   </ItemGroup>
 </Project>

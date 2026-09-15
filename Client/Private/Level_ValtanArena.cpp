@@ -84,8 +84,6 @@ namespace
 	constexpr f32_t VALTAN_PILLAR_BURST_SPEED_METERS_PER_SECOND = 7.f;
 	constexpr f32_t VALTAN_PILLAR_BURST_GRAVITY_SCALE = 2.f;
 	constexpr f32_t VALTAN_PILLAR_BURST_LIFETIME_SECONDS = 4.f;
-	constexpr f32_t VALTAN_GAMEPLAY_FOLLOW_LOOK_HEIGHT = 1.2f;
-	constexpr f32_t VALTAN_GAMEPLAY_FOV_Y_DEGREES = 60.f;
 	constexpr std::array<uint64_t, 4> VALTAN_PILLAR_SLOT_PLACEMENT_IDS = {
 		14226635865317864635ull,
 		14753860598629869201ull,
@@ -1632,22 +1630,28 @@ bool_t CLevel_ValtanArena::Update_CinematicCameraExitTransition(
 		return false;
 
 	const vector_t targetPosition = followTarget->Get_State(STATE::POSITION);
-	const float3_t positionOffset = m_pCamera->Get_PositionOffset();
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
 	VALTAN_CINEMATIC_CAMERA_POSE followPose{};
 	XMStoreFloat3(&followPose.vEye, XMVectorSetW(
 		targetPosition + XMLoadFloat3(&positionOffset), 1.f));
 	XMStoreFloat3(&followPose.vLookAt, XMVectorSetW(
-		targetPosition + XMVectorSet(
-			0.f, VALTAN_GAMEPLAY_FOLLOW_LOOK_HEIGHT, 0.f, 0.f), 1.f));
-	followPose.fFovYDegrees = VALTAN_GAMEPLAY_FOV_Y_DEGREES;
+		targetPosition + XMLoadFloat3(&lookOffset), 1.f));
+	followPose.fFovYDegrees = m_FollowCameraProfile.fovYDegrees;
+	const auto rotation = m_FollowCameraProfile.rotationDegrees;
+	const auto basis = XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotation.x),
+		XMConvertToRadians(rotation.y), XMConvertToRadians(rotation.z));
+	XMStoreFloat3(&followPose.vUp, basis.r[1]);
+	followPose.hasUp = true;
 
 	VALTAN_CINEMATIC_CAMERA_POSE transitionPose{};
 	if (!m_ValtanCinematicCameraController.Update_ExitTransition(
 		followPose, fTimeDelta, transitionPose) ||
-		!m_pCamera->Apply_PresentationPose(
+		!m_pCamera->Apply_PresentationPoseWithUp(
 			m_iCinematicCameraOwnerId,
 			transitionPose.vEye,
 			transitionPose.vLookAt,
+			transitionPose.vUp,
 			transitionPose.fFovYDegrees))
 	{
 		return false;
@@ -2080,22 +2084,38 @@ bool_t CLevel_ValtanArena::Set_DebugCameraSpeed(const f32_t metersPerSecond)
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(
 	const wstring_t& strLayerTag)
 {
-	const float3_t focus(151.25f, 22.97f, -121.75f);
+	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::VALTAN,
+		m_FollowCameraProfile, m_strFollowCameraProfileStatus))
+	{
+		OutputDebugStringA(("[Level_ValtanArena][FollowCamera] " +
+			m_strFollowCameraProfileStatus + "\n").c_str());
+	}
+	float3_t focus(151.25f, 22.97f, -121.75f);
+	LostArk::Shared::S2C_PLAYER_SPAWNED approvedSpawn{};
+	if (CNetworkManager::Get().Try_Get_LocalSpawn(approvedSpawn))
+		focus = float3_t(approvedSpawn.fPositionX, approvedSpawn.fPositionY, approvedSpawn.fPositionZ);
 	const f32_t span = 180.f;
-
-	const f32_t distance = (std::max)(40.f, span * 0.7f);
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
 	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
 	cameraDesc.vEye = float3_t(
-		focus.x - distance,
-		focus.y + distance * 0.65f,
-		focus.z - distance);
-	cameraDesc.vAt = focus;
-	cameraDesc.fFovy = 60.f;
+		focus.x + positionOffset.x,
+		focus.y + positionOffset.y,
+		focus.z + positionOffset.z);
+	cameraDesc.vAt = float3_t(
+		focus.x + lookOffset.x,
+		focus.y + lookOffset.y,
+		focus.z + lookOffset.z);
+	cameraDesc.fFovy = m_FollowCameraProfile.fovYDegrees;
 	cameraDesc.fNear = 0.1f;
 	cameraDesc.fFar = (std::max)(2000.f, span * 8.f);
 	cameraDesc.fSpeedPerSec = g_ValtanFreeCameraSpeed;
 	cameraDesc.fRotationPerSec = 90.f;
 	cameraDesc.fMouseSensor = 0.1f;
+	cameraDesc.vPositionOffset = positionOffset;
+	cameraDesc.vLookOffset = lookOffset;
+	cameraDesc.fFollowResponse = m_FollowCameraProfile.followResponse;
+	cameraDesc.fFollowRollDegrees = m_FollowCameraProfile.rotationDegrees.z;
 
 	shared_ptr<CGameObject> gameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -2118,6 +2138,27 @@ HRESULT CLevel_ValtanArena::Ready_Layer_Camera(
 	}
 
 	return S_OK;
+}
+
+bool_t CLevel_ValtanArena::Set_FollowCameraProfile(
+	const ARENA_CAMERA_PROFILE& profile,
+	std::string& outStatus)
+{
+	if (!CArenaCameraProfile::Validate(profile, outStatus))
+		return false;
+	if (nullptr == m_pCamera || !m_pCamera->Set_FollowPose(
+		profile.positionOffset, CArenaCameraProfile::LookOffset(profile),
+		profile.rotationDegrees.z, profile.fovYDegrees, profile.followResponse))
+	{
+		outStatus = "The active follow camera could not apply these settings.";
+		return false;
+	}
+	m_FollowCameraProfile = profile;
+	if (const auto character = Get_LocalCharacter())
+		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
+	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
+	m_strFollowCameraProfileStatus = outStatus;
+	return true;
 }
 
 bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
@@ -2148,6 +2189,7 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 		m_pCamera->Set_FollowEnabled(false);
 		return true;
 	}
+	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 
@@ -2171,8 +2213,6 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 		return true;
 	}
 #endif
-	m_pCamera->Set_PositionOffset(
-		float3_t(0.4f, 7.5f, 4.5f));
 	m_pCamera->Set_FollowTarget(transform);
 	m_pCamera->Set_FollowEnabled(true);
 	return true;

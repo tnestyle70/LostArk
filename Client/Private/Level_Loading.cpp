@@ -657,6 +657,26 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
 			PlayerEffectAssetIds.begin(), PlayerEffectAssetIds.end());
 
+		/* Character Select can audition the same catalog-backed Valtan lazily.
+		   Its ambient attachments use this existing worker preparation gate. */
+		if (bCharacterSelect || bValtanArena)
+		{
+			std::vector<std::string> defaultEffects;
+			for (const auto& boss : CActorCatalog::Get_Bosses())
+				if (boss.clientPresentationId == "boss.valtan.client.v1")
+					for (const auto& particle : boss.defaultParticles)
+						defaultEffects.push_back(particle.effectAssetId);
+			if (!defaultEffects.empty())
+			{
+				std::vector<std::string> preparedTargets;
+				if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+					defaultEffects, preparedTargets, Status))
+					return IsolateFailure(Status);
+				m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+					preparedTargets.begin(), preparedTargets.end());
+			}
+		}
+
 		if (bValtanArena)
 		{
 			CValtanCanonicalProductReadAdmission ProductAdmission;

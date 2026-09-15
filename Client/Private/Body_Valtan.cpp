@@ -2,7 +2,18 @@
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
+#include "MapAssetRenderUtils.h"
 #include "Valtan.h"
+
+namespace
+{
+	bool_t Is_SourceGhostSurface(const Engine::MODEL_SURFACE_PARAMETERS* surface)
+	{
+		return nullptr != surface &&
+			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+			surface->sourceCharacter.program == 84u;
+	}
+}
 
 CBody_Valtan::CBody_Valtan(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -34,6 +45,9 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
 
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+		m_hasTranslucentMeshes |= Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i));
+
 	/* 발탄 원본 모델의 전방축을 Engine의 LOOK(+Z) 기준에 맞춘다. */
 	m_pTransformCom->Rotation(0.f, -90.f, 0.f);
 
@@ -61,6 +75,12 @@ void CBody_Valtan::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (m_hasTranslucentMeshes)
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::BLEND,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 	if (CGameInstance::Get().Is_ShadowLightEnabled())
 	{
 		CGameInstance::Get().Add_RenderObject(
@@ -76,6 +96,8 @@ HRESULT CBody_Valtan::Render()
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
 	{
+		if (Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i)))
+			continue;
 		const DEFERRED_MATERIAL_PROFILE Profile =
 			Resolve_DeferredMaterialProfile(
 				"material.valtan.monster-base.v1",
@@ -86,6 +108,35 @@ HRESULT CBody_Valtan::Render()
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||
+			FAILED(m_pModelCom->Render(i)))
+			return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT CBody_Valtan::Render_Group(RENDERGROUP group)
+{
+	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
+}
+
+HRESULT CBody_Valtan::Render_Translucent()
+{
+	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
+	if (FAILED(Bind_ShaderResources()) ||
+		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
+		return E_FAIL;
+
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+	{
+		if (!Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i)))
+			continue;
+		const DEFERRED_MATERIAL_PROFILE profile = Resolve_DeferredMaterialProfile(
+			"material.valtan.monster-base.v1", m_pModelCom->Get_MaterialName(i));
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, profile, m_pEmissiveOverride)) ||
+			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
+			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)) ||
+			FAILED(m_pShaderCom->Begin(SOURCE_TRANSLUCENT_ONE_SIDED_PASS)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}

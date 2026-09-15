@@ -22,6 +22,13 @@ struct SCENE_ENVIRONMENT_REGION final
     float4_t vDirectionalColor{};
     float4_t vAmbientColor{};
     f32_t fBlendTimeIn = 1.f, fBlendTimeOut = 1.f;
+    f32_t fPriority = 0.f;
+    bool_t bHasPostProcess = false;
+    f32_t fBloomThreshold = 1.f, fBloomIntensity = 0.8f;
+    float4_t vBloomTint{ 1.f, 1.f, 1.f, 1.f };
+    f32_t fSceneDesaturation = 0.f;
+    bool_t bHasSourcePostProcess = false;
+    SOURCE_POST_PROCESS_SETTINGS SourcePostProcess{};
 };
 
 struct SCENE_RENDERING_PROFILE final
@@ -144,6 +151,7 @@ private:
     string m_strAppliedEnvironmentRegion;
     HEIGHT_FOG_SETTINGS m_EnvironmentFogFrom{};
     LIGHT_DESC m_EnvironmentLightFrom{};
+    RENDER_QUALITY_SETTINGS m_EnvironmentQualityFrom{};
     f32_t m_fEnvironmentElapsed = 0.f, m_fEnvironmentDuration = 0.f;
     f32_t m_fEnvironmentExitDuration = 1.f;
 	string m_strLevelQualityProfileId;

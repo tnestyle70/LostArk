@@ -2,9 +2,18 @@
   "schema": "lostark.arena-camera",
   "formatVersion": 1,
   "areaId": "LV_LOBBY_CLASSSELECT_SL00",
-  "positionOffset": [0, 6, 4],
-  "rotationDegrees": [55, -180, 0],
-  "focusDistance": 7,
-  "fovYDegrees": 70,
-  "followResponse": 12
+  "positionOffset": [
+    -8.0,
+    11.213708498984762,
+    8.0
+  ],
+  "rotationDegrees": [
+    45,
+    135,
+    0
+  ],
+  "focusDistance": 16,
+  "fovYDegrees": 29.39495760413827,
+  "followResponse": 12,
+  "characterSizeMultiplier": 1
 }

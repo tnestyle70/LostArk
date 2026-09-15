@@ -434,6 +434,65 @@ G14 마감 추가 검증: 실제 `CEffectNativeScreenPostMaterial::Bind`, `CShad
 
 최종 UI TU·두 CPU probe·diff 검사가 통과했고 UTF-8 BOM 없음/CRLF를 보존했다. 입력·명령·결과 및 한계는 `out/CompositionUiPerformance20260914/profiler_analysis.json`, `validation_receipt.json`, `name_probe.result.txt`에 있다. 최종 제품 빌드는 G18에 기록하고 실제 FPS는 새 실행의 동일 조건 캡처로 확인한다.
 
+### G17.1. 2026-09-14 20:35 캡처의 Resources 반복 구성 후속
+
+사용자가 저장한
+`Client/Bin/ProfilerCaptures/profiler_20260914_203532_103_frame13_81092_0.json`을 직접 읽어
+13프레임을 재계산했다. `droppedCpuScopes`는 0이며 CPU frame 평균은 92.581885ms다.
+아래 수치는 각 scope의 캡처 전체 CPU 시간을 13프레임으로 나눈 값이다. 각 scope가 14회
+기록됐으므로 호출당 평균과 구분한다.
+
+| 구간 | 프레임당 누적 CPU 평균 |
+|---|---:|
+| ImGui.Tool.Composition.Build | 57.650808ms |
+| ImGui.Composition.Resources | 55.477423ms |
+| ImGui.Composition.PresentationResources | 55.448708ms |
+| ImGui.Composition.Resources.Filter | 22.112185ms |
+
+Resources는 하위 PresentationResources와 Filter의 비용을 포함한다. 이 값을 합산하지
+않으며 차액 전부를 아직 계측하지 않은 tree 생성 비용으로 확정하지 않는다. G17의 이전
+26프레임 자료와 이번 캡처는 서로 다른 실행 조건이므로 두 평균의 차이를 개선량으로 기록하지
+않는다. 이번 후속은 Resources의 반복 inventory 분류·filter·list·tree 구성을 조사하는 범위다.
+현재 저장 Composition을 별도로 읽었을 때 Created Effect resource는 147개다.
+
+구현은 Workbench CPP와 기존 헤더에 한정했다. category를 const reference로 읽고 owner
+분류 결과를 재사용한다. Saved Effect 목록의 filter·대형 resource 복사·정렬·분류 트리는
+inventory Refresh 또는 version/owner/search 변경 때만 만든다. Created Effect 목록과
+트리는 draft generation 또는 version/owner 변경 때 갱신한다. 펼친 Element는 별도 목록에서
+읽으며 source 목록에 매 frame 추가하지 않는다. 선택은 기존 stable source ID 조회를 사용한다.
+
+Tree.Rebuild와 Tree.Draw profiler scope를 분리해 같은 상태에서 재구성이 반복되는지를
+새 캡처로 확인할 수 있다. 독립 코드 검토에서 Refresh, Locate, Create/Rename/삭제,
+Reload/Save, Element 확장 시 duration 보존과 선택 포인터 수명을 대조했으며 새로운 P1/P2
+문제를 발견하지 않았다. UI/GPU의 실제 입력과 FPS 검증을 대신하는 결과는 아니다.
+
+사용자가 EXE 종료 후 빌드까지 진행하도록 요청하여 정본 Product Debug를 실행했다.
+2026-09-14 20:45:00 KST PASS, 총65.907초, Client61.572초/54 OBJ 갱신, CSO 갱신0이다.
+Engine → Shared → Server → Client와 runtime 배포 확인을 통과했고 컴파일·링크 오류와
+runtime input 누락은 없다. 기존 C4819/C4828 등의 경고는 남는다. receipt는
+`out/BuildPipeline/runs/20260914T114500918Z-debug-product.json`, 로그는
+`out/CompositionResourceCache20260914/ProductBuild`에 있다. 브랜치 전환으로 빠졌던
+양손 자동 소품과 마커 가시성 최적화도 같은 제품 빌드에 포함했다.
+
+현재 cache/filter/tree/선택 본문과 변경 전 filter를 추출한 native probe는 저장 metadata
+80개와60개 filter 조건을 사용해526검사에서 실패0을 기록했다. 같은 조건 재사용,
+검색/owner/version/Refresh 무효화, Created의 rename/append generation 갱신, stable ID
+lookup, Element8회 전환 뒤 목록 누적 없음, Locate의 source tree 재구성을 확인했다.
+ImGui drawing과 실제 draft commit lifecycle은 probe seam이며 제품 입력 검증은 아니다.
+근거는 `out/CompositionResourceCache20260914/cache_probe.run.log`와
+`probe_source_receipt.json`이다. 최종 C++ 입력 hash가 검사 뒤 그대로임을 확인했다.
+
+최종 EXE는20:44:58.204 KST,58,597,888bytes이며 SHA256은
+`daf38e47870e77ad2278796f0679d991e9772bbeccd7e65dde4a425843ee225b`다.
+관련12개 소스와7개 TU의 compile/dependency/OBJ/link 입력 및 EXE의 세 기능 문자열을
+`out/CompositionResourceCache20260914/final_build_receipt.json`에서 대조했다.
+
+에이전트는 Client/Server를 실행·종료하거나 UI를 조작·캡처하지 않았다. 사용자
+Effect JSON과 종료 직전20:42:20에 저장된 Composition revision620을 덮어쓰지 않았다.
+새 EXE로 동일 Effect 카테고리 FPS, 검색·owner/version 전환, Created 이름 변경,
+Locate Source·Element 펼치기·Refresh를 사용자가 확인한다. 현재 성능 자료는 수정 전
+실측이며 캐시 변경 뒤의 실제 FPS 회복을 아직 완료로 기록하지 않는다.
+
 
 ## G18. 전체 제품 빌드와 실행 준비 완료
 

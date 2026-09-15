@@ -1,6 +1,8 @@
 {
   "formatVersion": 1,
   "effects": [
+    {"effectAssetId": "effect.valtan.source.default-aura.normal", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.valtan.source.default-aura.normal.effect.json"},
+    {"effectAssetId": "effect.valtan.source.default-aura.ghost", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.valtan.source.default-aura.ghost.effect.json"},
     {"effectAssetId": "effect.artist.skill.31000.ba1.unified", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba1.unified.effect.json"},
     {"effectAssetId": "effect.artist.skill.31000.ba2.unified", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba2.unified.effect.json"},
     {"effectAssetId": "effect.artist.skill.31000.ba3.unified", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba3.unified.effect.json"},
@@ -431,6 +433,9 @@
     {"effectAssetId": "effect.kouku.gate1.authored.portal-arrival.context.p4-late", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.gate1.authored.portal-arrival.context.p4-late.effect.json"},
     {"effectAssetId": "effect.kouku.gate1.authored.p4.scene-image-collapse", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.gate1.authored.p4.scene-image-collapse.effect.json"},
     {"effectAssetId": "effect.kouku.gate3.showtime.bomb.fuse", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.bomb.fuse.effect.json"},
-    {"effectAssetId": "effect.kouku.bingo.encore.blackhole.beam.full.restore", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.bingo.encore.blackhole.beam.full.restore.effect.json"}
+    {"effectAssetId": "effect.kouku.bingo.encore.blackhole.beam.full.restore", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.bingo.encore.blackhole.beam.full.restore.effect.json"},
+    {"effectAssetId": "effect.kouku.gate3.showtime.saydon.disappear", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.saydon.disappear.effect.json"},
+    {"effectAssetId": "effect.kouku.gate3.showtime.rectangle.warning", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.rectangle.warning.effect.json"},
+    {"effectAssetId": "effect.kouku.gate3.showtime.rectangle.impact", "payloadKind": "DIRECT_AUTHORED_DOCUMENT", "authoringPath": "Effects/Authored/effect.kouku.gate3.showtime.rectangle.impact.effect.json"}
   ]
 }

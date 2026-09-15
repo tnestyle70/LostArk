@@ -340,6 +340,7 @@ CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 
 CValtan::~CValtan()
 {
+	Stop_DefaultParticles();
 	if (m_isRaidBgmEnabled && RAID_BGM_STATE::NONE != m_eRaidBgmState &&
 		m_iRaidBgmOwnershipGeneration == g_iRaidBgmOwnershipGeneration)
 		CGameInstance::Get().Stop_Music();
@@ -3559,8 +3560,116 @@ void CValtan::Update(f32_t fTimeDelta)
 	__super::Update(fTimeDelta);
 }
 
+void CValtan::Stop_DefaultParticles()
+{
+	for (const auto& occurrence : m_DefaultParticleOccurrences)
+		CEffectPresentationService::Stop_WorldRoot({ occurrence.iWorldRootHandle });
+	m_DefaultParticleOccurrences.clear();
+	m_bDefaultParticlesAttempted = false;
+}
+
+void CValtan::Update_DefaultParticles(const f32_t /*fTimeDelta*/)
+{
+	if (m_isReplicationDormant || m_isGhostPresentationHidden || m_isPatternBodyHidden ||
+		m_DeathPresentationClock.Has_Started() || m_iState == VALTAN_STATE::DEAD)
+	{
+		Stop_DefaultParticles();
+		return;
+	}
+	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(m_strPresentationPartArchetypeId);
+	if (nullptr == actor || actor->defaultParticles.empty() || nullptr == m_pBodyModelCom)
+		return;
+	float4x4_t ownerWorld{};
+	if (!Try_Get_PresentationRootMatrix(&ownerWorld))
+		return;
+	const auto buildRoot = [&](const BOSS_DEFAULT_PARTICLE_ENTRY& particle,
+		float4x4_t& root) -> bool_t
+	{
+		if (!m_pBodyModelCom->Has_Bone(particle.boneName.c_str()))
+			return false;
+		/* The two installed rigs have different import units (0.01 and 1).
+		   Keep their metre translation, remove only the uniform bone unit scale,
+		   then apply the same actor visual root as the rendered body. */
+		const matrix_t bone = m_pBodyModelCom->Get_BoneMatrix(particle.boneName.c_str());
+		vector_t scale{}, rotation{}, translation{};
+		if (!XMMatrixDecompose(&scale, &rotation, &translation, bone))
+			return false;
+		float3_t axes{};
+		XMStoreFloat3(&axes, scale);
+		if (!std::isfinite(axes.x) || !std::isfinite(axes.y) || !std::isfinite(axes.z) ||
+			axes.x <= 0.f || axes.y <= 0.f || axes.z <= 0.f ||
+			std::fabs(axes.y / axes.x - 1.f) > 0.001f ||
+			std::fabs(axes.z / axes.x - 1.f) > 0.001f)
+			return false;
+		float4x4_t anchor{};
+		XMStoreFloat4x4(&anchor, XMMatrixRotationQuaternion(rotation) *
+			XMMatrixTranslationFromVector(translation) * XMLoadFloat4x4(&ownerWorld));
+		EFFECT_TRANSFORM_DESC local{};
+		local.vPosition = particle.position;
+		local.vRotationDegrees = particle.rotationDegrees;
+		local.vScale = particle.scale;
+		return CEffectPresentationService::Build_CueScalePolicyRoot(local,
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE,
+			{ 1.f, 1.f, 1.f }, anchor, root);
+	};
+	const auto fail = [&](const BOSS_DEFAULT_PARTICLE_ENTRY& particle,
+		const std::string& reason)
+	{
+		OutputDebugStringA(("[Valtan][DefaultParticle] " + particle.occurrenceId +
+			" / " + particle.effectAssetId + ": " + reason + "\n").c_str());
+	};
+	if (!m_bDefaultParticlesAttempted)
+	{
+		m_bDefaultParticlesAttempted = true;
+		for (const auto& particle : actor->defaultParticles)
+		{
+			float4x4_t root{};
+			f32_t duration = 0.f;
+			if (!buildRoot(particle, root) ||
+				!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(
+					particle.effectAssetId, duration) || !std::isfinite(duration) || duration <= 0.f)
+			{
+				fail(particle, "source bone or prepared Product duration unavailable");
+				continue;
+			}
+			EFFECT_SPAWN_DESC spawn;
+			spawn.strEffectAssetId = particle.effectAssetId;
+			spawn.strOccurrenceId = particle.occurrenceId;
+			spawn.pBossOwner = static_pointer_cast<CValtan>(shared_from_this());
+			spawn.bOwnerSustainedSourceLoops = true;
+			EFFECT_WORLD_ROOT_HANDLE handle;
+			std::string status;
+			if (!CEffectPresentationService::Spawn_WorldRoot(spawn, root, handle, status))
+			{
+				fail(particle, status);
+				continue;
+			}
+			m_DefaultParticleOccurrences.push_back({ particle.occurrenceId, handle.iValue });
+		}
+	}
+	for (size_t index = m_DefaultParticleOccurrences.size(); index-- > 0u;)
+	{
+		auto& occurrence = m_DefaultParticleOccurrences[index];
+		const auto particle = std::find_if(actor->defaultParticles.begin(), actor->defaultParticles.end(),
+			[&](const auto& entry) { return entry.occurrenceId == occurrence.strOccurrenceId; });
+		float4x4_t root{};
+		// Existing Effect fixed-step Update advances each living handle once. This
+		// updates only the birth anchor, preserving world-space particles in flight.
+		const EFFECT_WORLD_ROOT_HANDLE handle{ occurrence.iWorldRootHandle };
+		if (particle == actor->defaultParticles.end() || !buildRoot(*particle, root) ||
+			!CEffectPresentationService::Update_WorldRoot(handle, root))
+		{
+			if (particle != actor->defaultParticles.end())
+				fail(*particle, "source anchor or admitted owner handle was lost");
+			CEffectPresentationService::Stop_WorldRoot(handle);
+			m_DefaultParticleOccurrences.erase(m_DefaultParticleOccurrences.begin() + index);
+		}
+	}
+}
+
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
+	Update_DefaultParticles(fTimeDelta);
 	if (m_isReplicationDormant)
 		return;
 	/* Container Update still advances the body animation and every Effect clock.
@@ -3904,6 +4013,7 @@ bool_t CValtan::Replace_PresentationPartGroup(
 		return false;
 	}
 
+	Stop_DefaultParticles();
 	m_pBodyModelCom = StagedBodyModel;
 	m_pBodyVisualRootCom = StagedBodyVisualRoot;
 	m_ArmorPartTagsByStateMask = std::move(StagedArmorPartTags);
@@ -4454,6 +4564,7 @@ void CValtan::Update_RaidBgm(
 
 void CValtan::Reset_ReplicatedOccurrenceState()
 {
+	Stop_DefaultParticles();
 	m_iState = 0u;
 	m_PathFollower.Cancel();
 	m_hasLastPathGoal = false;
@@ -4585,6 +4696,7 @@ bool_t CValtan::Begin_NetworkDeathPresentation()
 		return false;
 	if (m_DeathPresentationClock.Has_Started())
 		return !Is_NetworkDeathPresentationComplete();
+	Stop_DefaultParticles();
 	m_iState = VALTAN_STATE::DEAD;
 	m_strServerPatternId.clear();
 	m_strServerActionId.clear();

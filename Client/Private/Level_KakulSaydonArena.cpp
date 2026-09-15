@@ -2887,6 +2887,8 @@ bool_t Client::CLevel_KakulSaydonArena::Set_FollowCameraProfile(
 		return false;
 	}
 	m_FollowCameraProfile = profile;
+	if (const auto character = Get_LocalCharacter())
+		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
 	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
 	m_strFollowCameraProfileStatus = outStatus;
 	return true;
@@ -2905,6 +2907,7 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 		m_pCamera->Set_FollowEnabled(false);
 		return true;
 	}
+	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 

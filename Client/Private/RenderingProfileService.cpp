@@ -185,6 +185,121 @@ namespace
 			Is_FiniteRange(value.w, 0.f, 1.f);
 	}
 
+	bool_t Is_ValidBloomTint(const float4_t& value)
+	{
+		return Is_FiniteRange(value.x, 0.f, 1.f) &&
+			Is_FiniteRange(value.y, 0.f, 1.f) &&
+			Is_FiniteRange(value.z, 0.f, 1.f) && value.w == 1.f;
+	}
+
+
+	bool_t ValidSourcePostProcess(const SOURCE_POST_PROCESS_SETTINGS& source)
+	{
+		const auto vectorInRange = [](const float3_t& v, float minimum, float maximum)
+		{ return Is_FiniteRange(v.x,minimum,maximum) && Is_FiniteRange(v.y,minimum,maximum) && Is_FiniteRange(v.z,minimum,maximum); };
+		return Is_FiniteRange(source.fToneScale,.000001f,64.f) && Is_FiniteRange(source.fToneRange,.000001f,128.f) &&
+			Is_FiniteRange(source.fToneToe,0.f,1.f) && Is_FiniteRange(source.fDesaturation,0.f,1.f) &&
+			vectorInRange(source.vHighlights,.000001f,64.f) && vectorInRange(source.vMidtones,.000001f,64.f) &&
+			vectorInRange(source.vShadows,-64.f,64.f) && vectorInRange(source.vColorize,0.f,64.f) &&
+			(source.LutLayers.empty() || (source.LutLayers.size() == 1u && source.LutLayers[0].fWeight == 1.f &&
+			 source.LutLayers[0].pLut && Is_EnvironmentAssetId(source.LutLayers[0].pLut->strAssetId)));
+	}
+
+	bool_t ReadSourceLut(const string& assetId, shared_ptr<const SOURCE_COLOR_GRADING_LUT>& output)
+	{
+		if (!Is_EnvironmentAssetId(assetId)) return false;
+		const auto path = CRuntimeAssetRoot::Resolve(filesystem::path(u8string(assetId.begin(),assetId.end())));
+		if (path.empty()) return false;
+		ifstream input(path, ios::binary);
+		std::array<uint32_t,32u> header{};
+		if (!input.read(reinterpret_cast<char*>(header.data()),sizeof(header)) || header[0] != 0x20534444u ||
+			header[1] != 124u || header[3] != 16u || header[4] != 256u || header[6] > 1u ||
+			header[7] > 1u || header[19] != 32u || header[28] != 0u) return false;
+		bool bgra = false;
+		if (header[21] == 0x30315844u)
+		{
+			std::array<uint32_t,5u> dx10{};
+			if (!input.read(reinterpret_cast<char*>(dx10.data()),sizeof(dx10)) ||
+				(dx10[0] != 87u && dx10[0] != 28u) || dx10[1] != 3u || dx10[2] != 0u || dx10[3] != 1u) return false;
+			bgra = dx10[0] == 87u;
+		}
+		else
+		{
+			if (header[21] != 0u || (header[20] & 0x40u) == 0u || header[22] != 32u ||
+				header[24] != 0x0000ff00u || header[26] != 0xff000000u) return false;
+			bgra = header[23] == 0x00ff0000u && header[25] == 0x000000ffu;
+			if (!bgra && !(header[23] == 0x000000ffu && header[25] == 0x00ff0000u)) return false;
+		}
+		std::array<unsigned char,16384u> pixels{};
+		if (!input.read(reinterpret_cast<char*>(pixels.data()),pixels.size()) || input.peek() != EOF) return false;
+		auto lut = make_shared<SOURCE_COLOR_GRADING_LUT>();
+		lut->strAssetId = assetId;
+		for (size_t index = 0u; index < lut->Pixels.size(); ++index)
+		{
+			const auto* p = pixels.data() + index * 4u;
+			lut->Pixels[index] = float4_t(p[bgra ? 2u : 0u]/255.f,p[1]/255.f,p[bgra ? 0u : 2u]/255.f,p[3]/255.f);
+		}
+		output = move(lut);
+		return true;
+	}
+
+	bool_t ReadSourcePostProcess(const DATA_JSON_VALUE& object, SOURCE_POST_PROCESS_SETTINGS& output, string& status)
+	{
+		const auto* enabled = Required(object,"enabled",DATA_JSON_TYPE::BOOLEAN);
+		const auto* curve = Required(object,"toneCurve",DATA_JSON_TYPE::STRING);
+		const auto* lut = Required(object,"colorGradingLut",DATA_JSON_TYPE::STRING);
+		SOURCE_POST_PROCESS_SETTINGS staged;
+		if (!Has_ExactFields(object,{"enabled","toneCurve","toneScale","toneRange","toneToe","highlights","midtones","shadows","colorize","desaturation","colorGradingLut"}) ||
+			!enabled || !curve || curve->Get_String() != "UE3_CUSTOMIZABLE" || !lut ||
+			!Read_Float(object,"toneScale",.000001f,64.f,staged.fToneScale) ||
+			!Read_Float(object,"toneRange",.000001f,128.f,staged.fToneRange) ||
+			!Read_Float(object,"toneToe",0.f,1.f,staged.fToneToe) ||
+			!Read_Float(object,"desaturation",0.f,1.f,staged.fDesaturation) ||
+			!Read_Float3(object,"highlights",staged.vHighlights) || !Read_Float3(object,"midtones",staged.vMidtones) ||
+			!Read_Float3(object,"shadows",staged.vShadows) || !Read_Float3(object,"colorize",staged.vColorize))
+		{ status = "Invalid sourcePostProcess curve or grading values."; return false; }
+		staged.bEnabled = enabled->Get_Boolean();
+		if (!lut->Get_String().empty())
+		{
+			shared_ptr<const SOURCE_COLOR_GRADING_LUT> texture;
+			if (!ReadSourceLut(lut->Get_String(),texture))
+			{ status = "Source color grading requires a Resources-relative linear 256x16 RGBA8/BGRA8 DDS: " + lut->Get_String(); return false; }
+			staged.LutLayers.push_back({move(texture),1.f});
+		}
+		if (!ValidSourcePostProcess(staged)) { status = "Source grading values are out of range."; return false; }
+		output = move(staged); return true;
+	}
+
+	SOURCE_POST_PROCESS_SETTINGS BlendSourcePostProcess(const SOURCE_POST_PROCESS_SETTINGS& from,
+		const SOURCE_POST_PROCESS_SETTINGS& target, float blend)
+	{
+		auto result = target;
+		const auto mix = [blend](float a,float b) { return a+(b-a)*blend; };
+		const auto vectorMix = [&mix](const float3_t& a,const float3_t& b)
+		{ return float3_t(mix(a.x,b.x),mix(a.y,b.y),mix(a.z,b.z)); };
+		result.fToneScale=mix(from.fToneScale,target.fToneScale); result.fToneRange=mix(from.fToneRange,target.fToneRange);
+		result.fToneToe=mix(from.fToneToe,target.fToneToe); result.fDesaturation=mix(from.fDesaturation,target.fDesaturation);
+		result.vHighlights=vectorMix(from.vHighlights,target.vHighlights); result.vMidtones=vectorMix(from.vMidtones,target.vMidtones);
+		result.vShadows=vectorMix(from.vShadows,target.vShadows); result.vColorize=vectorMix(from.vColorize,target.vColorize);
+		result.LutLayers.clear();
+		const auto append = [&result](const SOURCE_POST_PROCESS_SETTINGS& settings,float weight)
+		{
+			const auto add = [&result](const shared_ptr<const SOURCE_COLOR_GRADING_LUT>& lut,float contribution)
+			{
+				if (contribution <= 0.f) return;
+				for (auto& layer : result.LutLayers)
+					if ((!layer.pLut && !lut) || (layer.pLut && lut && layer.pLut->strAssetId == lut->strAssetId))
+					{ layer.fWeight += contribution; return; }
+				result.LutLayers.push_back({lut,contribution});
+			};
+			if (settings.LutLayers.empty()) add(nullptr,weight);
+			else for (const auto& layer : settings.LutLayers) add(layer.pLut,weight*layer.fWeight);
+		};
+		append(from,1.f-blend); append(target,blend);
+		if (result.LutLayers.size()==1u && !result.LutLayers[0].pLut) result.LutLayers.clear();
+		return result;
+	}
+
 	string Quote(const string_view value)
 	{
 		return "\"" + CDataJson::Escape(value) + "\"";
@@ -200,6 +315,19 @@ namespace
 	{
 		output << '[' << value.x << ", " << value.y << ", " <<
 			value.z << ']';
+	}
+
+
+	void WriteSourcePostProcess(ostringstream& output, const SOURCE_POST_PROCESS_SETTINGS& source)
+	{
+		output << "{\"enabled\": " << (source.bEnabled ? "true" : "false") << ", \"toneCurve\": \"UE3_CUSTOMIZABLE\"";
+		output << ", \"toneScale\": " << source.fToneScale << ", \"toneRange\": " << source.fToneRange << ", \"toneToe\": " << source.fToneToe;
+		output << ", \"highlights\": "; Write_Float3(output,source.vHighlights);
+		output << ", \"midtones\": "; Write_Float3(output,source.vMidtones);
+		output << ", \"shadows\": "; Write_Float3(output,source.vShadows);
+		output << ", \"colorize\": "; Write_Float3(output,source.vColorize);
+		output << ", \"desaturation\": " << source.fDesaturation << ", \"colorGradingLut\": ";
+		output << Quote(source.LutLayers.empty() || !source.LutLayers[0].pLut ? string{} : source.LutLayers[0].pLut->strAssetId) << "}";
 	}
 
 	void Write_Quality(ostringstream& output, const RENDER_QUALITY_SETTINGS& quality)
@@ -223,6 +351,11 @@ namespace
 		output << ", \"fxaaSubpixel\": " << quality.fFXAASubpixel;
 		output << ", \"fxaaEdgeThreshold\": " << quality.fFXAAEdgeThreshold;
 		output << ", \"fxaaEdgeThresholdMin\": " << quality.fFXAAEdgeThresholdMin;
+		output << ", \"colorAdjustment\": {\"bloomTint\": ";
+		Write_Float4(output, quality.vBloomTint);
+		output << ", \"desaturation\": " << quality.fSceneDesaturation << "}";
+		if (quality.SourcePostProcess.bEnabled || !quality.SourcePostProcess.LutLayers.empty())
+		{ output << ", \"sourcePostProcess\": "; WriteSourcePostProcess(output,quality.SourcePostProcess); }
 		output << "}";
 	}
 
@@ -335,28 +468,29 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
         if (any_of(region.Planes.begin(), region.Planes.end(), [camera](const auto& p)
             { return p.x*camera->x+p.y*camera->y+p.z*camera->z+p.w > .001f; })) continue;
         const float volume = (b.x-a.x)*(b.y-a.y)*(b.z-a.z);
-        if (!selected || volume < selectedVolume) { selected = &region; selectedVolume = volume; }
+        if (!selected || region.fPriority > selected->fPriority ||
+            (region.fPriority == selected->fPriority && volume < selectedVolume))
+        { selected = &region; selectedVolume = volume; }
     }
     const string regionId = profile->strProfileId + ":" + (selected ? selected->strRegionId : "base");
     const auto previousFog = CGameInstance::Get().Get_HeightFogSettings();
-    if (regionId != m_strAppliedEnvironmentRegion)
-    {
-        m_EnvironmentFogFrom = previousFog;
-        const auto& lights = CGameInstance::Get().Get_SceneLights();
-        m_EnvironmentLightFrom = lights.empty() ? profile->Light : lights.front();
-        m_fEnvironmentElapsed = 0.f;
-        m_fEnvironmentDuration = selected ? selected->fBlendTimeIn : m_fEnvironmentExitDuration;
-        m_fEnvironmentExitDuration = selected ? selected->fBlendTimeOut : 1.f;
-        m_strAppliedEnvironmentRegion = regionId;
-    }
-    else if (m_fEnvironmentElapsed >= m_fEnvironmentDuration) return true;
-    const float elapsed = min(m_fEnvironmentDuration, m_fEnvironmentElapsed + deltaSeconds);
-    const float blend = m_fEnvironmentDuration > 0.f ? elapsed / m_fEnvironmentDuration : 1.f;
+    const auto previousQuality = CGameInstance::Get().Get_RenderQualitySettings();
+    const auto& lights = CGameInstance::Get().Get_SceneLights();
+    const bool changedRegion = regionId != m_strAppliedEnvironmentRegion;
+    if (!changedRegion && m_fEnvironmentElapsed >= m_fEnvironmentDuration) return true;
+    // Stage transition state as well as GPU inputs: a rejected frame must retry
+    // from the same committed source and elapsed time.
+    const auto fromFog = changedRegion ? previousFog : m_EnvironmentFogFrom;
+    const auto fromLight = changedRegion ? (lights.empty() ? profile->Light : lights.front()) : m_EnvironmentLightFrom;
+    const auto fromQuality = changedRegion ? previousQuality : m_EnvironmentQualityFrom;
+    const float duration = changedRegion ? (selected ? selected->fBlendTimeIn : m_fEnvironmentExitDuration) : m_fEnvironmentDuration;
+    const float elapsed = min(duration, (changedRegion ? 0.f : m_fEnvironmentElapsed) + deltaSeconds);
+    const float blend = duration > 0.f ? elapsed / duration : 1.f;
     const auto mix = [blend](float a, float b) { return a + (b-a)*blend; };
     const auto mixColor = [&mix](const float4_t& a, const float4_t& b)
     { return float4_t(mix(a.x,b.x), mix(a.y,b.y), mix(a.z,b.z), mix(a.w,b.w)); };
     auto fog = selected ? selected->Fog : profile->Fog;
-    const auto& from = m_EnvironmentFogFrom;
+    const auto& from = fromFog;
     fog.vColor = mixColor(from.vColor, fog.vColor);
     fog.vInscatteringColor = mixColor(from.vInscatteringColor, fog.vInscatteringColor);
     fog.fDensity = mix(from.fDensity, fog.fDensity);
@@ -367,15 +501,46 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
     fog.vFogLightDirection.w = mix(from.vFogLightDirection.w, fog.vFogLightDirection.w);
     auto light = profile->Light;
     if (selected) { light.vDiffuse = selected->vDirectionalColor; light.vAmbient = selected->vAmbientColor; }
-    light.vDiffuse = mixColor(m_EnvironmentLightFrom.vDiffuse, light.vDiffuse);
-    light.vAmbient = mixColor(m_EnvironmentLightFrom.vAmbient, light.vAmbient);
+    light.vDiffuse = mixColor(fromLight.vDiffuse, light.vDiffuse);
+    light.vAmbient = mixColor(fromLight.vAmbient, light.vAmbient);
+    // Profiles without region postprocess retain their existing quality owner.
+    // Region overrides replace only these four resolved scene inputs; leaving
+    // a region blends back to the active profile's effective base, without drift.
+    const bool hasRegionPostProcess = any_of(profile->EnvironmentRegions.begin(), profile->EnvironmentRegions.end(),
+        [](const auto& region) { return region.bHasPostProcess; });
+    auto quality = m_EffectiveQuality;
+    if (selected && selected->bHasPostProcess)
+    {
+        quality.fBloomThreshold = selected->fBloomThreshold;
+        quality.fBloomIntensity = selected->fBloomIntensity * profile->fBloomIntensityMultiplier;
+        quality.vBloomTint = selected->vBloomTint;
+        quality.fSceneDesaturation = selected->fSceneDesaturation;
+        if (selected->bHasSourcePostProcess) quality.SourcePostProcess = selected->SourcePostProcess;
+    }
+    quality.fBloomThreshold = mix(fromQuality.fBloomThreshold, quality.fBloomThreshold);
+    quality.fBloomIntensity = mix(fromQuality.fBloomIntensity, quality.fBloomIntensity);
+    quality.vBloomTint = mixColor(fromQuality.vBloomTint, quality.vBloomTint);
+    quality.fSceneDesaturation = mix(fromQuality.fSceneDesaturation, quality.fSceneDesaturation);
+    quality.SourcePostProcess = BlendSourcePostProcess(fromQuality.SourcePostProcess,quality.SourcePostProcess,blend);
+    if (hasRegionPostProcess && FAILED(CGameInstance::Get().Apply_RenderQualitySettings(quality)))
+    { status = "Environment region postprocess rejected; existing scene preserved."; return false; }
     if (FAILED(CGameInstance::Get().Apply_HeightFog(fog)))
-    { status = "Environment region fog rejected; existing scene preserved."; return false; }
+    {
+        if (hasRegionPostProcess) CGameInstance::Get().Apply_RenderQualitySettings(previousQuality);
+        status = "Environment region fog rejected; existing scene preserved."; return false;
+    }
     if (FAILED(CGameInstance::Get().Add_Light(light)))
     {
         CGameInstance::Get().Apply_HeightFog(previousFog);
+        if (hasRegionPostProcess) CGameInstance::Get().Apply_RenderQualitySettings(previousQuality);
         status = "Environment region light rejected; existing scene preserved."; return false;
     }
+    m_EnvironmentFogFrom = fromFog;
+    m_EnvironmentLightFrom = fromLight;
+    m_EnvironmentQualityFrom = fromQuality;
+    m_fEnvironmentDuration = duration;
+    if (changedRegion) m_fEnvironmentExitDuration = selected ? selected->fBlendTimeOut : 1.f;
+    m_strAppliedEnvironmentRegion = regionId;
     m_fEnvironmentElapsed = elapsed;
     return true;
 }
@@ -773,7 +938,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
                 const auto* id = Required(row, "regionId", DATA_JSON_TYPE::STRING);
                 const auto* planes = Required(row, "planes", DATA_JSON_TYPE::ARRAY);
                 const auto* fog = Required(row, "fog", DATA_JSON_TYPE::OBJECT);
-                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }) ||
+                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }, { "priority", "postProcess" }) ||
                     !id || !Is_StableId(id->Get_String()) || !regionIds.insert(id->Get_String()).second ||
                     !Read_Float3(row, "boundsMinimum", region.vBoundsMinimum) ||
                     !Read_Float3(row, "boundsMaximum", region.vBoundsMaximum) ||
@@ -792,6 +957,24 @@ bool_t CRenderingProfileService::Parse_Catalog(
                     !Read_Float4(*fog, "inscatteringColor", region.Fog.vInscatteringColor) ||
                     !Read_Float4(*fog, "lightDirection", region.Fog.vFogLightDirection))
                 { strOutStatus = "Invalid source environment volume or fog."; return false; }
+                if (row.Find("priority") && !Read_Float(row, "priority", -100000.f, 100000.f, region.fPriority))
+                { strOutStatus = "Invalid environment region priority."; return false; }
+                if (const auto* postProcess = row.Find("postProcess"))
+                {
+                    if (!Has_ExactFields(*postProcess, { "bloomThreshold", "bloomIntensity", "bloomTint", "desaturation" }, { "sourcePostProcess" }) ||
+                        !Read_Float(*postProcess, "bloomThreshold", 0.f, 64.f, region.fBloomThreshold) ||
+                        !Read_Float(*postProcess, "bloomIntensity", 0.f, 16.f, region.fBloomIntensity) ||
+                        !Read_Float4(*postProcess, "bloomTint", region.vBloomTint) ||
+                        !Is_ValidBloomTint(region.vBloomTint) ||
+                        !Read_Float(*postProcess, "desaturation", 0.f, 1.f, region.fSceneDesaturation))
+                    { strOutStatus = "Invalid environment region postprocess."; return false; }
+                    if (const auto* source = postProcess->Find("sourcePostProcess"))
+                    {
+                        if (!ReadSourcePostProcess(*source,region.SourcePostProcess,strOutStatus)) return false;
+                        region.bHasSourcePostProcess = true;
+                    }
+                    region.bHasPostProcess = true;
+                }
                 region.strRegionId = id->Get_String();
                 region.Fog.bEnabled = true;
                 region.Fog.bSourceExponential = true;
@@ -844,7 +1027,7 @@ bool_t CRenderingProfileService::Parse_Quality(
 		  "bloomEnabled", "bloomThreshold", "bloomSoftKnee",
 		  "bloomIntensity", "bloomScatter", "exposure", "whitePoint",
 		  "gamma", "fxaaEnabled", "fxaaSubpixel", "fxaaEdgeThreshold",
-		  "fxaaEdgeThresholdMin" }))
+          "fxaaEdgeThresholdMin" }, { "colorAdjustment", "sourcePostProcess" }))
 	{
 		status = "globalQuality has missing or unsupported fields.";
 		return false;
@@ -894,6 +1077,19 @@ bool_t CRenderingProfileService::Parse_Quality(
 	quality.bSSAOEnabled = pSSAOEnabled->Get_Boolean();
 	quality.bBloomEnabled = pBloomEnabled->Get_Boolean();
 	quality.bFXAAEnabled = pFXAAEnabled->Get_Boolean();
+	quality.vBloomTint = float4_t(1.f, 1.f, 1.f, 1.f);
+	quality.fSceneDesaturation = 0.f;
+	if (const auto* adjustment = value.Find("colorAdjustment"))
+	{
+		if (!Has_ExactFields(*adjustment, { "bloomTint", "desaturation" }) ||
+			!Read_Float4(*adjustment, "bloomTint", quality.vBloomTint) ||
+			!Is_ValidBloomTint(quality.vBloomTint) ||
+			!Read_Float(*adjustment, "desaturation", 0.f, 1.f, quality.fSceneDesaturation))
+		{ status = "Quality colorAdjustment requires normalized bloomTint and desaturation."; return false; }
+	}
+	quality.SourcePostProcess = {};
+	if (const auto* source = value.Find("sourcePostProcess"))
+		if (!ReadSourcePostProcess(*source,quality.SourcePostProcess,status)) return false;
 	return Validate_GlobalQuality(quality, status);
 
 }
@@ -903,6 +1099,7 @@ bool_t CRenderingProfileService::Validate_GlobalQuality(
 	string& strOutStatus)
 {
 	const bool_t valid =
+		ValidSourcePostProcess(Quality.SourcePostProcess) &&
 		Is_FiniteRange(Quality.fSSAORadius, 0.01f, 8.f) &&
 		Is_FiniteRange(Quality.fSSAOBias, 0.f, 1.f) &&
 		Is_FiniteRange(Quality.fSSAOIntensity, 0.f, 4.f) &&
@@ -913,6 +1110,8 @@ bool_t CRenderingProfileService::Validate_GlobalQuality(
 		Is_FiniteRange(Quality.fBloomThreshold, 0.f, 64.f) &&
 		Is_FiniteRange(Quality.fBloomSoftKnee, 0.f, 1.f) &&
 		Is_FiniteRange(Quality.fBloomIntensity, 0.f, 16.f) &&
+		Is_ValidBloomTint(Quality.vBloomTint) &&
+		Is_FiniteRange(Quality.fSceneDesaturation, 0.f, 1.f) &&
 		Is_FiniteRange(Quality.fBloomScatter, 0.25f, 4.f) &&
 		Is_FiniteRange(Quality.fExposure, 0.01f, 32.f) &&
 		Is_FiniteRange(Quality.fWhitePoint, 1.f, 64.f) &&
@@ -956,6 +1155,14 @@ bool_t CRenderingProfileService::Validate_Profile(
             !Is_FiniteRange(region.Fog.fTopHeight, -10000.f, 10000.f) ||
             !Is_FiniteRange(region.Fog.fStartDistance, 0.f, 100000.f) || !Is_FiniteRange(region.Fog.fMaximumOpacity, 0.f, 1.f))
         { strOutStatus = "Invalid source environment region."; return false; }
+        if (!Is_FiniteRange(region.fPriority, -100000.f, 100000.f) ||
+            (region.bHasSourcePostProcess && (!region.bHasPostProcess || !ValidSourcePostProcess(region.SourcePostProcess))) ||
+            (region.bHasPostProcess && (!Is_FiniteRange(region.fBloomThreshold, 0.f, 64.f) ||
+                !Is_FiniteRange(region.fBloomIntensity, 0.f, 16.f) ||
+                !Is_FiniteRange(region.fBloomIntensity * Profile.fBloomIntensityMultiplier, 0.f, 16.f) ||
+                !Is_ValidBloomTint(region.vBloomTint) ||
+                !Is_FiniteRange(region.fSceneDesaturation, 0.f, 1.f))))
+        { strOutStatus = "Invalid environment region priority or postprocess."; return false; }
         for (const auto& plane : region.Planes)
             if (!Is_FiniteRange(plane.w, -100000.f, 100000.f) ||
                 !isfinite(plane.x) || !isfinite(plane.y) || !isfinite(plane.z) ||
@@ -1125,8 +1332,13 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			(Catalog.GlobalQuality.bFXAAEnabled ? "true" : "false") << ",\n"
 		"    \"fxaaSubpixel\": " << Catalog.GlobalQuality.fFXAASubpixel << ",\n"
 		"    \"fxaaEdgeThreshold\": " << Catalog.GlobalQuality.fFXAAEdgeThreshold << ",\n"
-		"    \"fxaaEdgeThresholdMin\": " << Catalog.GlobalQuality.fFXAAEdgeThresholdMin << "\n"
-		"  },\n"
+		"    \"fxaaEdgeThresholdMin\": " << Catalog.GlobalQuality.fFXAAEdgeThresholdMin << ",\n"
+		"    \"colorAdjustment\": {\"bloomTint\": ";
+	Write_Float4(output, Catalog.GlobalQuality.vBloomTint);
+	output << ", \"desaturation\": " << Catalog.GlobalQuality.fSceneDesaturation << "}";
+	if (Catalog.GlobalQuality.SourcePostProcess.bEnabled || !Catalog.GlobalQuality.SourcePostProcess.LutLayers.empty())
+	{ output << ",\n    \"sourcePostProcess\": "; WriteSourcePostProcess(output,Catalog.GlobalQuality.SourcePostProcess); }
+	output << "\n  },\n"
 		"  \"profiles\": [\n";
 	size_t index = 0u;
 	for (const auto& [profileId, profile] : Catalog.Profiles)
@@ -1236,6 +1448,17 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
                 output << "], \"directionalColor\": "; Write_Float4(output, region.vDirectionalColor);
                 output << ", \"ambientColor\": "; Write_Float4(output, region.vAmbientColor);
                 output << ", \"blendTimeIn\": " << region.fBlendTimeIn << ", \"blendTimeOut\": " << region.fBlendTimeOut;
+                output << ", \"priority\": " << region.fPriority;
+                if (region.bHasPostProcess)
+                {
+                    output << ", \"postProcess\": {\"bloomThreshold\": " << region.fBloomThreshold
+                        << ", \"bloomIntensity\": " << region.fBloomIntensity << ", \"bloomTint\": ";
+                    Write_Float4(output, region.vBloomTint);
+                    output << ", \"desaturation\": " << region.fSceneDesaturation;
+                    if (region.bHasSourcePostProcess)
+                    { output << ", \"sourcePostProcess\": "; WriteSourcePostProcess(output,region.SourcePostProcess); }
+                    output << "}";
+                }
                 const auto& fog = region.Fog;
                 output << ", \"fog\": {\"density\": " << fog.fDensity << ", \"heightFalloff\": " << fog.fHeightFalloff
                     << ", \"topHeight\": " << fog.fTopHeight << ", \"startDistance\": " << fog.fStartDistance

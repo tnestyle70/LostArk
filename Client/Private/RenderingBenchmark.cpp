@@ -6,6 +6,7 @@
 #pragma pop_macro("new")
 
 #include "RenderingBenchmark.h"
+#include "RenderingProfileService.h"
 #include "GameInstance.h"
 
 #include <algorithm>
@@ -43,6 +44,19 @@ namespace
         scalar(q.bBloomEnabled); scalar(q.fBloomThreshold); scalar(q.fBloomSoftKnee);
         scalar(q.fBloomIntensity); scalar(q.fBloomScatter); scalar(q.fExposure);
         scalar(q.fWhitePoint); scalar(q.fGamma); scalar(q.bFXAAEnabled);
+        vector(q.vBloomTint); scalar(q.fSceneDesaturation);
+        const auto& source = q.SourcePostProcess;
+        scalar(source.bEnabled); scalar(source.fToneScale); scalar(source.fToneRange);
+        scalar(source.fToneToe); scalar(source.fDesaturation);
+        for (const auto& value : { source.vHighlights, source.vMidtones, source.vShadows, source.vColorize })
+        { scalar(value.x); scalar(value.y); scalar(value.z); }
+        scalar(source.LutLayers.size());
+        for (const auto& layer : source.LutLayers)
+        {
+            scalar(layer.fWeight);
+            if (layer.pLut) stream << quoted(layer.pLut->strAssetId);
+            else stream << "neutral-lut ";
+        }
         scalar(q.fFXAASubpixel); scalar(q.fFXAAEdgeThreshold); scalar(q.fFXAAEdgeThresholdMin);
         const auto fog = game.Get_HeightFogSettings();
         scalar(fog.bEnabled); vector(fog.vColor); scalar(fog.fDensity); scalar(fog.fHeightFalloff);
@@ -50,6 +64,11 @@ namespace
         scalar(fog.fDriftSpeed); scalar(fog.fDriftHeightAmplitude); scalar(fog.fDriftDensityAmplitude);
         scalar(fog.fCoveragePercent); scalar(fog.fWindDirectionX); scalar(fog.fWindDirectionZ);
         scalar(fog.fWindSpeed); scalar(fog.fPatchScale); scalar(fog.fPatchSoftness);
+        scalar(fog.bSourceExponential); vector(fog.vInscatteringColor); vector(fog.vFogLightDirection);
+        const auto environment = game.Get_RenderEnvironment();
+        scalar(environment.strCubePath.size());
+        for (const auto character : environment.strCubePath) scalar(static_cast<uint32_t>(character));
+        vector(environment.vColor); vector(environment.vRotationIntensity);
         const auto& shadow = game.Get_ShadowLightDesc(); vector(shadow.vEye); vector(shadow.vAt);
         const auto& s = shadow.Settings; scalar(s.bEnabled); scalar(s.fOrthographicWidth);
         scalar(s.fOrthographicHeight); scalar(s.fNear); scalar(s.fFar); scalar(s.fDepthBias);
@@ -60,6 +79,7 @@ namespace
             scalar(static_cast<uint32_t>(light.eType)); vector(light.vDirection); vector(light.vPosition);
             scalar(light.fRange); scalar(light.fFalloffExponent); vector(light.vDiffuse);
             vector(light.vAmbient); vector(light.vSpecular); scalar(light.fSpotInnerCos); scalar(light.fSpotOuterCos);
+            scalar(static_cast<uint32_t>(light.eReceiver)); scalar(light.staticShadowChannel);
         }
         return stream.str();
     }
@@ -261,11 +281,192 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& Profiler)
 	return true;
 }
 
+void Client::CRenderingBenchmark::Release_RestorationOwnership()
+{
+	m_strRestorationEntryProfileId.clear();
+	m_strRestorationLastProfileId.clear();
+	m_strRestorationLevelQualityId.clear();
+	m_iRestorationLevel = 0u;
+}
+
+void Client::CRenderingBenchmark::Notify_ProfileReload()
+{
+	if (!m_strRestorationLastProfileId.empty())
+	{
+		Release_RestorationOwnership();
+		m_strRestorationStatus = "Runtime reloaded. Comparison ownership released; the reloaded scene stays active.";
+	}
+	if (m_bCapturing)
+		m_bConditionsStable = false;
+}
+
+void Client::CRenderingBenchmark::Update_RestorationPreview(
+	CRenderingProfileService& Profiles, const bool_t bToolVisible)
+{
+	if (m_strRestorationLastProfileId.empty())
+		return;
+	if (Engine::CGameInstance::Get().Get_CurrentLevelID() != m_iRestorationLevel ||
+		Profiles.Get_ActiveProfileId() != m_strRestorationLastProfileId ||
+		Profiles.Get_LevelQualityProfileId() != m_strRestorationLevelQualityId)
+	{
+		Release_RestorationOwnership();
+		m_strRestorationStatus = "Level or scene owner changed. Comparison released without changing the new scene.";
+		return;
+	}
+	if (!bToolVisible && !Return_ToEntryProfile(Profiles))
+	{
+		// A hidden tool must not retry a failing renderer transaction every frame.
+		Release_RestorationOwnership();
+		m_strRestorationStatus += " Comparison ownership released; the current scene is retained.";
+	}
+}
+
+bool_t Client::CRenderingBenchmark::Activate_RestorationProfile(
+	CRenderingProfileService& Profiles, const string& strProfileId)
+{
+	if (m_bCapturing)
+		return false;
+	Update_RestorationPreview(Profiles, true);
+	const string previous = Profiles.Get_ActiveProfileId();
+	if (previous.empty() || !Profiles.Has_Profile(previous))
+	{
+		m_strRestorationStatus = "Cannot compare without an available entry profile.";
+		return false;
+	}
+	if (!Profiles.Activate_Profile(strProfileId, m_strRestorationStatus))
+		return false;
+	if (m_strRestorationLastProfileId.empty())
+	{
+		m_strRestorationEntryProfileId = previous;
+		m_iRestorationLevel = Engine::CGameInstance::Get().Get_CurrentLevelID();
+		m_strRestorationLevelQualityId = Profiles.Get_LevelQualityProfileId();
+	}
+	m_strRestorationLastProfileId = strProfileId;
+	m_strRestorationStatus = "Session profile applied. Return to entry or close this workbench to restore the entry profile.";
+	return true;
+}
+
+bool_t Client::CRenderingBenchmark::Return_ToEntryProfile(CRenderingProfileService& Profiles)
+{
+	if (m_strRestorationLastProfileId.empty())
+		return false;
+	if (Engine::CGameInstance::Get().Get_CurrentLevelID() != m_iRestorationLevel ||
+		Profiles.Get_ActiveProfileId() != m_strRestorationLastProfileId ||
+		Profiles.Get_LevelQualityProfileId() != m_strRestorationLevelQualityId)
+	{
+		Release_RestorationOwnership();
+		m_strRestorationStatus = "The scene is now owned elsewhere. Entry restoration was skipped.";
+		return false;
+	}
+	if (!Profiles.Activate_Profile(m_strRestorationEntryProfileId, m_strRestorationStatus))
+		return false;
+	Release_RestorationOwnership();
+	if (m_bCapturing)
+		m_bConditionsStable = false;
+	m_strRestorationStatus = "Entry profile restored.";
+	return true;
+}
+
+bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileService& Profiles)
+{
+	Update_RestorationPreview(Profiles, true);
+	ImGui::SeparatorText("Rendering restoration");
+	const auto& game = Engine::CGameInstance::Get();
+	const char* beforeId = nullptr;
+	const char* restoredId = nullptr;
+	switch (static_cast<LEVEL>(game.Get_CurrentLevelID()))
+	{
+	case LEVEL::BERN:
+		beforeId = "scene.bern.before-restoration.v1";
+		restoredId = "scene.bern.source-rendering.v1";
+		break;
+	case LEVEL::CHARACTER_SELECT:
+		beforeId = "scene.character-select.before-restoration.v1";
+		restoredId = "scene.character-select.source-rendering.v1";
+		break;
+	case LEVEL::VALTAN_ARENA:
+		beforeId = "scene.valtan.before-restoration.v1";
+		restoredId = "scene.valtan.source-rendering.v1";
+		break;
+	case LEVEL::KAKULSAYDON_ARENA:
+		beforeId = "scene.kakulsaydon.before-restoration.v1";
+		restoredId = "scene.kakulsaydon.source-rendering.v1";
+		break;
+	default:
+		break;
+	}
+	bool_t changed = false;
+	if (beforeId)
+	{
+		const bool beforeAvailable = Profiles.Has_Profile(beforeId);
+		const bool restoredAvailable = Profiles.Has_Profile(restoredId);
+		ImGui::BeginDisabled(m_bCapturing || !beforeAvailable);
+		if (ImGui::Button("Before"))
+			changed = Activate_RestorationProfile(Profiles, beforeId);
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		ImGui::BeginDisabled(m_bCapturing || !restoredAvailable);
+		if (ImGui::Button("Restored source profile"))
+			changed = Activate_RestorationProfile(Profiles, restoredId) || changed;
+		ImGui::EndDisabled();
+		if (!beforeAvailable || !restoredAvailable)
+			ImGui::TextWrapped("A comparison profile is unavailable. Source applicability and published inputs must be confirmed for this map.");
+	}
+	else
+		ImGui::TextWrapped("Source rendering applicability for this map is not confirmed. Comparison profiles are unavailable.");
+	ImGui::BeginDisabled(m_bCapturing || m_strRestorationLastProfileId.empty());
+	if (ImGui::Button("Return to entry"))
+		changed = Return_ToEntryProfile(Profiles) || changed;
+	ImGui::EndDisabled();
+	if (!m_strRestorationEntryProfileId.empty())
+		ImGui::TextWrapped("Entry profile: %s", m_strRestorationEntryProfileId.c_str());
+	ImGui::TextWrapped("Active profile: %s", Profiles.Get_ActiveProfileId().c_str());
+	const auto quality = game.Get_RenderQualitySettings();
+	const auto fog = game.Get_HeightFogSettings();
+	ImGui::Text("Exposure %.4f | Bloom %s: %.4f", quality.fExposure,
+		quality.bBloomEnabled ? "on" : "off", quality.fBloomIntensity);
+	ImGui::Text("Bloom threshold %.4f | Desaturation %.4f",
+		quality.fBloomThreshold, quality.fSceneDesaturation);
+	const auto& source = quality.SourcePostProcess;
+	ImGui::Text("Tone mapping: %s", source.bEnabled ? "Source UE3 customizable" : "Hable");
+	if (source.bEnabled)
+	{
+		ImGui::Text("Source tone scale %.4f | range %.4f | toe %.4f | desaturation %.4f",
+			source.fToneScale, source.fToneRange, source.fToneToe, source.fDesaturation);
+		for (const auto& layer : source.LutLayers)
+			ImGui::TextWrapped("LUT %.3f: %s", layer.fWeight,
+				layer.pLut ? layer.pLut->strAssetId.c_str() : "neutral");
+	}
+	ImGui::Text("Bloom tint RGB %.3f / %.3f / %.3f",
+		quality.vBloomTint.x, quality.vBloomTint.y, quality.vBloomTint.z);
+	ImGui::Text("Fog %s (%s) | density %.5f", fog.bEnabled ? "on" : "off",
+		fog.bSourceExponential ? "source exponential" : "project height", fog.fDensity);
+	for (const auto& light : game.Get_SceneLights())
+	{
+		if (light.eType != Engine::LIGHT::DIRECTIONAL)
+			continue;
+		ImGui::Text("Directional RGB %.3f / %.3f / %.3f",
+			light.vDiffuse.x, light.vDiffuse.y, light.vDiffuse.z);
+		ImGui::Text("Ambient RGB %.3f / %.3f / %.3f",
+			light.vAmbient.x, light.vAmbient.y, light.vAmbient.z);
+		break;
+	}
+	ImGui::TextWrapped("%s", m_strRestorationStatus.c_str());
+	ImGui::TextWrapped("Native inputs: recovered scene lights, baked RNM and source fog where verified. Receiver separation remains part of the map.");
+	ImGui::TextWrapped("Source profiles use the recovered tone curve and LUT grading when enabled. Other profiles retain their saved tone mapping.");
+	ImGui::TextWrapped("Bloom kernel, DOF, light shafts and map effects have separate restoration scopes; this comparison does not certify the whole scene.");
+	ImGui::TextDisabled("Session only. No automatic Save or Publish. Profile switching is locked during capture.");
+	return changed;
+}
+
 void Client::CRenderingBenchmark::Render_Section(
 	Engine::CProfiler* pProfiler,
-	const string& strQualitySummary)
+	const string& strQualitySummary,
+	CRenderingProfileService& Profiles)
 {
 	ImGui::SeparatorText("Benchmark");
+	const bool_t profileChanged = Render_RestorationSection(Profiles);
+	ImGui::SeparatorText("Material performance capture");
 	ImGui::SetNextItemWidth(160.f);
 	ImGui::InputText("Label", m_LabelBuffer.data(), m_LabelBuffer.size());
 	ImGui::SameLine();
@@ -275,7 +476,7 @@ void Client::CRenderingBenchmark::Render_Section(
 			Engine::CProfiler::GPU_READ_LATENCY - 1u), "%d",
 		ImGuiSliderFlags_AlwaysClamp);
 	ImGui::SameLine();
-	ImGui::BeginDisabled(m_bCapturing);
+	ImGui::BeginDisabled(m_bCapturing || profileChanged);
 	if (ImGui::Button("Capture"))
 	{
 		(void)Begin(pProfiler, m_LabelBuffer.data(),

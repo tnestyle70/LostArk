@@ -79,7 +79,9 @@ namespace
 	static_assert(19u == ETOUI(DEFERRED::SOURCE_DIRECTIONAL));
 	static_assert(20u == ETOUI(DEFERRED::SOURCE_POINT));
 	static_assert(21u == ETOUI(DEFERRED::SOURCE_SPOT));
-	static_assert(22u == ETOUI(DEFERRED::END));
+	static_assert(28u == ETOUI(DEFERRED::SOURCE_LUT_BAKE));
+	static_assert(29u == ETOUI(DEFERRED::SOURCE_LUT_BAKE_NEUTRAL));
+	static_assert(30u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)
@@ -88,10 +90,93 @@ namespace
 			fValue >= fMinimum && fValue <= fMaximum;
 	}
 
+
+	bool_t IsValidSourcePostProcess(const SOURCE_POST_PROCESS_SETTINGS& source)
+	{
+		const auto vectorInRange = [](const float3_t& v, float minimum, float maximum)
+		{ return IsFiniteInRange(v.x, minimum, maximum) && IsFiniteInRange(v.y, minimum, maximum) && IsFiniteInRange(v.z, minimum, maximum); };
+		if (!IsFiniteInRange(source.fToneScale, 0.000001f, 64.f) ||
+			!IsFiniteInRange(source.fToneRange, 0.000001f, 128.f) ||
+			!IsFiniteInRange(source.fToneToe, 0.f, 1.f) ||
+			!IsFiniteInRange(source.fDesaturation, 0.f, 1.f) ||
+			!vectorInRange(source.vHighlights, 0.000001f, 64.f) ||
+			!vectorInRange(source.vMidtones, 0.000001f, 64.f) ||
+			!vectorInRange(source.vShadows, -64.f, 64.f) ||
+			!vectorInRange(source.vColorize, 0.f, 64.f) || source.LutLayers.size() > 32u) return false;
+		float weight = 0.f;
+		for (const auto& layer : source.LutLayers)
+		{
+			if (!IsFiniteInRange(layer.fWeight, 0.f, 1.f)) return false;
+			weight += layer.fWeight;
+		}
+		return source.LutLayers.empty() || fabsf(weight - 1.f) < 0.0001f;
+	}
+
+	bool_t SameSourceGrading(const SOURCE_POST_PROCESS_SETTINGS& a, const SOURCE_POST_PROCESS_SETTINGS& b)
+	{
+		const auto equal = [](const float3_t& x, const float3_t& y) { return x.x == y.x && x.y == y.y && x.z == y.z; };
+		if (a.fDesaturation != b.fDesaturation || !equal(a.vHighlights,b.vHighlights) ||
+			!equal(a.vMidtones,b.vMidtones) || !equal(a.vShadows,b.vShadows) ||
+			!equal(a.vColorize,b.vColorize) || a.LutLayers.size() != b.LutLayers.size()) return false;
+		for (size_t i = 0u; i < a.LutLayers.size(); ++i)
+			if (a.LutLayers[i].pLut != b.LutLayers[i].pLut || a.LutLayers[i].fWeight != b.LutLayers[i].fWeight) return false;
+		return true;
+	}
+
+
+	struct ScopedSourceLutState final
+	{
+		ID3D11DeviceContext* context;
+		ID3D11RenderTargetView* targets[8]{};
+		ComPtr<ID3D11DepthStencilView> depth;
+		D3D11_VIEWPORT viewports[16]{}; UINT viewportCount=16u;
+		ComPtr<ID3D11VertexShader> vs; ComPtr<ID3D11PixelShader> ps; ComPtr<ID3D11GeometryShader> gs;
+		ComPtr<ID3D11InputLayout> layout; ComPtr<ID3D11Buffer> vertex,index;
+		UINT stride=0u,offset=0u,indexOffset=0u; DXGI_FORMAT indexFormat=DXGI_FORMAT_UNKNOWN;
+		D3D11_PRIMITIVE_TOPOLOGY topology=D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+		ComPtr<ID3D11BlendState> blend; float blendFactor[4]{}; UINT sampleMask=0u;
+		ComPtr<ID3D11DepthStencilState> depthState; UINT stencilRef=0u;
+		ComPtr<ID3D11RasterizerState> raster;
+		ID3D11ShaderResourceView* resources[128]{}; ID3D11SamplerState* samplers[16]{};
+		ID3D11Buffer* psBuffers[14]{}; ID3D11Buffer* vsBuffers[14]{};
+		explicit ScopedSourceLutState(ID3D11DeviceContext* value) : context(value)
+		{
+			context->OMGetRenderTargets(8u,targets,depth.GetAddressOf());
+			context->RSGetViewports(&viewportCount,viewports);
+			context->VSGetShader(vs.GetAddressOf(),nullptr,nullptr); context->PSGetShader(ps.GetAddressOf(),nullptr,nullptr);
+			context->GSGetShader(gs.GetAddressOf(),nullptr,nullptr); context->IAGetInputLayout(layout.GetAddressOf());
+			context->IAGetVertexBuffers(0u,1u,vertex.GetAddressOf(),&stride,&offset);
+			context->IAGetIndexBuffer(index.GetAddressOf(),&indexFormat,&indexOffset); context->IAGetPrimitiveTopology(&topology);
+			context->OMGetBlendState(blend.GetAddressOf(),blendFactor,&sampleMask);
+			context->OMGetDepthStencilState(depthState.GetAddressOf(),&stencilRef); context->RSGetState(raster.GetAddressOf());
+			context->PSGetShaderResources(0u,128u,resources); context->PSGetSamplers(0u,16u,samplers);
+			context->PSGetConstantBuffers(0u,14u,psBuffers); context->VSGetConstantBuffers(0u,14u,vsBuffers);
+		}
+		~ScopedSourceLutState()
+		{
+			ID3D11ShaderResourceView* empty[128]{}; context->PSSetShaderResources(0u,128u,empty);
+			context->OMSetRenderTargets(8u,targets,depth.Get()); context->RSSetViewports(viewportCount,viewports);
+			context->VSSetShader(vs.Get(),nullptr,0u); context->PSSetShader(ps.Get(),nullptr,0u); context->GSSetShader(gs.Get(),nullptr,0u);
+			context->IASetInputLayout(layout.Get()); ID3D11Buffer* vb=vertex.Get(); context->IASetVertexBuffers(0u,1u,&vb,&stride,&offset);
+			context->IASetIndexBuffer(index.Get(),indexFormat,indexOffset); context->IASetPrimitiveTopology(topology);
+			context->OMSetBlendState(blend.Get(),blendFactor,sampleMask); context->OMSetDepthStencilState(depthState.Get(),stencilRef);
+			context->RSSetState(raster.Get()); context->PSSetShaderResources(0u,128u,resources); context->PSSetSamplers(0u,16u,samplers);
+			context->PSSetConstantBuffers(0u,14u,psBuffers); context->VSSetConstantBuffers(0u,14u,vsBuffers);
+			for(auto* p:targets) if(p)p->Release(); for(auto* p:resources) if(p)p->Release();
+			for(auto* p:samplers) if(p)p->Release(); for(auto* p:psBuffers) if(p)p->Release(); for(auto* p:vsBuffers) if(p)p->Release();
+		}
+	};
+
 	bool_t IsValidRenderQualitySettings(
 		const RENDER_QUALITY_SETTINGS& Settings)
 	{
 		return
+			IsValidSourcePostProcess(Settings.SourcePostProcess) &&
+			IsFiniteInRange(Settings.vBloomTint.x, 0.f, 1.f) &&
+			IsFiniteInRange(Settings.vBloomTint.y, 0.f, 1.f) &&
+			IsFiniteInRange(Settings.vBloomTint.z, 0.f, 1.f) &&
+			IsFiniteInRange(Settings.vBloomTint.w, 1.f, 1.f) &&
+			IsFiniteInRange(Settings.fSceneDesaturation, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.fSSAORadius, 0.01f, 8.f) &&
 			IsFiniteInRange(Settings.fSSAOBias, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.fSSAOIntensity, 0.f, 4.f) &&
@@ -349,12 +434,107 @@ HRESULT CRenderer::Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& 
 	return S_OK;
 }
 
+
+HRESULT CRenderer::Stage_SourceGradingLut(const SOURCE_POST_PROCESS_SETTINGS& source, f32_t gamma,
+	ComPtr<ID3D11ShaderResourceView>& output)
+{
+	if (!m_pShader || !m_pVIBuffer) return E_FAIL;
+	D3D11_TEXTURE2D_DESC desc{};
+	desc.Width=256u; desc.Height=16u; desc.MipLevels=desc.ArraySize=desc.SampleDesc.Count=1u;
+	desc.Format=DXGI_FORMAT_B8G8R8A8_UNORM;
+	desc.Usage=D3D11_USAGE_IMMUTABLE; desc.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+	std::array<ComPtr<ID3D11ShaderResourceView>,4u> inputs;
+	ID3D11ShaderResourceView* inputViews[4]{};
+	float4_t weights{};
+	float neutralWeight=source.LutLayers.empty()?1.f:0.f;
+	size_t inputIndex=0u;
+	for (const auto& layer : source.LutLayers)
+	{
+		if (!layer.pLut) { neutralWeight+=layer.fWeight; continue; }
+		if (inputIndex>=inputs.size()) return E_INVALIDARG;
+		std::array<uint32_t,4096u> pixels{};
+		for(size_t i=0u;i<pixels.size();++i)
+		{
+			const auto& p=layer.pLut->Pixels[i];
+			if(!IsFiniteInRange(p.x,0.f,1.f)||!IsFiniteInRange(p.y,0.f,1.f)||!IsFiniteInRange(p.z,0.f,1.f)||!IsFiniteInRange(p.w,0.f,1.f))return E_INVALIDARG;
+			const auto byte=[](float v){return static_cast<uint32_t>(std::nearbyintf(v*255.f));};
+			pixels[i]=byte(p.z)|(byte(p.y)<<8u)|(byte(p.x)<<16u)|(byte(p.w)<<24u);
+		}
+		D3D11_SUBRESOURCE_DATA initial{}; initial.pSysMem=pixels.data(); initial.SysMemPitch=256u*sizeof(uint32_t);
+		ComPtr<ID3D11Texture2D> texture;
+		HRESULT result=m_pDevice->CreateTexture2D(&desc,&initial,texture.GetAddressOf());
+		if(SUCCEEDED(result))result=m_pDevice->CreateShaderResourceView(texture.Get(),nullptr,inputs[inputIndex].GetAddressOf());
+		if(FAILED(result))return result;
+		inputViews[inputIndex]=inputs[inputIndex].Get();
+		(&weights.x)[inputIndex]=layer.fWeight; ++inputIndex;
+	}
+	desc.Usage=D3D11_USAGE_DEFAULT; desc.BindFlags=D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
+	ComPtr<ID3D11Texture2D> target;
+	ComPtr<ID3D11RenderTargetView> rtv;
+	ComPtr<ID3D11ShaderResourceView> staged;
+	HRESULT result=m_pDevice->CreateTexture2D(&desc,nullptr,target.GetAddressOf());
+	if(SUCCEEDED(result))result=m_pDevice->CreateRenderTargetView(target.Get(),nullptr,rtv.GetAddressOf());
+	if(SUCCEEDED(result))result=m_pDevice->CreateShaderResourceView(target.Get(),nullptr,staged.GetAddressOf());
+	if(FAILED(result))return result;
+	const float d=source.fDesaturation;
+	const float4_t parameters[7]={
+		{source.vShadows.x,source.vShadows.y,source.vShadows.z,1.f-d},
+		{1.f/source.vHighlights.x,1.f/source.vHighlights.y,1.f/source.vHighlights.z,0.f},
+		{source.vMidtones.x,source.vMidtones.y,source.vMidtones.z,0.f},
+		{.3f*d,.59f*d,.11f*d,0.f},
+		{source.vColorize.x,source.vColorize.y,source.vColorize.z,0.f},
+		{1.f,1.f,1.f,1.f/(std::max)(gamma,.0001f)},
+		{0.f,0.f,0.f,0.f}};
+	{
+		ScopedSourceLutState restore(m_pContext.Get());
+		ID3D11RenderTargetView* destination=rtv.Get();
+		m_pContext->OMSetRenderTargets(1u,&destination,nullptr);
+		SetUp_ViewportDesc(256u,16u);
+		if(FAILED(m_pShader->Bind_Textures("g_SourceLutInputs",inputViews,4u)) ||
+			FAILED(m_pShader->Bind_RawValue("g_vSourceLutWeights",&weights,sizeof(weights))) ||
+			FAILED(m_pShader->Bind_RawValue("g_fSourceNeutralLutWeight",&neutralWeight,sizeof(neutralWeight))) ||
+			FAILED(m_pShader->Bind_RawValue("g_vSourceGradingParameters",parameters,sizeof(parameters))) ||
+			FAILED(m_pShader->Begin(ETOUI(inputIndex == 0u ? DEFERRED::SOURCE_LUT_BAKE_NEUTRAL : DEFERRED::SOURCE_LUT_BAKE))) ||
+			FAILED(m_pVIBuffer->Bind_Resources()) || FAILED(m_pVIBuffer->Render())) result=E_FAIL;
+		else result=m_pDevice->GetDeviceRemovedReason();
+		ID3D11ShaderResourceView* empty[4]{};
+		if(FAILED(m_pShader->Bind_Textures("g_SourceLutInputs",empty,4u)))result=E_FAIL;
+	}
+	if(FAILED(result))return result;
+	output=std::move(staged);
+	return S_OK;
+}
+
 HRESULT CRenderer::Apply_RenderQualitySettings(
 	const RENDER_QUALITY_SETTINGS& Settings)
 {
 	if (!IsValidRenderQualitySettings(Settings))
 		return E_INVALIDARG;
 
+	ComPtr<ID3D11ShaderResourceView> stagedLut;
+	if (Settings.SourcePostProcess.bEnabled)
+	{
+		for (auto entry = m_SourceGradingCache.begin(); entry != m_SourceGradingCache.end(); ++entry)
+			if (entry->fGamma == Settings.fGamma && SameSourceGrading(entry->Settings, Settings.SourcePostProcess))
+			{
+				stagedLut = entry->pTexture;
+				auto recent = *entry;
+				m_SourceGradingCache.erase(entry);
+				m_SourceGradingCache.push_back(std::move(recent));
+				break;
+			}
+		if (!stagedLut)
+		{
+			const HRESULT result = Stage_SourceGradingLut(Settings.SourcePostProcess,
+				Settings.fGamma, stagedLut);
+			if (FAILED(result)) return result;
+			// Keep the prior resource available for profile/region rollback. This
+			// bounded cache retains immutable source pixels along with each key.
+			m_SourceGradingCache.push_back({Settings.SourcePostProcess, Settings.fGamma, stagedLut});
+			if (m_SourceGradingCache.size() > 8u) m_SourceGradingCache.erase(m_SourceGradingCache.begin());
+		}
+	}
+	m_pSourceGradingLut = stagedLut;
 	m_RenderQualitySettings = Settings;
 	return S_OK;
 }
@@ -1726,6 +1906,18 @@ HRESULT CRenderer::Render_Final()
 		1.f / static_cast<f32_t>((max)(1u, m_iScenePostWidth)),
 		1.f / static_cast<f32_t>((max)(1u, m_iScenePostHeight)) };
 
+	const auto& source = m_RenderQualitySettings.SourcePostProcess;
+	const int32_t sourceEnabled = source.bEnabled ? 1 : 0;
+	const float scale = (std::max)(0.000001f, source.fToneScale);
+	const float inverseScale = 1.f / scale;
+	const float curveA = .22f * inverseScale;
+	const float curveB = 1.f / (source.fToneRange / (source.fToneRange + curveA));
+	const float4_t sourceCurve(curveA, curveB, sqrtf(curveB * curveA * inverseScale) - curveA, scale);
+	if (FAILED(m_pShader->Bind_RawValue("g_iSourcePostProcessEnabled", &sourceEnabled, sizeof(sourceEnabled))) ||
+		FAILED(m_pShader->Bind_RawValue("g_vSourceToneCurve", &sourceCurve, sizeof(sourceCurve))) ||
+		FAILED(m_pShader->Bind_RawValue("g_fSourceToneToe", &source.fToneToe, sizeof(source.fToneToe))) ||
+		FAILED(m_pShader->Bind_Texture("g_SourceGradingLut", m_pSourceGradingLut))) return E_FAIL;
+
 	if (FAILED(m_pShader->Bind_Texture(
 		"g_SceneHDRTexture",
 		m_pScenePostSRVs[m_iScenePostFinalTarget])))
@@ -1743,6 +1935,12 @@ HRESULT CRenderer::Render_Final()
 		FAILED(m_pShader->Bind_RawValue(
 			"g_fToneMapGamma", &m_RenderQualitySettings.fGamma,
 			sizeof(m_RenderQualitySettings.fGamma))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vSceneBloomTint", &m_RenderQualitySettings.vBloomTint,
+			sizeof(m_RenderQualitySettings.vBloomTint))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fSceneDesaturation", &m_RenderQualitySettings.fSceneDesaturation,
+			sizeof(m_RenderQualitySettings.fSceneDesaturation))) ||
 		FAILED(m_pShader->Bind_RawValue(
 			"g_iFXAAEnabled", &iFXAAEnabled, sizeof(iFXAAEnabled))) ||
 		FAILED(m_pShader->Bind_RawValue(

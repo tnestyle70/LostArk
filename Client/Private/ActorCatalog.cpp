@@ -4,6 +4,7 @@
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "SourceCharacterMaterialParameters.h"
+#include "MapAssetCatalog.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 
 #include <algorithm>
@@ -208,6 +209,24 @@ namespace
             if (character && asset != character->bodyModel &&
                 std::find(character->equipmentModels.begin(),character->equipmentModels.end(),asset)==character->equipmentModels.end() &&
                 std::find(character->weaponModels.begin(),character->weaponModels.end(),asset)==character->weaponModels.end()) return false;
+            if (definition.Find("textureColorSpace"))
+            {
+                // Static actor props carry the map surface schema under their model ID.
+                // Reuse its validator and immutable CMaterial input; no second renderer.
+                if (character) return false;
+                auto fields = definition.Get_Object();
+                fields.erase("modelAssetId");
+                fields["assetId"] = DATA_JSON_VALUE::String(asset);
+                std::string status;
+                if (!CMapAssetCatalog::Parse_ModelSurface(
+                    DATA_JSON_VALUE::Object(std::move(fields)), replacement, status))
+                {
+                    g_Status = "Actor model surface " + asset + ": " + status;
+                    return false;
+                }
+                replacements[asset].push_back(std::move(replacement));
+                continue;
+            }
             const auto* parameters=definition.Find("parameters");
             const auto* textures=definition.Find("textures");
             /* The values are kept as well as packed: the creation screen moves named ones
@@ -346,6 +365,54 @@ namespace
 		return !g_Characters.empty();
 	}
 
+	bool_t ReadDefaultParticleVector(const DATA_JSON_VALUE& row,
+		const char* name, const double minimum, const double maximum,
+		float3_t& output)
+	{
+		const DATA_JSON_VALUE* values = row.Find(name);
+		if (nullptr == values || !values->Is_Array() || values->Get_Array().size() != 3u)
+			return false;
+		f32_t result[3]{};
+		for (size_t axis = 0u; axis < 3u; ++axis)
+		{
+			const auto& value = values->Get_Array()[axis];
+			if (!value.Is_Number() || !std::isfinite(value.Get_Number()) ||
+				value.Get_Number() < minimum || value.Get_Number() > maximum)
+				return false;
+			result[axis] = static_cast<f32_t>(value.Get_Number());
+		}
+		output = { result[0], result[1], result[2] };
+		return true;
+	}
+
+	bool_t ReadDefaultParticles(const DATA_JSON_VALUE& object,
+		std::vector<BOSS_DEFAULT_PARTICLE_ENTRY>& output)
+	{
+		const auto* particles = object.Find("defaultParticles");
+		if (nullptr == particles)
+			return true;
+		if (!particles->Is_Array() || particles->Get_Array().size() > 16u)
+			return false;
+		std::set<std::string> occurrenceIds;
+		for (const auto& row : particles->Get_Array())
+		{
+			BOSS_DEFAULT_PARTICLE_ENTRY entry;
+			if (!row.Is_Object() || row.Get_Object().size() != 6u ||
+				!ReadRequiredString(row, "occurrenceId", entry.occurrenceId) ||
+				!ReadRequiredString(row, "effectAssetId", entry.effectAssetId) ||
+				!ReadRequiredString(row, "boneName", entry.boneName) ||
+				!IsStableId(entry.occurrenceId) || !IsStableId(entry.effectAssetId) ||
+				entry.boneName.size() > 128u ||
+				!ReadDefaultParticleVector(row, "position", -1000.0, 1000.0, entry.position) ||
+				!ReadDefaultParticleVector(row, "rotationDegrees", -360.0, 360.0, entry.rotationDegrees) ||
+				!ReadDefaultParticleVector(row, "scale", 0.0001, 100.0, entry.scale) ||
+				!occurrenceIds.insert(entry.occurrenceId).second)
+				return false;
+			output.push_back(std::move(entry));
+		}
+		return true;
+	}
+
 	bool_t ParseBosses(const DATA_JSON_VALUE& root)
 	{
 		const DATA_JSON_VALUE* pSchema = root.Find("schema");
@@ -365,7 +432,8 @@ namespace
 		std::vector<BOSS_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 16u != value.Get_Object().size())
+			if (!value.Is_Object() ||
+				value.Get_Object().size() != (value.Find("defaultParticles") ? 17u : 16u))
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
@@ -417,6 +485,9 @@ namespace
 			{
 				return false;
 			}
+			if (!ReadDefaultParticles(value, entry.defaultParticles) ||
+				(!entry.defaultParticles.empty() && entry.clientPresentationId != "boss.valtan.client.v1"))
+				return false;
 			const bool_t hasSeparateWeapon = nullptr != pWeaponModel &&
 				pWeaponModel->Is_String() && nullptr != pWeaponScale &&
 				pWeaponScale->Is_Number();

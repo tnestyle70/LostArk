@@ -1368,7 +1368,14 @@ Kouku Workbench의 Collider 여러 개를 선택하면 Box Detail에서 `Set Gro
 
 Collider 선택 그룹은 같은 BOSS anchor, bone/boneTarget/follow 기준의 Collider 두 개 이상에 허용한다. Follow Boss가 꺼진 경우에는 고정되는 기준 시점도 같아야 한다. 그룹 편집은 기존 geometry draft를 사용하고 `Save`로 보존한다. JSON의 optional `selectionGroupId`는 Pattern 안의 편집용 stable ID이며 별도 부모 Transform이나 runtime 충돌 그룹이 아니다. Publisher는 이 필드를 제외하고 각 Collider의 확정 위치·회전을 기존 제품 경로로 전달한다.
 
-Effect 두 개 이상도 같은 Pattern에서 `Set Group`/`Ungroup`을 사용한다. Effect 그룹은 선택과 시간 이동만 공유하며, 각 멤버는 서로 다른 왼 총·오른 총 WORLD anchor와 bone/offset/rotation/follow를 유지한다. Ctrl/Shift 클릭 또는 마키로 고른 Effect들 또는 저장 그룹의 박스 가운데를 드래그하면 상대 시작 간격과 수명을 유지한 채 함께 이동하고, Pattern 경계에서는 전체에 같은 delta를 제한한다. 이 선택은 Collider와 혼합하지 않는다. `selectionGroupId`는 Effect도 Save/Reopen에 보존하고 runtime projection에서는 제외한다.
+Effect 두 개 이상도 같은 Pattern에서 `Set Group`/`Ungroup`을 사용한다. Effect 그룹은 각 멤버의 anchor와 bone/offset/rotation/follow를 유지한다. 같은 좌표 기준이면 Box Detail의 Group position으로 공간 위치도 함께 바꿀 수 있다. Ctrl/Shift 클릭 또는 마키로 고른 Effect들 또는 저장 그룹의 박스 가운데를 드래그하면 상대 시작 간격과 수명을 유지한 채 함께 이동하고, Pattern 경계에서는 전체에 같은 delta를 제한한다. 이 선택은 Collider와 혼합하지 않는다. `selectionGroupId`는 Effect도 Save/Reopen에 보존하고 runtime projection에서는 제외한다.
+
+고정 MAP Effect를 묶으면 Box Detail의 `Group position (world m)`에 그룹 전체 중심 XYZ가 표시된다. 값을 바꾸면 각 멤버에 같은 이동량을 적용하므로 조준점·공 낙하·충돌 폭발·화염 장판의 상대 위치와 시작 간격·수명·회전·크기는 유지된다. BOSS/WORLD 그룹의 위치 입력은 같은 anchor/bone/target/world occurrence/emission/Follow 기준을 요구하며, 고정된 BOSS/WORLD는 시작 시각도 같아야 한다. 서로 다른 좌우 총 기준 등의 그룹은 시간 이동·복제를 계속 사용할 수 있지만 공통 위치 입력에는 제한 이유가 표시된다.
+
+`Duplicate Group (same time)`은 저장된 Effect 선택 그룹을 같은 시작 시각에 복제하고 새 occurrence/group ID를 발급한 뒤 복제본을 선택한다. Save 전 그룹 위치도 복제되며, 새 그룹의 위치를 바꾸면 다른 지점에 같은 연출을 배치할 수 있다. 기존 Ctrl+D는 그룹 뒤 시간대에 복제한다. 같은 시각 복제는 Effect만 지원하고 별도 Logic 등 다른 lane 소유가 연결되면 기존 Ctrl+D를 안내한다. 복제 뒤 preview는 현재 시각·정지 상태를 유지하면서 새 occurrence를 포함하도록 다시 준비한다.
+
+상세창의 `Save Composition` 또는 `Save Sequence`는 기존 문서 Save다. 그룹 metadata와 모든 미저장 문서 편집·각 박스의 확정 위치를 함께 저장하며 별도 부모 Transform이나 공유 리소스의 원본 위치를 바꾸지 않는다. 저장 실패 시 기존 원본과 staged 위치를 보존한다.
+
 
 WORLD anchor의 Effect 복제는 기존 Object를 참조하는 Effect만 복제하며 총/Object 자체를 추가하지 않는다. World 박스를 명시적으로 선택해 복제하면 그 World와 부착 Effect를 함께 복제하고 새 World occurrence ID로 연결한다. WORLD anchor가 아닌 기존 companion Effect의 owner 포함 복제는 유지한다.
 

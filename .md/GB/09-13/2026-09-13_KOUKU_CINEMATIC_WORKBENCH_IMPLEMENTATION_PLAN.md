@@ -316,3 +316,36 @@ post/occurrence와 다른 선택 element는 경계를 만들지 않는다. 사�
 현재 사용자 profiler에서 Composition UI 구성은26프레임 평균83.346ms다. kind/version으로 제외할 Sound4,036행까지 먼저 텍스트 검색하고 고정9개 owner 이름을 반복 정규화하는 경로를 줄인다. 열린 본 선택 콤보에만 전체 이름 목록을 만들고 닫힌 상태는 기존 exact Find_BoneIndex로 검사한다. Toolbar·Timeline·Details·Patterns·Resources·PresentationResources와 검색 구간을 기존 Profiler로 계측한다. 기존 dirty·선택·저장·명령과 리소스 정본은 유지한다.
 
 과거 camera 최초 실패 캐시는 유지되어 있으며 이번 profiler에 camera load 호출은 없다. 별도로 Created Resources의 V1_ELEMENT 이름을 그리면서 Catalog::Find가 파일 읽기를 재시작할 수 있었다. 표시에서는 펼친 metadata와 Find_Loaded만 소비하고 찾지 못하면 저장된 element ID를 표시한다. 이름이 확인된 경우만 Use Source Name을 제공하며 명시 Refresh/Locate Source 경로는 유지한다. 실제 입력의 검색 결과 일치, 반복 표시의 load API 호출0, 수정 TU 컴파일을 검사하고 전체 pane 시간 및 실제 FPS와 좁은 CPU 비교를 구분한다.
+
+### G17.1. 2026-09-14 Effect 리소스 목록과 트리의 반복 구성 제거
+
+사용자의 20:35 Profiler 13프레임에서 확인된 Resources와 Filter 비용을 줄인다. 기존 G17의
+필터 순서와 loaded-only 이름 표시를 유지하면서, 입력이 그대로인 프레임에 같은 inventory의
+분류·검색·정렬·category tree를 다시 만들지 않게 한다. 변경 파일은 기존
+`Client/Public/KoukuSaydonActionWorkbench.h`와 `Client/Private/KoukuSaydonActionWorkbench.cpp`다.
+새 C++ 파일·저장 필드·project/filter 등록은 필요하지 않다.
+
+Workbench가 소유하는 source inventory의 category 경로는 기존 컨테이너의 const reference로
+읽고 owner 분류를 inventory 갱신 때 계산해 재사용한다. Effect source의 필터 결과 목록과
+트리는 `Set_PresentationResources`로 inventory가 교체되거나 V1/V2·owner·검색 조건이 바뀔 때만
+다시 만든다. 이 캐시는 현재 Workbench 세션의 표시 자료이며 Effect/Composition 정본이나
+새 resource identity가 아니다. 재구성할 때 이전 컨테이너의 pointer/index를 새 inventory로
+넘기지 않으며, 명령과 선택은 기존 stable ID로 현재 항목을 조회한다.
+
+현재 Created Effect resource 147행의 필터 목록과 category tree는 `m_iDraftGeneration` 또는
+해당 필터 조건이 바뀔 때 다시 만든다. 드래그·이름 변경·추가·삭제·문서 교체가 반영되는 기존
+draft generation 경계를 사용한다. Source 선택, Locate Source, element 펼치기, timing의
+명시적 새 로드와 Refresh가 요구하는 입력 갱신은 기존 경로를 보존한다. 표시 캐시를 저장,
+재생 또는 resource load의 성공 여부로 사용하지 않고, 실패 상태와 기존 draft도 유지한다.
+
+`Render_PresentationResources`의 기존 Profiler 경계에
+`ImGui.Composition.Resources.Tree.Rebuild`와 `ImGui.Composition.Resources.Tree.Draw`를 추가한다.
+전체 Resources와 자식 Filter/Tree의 포함 관계를 유지하여 구성 비용과 표시 비용을 나누어
+확인한다. 자식 비용을 전체 Resources에 다시 합산하지 않는다.
+
+검증은 같은 inventory·검색의 결과 ID와 순서 보존, 반복 프레임의 재구성 생략,
+inventory refresh·V1/V2·owner·검색·draft generation 변경 때의 재구성을 집중 대조한다.
+기존 `out/CompositionUiPerformance20260914`의 filter probe는 당시 함수 복사본이므로 새 캐시
+검증을 대신하지 않는다. 현재 소스의 관련 TU 컴파일과 diff 검사를 별도로 기록하고, 사용자가
+직접 제품을 빌드한 뒤 동일 조건 Profiler와 선택·Locate·펼치기·Refresh 동작을 확인한다.
+에이전트는 Client/UI 실행·조작·캡처를 하지 않으며 사용자 Effect/Composition JSON은 변경하지 않는다.

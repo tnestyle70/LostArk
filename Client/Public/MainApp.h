@@ -505,9 +505,10 @@ private:
 	};
 	vector<KOUKU_HUD_MODE_DEF> m_KoukuHudModes;
 #ifdef _DEBUG
-	std::array<ARENA_CAMERA_PROFILE, 2> m_ArenaCameraDrafts{};
-	std::array<bool, 2> m_ArenaCameraDraftLoaded{};
-	std::array<std::string, 2> m_ArenaCameraDraftStatus{};
+	std::array<ARENA_CAMERA_PROFILE, 4> m_ArenaCameraDrafts{};
+	std::array<bool, 4> m_ArenaCameraDraftLoaded{};
+	std::array<std::string, 4> m_ArenaCameraDraftStatus{};
+	std::array<std::string, 4> m_ArenaCameraSourceBaselines{};
 	int m_iArenaCameraSelectedMap = 0;
 	uint32_t m_iArenaCameraLastLevel = UINT32_MAX;
 	bool_t m_bKoukuUiPreview = false;

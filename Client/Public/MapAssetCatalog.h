@@ -125,6 +125,8 @@ struct MAP_ASSET_SHARD
 	uint32_t placementCount = {};
 };
 
+class DATA_JSON_VALUE;
+
 class CMapAssetCatalog final
 {
 public:
@@ -152,6 +154,9 @@ public:
 	bool_t Is_Sharded() const { return m_bSharded; }
 	bool_t Is_Ready() const { return m_bReady; }
 
+	// Actor-owned static props use the same source-surface parser as map assets.
+	static bool_t Parse_ModelSurface(const DATA_JSON_VALUE& row,
+		Engine::MODEL_MATERIAL_OVERRIDE& out, std::string& status);
 	static std::filesystem::path Get_MapDataRoot();
 	static std::filesystem::path Get_MapAuthoringRoot();
 	static std::filesystem::path Get_AuthoringPlacementPath(
@@ -162,6 +167,7 @@ private:
 	bool_t Load_AreaStaged(const std::string& areaId);
 	bool_t Resolve_MaterialDocumentPath();
 	bool_t Load_MaterialOverrides();
+	bool_t Parse_MaterialOverrides(const DATA_JSON_VALUE& root);
 
 	/* Reads <AreaId>.mapwater.json beside the runtime catalog when it exists,
 	   then requires that the WATER render modes and the water rows agree in

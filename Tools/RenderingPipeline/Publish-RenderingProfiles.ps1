@@ -123,6 +123,11 @@ function Assert-Color([object]$Value, [string]$Context) {
     Assert-FiniteFloatRange $items[3] 0.0 1.0 "$Context[3]"
 }
 
+function Assert-BloomTint([object]$Value, [string]$Context) {
+    Assert-Vector4 $Value 0.0 1.0 $Context
+    Assert-FiniteFloatRange @($Value)[3] 1.0 1.0 "$Context[3]"
+}
+
 function Assert-NoDuplicateJsonObjectKeys([string]$Path) {
     $validatorPath = Join-Path $PSScriptRoot `
         'assert_no_duplicate_json_keys.py'
@@ -163,13 +168,64 @@ function Remove-FileBestEffort([string]$Path, [string]$Purpose) {
     }
 }
 
+function Assert-SourcePostProcess([object]$Value) {
+    Assert-ExactProperties $Value @('enabled','toneCurve','toneScale','toneRange','toneToe','highlights','midtones','shadows','colorize','desaturation','colorGradingLut') 'sourcePostProcess'
+    if ($Value.enabled -isnot [bool] -or $Value.toneCurve -cne 'UE3_CUSTOMIZABLE') { throw 'sourcePostProcess requires boolean enabled and UE3_CUSTOMIZABLE toneCurve.' }
+    Assert-FiniteFloatRange $Value.toneScale .000001 64 'sourcePostProcess.toneScale'
+    Assert-FiniteFloatRange $Value.toneRange .000001 128 'sourcePostProcess.toneRange'
+    Assert-FiniteFloatRange $Value.toneToe 0 1 'sourcePostProcess.toneToe'
+    Assert-FiniteFloatRange $Value.desaturation 0 1 'sourcePostProcess.desaturation'
+    Assert-Vector3 $Value.highlights .000001 64 'sourcePostProcess.highlights'
+    Assert-Vector3 $Value.midtones .000001 64 'sourcePostProcess.midtones'
+    Assert-Vector3 $Value.shadows -64 64 'sourcePostProcess.shadows'
+    Assert-Vector3 $Value.colorize 0 64 'sourcePostProcess.colorize'
+    $assetId = $Value.colorGradingLut
+    if ($assetId -isnot [string]) { throw 'sourcePostProcess.colorGradingLut must be a string.' }
+    if ($assetId.Length -gt 0) {
+        if ($assetId.Length -gt 1024 -or $assetId -match '[\\:\x00-\x1f]' -or $assetId.StartsWith('/') -or
+            $assetId -match '(^|/)\.\.?(/|$)' -or -not $assetId.EndsWith('.dds',[StringComparison]::Ordinal)) { throw 'Source LUT must use a Resources-relative DDS asset ID.' }
+        $lutPath = Join-Path (Join-Path $repoRoot 'Client\Bin\Resources') $assetId
+        if (-not (Test-Path -LiteralPath $lutPath -PathType Leaf)) { throw "Source LUT is missing: $assetId" }
+        $bytes = [IO.File]::ReadAllBytes($lutPath)
+        if ($bytes.Length -lt 128) { throw 'Source LUT DDS header is truncated.' }
+        $h = @(0..31 | ForEach-Object { [BitConverter]::ToUInt32($bytes,4*$_) })
+        if ($h[0] -ne 0x20534444 -or $h[1] -ne 124 -or $h[3] -ne 16 -or $h[4] -ne 256 -or
+            $h[6] -gt 1 -or $h[7] -gt 1 -or $h[19] -ne 32 -or $h[28] -ne 0) { throw 'Source LUT requires a 256x16 no-mip DDS atlas.' }
+        $offset = 128
+        if ($h[21] -eq 0x30315844) {
+            if ($bytes.Length -lt 148) { throw 'Source LUT DX10 header is truncated.' }
+            $dx = @(0..4 | ForEach-Object { [BitConverter]::ToUInt32($bytes,128+4*$_) })
+            if ($dx[0] -notin @(28,87) -or $dx[1] -ne 3 -or $dx[2] -ne 0 -or $dx[3] -ne 1) { throw 'Source LUT must use linear RGBA8/BGRA8 DDS.' }
+            $offset = 148
+        } else {
+            $bgra = $h[23] -eq 16711680 -and $h[25] -eq 255
+            $rgba = $h[23] -eq 255 -and $h[25] -eq 16711680
+            if ($h[21] -ne 0 -or ($h[20] -band 64) -eq 0 -or $h[22] -ne 32 -or
+                $h[24] -ne 65280 -or $h[26] -ne 4278190080 -or -not ($bgra -or $rgba)) { throw 'Source LUT must use linear RGBA8/BGRA8 DDS.' }
+        }
+        if ($bytes.Length -ne $offset+16384) { throw 'Source LUT DDS payload size is invalid.' }
+    }
+}
+
 function Assert-RenderingQuality([object]$global) {
-    Assert-ExactProperties $global @(
+    $qualityFields = @(
         'ssaoEnabled', 'ssaoRadius', 'ssaoBias', 'ssaoIntensity',
         'ssaoPower', 'ssaoDistanceFade',
         'bloomEnabled', 'bloomThreshold', 'bloomSoftKnee', 'bloomIntensity',
         'bloomScatter', 'exposure', 'whitePoint', 'gamma', 'fxaaEnabled',
-        'fxaaSubpixel', 'fxaaEdgeThreshold', 'fxaaEdgeThresholdMin') 'globalQuality'
+        'fxaaSubpixel', 'fxaaEdgeThreshold', 'fxaaEdgeThresholdMin')
+    if ($null -ne $global.PSObject.Properties['colorAdjustment']) {
+        $qualityFields += 'colorAdjustment'
+        $adjustment = $global.colorAdjustment
+        Assert-ExactProperties $adjustment @('bloomTint', 'desaturation') 'quality.colorAdjustment'
+        Assert-BloomTint $adjustment.bloomTint 'quality.colorAdjustment.bloomTint'
+        Assert-FiniteFloatRange $adjustment.desaturation 0.0 1.0 'quality.colorAdjustment.desaturation'
+    }
+    if ($null -ne $global.PSObject.Properties['sourcePostProcess']) {
+        $qualityFields += 'sourcePostProcess'
+        Assert-SourcePostProcess $global.sourcePostProcess
+    }
+    Assert-ExactProperties $global $qualityFields 'globalQuality'
     if ($global.ssaoEnabled -isnot [bool] -or
         $global.bloomEnabled -isnot [bool] -or
         $global.fxaaEnabled -isnot [bool]) {
@@ -283,7 +339,28 @@ function Assert-RenderingProfileDocument([object]$Document) {
             if ($regions.Count -lt 1 -or $regions.Count -gt 64) { throw 'environmentRegions requires 1 to 64 volumes.' }
             $regionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
             foreach ($region in $regions) {
-                Assert-ExactProperties $region @('regionId','boundsMinimum','boundsMaximum','planes','fog','directionalColor','ambientColor','blendTimeIn','blendTimeOut') 'environmentRegion'
+                $regionFields = @('regionId','boundsMinimum','boundsMaximum','planes','fog','directionalColor','ambientColor','blendTimeIn','blendTimeOut')
+                if ($null -ne $region.PSObject.Properties['priority']) {
+                    $regionFields += 'priority'
+                    Assert-FiniteFloatRange $region.priority -100000.0 100000.0 'environmentRegion.priority'
+                }
+                if ($null -ne $region.PSObject.Properties['postProcess']) {
+                    $regionFields += 'postProcess'
+                    $postProcess = $region.postProcess
+                    $postFields = @('bloomThreshold','bloomIntensity','bloomTint','desaturation')
+                    if ($null -ne $postProcess.PSObject.Properties['sourcePostProcess']) {
+                        $postFields += 'sourcePostProcess'
+                        Assert-SourcePostProcess $postProcess.sourcePostProcess
+                    }
+                    Assert-ExactProperties $postProcess $postFields 'environmentRegion.postProcess'
+                    Assert-FiniteFloatRange $postProcess.bloomThreshold 0.0 64.0 'environmentRegion.postProcess.bloomThreshold'
+                    Assert-FiniteFloatRange $postProcess.bloomIntensity 0.0 16.0 'environmentRegion.postProcess.bloomIntensity'
+                    $regionBloom = [single]([single]$postProcess.bloomIntensity * [single]$profile.bloomIntensityMultiplier)
+                    Assert-FiniteFloatRange $regionBloom 0.0 16.0 'environmentRegion.postProcess.effectiveBloomIntensity'
+                    Assert-BloomTint $postProcess.bloomTint 'environmentRegion.postProcess.bloomTint'
+                    Assert-FiniteFloatRange $postProcess.desaturation 0.0 1.0 'environmentRegion.postProcess.desaturation'
+                }
+                Assert-ExactProperties $region $regionFields 'environmentRegion'
                 if ($region.regionId -isnot [string] -or $region.regionId -cnotmatch '^[A-Za-z0-9_.-]{1,128}$' -or !$regionIds.Add($region.regionId)) { throw 'Invalid or duplicate environment region ID.' }
                 foreach ($bound in @('boundsMinimum','boundsMaximum')) {
                     if (@($region.$bound).Count -ne 3) { throw 'Environment bound requires 3 numbers.' }

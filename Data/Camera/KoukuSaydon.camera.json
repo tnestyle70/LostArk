@@ -2,9 +2,18 @@
   "schema": "lostark.arena-camera",
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "positionOffset": [-3.1500001, 7.75, 3.1500001],
-  "rotationDegrees": [53.1100006, 132, -1.75],
-  "focusDistance": 7.75241899,
-  "fovYDegrees": 60,
-  "followResponse": 12
+  "positionOffset": [
+    -9.5,
+    13.335028842544403,
+    9.5
+  ],
+  "rotationDegrees": [
+    45,
+    135,
+    0
+  ],
+  "focusDistance": 19,
+  "fovYDegrees": 29.39495760413827,
+  "followResponse": 12,
+  "characterSizeMultiplier": 1
 }

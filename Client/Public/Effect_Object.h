@@ -186,6 +186,10 @@ public:
 	void Set_ScreenPostPlaybackEnd(f32_t endSeconds);
 	void Set_Visible(bool_t bVisible);
 	void Reset();
+	bool_t Enable_OwnerSustainedSourceLoops(std::string& strOutError)
+	{
+		return m_Playback.Enable_OwnerSustainedSourceLoops(strOutError);
+	}
 	bool_t Is_Finished() const
 	{
 		return m_Playback.Is_Finished() &&

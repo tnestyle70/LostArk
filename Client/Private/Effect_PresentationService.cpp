@@ -4733,7 +4733,10 @@ bool_t Client::CEffectPresentationService::Spawn(
 			(Desc.bUseWorldRoot &&
 			 Desc.iLevelOwnerIndex == CGameInstance::Get().Get_CurrentLevelID() &&
 			 !Desc.strLevelPlacementId.empty())) &&
-		(!Desc.bExternallySampled || Desc.bLevelOwned);
+		(!Desc.bExternallySampled || Desc.bLevelOwned) &&
+		(!Desc.bOwnerSustainedSourceLoops ||
+			(Desc.bUseWorldRoot && !Desc.bLevelOwned && !Desc.bExternallySampled &&
+				Owner.pBoss && !Owner.pCharacter && Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL));
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
@@ -4862,7 +4865,8 @@ bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
 {
 	OutHandle = {};
 	if (CueDesc.strEffectAssetId.empty() || CueDesc.strOccurrenceId.empty() ||
-		0u == CueDesc.iActionStartTick || nullptr == CueDesc.pBossOwner.lock() ||
+		(0u == CueDesc.iActionStartTick && !CueDesc.bOwnerSustainedSourceLoops) ||
+		nullptr == CueDesc.pBossOwner.lock() ||
 		!CueDesc.pOwner.expired() || CueDesc.bLevelOwned || CueDesc.bUseWorldRoot ||
 		0u != CueDesc.iWorldRootHandle || !Is_NonDegenerateAffineMatrix(RootWorld) ||
 		!Is_ValidCueScaleDescriptor(CueDesc.eScalePolicy, CueDesc.vWorldScale))
@@ -5263,7 +5267,10 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			(!Desc.bUseWorldRoot || Desc.iLevelOwnerIndex !=
 			 CGameInstance::Get().Get_CurrentLevelID() ||
 			 Desc.strLevelPlacementId.empty())) ||
-		(Desc.bExternallySampled && !Desc.bLevelOwned))
+		(Desc.bExternallySampled && !Desc.bLevelOwned) ||
+		(Desc.bOwnerSustainedSourceLoops &&
+			(!Desc.bUseWorldRoot || Desc.bLevelOwned || Desc.bExternallySampled ||
+				!Owner.pBoss || Owner.pCharacter || Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL)))
     {
         strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
         g_strStatus = strOutStatus;
@@ -5416,6 +5423,13 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
+    if (Desc.bOwnerSustainedSourceLoops &&
+        !pEffect->Enable_OwnerSustainedSourceLoops(strOutStatus))
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+        g_strStatus = strOutStatus;
+        return false;
+    }
     if (Desc.bExternalModelCueAnchors) pEffect->Use_ExternalModelCueAnchors();
     if (!Desc.strElementId.empty() && !pEffect->Select_OccurrenceElement(Desc.strElementId, strOutStatus))
     {
