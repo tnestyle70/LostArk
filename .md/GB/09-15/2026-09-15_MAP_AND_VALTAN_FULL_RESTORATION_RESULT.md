@@ -198,3 +198,27 @@ Y9건은 byte 보존했다. 근거: `CharacterSelect/motion-placement-restoratio
 build 완료 뒤 사용자가 Server/Client를 갱신해 F1 Player Follow Camera와 Rendering Workbench의
 Benchmark를 확인한다. Client나 UI를 에이전트가 실행하거나 visual PASS를 대신 기록하지 않는다.
 Git 제외 Resources의 추가 경로는 위 범위와 대응 설치 기록을 함께 공유해야 한다.
+
+## G07. 사용자 밝기 회귀 보고에 따른 기본 렌더링 복구
+
+사용자는 Character Select부터 전체 화면이 과도하게 밝아졌다고 보고했으며 쿠크에서도
+밝고 뿌연 바닥을 첨부했다. HUD에 비해 맵의 어두운 무늬·색 대비가 낮아진 모습이다.
+첨부 화면을 분석했으며 직접 Client 캡처나 최종 visual PASS를 수행하지 않았다.
+
+`579d9b90`에서 기존14개 profile 중 네 맵의 기본값이 바뀌었다. 쿠크는 Bloom threshold
+2.74→0.7, intensity0.5→0.9, exposure0.73→1, gamma1.905→2.2, Source UE3 tone 활성과
+11개 환경영역 후처리가 함께 적용됐다. Character Select도 기존 배율과 tone 경로가 바뀌었다.
+개별 원본식의 수치 검증을 현재 맵 전체의 활성 후처리 승인으로 확대했던 것이 회귀 범위다.
+
+Character Select/Bern/Valtan/Kouku의 기본 profile을 `579d9b90^`
+(`16d62e74c16185f1f70e467135a6b9621a46314e`) 객체로 복구하고 revision44로 게시했다.
+기존14개 객체는 이전값과 같으며, 별도 before/source8개 및 미변경18개 profile 텍스트를
+보존했다. globalQuality, 쿠크 별도 scene6개, geometry·재질·카메라는 변경하지 않았다.
+source shader는 선택 profile에서만 활성화되므로 공통 shader를 다시 수정하지 않았다.
+
+Authored Validate / Publish / Runtime Validate, 양쪽 profile·globalQuality 일치,
+이전 객체 및 미변경 profile 보존, `git diff --check`를 통과했다. 근거는
+`out/RenderingBrightnessRegression20260915/profile-restore.receipt.json`이다.
+Rendering 데이터 수정에는 EXE 빌드가 필요하지 않다. 실행 중 Client에는 F1 → Tools →
+Rendering Workbench → Authoring Pipeline → Reload Runtime을 사용자가 실행한다.
+옛 catalog를 가진 Client에서 Save를 먼저 누르지 않는다. 화면 복구 확인은 대기 상태다.

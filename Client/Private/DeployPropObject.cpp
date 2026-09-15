@@ -184,7 +184,11 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(desc)))
 		return E_FAIL;
+	// Native surfaces own their material inputs and bypass the legacy overlay
+	// in Should_RenderDeferredEmissiveOverlay; admission must use the same rule.
+	const auto* crackSurface = m_pIntactModelCom->Get_MaterialSurface(1u);
 	if (desc.deferredEmissiveOverlay &&
+		(!crackSurface || crackSurface->family == MODEL_SURFACE_FAMILY::LEGACY) &&
 		(m_pIntactModelCom->Get_NumMeshes() <= 1u ||
 			!m_pIntactModelCom->Has_MaterialTexture(
 				1u, aiTextureType_EMISSIVE)))

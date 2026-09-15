@@ -325,6 +325,15 @@ float3 Load_MaterialSpecular(PS_IN input, float legacyMask)
         g_MaterialSpecularTexture.Load(pixel).rgb : legacyMask.xxx;
 }
 
+// Recovered floor materials own RGB reflectance. Map lights carry incident
+// radiance in diffuse and leave the separate legacy Phong control at zero.
+// Marker 0/2 retain that legacy control, including an authored zero value.
+float4 Resolve_MaterialSpecularLight(PS_IN input, DEFERRED_LIGHT_INPUT light)
+{
+    return g_DepthTexture.Load(int3(int2(input.vPosition.xy), 0)).w == 1.f ?
+        float4(light.diffuse.rgb, 0.f) : light.specular;
+}
+
 float3 Decode_MapPBRGeometricNormal(int3 pixel)
 {
     // Load preserves the exact RGBA32_FLOAT mantissa. Bilinear sampling must
@@ -629,7 +638,7 @@ PS_OUT_LIGHT Resolve_DirectionalLight(PS_IN In, DEFERRED_LIGHT_INPUT light)
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
-    Out.vSpecular = light.specular *
+    Out.vSpecular = Resolve_MaterialSpecularLight(In, light) *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
             specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fDirectionalShadow;
     
@@ -733,7 +742,7 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot, DEFERRED_LIGHT_INPUT light
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
-    Out.vSpecular = light.specular *
+    Out.vSpecular = Resolve_MaterialSpecularLight(In, light) *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
             specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fAtt;
     

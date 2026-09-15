@@ -1617,3 +1617,12 @@ ID·상대 시작·위치를 각각 보존한다. emitter loop 변경으로 서�
 Append의 기본 길이도 Detail 수명 합산 대신 기존 Playback의 source particle tail 계산을 재사용하며 이미 저장된 사용자 occurrence 길이는 보존한다.
 원본 named timing과 프로젝트 보간 투영은 구분한다. 구체 수치는
 [사각형 장판 G18 결과](09-12/2026-09-12_KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT.md#g18-쇼타임-사각형-예고와-3회-공습-폭발-등록--2026-09-14)에 둔다.
+
+### 원본 재질 전환 시 생성 검사와 활성 후처리도 함께 확인한다
+
+- Deploy의 native surface가 legacy 발광 overlay를 건너뛰면 Initialize도 같은 family를 기준으로
+  검사한다. 원본에 없는 EMISSIVE texture를 필수로 요구하면 첫 바닥에서 Level staging이 실패한다.
+  파괴 바닥의 overlay flag는 Map Effect owner 계약이므로 입장 우회를 위해 끄지 않는다.
+- 원본 tone/LUT의 수치 일치는 현재 맵의 완성된 조명 출력과 화면 일치를 뜻하지 않는다. 기존
+  활성 맵 profile의 노출·Bloom·gamma·region까지 한 번에 대체하지 않는다. 밝기 회귀는 이전
+  활성 profile로 복구하고 source 비교용 profile과 재질·geometry 복원은 분리해 유지한다.
