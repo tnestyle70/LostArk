@@ -99,3 +99,20 @@ UModel이 native half 0을 3.0517578125e-5로 내보낸 UV0 세 정점은 native
 허용 오차를 넓히지 않으며 다른 불일치는 실패로 처리한다. 원본에 없는 COLOR·RNM을
 추가하지 않는다. 525의 sky-cinema와 528의 opaque sky는 shader와 background 소비자가
 다르므로 이번527의 연결 수에 포함하지 않는다.
+
+## G08. 원본 바닥 재질 전환 뒤 Deploy 입장 설정 교정
+
+`CDeployPropObject::Initialize`는 `deferredEmissiveOverlay=true`인 정적 모델의
+두 번째 mesh에 EMISSIVE texture가 있는지 검사한다. 원본 A/B의 crack surface는
+발광하지 않는데, geometry 교체 뒤 Imported deploy catalog의 기존 overlay 값1이 남았다.
+렌더 단계에서 native surface의 중복 발광을 막는 것만으로 초기화 검사를 통과하지 못한다.
+
+해당 flag는 Map Effect의 파괴 바닥 surface owner 계약에서도 사용하므로 유지한다.
+`DeployPropObject.cpp`의 초기화가 기존 `Should_RenderDeferredEmissiveOverlay`와 같은
+surface family를 판정하게 한다. native surface는 기존 map material 준비·렌더 경로가
+입력을 검증하고, LEGACY surface에만 기존 EMISSIVE texture 필수 검사를 적용한다.
+가짜 emissive나 별도 fallback을 추가하지 않는다. public header·project 등록은 변하지 않는다.
+
+재질·리소스·placement·파괴 상태와 다른 Deploy10종을 보존한다. 실제 설치 A/B의 재질
+입력과 초기화 분기, Area Validate/Check, 최소 컴파일과 Product build를 확인한다.
+실제 입장과 화면 확인은 사용자가 Lobby → Valtan에서 수행한다.

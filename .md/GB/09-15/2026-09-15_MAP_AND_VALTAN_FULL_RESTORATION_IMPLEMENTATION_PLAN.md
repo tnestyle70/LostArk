@@ -78,3 +78,26 @@ Character Select 중앙 문양은 원본 mesh/UV/MIC/배치 누락 여부부터 
 변경 기능의 최소 컴파일과 정상 Debug Product build, `git diff --check`를 확인한다.
 이미 통과한 검사를 근거 없이 반복하거나 광역 하네스를 추가하지 않는다.
 RESULT에 실제 반영·원본 근거·검증·남은 기능과 사용자 화면 확인을 분리해 기록한다.
+
+## G06. 활성 맵의 밝기 회귀 복구
+
+사용자가 Character Select부터 쿠크까지 전체 화면의 과도한 밝기·번짐을 보고하고 빠른
+복구를 요청했다. 네 기본 profile만 `579d9b90^`의 quality·조명·안개·환경영역 객체로 돌린다.
+기존 globalQuality, 나머지 scene profile과 추가 before/source 비교 profile은 유지한다.
+메시·재질·카메라 복원 및 source shader 구현을 되돌리지 않는다. revision을 올리고 기존
+Rendering publisher로 검증·게시한 뒤 사용자 Reload Runtime으로 활성 화면을 재적용한다.
+
+## G07. 쿠크 3관문 직접 반사광 입력 연결
+
+3관문 FLOOR08/FLOOR08A의 geometry·재질·D/N/S/reflection은 기존 복구본과 같지만,
+광원 제출은 specular RGB를 0으로 만들고 선택 바닥의 marker1 경로는 이를 곱한다.
+Engine `Shader_Deferred.hlsl`의 선택 바닥 직접 반사만 광원의 diffuse radiance를 소비하도록
+연결한다. 기존 Phong lobe·재질 RGB·감쇠·그림자는 유지하고 marker0/2의 legacy specular
+설정과 다른 native family는 보존한다. 이 변경은 직접 반사 입력 단절의 교정이며 원본
+Blinn 조명식이나 바닥 전체 검정 증상의 최종 시각 복원으로 설명하지 않는다.
+
+기존 PointLightFalloffContractHarness에서 실제 제품 CSO의 Directional/Point/Spot을
+marker0/1/2와 specular 0/양수 입력으로 draw/readback한다. 수정 전 marker1 반사 0을
+재현하고 수정 후 유한 RGB 및 legacy 보존을 검사한다. 정상 Debug Product Build로
+동일 CSO를 배포하며 사용자 저장 RenderingProfiles·maplights·Resources는 바꾸지 않는다.
+새 프로젝트·파일·public 데이터 계약은 추가하지 않는다. 최종 화면은 사용자 확인 항목이다.

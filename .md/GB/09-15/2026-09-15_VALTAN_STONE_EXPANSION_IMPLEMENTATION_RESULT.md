@@ -92,3 +92,25 @@ renderer adapter와 구분한다. 이 문서는 석재 이외 전투공간 전�
 복원이 끝났다고 주장하지 않는다.
 
 Client/UI 실행·조작·캡처와 visual PASS는 수행하지 않았다. 사용자 화면 비교는 수치 검증과 별개다.
+
+## G06. 원본 바닥 재질의 Deploy staging 실패 교정
+
+사용자가 `overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01a_sm`에서 입장 rollback을 보고했다.
+설치 A/B는 모두 mesh2개이며 mesh1은 `bg_rad_valtan_crack_floor01_mi_lsj`, emissive 경로는
+빈 문자열이다. BossCatalog의 정확한 model/material binding은 `bg-source-opaque-masked`이고
+참조 texture 누락은0이다. 기존 cook receipt와 설치 SHA도 일치했다.
+
+`CDeployPropObject::Initialize`가 native surface에도 legacy EMISSIVE texture를 요구한 것이
+이 입력의 실패 조건이다. 기존 `Should_RenderDeferredEmissiveOverlay`와 동일하게 native
+surface를 구분하고 LEGACY surface에만 기존 필수 검사를 유지했다. native surface는 기존
+MapAssetRenderUtils/CModel/CMaterial 경로로 그린다. public header와 shader는 변경하지 않았다.
+
+deploy flag를0으로 바꾸는 시도는 Map Effect의 파괴 바닥 owner 검증에서 거절됐다. 해당 두 행은
+즉시 원복했고 catalog·placement·파괴 상태·Resources는 기존 입력을 유지했다. Area publisher의
+Validate 및 Publish/Check를 통과했다. publish는 Git checkout의 CRLF를 정본 LF로 정규화했으며
+runtime의 의미상 Git diff는 없다. 전체13,184배치 SHA도 이전값과 같다.
+
+실제 변경 CPP를 동일 VS Insiders/v143 14.44 x64 Debug 도구로 독립 컴파일해 통과했다.
+`out/ValtanAdmission20260915/compile-deploy.log`, `installed-model-audit.json`에 근거를 남겼다.
+Product 링크는 사용 중인 Client/Server 종료를 기다리므로 아직 실행하지 않았다. 기존 프로세스를
+임의 종료하거나 수정 EXE 적용·실제 입장 성공·visual PASS로 기록하지 않는다.
