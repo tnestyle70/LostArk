@@ -279,6 +279,8 @@ public:
 	bool_t Create_CameraShot(std::string_view name, std::string& outShotId, std::string& outStatus);
 	bool_t Update_CameraShot(const KAKUL_CAMERA_SHOT& shot, std::string& outStatus);
 	bool_t Capture_CameraShot(std::string_view shotId, std::string& outStatus);
+	bool_t Duplicate_CameraShot(std::string_view sourceShotId, std::string_view name, std::string& outShotId, std::string& outStatus);
+	bool_t Discard_UnsavedCameraShot(std::string_view shotId, std::string& outStatus);
 	bool_t Save_CameraShots(std::string& outStatus);
 	static bool_t Parse_CameraShots(std::string_view text, std::vector<KAKUL_CAMERA_SHOT>& outShots, std::string& outStatus);
 	static VALTAN_CINEMATIC_CAMERA_CUE CameraShot_ToCue(const KAKUL_CAMERA_SHOT& shot);
