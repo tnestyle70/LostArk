@@ -722,6 +722,7 @@ namespace
 		LOCATION_PRIMITIVE_CYLINDER_SPIN,
 		LOCATION_CIRCLE_SURFACE,
 		VELOCITY,
+		VELOCITY_CONE,
 		VELOCITY_INHERIT_PARENT,
 		VECTOR_FIELD_SCALE,
 		SIZE,
@@ -774,6 +775,8 @@ namespace
 			return SOURCE_SPAWN_MODULE_KIND::LOCATION_CIRCLE_SURFACE;
 		if (SourceClass_Matches(Module, "particlemodulevelocity"))
 			return SOURCE_SPAWN_MODULE_KIND::VELOCITY;
+		if (SourceClass_Matches(Module, "particlemodulevelocitycone"))
+			return SOURCE_SPAWN_MODULE_KIND::VELOCITY_CONE;
 		if (SourceClass_Matches(Module, "particlemodulevelocityinheritparent"))
 			return SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT;
 		if (SourceClass_Matches(Module, "particlemodulevectorfieldscale"))
@@ -5787,6 +5790,51 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				State, Module, "startvelocityradial", fEmitterTimeSeconds, 0.f);
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Normalize3(Particle.vPosition), fRadial * 0.01f));
+		}
+		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_CONE)
+		{
+			// Cascade VelocityCone: a direction Angle degrees off the cone axis at a
+			// random lathe angle, built in the frame UE3 derives from Direction.
+			const f32_t fAngle = XMConvertToRadians(Evaluate_ModuleFloat(
+				State, Module, "angle", fEmitterTimeSeconds, 0.f));
+			const f32_t fSpeed = Evaluate_ModuleFloat(
+				State, Module, "velocity", fEmitterTimeSeconds, 0.f);
+			const f32_t fLathe = Next_ModuleRandom(State, Module) * XM_2PI;
+			const float3_t Cone(-std::sin(fAngle) * std::cos(fLathe),
+				-std::sin(fAngle) * std::sin(fLathe), std::cos(fAngle));
+			float3_t Forward(SourceNumber(Module, "direction.x", 0.f),
+				SourceNumber(Module, "direction.y", 0.f), SourceNumber(Module, "direction.z", 1.f));
+			if (Length3(Forward) <= 0.f)
+				Forward = float3_t(0.f, 0.f, 1.f);
+			Forward = Normalize3(Forward);
+			const auto Cross = [](const float3_t& A, const float3_t& B)
+			{
+				return float3_t(A.y * B.z - A.z * B.y, A.z * B.x - A.x * B.z, A.x * B.y - A.y * B.x);
+			};
+			float3_t Up(0.f, 0.f, 1.f);
+			float3_t Right(1.f, 0.f, 0.f);
+			if (std::fabs(std::fabs(Forward.z) - 1.f) > 1.0e-6f)
+			{
+				Right = Cross(Up, Forward);
+				Up = Cross(Forward, Right);
+			}
+			else
+			{
+				Up = Cross(Forward, Right);
+				Right = Cross(Up, Forward);
+			}
+			Right = Normalize3(Right);
+			Up = Normalize3(Up);
+			const float3_t Direction = Add3(Add3(Scale3(Right, Cone.x), Scale3(Up, Cone.y)), Scale3(Forward, Cone.z));
+			float3_t StartVelocity = UE3_CentimetersToClient(Scale3(Direction, fSpeed));
+			if (Element.Detail.Particle.bLocalSpace &&
+				SourceBool(Module, "binworldspace", false))
+			{
+				const matrix_t InverseRoot = XMMatrixInverse(
+					nullptr, XMLoadFloat4x4(&ElementWorld));
+				StartVelocity = Transform_Normal(StartVelocity, InverseRoot);
+			}
+			Particle.vVelocity = Add3(Particle.vVelocity, StartVelocity);
 		}
 		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT)
 		{

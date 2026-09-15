@@ -87,6 +87,7 @@ VALTAN_V1_ALIAS_PATH = (
     "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
 )
 VALTAN_BOSS_CATALOG_PATH = "Data/Actors/BossCatalog.json"
+VEHICLE_CATALOG_PATH = "Data/Actors/VehicleCatalog.json"
 PLAYER_SKILLS_PATH = "Data/Balance/PlayerSkills.json"
 VALTAN_DRAFT_PATH = "Data/Effects/ValtanPatternAuthoringEffects.json"
 EFFECT_ASSET_PAYLOAD = re.compile(
@@ -1130,6 +1131,18 @@ def _validate_product_effect_reachability(
                     alias.get(field), f"Valtan V1 Effect alias {index}.{field}"
                 )
             )
+
+    if (root / VEHICLE_CATALOG_PATH).is_file():
+        vehicle_document, _ = _read_json(root / VEHICLE_CATALOG_PATH)
+        for vehicle in vehicle_document.get("vehicles", []):
+            for skill in vehicle.get("skills", []) if isinstance(vehicle, dict) else []:
+                for index, cue in enumerate(skill.get("effectCues", []) if isinstance(skill, dict) else []):
+                    reachable_ids.add(
+                        _require_stable_id(
+                            cue.get("effectAssetId") if isinstance(cue, dict) else None,
+                            f"VehicleCatalog skill {skill.get('skillId')} effectCue {index}.effectAssetId",
+                        )
+                    )
 
     missing_product = sorted(reachable_ids - product_effect_ids)
     if missing_product:

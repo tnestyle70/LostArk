@@ -220,6 +220,25 @@ struct VEHICLE_SKILL_RIDER_ENTRY final
 	std::vector<std::string> clips;
 };
 
+/* An original Particle notify group of one vehicle skill clip, restored as one
+V1 Effect document. startMs is relative to that clip's start in the chain. */
+struct VEHICLE_SKILL_EFFECT_CUE final
+{
+	std::uint32_t clipIndex = 0u;
+	std::string effectAssetId;
+	std::uint32_t startMs = 0u;
+	bool_t bStopAtCueEnd = false;
+};
+
+/* An original AKEvent of one vehicle skill clip, played from the Vehicle sound
+catalog class. */
+struct VEHICLE_SKILL_SOUND_CUE final
+{
+	std::uint32_t clipIndex = 0u;
+	std::string event;
+	std::uint32_t startMs = 0u;
+};
+
 /* One vehicle skill's presentation: the quick slot it sits on and the clip chains
 the vehicle and each rider class play back to back while the Server runs it. */
 struct VEHICLE_SKILL_ENTRY final
@@ -228,6 +247,8 @@ struct VEHICLE_SKILL_ENTRY final
 	std::string inputSlot;
 	std::vector<std::string> vehicleClips;
 	std::vector<VEHICLE_SKILL_RIDER_ENTRY> riders;
+	std::vector<VEHICLE_SKILL_EFFECT_CUE> effectCues;
+	std::vector<VEHICLE_SKILL_SOUND_CUE> soundCues;
 
 	const VEHICLE_SKILL_RIDER_ENTRY* Find_Rider(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const

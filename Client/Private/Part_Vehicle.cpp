@@ -130,6 +130,49 @@ bool_t CPart_Vehicle::Seek_SkillChain(
 	return false;
 }
 
+bool_t CPart_Vehicle::Try_Get_SkillClipWindow(
+	const std::vector<std::string>& clips,
+	const std::size_t clipIndex,
+	f32_t& outStartSeconds,
+	f32_t& outDurationSeconds) const
+{
+	if (nullptr == m_pModelCom || clipIndex >= clips.size())
+		return false;
+	f32_t start = 0.f;
+	for (std::size_t step = 0u; step <= clipIndex; ++step)
+	{
+		uint32_t animation = UINT32_MAX;
+		for (uint32_t index = 0u; index < m_pModelCom->Get_NumAnimations(); ++index)
+		{
+			const char_t* pName = m_pModelCom->Get_AnimationName(index);
+			if (nullptr != pName && clips[step] == pName)
+			{
+				animation = index;
+				break;
+			}
+		}
+		f32_t position = 0.f;
+		f32_t duration = 0.f;
+		const f32_t ticksPerSecond = UINT32_MAX == animation ? 0.f :
+			m_pModelCom->Get_AnimationTickPerSecond(animation);
+		if (UINT32_MAX == animation ||
+			!m_pModelCom->Get_AnimationProgress(animation, position, duration) ||
+			!std::isfinite(duration) || duration <= 0.f ||
+			!std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f)
+		{
+			return false;
+		}
+		if (step == clipIndex)
+		{
+			outStartSeconds = start;
+			outDurationSeconds = duration / ticksPerSecond;
+			return true;
+		}
+		start += duration / ticksPerSecond;
+	}
+	return false;
+}
+
 void CPart_Vehicle::Resume_Locomotion()
 {
 	if (nullptr == m_pModelCom || !m_isPlayingSkill)

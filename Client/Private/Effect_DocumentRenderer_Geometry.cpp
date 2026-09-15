@@ -674,7 +674,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal material shader bind failed.", hResult);
-    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3711u &&
+    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 3967u &&
         FAILED(m_pDecalShader->Bind_RawValue("g_KoukuDecalProjection",
             &Projection.vSourceProjection, sizeof(Projection.vSourceProjection))))
         return Fail_RenderOperation("Kouku source decal plane binding failed.", E_FAIL);

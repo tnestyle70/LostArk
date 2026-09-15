@@ -66,6 +66,9 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bOwnerSustainedSourceLoops = false;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
+	/* Character-owned vehicle skill cue: source bones and the presentation root
+	   come from the Character's vehicle part model, never its body. */
+	bool_t bVehicleModelAnchors = false;
 	// External occurrence end age; zero retains the authored screen-post duration.
 	f32_t fExternalPlaybackEndSeconds = 0.f;
 	// Set by external world-root sampling; shares the existing playback history path.

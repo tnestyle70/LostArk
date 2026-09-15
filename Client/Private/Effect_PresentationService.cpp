@@ -163,6 +163,7 @@ namespace
 		std::shared_ptr<Client::CCharacter> pCharacter;
 		std::shared_ptr<Client::CValtan> pBoss;
 		uint32_t iLevelIndex = ETOUI(Client::LEVEL::END);
+		bool_t bVehicleModel = false;
 
 		bool_t Is_Valid() const
 		{
@@ -176,7 +177,8 @@ namespace
 		bool_t Try_Get_PresentationRoot(float4x4_t& Out) const
 		{
 			if (nullptr != pCharacter)
-				return pCharacter->Try_Get_PresentationRootMatrix(&Out);
+				return bVehicleModel ? pCharacter->Try_Get_VehicleWorldMatrix(Out) :
+					pCharacter->Try_Get_PresentationRootMatrix(&Out);
 			return nullptr != pBoss &&
 				pBoss->Try_Get_PresentationRootMatrix(&Out);
 		}
@@ -194,8 +196,9 @@ namespace
 
 		std::shared_ptr<Engine::CModel> Get_Model() const
 		{
-			return nullptr != pCharacter ? pCharacter->Get_BodyModel() :
-				(nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr);
+			if (nullptr != pCharacter)
+				return bVehicleModel ? pCharacter->Get_VehicleModel() : pCharacter->Get_BodyModel();
+			return nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr;
 		}
 	};
 
@@ -242,6 +245,7 @@ namespace
 		Client::EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
 		bool_t bExternalHistorySampled = false;
 		std::string strLevelPlacementId;
+		bool_t bVehicleModelAnchors = false;
     };
 
 	bool_t Commit_ExternalTransformHistorySample(
@@ -273,7 +277,8 @@ namespace
 	{
 		return {
 			Desc.pOwner.lock(), Desc.pBossOwner.lock(),
-			Desc.bLevelOwned ? Desc.iLevelOwnerIndex : ETOUI(Client::LEVEL::END)
+			Desc.bLevelOwned ? Desc.iLevelOwnerIndex : ETOUI(Client::LEVEL::END),
+			Desc.bVehicleModelAnchors
 		};
 	}
 
@@ -281,7 +286,8 @@ namespace
 	{
 		return {
 			Effect.pOwner.lock(), Effect.pBossOwner.lock(),
-			Effect.bLevelOwned ? Effect.iLevelIndex : ETOUI(Client::LEVEL::END)
+			Effect.bLevelOwned ? Effect.iLevelIndex : ETOUI(Client::LEVEL::END),
+			Effect.bVehicleModelAnchors
 		};
 	}
 
@@ -3932,7 +3938,9 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	// Source particles are already meters. These measured Warlord/Lance
 	// combined bones retain a 0.01 import basis while translations are meters.
 	// Normalize that basis once; preserve source StartSize and model geometry.
-	return strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||
+	// Vehicle models (admission 0.0001, rig root 100) measure the same 0.01 basis.
+	return strEffectAssetId.starts_with("effect.vehicle.") ||
+		strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip1.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip2.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip3.full.restore" ||
@@ -5268,6 +5276,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			 CGameInstance::Get().Get_CurrentLevelID() ||
 			 Desc.strLevelPlacementId.empty())) ||
 		(Desc.bExternallySampled && !Desc.bLevelOwned) ||
+		(Desc.bVehicleModelAnchors &&
+			(nullptr == Owner.pCharacter || Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
 		(Desc.bOwnerSustainedSourceLoops &&
 			(!Desc.bUseWorldRoot || Desc.bLevelOwned || Desc.bExternallySampled ||
 				!Owner.pBoss || Owner.pCharacter || Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL)))
@@ -5495,6 +5505,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.bExternallySampled = Desc.bExternallySampled;
 	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
 	Active.strLevelPlacementId = Desc.strLevelPlacementId;
+	Active.bVehicleModelAnchors = Desc.bVehicleModelAnchors;
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;

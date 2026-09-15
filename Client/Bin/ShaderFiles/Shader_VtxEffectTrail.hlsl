@@ -70,7 +70,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         clip(-1.f);
         return output;
     }
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.runtimeUV;

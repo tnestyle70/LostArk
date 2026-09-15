@@ -141,6 +141,19 @@ namespace
 			});
 	}
 
+	// Same shape as the Effect source validator's stable Effect ID.
+	bool_t IsEffectAssetId(const std::string& value)
+	{
+		if (value.empty() || value.size() > 128u || 0 == std::isalnum(static_cast<unsigned char>(value.front())))
+			return false;
+		return std::all_of(value.begin(), value.end(),
+			[](const unsigned char character)
+			{
+				return (0 != std::isdigit(character) || (character >= 'a' && character <= 'z')) ||
+					character == '_' || character == '-' || character == '.';
+			});
+	}
+
 	bool_t IsResourceId(const std::string& value)
 	{
 		if (!value.starts_with("Character/") ||
@@ -909,6 +922,50 @@ namespace
 		return !g_Monsters.empty();
 	}
 
+	/* formatVersion 3 cue arrays are required. A malformed cue is dropped on its
+	own so the vehicle and its skill keep their clips; an unknown effectAssetId is
+	rejected later by the prepared Effect catalog lookup. */
+	bool_t ParseVehicleSkillCues(const DATA_JSON_VALUE& skillValue, VEHICLE_SKILL_ENTRY& skill)
+	{
+		const DATA_JSON_VALUE* pEffects = skillValue.Find("effectCues");
+		const DATA_JSON_VALUE* pSounds = skillValue.Find("soundCues");
+		if (nullptr == pEffects || !pEffects->Is_Array() || pEffects->Get_Array().size() > 16u ||
+			nullptr == pSounds || !pSounds->Is_Array() || pSounds->Get_Array().size() > 16u)
+		{
+			return false;
+		}
+		const std::uint32_t clipCount = static_cast<std::uint32_t>(skill.vehicleClips.size());
+		for (const DATA_JSON_VALUE& value : pEffects->Get_Array())
+		{
+			VEHICLE_SKILL_EFFECT_CUE cue;
+			std::string stopPolicy;
+			if (!value.Is_Object() || 4u != value.Get_Object().size() ||
+				!ReadRequiredU32(value, "clipIndex", cue.clipIndex) || cue.clipIndex >= clipCount ||
+				!ReadRequiredString(value, "effectAssetId", cue.effectAssetId) || !IsEffectAssetId(cue.effectAssetId) ||
+				!ReadRequiredU32(value, "startMs", cue.startMs) ||
+				!ReadRequiredString(value, "stopPolicy", stopPolicy) ||
+				(stopPolicy != "NATURAL" && stopPolicy != "CUE_END"))
+			{
+				continue;
+			}
+			cue.bStopAtCueEnd = stopPolicy == "CUE_END";
+			skill.effectCues.push_back(std::move(cue));
+		}
+		for (const DATA_JSON_VALUE& value : pSounds->Get_Array())
+		{
+			VEHICLE_SKILL_SOUND_CUE cue;
+			if (!value.Is_Object() || 3u != value.Get_Object().size() ||
+				!ReadRequiredU32(value, "clipIndex", cue.clipIndex) || cue.clipIndex >= clipCount ||
+				!ReadRequiredString(value, "event", cue.event) || cue.event.empty() ||
+				!ReadRequiredU32(value, "startMs", cue.startMs))
+			{
+				continue;
+			}
+			skill.soundCues.push_back(std::move(cue));
+		}
+		return true;
+	}
+
 	bool_t ParseVehicles(const DATA_JSON_VALUE& root)
 	{
 		const DATA_JSON_VALUE* pSchema = root.Find("schema");
@@ -918,11 +975,12 @@ namespace
 			nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.vehicle-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 2.0 ||
+			(pVersion->Get_Number() != 2.0 && pVersion->Get_Number() != 3.0) ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
 		}
+		const bool_t hasSkillCues = pVersion->Get_Number() == 3.0;
 
 		const auto readClips = [](const DATA_JSON_VALUE* pClips, std::vector<std::string>& outClips)
 		{
@@ -996,7 +1054,7 @@ namespace
 			{
 				VEHICLE_SKILL_ENTRY skill;
 				const DATA_JSON_VALUE* pSkillRiders = skillValue.Find("riders");
-				if (!skillValue.Is_Object() || 4u != skillValue.Get_Object().size() ||
+				if (!skillValue.Is_Object() || (hasSkillCues ? 6u : 4u) != skillValue.Get_Object().size() ||
 					!ReadRequiredU32(skillValue, "skillId", skill.skillId) ||
 					0u == skill.skillId ||
 					!ReadRequiredString(skillValue, "inputSlot", skill.inputSlot) ||
@@ -1029,6 +1087,8 @@ namespace
 					}
 					skill.riders.push_back(std::move(rider));
 				}
+				if (hasSkillCues && !ParseVehicleSkillCues(skillValue, skill))
+					return false;
 				entry.skills.push_back(std::move(skill));
 			}
 			if (!ParseModelMaterialOverrides(value, stagedMaterials))

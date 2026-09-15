@@ -86,7 +86,7 @@ def install_partitioned_groups(shader_text, case_text):
         assert len(names) == 1, 'A carrier block must contain one native function'
         name, number = names[0]
         number = int(number)
-        assert 2304 <= number <= 3711 and name not in functions, name
+        assert 2304 <= number <= 3967 and name not in functions, name
         assert not re.search(r'\bprojection\[', block) or re.search(r'float4\s+projection\[4\]', block), (
             'Stale generated projection adapter; regenerate this source cohort with '
             'generate_artist_native_runtime_shader.py before installing', name)
@@ -214,7 +214,7 @@ def append_reviewed(source_dir):
     rows = contract['programs']
     assert rows and not contract.get('deferredPrograms')
     owned = {row['program'] for row in rows}
-    assert len(owned) == len(rows) and owned <= set(range(2304, 3712))
+    assert len(owned) == len(rows) and owned <= set(range(2304, 3968))
     assert all(not row.get('distortionPass') for row in rows), 'Use the full pass-aware installer for a new distortion cohort'
     generated = route_scene_bloom_samples(
         (source_dir / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8'))
@@ -268,7 +268,7 @@ def install(source_dir, append_source_dir=None):
         rows += additional["programs"]
         source += "\n" + (directory / "Shader_EffectArtistNative.hlsli").read_text(encoding="utf8")
     identifiers = {r["program"] for r in rows}
-    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 3712))
+    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 3968))
     # A newly recovered pass may belong to a byte-identical program reused from
     # an older cohort. Join that pass by its original material/VS/PS identity;
     # the older base-color function and stable program ID remain authoritative.
@@ -376,7 +376,7 @@ def install(source_dir, append_source_dir=None):
         def extend_dispatch(text):
             pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'
             assert len(re.findall(pattern, text)) == expected, name
-            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u', text)
+            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u', text)
         update(shaders / name, extend_dispatch)
 
     print(f"Installed {summary[0]} Kouku native programs in {summary[1]} groups and {summary[2]} existing-family shader carriers.")

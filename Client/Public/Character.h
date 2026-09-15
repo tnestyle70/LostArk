@@ -133,6 +133,9 @@ public:
 	}
 	/* Visual-only root shared by body, equipment, sockets and pose consumers. */
 	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOut) const;
+	/* The mounted vehicle part's model and world; null/false while on foot. */
+	shared_ptr<Engine::CModel> Get_VehicleModel() const;
+	bool_t Try_Get_VehicleWorldMatrix(float4x4_t& outWorld) const;
 
 	const std::string& Get_NickName() const
 	{
@@ -453,6 +456,7 @@ private:
 	f32_t m_fPreviousEffectCueStageWallSeconds = -1.f;
 	f32_t m_fPreviousSoundCueStageWallSeconds = -1.f;
 	f32_t m_fPreviousShakeCueStageWallSeconds = -1.f;
+	f32_t m_fPreviousVehicleCueAgeSeconds = -1.f;
 	std::uint32_t m_iEffectActionStartTick = 0u;
 	f32_t m_fEffectActionFacingYawDegrees = 0.f;
 	bool_t m_bHasEffectActionFacingYaw = false;
@@ -606,6 +610,9 @@ private:
 	void Update_EffectCues();
 	void Update_SoundCues();
 	void Update_CameraShakeCues();
+	void Update_VehicleSkillCues(const VEHICLE_SKILL_ENTRY& skill,
+		std::uint32_t actionStartTick, f32_t actionAgeSeconds);
+	void Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const;
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;
 	void Update_ActionEmissiveOverride(

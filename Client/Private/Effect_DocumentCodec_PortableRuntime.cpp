@@ -28,7 +28,7 @@ namespace Client::EffectDocumentCodecDetail
 {
 
 
-	constexpr std::array<std::string_view, 51u>
+	constexpr std::array<std::string_view, 52u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemodulecollision",
 			"particlemoduleattractorpoint",
@@ -78,13 +78,14 @@ namespace Client::EffectDocumentCodecDetail
 			"particlemodulevectorfieldscale",
 			"particlemodulevectorfieldscaleoverlife",
 			"particlemodulevelocity",
+			"particlemodulevelocitycone",
 			"particlemodulevelocityinheritparent",
 			"particlemodulevelocityoverlifetime",
 			"particlemodulevortex"
 		};
 
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 80u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 82u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
 			std::pair{ "particlemoduleattractorpoint", "position" },
 			std::pair{ "particlemoduleattractorpoint", "range" },
@@ -162,6 +163,8 @@ namespace Client::EffectDocumentCodecDetail
 			std::pair{ "particlemodulevectorfieldscaleoverlife", "scaleoverlife" },
 			std::pair{ "particlemodulevelocity", "startvelocity" },
 			std::pair{ "particlemodulevelocity", "startvelocityradial" },
+			std::pair{ "particlemodulevelocitycone", "angle" },
+			std::pair{ "particlemodulevelocitycone", "velocity" },
 			std::pair{ "particlemodulevelocityinheritparent", "scale" },
 			std::pair{ "particlemodulevelocityoverlifetime", "veloverlife" },
 			std::pair{ "efparticlemodulevortex", "poweracceleration" }

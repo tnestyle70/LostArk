@@ -193,6 +193,12 @@ def main():
                            samples[-1]['forward'] if samples else 0.0, len(samples)))
         profile_by_id[vehicle['vehicleId']]['skills'] = profile_skills
         entry = catalog_by_id[vehicle['vehicleId']]
+        # effectCues/soundCues belong to build_vehicle_skill_effects.py; keep them.
+        previous = {skill['skillId']: skill for skill in entry.get('skills', [])}
+        for skill in catalog_skills:
+            for key in ('effectCues', 'soundCues'):
+                if key in previous.get(skill['skillId'], {}):
+                    skill[key] = previous[skill['skillId']][key]
         rebuilt = {}
         for key, value in entry.items():
             rebuilt[key] = value
@@ -207,7 +213,7 @@ def main():
         print('dry run, nothing written')
         return
     profiles['formatVersion'] = 2
-    catalog['formatVersion'] = 2
+    catalog['formatVersion'] = max(2, catalog['formatVersion'])
     PROFILES.write_text(json.dumps(profiles, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
     write_catalog(catalog)
     print('wrote', PROFILES.relative_to(ROOT), CATALOG.relative_to(ROOT))
@@ -238,7 +244,17 @@ def write_catalog(catalog):
                     lines.append(f'          "vehicleClips": {inline(skill["vehicleClips"])},')
                     lines.append('          "riders": [')
                     lines += [f'            {inline(r)}' + (',' if i + 1 < len(skill['riders']) else '') for i, r in enumerate(skill['riders'])]
-                    lines.append('          ]')
+                    cues = [key for key in ('effectCues', 'soundCues') if key in skill]
+                    lines.append('          ]' + (',' if cues else ''))
+                    for ci, key in enumerate(cues):
+                        rows = skill[key]
+                        cue_comma = ',' if ci + 1 < len(cues) else ''
+                        if not rows:
+                            lines.append(f'          "{key}": []' + cue_comma)
+                            continue
+                        lines.append(f'          "{key}": [')
+                        lines += [f'            {inline(r)[:-1].rstrip()} }}' + (',' if i + 1 < len(rows) else '') for i, r in enumerate(rows)]
+                        lines.append('          ]' + cue_comma)
                     lines.append('        }' + (',' if si + 1 < len(value) else ''))
                 lines.append('      ]' + comma)
             elif key == 'modelMaterialOverrides':

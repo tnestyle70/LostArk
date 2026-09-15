@@ -72,7 +72,7 @@ float4 Evaluate_NativeScreenPost(VS_OUT input, float2 screenUV)
             g_SourceMaterialProfile == 1619u ? ArtistNative1619(n) :
             g_SourceMaterialProfile == 1623u ? ArtistNative1623(n) : ArtistNative1648(n);
     }
-    else if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3711u)
+    else if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)
     {
         ARTIST_NATIVE_INPUT n = (ARTIST_NATIVE_INPUT)0;
         n.uv = input.uv; n.screenUV = screenUV;

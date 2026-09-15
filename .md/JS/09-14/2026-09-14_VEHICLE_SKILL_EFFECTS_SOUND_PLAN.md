@@ -37,7 +37,9 @@ action group(튜브·테르페이온)에서 다른 skillId의 헤더를 집어 �
 - PlayParticleEffect payload에는 부착 이름과 파라미터 override가 들어 있다. 예: 신화 대시 `B_R_Wing_02`/`B_L_Wing_02` 두 소켓 동시 스트림,
   별빛 `FX_Dash_01`, 아우프슈텐 `FX_l_Engine_01`, 모코보드 `B_Body_02`, 튜브 `b_effectroot`.
 - 한 notify가 스킨 변형별 ParticleSystem을 `CEFParticleDataModifier`로 함께 가진다(`EFDLVehi_MN_PMSDZ_00` → 기본, `-1`~`-4` → 변형).
-  우리 탈것 모델은 기본 스킨이므로 첫 기본 참조만 쓴다.
+  ~~우리 탈것 모델은 기본 스킨이므로 첫 기본 참조만 쓴다.~~ G01에서 틀린 전제로 확인했다. `EFTable_Vehicle.Model`이 스킨을 고른다
+  (테르페이온 `MN_PMSTG_00-3`, 모코보드 `MN_PMSMK_00-4`, 아우프슈텐 `MN_PMSHE_00-2`, 튜브 `MN_PMSUT_00-6`, 별빛 기본, 신화 `MN_PMSDZ_00-1`).
+  해당 스킨 modifier의 system을 쓰고, modifier가 없으면 기본 system을 쓴다. 테르페이온 `Gold` notify 2건은 기본 system 없이 `-3` 스킨에만 있다.
 - 탈것 wmodel에 `B_*` 본은 소문자로 존재한다(신화 `b_r_wing_02`, `b_effectroot`, 별빛 `b_root`). `FX_*` 이름은 본이 아니라
   SkeletalMesh socket이므로 원본 socket 계약을 따로 뽑아야 한다.
 
