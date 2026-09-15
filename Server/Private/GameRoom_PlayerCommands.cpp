@@ -231,10 +231,16 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 			sessionId, "C2S_USE_SKILL", "missing-player-state");
 		return;
 	}
+	/* A mounted player's quick slots belong to the vehicle; class skills never
+	start from the saddle. */
+	if (LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId)
+	{
+		(void)Try_StartVehicleSkill(playerIter->second, useSkill);
+		return;
+	}
 	/* While a KoukuSaydon interaction HUD is up only that HUD's slots act; the
 	class skills the Client no longer shows are refused here as well. */
-	if (LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId ||
-		0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
+	if (0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
 		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
 		LostArk::Shared::KOUKU_HUD_MODE::NONE != playerIter->second.eKoukuHudMode ||
 		(0u != playerIter->second.iSilenceEndTick &&

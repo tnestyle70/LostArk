@@ -1,0 +1,9 @@
+{
+    "mn_pmsut_00_n":  "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_n.tga",
+    "mn_pmsut_00_cm":  "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_cm.tga",
+    "mn_pmsut_00_d8":  "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_d8.tga",
+    "mn_pmsut_00_s":  "Character/Vehicle/SeaUnicornTube/SourceMaterials/mn_pmsut_00_s.tga",
+    "hdr07_1":  "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+    "statefx_default":  "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+    "brdf_beckmann_spec":  "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds"
+}

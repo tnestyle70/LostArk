@@ -1802,7 +1802,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 88u || (source.program > 65u && source.program < 80u) ||
+            if (source.program == 0u || source.program > 89u || (source.program > 65u && source.program < 80u) ||
                 (mask == 0u && source.program != 64u && source.program != 65u) ||
                 ((source.program == 64u || source.program == 65u) && mask != 0u) || source.requiredExtraUVMask > 3u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||

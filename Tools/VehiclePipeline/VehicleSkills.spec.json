@@ -1,0 +1,64 @@
+{
+  "schema": "lostark.vehicle-skill-source-spec",
+  "formatVersion": 1,
+  "note": "Facts read from EFTable_Vehicle (MovingSkill=SPACE, SkillId0..2=Q/W/E), EFTable_Skill.Cooltime and the vehicle Action .loa LookInfoAnim stages with their .animnotify len.",
+  "vehicles": [
+    {
+      "vehicleId": 6705, "name": "Terpeion", "animPackage": "MN_PMSHS_00", "action": "NP_LPHS_03.loa",
+      "ridingMode": "horse", "riderSource": "ani",
+      "skills": [
+        { "skillId": 96030, "inputSlot": "SPACE", "vehicleColumn": "MovingSkill", "cooldownMs": 10000, "clips": [ { "clip": "sk_dash", "ms": 2067 } ] },
+        { "skillId": 96000, "inputSlot": "Q", "vehicleColumn": "SkillId0", "cooldownMs": 5000, "clips": [ { "clip": "sk_victorypose", "ms": 2333 } ] },
+        { "skillId": 96010, "inputSlot": "W", "vehicleColumn": "SkillId1", "cooldownMs": 8000, "clips": [ { "clip": "sk_relaxation", "ms": 6333 } ] },
+        { "skillId": 96020, "inputSlot": "E", "vehicleColumn": "SkillId2", "cooldownMs": 5000, "clips": [ { "clip": "sk_backkick", "ms": 1667 } ] }
+      ]
+    },
+    {
+      "vehicleId": 9370, "name": "SereneStarlightBlessing", "animPackage": "MN_PMSSM_00", "action": "MN_PMSSM_00.loa",
+      "ridingMode": "swing", "riderSource": "vehicle",
+      "skills": [
+        { "skillId": 98380, "inputSlot": "SPACE", "vehicleColumn": "MovingSkill", "cooldownMs": 10000, "clips": [ { "clip": "sk_dash", "ms": 1200 } ] },
+        { "skillId": 98381, "inputSlot": "Q", "vehicleColumn": "SkillId0", "cooldownMs": 8000, "clips": [ { "clip": "sk_nightmoon", "ms": 6000 } ] },
+        { "skillId": 98382, "inputSlot": "W", "vehicleColumn": "SkillId1", "cooldownMs": 8000, "clips": [ { "clip": "sk_swing_01", "ms": 4000 }, { "clip": "sk_swing_02", "ms": 2467 }, { "clip": "sk_swing_03", "ms": 2300 } ] },
+        { "skillId": 98383, "inputSlot": "E", "vehicleColumn": "SkillId2", "cooldownMs": 8000, "clips": [ { "clip": "sk_night", "ms": 7333 } ] }
+      ]
+    },
+    {
+      "vehicleId": 7209, "name": "RainbowMokoboard", "animPackage": "MN_PMSHB_00", "action": "MN_PMSHB_00.loa",
+      "ridingMode": "hoverboard", "riderSource": "ani",
+      "skills": [
+        { "skillId": 95722, "inputSlot": "SPACE", "vehicleColumn": "MovingSkill", "cooldownMs": 8000, "clips": [ { "clip": "sk_feelsgoodspeeding", "ms": 733 } ] }
+      ]
+    },
+    {
+      "vehicleId": 8302, "name": "Aufstehen", "animPackage": "MN_PMSHE_00", "action": "MN_PMSHE_00.loa",
+      "ridingMode": "heavywalker_bm9", "riderSource": "ani",
+      "skills": [
+        { "skillId": 97300, "inputSlot": "SPACE", "vehicleColumn": "MovingSkill", "cooldownMs": 10000, "clips": [ { "clip": "sk_powershoulder", "ms": 1733 } ] },
+        { "skillId": 97310, "inputSlot": "Q", "vehicleColumn": "SkillId0", "cooldownMs": 8000, "clips": [ { "clip": "sk_hifriend", "ms": 5000 } ] },
+        { "skillId": 97320, "inputSlot": "W", "vehicleColumn": "SkillId1", "cooldownMs": 8000, "clips": [ { "clip": "sk_shyness", "ms": 4867 } ] },
+        { "skillId": 97330, "inputSlot": "E", "vehicleColumn": "SkillId2", "cooldownMs": 8000, "clips": [ { "clip": "sk_cheerup", "ms": 2667 } ] }
+      ]
+    },
+    {
+      "vehicleId": 8906, "name": "SeaUnicornTube", "animPackage": "MN_PMSUT_00", "action": "MN_PMSUT_00.loa",
+      "ridingMode": "tube", "riderSource": "ani",
+      "skills": [
+        { "skillId": 97730, "inputSlot": "SPACE", "vehicleColumn": "MovingSkill", "cooldownMs": 10000, "clips": [ { "clip": "sk_summerseason", "ms": 1333 } ] },
+        { "skillId": 97731, "inputSlot": "Q", "vehicleColumn": "SkillId0", "cooldownMs": 5000, "clips": [ { "clip": "sk_tubespin", "ms": 4000 } ] },
+        { "skillId": 97732, "inputSlot": "W", "vehicleColumn": "SkillId1", "cooldownMs": 8000, "clips": [ { "clip": "sk_waterjump_01", "ms": 4667 }, { "clip": "sk_waterjump_02", "ms": 1167 }, { "clip": "sk_waterjump_03", "ms": 967 } ] },
+        { "skillId": 97733, "inputSlot": "E", "vehicleColumn": "SkillId2", "cooldownMs": 8000, "clips": [ { "clip": "sk_waterfall_01", "ms": 1000 }, { "clip": "sk_waterfall_02-2", "ms": 2867 } ] }
+      ]
+    },
+    {
+      "vehicleId": 9524, "name": "AncientMyth", "animPackage": "MN_PMSDZ_00", "action": "MN_PMSDZ_00.loa",
+      "ridingMode": "dragon_2", "riderSource": "vehicle",
+      "skills": [
+        { "skillId": 98520, "inputSlot": "SPACE", "vehicleColumn": "MovingSkill", "cooldownMs": 10000, "clips": [ { "clip": "sk_dash", "ms": 1200 } ] },
+        { "skillId": 98521, "inputSlot": "Q", "vehicleColumn": "SkillId0", "cooldownMs": 8000, "clips": [ { "clip": "sk_roar", "ms": 6000 } ] },
+        { "skillId": 98522, "inputSlot": "W", "vehicleColumn": "SkillId1", "cooldownMs": 8000, "clips": [ { "clip": "sk_breath_01", "ms": 2100 }, { "clip": "sk_breath_02", "ms": 4900 } ] },
+        { "skillId": 98523, "inputSlot": "E", "vehicleColumn": "SkillId2", "cooldownMs": 8000, "clips": [ { "clip": "sk_look", "ms": 5333 } ] }
+      ]
+    }
+  ]
+}

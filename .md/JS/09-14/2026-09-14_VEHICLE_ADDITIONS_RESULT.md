@@ -53,10 +53,65 @@
 4. 크기·좌석 높이, 호버보드 idle 루프 박자.
 5. 직업 변경·발탄 입장 시 하차.
 
+## 재질·좌석 보정 (09-14 오후, 브랜치 `feature/vehicle-material-restoration`)
+
+사용자 관찰: 모코보드 무지개가 안 흐름, 발이 보드 아래로 내려감, 별빛 초승달이 안 보이다가 진한 파랑·투명으로 나옴.
+
+| 증상 | 원인(실측) | 수정 |
+|---|---|---|
+| 모코보드 무지개 | 셰이더 time 경로 정상. `-3_vfx`(DXT5) RGB가 원본부터 흰색이라 흐름 무늬 없음. 최신 빌드 후 사용자 "잘 바뀌네" | 변경 없음 |
+| 모코보드 발 위치 | `build_npc.py`가 메시를 master `MN_PMSHB_00`에 rebind → inverse bind `b_body_00` 19.41cm, 메시 ref 50cm. 메시만 약 30cm 떠 보임. 4직업 hoverboard 클립 발끝은 root 0~4cm | `master.selfRigged=true`(메시 PSK)로 FBX·WModel 재쿠킹, 트랙 25개 경고 0, bind 50/57.97cm, validate OK |
+| 별빛 초승달 안 보임 | 88 opacity = diffuse α × cb0[0].w(엔진 행, 0) | Base88·Light88 `source[0].w = 1` |
+| 진한 파랑 발광 | WModel 1.0에 UV1 없음, 88 panning이 `v4.zw` 샘플 | PSK EXTRAUVS0를 삼각형 join(`cook_psk_extra_uv1.py`, 13,581정점·14,510삼각형 모호 0)해 1.3 |
+| 시선 따라 파랑·보라 그라데이션 | Base88이 v5=fog, v6=view, v7=up인데 기본 배치(v5=view) 적용 | `MakeSourceCharacterInput` program 18 배치 목록에 88 추가 |
+| 초승달 속이 비침 | cb0[21].x==0 분기에서 α<0.9 픽셀이 0으로 깎임(외피 링 면적 29%) | `source[21].x = 1`(원본 값 미확인, 원작 화면 기준 추론) |
+| 바깥벽만 진함 | sky light 행 cb0[18..20]이 0 | 반투명 PS가 scene ambient를 `lightColor`로 넘기고 Base88이 sky 행에 사용(근사) |
+
+- 은색 전투 랩터 master rig 차이는 1cm 미만이라 재쿠킹하지 않았다.
+- 88 verify는 이제 생성물과 byte 불일치다(엔진 행 3줄 추가).
+- fxc 컴파일 성공, Product Debug 빌드 PASS(`out/BuildPipeline/runs/20260914T*-debug-product.json`), `cook_psk_extra_uv1.py`는 1.0 백업에서 설치본과 SHA-256 동일하게 재현.
+- 사용자 관찰: 모코보드 "발판위에 잘 올라갔어", 별빛 최종 "잘 나와".
+- 백업: `out/VehicleAdditions20260913/SereneStarlightBlessing.v1_0.wmodel`, `RainbowMokoboard.pmshb-rig.wmodel`.
+
+## 탈것 2종 추가 (09-14 오후)
+
+| 항목 | 아우프슈텐-R | 바다 유니콘 튜브 |
+|---|---|---|
+| EFTable_Vehicle | 8302 `MN_PMSHE_00-2`, RidingMode 13 `HEAVYWALKER_BM9` | 8906 `MN_PMSUT_00-6`, RidingMode 17 `TUBE` |
+| 재질 | `mn_pmshe_00-2_mi` → 기존 program 85(Base/Light PS ID 일치) | `mn_pmsut_00-6_mi` → 기존 program 24 |
+| 모델 | self-rigged, 본 63, 클립 9, validate OK | self-rigged, 본 12, 클립 14, validate OK |
+| 탑승자 | `ride_heavywalker_bm9_idle/run_normal_1` (차원술사 `…_bm9_idle` / `…_bm9_run_`로 잘림) | `ride_tube_idle/run_normal_1` |
+
+- RidingMode 번호→이름은 `NU1V7NCQ4YAE9ZPJVNOQS.u`의 `ActionConditionRidingModeOutput` enum을 직접 읽어 확정했다(기존 1/3/5/46과 일치).
+- program 24/85는 `v4.zw`를 쓰지 않아 UV1 보강 불필요.
+- 탑승자 애니셋 8개 `compare_attach.py` 전부 OK. 작업 스크립트 `out/VehicleAdditions20260914b/cook_riders.ps1`.
+- `VehicleCatalog.json` 6종, `VehicleProfiles.json` 6행, `Publish-VehicleProfiles.ps1 -Mode Publish` 성공. C++·셰이더 변경 없음.
+- 창술사 튜브 idle은 원본 약 28.7fps를 30fps로 구웠다.
+- 사용자 관찰: "다 잘 나와".
+- Drive 전달: `Character/Vehicle/{Aufstehen,SeaUnicornTube}/`, 4직업 `AnimSets/<Class>_Ride{HeavywalkerBm9,Tube}AnimSet.wmodel`.
+
+## 탈것 본체 locomotion 블렌딩
+
+`CPart_Vehicle::Set_Moving`이 blend 0으로 idle/run을 바꿔 탈것만 뚝 끊겼다. 탑승자 `CLIP_BLEND_SECONDS`와 같은 0.12초를 넘긴다. Product 빌드 PASS, 사용자 관찰 "잘돼".
+
+## 고대의 신화 추가
+
+| 항목 | 내용 |
+|---|---|
+| EFTable_Vehicle | 9524 `MN_PMSDZ_00-1`, RidingMode 47(`DRAGON` 세 번째 → `ride_dragon_2`, 탈것 클립 dash/breath_01/02/roar/look과 1:1), MoveSpeed 500 |
+| 재질 | 슬롯 5개 `mn_pmsdz_00-1_0{1..5}_mi` 모두 `monster_base_msk_high_realpbr` Base/Light PS `a5a8f750…`/`ec8973cb…` → 신규 program 89 `source.vehicle.ancient-myth-realpbr.v1`(verify EXACT, 85 재검증 EXACT) |
+| CSO 그룹 | 마지막 그룹 84~88을 84~89로 확장: `Shader.cpp` 변형 범위, `native_shader_dispatch.py`, `SourceCharacterShaderVariantProbe.cpp` 반복 범위, 그룹 테스트의 미등록 예시 90. 테스트 3개 OK |
+| 모델 | self-rigged, 서브메시 5, 본 91, 클립 9, validate OK, 원본 TGA 27장 |
+| 탑승자 | `pc_*_vehicle_ani`의 `ride_dragon_2_idle/run_normal_1` 4개, attach OK. 차원술사 `pc_sp_m_00_sk_ride_dragon_2_idle_normal` / `…_run_normal_` |
+| 빌드·실행 | Product Debug PASS(Engine OBJ 2·CSO 7, Client OBJ 4·CSO 21), Vehicles.bootstrap 7종 |
+
+- 사용자 관찰: "잘 나와".
+- Drive 전달: `Character/Vehicle/AncientMyth/`, 4직업 `AnimSets/<Class>_RideDragon2AnimSet.wmodel`.
+
 ## 다른 PC 준비
 
 - Server PC는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server`(또는 `Publish-VehicleProfiles.ps1 -Mode Publish`) 후 재시작한다.
-- Resources(Drive 전달): `Character/Vehicle/{SilverBattleRaptor,SereneStarlightBlessing,RainbowMokoboard}/` 폴더 전체(wmodel, `textures`, `SourceMaterials`),
+- Resources(Drive 전달, 09-14 오후 보정본): `Character/Vehicle/{SilverBattleRaptor,SereneStarlightBlessing,RainbowMokoboard}/` 폴더 전체(wmodel, `textures`, `SourceMaterials`, 별빛 1.3·모코보드 self-rigged wmodel이 최신),
   `Character/{LanceMaster,Warlord,Artist,DimensionMaster}/AnimSets/<Class>_Ride{Raptor,Swing,Hoverboard}AnimSet.wmodel`.
 
 ## 남은 범위

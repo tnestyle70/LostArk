@@ -1323,6 +1323,10 @@ namespace LostArk::Shared
 		skill id. Appended last, same wire rule as FALLING. */
 		INTERACTION,
 		FEAR,
+		/* A mounted player's vehicle skill. iSkillId carries the EFTable_Vehicle
+		skill the Server admitted for the ridden vehicle and iActionStartTick its
+		start; the room owns the length and any authored root motion. */
+		VEHICLE_SKILL,
 		END
 	};
 

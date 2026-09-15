@@ -4,6 +4,7 @@
 #include "PartObject.h"
 
 #include <string>
+#include <vector>
 
 NS_BEGIN(Engine)
 class CShader;
@@ -33,6 +34,10 @@ public:
 public:
 	bool_t Set_Moving(bool_t isMoving);
 	bool_t Try_Get_SeatWorldPosition(float3_t& outPosition) const;
+	/* Poses the vehicle on its skill chain at the Server action age, clips back to
+	back and the last one held. Locomotion switches are ignored until Resume. */
+	bool_t Seek_SkillChain(const std::vector<std::string>& clips, f32_t actionAgeSeconds);
+	void Resume_Locomotion();
 
 public:
 	virtual HRESULT Initialize_Prototype() override;
@@ -51,6 +56,7 @@ private:
 	std::string m_strRunClip;
 	std::string m_strSeatBone;
 	bool_t m_isMoving = { false };
+	bool_t m_isPlayingSkill = { false };
 	bool_t m_hasTranslucentMeshes = { false };
 
 private:

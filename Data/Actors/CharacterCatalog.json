@@ -25,9 +25,11 @@
         "Character/LanceMaster/AnimSets/LanceMaster_EstherAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_CustomizingAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_RideHorseAnimSet.wmodel",
-        "Character/LanceMaster/AnimSets/LanceMaster_RideRaptorAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_RideSwingAnimSet.wmodel",
-        "Character/LanceMaster/AnimSets/LanceMaster_RideHoverboardAnimSet.wmodel"
+        "Character/LanceMaster/AnimSets/LanceMaster_RideHoverboardAnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_RideHeavywalkerBm9AnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_RideTubeAnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported",
@@ -1538,9 +1540,11 @@
         "Character/Artist/AnimSets/Artist_EstherAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_CustomizingAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_RideHorseAnimSet.wmodel",
-        "Character/Artist/AnimSets/Artist_RideRaptorAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_RideSwingAnimSet.wmodel",
-        "Character/Artist/AnimSets/Artist_RideHoverboardAnimSet.wmodel"
+        "Character/Artist/AnimSets/Artist_RideHoverboardAnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_RideHeavywalkerBm9AnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_RideTubeAnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_ARTIST",
       "runtimeStatus": "supported",
@@ -4724,9 +4728,11 @@
         "Character/DimensionMaster/AnimSets/DimensionMaster_EstherAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_CustomizingAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideHorseAnimSet.wmodel",
-        "Character/DimensionMaster/AnimSets/DimensionMaster_RideRaptorAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideSwingAnimSet.wmodel",
-        "Character/DimensionMaster/AnimSets/DimensionMaster_RideHoverboardAnimSet.wmodel"
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideHoverboardAnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideHeavywalkerBm9AnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideTubeAnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported",
@@ -7308,9 +7314,11 @@
         "Character/Warlord/AnimSets/Warlord_EstherAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_CustomizingAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_RideHorseAnimSet.wmodel",
-        "Character/Warlord/AnimSets/Warlord_RideRaptorAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_RideSwingAnimSet.wmodel",
-        "Character/Warlord/AnimSets/Warlord_RideHoverboardAnimSet.wmodel"
+        "Character/Warlord/AnimSets/Warlord_RideHoverboardAnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_RideHeavywalkerBm9AnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_RideTubeAnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_RideDragon2AnimSet.wmodel"
       ],
       "animationSetId": "ANIM_WARLORD",
       "runtimeStatus": "supported",
