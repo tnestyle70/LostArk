@@ -1,19 +1,19 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 709,
+  "revision": 710,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "bossPlacementId": "boss.kakulsaydon.g1.kouku",
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "fixedTickHz": 30,
-  "nextPatternOrdinal": 67,
+  "nextPatternOrdinal": 68,
   "nextFolderOrdinal": 18,
   "nextBundleOrdinal": 12,
   "nextLogicOrdinal": 64,
   "nextSummonOrdinal": 5,
-  "nextWorldOrdinal": 26,
+  "nextWorldOrdinal": 27,
   "nextSceneProfileOrdinal": 3,
   "madnessPolicy": {
     "maximum": 100,
@@ -1079,6 +1079,15 @@
       "anchorKind": "NONE",
       "anchorPosition": [0, 0, 0],
       "companionEffectResourceId": ""
+    },
+    {
+      "worldId": "kakulsaydon.g1.world.26",
+      "displayName": "2관문_카드미로 / Kouku",
+      "sequenceInstanceId": "world.sequence.instance.kouku.gate2.maze.kouku",
+      "positionOffset": [0, 0, 0],
+      "anchorKind": "NONE",
+      "anchorPosition": [0, 0, 0],
+      "companionEffectResourceId": ""
     }
   ],
   "sceneProfiles": [
@@ -1313,7 +1322,14 @@
     {"resourceId": "presentation.kouku.gate3.showtime.camera.1", "displayName": "쇼타임_연출 카메라 / c1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate3.showtime.camera.1", "resourceKind": "", "elementId": "", "durationMs": 1280, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "presentation.kouku.gate3.showtime.camera.2", "displayName": "쇼타임_연출 카메라 / c1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate3.showtime.camera.2", "resourceKind": "", "elementId": "", "durationMs": 1216, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "presentation.kouku.gate3.showtime.camera.3", "displayName": "쇼타임_연출 카메라 / c1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate3.showtime.camera.3", "resourceKind": "", "elementId": "", "durationMs": 1232, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "presentation.kouku.gate3.showtime.camera.4", "displayName": "쇼타임_연출 카메라 / c1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate3.showtime.camera.4", "resourceKind": "", "elementId": "", "durationMs": 1272, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45}
+    {"resourceId": "presentation.kouku.gate3.showtime.camera.4", "displayName": "쇼타임_연출 카메라 / c1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate3.showtime.camera.4", "resourceKind": "", "elementId": "", "durationMs": 1272, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.1", "displayName": "2관문_카드미로 카메라 / cam1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.1", "resourceKind": "", "elementId": "", "durationMs": 3264, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.2", "displayName": "2관문_카드미로 카메라 / cam1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.2", "resourceKind": "", "elementId": "", "durationMs": 3316, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.3", "displayName": "2관문_카드미로 카메라 / cam3", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.3", "resourceKind": "", "elementId": "", "durationMs": 930, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.4", "displayName": "2관문_카드미로 카메라 / cam1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.4", "resourceKind": "", "elementId": "", "durationMs": 512, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.5", "displayName": "2관문_카드미로 카메라 / cam1", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.5", "resourceKind": "", "elementId": "", "durationMs": 558, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.6", "displayName": "2관문_카드미로 카메라 / cam2", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.6", "resourceKind": "", "elementId": "", "durationMs": 1696, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "presentation.kouku.gate2.maze.camera.7", "displayName": "2관문_카드미로 카메라 / cam2", "defaultAnchorKind": "WORLD", "kind": "CAMERA", "assetId": "kouku.gate2.maze.camera.7", "resourceKind": "", "elementId": "", "durationMs": 1674, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "radiusM": 3, "halfAngleDegrees": 45}
   ],
   "patterns": [
     {
@@ -12577,6 +12593,58 @@
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_66.presentation.2", "resourceId": "presentation.kouku.gate3.showtime.camera.2", "startMs": 1280, "durationMs": 1216, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_66.presentation.3", "resourceId": "presentation.kouku.gate3.showtime.camera.3", "startMs": 2496, "durationMs": 1232, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_66.presentation.4", "resourceId": "presentation.kouku.gate3.showtime.camera.4", "startMs": 3728, "durationMs": 1272, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""}
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_67",
+      "actorProfileId": "MN_RPCZ_00",
+      "gateId": "GATE2",
+      "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+      "folderId": "kakulsaydon.folder.4",
+      "displayName": "카드미로연출",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 2,
+      "nextAnimationOrdinal": 1,
+      "nextLogicOccurrenceOrdinal": 1,
+      "nextSummonOccurrenceOrdinal": 1,
+      "nextWorldOccurrenceOrdinal": 2,
+      "nextSceneProfileOccurrenceOrdinal": 1,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_67.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 11950,
+          "animationOccurrences": [
+          ]
+        }
+      ],
+      "logicOccurrences": [
+      ],
+      "summonOccurrences": [
+      ],
+      "worldOccurrences": [
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_67.world.1",
+          "worldId": "kakulsaydon.g1.world.26",
+          "startMs": 0,
+          "durationMs": 11950,
+          "playbackSpeed": 1
+        }
+      ],
+      "sceneProfileOccurrences": [
+      ],
+      "resetBossToSpawn": false,
+      "nextPresentationOccurrenceOrdinal": 10,
+      "presentationOccurrences": [
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.1", "resourceId": "presentation.kouku.gate2.maze.camera.1", "startMs": 0, "durationMs": 3264, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.2", "resourceId": "presentation.kouku.gate2.maze.camera.2", "startMs": 3264, "durationMs": 3316, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.3", "resourceId": "presentation.kouku.gate2.maze.camera.3", "startMs": 6580, "durationMs": 930, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.4", "resourceId": "presentation.kouku.gate2.maze.camera.4", "startMs": 7510, "durationMs": 512, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.5", "resourceId": "presentation.kouku.gate2.maze.camera.5", "startMs": 8022, "durationMs": 558, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.6", "resourceId": "presentation.kouku.gate2.maze.camera.6", "startMs": 8580, "durationMs": 1696, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_67.presentation.7", "resourceId": "presentation.kouku.gate2.maze.camera.7", "startMs": 10276, "durationMs": 1674, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.94999999999999996, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "followBoss": false, "debugRender": false, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""}
       ]
     }
   ],
