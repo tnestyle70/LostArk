@@ -729,6 +729,43 @@ bool_t Client::CMapAssetRenderUtils::Uses_OpaqueShadowPass(
 	}
 }
 
+bool_t Client::CMapAssetRenderUtils::Uses_StaticShadowInputs(
+	const Engine::MODEL_SURFACE_PARAMETERS* surface,
+	const MAP_ASSET_RENDER_PROFILE& profile,
+	const bool_t useSourceMaterials)
+{
+	if (Uses_OpaqueShadowPass(surface, profile, useSourceMaterials))
+		return true;
+	if (!surface || !useSourceMaterials ||
+		profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED ||
+		!std::isfinite(profile.opacity) || profile.opacity < 1.f)
+		return false;
+
+	// Preserve the current alpha test and rasterizer pass. Only its inputs decide
+	// whether the already rendered depth can survive another frame.
+	switch (surface->family)
+	{
+	case Engine::MODEL_SURFACE_FAMILY::LEGACY:
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED:
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED:
+		return profile.uvSpeed.x == 0.f && profile.uvSpeed.y == 0.f;
+	case Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
+	case Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
+	case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
+	case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
+		// Source alpha uses raw UV, fixed tiling or the fixed overlay transform.
+		return true;
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED:
+		// Parallax moves the masked sample with camera position. Panning moves it
+		// with elapsed time. Neither input is part of the static light-depth key.
+		return (surface->sourceBgFlags & 2u) == 0u &&
+			surface->sourceBgPanning.x == 0.f && surface->sourceBgPanning.y == 0.f;
+	default:
+		return false;
+	}
+}
+
 HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	const shared_ptr<Engine::CModel>& model,
 	const shared_ptr<Engine::CShader>& shader,

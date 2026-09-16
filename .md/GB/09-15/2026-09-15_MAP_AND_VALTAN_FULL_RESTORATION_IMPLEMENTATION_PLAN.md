@@ -500,3 +500,29 @@ queued Spawn의 owner-sustained source-loop 조건을 기존 Spawn_Immediate와 
 ### G29 추가 확인: Bern 선택 캐릭터의 로딩 중 Effect 준비
 
 실제 Level_Loading::Advance_TargetEffectPreparation의 선택 player cue 조건은 Character Select/Valtan/Kouku만 포함하고 Bern을 빠뜨린다. Bern도 같은 worker/map effect gate를 통과하지만 player cue는 Character spawn 이후 공통 incremental worker로 뒤늦게 등록된다. Bern을 기존 선택 class의 Queue_ProductCues_Priority 및 loading progress 표시에 포함한다. boss별 준비 조건, 맵 effect 집합, 실패 격리, epoch/cancel과 준비 완료 gate는 그대로 둔다. Level_Loading.cpp의 기존 소비자 조건만 확장하며 신규 API나 파일은 추가하지 않는다. 진행 중 Product 빌드 완료 후 반영하고 정상 증분 Product Build로 연결한다.
+## G31. 16:22 후속 캡처의 잔여 shadow 제출
+
+사용자 후속162257 캡처는37 CPU/33 유효GPU프레임이며 정적cache copy가 매 프레임 존재한다. shadow VS는1160만→542만으로 줄었지만 Dynamic shadow GPU46.498ms와 CPU30.644ms가 남았다. MapStaticBatch shadow submit1000회와 material bind665회는 batch부분만 기록하며 fallback비용은 별도로 구분해야 한다. CPU4096 cap 뒤의 NonBlend/Lights/Present가 없으므로 세부합으로 전체CPU 병목을 확정하지 않는다.
+
+먼저 MapAssetObject의 기존 position-only/null-PS shadow만 같은 캐시에 연결한다. 전체 fallback에는time-varying재질도 있으므로 visible/source on/비morph/실제로그리는모든mesh의기존opaque조건을 검증한다. current world, bounds/cull state와 mesh별 실제 cast/pass 선택을 비교하는 snapshot revision으로 transform·가시성·presentation opacity·표면 cast/cull 변경을 추적한다. cache-hit 상태에서도 mutable model eligibility를 재검사하며 dynamic/masked/변형/미확인 조건은 원래 경로에 남긴다. 기존class에override와private상태만 추가하고 별도renderer나새project파일은 만들지 않는다.
+
+MapStaticBatch의 미참여 재질도 실제 설치asset/material/shader의 alpha·time·camera 의존성을 먼저 대조한다. BG parallax는camera에의존할수있으므로 masked전체를무조건캐시하거나nullPS로바꾸지않는다. 안전한추가대상과invalidation입력을확인한뒤동일staticdepth계약을확장한다. 검증은실제소비함수와기존depth fixture를사용하고실제제품FPS와구분한다. 현재실행중Client48076/Server47868의저장을보존하고제품출력은종료확인후에만교체한다.
+### G31 확정된 정적 mask 범위와 변이 경계
+
+실제 WModel/material join에서 기존미참여653 activebatch 중652는time/camera-independent alpha depth후보다. BG parallax+mask1개는남긴다. 기존shader/pass는수정하지않고alpha판정을포함한깊이를그대로캐시한다. static-input helper는 source-on opaque, uvSpeed0인legacy/단순surface·foliage, PBRmasked, overlaymasked, BG masked의parallax없음·panning0조건만허용한다. source-character/unknown/morph는거절한다. CMaterial의읽기전용 Has_TextureOverrides와 CModel mesh별query를추가해외부SRV override가있으면dynamic으로돌린다. material정본surface는const이며generic설정을변경하는API가없음을확인하고,mutable nativeconstants는애초제외한다. castsShadow=false인mesh는실제Render와같이생략하고,WorldInvTranspose변경도instance revision에반영한다. Engine Material.h/Model.h/Model.cpp 및Client MapAssetRenderUtils.h/.cpp, MapStaticBatchObject.cpp만확장한다. 실제설치행수의stage/bounds차이는실draw절감으로단정하지않는다.
+개별 MapAssetObject도 같은 immutable alpha식·texture override·morph 경계를 확인한 뒤 공용 Uses_StaticShadowInputs를 사용한다. generic masked의 alpha는 mutable dye/tint를 읽지 않고 native는 제외되며 실제 pass12~14/20~22를 exact snapshot에 포함한다. no-shadow mesh의 morph/program43이 오브젝트 전체 light-volume culling을 바꾸는 기존 동작도 snapshot에 반영한다. 캐시 대상을 넓히기 위해 shader식이나 cull 정책을 바꾸지 않는다.
+## G32. 베른 대형 맵의 Debug 반복 경로
+
+16:35 Bern34프레임은50017배치/16421batch/1221fallback 중429instance가보이며실draw는883이다. Shadow0.0044ms(VS/PS0)는비활성, NonBlend36.9525ms와Client.Update24.7043ms가남는다. CPU4096scope한계뒤의NonBlend전체는기록되지않아timestamp를순수shader비용으로단정하지않는다. 설치발탄13184·쿠크3369·CharacterSelect804보다큰맵이며초기카메라에서대부분보이지않아도기존Level/Layer와renderqueue순회는존재한다.
+
+실측caller의MapStaticBatchObject/MapAssetObject 및Engine GameObject/Layer/Object_Manager/GameInstance/Renderer CPP는Debug에서/Od인반면기존MapAssetRenderUtils/Shader/Profiler/Animation은MaxSpeed다. 같은기존정책으로위7개hot-path TU에Debug x64 MaxSpeed, BasicRuntimeChecks Default, ProgramDatabase, JMC false와PCH미사용을적용한다. Release설정·Debug CRT/STL ABI·float정책·제품게임플레이·컬링·광원은유지한다. 실제소비본문의CPU루프비교와방문순서/제출수동일성, XMLparse, 정상Product증분Build로검증한다. 별도render경로나오브젝트숨김을만들지않는다.
+
+### G32 빈 배치의 계측 비용
+
+기존 visibility cache와 batch 단위 컬링으로 실제 작업이 없는 호출도 Upload/CullAndPack scope를 기록한다. 캐시 결과의 카운터와 반환 동작은 그대로 유지하고, CPU scope는 실제 업로드 준비나 instance 컬링을 수행할 때만 연다. 카메라·배치 revision, 제출 순서와 수는 바꾸지 않는다. 같은 실제 함수 fixture로 순서와 출력 동일성을 확인한다.
+
+## G33. 발탄 기준 베른 렌더링 기본값 — 성능 빌드 뒤로 보류
+
+사용자 의도는 오늘 밝기 문제를 되돌린 발탄의 렌더링 옵션을 베른에도 적용하는 것이다. 발탄의 FXAA가 켜져 있다는 현재 정본으로는 FXAA가 밝기의 원인이라고 판단할 수 없다. 최초 해석에서 베른 exposure/bloom만 복사하고 FXAA를 끈 revision51은 이 의도를 충족하지 않는다.
+
+사용자가 성능 수정과 빌드를 먼저 요청했으므로 이번에 바꾼 베른 profile만 작업 전 값으로 복귀하여 공식 Validate/Publish한다. 다른 profile을 되돌리지 않는다. 최종 옵션 복사는 실제 발탄 복구 내역과 적용 설정을 확인한 뒤 별도로 진행한다.

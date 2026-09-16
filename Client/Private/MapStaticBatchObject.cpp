@@ -340,15 +340,22 @@ bool_t CMapStaticBatchObject::Try_GetStaticShadowRevision(uint64_t& outRevision)
 		!CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
 		return false;
 
-	// Only the existing position-only, null-PS pass is invariant under time.
-	// Recheck mutable model state: a morph clone must immediately leave the cache.
+	// Surface/profile constants are immutable after the batch is staged. Mutable
+	// texture overrides and morph clones must leave the cache before it is reused.
+	bool_t hasShadowCaster = false;
 	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
 	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		if (surface && !surface->castsShadow)
+			continue;
 		if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
-			!CMapAssetRenderUtils::Uses_OpaqueShadowPass(
-				m_pModelCom->Get_MaterialSurface(mesh), m_RenderProfile, true))
+			m_pModelCom->Has_MaterialTextureOverrides(mesh) ||
+			!CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, m_RenderProfile, true))
 			return false;
+		hasShadowCaster = true;
 	}
+	if (!hasShadowCaster)
+		return false;
 
 	outRevision = m_iStaticShadowRevision;
 	return true;
@@ -371,6 +378,8 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 	// Bounds participate in light-volume culling even when the world is unchanged.
 	const bool_t shadowChanged = current.Visible != instance.Visible ||
 		0 != std::memcmp(&current.World, &instance.World, sizeof(current.World)) ||
+		0 != std::memcmp(&current.WorldInvTranspose, &instance.WorldInvTranspose,
+			sizeof(current.WorldInvTranspose)) ||
 		0 != std::memcmp(&current.WorldBoundsCenter, &instance.WorldBoundsCenter,
 			sizeof(current.WorldBoundsCenter)) ||
 		current.WorldBoundsRadius != instance.WorldBoundsRadius;
@@ -561,7 +570,6 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
-	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Visibility");
 	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
 	const uint64_t cameraRevision = hasCameraSnapshot ?
 		cameraSnapshot->revision : 0u;
@@ -579,6 +587,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		return S_OK;
 	}
 
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Visibility");
 	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
     INSTANCE_ENVELOPE visibleEnvelope;
@@ -599,9 +608,10 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
         }
     }
 
+	if (!rejectBatch)
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.CullAndPack");
-	if (!rejectBatch) for (size_t index = 0u; index < m_Instances.size(); ++index)
+	for (size_t index = 0u; index < m_Instances.size(); ++index)
 	{
         FMapStaticInstance& instance = m_Instances[index];
 		if (!instance.Visible)

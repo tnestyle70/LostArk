@@ -6,6 +6,7 @@
 #include "MapLoadScope.h"
 
 #include <optional>
+#include <vector>
 
 NS_BEGIN(Engine)
 class CModel;
@@ -65,6 +66,7 @@ public:
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual int32_t Get_BlendSortPriority() const override;
 	virtual HRESULT Render_Shadow() override;
+	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
 
 	uint64_t Get_PlacementId() const { return m_iPlacementId; }
 	const std::string& Get_AssetId() const { return m_AssetId; }
@@ -113,6 +115,27 @@ private:
 		PRESENTATION_VORTEX_PROFILE::NONE;
 	f32_t m_fPresentationVortexStrength = 0.f;
 	f32_t m_fElapsedTime = {};
+
+	/* Cache immutable geometry with the existing opaque/alpha shadow pass
+	   only when its inputs are independent of time and camera. Compare the
+	   actual Transform, bounds and draw selection rather than a state hash. */
+	struct STATIC_SHADOW_SNAPSHOT
+	{
+		const CModel* model = nullptr;
+		float4x4_t world{};
+		float3_t worldCullCenter{};
+		f32_t worldCullRadius = 0.f;
+		f32_t presentationOpacity = 1.f;
+		bool_t visible = false;
+		bool_t mirrored = false;
+		bool_t hasWorldCullBounds = false;
+		bool_t hasVertexDisplacement = false;
+	};
+	mutable STATIC_SHADOW_SNAPSHOT m_StaticShadowSnapshot{};
+	mutable std::vector<uint32_t> m_StaticShadowMeshPasses;
+	mutable std::vector<uint32_t> m_StaticShadowCandidateMeshPasses;
+	mutable uint64_t m_iStaticShadowRevision = 0u;
+	mutable bool_t m_bStaticShadowSnapshotValid = false;
 
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
