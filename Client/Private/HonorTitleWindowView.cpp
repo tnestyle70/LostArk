@@ -53,8 +53,12 @@ namespace
 	constexpr f32_t BUTTON_W = 103.f;
 	constexpr f32_t BUTTON_H = 36.f;
 	constexpr f32_t BUTTON_PX = 16.f;
-	/* DirectInput reports one wheel notch as 120. */
-	constexpr int32_t WHEEL_NOTCH = 120;
+	/* DefaultEFScrollBarSmall_V2 at (416,167), sized to the list: track 18 wide, 14x14 arrows 2 px
+	in from each end, the thumb (14 wide) travelling between y 21 and h-19 of the component. */
+	constexpr f32_t SCROLL_X = 416.f;
+	constexpr f32_t SCROLL_THUMB_TOP = 21.f;
+	constexpr f32_t SCROLL_THUMB_BOTTOM_PAD = 19.f;
+	constexpr f32_t SCROLL_THUMB_MIN_H = 24.f;
 
 	const wstring_t FONT_YOON = TEXT("Font_YoonGasiIIM");
 	const wstring_t FONT_YG760 = TEXT("Font_YG760");
@@ -72,6 +76,12 @@ namespace
 	const char* ART_BTN_DISABLED = "UI/HonorTitle/HonorTitle_Btn_Disabled.png";
 	const char* ART_CLOSE_NORMAL = "UI/HonorTitle/HonorTitle_Close_Normal.png";
 	const char* ART_CLOSE_OVER = "UI/HonorTitle/HonorTitle_Close_Over.png";
+	const char* ART_THUMB_NORMAL = "UI/HonorTitle/HonorTitle_ScrollThumb_Normal.png";
+	const char* ART_THUMB_OVER = "UI/HonorTitle/HonorTitle_ScrollThumb_Over.png";
+	const char* ART_UP_NORMAL = "UI/HonorTitle/HonorTitle_ScrollUp_Normal.png";
+	const char* ART_UP_OVER = "UI/HonorTitle/HonorTitle_ScrollUp_Over.png";
+	const char* ART_DOWN_NORMAL = "UI/HonorTitle/HonorTitle_ScrollDown_Normal.png";
+	const char* ART_DOWN_OVER = "UI/HonorTitle/HonorTitle_ScrollDown_Over.png";
 
 	string Row_Slot(const int32_t iRow, const char* pSuffix)
 	{
@@ -120,6 +130,7 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 	{
 		Hide();
 		m_bEscapeDownLastFrame = false;
+		m_bDraggingThumb = false;
 		m_Drag.Reset();
 		return;
 	}
@@ -150,6 +161,7 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 	m_Drag.Update(*m_pView, m_SlotIds, Ref_X(0.f), Ref_Y(0.f),
 		WINDOW_WIDTH * m_fRetailScale, TITLE_BAR_HEIGHT * m_fRetailScale, "HT_Close");
 	Update_Chrome();
+	Update_Scroll();
 	Update_Rows(Player);
 	Update_Buttons(Player);
 
@@ -188,6 +200,90 @@ void Client::CHonorTitleWindowView::Update_Chrome()
 	}
 }
 
+void Client::CHonorTitleWindowView::Update_Scroll()
+{
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
+	const int32_t iMaxScroll = Max_Scroll();
+	const f32_t fListX = Ref_X(ROW_X), fListY = Ref_Y(ROW_Y0);
+	const f32_t fListW = (SCROLL_X + 18.f - ROW_X) * m_fRetailScale;
+	const f32_t fListH = ROW_H * VISIBLE_ROWS * m_fRetailScale;
+
+	/* Wheel anywhere over the list or the bar: one row per notch (WM_MOUSEWHEEL through the
+	router -- DirectInput's wheel is blocked while this window claims the mouse). */
+	if (Router.Is_Hovered(fListX, fListY, fListW, fListH, fRefWidth, fRefHeight))
+		m_iScroll -= Router.Get_MouseWheelNotches();
+
+	/* Arrows: a row per click. */
+	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+	if (m_pView->Get_SlotRect("HT_ScrollUp", fX, fY, fW, fH))
+	{
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fW, fH, fRefWidth, fRefHeight);
+		m_pView->Set_SlotTexture("HT_ScrollUp", bHovered ? ART_UP_OVER : ART_UP_NORMAL);
+		if (bHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
+			--m_iScroll;
+	}
+	if (m_pView->Get_SlotRect("HT_ScrollDown", fX, fY, fW, fH))
+	{
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fW, fH, fRefWidth, fRefHeight);
+		m_pView->Set_SlotTexture("HT_ScrollDown", bHovered ? ART_DOWN_OVER : ART_DOWN_NORMAL);
+		if (bHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
+			++m_iScroll;
+	}
+
+	/* Thumb geometry in reference px: the travel is the component's y 21 .. h-19 band, the thumb
+	takes the visible share of it (never thinner than the art's own minimum). */
+	const f32_t fTravelTop = Ref_Y(ROW_Y0 + SCROLL_THUMB_TOP);
+	const f32_t fTravelH = (ROW_H * VISIBLE_ROWS - SCROLL_THUMB_TOP - SCROLL_THUMB_BOTTOM_PAD) * m_fRetailScale;
+	const int32_t iRows = (std::max)(Row_Count(), 1);
+	const f32_t fThumbH = (std::max)(SCROLL_THUMB_MIN_H * m_fRetailScale,
+		fTravelH * static_cast<f32_t>((std::min)(VISIBLE_ROWS, iRows)) / static_cast<f32_t>(iRows));
+	const f32_t fThumbRange = (std::max)(fTravelH - fThumbH, 0.f);
+	const f32_t fThumbX = Ref_X(SCROLL_X + 2.f);
+	const f32_t fThumbW = 14.f * m_fRetailScale;
+
+	/* Thumb drag: press on the thumb, then the cursor's Y delta maps back onto rows. */
+	f32_t fMouseX = 0.f, fMouseY = 0.f;
+	const bool_t bHaveMouse = Router.Get_MousePosition(fRefWidth, fRefHeight, fMouseX, fMouseY);
+	const f32_t fThumbY = fTravelTop + (iMaxScroll > 0 ?
+		fThumbRange * static_cast<f32_t>(std::clamp(m_iScroll, 0, iMaxScroll)) / static_cast<f32_t>(iMaxScroll) : 0.f);
+	const bool_t bThumbHovered = Router.Is_Hovered(fThumbX, fThumbY, fThumbW, fThumbH, fRefWidth, fRefHeight);
+	if (m_bDraggingThumb)
+	{
+		if (!Router.Is_LeftDown())
+			m_bDraggingThumb = false;
+		else if (bHaveMouse && fThumbRange > 0.f && iMaxScroll > 0)
+		{
+			const f32_t fRowsPerPx = static_cast<f32_t>(iMaxScroll) / fThumbRange;
+			m_iScroll = m_iThumbDragScroll +
+				static_cast<int32_t>(std::lround((fMouseY - m_fThumbDragMouseY) * fRowsPerPx));
+			Router.Claim_Mouse_This_Frame();
+		}
+	}
+	else if (bThumbHovered && iMaxScroll > 0 && bHaveMouse &&
+		Router.Is_Clicked(fThumbX, fThumbY, fThumbW, fThumbH, fRefWidth, fRefHeight))
+	{
+		m_bDraggingThumb = true;
+		m_fThumbDragMouseY = fMouseY;
+		m_iThumbDragScroll = m_iScroll;
+	}
+	else if (iMaxScroll > 0 && bHaveMouse &&
+		Router.Is_Hovered(fThumbX, fTravelTop, fThumbW, fTravelH, fRefWidth, fRefHeight) &&
+		Router.Is_Clicked(fThumbX, fTravelTop, fThumbW, fTravelH, fRefWidth, fRefHeight))
+	{
+		/* Track click outside the thumb pages towards the cursor. */
+		m_iScroll += fMouseY < fThumbY ? -VISIBLE_ROWS : VISIBLE_ROWS;
+	}
+
+	m_iScroll = std::clamp(m_iScroll, 0, iMaxScroll);
+	const f32_t fFinalThumbY = fTravelTop + (iMaxScroll > 0 ?
+		fThumbRange * static_cast<f32_t>(m_iScroll) / static_cast<f32_t>(iMaxScroll) : 0.f);
+	m_pView->Set_SlotRect("HT_ScrollThumb", fThumbX, fFinalThumbY, fThumbW, fThumbH);
+	m_pView->Set_SlotTexture("HT_ScrollThumb",
+		(bThumbHovered || m_bDraggingThumb) ? ART_THUMB_OVER : ART_THUMB_NORMAL);
+}
+
 void Client::CHonorTitleWindowView::Update_Rows(const HUD_PLAYER_STATE& Player)
 {
 	CUIInputRouter& Router = CUIInputRouter::Get();
@@ -195,15 +291,8 @@ void Client::CHonorTitleWindowView::Update_Rows(const HUD_PLAYER_STATE& Player)
 	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
 	const vector<HONOR_TITLE_ENTRY>& Titles = CHonorTitleCatalog::Get_Titles();
 
-	/* Wheel over the list moves it a row per notch, retail-style; clamped to the catalog. */
-	const f32_t fListX = Ref_X(ROW_X), fListY = Ref_Y(ROW_Y0);
-	const f32_t fListW = ROW_W * m_fRetailScale, fListH = ROW_H * VISIBLE_ROWS * m_fRetailScale;
-	if (Router.Is_Hovered(fListX, fListY, fListW, fListH, fRefWidth, fRefHeight))
-	{
-		const int32_t iWheel = CGameInstance::Get().Get_DIMouseMove(DIMM::WHEEL);
-		if (0 != iWheel)
-			m_iScroll = std::clamp(m_iScroll - iWheel / WHEEL_NOTCH, 0, Max_Scroll());
-	}
+	const f32_t fListX = Ref_X(ROW_X);
+	const f32_t fListW = ROW_W * m_fRetailScale;
 	m_iScroll = std::clamp(m_iScroll, 0, Max_Scroll());
 
 	m_iHoveredTitle = -1;

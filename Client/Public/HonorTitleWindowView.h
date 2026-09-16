@@ -21,7 +21,8 @@ Scope is the project's completed-title list (Data/Titles/HonorTitles.json throug
 CHonorTitleCatalog): one HonorTitleRendererItem_big row per title (name, the using badge on the
 worn one), the current-title line, applyTitleBtn / applyDeselectBtn and the close X / Esc. The
 retail tabs (completed / prefix / suffix), search, filters, tendency points and the acquisition panel are
-not placed. The list scrolls with the mouse wheel like the retail one.
+not placed. The list scrolls with the mouse wheel and the DefaultEFScrollBarSmall_V2 bar
+(track, thumb drag, arrow / track clicks) like the retail one.
 
 The window only decides *what* to ask for: Take_TitleRequest hands the title id (0 = take the
 title off) to CMainApp, which submits it through CPlayerController::Request_HonorTitle so the
@@ -53,6 +54,8 @@ public:
 private:
 	void Update_Chrome();
 	void Update_Rows(const HUD_PLAYER_STATE& Player);
+	/* Wheel, arrow buttons, track paging and thumb drag; lays the thumb out for m_iScroll. */
+	void Update_Scroll();
 	void Update_Buttons(const HUD_PLAYER_STATE& Player);
 	bool_t Get_WindowOrigin(f32_t& fX, f32_t& fY) const;
 	/* Retail px relative to the window origin -> reference-resolution px. */
@@ -81,6 +84,11 @@ private:
 	int32_t m_iHoveredTitle = -1;
 	/* First catalog row shown in the top list slot. */
 	int32_t m_iScroll = 0;
+	/* Thumb drag: the row offset the thumb had when the button went down and the cursor's
+	reference-px Y at that moment. */
+	bool_t m_bDraggingThumb = false;
+	f32_t m_fThumbDragMouseY = 0.f;
+	int32_t m_iThumbDragScroll = 0;
 	/* Player.iHonorTitleId as of the last Update, for the badge and the label pass. */
 	uint32_t m_iWornTitleId = 0u;
 	bool_t m_bApplyEnabled = false;

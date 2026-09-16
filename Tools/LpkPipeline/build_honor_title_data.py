@@ -16,7 +16,8 @@ Outputs
   Client/Bin/Resources/UI/HonorTitle/*.png
       window chrome (shared componentsV2 / shareImageV2 regions, the same DefaultUIWindow_V2
       / AnimatedButton_renew_V2 / V2step2List crops the vehicle window uses) and the
-      honortitle.gfx "사용중" badge (honortitle_i7 DefineSubImage 53).
+      honortitle.gfx "사용중" badge (honortitle_i7 DefineSubImage 53) and the
+      DefaultEFScrollBarSmall_V2 track / thumb / arrow pieces.
 
 Every crop is a region the gfx itself names. Placement source: honortitle.gfx
 honorTitleWnd children -- completeTitleList (18,167) 395 px wide rows of 32
@@ -80,6 +81,17 @@ CHROME = [
     ("HonorTitle_Btn_Disabled", "shareimagev2_i46", 853, 988, 103, 36),
     ("HonorTitle_Row_Over",     "shareimagev2_ie",  790, 212, 206, 35),    # V2step2List_over
     ("HonorTitle_Row_Selected", "shareimagev2_i2",  771, 986, 208, 37),    # V2step2List_selected
+    # DefaultEFScrollBarSmall_V2 (completeTitleScrollBar): track = V2Scrollbar_updownbtn_back,
+    # thumb = V2Scrollbar_updownbtn_{normal,over}, arrows = V2Scrollbar_{up,down}Btn_{normal,over}
+    # (shareimagev2 DefineSubImage 812 / 803 806 / 814 813 / 800 799; pages verified by pixel match
+    # against the avatar book's scroll_*.png crops).
+    ("HonorTitle_ScrollTrack",       "shareimagev2_ib",  863, 225, 18, 198),
+    ("HonorTitle_ScrollThumb_Normal", "shareimagev2_i1d", 877, 352, 14, 84),
+    ("HonorTitle_ScrollThumb_Over",   "shareimagev2_i1d", 861, 352, 14, 84),
+    ("HonorTitle_ScrollUp_Normal",    "shareimagev2_i6",  436, 1004, 14, 14),
+    ("HonorTitle_ScrollUp_Over",      "shareimagev2_i6",  484, 1004, 14, 14),
+    ("HonorTitle_ScrollDown_Normal",  "shareimagev2_i6",  500, 1004, 14, 14),
+    ("HonorTitle_ScrollDown_Over",    "shareimagev2_i6",  404, 1004, 14, 14),
 ]
 # honortitle.gfx's own page honortitle_i7: DefineSubImage 53 = the "사용중" badge.
 LOCAL = [
@@ -100,6 +112,11 @@ WINDOW_H = BUTTON_Y + 36.0 + 20.0
 WINDOW_STAGE_X, WINDOW_STAGE_Y = 820.0, 181.9
 APPLY_X, DESELECT_X = 106.0, 227.95
 BADGE_X, BADGE_Y = 334.0 - 62.0, 5.0                # useType_mc (334,0) + badge (-62,5)
+# completeTitleScrollBar at (416,167), sized to the list by AS3 (setSize). Inside the component:
+# track (0,0) 18 wide, upArrow (2,2) 14x14, downArrow (2, h-16), thumb x 2 travelling from y 21
+# to h-19 (DefaultEFScrollBarSmall_V2 placement); the thumb height is set at runtime.
+SCROLL_X = 416.0
+SCROLL_ARROW = 14.0
 
 
 def layout_slot(slot_id, x, y, w, h, path):
@@ -132,6 +149,10 @@ def build_layout():
             layout_slot("HT_Row%d_Using" % i, ROW_X + BADGE_X, y + BADGE_Y, 60, 30, A + "HonorTitle_UsingBadge.png"),
         ]
     slots += [
+        layout_slot("HT_ScrollTrack", SCROLL_X, ROW_Y0, 18, LIST_H, A + "HonorTitle_ScrollTrack.png"),
+        layout_slot("HT_ScrollUp", SCROLL_X + 2, ROW_Y0 + 2, SCROLL_ARROW, SCROLL_ARROW, A + "HonorTitle_ScrollUp_Normal.png"),
+        layout_slot("HT_ScrollDown", SCROLL_X + 2, ROW_Y0 + LIST_H - 2 - SCROLL_ARROW, SCROLL_ARROW, SCROLL_ARROW, A + "HonorTitle_ScrollDown_Normal.png"),
+        layout_slot("HT_ScrollThumb", SCROLL_X + 2, ROW_Y0 + 21, 14, 84, A + "HonorTitle_ScrollThumb_Normal.png"),
         layout_slot("HT_ApplyBtn", APPLY_X, BUTTON_Y, 103, 36, A + "HonorTitle_Btn_Normal.png"),
         layout_slot("HT_DeselectBtn", DESELECT_X, BUTTON_Y, 103, 36, A + "HonorTitle_Btn_Normal.png"),
     ]

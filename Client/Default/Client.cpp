@@ -258,6 +258,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         router drops it unless one of them is active. */
         Client::CUIInputRouter::Get().On_Char(static_cast<wchar_t>(wParam));
         break;
+    case WM_MOUSEWHEEL:
+        /* Runtime UI lists scroll from this message (see CUIInputRouter::On_MouseWheel); ImGui's
+        handler above only records the wheel for its own windows and never consumes it. */
+        Client::CUIInputRouter::Get().On_MouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);

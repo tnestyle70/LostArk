@@ -57,6 +57,13 @@ public:
 	CInventoryView::Try_Consume_ItemDrop's contract with CMainApp::Render_ItemQuickSlots). False
 	if the cursor can't be read this frame. */
 	bool_t Get_ClientCursorPosition(f32_t& outX, f32_t& outY) const;
+	/* Wheel notches (+ = away from the user) that arrived since the previous frame. Read from
+	WM_MOUSEWHEEL (WndProc, Client.cpp) rather than DirectInput: a runtime window that has the
+	cursor claims the mouse, which blocks CGameInstance::Get_DIMouseMove for the very frames a
+	list under that cursor wants to scroll. */
+	int32_t Get_MouseWheelNotches() const { return m_iWheelNotchesThisFrame; }
+	/* WndProc only. */
+	void On_MouseWheel(int32_t iWheelDelta);
 	/* A modal/full-screen UI screen claims the mouse for the whole frame regardless of which
 	specific widget (if any) is hovered -- its own dim backdrop swallowing clicks, matching
 	BeginPopupModal's own behavior. */
@@ -110,6 +117,8 @@ private:
 	bool_t	m_bRightDownThisFrame = false;
 	bool_t	m_bRightDownLastFrame = false;
 	bool_t	m_bTextInputActive = false;
+	int32_t	m_iWheelDeltaPending = 0;
+	int32_t	m_iWheelNotchesThisFrame = 0;
 	wstring_t	m_TypedChars;
 };
 

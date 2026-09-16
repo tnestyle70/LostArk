@@ -6,7 +6,7 @@
 
 - **이름표**: 베른·발탄·쿠크세이튼에서 모든 플레이어 머리 위에 HP바(82×9 프레임 + 78×5 fill, 본인/파티원/타인 별 원작 아트)와 이름(`YG760` 12px `#ECECEC`, 중앙). 칭호가 있으면 `칭호 이름` 한 줄. 캐릭터 선택은 닉네임을 정하기 전이라 그대로 없음.
 - **말풍선**: 원작 `HeadStatus_Balloon` normalBG 9-slice, 폭 200px 자동 줄바꿈, 15자 이하 한 줄은 중앙, 이름판 바로 위에 붙는다.
-- **칭호**: P창 칭호 행 오른쪽 「칭호변경」 → 칭호 창(완성형 목록 12행·휠 스크롤, 「사용중」 배지, 「현재 칭호 : ○○」, 적용/해제, Esc/X, 제목 드래그). 목록은 원작 완성형 17개 + 프로젝트 칭호 6개(161기 최후의 4인 / 최고의 팀장 / 이펙트의 천재 / 맵 제작의 신 / 161기 최고령 / 161기 반장). 착용 조건 없음. 월드 이동 후에도 유지.
+- **칭호**: P창 칭호 행 오른쪽 「칭호변경」 → 칭호 창(완성형 목록 12행, 원작 스크롤바(휠·화살표·트랙·썸 드래그), 「사용중」 배지, 「현재 칭호 : ○○」, 적용/해제, Esc/X, 제목 드래그). 목록은 원작 완성형 17개 + 프로젝트 칭호 6개(161기 최후의 4인 / 최고의 팀장 / 이펙트의 천재 / 맵 제작의 신 / 161기 최고령 / 161기 반장). 착용 조건 없음. 월드 이동 후에도 유지.
 
 ## 데이터 경로
 
@@ -23,11 +23,12 @@ Client 칭호 창 → CPlayerController::Request_HonorTitle → C2S_SET_HONOR_TI
 ## 파일
 
 - 신규: `Client/Public|Private/HonorTitleCatalog.*`, `HonorTitleWindowView.*`, `Server/Public|Private/HonorTitleCatalog.*`, `Server/Private/GameRoom_HonorTitle.cpp`, `Data/Titles/HonorTitles.json`, `Data/UI/HeadStatus/*`, `Data/UI/HonorTitle/*`, `Tools/LpkPipeline/build_head_status_ui.py`, `build_honor_title_data.py`, `Tools/GameplayPipeline/Publish-HonorTitles.ps1`, `.md/TJ/09-14/2026-09-14_이름표_{PLAN,RESULT}.md`.
+- UI 휠 입력: 창이 마우스를 점유하면 DirectInput 휠이 막히므로 `WM_MOUSEWHEEL`을 `CUIInputRouter`로 받아 런타임 UI 목록이 쓴다(`Client.cpp`·`UIInputRouter.*`). 커스터마이즈 화면의 아이콘 격자 휠 스크롤도 같은 원인으로 죽어 있어 함께 바꿨다(`CustomizingView.cpp`).
 - 수정: Shared `NetworkIds.h`·`PacketMessages.h/.cpp`·`PacketType.h`; Server `GameRoom*.cpp/.h`·`ServerApp.cpp`·`ServerPlayer.h`·`RoomCommand.h`·`ServerTriggerSystem.h`·vcxproj; Client `WorldPlayerNameplateView.*`·`WorldPlayerChatBubbleView.*`·`Level_Bern/ValtanArena/KakulSaydonArena.*`·`CharacterInfoWindowView.*`·`MainApp.*`·`PlayerController.*`·`NetworkManager.*`·`NetworkPlayerCommandSink.*`·`PlayerCommandSink.h`·`ClientReplication.*`·`CombatHUDViewModel.*`·vcxproj; `Data/UI/CharacterInfo/CharacterInfo_Layout.json`(버튼 slot 1개 append)·`CharacterInfoDisplay.json`(표시용 title 제거); `Tools/Build/BuildDomains.json`·`Invoke-BuildDomainOwner.ps1`·`test_build_domain_pipeline_receipts.py`.
 
 ## 리소스 (Drive)
 
-`Client/Bin/Resources/UI/HeadStatus/`(9 PNG), `UI/HonorTitle/`(11 PNG). 새 사운드 없음.
+`Client/Bin/Resources/UI/HeadStatus/`(9 PNG), `UI/HonorTitle/`(18 PNG). 새 사운드 없음.
 
 ## 검증
 
@@ -37,7 +38,7 @@ Client 칭호 창 → CPlayerController::Request_HonorTitle → C2S_SET_HONOR_TI
 
 ## 남은 것
 
-- 길드·functional(자리비움 등) 줄, 원작 관계별 색 프리셋, 머리 본 위치 앵커, 칭호 창 스크롤바 아트·앞/뒤 조합·획득 조건.
+- 길드·functional(자리비움 등) 줄, 원작 관계별 색 프리셋, 머리 본 위치 앵커, 칭호 창 앞/뒤 조합·획득 조건.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

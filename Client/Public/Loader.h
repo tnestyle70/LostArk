@@ -46,6 +46,11 @@ public:
 		size_t iCompleted = 0u;
 		size_t iTotal = 0u;
 		uint64_t iElapsedMs = 0u;
+		/* Which declared phase the worker is in (1-based; 0 before the first status) and how
+		many phases the running Ready_For_* declared -- the loading bar turns these into one
+		overall fraction instead of a per-phase one. */
+		size_t iPhaseIndex = 0u;
+		size_t iPhaseCount = 0u;
 	};
 
 	STATE Get_State() const
@@ -111,6 +116,10 @@ private:
 		const tchar_t* pStatus,
 		size_t iCompleted,
 		size_t iTotal);
+	/* Each Ready_For_* declares how many Set_Status phases its path emits (a branch that adds
+	one calls Add_Phases); every Set_Status then advances the phase index. */
+	void Declare_Phases(size_t iCount);
+	void Add_Phases(size_t iCount);
 	void Copy_Status(tchar_t* pOutput, size_t outputCount) const;
 
 private:
@@ -126,6 +135,8 @@ private:
 	bool_t m_bProgressDeterminate = false;
 	size_t m_iProgressCompleted = 0u;
 	size_t m_iProgressTotal = 0u;
+	size_t m_iPhaseIndex = 0u;
+	size_t m_iPhaseCount = 0u;
 	std::chrono::steady_clock::time_point m_ProgressPhaseStarted =
 		std::chrono::steady_clock::now();
 	std::atomic<STATE> m_eState = STATE::IDLE;
