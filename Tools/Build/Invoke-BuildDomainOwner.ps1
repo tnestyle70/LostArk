@@ -77,6 +77,7 @@ else {
         'gameplay.balance',
         'items.catalog',
         'vehicles.profiles',
+        'honortitles.catalog',
         'valtan.rewards'
     )
 }

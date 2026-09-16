@@ -2317,6 +2317,19 @@
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CI_HonorTitleBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 478, "y": 344.333333, "width": 40, "height": 16 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterInfo/btn_normal.png", "hoverPath": "UI/CharacterInfo/btn_over.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

@@ -581,6 +581,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumMadness = player.iMaximumMadness;
 		snapshot.eMadnessForm = player.eMadnessForm;
 		snapshot.iVehicleId = player.iVehicleId;
+		snapshot.iHonorTitleId = player.iHonorTitleId;
 		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
 		snapshot.eMechanicCardColor = player.eMechanicCardColor;
 		snapshot.eKoukuHudMode = player.eKoukuHudMode;

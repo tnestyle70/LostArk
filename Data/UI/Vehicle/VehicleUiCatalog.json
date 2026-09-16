@@ -5,7 +5,7 @@
   "names": "EFTable_GameMsg tip.name/desc.vehicle_<id>",
   "icons": "EFTable_Vehicle Icon/IconIndex -> IconInfo.loa -> EFUI_ICONATLAS_{V,N}",
   "strings": "EFTable_GameMsg sys.vehicle.* / sys.common.*",
-  "skills": "EFTable_Vehicle SkillId0/1/2 + MovingSkill -> EFTable_Skill Icon/IconIndex -> IconInfo.loa",
+  "skills": "Data/Vehicles/VehicleProfiles.json skills[] (SPACE/Q/W/E) -> EFTable_Skill Icon/IconIndex -> IconInfo.loa; names tip.name.skill_CommonAction_<id>",
   "hudEmblem": "quickslot.gfx quickSlotTypeMc vehicle frame (UI/KoukuSaydon/Hud/emblem_interaction_vehicle_saddle.png, cut for the Kouku HUD modes)"
  },
  "strings": {
@@ -36,8 +36,24 @@
    },
    "skills": [
     {
+     "slot": "SPACE",
+     "skillId": 96030,
+     "cooldownMs": 10000,
+     "name": "대쉬",
+     "iconAsset": "UI/Vehicle/Skills/skill_96030.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
      "slot": "Q",
      "skillId": 96000,
+     "cooldownMs": 5000,
+     "name": "승리포즈",
      "iconAsset": "UI/Vehicle/Skills/skill_96000.png",
      "iconSource": {
       "page": "Vehicle_0",
@@ -50,6 +66,8 @@
     {
      "slot": "W",
      "skillId": 96010,
+     "cooldownMs": 8000,
+     "name": "휴식",
      "iconAsset": "UI/Vehicle/Skills/skill_96010.png",
      "iconSource": {
       "page": "Vehicle_0",
@@ -62,52 +80,13 @@
     {
      "slot": "E",
      "skillId": 96020,
+     "cooldownMs": 5000,
+     "name": "뒷발차기",
      "iconAsset": "UI/Vehicle/Skills/skill_96020.png",
      "iconSource": {
       "page": "Vehicle_0",
       "x": 128,
       "y": 0,
-      "width": 64,
-      "height": 64
-     }
-    },
-    {
-     "slot": "R",
-     "skillId": 96030,
-     "iconAsset": "UI/Vehicle/Skills/skill_96030.png",
-     "iconSource": {
-      "page": "Vehicle_1",
-      "x": 768,
-      "y": 192,
-      "width": 64,
-      "height": 64
-     }
-    }
-   ]
-  },
-  {
-   "vehicleId": 7104,
-   "archetypeId": "VEHICLE_RAPTOR_SILVER_BATTLE",
-   "name": "은색 전투 랩터",
-   "description": "전투에 알맞게 개량된 민첩한 은색 랩터",
-   "moveSpeed": 5.0,
-   "iconAsset": "UI/Vehicle/Icons/vehicle_7104.png",
-   "iconSource": {
-    "page": "Vehicle_1",
-    "x": 256,
-    "y": 384,
-    "width": 64,
-    "height": 64
-   },
-   "skills": [
-    {
-     "slot": "Q",
-     "skillId": 95750,
-     "iconAsset": "UI/Vehicle/Skills/skill_95750.png",
-     "iconSource": {
-      "page": "Vehicle_1",
-      "x": 832,
-      "y": 192,
       "width": 64,
       "height": 64
      }
@@ -130,8 +109,24 @@
    },
    "skills": [
     {
+     "slot": "SPACE",
+     "skillId": 98380,
+     "cooldownMs": 10000,
+     "name": "별빛 질주",
+     "iconAsset": "UI/Vehicle/Skills/skill_98380.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
      "slot": "Q",
      "skillId": 98381,
+     "cooldownMs": 8000,
+     "name": "밤하늘",
      "iconAsset": "UI/Vehicle/Skills/skill_98381.png",
      "iconSource": {
       "page": "Vehicle_0",
@@ -144,6 +139,8 @@
     {
      "slot": "W",
      "skillId": 98382,
+     "cooldownMs": 8000,
+     "name": "별빛 그네",
      "iconAsset": "UI/Vehicle/Skills/skill_98382.png",
      "iconSource": {
       "page": "Vehicle_0",
@@ -156,23 +153,13 @@
     {
      "slot": "E",
      "skillId": 98383,
+     "cooldownMs": 8000,
+     "name": "조용한 밤",
      "iconAsset": "UI/Vehicle/Skills/skill_98383.png",
      "iconSource": {
       "page": "Vehicle_0",
       "x": 128,
       "y": 0,
-      "width": 64,
-      "height": 64
-     }
-    },
-    {
-     "slot": "R",
-     "skillId": 98380,
-     "iconAsset": "UI/Vehicle/Skills/skill_98380.png",
-     "iconSource": {
-      "page": "Vehicle_1",
-      "x": 768,
-      "y": 192,
       "width": 64,
       "height": 64
      }
@@ -195,13 +182,234 @@
    },
    "skills": [
     {
-     "slot": "R",
+     "slot": "SPACE",
      "skillId": 95722,
+     "cooldownMs": 8000,
+     "name": "기분 좋은 질주",
      "iconAsset": "UI/Vehicle/Skills/skill_95722.png",
      "iconSource": {
       "page": "Vehicle_1",
       "x": 768,
       "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  },
+  {
+   "vehicleId": 8302,
+   "archetypeId": "VEHICLE_AUFSTEHEN_R",
+   "name": "아우프슈텐 - R",
+   "description": "아르테타인 기술부 에어스트에서 개발한 이동용 헤비워커. 고급스러운 색감, 탁월한 승차감을 자랑한다.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_8302.png",
+   "iconSource": {
+    "page": "Vehicle_1",
+    "x": 512,
+    "y": 576,
+    "width": 64,
+    "height": 64
+   },
+   "skills": [
+    {
+     "slot": "SPACE",
+     "skillId": 97300,
+     "cooldownMs": 10000,
+     "name": "돌격 명령",
+     "iconAsset": "UI/Vehicle/Skills/skill_97300.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "Q",
+     "skillId": 97310,
+     "cooldownMs": 8000,
+     "name": "안녕, 친구 !",
+     "iconAsset": "UI/Vehicle/Skills/skill_97310.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "W",
+     "skillId": 97320,
+     "cooldownMs": 8000,
+     "name": "수줍음",
+     "iconAsset": "UI/Vehicle/Skills/skill_97320.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "E",
+     "skillId": 97330,
+     "cooldownMs": 8000,
+     "name": "힘내, 친구야 !",
+     "iconAsset": "UI/Vehicle/Skills/skill_97330.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  },
+  {
+   "vehicleId": 8906,
+   "archetypeId": "VEHICLE_UNICORN_TUBE_SEA",
+   "name": "바다 유니콘 튜브",
+   "description": "누워서 탈 수 있는 물놀이 전용 바다 유니콘 튜브\n이번 여름 휴가는 유니콘 튜브와 신나게 즐길 수 있을 것 같다.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_8906.png",
+   "iconSource": {
+    "page": "Vehicle_1",
+    "x": 640,
+    "y": 704,
+    "width": 64,
+    "height": 64
+   },
+   "skills": [
+    {
+     "slot": "SPACE",
+     "skillId": 97730,
+     "cooldownMs": 10000,
+     "name": "물놀이 시즌",
+     "iconAsset": "UI/Vehicle/Skills/skill_97730.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "Q",
+     "skillId": 97731,
+     "cooldownMs": 5000,
+     "name": "빙글빙글",
+     "iconAsset": "UI/Vehicle/Skills/skill_97731.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "W",
+     "skillId": 97732,
+     "cooldownMs": 8000,
+     "name": "하늘 높이!",
+     "iconAsset": "UI/Vehicle/Skills/skill_97732.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "E",
+     "skillId": 97733,
+     "cooldownMs": 8000,
+     "name": "인공 폭포",
+     "iconAsset": "UI/Vehicle/Skills/skill_97733.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
+  },
+  {
+   "vehicleId": 9524,
+   "archetypeId": "VEHICLE_ANCIENT_MYTH",
+   "name": "고대의 신화",
+   "description": "강력한 고대의 신비가 깃든 용.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_9524.png",
+   "iconSource": {
+    "page": "NewVehicle_1",
+    "x": 896,
+    "y": 896,
+    "width": 128,
+    "height": 128
+   },
+   "skills": [
+    {
+     "slot": "SPACE",
+     "skillId": 98520,
+     "cooldownMs": 10000,
+     "name": "돌진",
+     "iconAsset": "UI/Vehicle/Skills/skill_98520.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "Q",
+     "skillId": 98521,
+     "cooldownMs": 8000,
+     "name": "포효",
+     "iconAsset": "UI/Vehicle/Skills/skill_98521.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "W",
+     "skillId": 98522,
+     "cooldownMs": 8000,
+     "name": "안개 브레스",
+     "iconAsset": "UI/Vehicle/Skills/skill_98522.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "E",
+     "skillId": 98523,
+     "cooldownMs": 8000,
+     "name": "암흑의 비상",
+     "iconAsset": "UI/Vehicle/Skills/skill_98523.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 128,
+      "y": 0,
       "width": 64,
       "height": 64
      }

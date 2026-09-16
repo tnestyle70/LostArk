@@ -1317,6 +1317,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 #ifdef _DEBUG
 	m_PlayerController.Set_DebugMarioJumpEnabled(true);
 #endif
@@ -1362,6 +1363,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		OutputDebugStringA(
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
+	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
 		CLevelTransitionService::Report_NetworkRecovery(
@@ -1992,6 +1994,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	const HRESULT drawn = __super::Render();
 	if (FAILED(drawn))
 		return drawn;
+	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("KoukuSaydon arena loading complete"));

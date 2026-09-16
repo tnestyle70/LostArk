@@ -12,6 +12,8 @@
 #include "StatusEffectTextView.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanCinematicCameraController.h"
+#include "WorldPlayerChatBubbleView.h"
+#include "WorldPlayerNameplateView.h"
 #include "WorldSequencePlayer.h"
 
 #include <array>
@@ -506,6 +508,10 @@ private:
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	shared_ptr<IWorldEntityCommandSink> m_pWorldEntityCommandSink;
 	CPlayerController m_PlayerController;
+	/* Same over-head name + HP gauge as Bern/Valtan (this room has nicknames too). */
+	CWorldPlayerNameplateView m_PlayerNameplateView;
+	CWorldPlayerChatBubbleView m_ChatBubbleView;
+	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	std::vector<KAKUL_STAGE_MARKER> m_StageMarkers;
 	std::unordered_set<std::string> m_StageMarkerPlacementIds;
 	std::vector<KAKUL_CAMERA_SHOT> m_CameraShots;

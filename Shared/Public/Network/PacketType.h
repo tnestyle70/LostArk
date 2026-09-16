@@ -81,7 +81,8 @@ namespace LostArk::Shared
 	// 83 adds Mario entry test state and retained entry presentation to bundles.
 	// 84 adds Server-authorized Mario return intent and typed result.
 	// 86 adds occurrence-scoped room player arrival to debug world playback.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 88;
+	// 89 adds the worn honor title to player snapshots and the title change request/verdict.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 89;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -346,7 +347,11 @@ namespace LostArk::Shared
 		C2S_SET_VEHICLE_RIDING,
 		S2C_SET_VEHICLE_RIDING_RESULT,
 		C2S_MARIO_RETURN,
-		S2C_MARIO_RETURN_RESULT
+		S2C_MARIO_RETURN_RESULT,
+		// Honor title change and its typed verdict; the worn title rides the
+		// player snapshot.
+		C2S_SET_HONOR_TITLE,
+		S2C_SET_HONOR_TITLE_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -450,6 +455,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
 		case PACKET_TYPE::C2S_MARIO_RETURN:
 		case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
+		case PACKET_TYPE::C2S_SET_HONOR_TITLE:
+		case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
 			return true;
 		default:
 			return  false;

@@ -15,11 +15,21 @@ class CCharacter;
 class CUILayoutRuntime;
 struct HUD_PLAYER_STATE;
 
+/* One VehicleUiCatalog.json skills[] row: the key the Server binds it to, its id, the
+cooldown the Server applies (for the HUD pie) and the retail icon cut for it. */
+struct VEHICLE_SKILL_UI
+{
+	string strSlot;
+	uint32_t iSkillId = 0u;
+	uint32_t iCooldownMs = 0u;
+	string strIconAsset;
+};
+
 /* Retail vehicle window (vehicle.gfx vehicleWnd) rebuilt as CUI_Sprite slots
 (Data/UI/Vehicle/Vehicle_Layout.json, written by Tools/LpkPipeline/build_vehicle_ui.py) under
 LEVEL::STATIC, the same construction as CCharacterInfoWindowView.
 
-Scope is the project's four catalog vehicles: one VehicleListItem row each (icon, name,
+Scope is the project's catalog vehicles: one VehicleListItem row each (icon, name,
 description, move speed, the "(mounted)" ribbon), the confirmBtn (mount / dismount) and the
 closeBtnDummy, X / Esc to close. The retail tabs, search, sort, bookmarks and summon-motion panel
 are not placed. Rows come from Data/UI/Vehicle/VehicleUiCatalog.json (names, descriptions, icons
@@ -59,8 +69,9 @@ public:
 	/* Catalog icon asset for a vehicle (nullptr when the catalog has no row) -- the 5..0 quick
 	slots show it. */
 	const string* Find_IconAsset(uint32_t iVehicleId) const;
-	/* The mounted HUD's Q/W/E/R icons for a vehicle (nullptr when the catalog has no row). */
-	const std::array<string, 4>* Find_SkillIcons(uint32_t iVehicleId) const;
+	/* The vehicle's Server-contract skills (VehicleProfiles.json SPACE/Q/W/E) with their icons
+	and cooldowns, for the mounted HUD (nullptr when the catalog has no row). */
+	const std::vector<VEHICLE_SKILL_UI>* Find_Skills(uint32_t iVehicleId) const;
 
 private:
 	struct VEHICLE_ROW
@@ -72,9 +83,8 @@ private:
 		/* strDescription cut to the row's text column with a trailing ellipsis, for the
 		viewport width it was measured at (m_fFitViewportWidth). */
 		wstring strDescriptionFit;
-		/* Mounted HUD icons for the Q/W/E/R quick slots (catalog `skills[].slot`); "" = no
-		skill on that key. */
-		std::array<string, 4> SkillIconAssets;
+		/* Mounted HUD actions (catalog `skills[]`: SPACE dash, Q/W/E). */
+		std::vector<VEHICLE_SKILL_UI> Skills;
 	};
 
 private:

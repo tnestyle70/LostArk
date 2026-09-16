@@ -164,6 +164,7 @@
     <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\CombatAnalysisFrameView.h" />
     <ClInclude Include="..\Public\VehicleWindowView.h" />
+    <ClInclude Include="..\Public\HonorTitleWindowView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UILayoutRuntime.h" />
@@ -237,6 +238,7 @@
 	<ClInclude Include="..\Public\SkillGroundTargetPreview.h" />
 	<ClInclude Include="..\Public\ClickMoveEffect.h" />
     <ClInclude Include="..\Public\ItemCatalog.h" />
+    <ClInclude Include="..\Public\HonorTitleCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\ProfilerTool.h" />
@@ -414,6 +416,7 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\CombatAnalysisFrameView.cpp" />
     <ClCompile Include="..\Private\VehicleWindowView.cpp" />
+    <ClCompile Include="..\Private\HonorTitleWindowView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UILayoutRuntime.cpp" />
@@ -513,6 +516,7 @@
 	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp" />
 	<ClCompile Include="..\Private\ClickMoveEffect.cpp" />
     <ClCompile Include="..\Private\ItemCatalog.cpp" />
+    <ClCompile Include="..\Private\HonorTitleCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\ProfilerTool.cpp" />

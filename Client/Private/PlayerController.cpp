@@ -186,6 +186,7 @@ void Client::CPlayerController::Update(
 			(useRawVehicleKeyboard || !CGameInstance::Get().IsKeyboardInputBlocked());
 		Update_VehicleRiding(vehicleInputAllowed, useRawVehicleKeyboard);
 	}
+	Update_HonorTitle();
 	/* One-shot, consumed here regardless of which branch below actually
 	runs this frame -- see Suppress_MoveClickThisFrame's own comment. */
 	const bool_t isMoveClickSuppressed = m_isMoveClickSuppressed;
@@ -928,6 +929,63 @@ void Client::CPlayerController::Poll_VehicleSkillSlots(
 	}
 }
 
+namespace
+{
+	void Log_HonorTitle(const char* status)
+	{
+		OutputDebugStringA((std::string("[Client][HonorTitle] ") + status + "\n").c_str());
+	}
+}
+
+void Client::CPlayerController::Update_HonorTitle()
+{
+	using namespace LostArk::Shared;
+	S2C_SET_HONOR_TITLE_RESULT result{};
+	while (nullptr != m_pCommandSink && m_pCommandSink->Consume_HonorTitleResult(result))
+	{
+		if (0u == m_pendingHonorTitleSequence ||
+			result.iRequestSequence != m_pendingHonorTitleSequence)
+			continue;
+		m_pendingHonorTitleSequence = 0u;
+		switch (result.eResult)
+		{
+		case HONOR_TITLE_RESULT::ACCEPTED:
+			Log_HonorTitle(0u == result.iActiveHonorTitleId ? "Title removed." : "Title changed."); break;
+		case HONOR_TITLE_RESULT::REJECTED_UNKNOWN_TITLE:
+			Log_HonorTitle("The Server does not know this title."); break;
+		case HONOR_TITLE_RESULT::REJECTED_SAME_STATE:
+			break;
+		default:
+			Log_HonorTitle("The Server rejected the title request."); break;
+		}
+	}
+	if (0u != m_pendingHonorTitleSequence &&
+		std::chrono::steady_clock::now() - m_honorTitleSentAt > std::chrono::seconds(5))
+	{
+		m_pendingHonorTitleSequence = 0u;
+	}
+}
+
+bool_t Client::CPlayerController::Request_HonorTitle(const std::uint32_t titleId)
+{
+	if (nullptr == m_pCommandSink || 0u != m_pendingHonorTitleSequence)
+		return false;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.isPreview || titleId == player.iHonorTitleId ||
+		nullptr == m_pLocalCharacter.lock())
+		return false;
+	if (!m_pCommandSink->Request_SetHonorTitle(m_nextHonorTitleSequence, titleId))
+	{
+		Log_HonorTitle("Could not send the title request.");
+		return false;
+	}
+	m_pendingHonorTitleSequence = m_nextHonorTitleSequence;
+	m_honorTitleSentAt = std::chrono::steady_clock::now();
+	if (0u == ++m_nextHonorTitleSequence)
+		m_nextHonorTitleSequence = 1u;
+	return true;
+}
+
 bool_t Client::CPlayerController::Poll_InteractKey(
 	const bool_t isKeyboardBlocked,
 	const bool_t useRawKeyboard)
@@ -1078,6 +1136,7 @@ void Client::CPlayerController::Set_CommandSink(
 	{
 		m_iLastMarioMoveDirection = 0;
 		m_pendingVehicleRidingSequence = 0u;
+		m_pendingHonorTitleSequence = 0u;
 		m_pendingMarioReturnSequence = 0u;
 		m_MarioReturnStatus.clear();
 	}

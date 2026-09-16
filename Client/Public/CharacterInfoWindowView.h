@@ -31,8 +31,8 @@ portrait orbits that camera; nothing about the character itself changes.
 
 What is real data: nickname (replicated CCharacter), class (HUD snapshot), max HP (HUD snapshot)
 and attack power (PlayerProfiles.json via CCombatHUDViewModel). Everything the project has no
-Server truth for yet (item level, combat power, the six combat stats, expedition level, title/
-guild/estate rows, ark passive points, which equipment icons fill the slots) comes from
+Server truth for yet (item level, combat power, the six combat stats, expedition level, guild/estate
+rows, ark passive points, which equipment icons fill the slots) comes from
 Data/UI/CharacterInfo/CharacterInfoDisplay.json so the numbers are editable data, not code. */
 class CCharacterInfoWindowView final
 {
@@ -61,6 +61,9 @@ public:
 	/* True once per click on the avatar-page bottom-left button (the retail equipAvatarBookButton);
 	CMainApp opens the avatar book with it. */
 	bool_t Take_AvatarBookRequest();
+	/* True once per click on the title row's change-title button; CMainApp toggles the honor title
+	window with it. */
+	bool_t Take_HonorTitleWindowRequest();
 	/* While another runtime window (the avatar book) is drawn over this one: this window stops
 	registering itself as the router's top window and its own labels skip the covered area. */
 	void Set_Covered(bool_t bCovered) { m_bCovered = bCovered; }
@@ -98,7 +101,6 @@ private:
 		wstring strCombatPower;
 		wstring strCharacterLevel;
 		wstring strExpeditionLevel;
-		wstring strTitle;
 		wstring strGuild;
 		wstring strEstate;
 		wstring strPresetName;
@@ -152,6 +154,7 @@ private:
 	bool_t m_bOpen = false;
 	bool_t m_bCovered = false;
 	bool_t m_bAvatarBookRequested = false;
+	bool_t m_bHonorTitleWindowRequested = false;
 	int32_t m_iSelectedTab = 0;
 	bool_t m_bAvatarMode = false;
 	bool_t m_bDraggingPanel = false;
@@ -168,6 +171,8 @@ private:
 	LostArk::Shared::CHARACTER_CLASS_ID m_ePortraitClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	wstring							m_strNickName;
+	/* CHonorTitleCatalog name of Player.iHonorTitleId; empty without a title. */
+	wstring							m_strHonorTitleName;
 	uint32_t						m_iMaximumHp = 0;
 	uint32_t						m_iAttackPower = 0;
 	bool_t							m_bHasAttackPower = false;

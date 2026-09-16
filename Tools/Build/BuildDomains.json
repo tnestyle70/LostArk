@@ -446,6 +446,27 @@
       }
     },
     {
+      "id": "honortitles.catalog",
+      "kind": "publisher",
+      "profiles": ["Core", "FullDiagnostic"],
+      "inputs": ["Data/Titles/HonorTitles.json"],
+      "tools": ["Tools/GameplayPipeline/Publish-HonorTitles.ps1"],
+      "outputs": ["Server/Bin/DataFiles/HonorTitles/HonorTitles.bootstrap"],
+      "requiredOutputPatterns": ["Server/Bin/DataFiles/HonorTitles/HonorTitles.bootstrap"],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/GameplayPipeline/Publish-HonorTitles.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
       "id": "valtan.rewards",
       "kind": "publisher",
       "profiles": ["Core", "FullDiagnostic"],

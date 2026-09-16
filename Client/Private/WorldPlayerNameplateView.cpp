@@ -6,7 +6,10 @@
 
 #include "Character.h"
 #include "GameInstance.h"
+#include "HonorTitleCatalog.h"
+#include "Model.h"
 #include "Transform.h"
+#include "UILabelFont.h"
 
 #include <Windows.h>
 
@@ -16,8 +19,26 @@
 
 namespace
 {
-	constexpr f32_t NAMEPLATE_HEAD_OFFSET = 2.2f;
-	constexpr f32_t NAMEPLATE_TEXT_SCALE = 0.75f;
+	/* Body-model eye bones (model space); the plate anchors on the head top, EYE_TO_CROWN metres
+	above them in world space. Characters without these bones use the fallback height. The bone
+	goes through the presentation root (class scale, facing, vehicle seat lift), so a mounted
+	character keeps the plate over the rider's head. */
+	constexpr const char_t* EYE_BONE_NAMES[] = { "b_fc_l_eye_ani", "b_fc_r_eye_ani" };
+	constexpr f32_t EYE_TO_CROWN = 0.16f;
+	constexpr f32_t HEAD_HEIGHT_FALLBACK = 1.75f;
+	/* Layout-reference px (1280x720): retail $YG760 12 px scaled 1.2x on the user's call, one
+	line whose bottom sits NAME_BOTTOM_GAP above the head anchor. */
+	constexpr f32_t REFERENCE_HEIGHT = 720.f;
+	constexpr f32_t NAME_FONT_PX = 12.f * 1.2f;
+	constexpr f32_t NAME_BOTTOM_GAP = 3.f;
+	constexpr f32_t NAME_STACK_TOP = NAME_BOTTOM_GAP + NAME_FONT_PX + 2.f;
+	const wstring_t FONT_YG760 = TEXT("Font_YG760");
+	/* Retail capture: the honor title reads as a saturated sky blue, the nickname after it as a
+	pale yellow. Both are estimates from the capture's glyph pixels; the host colour presets are
+	not in the extracted data. */
+	const fvector_t COLOR_TITLE = XMVectorSet(58.f / 255.f, 175.f / 255.f, 255.f / 255.f, 1.f);   // #3AAFFF
+	const fvector_t COLOR_NAME = XMVectorSet(235.f / 255.f, 232.f / 255.f, 200.f / 255.f, 1.f);   // #EBE8C8
+	const fvector_t COLOR_SHADOW = XMVectorSet(0.f, 0.f, 0.f, 0.75f);
 
 	bool_t Is_Finite(const float2_t& value)
 	{
@@ -29,6 +50,14 @@ namespace
 		return std::isfinite(value.x) &&
 			std::isfinite(value.y) &&
 			std::isfinite(value.z);
+	}
+
+	void Draw_Shadowed(CGameInstance& gameInstance, const wstring_t& strFont, const wstring& strText,
+		const float2_t& vPosition, const fvector_t vColor, const f32_t fScale)
+	{
+		gameInstance.Draw_Text(strFont, strText.c_str(),
+			float2_t(vPosition.x + 1.f, vPosition.y + 1.f), COLOR_SHADOW, 0.f, float2_t(0.f, 0.f), fScale);
+		gameInstance.Draw_Text(strFont, strText.c_str(), vPosition, vColor, 0.f, float2_t(0.f, 0.f), fScale);
 	}
 }
 
@@ -115,18 +144,70 @@ bool_t Client::CWorldPlayerNameplateView::Try_ConvertUtf8(
 	return true;
 }
 
+bool_t Client::CWorldPlayerNameplateView::Try_GetHeadAnchor(
+	const CCharacter& Character,
+	float3_t& vOutWorldPosition)
+{
+	vOutWorldPosition = {};
+	float4x4_t rootMatrix{};
+	if (!Character.Try_Get_PresentationRootMatrix(&rootMatrix))
+		return false;
+	const matrix_t root = XMLoadFloat4x4(&rootMatrix);
+
+	float3_t vLocal(0.f, HEAD_HEIGHT_FALLBACK, 0.f);
+	f32_t fCrown = 0.f;
+	if (const std::shared_ptr<Engine::CModel> pModel = Character.Get_BodyModel())
+	{
+		bool_t bFound = false;
+		float3_t vEye{};
+		for (const char_t* pBoneName : EYE_BONE_NAMES)
+		{
+			if (!pModel->Has_Bone(pBoneName))
+				continue;
+			float3_t vBone{};
+			XMStoreFloat3(&vBone, pModel->Get_BoneMatrix(pBoneName).r[3]);
+			if (!Is_Finite(vBone) || vBone.y <= 0.f)
+				continue;
+			if (!bFound || vBone.y > vEye.y)
+				vEye = vBone;
+			bFound = true;
+		}
+		if (bFound)
+		{
+			vLocal = vEye;
+			fCrown = EYE_TO_CROWN;
+		}
+	}
+	float3_t vWorld{};
+	XMStoreFloat3(&vWorld, XMVector3TransformCoord(XMLoadFloat3(&vLocal), root));
+	if (!Is_Finite(vWorld))
+		return false;
+	vOutWorldPosition = float3_t(vWorld.x, vWorld.y + fCrown, vWorld.z);
+	return true;
+}
+
+f32_t Client::CWorldPlayerNameplateView::Stack_Top_RefPx()
+{
+	return NAME_STACK_TOP;
+}
+
 void Client::CWorldPlayerNameplateView::Render(
-	const std::vector<REPLICATED_PLAYER_VIEW>& Players) const
+	const std::vector<REPLICATED_PLAYER_VIEW>& Players)
 {
 	CGameInstance& gameInstance = CGameInstance::Get();
 	const float4x4_t* const pViewMatrix =
 		gameInstance.Get_Transform(D3DTS::VIEW);
 	const float4x4_t* const pProjectionMatrix =
 		gameInstance.Get_Transform(D3DTS::PROJ);
-	if (nullptr == pViewMatrix || nullptr == pProjectionMatrix)
-		return;
-
 	const float2_t vViewportSize = gameInstance.Get_ViewportSize();
+	if (nullptr == pViewMatrix || nullptr == pProjectionMatrix ||
+		vViewportSize.x <= 0.f || vViewportSize.y <= 0.f)
+	{
+		return;
+	}
+	/* Reference px -> screen px follows the viewport height, like the layout runtime. */
+	const f32_t fRefToScreen = vViewportSize.y / REFERENCE_HEIGHT;
+
 	for (const REPLICATED_PLAYER_VIEW& player : Players)
 	{
 		if (LostArk::Shared::INVALID_PLAYER_ID == player.iPlayerId ||
@@ -135,22 +216,14 @@ void Client::CWorldPlayerNameplateView::Render(
 		{
 			continue;
 		}
-
 		const std::shared_ptr<CCharacter> pCharacter =
 			player.pCharacter.lock();
 		if (nullptr == pCharacter)
 			continue;
-		const std::shared_ptr<CTransform> pTransform =
-			pCharacter->Get_Transform();
-		if (nullptr == pTransform)
-			continue;
 
 		float3_t vHeadPosition{};
-		XMStoreFloat3(
-			&vHeadPosition,
-			pTransform->Get_State(STATE::POSITION));
-		vHeadPosition.y += NAMEPLATE_HEAD_OFFSET;
-
+		if (!Try_GetHeadAnchor(*pCharacter, vHeadPosition))
+			continue;
 		float2_t vScreenPosition{};
 		if (!Try_ProjectWorldPosition(
 			vHeadPosition,
@@ -165,14 +238,24 @@ void Client::CWorldPlayerNameplateView::Render(
 		std::wstring nickname;
 		if (!Try_ConvertUtf8(player.strNickname, nickname))
 			continue;
-
-		gameInstance.Draw_Text(
-			TEXT("Font_YG330"),
-			nickname.c_str(),
-			vScreenPosition,
-			Colors::White,
-			0.f,
-			float2_t(0.5f, 0.5f),
-			NAMEPLATE_TEXT_SCALE);
+		/* BaseHeadStatus.updateTitle: title + " " + name on the one line; the title keeps its
+		own colour, so the two halves are measured together and drawn apart. */
+		std::wstring titleWithSpace;
+		if (const wstring* pTitle = CHonorTitleCatalog::Find_Name(player.iHonorTitleId))
+			titleWithSpace = *pTitle + L" ";
+		f32_t fScale = 1.f;
+		const wstring_t strFont = UILabelFont::Resolve(
+			FONT_YG760, NAME_FONT_PX * fRefToScreen, fScale);
+		const float2_t vNameSize = gameInstance.Measure_Text(strFont, nickname.c_str());
+		const f32_t fTitleWidth = titleWithSpace.empty() ? 0.f :
+			gameInstance.Measure_Text(strFont, titleWithSpace.c_str()).x * fScale;
+		const f32_t fTotalWidth = fTitleWidth + vNameSize.x * fScale;
+		const float2_t vPosition(
+			std::round(vScreenPosition.x - fTotalWidth * 0.5f),
+			std::round(vScreenPosition.y - NAME_BOTTOM_GAP * fRefToScreen - vNameSize.y * fScale));
+		if (!titleWithSpace.empty())
+			Draw_Shadowed(gameInstance, strFont, titleWithSpace, vPosition, COLOR_TITLE, fScale);
+		Draw_Shadowed(gameInstance, strFont, nickname,
+			float2_t(std::round(vPosition.x + fTitleWidth), vPosition.y), COLOR_NAME, fScale);
 	}
 }

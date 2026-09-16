@@ -828,6 +828,9 @@
     <ClCompile Include="..\Private\VehicleWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\HonorTitleWindowView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -889,6 +892,9 @@
 	  <Filter>04. Network\00. PlayerController</Filter>
 	</ClCompile>
     <ClCompile Include="..\Private\ItemCatalog.cpp">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\HonorTitleCatalog.cpp">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
@@ -1486,6 +1492,9 @@
     <ClInclude Include="..\Public\VehicleWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\HonorTitleWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\RaidEntryPreviewView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
@@ -1553,6 +1562,9 @@
 	  <Filter>04. Network\00. PlayerController</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\ItemCatalog.h">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\HonorTitleCatalog.h">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h">

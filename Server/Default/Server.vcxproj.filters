@@ -50,6 +50,7 @@
 	<ClInclude Include="..\Public\ServerCombatHitRuntime.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ItemCatalog.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\VehicleCatalog.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\HonorTitleCatalog.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ValtanClearRewards.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
@@ -98,6 +99,7 @@
 	<ClCompile Include="..\Private\ServerCombatHitRuntime.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ItemCatalog.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\VehicleCatalog.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\HonorTitleCatalog.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ValtanClearRewards.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerNavigation.cpp"><Filter>Private</Filter></ClCompile>
@@ -124,6 +126,7 @@
     <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_VehicleRiding.cpp" />
+    <ClCompile Include="..\Private\GameRoom_HonorTitle.cpp" />
     <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
     <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp" />

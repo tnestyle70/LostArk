@@ -2638,6 +2638,63 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_SET_HONOR_TITLE& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U32(message.iHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_SET_HONOR_TITLE& message)
+{
+	C2S_SET_HONOR_TITLE decoded{};
+	std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U32(decoded.iHonorTitleId))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_SET_HONOR_TITLE_RESULT& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= HONOR_TITLE_RESULT::END)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U32(message.iActiveHonorTitleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_SET_HONOR_TITLE_RESULT& message)
+{
+	S2C_SET_HONOR_TITLE_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result) || !reader.Read_U32(decoded.iActiveHonorTitleId))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<HONOR_TITLE_RESULT>(result);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= HONOR_TITLE_RESULT::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_INTERACTION_SLOT& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
@@ -2997,6 +3054,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(player.fMoveWaypointY);
 		writer.Write_F32(player.fMoveWaypointZ);
 		writer.Write_U32(player.iVehicleId);
+		writer.Write_U32(player.iHonorTitleId);
     }
 	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
 	{
@@ -3310,7 +3368,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_F32(player.fMoveWaypointX) ||
 			!reader.Read_F32(player.fMoveWaypointY) ||
 			!reader.Read_F32(player.fMoveWaypointZ) ||
-			!reader.Read_U32(player.iVehicleId))
+			!reader.Read_U32(player.iVehicleId) ||
+			!reader.Read_U32(player.iHonorTitleId))
 		{
 			return false;
 		}

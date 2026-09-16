@@ -9,6 +9,7 @@
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "HonorTitleCatalog.h"
 #include "ItemCatalog.h"
 #include "MainApp.h"
 #include "ProjectDataRoot.h"
@@ -187,7 +188,6 @@ void Client::CCharacterInfoWindowView::Load_DisplayData()
 	ReadText(Root, "combatPower", m_Display.strCombatPower);
 	ReadText(Root, "characterLevel", m_Display.strCharacterLevel);
 	ReadText(Root, "expeditionLevel", m_Display.strExpeditionLevel);
-	ReadText(Root, "title", m_Display.strTitle);
 	ReadText(Root, "guild", m_Display.strGuild);
 	ReadText(Root, "estate", m_Display.strEstate);
 	ReadText(Root, "presetName", m_Display.strPresetName);
@@ -320,6 +320,10 @@ void Client::CCharacterInfoWindowView::Update(const f32_t fTimeDelta,
 
 	m_pPortraitCharacter = pLocalCharacter;
 	m_ePortraitClass = Player.eCharacterClass;
+	if (const wstring* pTitle = CHonorTitleCatalog::Find_Name(Player.iHonorTitleId))
+		m_strHonorTitleName = *pTitle;
+	else
+		m_strHonorTitleName.clear();
 	m_iMaximumHp = Player.iMaximumHp;
 	m_bHasAttackPower = CCombatHUDViewModel::Get().Try_Get_ProfileAttackPower(
 		Player.eCharacterClass, m_iAttackPower);
@@ -566,6 +570,7 @@ void Client::CCharacterInfoWindowView::Update_Buttons()
 	struct BUTTON { const char* pSlotId; const char* pNormal; const char* pOver; };
 	constexpr BUTTON BUTTONS[] = {
 		{ "CI_BottomLeftBtn", "UI/CharacterInfo/btn_normal.png", "UI/CharacterInfo/btn_over.png" },
+		{ "CI_HonorTitleBtn", "UI/CharacterInfo/btn_normal.png", "UI/CharacterInfo/btn_over.png" },
 		{ "CI_DetailBtn", "UI/CharacterInfo/btn_normal.png", "UI/CharacterInfo/btn_over.png" },
 		{ "CI_PresetEditBtn", "UI/CharacterInfo/btn_normal.png", "UI/CharacterInfo/btn_over.png" },
 		{ "CI_PresetLoadBtn", "UI/CharacterInfo/btn_normal.png", "UI/CharacterInfo/btn_over.png" },
@@ -591,6 +596,8 @@ void Client::CCharacterInfoWindowView::Update_Buttons()
 			CMainApp::Play_UIButtonClickSound();
 			if (m_bAvatarMode && 0 == strcmp(Button.pSlotId, "CI_BottomLeftBtn"))
 				m_bAvatarBookRequested = true;
+			if (0 == strcmp(Button.pSlotId, "CI_HonorTitleBtn"))
+				m_bHonorTitleWindowRequested = true;
 		}
 	}
 }
@@ -768,6 +775,13 @@ bool_t Client::CCharacterInfoWindowView::Take_AvatarBookRequest()
 	return bRequested;
 }
 
+bool_t Client::CCharacterInfoWindowView::Take_HonorTitleWindowRequest()
+{
+	const bool_t bRequested = m_bHonorTitleWindowRequested;
+	m_bHonorTitleWindowRequested = false;
+	return bRequested;
+}
+
 const wstring& Client::CCharacterInfoWindowView::Get_ClassDisplayName(
 	const LostArk::Shared::CHARACTER_CLASS_ID eClass) const
 {
@@ -891,11 +905,15 @@ void Client::CCharacterInfoWindowView::Render_Text()
 		Draw_Label(FONT_YOON, m_strNickName, 190.f, 213.f, 18.f, COLOR_NAME_YELLOW, CENTER);
 		Draw_Label(FONT_YOON, m_Display.strCharacterLevel, 186.f, 234.f, 14.f, COLOR_LEVEL_GOLD, CENTER);
 		Draw_Label(FONT_YOON, m_Display.strExpeditionLevel, 55.f, 236.f, 15.f, COLOR_LEVEL_GOLD, CENTER);
-		const wstring* pRows[3] = { &m_Display.strTitle, &m_Display.strGuild, &m_Display.strEstate };
+		/* Title row: the worn title (Server snapshot -> catalog name), then the change-title button
+		label (sys.characterinfo.button_change_honortitle) at the row's right end. */
+		const wstring* pRows[3] = { &m_strHonorTitleName, &m_Display.strGuild, &m_Display.strEstate };
 		const fvector_t RowColors[3] = { COLOR_TITLE_BLUE, COLOR_MUTED, COLOR_WHITE };
 		for (int32_t r = 0; r < 3; ++r)
 			Draw_Label(FONT_YOON, *pRows[r], 183.f, 314.f + 35.f * static_cast<f32_t>(r) + 18.f,
 				14.f, RowColors[r], CENTER);
+		Draw_Label(FONT_YG760, CHonorTitleCatalog::Get_Strings().strChange, 287.f + 30.f, 320.f + 12.f,
+			12.f, COLOR_WHITE, CENTER);
 		Draw_Label(FONT_YOON, TEXT_SPECIAL_GEAR, 190.f, 466.f, 14.f, COLOR_WHITE, CENTER);
 		for (size_t k = 0; k < m_Display.ArkPassivePoints.size() && k < 3; ++k)
 			Draw_Label(FONT_YG760, m_Display.ArkPassivePoints[k], 36.f + 112.f * static_cast<f32_t>(k) + 46.f,

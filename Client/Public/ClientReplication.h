@@ -108,6 +108,9 @@ namespace Client
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::string strNickname;
+		/* Worn honor title from the latest snapshot (INVALID = none); the nameplate turns
+		it into text through CHonorTitleCatalog. */
+		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		bool_t isLocal = false;
 		std::weak_ptr<CCharacter> pCharacter;
 	};
@@ -693,6 +696,9 @@ namespace Client
 		static constexpr std::chrono::seconds CHAT_BUBBLE_DURATION{ 5 };
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, CHAT_BUBBLE_ENTRY>
 			m_ChatBubblesByNetEntityId;
+		/* Latest snapshot's worn honor title per player, read by Collect_PlayerViews. */
+		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::HONOR_TITLE_ID>
+			m_HonorTitleByNetEntityId;
 #ifdef _DEBUG
 		COMBAT_DEBUG_VISIBILITY_SNAPSHOT m_CombatDebugVisibility{};
 		bool_t m_isCombatObjectHitAreaDebugLoadAttempted = false;

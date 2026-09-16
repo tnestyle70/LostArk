@@ -45,6 +45,11 @@ public:
 	virtual bool Request_SetVehicleRiding(std::uint32_t, LostArk::Shared::VEHICLE_ID) { return false; }
 	virtual bool Consume_VehicleRidingResult(
 		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT&) { return false; }
+	/* Title window: a title id wears it, INVALID_HONOR_TITLE_ID takes it off.
+	Sinks without a Server reject it. */
+	virtual bool Request_SetHonorTitle(std::uint32_t, LostArk::Shared::HONOR_TITLE_ID) { return false; }
+	virtual bool Consume_HonorTitleResult(
+		LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT&) { return false; }
 
 	virtual bool Request_InteractionSlot(std::uint32_t sequence,
 		LostArk::Shared::INTERACTION_SLOT slot) = 0;

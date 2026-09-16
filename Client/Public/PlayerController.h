@@ -457,6 +457,9 @@ namespace Client
 		round trip and pending sequence as the H key. False while a request is outstanding or
 		the local player can't ride right now. */
 		bool_t Request_VehicleRiding(std::uint32_t vehicleId);
+		/* Title window's apply / deselect button (titleId 0 = take it off). False while a
+		request is outstanding or there is no live local player. */
+		bool_t Request_HonorTitle(std::uint32_t titleId);
 		/* Debug F1 choice of the vehicle H mounts. Zero, or a vehicle without a
 		rider pose for the class, falls back to the first catalog vehicle that has one. */
 		static void Set_PreferredVehicleId(std::uint32_t vehicleId) { s_iPreferredVehicleId = vehicleId; }
@@ -580,6 +583,8 @@ namespace Client
 			bool_t useRawKeyboard,
 			const shared_ptr<CCharacter>& character);
 		bool_t Send_VehicleRidingRequest(std::uint32_t vehicleId);
+		/* Consumes title verdicts and expires a request the Server never answered. */
+		void Update_HonorTitle();
 		/* True on the frame G goes down. The controller does not know whether
 		   an offer is standing -- Update checks that before submitting. */
 		bool_t Poll_InteractKey(
@@ -619,6 +624,9 @@ namespace Client
 		std::uint32_t m_nextVehicleRidingSequence = 1u;
 		std::uint32_t m_pendingVehicleRidingSequence = 0u;
 		std::chrono::steady_clock::time_point m_vehicleRidingSentAt{};
+		std::uint32_t m_nextHonorTitleSequence = 1u;
+		std::uint32_t m_pendingHonorTitleSequence = 0u;
+		std::chrono::steady_clock::time_point m_honorTitleSentAt{};
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;

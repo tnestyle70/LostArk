@@ -272,6 +272,8 @@ void CLoader::Set_Status(const tchar_t* pStatus)
 			m_szLoadingText[0] = L'\0';
 		else
 			wcsncpy_s(m_szLoadingText, pStatus, _TRUNCATE);
+		if (nullptr != pStatus)
+			++m_iPhaseIndex;
 		m_bProgressDeterminate = false;
 		m_iProgressCompleted = 0u;
 		m_iProgressTotal = 0u;
@@ -308,6 +310,19 @@ void CLoader::Set_DeterminateStatus(
 	g_ActiveStatus = ToUtf8(pStatus);
 }
 
+void CLoader::Declare_Phases(const size_t iCount)
+{
+	lock_guard<mutex> lock(m_StatusMutex);
+	m_iPhaseIndex = 0u;
+	m_iPhaseCount = iCount;
+}
+
+void CLoader::Add_Phases(const size_t iCount)
+{
+	lock_guard<mutex> lock(m_StatusMutex);
+	m_iPhaseCount += iCount;
+}
+
 std::string CLoader::Get_ActiveStatus()
 {
 	lock_guard<mutex> lock(g_ActiveStatusMutex);
@@ -324,6 +339,8 @@ CLoader::PROGRESS_SNAPSHOT CLoader::Get_ProgressSnapshot() const
 		Snapshot.bDeterminate = m_bProgressDeterminate;
 		Snapshot.iCompleted = m_iProgressCompleted;
 		Snapshot.iTotal = m_iProgressTotal;
+		Snapshot.iPhaseIndex = m_iPhaseIndex;
+		Snapshot.iPhaseCount = m_iPhaseCount;
 		Snapshot.iElapsedMs = static_cast<uint64_t>(
 			std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::steady_clock::now() -
@@ -355,6 +372,7 @@ void CLoader::Print_Text()
 HRESULT CLoader::Ready_For_Lobby()
 {
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::LOBBY));
+	Declare_Phases(2u);
 	Set_Status(TEXT("LOBBY: stage selection UI"));
 	Set_Status(TEXT("Lobby loading complete"));
 	rollback.Commit();
@@ -386,6 +404,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
 		return E_INVALIDARG;
 
+	Declare_Phases(8u);
 	Set_Status(TEXT("CHARACTER SELECT: visual map"));
 	if (FAILED(Ready_MapArea(
 		ETOUI(LEVEL::CHARACTER_SELECT),
@@ -450,6 +469,7 @@ HRESULT CLoader::Ready_For_Bern()
 			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
 	}
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::BERN));
+	Declare_Phases(7u);
 	Set_Status(TEXT("BERN: world catalog and placements"));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
@@ -507,6 +527,7 @@ HRESULT CLoader::Ready_For_ValtanArena()
 		ETOUI(LEVEL::VALTAN_ARENA));
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::VALTAN_ARENA));
+	Declare_Phases(10u);
 	Set_Status(TEXT("VALTAN: arena map"));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
@@ -611,6 +632,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA));
+	Declare_Phases(9u);
 	Set_Status(TEXT("KoukuSaydon: arena map"));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
@@ -684,6 +706,7 @@ HRESULT CLoader::Ready_For_Development()
 	{
 		CNpcPresentationAssetService::Begin_LevelLoad(
 			ETOUI(LEVEL::DEVELOPMENT));
+		Declare_Phases(3u);
 		Set_Status(TEXT("MAP EDITOR: core rendering resources"));
 		if (FAILED(Ready_MapAuthoringCore(ETOUI(LEVEL::DEVELOPMENT))))
 		{
@@ -719,6 +742,7 @@ HRESULT CLoader::Ready_For_Development()
 	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
 		return E_INVALIDARG;
 
+	Declare_Phases(6u);
 	Set_Status(TEXT("TEST: training map"));
 	if (FAILED(Ready_MapArea(
 		ETOUI(LEVEL::DEVELOPMENT),
@@ -785,6 +809,7 @@ HRESULT CLoader::Ready_MapArea(
 			if (loadScope.isEnabled)
 			{
 				std::string placementStatus;
+				Add_Phases(1u);
 				Set_Status(TEXT("Map: product load scope"));
 				if (!CMapPlacementRuntime::Read_Placements(
 					mapCatalog, scopedPlacements, placementStatus))

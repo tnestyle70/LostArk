@@ -230,6 +230,12 @@ public:
 		std::uint32_t requestSequence, LostArk::Shared::VEHICLE_ID vehicleId);
 	bool Try_Consume_VehicleRidingResult(
 		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result);
+	/* Title window change. The snapshot carries the worn title; the result only says why
+	a request did nothing. */
+	bool Send_SetHonorTitle(
+		std::uint32_t requestSequence, LostArk::Shared::HONOR_TITLE_ID titleId);
+	bool Try_Consume_HonorTitleResult(
+		LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT& result);
 	bool Send_DebugTeleportToPlacement(
 		std::uint32_t requestSequence,
 		std::string_view placementId);
@@ -530,6 +536,7 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT> m_VehicleRidingResults;
+	std::deque<LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT> m_HonorTitleResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{
