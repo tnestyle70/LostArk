@@ -772,6 +772,26 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		Update_MarioMoveGoal(player, updateTick);
 		if (!player.hasMoveGoal)
 			continue;
+		/* The route was pulled taut from where the player stood when it was
+		built, and the player has moved since. Pull it again from here and aim
+		at the farthest waypoint still in sight. Without this the player keeps
+		facing the first waypoint - a neighbouring cell centre whose bearing has
+		little to do with the goal's - and every rebuild puts that cell on the
+		other side, which is what made a held right mouse shake. */
+		if (!player.MovePath.empty() && m_ServerNavigation.Is_Loaded())
+		{
+			for (std::size_t candidate = player.MovePath.size();
+				candidate > player.iMovePathIndex + 1u; --candidate)
+			{
+				const SERVER_NAV_POINT& ahead = player.MovePath[candidate - 1u];
+				if (m_ServerNavigation.Has_LineOfSight(
+					player.fPositionX, player.fPositionZ, ahead.x, ahead.z))
+				{
+					player.iMovePathIndex = candidate - 1u;
+					break;
+				}
+			}
+		}
 		float targetX = player.fMoveGoalX;
 		float targetY = player.fPositionY;
 		float targetZ = player.fMoveGoalZ;
@@ -783,6 +803,10 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			targetY = pathPoint.y;
 			targetZ = pathPoint.z;
 		}
+		/* A smoothed path's intermediate points are corners, not arrivals. Only
+		the last one is where the player stops and has to end up facing. */
+		const bool targetIsDestination =
+			player.iMovePathIndex + 1u >= player.MovePath.size();
 		const float deltaX = targetX - player.fPositionX;
 		const float deltaZ = targetZ - player.fPositionZ;
 		const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
@@ -798,7 +822,11 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				Wrap_Degrees(desiredYaw - player.fYawDegrees);
 			const float maxYawStep =
 				PLAYER_TURN_DEGREES_PER_SECOND * fixedDeltaSeconds;
-			if (0u != player.iMarioStage || distance <= DIRECT_BEARING_DISTANCE ||
+			/* Close to the destination the turn radius no longer fits, so facing
+			snaps rather than orbiting the point. A corner is not a destination:
+			snapping there made every path bend read as an instant pivot. */
+			if (0u != player.iMarioStage ||
+				(targetIsDestination && distance <= DIRECT_BEARING_DISTANCE) ||
 				std::abs(yawDifference) <= maxYawStep)
 			{
 				player.fYawDegrees = desiredYaw;
@@ -890,6 +918,39 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		player.fPositionZ = resolvedZ;
 		if (wasBlocked)
 		{
+			/* The body sweep met something the navigation grid does not carry:
+			a collisionBox, or another body. Route around it and keep the goal.
+			Dropping the goal here is what made a held right mouse shake next
+			to an obstacle: every brush cancelled the move, and the re-send
+			50 ms later started a fresh search from a start cell that had
+			moved, so the first waypoint jumped from side to side.
+
+			The rebuild is rate limited because brushing reports blocked on
+			many ticks in a row. Between rebuilds the move is left alone and
+			the existing slide carries it along the obstacle. */
+			const bool mayReroute = m_ServerNavigation.Is_Loaded() &&
+				updateTick - player.iMoveRerouteTick >= MOVE_REROUTE_MIN_TICKS;
+			if (!mayReroute)
+				continue;
+			player.iMoveRerouteTick = updateTick;
+			std::vector<SERVER_NAV_POINT> reroute;
+			if (m_ServerNavigation.Find_Path(
+					player.fPositionX,
+					player.fPositionZ,
+					player.fMoveGoalX,
+					player.fMoveGoalZ,
+					reroute))
+			{
+				m_ServerNavigation.Smooth_Path(
+					player.fPositionX,
+					player.fPositionZ,
+					player.fMoveGoalX,
+					player.fMoveGoalZ,
+					reroute);
+				player.MovePath = std::move(reroute);
+				player.iMovePathIndex = 0;
+				continue;
+			}
 			player.hasMoveGoal = false;
 			player.MovePath.clear();
 			player.iMovePathIndex = 0;

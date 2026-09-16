@@ -15,6 +15,10 @@ void Client::CUIInputRouter::Begin_Frame()
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
 	m_bRightDownThisFrame =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+	/* Whole notches only (WHEEL_DELTA = 120); a remainder from a high-resolution wheel carries
+	over to the next frame. */
+	m_iWheelNotchesThisFrame = m_iWheelDeltaPending / WHEEL_DELTA;
+	m_iWheelDeltaPending -= m_iWheelNotchesThisFrame * WHEEL_DELTA;
 }
 
 bool_t Client::CUIInputRouter::Is_Hovered(
@@ -145,6 +149,11 @@ void Client::CUIInputRouter::On_Char(wchar_t ch)
 	/* Bounded so a frame stall can't grow the queue without limit -- a normal frame drains it. */
 	if (m_TypedChars.size() < 256)
 		m_TypedChars.push_back(ch);
+}
+
+void Client::CUIInputRouter::On_MouseWheel(const int32_t iWheelDelta)
+{
+	m_iWheelDeltaPending += iWheelDelta;
 }
 
 wstring_t Client::CUIInputRouter::Take_TypedChars()

@@ -746,6 +746,137 @@ void CCharacter::Update_SoundCues()
 	m_fPreviousSoundCueStageWallSeconds = fCurrentStageWallSeconds;
 }
 
+void CCharacter::Update_VehicleSkillCues(
+	const VEHICLE_SKILL_ENTRY& skill,
+	const std::uint32_t actionStartTick,
+	const f32_t actionAgeSeconds)
+{
+	// A cue fires once when the Server action age first passes its chain time.
+	// A late join catches the Effect up; a sound that has clearly passed stays silent.
+	constexpr f32_t LATE_SOUND_SECONDS = 0.25f;
+	const f32_t previous = m_fPreviousVehicleCueAgeSeconds;
+	if (nullptr == m_pVehiclePart || actionAgeSeconds <= previous)
+		return;
+	m_fPreviousVehicleCueAgeSeconds = actionAgeSeconds;
+	const std::shared_ptr<CCharacter> owner = static_pointer_cast<CCharacter>(shared_from_this());
+	for (std::size_t index = 0u; index < skill.effectCues.size(); ++index)
+	{
+		const VEHICLE_SKILL_EFFECT_CUE& cue = skill.effectCues[index];
+		f32_t clipStart = 0.f;
+		f32_t clipDuration = 0.f;
+		if (!m_pVehiclePart->Try_Get_SkillClipWindow(skill.vehicleClips, cue.clipIndex, clipStart, clipDuration))
+			continue;
+		const f32_t start = clipStart + static_cast<f32_t>(cue.startMs) * 0.001f;
+		if (start <= previous || start > actionAgeSeconds)
+			continue;
+		const f32_t late = actionAgeSeconds - start;
+		f32_t effectSeconds = 0.f;
+		if (CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(cue.effectAssetId, effectSeconds) &&
+			late >= effectSeconds)
+		{
+			continue;
+		}
+		const f32_t cueSeconds = clipDuration - static_cast<f32_t>(cue.startMs) * 0.001f;
+		if (cue.bStopAtCueEnd && (cueSeconds <= 0.f || late >= cueSeconds))
+			continue;
+		EFFECT_SPAWN_DESC desc;
+		desc.strEffectAssetId = cue.effectAssetId;
+		desc.pOwner = owner;
+		desc.strAnchorSlotId = "root";
+		desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+		desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ANCHOR;
+		desc.eStopPolicy = cue.bStopAtCueEnd ? EFFECT_STOP_POLICY::CUE_END : EFFECT_STOP_POLICY::NATURAL;
+		desc.iCueDurationMs = cue.bStopAtCueEnd ? static_cast<uint32_t>(cueSeconds * 1000.f) : 0u;
+		desc.iActionStartTick = actionStartTick;
+		desc.iCueStartMs = static_cast<uint32_t>(start * 1000.f);
+		desc.strOccurrenceId = "vehicle-skill:" + std::to_string(skill.skillId) + "/cue:" + std::to_string(index);
+		desc.fInitialSampleTimeSeconds = late;
+		desc.bVehicleModelAnchors = true;
+		std::string status;
+		if (!CEffectPresentationService::Spawn(desc, status))
+		{
+			const std::string preparation = CEffectPresentationService::Get_ProductCuePreparationFailure(cue.effectAssetId);
+			OutputDebugStringA(("[Client][Character] Vehicle skill Effect isolated: " + cue.effectAssetId + ": " + status +
+				(preparation.empty() ? std::string{} : " Preparation: " + preparation) + "\n").c_str());
+		}
+	}
+	for (const VEHICLE_SKILL_SOUND_CUE& cue : skill.soundCues)
+	{
+		f32_t clipStart = 0.f;
+		f32_t clipDuration = 0.f;
+		if (!m_pVehiclePart->Try_Get_SkillClipWindow(skill.vehicleClips, cue.clipIndex, clipStart, clipDuration))
+			continue;
+		const f32_t start = clipStart + static_cast<f32_t>(cue.startMs) * 0.001f;
+		if (start <= previous || start > actionAgeSeconds || actionAgeSeconds - start > LATE_SOUND_SECONDS)
+			continue;
+		const std::vector<std::string>& variants = CSoundCueCatalog::Find_Variants("Vehicle", cue.event);
+		if (variants.empty())
+			continue;
+		const std::size_t variant = variants.size() == 1u ? 0u :
+			(static_cast<std::size_t>(std::rand()) % variants.size());
+		CGameInstance::Get().Play_Sound(CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
+	}
+}
+
+void CCharacter::Update_VehicleLocomotionSoundCues()
+{
+	std::string clip;
+	f32_t seconds = 0.f;
+	f32_t duration = 0.f;
+	const VEHICLE_ACTOR_ENTRY* pVehicle = 0u == m_iVehicleId ? nullptr :
+		CActorCatalog::Find_Vehicle(m_iVehicleId);
+	if (nullptr == pVehicle || nullptr == m_pVehiclePart ||
+		!m_pVehiclePart->Try_Get_LocomotionClipTime(clip, seconds, duration))
+	{
+		m_fPreviousVehicleLocomotionSeconds = -1.f;
+		return;
+	}
+	/* Only a bracket within one continuous pass of the same clip can say a
+	contact just happened; the first frame after a switch only opens one. */
+	const f32_t previous = m_strVehicleLocomotionClip == clip ?
+		m_fPreviousVehicleLocomotionSeconds : -1.f;
+	m_strVehicleLocomotionClip = clip;
+	m_fPreviousVehicleLocomotionSeconds = seconds;
+	if (previous < 0.f)
+		return;
+
+	for (const VEHICLE_LOCOMOTION_SOUND_CUE& cue : pVehicle->locomotionSoundCues)
+	{
+		if (cue.clip != clip)
+			continue;
+		const f32_t at = static_cast<f32_t>(cue.startMs) * 0.001f;
+		if (at > duration)
+			continue;
+		const bool_t crossed = previous <= seconds ?
+			(at > previous && at <= seconds) : (at > previous || at <= seconds);
+		if (!crossed)
+			continue;
+		const std::vector<std::string>& variants =
+			CSoundCueCatalog::Find_Variants("Vehicle", cue.event);
+		if (variants.empty())
+			continue;
+		const std::size_t variant = variants.size() == 1u ? 0u :
+			(static_cast<std::size_t>(std::rand()) % variants.size());
+		CGameInstance::Get().Play_Sound(
+			CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
+	}
+}
+
+void CCharacter::Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const
+{
+	std::vector<std::string> targets;
+	for (const VEHICLE_SKILL_ENTRY& skill : vehicle.skills)
+		for (const VEHICLE_SKILL_EFFECT_CUE& cue : skill.effectCues)
+			if (std::find(targets.begin(), targets.end(), cue.effectAssetId) == targets.end())
+				targets.push_back(cue.effectAssetId);
+	if (targets.empty())
+		return;
+	std::vector<std::string> admitted;
+	std::string status;
+	if (!CEffectPresentationService::Queue_ProductTargets_Priority(targets, admitted, status))
+		OutputDebugStringA(("[Client][Character] Vehicle skill Effect preparation isolated: " + status + "\n").c_str());
+}
+
 void CCharacter::Update_CameraShakeCues()
 {
 	if (!m_isLocallyControlled || m_EffectCueDocument.Shakes.empty())
@@ -1464,6 +1595,19 @@ shared_ptr<CModel> CCharacter::Get_BodyModel() const
 	return m_pBodyModel;
 }
 
+shared_ptr<CModel> CCharacter::Get_VehicleModel() const
+{
+	return nullptr == m_pVehiclePart ? nullptr : m_pVehiclePart->Get_Model();
+}
+
+bool_t CCharacter::Try_Get_VehicleWorldMatrix(float4x4_t& outWorld) const
+{
+	if (nullptr == m_pVehiclePart)
+		return false;
+	outWorld = m_pVehiclePart->Get_CombinedWorldMatrix();
+	return true;
+}
+
 bool_t CCharacter::Set_PresentationSizeMultiplier(const f32_t multiplier)
 {
 	if (!std::isfinite(multiplier) || multiplier < 0.25f || multiplier > 4.f)
@@ -1697,6 +1841,7 @@ bool_t CCharacter::Apply_NetworkAction(
 			Commit_PendingClipChains();
 			m_iLastNetworkActionStartTick = actionStartTick;
 			m_iCurrentEffectSkillId = INVALID_SKILL_ID; m_iEffectActionStartTick = 0u;
+			m_fPreviousVehicleCueAgeSeconds = -1.f;
 		}
 		const VEHICLE_ACTOR_ENTRY* vehicle = CActorCatalog::Find_Vehicle(m_iVehicleId);
 		const VEHICLE_SKILL_ENTRY* vehicleSkill = nullptr == vehicle ? nullptr : vehicle->Find_Skill(skillId);
@@ -1729,7 +1874,10 @@ bool_t CCharacter::Apply_NetworkAction(
 			}
 		}
 		if (nullptr != vehicleSkill && nullptr != m_pVehiclePart)
+		{
 			(void)m_pVehiclePart->Seek_SkillChain(vehicleSkill->vehicleClips, age);
+			Update_VehicleSkillCues(*vehicleSkill, actionStartTick, age);
+		}
 		m_eNetworkAction = action;
 		return true;
 	}
@@ -2587,8 +2735,13 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 	m_iVehicleId = vehicleId;
 	m_iRejectedVehicleId = 0u;
 	m_pVehiclePart = pPart;
+	m_fPreviousVehicleCueAgeSeconds = -1.f;
 	if (nullptr != m_pVehiclePart)
+	{
 		(void)m_pVehiclePart->Set_Moving(m_isMoving);
+		if (const VEHICLE_ACTOR_ENTRY* pVehicle = CActorCatalog::Find_Vehicle(vehicleId))
+			Queue_VehicleSkillEffects(*pVehicle);
+	}
 	Apply_NetworkStance(m_eStance);
 	Update_PresentationRootMatrix();
 	if (!Is_PlayingSkill())
@@ -2712,6 +2865,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 			m_pTransformCom->Get_WorldMatrixPtr()));
 	Update_EffectCues();
 	Update_SoundCues();
+	Update_VehicleLocomotionSoundCues();
 	Update_CameraShakeCues();
 }
 

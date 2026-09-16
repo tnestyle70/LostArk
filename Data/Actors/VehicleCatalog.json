@@ -1,6 +1,6 @@
 {
   "schema": "lostark.vehicle-catalog",
-  "formatVersion": 2,
+  "formatVersion": 4,
   "vehicles": [
     {
       "vehicleId": 6705,
@@ -26,6 +26,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_dash"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_dash"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_dash"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_terpeion_gold.96030.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_TrisionHorse_Dash1", "startMs": 0 }
           ]
         },
         {
@@ -37,6 +43,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_victorypose"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_victorypose"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_victorypose"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_terpeion_gold.96000.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_TrisionHorse_Skill1", "startMs": 100 }
           ]
         },
         {
@@ -48,6 +60,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_relaxation"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_relaxation"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_relaxation"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_terpeion_gold.96010.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_TrisionHorse_Skill2", "startMs": 100 }
           ]
         },
         {
@@ -59,6 +77,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_horse_sk_backkick"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_horse_sk_backkick"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_horse_sk_backkick"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_terpeion_gold.96020.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_TrisionHorse_Skill3", "startMs": 100 }
           ]
         }
       ],
@@ -227,7 +251,12 @@
           ]
         }
       ],
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "locomotionSoundCues": [
+        { "clip": "npc_run_normal_1", "startMs": 14, "event": "Horse_FootStep_Foley1" },
+        { "clip": "npc_run_normal_1", "startMs": 36, "event": "Horse_FootStep" },
+        { "clip": "npc_run_normal_1", "startMs": 502, "event": "Horse_FootStep" }
+      ]
     },
     {
       "vehicleId": 9370,
@@ -253,6 +282,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_dash"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_dash"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_dash"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_starlight_blessing_serene.98380.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_Starlight1_Skill1", "startMs": 1 }
           ]
         },
         {
@@ -264,6 +299,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_nightmoon"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_nightmoon"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_nightmoon"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_starlight_blessing_serene.98381.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_Starlight1_Skill2", "startMs": 1 }
           ]
         },
         {
@@ -275,6 +316,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_swing_01", "wgl_ride_swing_sk_swing_02", "wgl_ride_swing_sk_swing_03"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_swing_01", "sdm_ride_swing_sk_swing_02", "sdm_ride_swing_sk_swing_03"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_swing_01", "pc_sp_m_00_sk_ride_swing_sk_swing_02", "pc_sp_m_00_sk_ride_swing_sk_swing_03"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 1, "effectAssetId": "effect.vehicle.vehicle_starlight_blessing_serene.98382.1.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 1, "event": "S_Vehicle_Starlight1_Skill3", "startMs": 1 }
           ]
         },
         {
@@ -286,6 +333,10 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_swing_sk_night"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_swing_sk_night"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_swing_sk_night"] }
+          ],
+          "effectCues": [],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_Starlight1_Skill4", "startMs": 1 }
           ]
         }
       ],
@@ -415,6 +466,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_hoverboard_sk_feelsgoodspeedin"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_hoverboard_sk_feelsgoodspeedin"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_hoverboard_sk_feelsg"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_mokoboard_rainbow.95722.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_MocoBoard_Dash", "startMs": 0 }
           ]
         }
       ],
@@ -508,6 +565,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_powershould"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_powershould"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_p"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97300.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Dash1", "startMs": 100 }
           ]
         },
         {
@@ -519,6 +582,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_hifriend"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_hifriend"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_h"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97310.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Skill1", "startMs": 100 }
           ]
         },
         {
@@ -530,6 +599,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_shyness"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_shyness"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_s"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97320.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Skill2", "startMs": 100 }
           ]
         },
         {
@@ -541,6 +616,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_heavywalker_bm9_sk_cheerup"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_heavywalker_bm9_sk_cheerup"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_c"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97330.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Skill3", "startMs": 100 }
           ]
         }
       ],
@@ -608,7 +689,11 @@
           ]
         }
       ],
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "locomotionSoundCues": [
+        { "clip": "npc_run_normal_1", "startMs": 180, "event": "S_Vehicle_HeavyWalkerBM_FootStep" },
+        { "clip": "npc_run_normal_1", "startMs": 690, "event": "S_Vehicle_HeavyWalkerBM_FootStep" }
+      ]
     },
     {
       "vehicleId": 8906,
@@ -634,6 +719,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_summerseason"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_summerseason"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_summerseason"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97730.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_UniconTube_Dash", "startMs": 10 }
           ]
         },
         {
@@ -645,6 +736,12 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_tubespin"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_tubespin"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_tubespin"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97731.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_UniconTube_Skill1", "startMs": 10 }
           ]
         },
         {
@@ -656,6 +753,16 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_waterjump_01", "wgl_ride_tube_sk_waterjump_02", "wgl_ride_tube_sk_waterjump_03"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_waterjump_01", "sdm_ride_tube_sk_waterjump_02", "sdm_ride_tube_sk_waterjump_03"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_waterjump_01", "pc_sp_m_00_sk_ride_tube_sk_waterjump_02", "pc_sp_m_00_sk_ride_tube_sk_waterjump_03"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97732.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" },
+            { "clipIndex": 1, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97732.1.full.restore", "startMs": 0, "stopPolicy": "NATURAL" },
+            { "clipIndex": 2, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97732.2.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_UniconTube_Skill2_1", "startMs": 10 },
+            { "clipIndex": 1, "event": "S_Vehicle_UniconTube_Skill2_2", "startMs": 10 },
+            { "clipIndex": 2, "event": "S_Vehicle_UniconTube_Skill2_3", "startMs": 10 }
           ]
         },
         {
@@ -667,6 +774,14 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_tube_sk_waterfall_01", "wgl_ride_tube_sk_waterfall_02-2"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_tube_sk_waterfall_01", "sdm_ride_tube_sk_waterfall_02-2"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_tube_sk_waterfall_01", "pc_sp_m_00_sk_ride_tube_sk_waterfall_02"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97733.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" },
+            { "clipIndex": 1, "effectAssetId": "effect.vehicle.vehicle_unicorn_tube_sea.97733.1.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_UniconTube_Skill_3_1", "startMs": 10 },
+            { "clipIndex": 1, "event": "S_Vehicle_UniconTube_Skill_3_2", "startMs": 10 }
           ]
         }
       ],
@@ -754,6 +869,14 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_dash"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_dash"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_dash"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_ancient_myth.98520.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Dash1", "startMs": 1 },
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Run1", "startMs": 1 },
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Stop1", "startMs": 1 }
           ]
         },
         {
@@ -765,6 +888,13 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_roar"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_roar"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_roar"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_ancient_myth.98521.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Skill1", "startMs": 1 },
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Skill1_Vox1", "startMs": 1 }
           ]
         },
         {
@@ -776,6 +906,15 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_breath_01", "wgl_ride_dragon_2_sk_breath_02"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_breath_01", "sdm_ride_dragon_2_sk_breath_02"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_breath_0", "pc_sp_m_00_sk_ride_dragon_2_sk_breath~1"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_ancient_myth.98522.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" },
+            { "clipIndex": 1, "effectAssetId": "effect.vehicle.vehicle_ancient_myth.98522.1.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Skill2_1", "startMs": 1 },
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Skill2_Vox1", "startMs": 1 },
+            { "clipIndex": 1, "event": "S_Vehicle_AncientDragon1_Skill2_2", "startMs": 0 }
           ]
         },
         {
@@ -787,6 +926,13 @@
             { "characterClass": "WARLORD", "clips": ["wgl_ride_dragon_2_sk_look"] },
             { "characterClass": "ARTIST", "clips": ["sdm_ride_dragon_2_sk_look"] },
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_dragon_2_sk_look"] }
+          ],
+          "effectCues": [
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_ancient_myth.98523.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+          ],
+          "soundCues": [
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Skill3_Vox1", "startMs": 1 },
+            { "clipIndex": 0, "event": "S_Vehicle_AncientDragon1_Skill3", "startMs": 500 }
           ]
         }
       ],
@@ -1092,7 +1238,11 @@
           ]
         }
       ],
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "locomotionSoundCues": [
+        { "clip": "npc_run_normal_1", "startMs": 80, "event": "S_Vehicle_AncientDragon1_FootStep1" },
+        { "clip": "npc_run_normal_1", "startMs": 540, "event": "S_Vehicle_AncientDragon1_FootStep1" }
+      ]
     }
   ]
 }

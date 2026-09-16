@@ -10,9 +10,10 @@ Outputs
       the vehicle's own icon, cut from the EFUI_ICONATLAS_{V,N} page IconInfo.loa
       names for `<Icon>_<IconIndex>` in EFTable_Vehicle.
   Client/Bin/Resources/UI/Vehicle/Skills/skill_<skillId>.png
-      the vehicle's skill icons (EFTable_Vehicle SkillId0/1/2 + MovingSkill ->
-      EFTable_Skill Icon/IconIndex -> IconInfo.loa), listed per vehicle in the
-      catalog as `skills[{slot, skillId, iconAsset}]` for the mounted HUD's Q/W/E/R.
+      the vehicle's skill icons (Data/Vehicles/VehicleProfiles.json skills[] --
+      SPACE/Q/W/E, the Server contract -- -> EFTable_Skill Icon/IconIndex ->
+      IconInfo.loa), listed per vehicle in the catalog as
+      `skills[{slot, skillId, cooldownMs, iconAsset}]` for the mounted HUD.
   Client/Bin/Resources/UI/Vehicle/*.png
       window chrome and list art, cut at the DefineSubImage regions vehicle.gfx and
       its shared componentsV2 / shareImageV2 dependencies resolve to.
@@ -105,7 +106,7 @@ LOCAL = [
 WINDOW_SCALE = 1.2
 RETAIL_SCALE = 2.0 / 3.0 * WINDOW_SCALE
 WINDOW_W = 480.0                                   # WindowBG_V2 330 * 1.455
-WINDOW_H = 390.0                                   # shortened: 4 rows instead of the 770 px list
+WINDOW_H = 60.0 + 60.0 * 6 + 10.0 + 30.0 + 50.0    # header + rows + hint + buttons (= 510)
 # vehicleWnd sits at stage (1376,186): keep that top edge and its right margin (1920-1376-480)
 # so the enlarged window still ends where the retail one did.
 WINDOW_STAGE_Y = 186.0
@@ -114,8 +115,9 @@ WINDOW_STAGE_X = 1920.0 - (1920.0 - 1376.0 - 480.0) - WINDOW_W * WINDOW_SCALE
 # (user request) so the list fills the panel.
 ROW_X, ROW_Y0, ROW_PITCH, ROW_H = 14.0, 60.0, 60.0, 60.0
 ROW_W = WINDOW_W - ROW_X * 2
-BUTTON_Y = 340.0                                   # confirmBtn / closeBtnDummy row
-HINT_Y = 310.0                                     # desc_lb
+ROW_COUNT = 6                                      # every Data/Actors/VehicleCatalog.json vehicle
+HINT_Y = ROW_Y0 + ROW_PITCH * ROW_COUNT + 10.0     # desc_lb, under the last row
+BUTTON_Y = HINT_Y + 30.0                           # confirmBtn / closeBtnDummy row
 
 
 def layout_slot(slot_id, x, y, w, h, path):
@@ -196,6 +198,8 @@ def main() -> int:
     repo = args.repo
 
     catalog = json.loads((repo / "Data/Actors/VehicleCatalog.json").read_text(encoding="utf-8"))
+    profiles = {int(v["vehicleId"]): v for v in
+                json.loads((repo / "Data/Vehicles/VehicleProfiles.json").read_text(encoding="utf-8"))["vehicles"]}
     vehicle_db = glob.glob(str(EXTRACTED / "Vehicle/tables/**/EFTable_Vehicle.db"), recursive=True)[0]
     vconn = sqlite3.connect(vehicle_db)
     sconn = sqlite3.connect(str(Path(vehicle_db).with_name("EFTable_Skill.db")))
@@ -207,14 +211,11 @@ def main() -> int:
     icons_dir.mkdir(parents=True, exist_ok=True)
     skills_dir = repo / "Client/Bin/Resources/UI/Vehicle/Skills"
     skills_dir.mkdir(parents=True, exist_ok=True)
-    # Quick-slot key per EFTable_Vehicle skill column (the retail mounted quickslot shows the
-    # vehicle actions on the Q/W/E/R row; the A/S/D/F row is locked).
-    SKILL_COLUMNS = [("Q", "SkillId0"), ("W", "SkillId1"), ("E", "SkillId2"), ("R", "MovingSkill")]
     rows = []
     for entry in catalog["vehicles"]:
         vid = int(entry["vehicleId"])
-        icon, index, speed = vconn.execute(
-            "select Icon, IconIndex, MoveSpeed from Vehicle where PrimaryKey=?", (vid,)).fetchone()
+        icon, index = vconn.execute(
+            "select Icon, IconIndex from Vehicle where PrimaryKey=?", (vid,)).fetchone()
         found = iconinfo_lookup(icon_data, "%s_%d" % (icon, index))
         if found is None:
             raise SystemExit("IconInfo has no %s_%d for vehicle %d" % (icon, index, vid))
@@ -223,26 +224,30 @@ def main() -> int:
         icon_asset = "UI/Vehicle/Icons/vehicle_%d.png" % vid
         crop.save(repo / "Client/Bin/Resources" / icon_asset)
         skills = []
-        for slot, column in SKILL_COLUMNS:
-            (skill_id,) = vconn.execute("select %s from Vehicle where PrimaryKey=?" % column, (vid,)).fetchone()
-            if not skill_id:
-                continue
+        if vid not in profiles:
+            raise SystemExit("VehicleProfiles.json has no Server profile for vehicle %d" % vid)
+        # The Server contract owns which key does what (SPACE dash, Q/W/E actions, R dismounts);
+        # this only fetches the retail icon for each of those skills.
+        for profile_skill in profiles[vid].get("skills", []):
+            slot, skill_id = profile_skill["inputSlot"], int(profile_skill["skillId"])
             sicon, sindex = sconn.execute(
-                "select Icon, IconIndex from Skill where PrimaryKey=?", (skill_id,)).fetchone()
+                "select distinct Icon, IconIndex from Skill where PrimaryKey=?", (skill_id,)).fetchone()
             sfound = iconinfo_lookup(icon_data, "%s_%d" % (sicon, sindex))
             if sfound is None:
                 raise SystemExit("IconInfo has no %s_%d for skill %d" % (sicon, sindex, skill_id))
             spage, sx, sy, sw, sh = sfound
             skill_asset = "UI/Vehicle/Skills/skill_%d.png" % skill_id
             open_page(spage.lower()).crop((sx, sy, sx + sw, sy + sh)).save(repo / "Client/Bin/Resources" / skill_asset)
-            skills.append({"slot": slot, "skillId": int(skill_id), "iconAsset": skill_asset,
+            skills.append({"slot": slot, "skillId": skill_id, "cooldownMs": int(profile_skill.get("cooldownMs", 0)),
+                           "name": msg(gconn, "tip.name.skill_CommonAction_%d" % skill_id) or msg(gconn, "tip.name.skill_%d" % skill_id),
+                           "iconAsset": skill_asset,
                            "iconSource": {"page": spage, "x": sx, "y": sy, "width": sw, "height": sh}})
         rows.append({
             "vehicleId": vid,
             "archetypeId": entry["archetypeId"],
             "name": msg(gconn, "tip.name.vehicle_%d" % vid),
             "description": msg(gconn, "tip.desc.vehicle_%d" % vid),
-            "moveSpeed": speed / 100.0,
+            "moveSpeed": profiles[vid]["moveSpeed"],
             "iconAsset": icon_asset,
             "iconSource": {"page": page, "x": x, "y": y, "width": w, "height": h},
             "skills": skills,
@@ -269,7 +274,7 @@ def main() -> int:
         "source": {"names": "EFTable_GameMsg tip.name/desc.vehicle_<id>",
                    "icons": "EFTable_Vehicle Icon/IconIndex -> IconInfo.loa -> EFUI_ICONATLAS_{V,N}",
                    "strings": "EFTable_GameMsg sys.vehicle.* / sys.common.*",
-                   "skills": "EFTable_Vehicle SkillId0/1/2 + MovingSkill -> EFTable_Skill Icon/IconIndex -> IconInfo.loa",
+                   "skills": "Data/Vehicles/VehicleProfiles.json skills[] (SPACE/Q/W/E) -> EFTable_Skill Icon/IconIndex -> IconInfo.loa; names tip.name.skill_CommonAction_<id>",
                    "hudEmblem": "quickslot.gfx quickSlotTypeMc vehicle frame (UI/KoukuSaydon/Hud/emblem_interaction_vehicle_saddle.png, cut for the Kouku HUD modes)"},
         "strings": strings,
         "vehicles": rows,

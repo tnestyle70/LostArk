@@ -57,6 +57,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_VehicleCatalog.Get_Status();
 		return;
 	}
+	if (!m_HonorTitleCatalog.Load())
+	{
+		m_strStatus = m_HonorTitleCatalog.Get_Status();
+		return;
+	}
 	if (!m_ValtanClearRewards.Load())
 	{
 		m_strStatus = m_ValtanClearRewards.Get_Status();
@@ -747,7 +752,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			break;
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
 			Join(command.iSessionId, command.EnterWorld,
-				command.strSpawnPlacementOverrideId, command.CarriedInventory);
+				command.strSpawnPlacementOverrideId, command.CarriedInventory,
+				command.iCarriedHonorTitleId);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -806,6 +812,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			break;
 		case ROOM_COMMAND_TYPE::SET_VEHICLE_RIDING:
 			Handle_SetVehicleRiding(command.iSessionId, command.SetVehicleRiding);
+			break;
+		case ROOM_COMMAND_TYPE::SET_HONOR_TITLE:
+			Handle_SetHonorTitle(command.iSessionId, command.SetHonorTitle);
 			break;
 		case ROOM_COMMAND_TYPE::INTERACTION_SLOT:
 			Handle_InteractionSlot(command.iSessionId, command.InteractionSlot);

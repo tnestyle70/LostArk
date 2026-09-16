@@ -45,6 +45,16 @@ constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
 
 constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
 
+/* How far a re-sent goal may move before a player already routing around an
+obstacle rebuilds the route. A held right mouse re-sends every 50 ms, so this
+only has to cover the cursor's own drift within one of those. */
+constexpr float MOVE_ROUTE_KEEP_DISTANCE = 1.0f;
+
+/* Ticks between route rebuilds while the body sweep keeps reporting blocked.
+Six ticks is 200 ms: long enough that brushing an obstacle cannot rebuild every
+tick, short enough that a real obstruction is routed around promptly. */
+constexpr std::uint32_t MOVE_REROUTE_MIN_TICKS = 6u;
+
 constexpr float VOLLEY_SPACING_EPSILON = 0.0001f;
 
 constexpr std::uint32_t SERVER_TICK_HZ = 30u;

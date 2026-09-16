@@ -1,0 +1,63 @@
+{
+ "schema": "lostark.hud-buff-sources",
+ "formatVersion": 1,
+ "source": {
+  "layout": "quickslot.gfx QuickSlotFrame buffList (830,914) / deBuffList (1064,914), BuffSlotManagerEx perItemWidth 29",
+  "slot": "components.gfx Shared_BuffSlot_Common: FCSlotBg 24 @(1,1), border 28 @(-1,-1), cooldownText YG760 10px",
+  "colors": {
+   "buffText": "#9BD979",
+   "debuffText": "#E2C87A",
+   "buffStack": "#66FF99",
+   "debuffStack": "#FF6600"
+  }
+ },
+ "sources": [
+  {
+   "source": "vehicle",
+   "kind": "buff",
+   "iconAsset": null,
+   "note": "PLAYER_SNAPSHOT.iVehicleId; icon = the ridden vehicle's VehicleUiCatalog icon"
+  },
+  {
+   "source": "silence",
+   "kind": "debuff",
+   "iconAsset": "UI/HUD/Buff/buff_silence.png",
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 1015,
+    "icon": "Buff_0"
+   }
+  },
+  {
+   "source": "fetter",
+   "kind": "debuff",
+   "iconAsset": "UI/HUD/Buff/buff_fetter.png",
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 1022,
+    "icon": "Buff_37"
+   }
+  },
+  {
+   "source": "fear",
+   "kind": "debuff",
+   "iconAsset": "UI/HUD/Buff/buff_fear.png",
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 13010,
+    "icon": "Buff_38"
+   }
+  },
+  {
+   "source": "stance",
+   "stance": "WARLORD_DEFENSE",
+   "kind": "buff",
+   "iconAsset": "UI/HUD/Buff/buff_stance_warlord_defense.png",
+   "iconSource": {
+    "table": "EFTable_Skill",
+    "primaryKey": 17810,
+    "icon": "GL_Skill_01_39"
+   }
+  }
+ ]
+}

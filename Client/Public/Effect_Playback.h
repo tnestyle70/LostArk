@@ -304,6 +304,8 @@ private:
 		float3_t vSourceAnchorOffset{};
 		bool_t bUpdateSourceAnchor = false;
 		float4x4_t SpawnRootWorld{};
+		// KillLength measures how far the particle has left its spawn point.
+		float3_t vSpawnPosition{};
 	};
 
 	struct MODULE_RANDOM_STATE final

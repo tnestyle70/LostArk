@@ -390,6 +390,54 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input)
     return Write_SceneColorAndBloom(diffuse);
 }
 
+cbuffer SourceMapForwardLighting
+{
+    uint g_SourceMapForwardLightCount = 0u;
+    float4 g_SourceMapForwardLightPositionRange[400];
+    float4 g_SourceMapForwardLightDirectionType[400];
+    float4 g_SourceMapForwardLightColorExponent[400];
+    float4 g_SourceMapForwardLightConeShadow[400];
+    float4 g_SourceMapForwardLightAmbient[400];
+};
+
+float SourceCharacterForwardLightAttenuation(uint index, float3 worldPosition, float3 normal,
+    out float3 direction)
+{
+    const float4 directionType = g_SourceMapForwardLightDirectionType[index];
+    direction = -directionType.xyz;
+    if (directionType.w <= 1.f)
+        return 1.f;
+    const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
+    const float3 delta = positionRange.xyz - worldPosition;
+    const float distance = length(delta);
+    direction = distance > 1e-6f ? delta / distance : normal;
+    float attenuation = pow(saturate((positionRange.w - distance) /
+        max(positionRange.w, 1e-6f)), g_SourceMapForwardLightColorExponent[index].w);
+    if (directionType.w > 2.f)
+    {
+        const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
+        const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
+            coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
+        attenuation *= cone * cone;
+    }
+    return attenuation;
+}
+
+float3 SourceCharacterForwardAmbient(float3 worldPosition, float3 normal)
+{
+    float3 ambient = 0.f;
+    [loop] for (uint ambientIndex = 0u; ambientIndex < g_SourceMapForwardLightCount; ++ambientIndex)
+    {
+        float3 unusedDirection;
+        const float attenuation = SourceCharacterForwardLightAttenuation(ambientIndex,
+            worldPosition, normal, unusedDirection);
+        if (attenuation > 0.f)
+            ambient += g_SourceMapForwardLightColorExponent[ambientIndex].rgb *
+                g_SourceMapForwardLightAmbient[ambientIndex].rgb * attenuation;
+    }
+    return ambient;
+}
+
 float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
@@ -484,6 +532,29 @@ float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFa
         }
         color = Shade_LanceVAModelNative(g_ArtistModelCueProfile,lanceInput);
     }
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP)
+    else if (g_ArtistModelCueProfile == 3828u ||
+        (g_ArtistModelCueProfile >= 3831u && g_ArtistModelCueProfile <= 3833u))
+    {
+        // Vehicle PlaySkeletalMesh lit skins: sky-light base pass with the forward
+        // ambient, then the native directional light PS per forward light.
+        nativeInput.ambientColor = SourceCharacterForwardAmbient(input.vWorldPos.xyz, input.vNormal.xyz);
+        color = Shade_ArtistModelNative(g_ArtistModelCueProfile,nativeInput);
+        // BLEND_Masked skins write zero alpha; coverage is their own native discard.
+        if (g_ArtistModelCueProfile >= 3831u) color.a = 1.f;
+        [loop] for (uint lightIndex = 0u; lightIndex < g_SourceMapForwardLightCount; ++lightIndex)
+        {
+            float3 direction;
+            const float attenuation = SourceCharacterForwardLightAttenuation(lightIndex,
+                input.vWorldPos.xyz, input.vNormal.xyz, direction);
+            if (attenuation <= 0.f) continue;
+            direction = SourceCharacterSafeUnit(direction);
+            const float3 tangentLight = float3(dot(t,direction), dot(b,direction), dot(n,direction));
+            color.rgb += Shade_VehicleModelNativeLight(g_ArtistModelCueProfile, nativeInput, tangentLight,
+                g_SourceMapForwardLightColorExponent[lightIndex].rgb).rgb * attenuation;
+        }
+    }
+#endif
     else color = Shade_ArtistModelNative(g_ArtistModelCueProfile,nativeInput);
     color.rgb *= g_EffectModelCueColorMultiply.rgb;
     color.a = saturate(color.a*g_EffectModelCueColorMultiply.a*g_EffectModelCueOpacity);
@@ -512,16 +583,6 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFa
 float4 g_SourceCharacterLightConstants[64];
 #include "Shader_SourceCharacterLightPrograms.hlsli"
 #include "Shader_SceneHeightFog.hlsli"
-
-cbuffer SourceMapForwardLighting
-{
-    uint g_SourceMapForwardLightCount = 0u;
-    float4 g_SourceMapForwardLightPositionRange[400];
-    float4 g_SourceMapForwardLightDirectionType[400];
-    float4 g_SourceMapForwardLightColorExponent[400];
-    float4 g_SourceMapForwardLightConeShadow[400];
-    float4 g_SourceMapForwardLightAmbient[400];
-};
 
 SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     float3 cameraPosition, float3 lightDirection, float3 lightColor)
@@ -557,29 +618,6 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     light.lightColor = lightColor;
     light.shadow = 1.f;
     return light;
-}
-
-float SourceCharacterForwardLightAttenuation(uint index, float3 worldPosition, float3 normal,
-    out float3 direction)
-{
-    const float4 directionType = g_SourceMapForwardLightDirectionType[index];
-    direction = -directionType.xyz;
-    if (directionType.w <= 1.f)
-        return 1.f;
-    const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
-    const float3 delta = positionRange.xyz - worldPosition;
-    const float distance = length(delta);
-    direction = distance > 1e-6f ? delta / distance : normal;
-    float attenuation = pow(saturate((positionRange.w - distance) /
-        max(positionRange.w, 1e-6f)), g_SourceMapForwardLightColorExponent[index].w);
-    if (directionType.w > 2.f)
-    {
-        const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
-        const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
-            coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
-        attenuation *= cone * cone;
-    }
-    return attenuation;
 }
 
 SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
@@ -842,5 +880,27 @@ technique11 DefaultTechnique
         VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_UNLIT();
+    }
+    // Appended index 12: recovered BLEND_Masked skeletal material. Its coverage is the
+    // native clip, so the surface writes depth instead of blending a self-overlapping
+    // skin against itself in submission order.
+    pass EffectModelCueNativeMasked
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = EffectSourceModelPS;
+    }
+    // Appended index 13 preserves a masked source material's two-sided rasterizer.
+    pass EffectModelCueNativeMaskedTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = EffectSourceModelPS;
     }
 }

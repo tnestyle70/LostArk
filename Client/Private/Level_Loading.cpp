@@ -39,9 +39,13 @@
 namespace
 {
 
-	/* Fraction of the track the heartbeat segment covers while no lane has published a real
-	fraction yet. */
-	constexpr f32_t INDETERMINATE_SEGMENT = 0.18f;
+	/* A worker phase without a denominator creeps toward this share of its slice on elapsed
+	time (tau in ms) so the bar keeps moving without ever running ahead of the next phase. */
+	constexpr f32_t OPAQUE_PHASE_CAP = 0.85f;
+	constexpr f32_t OPAQUE_PHASE_TAU_MS = 2500.f;
+	/* Share of the bar the Effect lanes (document staging, then Product target settling) own
+	when the target Level uses them; the Level worker owns the rest. */
+	constexpr f32_t EFFECT_LANE_SHARE = 0.25f;
 	/* How far across its own art the mark's anchor sits. Retail places the mark's registration
 	point on the reveal edge and draws the comet at (-293,-25) from it, so 293 of the art's 356
 	px lie behind that edge and only its short bright end pokes past. */
@@ -202,57 +206,63 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		bHasEffectProgress = true;
 	}
 
-	bool_t bProgressDeterminate = false;
-	const auto SetDeterminateProgress =
-		[this, &bProgressDeterminate](
-			const size_t iCompleted,
-			const size_t iTotal)
+	/* One bar for the whole load. Level worker lane: (phases done + fraction inside the current
+	phase) / declared phases, where a phase with a denominator (model prototypes, character
+	bundles) reports it and an opaque phase creeps on elapsed time. Effect lane: document staging
+	fills the first half, Product target settling the second. The two lanes run in parallel, so
+	they are summed by share rather than chained. */
+	f32_t fLoaderLane = 0.f;
+	if (bLoaderFinished)
 	{
-			/* A known lane reaching N/N still has an opaque owner handoff/close
-			   before activation.  Keep the heartbeat indeterminate there; only the
-			   full readiness conjunction above may publish 100 percent. */
-			if (0u == iTotal || iCompleted >= iTotal)
-				return;
-			bProgressDeterminate = true;
-			m_fDisplayProgress = static_cast<f32_t>(iCompleted) /
-				static_cast<f32_t>(iTotal);
-		};
+		fLoaderLane = 1.f;
+	}
+	else if (0u != LoaderProgress.iPhaseCount)
+	{
+		const size_t iPhase = (std::min)(
+			LoaderProgress.iPhaseIndex > 0u ? LoaderProgress.iPhaseIndex - 1u : 0u,
+			LoaderProgress.iPhaseCount - 1u);
+		f32_t fInPhase = 0.f;
+		if (LoaderProgress.bDeterminate && 0u != LoaderProgress.iTotal)
+		{
+			fInPhase = static_cast<f32_t>((std::min)(LoaderProgress.iCompleted, LoaderProgress.iTotal)) /
+				static_cast<f32_t>(LoaderProgress.iTotal);
+		}
+		else
+		{
+			fInPhase = OPAQUE_PHASE_CAP * (1.f - std::exp(
+				-static_cast<f32_t>(LoaderProgress.iElapsedMs) / OPAQUE_PHASE_TAU_MS));
+		}
+		fLoaderLane = (static_cast<f32_t>(iPhase) + std::clamp(fInPhase, 0.f, 1.f)) /
+			static_cast<f32_t>(LoaderProgress.iPhaseCount);
+	}
 
-	if (bLoaderFinished && bTargetPresentationReady)
+	if (bHasEffectProgress)
+
 	{
-		bProgressDeterminate = true;
-		m_fDisplayProgress = 1.f;
-	}
-	else if (bHasEffectProgress &&
-		EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE == EffectProgress.ePhase &&
-		EffectProgress.bDeterminate)
-	{
-		/* This is the worker document-stage fraction only.  It is not mixed
-		   with renderer/queue completion into a fabricated overall percent. */
-		SetDeterminateProgress(
-			EffectProgress.iCompleted, EffectProgress.iTotal);
-	}
-	else if (bHasEffectProgress &&
-		(EFFECT_LOAD_PROGRESS_PHASE::EPOCH_STAGE_COMPLETE ==
-				EffectProgress.ePhase ||
-		 EFFECT_LOAD_PROGRESS_PHASE::CLOSED == EffectProgress.ePhase))
-	{
-		/* Once worker staging is terminal, readiness is the number of Product
-		   queue targets that actually reached a prepared/isolated terminal
-		   receipt under the current catalog revision. */
-		const uint32_t iSettledCount = (min)(
-			m_iEffectPreparationPreparedCount +
-				m_iEffectPreparationFailedCount,
-			m_iEffectPreparationTargetCount);
-		SetDeterminateProgress(
-			iSettledCount, m_iEffectPreparationTargetCount);
-	}
-	// An Effect lane can finish while map/character preparation still runs.
-	// A terminal Effect fraction must not hide the remaining level fraction.
-	if (!bProgressDeterminate && !bLoaderFinished && LoaderProgress.bDeterminate)
-	{
-		SetDeterminateProgress(
-			LoaderProgress.iCompleted, LoaderProgress.iTotal);
+		switch (EffectProgress.ePhase)
+		{
+		case EFFECT_LOAD_PROGRESS_PHASE::TARGET_STAGE:
+			if (EffectProgress.bDeterminate && 0u != EffectProgress.iTotal)
+			{
+				fEffectLane = 0.5f * static_cast<f32_t>((std::min)(EffectProgress.iCompleted, EffectProgress.iTotal)) /
+					static_cast<f32_t>(EffectProgress.iTotal);
+			}
+			break;
+		case EFFECT_LOAD_PROGRESS_PHASE::EPOCH_STAGE_COMPLETE:
+		case EFFECT_LOAD_PROGRESS_PHASE::CLOSED:
+		{
+			const uint32_t iSettledCount = (min)(
+				m_iEffectPreparationPreparedCount + m_iEffectPreparationFailedCount,
+				m_iEffectPreparationTargetCount);
+			fEffectLane = 0.5f + 0.5f * (0u != m_iEffectPreparationTargetCount ?
+				static_cast<f32_t>(iSettledCount) / static_cast<f32_t>(m_iEffectPreparationTargetCount) : 1.f);
+			break;
+		}
+		default:
+			break;
+		}
+		if (bTargetPresentationReady)
+			fEffectLane = 1.f;
 	}
 
 	if (m_isEffectLoadJobStarted && !m_isActivationRequested)
@@ -261,45 +271,31 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			m_pDevice, m_pContext, m_pLoader->Get_EffectLoadJob(),
 			m_iEffectLoadJobEpoch);
 	}
-	if (bProgressDeterminate)
-	{
-		/* Take the highest fraction any lane has published so far. A later lane starting from
-		   a small numerator no longer drags the bar backwards. */
-		m_fTargetProgress = (max)(m_fTargetProgress,
-			std::clamp(m_fDisplayProgress, 0.f, 1.f));
-		m_hasDeterminateProgress = true;
-	}
-	if (m_hasDeterminateProgress)
+
+	const bool_t bLoadComplete = bLoaderFinished && bTargetPresentationReady;
+	const f32_t fEffectShare = bHasEffectProgress ? EFFECT_LANE_SHARE : 0.f;
+	m_fDisplayProgress = bLoadComplete ? 1.f :
+		(std::min)(fLoaderLane * (1.f - fEffectShare) + fEffectLane * fEffectShare, 0.99f);
+	/* Only ever rises: a lane restarting from a small numerator cannot drag the bar back. */
+	m_fTargetProgress = (max)(m_fTargetProgress, std::clamp(m_fDisplayProgress, 0.f, 1.f));
+	if (bLoadComplete)
 	{
 		/* Completion is the one case that snaps: the load really is done, so the bar must not
 		   still be easing while the Level activates. */
-		if (bProgressDeterminate && m_fDisplayProgress >= 1.f)
-		{
-			m_fShownProgress = 1.f;
-		}
-		else
-		{
-			const f32_t fStep = std::clamp((max)(0.f, fTimeDelta), 0.f, 0.1f);
-			m_fShownProgress += (m_fTargetProgress - m_fShownProgress) *
-				(1.f - std::exp(-6.f * fStep));
-		}
+		m_fShownProgress = 1.f;
 	}
 	else
 	{
-		m_fIndeterminateProgress = std::fmod(
-			m_fIndeterminateProgress + (max)(0.f, fTimeDelta) * 0.45f,
-			1.f);
+		const f32_t fStep = std::clamp((max)(0.f, fTimeDelta), 0.f, 0.1f);
+		m_fShownProgress += (m_fTargetProgress - m_fShownProgress) *
+			(1.f - std::exp(-6.f * fStep));
 	}
 
 	/* The reveal window in layout space, the way retail drives the bar: a clip whose left edge
-	is fixed and whose width is the ratio times the track length. The heartbeat slides that
-	window instead of growing it. */
-	const f32_t fRevealLeft = m_fProgressMaskLeft + m_fProgressMaskWidth *
-		(m_hasDeterminateProgress ? 0.f :
-			(1.f - INDETERMINATE_SEGMENT) * m_fIndeterminateProgress);
+	is fixed and whose width is the ratio times the track length. */
+	const f32_t fRevealLeft = m_fProgressMaskLeft;
 	const f32_t fRevealRight = fRevealLeft + m_fProgressMaskWidth *
-		(m_hasDeterminateProgress ? std::clamp(m_fShownProgress, 0.f, 1.f) :
-			INDETERMINATE_SEGMENT);
+		std::clamp(m_fShownProgress, 0.f, 1.f);
 
 	if (nullptr != m_pProgressFill && m_fProgressFillWidth > 0.f)
 	{

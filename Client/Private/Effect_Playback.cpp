@@ -775,7 +775,7 @@ namespace
 			return SOURCE_SPAWN_MODULE_KIND::LOCATION_CIRCLE_SURFACE;
 		if (SourceClass_Matches(Module, "particlemodulevelocity"))
 			return SOURCE_SPAWN_MODULE_KIND::VELOCITY;
-		if (Module.strClassName == "particlemodulevelocitycone")
+		if (SourceClass_Matches(Module, "particlemodulevelocitycone"))
 			return SOURCE_SPAWN_MODULE_KIND::VELOCITY_CONE;
 		if (SourceClass_Matches(Module, "particlemodulevelocityinheritparent"))
 			return SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT;
@@ -839,6 +839,7 @@ namespace
 		ORBIT,
 		VORTEX,
 		KILL_HEIGHT,
+		KILL_LENGTH,
 		ATTRACTOR_POINT,
 	};
 
@@ -885,6 +886,8 @@ namespace
 			return SOURCE_UPDATE_MODULE_KIND::ORBIT;
 		if (Module.strClassName == "particlemodulekillheight")
 			return SOURCE_UPDATE_MODULE_KIND::KILL_HEIGHT;
+		if (SourceClass_Matches(Module, "particlemodulekilllength"))
+			return SOURCE_UPDATE_MODULE_KIND::KILL_LENGTH;
 		if (Module.strClassName == "particlemoduleattractorpoint")
 			return SOURCE_UPDATE_MODULE_KIND::ATTRACTOR_POINT;
 		if (SourceClass_Matches(Module, "particlemodulevortex"))
@@ -2628,6 +2631,8 @@ struct Client::CEffectPlayback::SOURCE_UPDATE_MODULE final
 			break;
 		case SOURCE_UPDATE_MODULE_KIND::KILL_HEIGHT:
 			Bind(0u, "height"); break;
+		case SOURCE_UPDATE_MODULE_KIND::KILL_LENGTH:
+			Bind(0u, "length"); break;
 		case SOURCE_UPDATE_MODULE_KIND::ATTRACTOR_POINT:
 			Bind(0u, "position"); Bind(1u, "range"); Bind(2u, "strength"); break;
 		case SOURCE_UPDATE_MODULE_KIND::VORTEX:
@@ -4917,6 +4922,7 @@ void Client::CEffectPlayback::Spawn_Particles(
 			0.001f, Particle.fLifeTimeSeconds);
 		Particle.iSpawnSimulationStep = m_iSimulationStep;
 		Particle.SpawnRootWorld = ElementWorld;
+		Particle.vSpawnPosition = Particle.vPosition;
 		const f32_t fSpawnEmitterTimeSeconds = Particle.fSpawnEmitterTimeSeconds;
 		State.Particles.push_back(std::move(Particle));
 		Queue_ParticleEvents(Element, State, State.Particles.back(), ElementWorld,
@@ -5817,8 +5823,18 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				(tangent * std::cos(azimuth) + bitangent * std::sin(azimuth)) * std::sin(angle));
 			// Preserve the extracted cm/s and source XYZ until this single conversion.
 			// Element/owner rotation remains owned by the existing particle birth basis.
-			Particle.vVelocity = Add3(Particle.vVelocity,
-				UE3_CentimetersToClient(Scale3(coneDirection, speed)));
+			float3_t ConeVelocity = UE3_CentimetersToClient(Scale3(coneDirection, speed));
+			if (Element.Detail.Particle.bLocalSpace &&
+				SourceBool(Module, "binworldspace", false))
+			{
+				// A world-space cone on a local-space emitter is authored in world
+				// axes; undo the element basis so the birth matrix does not apply
+				// it twice. Only this module's own contribution is rotated.
+				const matrix_t InverseRoot = XMMatrixInverse(
+					nullptr, XMLoadFloat4x4(&ElementWorld));
+				ConeVelocity = Transform_Normal(ConeVelocity, InverseRoot);
+			}
+			Particle.vVelocity = Add3(Particle.vVelocity, ConeVelocity);
 		}
 		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT)
 		{
@@ -6796,6 +6812,14 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
                 Height = Plane.y;
             }
             if (SourceBool(Module, "bfloor", false) ? WorldPosition.y < Height : WorldPosition.y > Height)
+                Particle.fAgeSeconds = Particle.fLifeTimeSeconds;
+        }
+        else if (Kind == SOURCE_UPDATE_MODULE_KIND::KILL_LENGTH)
+        {
+            // Source Length is the travelled distance from the spawn point in cm.
+            const float Length = .01f * Evaluate_ModuleFloat(State, Module,
+                PreparedModule.Distribution(Module, 0u), fEmitterTimeSeconds, 0.f);
+            if (Length > 0.f && Length3(Subtract3(Particle.vPosition, Particle.vSpawnPosition)) > Length)
                 Particle.fAgeSeconds = Particle.fLifeTimeSeconds;
         }
         else if (Kind == SOURCE_UPDATE_MODULE_KIND::ATTRACTOR_POINT)

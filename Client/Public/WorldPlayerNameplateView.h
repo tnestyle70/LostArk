@@ -2,14 +2,25 @@
 
 #include "ClientReplication.h"
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
 NS_BEGIN(Client)
 
-// Bern/Valtan의 Server-replicated player를 화면 공간 이름표로 투영한다.
-// 이 view는 player identity, Character, font 또는 gameplay state를 소유하지 않는다.
+class CCharacter;
+
+/* Projects the Server-replicated players of Bern / Valtan / KoukuSaydon into screen-space
+   nameplates. The view owns no player identity, Character, font or gameplay state.
+
+   Retail headstatus.gfx PcHeadStatusMc reduced to what the project shows: the name plate only
+   ($YG760 12 px, centred, one line). The worn honor title (snapshot id -> CHonorTitleCatalog name)
+   goes ahead of the name on the same line, as BaseHeadStatus.updateTitle does. Guild, the
+   functional line and the HP gauge are not drawn: the Server carries no guild data and the
+   reference screen shows no gauge over a player. The anchor is the character's head (eye bones
+   of the body model plus the crown offset), so the plate sits just above the hair whatever the
+   class scale. Sizes are layout-reference px (1280x720) like the rest of the runtime UI. */
 class CWorldPlayerNameplateView final
 {
 public:
@@ -26,8 +37,17 @@ public:
 		std::string_view Utf8,
 		std::wstring& OutWide);
 
-	void Render(
-		const std::vector<REPLICATED_PLAYER_VIEW>& Players) const;
+	/* World position of the head top (eye bones x presentation scale + crown offset, else a
+	fixed fallback height). The bubble stacks from the same anchor. */
+	static bool_t Try_GetHeadAnchor(
+		const CCharacter& Character,
+		float3_t& vOutWorldPosition);
+
+	/* Reference px (1280x720) the name plate reaches above the head anchor: the next stacked
+	element (the chat bubble) starts there. */
+	static f32_t Stack_Top_RefPx();
+
+	void Render(const std::vector<REPLICATED_PLAYER_VIEW>& Players);
 };
 
 NS_END

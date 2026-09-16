@@ -803,6 +803,44 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader& reader,
 		S2C_SET_VEHICLE_RIDING_RESULT& message);
 
+	/* Honor title change from the title window. The snapshot carries the worn title, so
+	the verdict only reports why a request did nothing. */
+	struct C2S_SET_HONOR_TITLE
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
+	};
+
+	enum class HONOR_TITLE_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_SESSION,
+		REJECTED_WRONG_WORLD,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_UNKNOWN_TITLE,
+		REJECTED_SAME_STATE,
+		END
+	};
+
+	struct S2C_SET_HONOR_TITLE_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		HONOR_TITLE_RESULT eResult = HONOR_TITLE_RESULT::REJECTED_SESSION;
+		// The title the player wears after this request, accepted or not.
+		HONOR_TITLE_ID iActiveHonorTitleId = INVALID_HONOR_TITLE_ID;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_SET_HONOR_TITLE& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_SET_HONOR_TITLE& message);
+	bool Write_Message(CPacketWriter& writer,
+		const S2C_SET_HONOR_TITLE_RESULT& message);
+	bool Read_Message(CPacketReader& reader,
+		S2C_SET_HONOR_TITLE_RESULT& message);
+
 	/* KoukuSaydon mechanic card shown over a player's head. The Server assigns it
 	when a roulette window opens and clears it when the window is judged. */
 	enum class MECHANIC_CARD_SYMBOL : std::uint8_t
@@ -1437,6 +1475,8 @@ namespace LostArk::Shared
 		A ridden vehicle implies a living, idle, normal-form player outside Mario
 		and pattern bind; the Server dismounts before any other action is sent. */
 		VEHICLE_ID iVehicleId = INVALID_VEHICLE_ID;
+		/* Honor title worn over the head (protocol 89); INVALID_HONOR_TITLE_ID = none. */
+		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
 		/* KoukuSaydon interaction state. The card is the symbol a roulette
 		window dealt this player; the mode and its slot layout are the HUD the
 		Server wants drawn (index into the mode's authored icon list per Q..F

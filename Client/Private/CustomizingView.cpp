@@ -639,8 +639,10 @@ void Client::CCustomizingView::Update_Orbit(const f32_t fTimeDelta)
 	m_fLastMouseY = fMouseY;
 
 	/* One wheel notch swaps the whole framing in the original, so this is a toggle rather
-	than a continuous distance. */
-	const int32_t iWheel = CGameInstance::Get().Get_DIMouseMove(DIMM::WHEEL);
+	than a continuous distance. Read through the router (WM_MOUSEWHEEL): Is_Clicked claims the
+	mouse whenever a grid cell or button is merely hovered, which zeroes DirectInput's wheel for
+	exactly the frames the grids want to scroll. */
+	const int32_t iWheel = Router.Get_MouseWheelNotches();
 	if (!Consume_TabGridScroll(iWheel))
 	{
 		if (iWheel > 0)

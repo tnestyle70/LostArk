@@ -560,6 +560,45 @@ namespace Client::EffectDocumentCodecDetail
     }
 
 
+    bool_t Read_MaterialParameterTracks(const Client::DATA_JSON_VALUE& Value,
+        std::vector<Client::EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK>& Out, std::string& Error)
+    {
+        using namespace Client;
+        if (!Value.Is_Array() || Value.Get_Array().size() > 64u)
+        { Error = "Material parameter tracks must be a bounded array."; return false; }
+        for (const auto& Parameter : Value.Get_Array())
+        {
+            EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK Track;
+            std::string Kind;
+            if (!Validate_ExactFields(Parameter, {"name", "kind", "keys"}, "Model Cue material parameter track", Error) ||
+                !Read_String(Parameter, "name", Track.strName, Error) || !Read_String(Parameter, "kind", Kind, Error) ||
+                (Kind != "SCALAR" && Kind != "VECTOR"))
+            { if (Error.empty()) Error = "Model Cue material parameter kind must be SCALAR or VECTOR."; return false; }
+            Track.bVector = Kind == "VECTOR";
+            const auto* Keys = Find_Field(Parameter, "keys", DATA_JSON_TYPE::ARRAY, Error);
+            if (!Keys || !Read_SourceTransformCurve(*Keys, Track.Values, Track.strName.c_str(), Error, Track.bVector ? 3u : 1u)) return false;
+            Out.push_back(std::move(Track));
+        }
+        return true;
+    }
+
+
+    void Write_MaterialParameterTracks(std::ostringstream& Output,
+        const std::vector<Client::EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK>& Tracks)
+    {
+        Output << '[';
+        for (size_t i = 0; i < Tracks.size(); ++i)
+        {
+            const auto& Parameter = Tracks[i];
+            Output << (i ? ", " : "") << "{ \"name\": \"" << Client::CDataJson::Escape(Parameter.strName)
+                << "\", \"kind\": \"" << (Parameter.bVector ? "VECTOR" : "SCALAR") << "\", \"keys\": ";
+            Write_SourceTransformCurve(Output, Parameter.Values);
+            Output << " }";
+        }
+        Output << ']';
+    }
+
+
 	bool_t Read_SourceRecipe(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_CASCADE_RECIPE_DESC& Out,

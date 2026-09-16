@@ -191,6 +191,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 		return E_FAIL;
 
 	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
+	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);

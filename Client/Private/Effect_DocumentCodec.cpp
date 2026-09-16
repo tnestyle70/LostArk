@@ -367,7 +367,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 						"startDelaySeconds", "durationSeconds", "alphaMode",
 						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible",
 						"suppressHorizontalRootMotionBone",
-						"localTransform", "assetPreTransform", "material" },
+						"localTransform", "assetPreTransform", "material", "materialParameterTracks" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
 				strOutError = "Effect Model Cue must be an object.";
@@ -424,6 +424,11 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					Staged.iLoadedFormatVersion, bSourceContract, strOutError))
 					return false;
 				Cue.Material = std::move(Material);
+			}
+			if (const DATA_JSON_VALUE* pTracks = CueValue.Find("materialParameterTracks"))
+			{
+				if (!Read_MaterialParameterTracks(*pTracks, Cue.MaterialParameterTracks, strOutError))
+					return false;
 			}
 			Cue.bVisible = pVisible->Get_Boolean();
 			Staged.ModelCues.push_back(std::move(Cue));
@@ -780,6 +785,11 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		{
 			Output << ", \"material\": ";
 			Write_Material(Output, *Cue.Material);
+		}
+		if (!Cue.MaterialParameterTracks.empty())
+		{
+			Output << ", \"materialParameterTracks\": ";
+			Write_MaterialParameterTracks(Output, Cue.MaterialParameterTracks);
 		}
 		Output << " }";
 	}

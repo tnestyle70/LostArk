@@ -150,10 +150,14 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_MARIO_RETURN_RESULT LastMarioReturnResult;
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT LastDebugMadnessFormResult;
 		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT LastVehicleRidingResult;
+		LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT LastHonorTitleResult;
 		/* The ridden vehicle or INVALID_VEHICLE_ID on foot. Only riding worlds
 		admit it, and Enforce_VehicleRidingState clears it before the snapshot
 		whenever the player can no longer ride. */
 		LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
+		/* Worn honor title (cosmetic); admitted from the honor title bootstrap only and
+		carried through world transfers. */
+		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioLayoutVariant = 0u;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
@@ -192,13 +196,26 @@ namespace LostArk::Server
 		}
 		float fMoveGoalX = 0.f;
 		float fMoveGoalZ = 0.f;
+		/* The point the client last asked for, before navigation projected it
+		onto walkable ground. A goal picked on top of an obstacle projects
+		metres away, so only the request itself can tell a held re-send of the
+		same goal apart from a genuinely new one. */
+		float fMoveRequestX = 0.f;
+		float fMoveRequestZ = 0.f;
 		float fMoveSpeed = 6.f;
 		bool hasMoveGoal = false;
 		// Valtan cannot acquire or damage this player until the server accepts the
 		// first valid move/skill intent after entry or revive.
 		bool isCombatReady = true;
+		/* Empty means the player is steering straight at fMoveGoal, which is what
+		a goal with a clear line to it -- and so a held right mouse -- uses.
+		Routing only fills this in when that straight line is closed. */
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
+		/* When the body sweep last met something the grid does not carry and the
+		move was routed around it. Rate limits that rebuild: brushing an obstacle
+		reports blocked on many ticks in a row. */
+		std::uint32_t iMoveRerouteTick = 0u;
 		/* The knockback in flight from a boss pattern or monster attack: unit XZ
 		direction (a pull flips it toward the attacker when armed), metres per
 		second, and the remaining window. While a window or a knockdown is

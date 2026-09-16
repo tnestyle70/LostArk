@@ -1925,6 +1925,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	bool_t bVisible = true;
 	// Absent preserves the cooked CMaterial; present owns the recovered skeletal material.
 	std::optional<EFFECT_MATERIAL_DESC> Material;
+	// Native material parameter curves sampled at cue-local time; requires Material.
+	std::vector<EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK> MaterialParameterTracks;
 };
 
 struct EFFECT_PARTICLE_SYSTEM_DESC final

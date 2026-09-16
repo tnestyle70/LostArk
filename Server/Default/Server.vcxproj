@@ -53,6 +53,7 @@
 	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h" />
 	<ClInclude Include="..\Public\ItemCatalog.h" />
 	<ClInclude Include="..\Public\VehicleCatalog.h" />
+	<ClInclude Include="..\Public\HonorTitleCatalog.h" />
 	<ClInclude Include="..\Public\ValtanClearRewards.h" />
   </ItemGroup>
   <ItemGroup>
@@ -89,6 +90,7 @@
 	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp" />
 	<ClCompile Include="..\Private\ItemCatalog.cpp" />
 	<ClCompile Include="..\Private\VehicleCatalog.cpp" />
+	<ClCompile Include="..\Private\HonorTitleCatalog.cpp" />
 	<ClCompile Include="..\Private\ValtanClearRewards.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -251,6 +253,7 @@
     <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_VehicleRiding.cpp" />
+    <ClCompile Include="..\Private\GameRoom_HonorTitle.cpp" />
     <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
     <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuAudition.cpp" />

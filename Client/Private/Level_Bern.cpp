@@ -475,6 +475,7 @@ HRESULT CLevel_Bern::Initialize()
 		float2_t(0.5f, 0.5f), 1.f);
 
 	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
+	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
 #ifdef _DEBUG
 	if (!Ready_DebugLevelChangeTriggers(pEntry->pMapAreaId))

@@ -55,6 +55,8 @@
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
 #include "CombatAnalysisFrameView.h"
+#include "HonorTitleCatalog.h"
+#include "HonorTitleWindowView.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -825,6 +827,12 @@ HRESULT CMainApp::Initialize()
 			"[MainApp] Item Catalog initialization failed: " + itemCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
+	/* Same policy: without it nameplates show bare names and the title window is empty. */
+	std::string honorTitleStatus;
+	if (!Client::CHonorTitleCatalog::Load(honorTitleStatus))
+	{
+		OutputDebugStringA(("[MainApp] Honor title catalog initialization failed: " + honorTitleStatus + "\n").c_str());
+	}
 
 	/* Not fatal, same reasoning as CItemCatalog above -- a missing/broken sound catalog just
 	means CCharacter::Update_SoundCues() finds no variants for every cue and silently plays
@@ -854,6 +862,7 @@ HRESULT CMainApp::Initialize()
 	Hide_CombatHUD();
 	m_pCombatAnalysisView = std::make_unique<CCombatAnalysisFrameView>(m_pDevice, m_pContext);
 	Load_KoukuHudModes();
+	Load_HudQuickSlotData();
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
@@ -911,6 +920,8 @@ HRESULT CMainApp::Initialize()
 	m_pAvatarBookView = std::make_unique<CAvatarBookWindowView>(m_pDevice, m_pContext);
 	/* Vehicle window (N): a separate panel on the right, drawn over the windows above. */
 	m_pVehicleWindowView = std::make_unique<CVehicleWindowView>(m_pDevice, m_pContext);
+	/* Honor title window: opened from the character info window, drawn over it. */
+	m_pHonorTitleWindowView = std::make_unique<CHonorTitleWindowView>(m_pDevice, m_pContext);
 	/* Last of all: the carried quick-slot icon must ride over every window above. */
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
@@ -2929,6 +2940,8 @@ HRESULT CMainApp::Render()
 		m_pAvatarBookView->Render_Text();
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Render_Text();
+	if (nullptr != m_pHonorTitleWindowView)
+		m_pHonorTitleWindowView->Render_Text();
 
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
@@ -3000,6 +3013,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pAvatarBookView->Hide();
 		if (nullptr != m_pVehicleWindowView)
 			m_pVehicleWindowView->Hide();
+		if (nullptr != m_pHonorTitleWindowView)
+			m_pHonorTitleWindowView->Hide();
 		if (nullptr != m_pQuickSlotDragView)
 		{
 			m_pQuickSlotDragView->Cancel();
@@ -3354,14 +3369,18 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 
 	Update_ChargeGauge();
 	Update_SkillIcons();
+	Update_SkillSlotMarks();
 	Update_SkillCooldowns();
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	Update_SpecialQuickSlots();
 	if (nullptr != m_pCombatAnalysisView)
 		m_pCombatAnalysisView->Update(fTimeDelta, player);
+	m_HudTimedTexts.clear();
 	Update_KoukuHudMode();
 	Update_VehicleHud();
+	Update_SpecialSlot();
+	Update_BuffBar();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
 	if (nullptr != m_pCharacterInfoView)
@@ -3418,6 +3437,27 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				CPlayerController* pController = Find_ActivePlayerController();
 				if (nullptr == pController || !pController->Request_VehicleRiding(iVehicleId))
 					OutputDebugStringA("[Client][VehicleWindow] Riding request not sent (no controller, or one is still pending).\n");
+			}
+		}
+		if (nullptr != m_pHonorTitleWindowView)
+		{
+			/* The info window's title row button toggles the title window; the window closes
+			with the info window. The Server round trip is the controller's, as for vehicles. */
+			if (m_pCharacterInfoView->Take_HonorTitleWindowRequest())
+				m_pHonorTitleWindowView->Toggle();
+			if (!m_pCharacterInfoView->Is_Open())
+				m_pHonorTitleWindowView->Close();
+			/* Same covering rule as the avatar book: the info window's labels under the open
+			title window's rect are skipped so the title window really sits on top. */
+			if (m_pHonorTitleWindowView->Is_Open())
+				m_pCharacterInfoView->Set_Covered(true);
+			m_pHonorTitleWindowView->Update(fTimeDelta, player);
+			uint32_t iTitleId = 0u;
+			if (m_pHonorTitleWindowView->Take_TitleRequest(iTitleId))
+			{
+				CPlayerController* pController = Find_ActivePlayerController();
+				if (nullptr == pController || !pController->Request_HonorTitle(iTitleId))
+					OutputDebugStringA("[Client][HonorTitleWindow] Title request not sent (no controller, or one is still pending).\n");
 			}
 		}
 	}
@@ -3503,6 +3543,8 @@ void CMainApp::RenderQuickSlotKeyLabels()
 		}
 		DrawKeyLabel(Label.pSlotId, Label.pLabel);
 	}
+	if (m_bHudSpecialSlotShown)
+		DrawKeyLabel("Special_Space", L"Space");
 
 	/* Artist's Z ("저무는 달") and Warlord's X/Z ("전장의 방패"/"방어 태세 전환") are not drawn
 	here. The only "Skill_Z" slot in HUD_Layout.json is Warlord-owned, KEYFRAME_ANIMATION type
@@ -3638,6 +3680,12 @@ void CMainApp::Update_SpecialQuickSlots()
 	}
 }
 
+namespace
+{
+	/* Defined with the skill icon table ahead of Update_SkillIcons below. */
+	const char* Find_HudSkillIcon(LostArk::Shared::SKILL_ID iSkillId);
+}
+
 void CMainApp::Update_VehicleHud()
 {
 	if (nullptr == m_pHUDRuntimeView)
@@ -3647,8 +3695,8 @@ void CMainApp::Update_VehicleHud()
 	VehicleRiding-owned emblem (no class owns that name), nothing to undo. */
 	if (0u == player.iVehicleId)
 		return;
-	const std::array<string, 4>* pSkillIcons = nullptr != m_pVehicleWindowView ?
-		m_pVehicleWindowView->Find_SkillIcons(player.iVehicleId) : nullptr;
+	const std::vector<VEHICLE_SKILL_UI>* pSkills = nullptr != m_pVehicleWindowView ?
+		m_pVehicleWindowView->Find_Skills(player.iVehicleId) : nullptr;
 
 	/* Same shape as the KoukuSaydon interaction mode: identity block off (no class owns this
 	name), no T/V column, the vehicle emblem in the centre. */
@@ -3657,19 +3705,344 @@ void CMainApp::Update_VehicleHud()
 		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
 	m_pHUDRuntimeView->Set_SlotVisible("Vehicle_Hud_Emblem", true);
 
-	/* Q/W/E/R: the vehicle's own actions (EFTable_Vehicle SkillId0/1/2 + MovingSkill, cut by
-	build_vehicle_ui.py); a key with no action and the whole A/S/D/F row show the retail
-	locked-slot icon. Class cooldown pies mean nothing here. */
+	/* Q/W/E carry the vehicle's own actions (VehicleProfiles.json skills[], the keys the Server
+	binds); SPACE goes to the special slot (Update_SpecialSlot). R dismounts and, like the
+	whole A/S/D/F row, shows the retail locked-slot icon. The pies read the vehicle skills'
+	replicated cooldowns -- class cooldowns mean nothing here. */
 	for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 	{
 		const string strKey = KOUKU_SLOT_KEYS[i];
+		const VEHICLE_SKILL_UI* pSkill = nullptr;
+		if (nullptr != pSkills)
+		{
+			for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+			{
+				if (Skill.strSlot == strKey)
+					pSkill = &Skill;
+			}
+		}
 		const string strIconSlot = "Skill_" + strKey + "_Icon";
-		const string* pIcon = (nullptr != pSkillIcons && i < pSkillIcons->size() &&
-			!(*pSkillIcons)[i].empty()) ? &(*pSkillIcons)[i] : nullptr;
 		m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
-			nullptr != pIcon ? *pIcon : string("UI/Vehicle/Vehicle_LockIcon.png"));
+			nullptr != pSkill ? pSkill->strIconAsset : string("UI/Vehicle/Vehicle_LockIcon.png"));
 		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
-		m_pHUDRuntimeView->Set_SlotVisible("Skill_" + strKey + "_Cooldown", false);
+		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
+		const f32_t fRatio = nullptr != pSkill ?
+			Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, "Skill_" + strKey) : 0.f;
+		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
+		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
+		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
+	}
+}
+
+f32_t CMainApp::Resolve_HudCooldownRatio(const HUD_PLAYER_STATE& player, const uint32_t iSkillId,
+	const uint32_t iCooldownMs, const string& strTextSlotId)
+{
+	/* Remaining share of a replicated cooldown for a skill outside the class quick slots (a
+	vehicle action, the special slot). The duration is the catalog's cooldownMs the Server
+	applied; the end tick is the Server's. Also queues the seconds text over strTextSlotId. */
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	for (const LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT& Cooldown : player.Cooldowns)
+	{
+		if (Cooldown.iSkillId != iSkillId || Cooldown.iCooldownEndTick <= player.iServerTick)
+			continue;
+		const f32_t fRemaining = static_cast<f32_t>(Cooldown.iCooldownEndTick - player.iServerTick) / SERVER_TICK_HZ;
+		const f32_t fTotal = iCooldownMs > 0u ? static_cast<f32_t>(iCooldownMs) / 1000.f : fRemaining;
+		if (!strTextSlotId.empty())
+			m_HudTimedTexts.push_back({ strTextSlotId, Cooldown.iCooldownEndTick, false, false });
+		return fTotal > 0.f ? std::clamp(fRemaining / fTotal, 0.f, 1.f) : 0.f;
+	}
+	return 0.f;
+}
+
+void CMainApp::Update_SpecialSlot()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const bool_t bKoukuMode = kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode;
+
+	/* What Space does right now: the ridden vehicle's SPACE action, else the class move skill
+	for the current stance (Find_BySlot is stance-aware, like the other quick slots). */
+	const char* pIcon = nullptr;
+	f32_t fRatio = 0.f;
+	if (0u != player.iVehicleId)
+	{
+		const std::vector<VEHICLE_SKILL_UI>* pSkills = nullptr != m_pVehicleWindowView ?
+			m_pVehicleWindowView->Find_Skills(player.iVehicleId) : nullptr;
+		if (nullptr != pSkills)
+		{
+			for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+			{
+				if ("SPACE" != Skill.strSlot)
+					continue;
+				pIcon = Skill.strIconAsset.c_str();
+				fRatio = Resolve_HudCooldownRatio(player, Skill.iSkillId, Skill.iCooldownMs, "Special_Space");
+			}
+		}
+	}
+	else if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
+		player.eCharacterClass, "SPACE", player.eStance); nullptr != pSkill)
+	{
+		pIcon = Find_HudSkillIcon(pSkill->iSkillId);
+		fRatio = Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, "Special_Space");
+	}
+
+	/* Retail shows the special slot only while its skill is cooling down
+	(QuickSlotSpecialSlotManager.playingCoolDownLength counts the slots that are). */
+	m_bHudSpecialSlotShown = !bKoukuMode && nullptr != pIcon && player.isValid && fRatio > 0.f;
+	m_pHUDRuntimeView->Set_SlotVisible("Special_Space", m_bHudSpecialSlotShown);
+	m_pHUDRuntimeView->Set_SlotVisible("Special_Space_Frame", m_bHudSpecialSlotShown);
+	m_pHUDRuntimeView->Set_SlotVisible("Special_Space_Icon", m_bHudSpecialSlotShown);
+	if (m_bHudSpecialSlotShown)
+		m_pHUDRuntimeView->Set_SlotTexture("Special_Space_Icon", pIcon);
+	m_pHUDRuntimeView->Set_SlotArcRatio("Special_Space_Cooldown", fRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("Special_Space_Cooldown", m_bHudSpecialSlotShown);
+	if (!m_bHudSpecialSlotShown)
+	{
+		/* Drop the seconds text Resolve_HudCooldownRatio queued for a hidden slot. */
+		m_HudTimedTexts.erase(std::remove_if(m_HudTimedTexts.begin(), m_HudTimedTexts.end(),
+			[](const HUD_TIMED_TEXT& Text) { return "Special_Space" == Text.strSlotId; }), m_HudTimedTexts.end());
+	}
+}
+
+void CMainApp::Update_BuffBar()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	constexpr size_t BUFF_SLOTS = 4;
+	struct BUFF_DRAW { const string* pIcon; uint32_t iEndTick; f32_t fRatio; };
+	std::vector<BUFF_DRAW> Buffs, Debuffs;
+	Buffs.reserve(BUFF_SLOTS);
+	Debuffs.reserve(BUFF_SLOTS);
+
+	/* Every entry is a replicated fact; the JSON only says which icon stands for it. */
+	for (const HUD_BUFF_SOURCE& Source : m_HudBuffSources)
+	{
+		if (!player.isValid)
+			break;
+		BUFF_DRAW Draw{ &Source.strIconAsset, 0u, 0.f };
+		bool_t bActive = false;
+		if ("vehicle" == Source.strSource)
+		{
+			const string* pVehicleIcon = (0u != player.iVehicleId && nullptr != m_pVehicleWindowView) ?
+				m_pVehicleWindowView->Find_IconAsset(player.iVehicleId) : nullptr;
+			bActive = nullptr != pVehicleIcon && !pVehicleIcon->empty();
+			Draw.pIcon = pVehicleIcon;
+		}
+		else if ("stance" == Source.strSource)
+		{
+			bActive = ("WARLORD_DEFENSE" == Source.strStance &&
+				LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance);
+		}
+		else if ("silence" == Source.strSource)
+		{
+			bActive = Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick);
+			Draw.iEndTick = player.iSilenceEndTick;
+			if (bActive && 0u != player.iSilenceDurationTicks)
+			{
+				Draw.fRatio = std::clamp(static_cast<f32_t>(player.iSilenceEndTick - player.iServerTick) /
+					static_cast<f32_t>(player.iSilenceDurationTicks), 0.f, 1.f);
+			}
+		}
+		else if ("fetter" == Source.strSource)
+		{
+			bActive = player.isPatternBound;
+			Draw.iEndTick = player.iPatternBindEndTick > player.iServerTick ? player.iPatternBindEndTick : 0u;
+		}
+		else if ("fear" == Source.strSource)
+		{
+			bActive = Is_ServerDeadlinePending(player.iServerTick, player.iFearEndTick);
+			Draw.iEndTick = player.iFearEndTick;
+		}
+		if (!bActive || nullptr == Draw.pIcon || Draw.pIcon->empty())
+			continue;
+		std::vector<BUFF_DRAW>& List = Source.bDebuff ? Debuffs : Buffs;
+		if (List.size() < BUFF_SLOTS)
+			List.push_back(Draw);
+	}
+
+	const auto Apply = [&](const char* pPrefix, const std::vector<BUFF_DRAW>& List, const bool_t bDebuff)
+	{
+		for (size_t i = 0; i < BUFF_SLOTS; ++i)
+		{
+			const string strBase = string(pPrefix) + "_" + std::to_string(i);
+			const bool_t bShown = i < List.size();
+			m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Bg", bShown);
+			m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Border", bShown);
+			m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Icon", bShown);
+			if (!bShown)
+			{
+				m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Cooldown", false);
+				continue;
+			}
+			const BUFF_DRAW& Draw = List[i];
+			m_pHUDRuntimeView->Set_SlotTexture(strBase + "_Icon", *Draw.pIcon);
+			m_pHUDRuntimeView->Set_SlotArcRatio(strBase + "_Cooldown", Draw.fRatio);
+			m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Cooldown", Draw.fRatio > 0.f);
+			if (0u != Draw.iEndTick)
+				m_HudTimedTexts.push_back({ strBase + "_Icon", Draw.iEndTick, bDebuff, true });
+		}
+	};
+	Apply("Buff", Buffs, false);
+	Apply("Debuff", Debuffs, true);
+}
+
+void CMainApp::Update_SkillSlotMarks()
+{
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const bool_t bClassSlots = 0u == player.iVehicleId &&
+		!(kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode);
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
+
+	for (const char* pInputSlot : INPUT_SLOTS)
+	{
+		const string strMarkSlot = string("Skill_") + pInputSlot + "_TypeMark";
+		const string strChainSlot = string("Skill_") + pInputSlot + "_Chain";
+		const PLAYER_SKILL_DEFINITION* pSkill = bClassSlots ? CPlayerSkillCatalog::Find_BySlot(
+			player.eCharacterClass, pInputSlot, player.eStance) : nullptr;
+
+		/* Type mark (SkillSlotTypeMark frames 2 / 3 / 13): which skills carry one is data. */
+		const string* pMarkAsset = nullptr;
+		if (nullptr != pSkill)
+		{
+			for (const HUD_SKILL_MARK& Mark : m_HudSkillMarks)
+			{
+				if (Mark.iSkillId != pSkill->iSkillId)
+					continue;
+				for (const auto& Asset : m_HudSkillMarkAssets)
+				{
+					if (Asset.first == Mark.strMark)
+						pMarkAsset = &Asset.second;
+				}
+			}
+		}
+		if (nullptr != pMarkAsset)
+			m_pHUDRuntimeView->Set_SlotTexture(strMarkSlot, *pMarkAsset);
+		m_pHUDRuntimeView->Set_SlotVisible(strMarkSlot, nullptr != pMarkAsset);
+
+		/* Chain time (chainSkillTimeEffectMc): while this slot's skill is the running action
+		and the Server's current combo stage has an input window, the pie is the share of that
+		window still open -- all four numbers are the Server's (stage table, action start tick). */
+		f32_t fChain = 0.f;
+		if (nullptr != pSkill && pSkill->iSkillId == player.iCurrentSkillId &&
+			player.iComboStage > 0u && player.iComboStage <= pSkill->ComboStages.size())
+		{
+			const PLAYER_COMBO_STAGE_TIMING& Stage = pSkill->ComboStages[player.iComboStage - 1u];
+			if (Stage.iInputCloseMs > Stage.iInputOpenMs && player.iServerTick >= player.iActionStartTick)
+			{
+				const f32_t fElapsedMs = static_cast<f32_t>(player.iServerTick - player.iActionStartTick) *
+					1000.f / SERVER_TICK_HZ;
+				if (fElapsedMs >= static_cast<f32_t>(Stage.iInputOpenMs) &&
+					fElapsedMs <= static_cast<f32_t>(Stage.iInputCloseMs))
+				{
+					fChain = (static_cast<f32_t>(Stage.iInputCloseMs) - fElapsedMs) /
+						static_cast<f32_t>(Stage.iInputCloseMs - Stage.iInputOpenMs);
+				}
+			}
+		}
+		m_pHUDRuntimeView->Set_SlotArcRatio(strChainSlot, std::clamp(fChain, 0.f, 1.f));
+		m_pHUDRuntimeView->Set_SlotVisible(strChainSlot, fChain > 0.f);
+	}
+}
+
+void CMainApp::Load_HudQuickSlotData()
+{
+	m_HudSkillMarks.clear();
+	m_HudSkillMarkAssets.clear();
+	m_HudBuffSources.clear();
+	const auto ReadObject = [](const wchar_t* pRelative, DATA_JSON_VALUE& Root) -> bool_t
+	{
+		ifstream Stream(CProjectDataRoot::Resolve(pRelative), ios::binary);
+		if (!Stream.is_open())
+			return false;
+		const string Text((istreambuf_iterator<char>(Stream)), istreambuf_iterator<char>());
+		string Error;
+		return CDataJson::Parse(Text, Root, Error) && Root.Is_Object();
+	};
+
+	DATA_JSON_VALUE Marks;
+	if (ReadObject(L"UI/HUD/SkillSlotMarks.json", Marks))
+	{
+		vector<HUD_SKILL_MARK> StagedMarks;
+		vector<pair<string, string>> StagedAssets;
+		bool_t bValid = true;
+		if (const DATA_JSON_VALUE* pAssets = Marks.Find("assets"); nullptr != pAssets && pAssets->Is_Object())
+		{
+			for (const auto& Entry : pAssets->Get_Object())
+			{
+				if (!Entry.second.Is_String())
+				{
+					bValid = false;
+					break;
+				}
+				StagedAssets.emplace_back(Entry.first, Entry.second.Get_String());
+			}
+		}
+		const DATA_JSON_VALUE* pMarks = Marks.Find("marks");
+		if (nullptr == pMarks || !pMarks->Is_Array())
+			bValid = false;
+		else
+		{
+			for (const DATA_JSON_VALUE& Value : pMarks->Get_Array())
+			{
+				const DATA_JSON_VALUE* pId = Value.Is_Object() ? Value.Find("skillId") : nullptr;
+				const DATA_JSON_VALUE* pMark = Value.Is_Object() ? Value.Find("mark") : nullptr;
+				if (nullptr == pId || !pId->Is_Number() || nullptr == pMark || !pMark->Is_String())
+				{
+					bValid = false;
+					break;
+				}
+				StagedMarks.push_back({ static_cast<uint32_t>(pId->Get_Number()), pMark->Get_String() });
+			}
+		}
+		if (bValid)
+		{
+			m_HudSkillMarks = std::move(StagedMarks);
+			m_HudSkillMarkAssets = std::move(StagedAssets);
+		}
+		else
+			OutputDebugStringA("[HUD] SkillSlotMarks.json is invalid -- no skill type marks.\n");
+	}
+
+	DATA_JSON_VALUE Buffs;
+	if (ReadObject(L"UI/HUD/HudBuffSources.json", Buffs))
+	{
+		vector<HUD_BUFF_SOURCE> Staged;
+		bool_t bValid = true;
+		const DATA_JSON_VALUE* pSources = Buffs.Find("sources");
+		if (nullptr == pSources || !pSources->Is_Array())
+			bValid = false;
+		else
+		{
+			for (const DATA_JSON_VALUE& Value : pSources->Get_Array())
+			{
+				const DATA_JSON_VALUE* pSource = Value.Is_Object() ? Value.Find("source") : nullptr;
+				const DATA_JSON_VALUE* pKind = Value.Is_Object() ? Value.Find("kind") : nullptr;
+				if (nullptr == pSource || !pSource->Is_String() || nullptr == pKind || !pKind->Is_String())
+				{
+					bValid = false;
+					break;
+				}
+				HUD_BUFF_SOURCE Source{};
+				Source.strSource = pSource->Get_String();
+				Source.bDebuff = "debuff" == pKind->Get_String();
+				if (const DATA_JSON_VALUE* pStance = Value.Find("stance"); nullptr != pStance && pStance->Is_String())
+					Source.strStance = pStance->Get_String();
+				if (const DATA_JSON_VALUE* pIcon = Value.Find("iconAsset"); nullptr != pIcon && pIcon->Is_String())
+					Source.strIconAsset = pIcon->Get_String();
+				Staged.push_back(std::move(Source));
+			}
+		}
+		if (bValid)
+			m_HudBuffSources = std::move(Staged);
+		else
+			OutputDebugStringA("[HUD] HudBuffSources.json is invalid -- no buff bar.\n");
 	}
 }
 
@@ -5355,6 +5728,40 @@ void CMainApp::RenderSkillCooldownText()
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
+	/* Texts the HUD update pass queued this frame: cooldown seconds over the special slot and
+	the vehicle Q/W/E, remaining seconds under each buff / debuff (Shared_BuffSlot_Common
+	cooldownText: YG760 10 px, #9BD979 for a buff, #E2C87A for a debuff, centred under the
+	icon). Vehicle-mode slots are excluded from the class loop above, so nothing doubles. */
+	constexpr f32_t BUFF_TEXT_PX = 10.f * (2.f / 3.f);
+	const fvector_t vBuffText = XMVectorSet(155.f / 255.f, 217.f / 255.f, 121.f / 255.f, 1.f);
+	const fvector_t vDebuffText = XMVectorSet(226.f / 255.f, 200.f / 255.f, 122.f / 255.f, 1.f);
+	for (const HUD_TIMED_TEXT& Text : m_HudTimedTexts)
+	{
+		if (Text.iEndTick <= player.iServerTick)
+			continue;
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect(Text.strSlotId, fX, fY, fWidth, fHeight))
+			continue;
+		const int32_t iSeconds = static_cast<int32_t>(std::ceil(
+			static_cast<f32_t>(Text.iEndTick - player.iServerTick) / SERVER_TICK_HZ));
+		const wstring strSeconds = std::to_wstring(iSeconds) + (Text.bUnderSlot ? L"" : L"s");
+		if (!Text.bUnderSlot)
+		{
+			DrawCooldownLabel(fX + fWidth * 0.5f, fY + fHeight * 0.5f, fHeight * 0.34f, strSeconds);
+			continue;
+		}
+		f32_t fScale = 1.f;
+		const wstring_t strFont = UILabelFont::Resolve(TEXT("Font_YG760"), BUFF_TEXT_PX * textUiScale, fScale);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, strSeconds.c_str());
+		const float2_t vPosition(
+			std::round((fX + fWidth * 0.5f) * textScaleX - vMeasured.x * fScale * 0.5f),
+			std::round((fY + fHeight) * textScaleY + 1.f));
+		CGameInstance::Get().Draw_Text(strFont, strSeconds.c_str(), float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 0.75f), 0.f, float2_t(0.f, 0.f), fScale);
+		CGameInstance::Get().Draw_Text(strFont, strSeconds.c_str(), vPosition,
+			Text.bDebuff ? vDebuffText : vBuffText, 0.f, float2_t(0.f, 0.f), fScale);
+	}
+
 	const auto kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
 	if (kouku.isValid && kouku.eHudMode != HUD_KOUKU_HUD_MODE::NONE &&
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
@@ -6343,19 +6750,8 @@ void CMainApp::RenderEstherGaugeText()
 	}
 }
 
-void CMainApp::Update_SkillIcons()
+namespace
 {
-	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillIcons.Update");
-	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
-	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
-	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
-	frame's position/size (ownerClass null "Skill_Q".."Skill_F"); it must not carry a second,
-	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json.
-	Find_BySlot already resolves stance-gated skills correctly and ignores the stance argument
-	for classes whose skills have no requiredStance. Only reached from Update_CombatHUD's own
-	show path. */
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-
 	struct SKILL_ICON_ENTRY { LostArk::Shared::SKILL_ID iSkillId; const char* pIconPath; };
 	constexpr SKILL_ICON_ENTRY SKILL_ICON_TABLE[] =
 	{
@@ -6418,7 +6814,37 @@ void CMainApp::Update_SkillIcons()
 		{ 2050500, "UI/Skill/DimensionMaster/2050500_KarmaBoundary.png" },
 		/* DimensionMaster -- V (awakening) */
 		{ 2050520, "UI/Skill/DimensionMaster/2050520_TimeShackles.png" },
+		/* Move (Space) skills, cut by build_quickslot_hud_ui.py for the special slot. */
+		{ 34020, "UI/Skill/LanceMaster/34020_Space.png" },
+		{ 34520, "UI/Skill/LanceMaster/34520_Space.png" },
+		{ 17020, "UI/Skill/Warlord/17020_Space.png" },
+		{ 31020, "UI/Skill/Artist/31020_Space.png" },
+		{ 2050020, "UI/Skill/DimensionMaster/2050020_Space.png" },
 	};
+
+	const char* Find_HudSkillIcon(const LostArk::Shared::SKILL_ID iSkillId)
+	{
+		for (const SKILL_ICON_ENTRY& Entry : SKILL_ICON_TABLE)
+		{
+			if (Entry.iSkillId == iSkillId)
+				return Entry.pIconPath;
+		}
+		return nullptr;
+	}
+}
+
+void CMainApp::Update_SkillIcons()
+{
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillIcons.Update");
+	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
+	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
+	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
+	frame's position/size (ownerClass null "Skill_Q".."Skill_F"); it must not carry a second,
+	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json.
+	Find_BySlot already resolves stance-gated skills correctly and ignores the stance argument
+	for classes whose skills have no requiredStance. Only reached from Update_CombatHUD's own
+	show path. */
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
@@ -6433,14 +6859,7 @@ void CMainApp::Update_SkillIcons()
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			player.eCharacterClass, pInputSlot, player.eStance))
 		{
-			for (const SKILL_ICON_ENTRY& Entry : SKILL_ICON_TABLE)
-			{
-				if (Entry.iSkillId == pSkill->iSkillId)
-				{
-					pIconPath = Entry.pIconPath;
-					break;
-				}
-			}
+			pIconPath = Find_HudSkillIcon(pSkill->iSkillId);
 		}
 
 		const string strIconSlot = string("Skill_") + pInputSlot + "_Icon";

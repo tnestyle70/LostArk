@@ -31,6 +31,7 @@ namespace LostArk::Server
 		MARIO_RETURN,
 		DEBUG_SET_MADNESS_FORM,
 		SET_VEHICLE_RIDING,
+		SET_HONOR_TITLE,
 		DEBUG_BINGO_FILL,
 		DEBUG_BINGO_BOMB,
 		DEBUG_BINGO_HAMMER,
@@ -76,6 +77,9 @@ namespace LostArk::Server
 		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
 		default fresh-entry loadout. */
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
+		/* ENTER_WORLD only, from SERVER_WORLD_TRANSFER_REQUEST::iHonorTitleId: the title the
+		player wore in the source world. INVALID for a fresh Lobby entry. */
+		LostArk::Shared::HONOR_TITLE_ID iCarriedHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 
 		LostArk::Shared::C2S_MOVE Move;
 
@@ -96,6 +100,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_MARIO_MOVE MarioMove;
 		LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM DebugSetMadnessForm;
 		LostArk::Shared::C2S_SET_VEHICLE_RIDING SetVehicleRiding;
+		LostArk::Shared::C2S_SET_HONOR_TITLE SetHonorTitle;
 		LostArk::Shared::C2S_DEBUG_BINGO_FILL DebugBingoFill;
 		LostArk::Shared::C2S_DEBUG_BINGO_BOMB DebugBingoBomb;
 		LostArk::Shared::C2S_DEBUG_BINGO_HAMMER DebugBingoHammer;

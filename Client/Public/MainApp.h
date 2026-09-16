@@ -54,6 +54,7 @@ class CCombatAnalysisFrameView;
 class CCharacterInfoWindowView;
 class CAvatarBookWindowView;
 class CVehicleWindowView;
+class CHonorTitleWindowView;
 class CQuickSlotDragView;
 class CPlayerController;
 class CChatWindowView;
@@ -203,6 +204,26 @@ private:
 	void Update_QuickSlotDrag();
 	/* Appended SpecialSkill_1..6_Icon slots show the vehicle bound to 5/6/7/8/9/0. */
 	void Update_SpecialQuickSlots();
+	/* The retail specialSlotList above the emblem: the Space move skill (class, or the ridden
+	vehicle's SPACE dash) with its cooldown pie, shown only while that cooldown runs; hidden
+	when nothing is bound to Space or a KoukuSaydon interaction mode owns the HUD. Runs after
+	Update_VehicleHud. */
+	void Update_SpecialSlot();
+	/* buffList / deBuffList above the skill rows from replicated state only
+	(Data/UI/HUD/HudBuffSources.json: ridden vehicle, Warlord defence stance, silence,
+	pattern bind, fear). Remaining-time text is drawn in RenderSkillCooldownText. */
+	void Update_BuffBar();
+	/* Per skill slot: the retail skill-type mark (Data/UI/HUD/SkillSlotMarks.json: combo /
+	holding / perfectCombo) and the chain-time pie while the Server's combo input window
+	for the running skill's stage is open. Off while mounted or in a Kouku mode. */
+	void Update_SkillSlotMarks();
+	/* Data/UI/HUD/SkillSlotMarks.json + HudBuffSources.json (fail-closed: missing / invalid
+	file = no marks / no bar). */
+	void Load_HudQuickSlotData();
+	/* Remaining share (0 = ready) of a replicated cooldown for a skill outside the class quick
+	slots, from the catalog cooldownMs; queues the seconds text over strTextSlotId. */
+	f32_t Resolve_HudCooldownRatio(const HUD_PLAYER_STATE& player, uint32_t iSkillId,
+		uint32_t iCooldownMs, const string& strTextSlotId);
 	/* The active level's input controller -- the vehicle window and the 5..0 quick slots submit
 	their riding request through it (CPlayerController::Request_VehicleRiding). nullptr on
 	levels without one. */
@@ -527,6 +548,16 @@ private:
 		vector<KOUKU_HUD_MODE_SKILL> Skills;
 	};
 	vector<KOUKU_HUD_MODE_DEF> m_KoukuHudModes;
+	struct HUD_SKILL_MARK { uint32_t iSkillId = 0u; string strMark; };
+	vector<HUD_SKILL_MARK> m_HudSkillMarks;
+	vector<pair<string, string>> m_HudSkillMarkAssets;
+	struct HUD_BUFF_SOURCE { string strSource; string strStance; bool_t bDebuff = false; string strIconAsset; };
+	vector<HUD_BUFF_SOURCE> m_HudBuffSources;
+	/* Per-frame text requests from the HUD update pass, drawn after CImGuiLayer::EndFrame
+	by RenderSkillCooldownText: cooldown seconds over a slot, remaining seconds under a buff. */
+	struct HUD_TIMED_TEXT { string strSlotId; uint32_t iEndTick = 0u; bool_t bDebuff = false; bool_t bUnderSlot = false; };
+	vector<HUD_TIMED_TEXT> m_HudTimedTexts;
+	bool_t m_bHudSpecialSlotShown = false;
 #ifdef _DEBUG
 	std::array<ARENA_CAMERA_PROFILE, 4> m_ArenaCameraDrafts{};
 	std::array<bool, 4> m_ArenaCameraDraftLoaded{};
@@ -750,6 +781,8 @@ private:
 	every other runtime window while open. */
 	unique_ptr<CVehicleWindowView> m_pVehicleWindowView = { nullptr };
 	bool_t m_bVehicleWindowKeyDown = false;
+	/* Opened from the character info window's change-title button; drawn over the windows above. */
+	unique_ptr<CHonorTitleWindowView> m_pHonorTitleWindowView = { nullptr };
 	/* Click-to-carry icon for the quick slots, constructed last of all runtime UI so it rides
 	over every window. Item_1..4 (1/2/3/4) take inventory items, SpecialSkill_1..6 (5/6/7/8/9/0)
 	take vehicles; both bindings are Client-local like m_strItemQuickSlot. */
