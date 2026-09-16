@@ -730,6 +730,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Decal normal render-target bind failed.", hResult);
+	hResult = CGameInstance::Get().Bind_RT_SRV(
+		TEXT("Target_PickPos"), m_pDecalShader, "g_DecalReceiverTexture");
+	if (FAILED(hResult))
+		return Fail_RenderOperation(
+			"Decal receiver render-target bind failed.", hResult);
 	hResult = m_pDecalShader->Begin(iPass);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal shader pass apply failed.", hResult);

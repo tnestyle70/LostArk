@@ -23,3 +23,30 @@ SkillDecal의 `GR_Mon_Circle_cond_EX_01`과 `GR_Mon_Donut_cond_EX_01`을 data3.l
 ## G02. 검증
 
 JSON parse, 생성기 재실행 동일성, actual codec/CPU playback의 예고→공격 순서와 종료, native 입력 참조와 물리 Resource 존재, 변경 diff를 검사한다. 필요한 최소 shader compile은 out으로 한정한다. Client/UI 실행·조작·캡처는 하지 않으며 첨부 이미지와의 실제 GPU 표시 비교는 사용자 판정으로 남긴다.
+
+## G03. 노란 GroundEffect의 쿠크 표면 수신 제외 — 2026-09-15
+
+현재 예고 장판은 원본 Near/Far -300/+300cm를 따라 projector 깊이 6m이며 `upwardSurfaces`는 기하 법선만 검사한다. 따라서 장판 안에 들어온 보스의 위를 향한 표면도 예고색으로 덮는다. 쇼타임 예고 9문서에는 Light 요소가 없으므로 이 경로의 색 덮임을 조명 배율 변경으로 처리하지 않는다.
+
+`Shader_SourceCharacterMaterial.hlsli`의 source GBuffer는 marker5를 기록하지만 depth.z는 material program이 아닌 프레임별 row다. PickPos는 RGBA32_FLOAT이며 source marker5에서 W의 low8 mantissa를 실제 program ID에 할당한다. XYZ·양수 유한 값·static shadow exponent와 RNM bit는 보존한다. Map PBR의 같은 W는 별도 marker 계약이므로 변경하지 않는다.
+
+`Effect_DocumentRenderer_Geometry.cpp`에서 기존 Target_PickPos를 Decal의 추가 SRV에 연결한다. `Shader_VtxEffectDecal.hlsl`은 Point/Load로 그 payload를 읽고 원형·도넛·부채꼴·직사각형 native3600/3601/3602/3607에서만 program21/26을 수신 대상에서 제외한다. 현재 쿠크 본체·무기 12개 binding은 모두 두 program이며 모든 Map authoring의 source 계열 48행에는 두 program이 없다. 이는 확인된 재질군에 대한 좁은 수신 정책이며 모든 actor를 구별하는 범용 object mask로 설명하지 않는다. 다른 actor가 같은 program을 쓸 경우에도 해당 네 예고 장판은 받지 않는다.
+
+원본 재질 계산·색·깊이·크기·채움 시간과 저장 중인 Effect/Composition JSON은 유지한다. 기존 PLAN/RESULT에 결과를 연결하고 Picking/Deferred 모든 W reader와 encoder를 대조한다. float32 및 static shadow channel roundtrip, 실제 shader 최소 컴파일, Geometry TU 최소 컴파일을 수행한다. Product 빌드와 Client/UI 조작·최종 화면 판정은 사용자 단계다.
+
+## G04. 플레이어·해골 폭탄의 노란 장판 수신과 정적 부채꼴
+
+기존 쿠크 native3600/3601/3602/3607 수신 거절은 program21/26에만 한정돼 있다.
+해골폭탄 program30은 정적 Map과 공유하므로30을 일괄 거절하지 않는다. 실제 skinned
+source/default geometry의 PickPos.W low8 program 다음 bit8에 skinned 수신표식을 남긴다.
+source marker5와 default marker0에서만 새 bit를 해석하고 Map BG/RNM 경로는 유지한다.
+정적 native 캐릭터/장비군은 현재 Map family와 분리되는 program 집합을 실측해 정책을
+좁혀 적용한다. 원본 projector 깊이·색·alpha·normal cutoff는 바꾸지 않는다.
+
+부채꼴 예고·사격은 사용자 정정에 따라 inner 시간 보간을 없애고 첫 key 값을 scalar로
+고정한다. 다른 parameter track·위치·반경·수명·fade를 보존하며 생성기도 같은 정책을
+사용하게 변경한다. 실제 JSON은 최신바이트CAS로통합반영하고 사용자 편집을 덮지 않는다.
+
+기존 receiver bit/RT float32 검사와 실제 변경 Decal/skinned shader out 컴파일, V1문서
+parse/packet의 시각별 inner 상수 검사를 수행한다. Client/UI/제품 빌드는 수행하지 않고
+사용자가 기존 아레나에서 폭탄/캐릭터 수광과 부채꼴을 확인한다.

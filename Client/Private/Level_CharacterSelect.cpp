@@ -26,7 +26,9 @@
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
 #include "MainApp.h"
+#include "MapAssetCatalog.h"
 #include "MapLightPresentationRuntime.h"
+#include "MapEffectPresentationRuntime.h"
 #include "Network/PacketMessages.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -43,6 +45,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#ifdef _DEBUG
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
+#include <charconv>
+#include <fstream>
+#include <sstream>
+#include <unordered_set>
+#endif
 
 namespace
 {
@@ -147,6 +157,9 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 	// Update may have queued this provider before the level transition. Keep its
 	// document valid until Presentation_Manager releases the pending frame owner.
 	m_pMapLightPresentation.reset();
+	if (m_pMapEffectPresentation)
+		m_pMapEffectPresentation->Clear();
+	m_pMapEffectPresentation.reset();
 	m_MapRuntime.Clear();
 	m_pMapLightAuthoringOverride.reset();
 }
@@ -180,6 +193,11 @@ HRESULT CLevel_CharacterSelect::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
+
+#ifdef _DEBUG
+	/* Optional debug authoring data must never block Server-approved entry. */
+	(void)Debug_ReloadFloorSwapOptions();
+#endif
 
 	if (FAILED(Ready_Lights()) || FAILED(Ready_ServerGameplay()))
 		return E_FAIL;
@@ -239,6 +257,8 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
 	Update_CustomizingStageVisibility();
+	if (m_pMapEffectPresentation)
+		m_pMapEffectPresentation->Update_LevelPresentation(fTimeDelta);
 	const auto& lights = m_pMapLightAuthoringOverride ?
 		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
 	if (lights && !lights->Submit_Frame() && !m_bMapLightSubmissionFailureReported)
@@ -325,7 +345,33 @@ HRESULT CLevel_CharacterSelect::Render()
 
 HRESULT CLevel_CharacterSelect::Ready_Lights()
 {
-	return Reload_MapLights() ? S_OK : E_FAIL;
+	if (!Reload_MapLights())
+		return E_FAIL;
+	const auto* descriptor = CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (!descriptor || !descriptor->pMapAreaId)
+		return E_FAIL;
+	const auto effectsPath = CMapAssetCatalog::Get_MapDataRoot() /
+		(std::string(descriptor->pMapAreaId) + ".mapeffects.json");
+	std::error_code effectsError;
+	const bool effectsExist = std::filesystem::exists(effectsPath, effectsError);
+	if (effectsError)
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapEffect] Path inspection failed: " +
+			effectsError.message() + "\n").c_str());
+		return E_FAIL;
+	}
+	// Match the Loader's optional ambient document contract for this Area.
+	if (!effectsExist)
+		return S_OK;
+	auto staged = std::make_shared<CMapEffectPresentationRuntime>();
+	std::string status;
+	if (!staged->Load_AmbientArea(ETOUI(LEVEL::CHARACTER_SELECT), descriptor->pMapAreaId, status))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapEffect] " + status + "\n").c_str());
+		return E_FAIL;
+	}
+	m_pMapEffectPresentation = std::move(staged);
+	return S_OK;
 }
 
 bool_t CLevel_CharacterSelect::Reload_MapLights()
@@ -3270,3 +3316,386 @@ unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
 		return nullptr;
 	return instance;
 }
+
+#ifdef _DEBUG
+namespace
+{
+	bool_t FloorSwapString(const DATA_JSON_VALUE* value, std::string& out)
+	{
+		if (!value || !value->Is_String() || value->Get_String().empty() ||
+			value->Get_String().size() > 256u ||
+			std::any_of(value->Get_String().begin(), value->Get_String().end(),
+				[](const unsigned char c) { return c < 32u || c == 127u; }))
+			return false;
+		out = value->Get_String();
+		return true;
+	}
+
+	bool_t FloorSwapId(const DATA_JSON_VALUE* value, uint64_t& out)
+	{
+		std::string text;
+		if (!FloorSwapString(value, text) || text.front() == '0') return false;
+		const auto result = std::from_chars(text.data(), text.data() + text.size(), out);
+		return result.ec == std::errc{} && result.ptr == text.data() + text.size() &&
+			out > 0u && out <= CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID;
+	}
+
+	bool_t FloorSwapOffsetValid(const float3_t& value)
+	{
+		return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+			std::abs(value.x) <= 100.f && std::abs(value.y) <= 100.f && std::abs(value.z) <= 100.f;
+	}
+
+	const MAP_PLACEMENT_RECORD* FloorSwapRecord(
+		const CMapPlacementRuntime& runtime, const std::string& sourceId)
+	{
+		const MAP_PLACEMENT_RECORD* result = nullptr;
+		for (const auto& entry : runtime.Get_Placements())
+		{
+			if (entry.record.sourcePlacementId != sourceId) continue;
+			if (result) return nullptr;
+			result = &entry.record;
+		}
+		return result;
+	}
+
+	matrix_t FloorSwapMatrix(const MAP_PLACEMENT_RECORD& record)
+	{
+		return XMMatrixScaling(record.signedScale.x, record.signedScale.y, record.signedScale.z) *
+			XMMatrixRotationQuaternion(XMQuaternionNormalize(XMLoadFloat4(&record.rotationQuaternion))) *
+			XMMatrixTranslation(record.position.x, record.position.y, record.position.z);
+	}
+
+	bool_t FloorSwapDecompose(fmatrix_t matrix, MAP_PLACEMENT_RECORD& record)
+	{
+		vector_t scale, rotation, position;
+		if (!XMMatrixDecompose(&scale, &rotation, &position, matrix)) return false;
+		XMStoreFloat3(&record.signedScale, scale);
+		XMStoreFloat4(&record.rotationQuaternion, XMQuaternionNormalize(rotation));
+		XMStoreFloat3(&record.position, position);
+		return true;
+	}
+
+	bool_t FloorSwapIsPbr(const Engine::MODEL_MATERIAL_OVERRIDE& material)
+	{
+		return material.surface.family == Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE ||
+			material.surface.family == Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE;
+	}
+
+	bool_t FloorSwapEnvironment(const MAP_ASSET_ENTRY& source,
+		const MAP_ASSET_ENTRY& center, const CHARACTER_SELECT_FLOOR_ENVIRONMENT mode,
+		const f32_t groupYaw, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>& out,
+		std::string& status)
+	{
+		out = source.materialOverrides;
+		const auto central = std::find_if(center.materialOverrides.begin(),
+			center.materialOverrides.end(), FloorSwapIsPbr);
+		if (out.empty() || (mode == CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR &&
+			central == center.materialOverrides.end()))
+		{
+			status = "Floor swap source or central PBR material input is missing.";
+			return false;
+		}
+		for (auto& material : out)
+		{
+			if (!FloorSwapIsPbr(material))
+			{
+				status = "Floor swap environment expects source PBR material rows.";
+				return false;
+			}
+			auto& pbr = material.surface;
+			if (mode == CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR)
+			{
+				/* Center mode is a world-space environment: user yaw does not turn the light. */
+				material.environmentCubePath = central->environmentCubePath;
+				material.environmentBRDFPath = central->environmentBRDFPath;
+				pbr.hasEnvironmentCube = central->surface.hasEnvironmentCube;
+				pbr.environmentColor = central->surface.environmentColor;
+				pbr.environmentRotation = central->surface.environmentRotation;
+				pbr.minimumRoughness = central->surface.minimumRoughness;
+			}
+			else
+			{
+				/* Shader_MapMaterialSurface samples (b*x+a*z,y,a*x-b*z). For the
+				DirectX +Y world rotation, subtract group yaw to preserve source lookup. */
+				const f32_t a = pbr.environmentRotation.x, b = pbr.environmentRotation.y;
+				const f32_t sine = std::sin(groupYaw), cosine = std::cos(groupYaw);
+				pbr.environmentRotation = float2_t(a * cosine - b * sine, b * cosine + a * sine);
+			}
+		}
+		return true;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Debug_ReloadFloorSwapOptions()
+{
+	if (!m_FloorSwapSelectedId.empty())
+	{
+		m_FloorSwapStatus = "Restore original before reloading floor swap options; current preview retained.";
+		return false;
+	}
+	try
+	{
+		const auto path = CProjectDataRoot::Resolve(L"Rendering/Authored/CharacterSelectFloorSwap.json");
+		std::ifstream input(path, std::ios::binary | std::ios::ate);
+		if (!input.is_open() || input.tellg() < 0 || input.tellg() > 65536)
+		{
+			m_FloorSwapStatus = "Cannot read floor swap JSON (maximum 65536 bytes): " + path.string();
+			return false;
+		}
+		input.seekg(0);
+		std::ostringstream text;
+		text << input.rdbuf();
+		if (input.bad())
+		{
+			m_FloorSwapStatus = "Floor swap JSON read failed; previous options retained.";
+			return false;
+		}
+		DATA_JSON_VALUE root;
+		DATA_JSON_PARSE_LIMITS limits;
+		limits.iMaximumBytes = 65536u;
+		limits.iMaximumDepth = 8u;
+		limits.iMaximumValues = 1024u;
+		if (!CDataJson::Parse(text.str(), root, m_FloorSwapStatus, limits)) return false;
+		std::string schema, area, targetId;
+		const auto* version = root.Find("formatVersion");
+		if (!root.Is_Object() || root.Get_Object().size() != 10u ||
+			!FloorSwapString(root.Find("schema"), schema) || schema != "lostark.character-select-floor-swap" ||
+			!version || !version->Is_Number() || version->Was_FloatingPointToken() || version->Get_Number() != 1.0 ||
+			!FloorSwapString(root.Find("areaId"), area) || area != "LV_LOBBY_CLASSSELECT_SL00" ||
+			area != m_MapRuntime.Get_Catalog().Get_AreaId() ||
+			!FloorSwapString(root.Find("targetFloorSourcePlacementId"), targetId) ||
+			!FloorSwapRecord(m_MapRuntime, targetId))
+		{
+			m_FloorSwapStatus = "Floor swap schema, area, or unique target placement is invalid.";
+			return false;
+		}
+		uint64_t floorId = 0u, starId = 0u;
+		if (!FloorSwapId(root.Find("previewFloorPlacementId"), floorId) ||
+			!FloorSwapId(root.Find("previewStarPlacementId"), starId) || floorId == starId ||
+			std::any_of(m_MapRuntime.Get_Placements().begin(), m_MapRuntime.Get_Placements().end(),
+				[&](const auto& entry) { return entry.record.placementId == floorId || entry.record.placementId == starId; }))
+		{
+			m_FloorSwapStatus = "Floor swap preview IDs must be unique unused decimal editor ID strings.";
+			return false;
+		}
+		auto readOffset = [&](const char* field, float3_t& out) {
+			const auto* value = root.Find(field);
+			if (!value || !value->Is_Array() || value->Get_Array().size() != 3u ||
+				std::any_of(value->Get_Array().begin(), value->Get_Array().end(),
+					[](const auto& component) { return !component.Is_Number() || !std::isfinite(component.Get_Number()) || std::abs(component.Get_Number()) > 100.0; }))
+				return false;
+			out = float3_t(static_cast<f32_t>(value->Get_Array()[0].Get_Number()),
+				static_cast<f32_t>(value->Get_Array()[1].Get_Number()), static_cast<f32_t>(value->Get_Array()[2].Get_Number()));
+			return true;
+		};
+		float3_t baseOffset{}, starOffset{};
+		if (!readOffset("offsetMeters", baseOffset) || !readOffset("starOffsetMeters", starOffset))
+		{
+			m_FloorSwapStatus = "Floor swap offsetMeters and starOffsetMeters require three finite numbers within +/-100 metres.";
+			return false;
+		}
+		const auto* hidden = root.Find("hiddenSourcePlacementIds");
+		std::vector<std::string> hiddenIds;
+		std::unordered_set<std::string> hiddenSet;
+		if (!hidden || !hidden->Is_Array() || hidden->Get_Array().empty() || hidden->Get_Array().size() > 16u)
+		{
+			m_FloorSwapStatus = "Floor swap requires explicit hidden source placements.";
+			return false;
+		}
+		for (const auto& value : hidden->Get_Array())
+		{
+			std::string id;
+			if (!FloorSwapString(&value, id) || !hiddenSet.insert(id).second || !FloorSwapRecord(m_MapRuntime, id))
+			{
+				m_FloorSwapStatus = "Floor swap hidden placement is missing, duplicated, or ambiguous.";
+				return false;
+			}
+			hiddenIds.push_back(id);
+		}
+		if (!hiddenSet.count(targetId))
+		{
+			m_FloorSwapStatus = "Floor swap must hide its target floor while the preview is active.";
+			return false;
+		}
+		const auto* options = root.Find("options");
+		std::vector<CHARACTER_SELECT_FLOOR_SWAP_OPTION> labels;
+		std::vector<FLOOR_SWAP_SOURCE_PAIR> sources;
+		std::unordered_set<std::string> optionIds, sourceIds;
+		if (!options || !options->Is_Array() || options->Get_Array().size() != 11u)
+		{
+			m_FloorSwapStatus = "Floor swap requires exactly eleven stage pair options.";
+			return false;
+		}
+		for (const auto& option : options->Get_Array())
+		{
+			CHARACTER_SELECT_FLOOR_SWAP_OPTION label;
+			FLOOR_SWAP_SOURCE_PAIR source;
+			if (!option.Is_Object() || option.Get_Object().size() != 4u ||
+				!FloorSwapString(option.Find("id"), label.id) || !optionIds.insert(label.id).second ||
+				!FloorSwapString(option.Find("label"), label.label) ||
+				!FloorSwapString(option.Find("floorSourcePlacementId"), source.floorSourcePlacementId) ||
+				!FloorSwapString(option.Find("starSourcePlacementId"), source.starSourcePlacementId))
+			{
+				m_FloorSwapStatus = "Floor swap option ID, label, or source pair is invalid.";
+				return false;
+			}
+			source.optionId = label.id;
+			for (const auto* id : { &source.floorSourcePlacementId, &source.starSourcePlacementId })
+			{
+				const auto* record = FloorSwapRecord(m_MapRuntime, *id);
+				if (!record || !sourceIds.insert(*id).second || hiddenSet.count(*id) ||
+					!CMapPlacementDocument::Is_Valid(*record, m_MapRuntime.Get_Catalog()))
+				{
+					m_FloorSwapStatus = "Floor swap source placement is missing, invalid, or reused: " + *id;
+					return false;
+				}
+			}
+			labels.push_back(std::move(label));
+			sources.push_back(std::move(source));
+		}
+		std::string loadedStatus = "11 stage pairs loaded. Original central floor remains active. Offsets are session previews only.";
+		m_FloorSwapOptions.swap(labels);
+		m_FloorSwapSources.swap(sources);
+		m_FloorSwapTargetSourceId.swap(targetId);
+		m_FloorSwapHiddenSourceIds.swap(hiddenIds);
+		m_FloorSwapPreviewFloorId = floorId;
+		m_FloorSwapPreviewStarId = starId;
+		m_FloorSwapBaseOffset = baseOffset;
+		m_FloorSwapStarOffset = starOffset;
+		m_FloorSwapStatus.swap(loadedStatus);
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		m_FloorSwapStatus = std::string("Floor swap JSON failed; previous options retained: ") + error.what();
+		return false;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Debug_ApplyFloorSwap(const std::string& optionId,
+	const CHARACTER_SELECT_FLOOR_SWAP_SETTINGS& settings)
+{
+	if (Is_CustomizingOpen() || m_isCustomizingStageHidden)
+	{
+		m_FloorSwapStatus = "Close character customization before applying a floor preview.";
+		return false;
+	}
+	if (!FloorSwapOffsetValid(settings.offsetMeters) || !std::isfinite(settings.yawDegrees) ||
+		std::abs(settings.yawDegrees) > 3600.f ||
+		(settings.environment != CHARACTER_SELECT_FLOOR_ENVIRONMENT::SOURCE_STAGE &&
+			settings.environment != CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR))
+	{
+		m_FloorSwapStatus = "Floor swap settings require finite offsets within +/-100 metres, yaw within +/-3600 degrees, and a known environment.";
+		return false;
+	}
+	const auto pair = std::find_if(m_FloorSwapSources.begin(), m_FloorSwapSources.end(),
+		[&](const auto& source) { return source.optionId == optionId; });
+	if (pair == m_FloorSwapSources.end())
+	{
+		m_FloorSwapStatus = "Unknown floor swap option; previous selection retained: " + optionId;
+		return false;
+	}
+	const auto* floor = FloorSwapRecord(m_MapRuntime, pair->floorSourcePlacementId);
+	const auto* star = FloorSwapRecord(m_MapRuntime, pair->starSourcePlacementId);
+	const auto* center = FloorSwapRecord(m_MapRuntime, m_FloorSwapTargetSourceId);
+	if (!floor || !star || !center)
+	{
+		m_FloorSwapStatus = "Floor swap source or central placement is no longer uniquely available.";
+		return false;
+	}
+	try
+	{
+		const float3_t offset(m_FloorSwapBaseOffset.x + settings.offsetMeters.x,
+			m_FloorSwapBaseOffset.y + settings.offsetMeters.y, m_FloorSwapBaseOffset.z + settings.offsetMeters.z);
+		/* Row-vector assembly transform: star * inverse(source floor) * target floor. */
+		const matrix_t destination = FloorSwapMatrix(*center) *
+			XMMatrixTranslation(-center->position.x, -center->position.y, -center->position.z) *
+			XMMatrixRotationY(XMConvertToRadians(settings.yawDegrees)) *
+			XMMatrixTranslation(center->position.x + offset.x, center->position.y + offset.y, center->position.z + offset.z);
+		const matrix_t group = XMMatrixInverse(nullptr, FloorSwapMatrix(*floor)) * destination;
+		MAP_PLACEMENT_RECORD groupPose;
+		if (!FloorSwapDecompose(group, groupPose) ||
+			!std::isfinite(groupPose.signedScale.x) || groupPose.signedScale.x <= 0.000001f ||
+			std::abs(groupPose.signedScale.x - groupPose.signedScale.y) > 0.0001f ||
+			std::abs(groupPose.signedScale.x - groupPose.signedScale.z) > 0.0001f ||
+			std::abs(groupPose.rotationQuaternion.x) > 0.0001f || std::abs(groupPose.rotationQuaternion.z) > 0.0001f)
+		{
+			m_FloorSwapStatus = "Floor swap requires a uniform, upright source-to-center assembly transform.";
+			return false;
+		}
+		const f32_t groupYaw = 2.f * std::atan2(groupPose.rotationQuaternion.y, groupPose.rotationQuaternion.w);
+		std::vector<MAP_DEBUG_PLACEMENT_PREVIEW> previews(2);
+		previews[0].record = *floor;
+		previews[1].record = *star;
+		if (!FloorSwapDecompose(destination, previews[0].record) ||
+			!FloorSwapDecompose(FloorSwapMatrix(*star) * group, previews[1].record))
+		{
+			m_FloorSwapStatus = "Floor swap assembly transform cannot be represented without shear.";
+			return false;
+		}
+		/* Keep the original floor layer below its rings. Only the star receives
+		the independently measured world-space bridge clearance. */
+		previews[1].record.position.x += m_FloorSwapStarOffset.x;
+		previews[1].record.position.y += m_FloorSwapStarOffset.y;
+		previews[1].record.position.z += m_FloorSwapStarOffset.z;
+		const auto& catalog = m_MapRuntime.Get_Catalog();
+		const auto* centralAsset = catalog.Find(center->assetId);
+		if (!centralAsset)
+		{
+			m_FloorSwapStatus = "Central floor material asset is missing.";
+			return false;
+		}
+		for (size_t i = 0; i < previews.size(); ++i)
+		{
+			auto& preview = previews[i];
+			preview.record.placementId = i == 0u ? m_FloorSwapPreviewFloorId : m_FloorSwapPreviewStarId;
+			preview.record.sourcePlacementId = "debug:character-select-floor-swap:" + std::to_string(preview.record.placementId);
+			preview.record.transformSource = "overlay";
+			preview.record.visible = true;
+			const auto* asset = catalog.Find(preview.record.assetId);
+			/* The record copy preserves the exact source RNM atlas UV windows and scales.
+			Never re-resolve lighting by the new debug source ID, which has no authored row. */
+			if (!asset || !CMapPlacementDocument::Is_Valid(preview.record, catalog) ||
+				!FloorSwapEnvironment(*asset, *centralAsset, settings.environment, groupYaw,
+					preview.materialOverrides, m_FloorSwapStatus))
+			{
+				if (!asset) m_FloorSwapStatus = "Source floor swap material asset is missing.";
+				return false;
+			}
+			if (settings.useShaderDefaultBrightness)
+			{
+				/* Compare the source shader default on these private preview copies only. */
+				for (auto& material : preview.materialOverrides)
+					material.surface.diffuseBrightness = 1.f;
+			}
+		}
+		std::string committedId = optionId;
+		std::string committedStatus = "Applied " + optionId + "; nearby stages preserved. Source RNM retained, not rebaked for the center.";
+		if (!m_MapRuntime.Replace_DebugPlacementPreview(previews, m_FloorSwapHiddenSourceIds, m_FloorSwapStatus))
+			return false;
+		m_FloorSwapSelectedId.swap(committedId);
+		m_FloorSwapAppliedSettings = settings;
+		m_FloorSwapStatus.swap(committedStatus);
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		m_FloorSwapStatus = std::string("Floor swap failed; previous selection retained: ") + error.what();
+		return false;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Debug_ResetFloorSwap()
+{
+	if (Is_CustomizingOpen() || m_isCustomizingStageHidden)
+	{
+		m_FloorSwapStatus = "Close character customization before restoring the central floor.";
+		return false;
+	}
+	if (!m_MapRuntime.Clear_DebugPlacementPreview(m_FloorSwapStatus)) return false;
+	m_FloorSwapSelectedId.clear();
+	m_FloorSwapAppliedSettings = {};
+	return true;
+}
+#endif

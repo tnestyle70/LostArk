@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.kouku.gate3.showtime.saydon.disappear",
-  "displayName": "쇼타임 | 쿠크세이튼_사라지기",
+  "displayName": "알비온_사라지기이펙트",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,

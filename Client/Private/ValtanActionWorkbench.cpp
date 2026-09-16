@@ -12552,6 +12552,24 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 		m_bResourceDomainSelectionRequested = false;
 }
 
+void Client::CValtanActionWorkbench::On_WorkbenchDeactivated()
+{
+	m_bPreviewOwnerActive = false;
+	m_bPreviewOwnerClaimRequested = false;
+	// The shared Sequence window can stay active while its boss changes. Stop
+	// this session's actual playback here; hiding its controls is insufficient.
+	if (nullptr != m_pAnimationTool)
+	{
+		const auto Preview = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+		if (Preview.bPlaying || Preview.bSourceSequencePlaying)
+		{
+			std::string Status;
+			m_pAnimationTool->Stop_ValtanCompositionPattern(Status);
+			m_strStatus = std::move(Status);
+		}
+	}
+}
+
 void Client::CValtanActionWorkbench::Begin_WorkbenchFrame()
 {
 	if (m_bWorkbenchFrameActive)

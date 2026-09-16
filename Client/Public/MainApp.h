@@ -44,6 +44,8 @@ class CWorldObjectTool;
 class CWorldLevelTool;
 struct WORLD_LEVEL_TOOL_REQUEST;
 struct KOUKU_MAP_EFFECT_PLACEMENT_REQUEST;
+struct KOUKU_SAYDON_COMPOSITION_DOCUMENT;
+struct KOUKU_SAYDON_COMPOSITION_PATTERN;
 class CWorldSequenceDocument;
 class CRenderingBenchmark;
 class CSkillWindowView;
@@ -396,6 +398,7 @@ private:
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
+	void RenderCharacterSelectFloorSwapControls();
 	void RenderArenaFollowCameraSettings();
 	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
 	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
@@ -417,6 +420,26 @@ private:
 	void FinishKoukuGateCompletePlay(std::string_view gateId, std::string& status);
 	void UpdateKoukuGateCompletePlay();
 	void CancelKoukuGateCompletePlay(const std::string& status);
+	bool BeginKoukuSequenceArrivals(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, uint32_t startClockMs, std::string& status);
+	bool SampleKoukuSequenceArrivals(uint32_t clockMs, bool advance, std::string& status);
+	bool ConsumeKoukuSequenceArrivalResult(const LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result);
+	bool KoukuSequenceArrivalsPending() const;
+	void ClearKoukuSequenceArrivals();
+	struct KOUKU_SEQUENCE_ARRIVAL_CUE final
+	{
+		std::string occurrenceId;
+		uint32_t startMs = 0u, playerSlot = 0u, requestSequence = 0u;
+		float3_t position{};
+		bool submitted = false, completed = false, moved = false;
+		std::chrono::steady_clock::time_point deadline{};
+	};
+	std::vector<KOUKU_SEQUENCE_ARRIVAL_CUE> m_KoukuSequenceArrivalCues;
+	std::string m_strKoukuSequenceArrivalPatternId, m_strKoukuSequenceArrivalFailure;
+	std::string m_strKoukuSequenceArrivalCompletedPreview;
+	uint32_t m_iKoukuSequenceArrivalRunEpoch = 0u;
+	uint64_t m_iKoukuSequenceArrivalWorldGeneration = 0u;
+	bool m_bKoukuCompletePreservesArrivalPosition = false;
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
@@ -511,6 +534,12 @@ private:
 	std::array<std::string, 4> m_ArenaCameraSourceBaselines{};
 	int m_iArenaCameraSelectedMap = 0;
 	uint32_t m_iArenaCameraLastLevel = UINT32_MAX;
+	// These are unapplied UI drafts; the active Level owns the installed floor.
+	std::string m_strCharacterSelectFloorDraftId;
+	float3_t m_vCharacterSelectFloorOffsetMeters{};
+	f32_t m_fCharacterSelectFloorYawDegrees = 0.f;
+	int32_t m_iCharacterSelectFloorEnvironment = 1;
+	bool_t m_bCharacterSelectFloorShaderDefaultBrightness = false;
 	bool_t m_bKoukuUiPreview = false;
 	HUD_KOUKU_GIMMICK_STATE m_KoukuUiPreview;
 	/* Dungeon-timer preview controls. The Server owns no minigame deadline, so

@@ -316,6 +316,8 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 				break;
 			case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
 			case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
+				shadowPassBase = useSourceMaterials && !surface->pbrAlphaMasked ? 21u : 18u;
+				break;
 			case Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
 				shadowPassBase = useSourceMaterials ? 21u : 18u;
 				break;

@@ -2507,8 +2507,15 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		if (!Resolve_ValtanPatternEffectOccurrenceScan(ScanDesc, Samples))
 			continue;
 
+		// Full-source documents retain the original clip's zero-time origin.
+		// A trimmed occurrence starts at that source age; its stop clock uses
+		// the same origin as EffectPresentationService's initial sample.
+		const uint32_t iSourceSeekOffsetMs =
+			!Cue.bUsesStageClock && !Cue.bUsesLegacyStageWallTime &&
+			pEffectAssetId->starts_with("effect.valtan.action.") &&
+			pEffectAssetId->ends_with(".full.restore") ? Cue.iStartMs : 0u;
 		const uint32_t iCueDurationMs = Cue.bHasSourceEnd ?
-			Cue.iEndMs - Cue.iStartMs : 0u;
+			Cue.iEndMs - Cue.iStartMs + iSourceSeekOffsetMs : 0u;
 		for (const VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE& Sample : Samples)
 		{
 			const std::string AttemptKey = Cue.strOccurrenceId + "/loop:" +
@@ -2546,7 +2553,8 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 					Cue.strOccurrenceId + "/loop:" +
 					std::to_string(Sample.iLoopEpoch));
 			Desc.fPlaybackRate = fPlaybackRate;
-			Desc.fInitialSampleTimeSeconds = Sample.fInitialSampleSeconds;
+			Desc.fInitialSampleTimeSeconds = Sample.fInitialSampleSeconds +
+				static_cast<f32_t>(iSourceSeekOffsetMs) * 0.001f;
 			std::string Status;
 			bool_t spawned = false;
 			if (Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId))

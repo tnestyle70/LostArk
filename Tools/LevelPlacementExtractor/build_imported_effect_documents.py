@@ -1539,7 +1539,9 @@ def build_source_recipe(
         if required else 0.0
     )
     emitter_duration = max(0.0, finite_number(prop(required.properties, "emitterduration")) or 0.0) if required else 0.0
-    emitter_loops = max(0, int(finite_number(prop(required.properties, "emitterloops")) or 1)) if required else 1
+    raw_emitter_loops = finite_number(prop(required.properties, "emitterloops")) if required else None
+    # Zero is Cascade's infinite loop contract, not a missing-value sentinel.
+    emitter_loops = max(0, int(raw_emitter_loops)) if raw_emitter_loops is not None else 1
     source_modules = []
     for module in modules:
         literals, distributions = flatten_source_properties(

@@ -37,6 +37,50 @@
 #include "Model.h"
 #include "Transform.h"
 
+namespace
+{
+	bool Has_SourceFixedAxisSprite(const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		if (!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "sprite")
+			return false;
+		bool bFixedAxis = false;
+		for (const auto& Module : Element.SourceRecipe.Modules)
+		{
+			const auto FindLiteral = [&](const std::string_view Property) {
+				return std::find_if(Module.Literals.begin(), Module.Literals.end(),
+					[&](const auto& Literal) { return Literal.strPropertyPath == Property; });
+			};
+			const auto Enabled = FindLiteral("benabled");
+			if (Enabled != Module.Literals.end() &&
+				Enabled->eKind == Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN && !Enabled->bBoolean)
+				continue;
+			std::string_view Class = Module.strClassName;
+			if (Class.starts_with("efparticlemodule")) Class.remove_prefix(2u);
+			if (Class.ends_with("_seeded")) Class.remove_suffix(7u);
+			const bool bRequired = Class == "particlemodulerequired";
+			if (!bRequired && Class != "particlemoduleorientationaxislock") continue;
+			const auto Value = FindLiteral(bRequired ? "screenalignment" : "lockaxisflags");
+			if (Value == Module.Literals.end() || Value->eKind != Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
+				continue;
+			const std::string_view Alignment = Value->strString;
+			// Preserve runtime module order: later Required or rotate-axis
+			// modules can replace an earlier fixed-axis orientation.
+			if (bRequired)
+			{
+				if (Alignment.ends_with("psa_rectangle") || Alignment.ends_with("psa_velocity") ||
+					Alignment.ends_with("psa_square")) bFixedAxis = false;
+			}
+			else if (Alignment.ends_with("epal_x") || Alignment.ends_with("epal_y") ||
+				Alignment.ends_with("epal_z") || Alignment.ends_with("epal_negative_x") ||
+				Alignment.ends_with("epal_negative_y") || Alignment.ends_with("epal_negative_z"))
+				bFixedAxis = true;
+			else if (Alignment.ends_with("epal_rotate_x") || Alignment.ends_with("epal_rotate_y") ||
+				Alignment.ends_with("epal_rotate_z")) bFixedAxis = false;
+		}
+		return bFixedAxis;
+	}
+}
+
 bool_t Client::CEffect_Tool::Render_ProjectTunedSurfaceParameters(
 	EFFECT_ELEMENT_DESC& Element,
 	bool_t& bChanged)
@@ -1372,6 +1416,18 @@ void Client::CEffect_Tool::Render_KindDetail(
 		}
 		if (!bMeshParticle)
 		{
+			const bool bSourceFixedAxis = Has_SourceFixedAxisSprite(Element);
+			if (bSourceFixedAxis)
+			{
+				bChanged |= ImGui::Checkbox("Axis lock follows emitter rotation",
+					&Detail.Sprite.bFollowEmitterAxisRotation);
+				ImGui::TextDisabled(
+					"Apply Element and Group XYZ rotation to the locked plane. Local Space follows the current emitter; world space keeps its birth rotation.");
+				if (Element.SourceTransformTrack && Detail.Particle.bLocalSpace &&
+					!Detail.Sprite.bFollowEmitterAxisRotation)
+					ImGui::TextDisabled(
+						"This source animation already rotates the locked axis in Local Space, even with this option off.");
+			}
 			if (bOrientationLocksParticleBasis)
 				ImGui::BeginDisabled();
 			bChanged |= ImGui::Checkbox("Particle Billboard",
@@ -1380,8 +1436,7 @@ void Client::CEffect_Tool::Render_KindDetail(
 				ImGui::EndDisabled();
 			if (Detail.Particle.bBillboard)
 			{
-				/* The renderer rebuilds a billboarded quad from the camera every
-				   frame, so the Transform rotation above never reaches it. */
+				// Roll spins within the resolved camera-facing or source-axis plane.
 				bChanged |= ImGui::DragFloat("Billboard Roll Degrees##particle",
 					&Detail.Sprite.fBillboardRollDegrees, 1.f, -3600.f, 3600.f,
 					"%.1f", ImGuiSliderFlags_AlwaysClamp);
@@ -1389,7 +1444,8 @@ void Client::CEffect_Tool::Render_KindDetail(
 					"Billboard Roll Degrees Per Second##particle",
 					&Detail.Sprite.fBillboardRollDegreesPerSecond, 1.f, -3600.f,
 					3600.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
-				ImGui::TextDisabled(
+				ImGui::TextDisabled(bSourceFixedAxis ?
+					"Axis-locked sprite: emitter rotation is controlled above; Billboard Roll spins within the locked plane. Source Playback Tuning > Rotation x scales source rotation modules." :
 					"Billboard faces the camera, so Transform rotation does not apply. Source Playback Tuning > Rotation x scales source rotation modules on top of this roll.");
 			}
 		}

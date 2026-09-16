@@ -441,6 +441,7 @@ class GeometryProvenanceEvidence:
     legacy_cook_receipt_sha256: bytes
     tangent_handedness_project_reconstructed: bool = False
     native_parallel_basis_preserved: bool = False
+    source_manifest_hash_role: str = "TRACKED_CANONICAL_LF"
 
 
 @dataclass(frozen=True)
@@ -1535,7 +1536,9 @@ def transform_source_vertex(vertex: dict[str, Any], scale: float) -> tuple[tuple
 
 
 def geometry_key(vertex: tuple[float, ...]) -> bytes:
-    return struct.pack("<3f3f2f3f", *vertex[:11])
+    # Assimp welding can canonicalize signed zero. Keep every finite value
+    # exact while comparing the numerically identical +0 and -0 equally.
+    return struct.pack("<3f3f2f3f", *(0.0 if x == 0.0 else x for x in vertex[:11]))
 
 
 def triangle_signatures(
@@ -1552,7 +1555,11 @@ def triangle_signatures(
             for left in range(3)
             for right in range(left + 1, 3)
         )
-        result[(tuple(values[index] for index in order), inversions % 2)] += 1
+        # A triangle with repeated complete vertices has no orientation. Vertex
+        # welding may exchange those identical corners without changing any
+        # geometry; only distinct corners carry a meaningful winding parity.
+        parity = inversions % 2 if len(set(values)) == 3 else 0
+        result[(tuple(values[index] for index in order), parity)] += 1
     return result
 
 
@@ -2090,7 +2097,7 @@ def cook_wmodel_geometry_contract(
         "sourceBufferSetSha256": source_buffer_set_sha256.hex(),
         "provenanceEvidence": {
             "sourceManifest": {
-                "hashRole": "TRACKED_CANONICAL_LF",
+                "hashRole": provenance.source_manifest_hash_role,
                 "canonicalLfSha256":
                     provenance.source_manifest_canonical_lf_sha256.hex(),
                 "legacyReceiptCorrelation":

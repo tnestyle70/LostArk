@@ -140,6 +140,7 @@
       <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXCommon_64.dll" />
       <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
       <PointLightHarnessRuntimeDependency Include="$(DeferredShaderSource)" />
+      <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup*.cso" />
     </ItemGroup>
     <Copy SourceFiles="@(PointLightHarnessRuntimeDependency)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
     <Message Text="Deployed Engine, FMOD, Assimp, and PhysX runtimes to $(TargetDir)" Importance="high" />

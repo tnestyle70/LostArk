@@ -7,6 +7,12 @@
 핵심 계약은 다음과 같다.
 
 - 입력 정본은 `*.placements.json`의 `asset.objectPath`다.
+- inventory는 placement schema v1/v2/v3를 읽는다. v3 `sourceVisibility`는
+  scene compiler와 같은 원본 instance/archetype/CDO 검증을 통과해야 한다.
+  숨겨진 placement도 asset 추출 대상에 남으며 이름으로 배치를 제거하지 않는다.
+  원본 evidence chain은 hash로 고정한 placement 입력에 보존하고, inventory에는
+  입력별 schema와 visible/hidden/unrecorded 수를 기록한다. v1/v2는
+  `legacy-unrecorded`이며 visible로 승격하지 않는다.
 - UModel은 반드시 `-obj=<exact object>`로 실행한다.
 - 같은 이름이 다른 패키지에 있는 glTF는 대체품으로 인정하지 않는다.
 - 머티리얼 슬롯은 glTF 재질명과 UModel `.props.txt`의
@@ -14,11 +20,14 @@
 - 일반 diffuse/normal 이름이 없는 UE3 vertex-blend material은 채널 parameter를 읽고,
   현재 단일 texture lane 런타임에서는 red -> green -> blue -> alpha 순으로 선택한다.
   일반 parameter가 있으면 언제나 channel fallback보다 우선한다.
-- 정적 glTF는 `--pretransform --scale 100`으로 조리한다.
+- 정적 glTF는 `--pretransform --scale 100`으로 조리한 뒤 기존
+  `cook_wmodel_geometry_contract.py`로 같은 기하인지 검사하고 WMSH를 교체한다.
+  원본 glTF에 있는 tangent.w, `COLOR_0`, `TEXCOORD_1/2`를 보존한다.
 - 각 단계는 임시 디렉터리에서 검증한 뒤 asset 단위로 commit한다. 중간 실패는
   이미 검증된 asset pack을 망가뜨리지 않는다.
-- `source.receipt.json`, `runtime.receipt.json`의 SHA-256이 맞으면 다음 실행에서
-  해당 asset을 건너뛴다.
+- source receipt의 glTF·buffer·texture hash를 검사한다. runtime receipt v2의
+  output hash와 source receipt·converter·geometry helper hash까지 같으면 재개한다.
+  예전 legacy cook receipt는 자동 재사용하지 않는다.
 
 ## 전체 실행
 
@@ -77,6 +86,7 @@ visible placement가 diffuse/emissive 없는 WModel을 참조해 불투명 회�
   --inventory C:\LostArkExtract\bern_full\manifests\bern_castle_assets.json `
   --output-root C:\LostArkExtract\bern_full `
   --converter Tools\ModelAssetConverter\Bin\ModelAssetConverter.exe `
+  --package-root $Packages `
   --workers 2
 ```
 
@@ -101,11 +111,41 @@ visible placement가 diffuse/emissive 없는 WModel을 참조해 불투명 회�
     <assetId>.wmodel
     textures/*.(dds|tga|png)
     converter.info.txt
+    geometry.inputs.json
+    geometry.legacy-cook.receipt.json
+    geometry.receipt.json
     runtime.receipt.json
 ```
 
 `bern_castle_assets.json`은 `build_maptool_scene.py`의 asset manifest,
 `bern_castle_runtime_assets.json`은 runtime manifest로 사용한다.
+
+### 공통 geometry cook의 근거와 실패 처리
+
+`cook_one`과 material variant cook은 `preserve_cooked_geometry`를 공유한다.
+이 함수는 receipt에 고정된 원본 glTF/buffer와 조리 입력을 대조한다. variant의
+material 슬롯 이름 변경은 허용하지만 정점·추가 채널 변경은 거부한다. legacy converter의
+삼각형과 최종 payload가 같은 기하인지, UV·정점 색·접선 부호와 bounds가 보존됐는지
+검증한 뒤 호출자가 소유한 staging 파일만 교체한다. 실패하면 기존 runtime pack을 유지한다.
+
+필수 position/normal/UV0/tangent/index가 없거나, primitive별 optional 채널 유무가 섞이거나,
+UV2만 있고 UV1이 없으면 명시적으로 실패한다. 없는 채널을 UV0 복제·흰색 정점·임의 접선으로
+채우거나 legacy 형식으로 조용히 되돌아가지 않는다. geometry와 별개인 native 재질·환경·
+배치별 RNM 연결은 Area material 계약에 따라 검증해야 한다.
+
+새 source receipt는 UModel이 보고한 실제 `physicalPackagePath`를 기록한다. 이전 receipt는
+`cook --package-root`로 기록된 상대 physical package를 resolve한다. 둘 다 불가능하면
+원본 package 근거 부재로 실패한다. package와 converter hash는 `OBSERVED_UNBOUND`,
+생성한 geometry input manifest는 `OBSERVED_GENERATED_COOK_INPUTS_CANONICAL_LF`다.
+glTF→WModel 보존을 package→glTF 무손실·원본 pivot·화면 복원의 증명으로 승격하지 않는다.
+`geometry.receipt.json`은 기존 helper의 `runtimeProductAdmission=false`와 미확정 경계를 유지한다.
+
+검사 명령:
+
+```powershell
+python -m unittest discover -s Tools/BernCastlePipeline -p 'test_*.py'
+python -m unittest discover -s Tools/ModelAssetConverter -p test_cook_wmodel_geometry_contract.py
+```
 
 ## MapTool용 13개 shard 생성
 
@@ -134,11 +174,11 @@ SL00~SL10의 13개 문서로 나눈다. builder는 모든 child를 임시 디렉
 
 ```text
 C:\LostArkExtract\bern_full\runtime\<assetId>\
-  -> Client\Bin\Resources\LostArk\Map\LV_BER_BERNCASTLE\<assetId>\
+  -> Client\Bin\Resources\Map\LV_BER_BERNCASTLE\<assetId>\
 ```
 
 Landscape 42개는 별도로 다음 경로를 유지한다.
 
 ```text
-Client\Bin\Resources\LostArk\Map\LV_BER_BERNCASTLE_T\Landscape\
+Client\Bin\Resources\Map\LV_BER_BERNCASTLE_T\Landscape\
 ```

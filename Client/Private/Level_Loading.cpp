@@ -724,27 +724,6 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				if (!Visual.hitEffectAssetId.empty())
 					EffectAssetIds.push_back(Visual.hitEffectAssetId);
 			}
-			/* Area-owned world Effects are Product targets too.  Read only the
-			   published runtime document here; source authoring data never becomes
-			   an in-level fallback.  Registration is part of the same activation
-			   gate as boss cues, so Level entry cannot race an unprepared sky. */
-			const CLIENT_LEVEL_DESCRIPTOR* pLevel =
-				CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
-			CMapEffectDocument MapEffects;
-			if (nullptr == pLevel || nullptr == pLevel->pMapAreaId ||
-				!MapEffects.Load(CMapAssetCatalog::Get_MapDataRoot() /
-					(std::string(pLevel->pMapAreaId) + ".mapeffects.json"),
-					pLevel->pMapAreaId, Status))
-			{
-				return IsolateFailure(nullptr == pLevel ||
-					nullptr == pLevel->pMapAreaId ?
-					"Valtan Level descriptor has no Map Area ID." : Status);
-			}
-			for (const MAP_EFFECT_WORLD_PRESENTATION& World :
-				MapEffects.Get_WorldEffects())
-			{
-				EffectAssetIds.push_back(World.effectAssetId);
-			}
 			if (!ProductAdmission.Validate_StillCurrent(Status))
 				return IsolateFailure(Status);
 #ifdef _DEBUG
@@ -834,6 +813,40 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				m_EffectPreparationTargets.end());
 		}
 		}
+		/* Every published Area world Effect joins the existing loader worker.
+		   The runtime document is optional outside the Valtan contract; malformed
+		   published data is an isolated preparation failure, never source fallback. */
+		const CLIENT_LEVEL_DESCRIPTOR* mapLevel = CLevelRegistry::Find(m_eNextLevelID);
+		if (nullptr != mapLevel && nullptr != mapLevel->pMapAreaId)
+		{
+			const std::filesystem::path mapEffectsPath = CMapAssetCatalog::Get_MapDataRoot() /
+				(std::string(mapLevel->pMapAreaId) + ".mapeffects.json");
+			std::error_code mapEffectsError;
+			const bool mapEffectsExist = std::filesystem::exists(mapEffectsPath, mapEffectsError);
+			if (mapEffectsError)
+				return IsolateFailure("Area Map Effect path could not be inspected: " + mapEffectsError.message());
+			if (bValtanArena || mapEffectsExist)
+			{
+				CMapEffectDocument mapEffects;
+				if (!mapEffects.Load(mapEffectsPath, mapLevel->pMapAreaId, Status))
+					return IsolateFailure(Status);
+				std::vector<std::string> mapEffectIds;
+				for (const auto& world : mapEffects.Get_WorldEffects())
+					mapEffectIds.push_back(world.effectAssetId);
+				if (!mapEffectIds.empty())
+				{
+					std::vector<std::string> preparedMapEffects;
+					if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+							mapEffectIds, preparedMapEffects, Status))
+						return IsolateFailure(Status);
+					m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+						preparedMapEffects.begin(), preparedMapEffects.end());
+				}
+			}
+		}
+		std::sort(m_EffectPreparationTargets.begin(), m_EffectPreparationTargets.end());
+		m_EffectPreparationTargets.erase(std::unique(m_EffectPreparationTargets.begin(),
+			m_EffectPreparationTargets.end()), m_EffectPreparationTargets.end());
 		m_isEffectPreparationRegistered = true;
 		m_iEffectPreparationTargetCount = static_cast<uint32_t>(
 			m_EffectPreparationTargets.size());

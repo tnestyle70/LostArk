@@ -152,9 +152,12 @@ namespace
 
 	bool_t IsExactObject(
 		const DATA_JSON_VALUE& value,
-		const std::initializer_list<const char_t*> keys)
+		const std::initializer_list<const char_t*> keys,
+		const char_t* optionalKey = nullptr)
 	{
-		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
+		const size_t optionalCount = nullptr != optionalKey &&
+			nullptr != value.Find(optionalKey) ? 1u : 0u;
+		if (!value.Is_Object() || value.Get_Object().size() != keys.size() + optionalCount)
 			return false;
 		return std::all_of(keys.begin(), keys.end(),
 			[&value](const char_t* key) { return nullptr != value.Find(key); });
@@ -331,6 +334,8 @@ namespace
 		switch (value)
 		{
 		case MAP_EFFECT_PLAYBACK_POLICY::LOCAL_LOOP: return "LOCAL_LOOP";
+		case MAP_EFFECT_PLAYBACK_POLICY::SOURCE_LOOP: return "SOURCE_LOOP";
+		case MAP_EFFECT_PLAYBACK_POLICY::SOURCE_ONCE: return "SOURCE_ONCE";
 		case MAP_EFFECT_PLAYBACK_POLICY::SERVER_CLOCK_SAMPLE:
 			return "SERVER_CLOCK_SAMPLE";
 		default: return "";
@@ -499,7 +504,7 @@ bool_t Client::CMapEffectDocument::Parse(
 				"placementId", "effectAssetId", "position",
 				"rotationQuaternion", "scale", "orientationPolicy",
 				"activationPolicy", "activationSetId", "activationWindows",
-				"playbackPolicy" }))
+				"playbackPolicy" }, "maxDrawDistanceMeters"))
 			{
 				outStatus = "Map Effect world row has unexpected properties";
 				return false;
@@ -527,7 +532,10 @@ bool_t Client::CMapEffectDocument::Parse(
 				!ReadString(row, "activationPolicy", activation) ||
 				!ReadString(row, "activationSetId", world.activationSetId) ||
 				nullptr == activationWindows || !activationWindows->Is_Array() ||
-				!ReadString(row, "playbackPolicy", playback))
+				!ReadString(row, "playbackPolicy", playback) ||
+				(nullptr != row.Find("maxDrawDistanceMeters") &&
+				 !ReadFinite(row, "maxDrawDistanceMeters", 0.0, 100000.0,
+					 world.maxDrawDistanceMeters)))
 			{
 				outStatus = "Map Effect world fields are invalid";
 				return false;
@@ -603,6 +611,10 @@ bool_t Client::CMapEffectDocument::Parse(
 			}
 			if (playback == "LOCAL_LOOP")
 				world.playbackPolicy = MAP_EFFECT_PLAYBACK_POLICY::LOCAL_LOOP;
+			else if (playback == "SOURCE_LOOP")
+				world.playbackPolicy = MAP_EFFECT_PLAYBACK_POLICY::SOURCE_LOOP;
+			else if (playback == "SOURCE_ONCE")
+				world.playbackPolicy = MAP_EFFECT_PLAYBACK_POLICY::SOURCE_ONCE;
 			else if (playback == "SERVER_CLOCK_SAMPLE")
 				world.playbackPolicy =
 					MAP_EFFECT_PLAYBACK_POLICY::SERVER_CLOCK_SAMPLE;
@@ -726,7 +738,9 @@ std::string Client::CMapEffectDocument::Serialize() const
 		}
 		output << "      ],\n"
 			<< "      \"playbackPolicy\": \""
-			<< ToString(world.playbackPolicy) << "\"\n    }"
+			<< ToString(world.playbackPolicy) << "\",\n"
+			<< "      \"maxDrawDistanceMeters\": " << world.maxDrawDistanceMeters
+			<< "\n    }"
 			<< (++emitted == total ? "\n" : ",\n");
 	}
 	output << "  ]\n}\n";

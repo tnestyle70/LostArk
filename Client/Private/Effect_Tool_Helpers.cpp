@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "Effect_Tool_Internal.h"
+#include "DirectXTK/SimpleMath.h"
 #include "AnimationSkillBindingDocument.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
@@ -65,7 +66,16 @@ namespace EffectToolDetail
             const auto vectorKey = [&](const auto& v) { key << '|' << v.x << '|' << v.y << '|' << v.z; };
             std::string label;
             if (!attachment.bEnabled)
-            { key << "unattached"; label = "Unattached / Effect root"; }
+            {
+                key << "unattached"; label = "Unattached / Effect root";
+                // Explicit manual groups share an anchor but retain independent
+                // edit centers. Native source groups keep the existing grouping.
+                if (Is_ManualElementGroupMember(element))
+                {
+                    key << "|manual|" << std::quoted(element.strGroupId);
+                    label = ManualGroup_Label(element.strGroupId) + " / Effect root";
+                }
+            }
             else
             {
                 key << "attachment|" << attachment.bFollow << '|' << static_cast<unsigned>(attachment.eOrientation)
@@ -131,6 +141,24 @@ namespace EffectToolDetail
             }
             const double count = static_cast<double>(group.elementIds.size());
             group.center = float3_t(static_cast<float>(x / count), static_cast<float>(y / count), static_cast<float>(z / count));
+            group.rotationDegrees = first->Detail.Transform.vRotationDegrees;
+            group.rotationEditable = group.editable;
+            group.rotationEditReason = group.editReason;
+            for (const auto& id : group.elementIds)
+            {
+                const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
+                    [&](const auto& element) { return element.strElementId == id; });
+                const auto& detail = member->Detail;
+                const auto& spin = detail.Transform.vRevolutionDegreesPerSecond;
+                // The authored rotation curve interpolates Euler components. A
+                // shared quaternion delta cannot preserve that curve in general.
+                if (group.rotationEditable && (detail.LinearLerp.bRotation || detail.LinearLerp.bRevolution ||
+                    spin.x != 0.f || spin.y != 0.f || spin.z != 0.f))
+                {
+                    group.rotationEditable = false;
+                    group.rotationEditReason = "This group has animated Element rotation. Edit its rotation owner; Group Center remains available.";
+                }
+            }
         }
         return groups;
     }
@@ -167,6 +195,72 @@ namespace EffectToolDetail
             auto& detail = document.Elements[edit.index].Detail;
             detail.Transform.vPosition = edit.start;
             if (edit.hasEnd) detail.LinearLerp.vEndPosition = edit.end;
+        }
+        error.clear();
+        return true;
+    }
+
+    bool Rotate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, const float3_t& rotationDegrees, std::string& error)
+    {
+        const auto reject = [&](const std::string& reason) { error = reason; return false; };
+        const auto inRange = [](const float3_t& value, float limit) {
+            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+                std::abs(value.x) <= limit && std::abs(value.y) <= limit && std::abs(value.z) <= limit;
+        };
+        if (!inRange(rotationDegrees, 36000.f))
+            return reject("Group rotation must be finite and within +/-36000 degrees; all Elements are unchanged.");
+        const auto groups = Build_AttachmentElementGroups(document);
+        const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& item) { return item.key == groupKey; });
+        if (group == groups.end()) return reject("The attachment group changed. Select its current anchor group again.");
+        if (!group->rotationEditable) return reject(group->rotationEditReason);
+        const auto quaternion = [](const float3_t& angles) {
+            return XMQuaternionRotationRollPitchYaw(XMConvertToRadians(angles.x),
+                XMConvertToRadians(angles.y), XMConvertToRadians(angles.z));
+        };
+        // In row-vector order, remove the first member's old orientation then
+        // apply its edited orientation after every member's original rotation.
+        const auto delta = XMQuaternionNormalize(XMQuaternionMultiply(
+            XMQuaternionInverse(quaternion(group->rotationDegrees)), quaternion(rotationDegrees)));
+        const auto rotateVector = [&](const float3_t& value) {
+            float3_t rotated;
+            XMStoreFloat3(&rotated, XMVector3Rotate(XMLoadFloat3(&value), delta));
+            return rotated;
+        };
+        const auto rotatePosition = [&](const float3_t& value) {
+            const auto relative = rotateVector(float3_t(value.x - group->center.x,
+                value.y - group->center.y, value.z - group->center.z));
+            return float3_t(group->center.x + relative.x, group->center.y + relative.y, group->center.z + relative.z);
+        };
+        struct ROTATION_EDIT { size_t index; Client::EFFECT_TRANSFORM_DESC transform; Client::EFFECT_LINEAR_LERP_DESC lerp; };
+        std::vector<ROTATION_EDIT> edits;
+        for (const auto& id : group->elementIds)
+        {
+            const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
+                [&](const auto& element) { return element.strElementId == id; });
+            if (member == document.Elements.end()) return reject("A group member is unavailable; all Elements are unchanged.");
+            ROTATION_EDIT edit{static_cast<size_t>(member - document.Elements.begin()), member->Detail.Transform, member->Detail.LinearLerp};
+            edit.transform.vPosition = rotatePosition(edit.transform.vPosition);
+            edit.transform.vVelocityPerSecond = rotateVector(edit.transform.vVelocityPerSecond);
+            DirectX::SimpleMath::Quaternion composed;
+            XMStoreFloat4(&composed, XMQuaternionNormalize(XMQuaternionMultiply(quaternion(edit.transform.vRotationDegrees), delta)));
+            const auto angles = composed.ToEuler();
+            edit.transform.vRotationDegrees = edits.empty() ? rotationDegrees :
+                float3_t(XMConvertToDegrees(angles.x), XMConvertToDegrees(angles.y), XMConvertToDegrees(angles.z));
+            if (edit.lerp.bPosition) edit.lerp.vEndPosition = rotatePosition(edit.lerp.vEndPosition);
+            if (edit.lerp.bVelocity) edit.lerp.vEndVelocityPerSecond = rotateVector(edit.lerp.vEndVelocityPerSecond);
+            if (!inRange(edit.transform.vPosition, 100000.f) || !inRange(edit.transform.vRotationDegrees, 36000.f) ||
+                !inRange(edit.transform.vVelocityPerSecond, 100000.f) ||
+                (edit.lerp.bPosition && !inRange(edit.lerp.vEndPosition, 100000.f)) ||
+                (edit.lerp.bVelocity && !inRange(edit.lerp.vEndVelocityPerSecond, 100000.f)))
+                return reject("Group rotation exceeds an Element transform range; all Elements are unchanged.");
+            edits.push_back(edit);
+        }
+        for (const auto& edit : edits)
+        {
+            auto& detail = document.Elements[edit.index].Detail;
+            detail.Transform = edit.transform;
+            detail.LinearLerp = edit.lerp;
         }
         error.clear();
         return true;
@@ -780,7 +874,8 @@ namespace EffectToolDetail
 					Element.ActionCueAttachment.SocketLocalTransform,
 					Element.ActionCueAttachment.eOrientation,
 					Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
-						Document.strEffectAssetId) });
+						Document.strEffectAssetId,
+						Element.ActionCueAttachment.strRuntimeAnchorSlotId) });
 			}
 		}
 		std::sort(Requests.begin(), Requests.end(),
@@ -943,7 +1038,11 @@ namespace EffectToolDetail
 				float4x4_t RawBone{};
 				XMStoreFloat4x4(&RawBone, pValtanModel->Get_BoneMatrix(
 					Request.strRuntimeBoneName.c_str()));
-				if (Request.bNormalizeSourceImportScale && nullptr == pValtanCue &&
+				// Source-restored sockets stay on the actual scaled boss/weapon.
+				// The cue's arena scale remains reserved for snapshot-root Effects.
+				const bool_t bSourceRestore = Document.strEffectAssetId.starts_with("effect.valtan.action.") &&
+					Document.strEffectAssetId.ends_with(".full.restore");
+				if (Request.bNormalizeSourceImportScale && (nullptr == pValtanCue || bSourceRestore) &&
 					Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::BONE)
 				{
 					Client::EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
@@ -1909,6 +2008,14 @@ namespace EffectToolDetail
         }
     }
 
+    bool Is_SequencerRecoveryEffectAssetId(const std::string_view strEffectAssetId)
+    {
+        // A restore suffix does not make a boss document a player skill. Its
+        // selected Valtan clip, source anchors and time remain with World Preview.
+        return strEffectAssetId.ends_with(".restore") &&
+            !strEffectAssetId.starts_with("effect.valtan.");
+    }
+
     bool Is_KoukuEffectAssetId(const std::string_view strEffectAssetId)
     {
         return strEffectAssetId.starts_with("effect.kouku.");
@@ -2200,6 +2307,8 @@ namespace EffectToolDetail
             return "Alpha / One Sided / Depth Read";
         case Client::EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ:
             return "Additive / One Sided / Depth Read";
+        case Client::EFFECT_RENDER_PROFILE::MULTIPLY_ONE_SIDED_DEPTH_READ:
+            return "Multiply / One-sided / Depth read";
         case Client::EFFECT_RENDER_PROFILE::END:
         default: return "Invalid";
         }
@@ -3114,6 +3223,9 @@ namespace EffectToolDetail
         const size_t iSeparator = strGroupId.find_last_of('.');
         const std::string strLeaf = std::string::npos == iSeparator ?
             strGroupId : strGroupId.substr(iSeparator + 1u);
+        const size_t ray = strGroupId.rfind(".ray.");
+        if (ray != std::string::npos && ray + 5u < strGroupId.size())
+            return "Ray " + strGroupId.substr(ray + 5u) + " | " + strGroupId;
         if (strLeaf.starts_with("hit") && strLeaf.size() > 3u)
             return "Hit " + strLeaf.substr(3u) + " | " + strGroupId;
         return strGroupId;

@@ -19,15 +19,105 @@
       "visible": true,
       "kind": "particle",
       "resources": [
-        { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel" },
-        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_environ_002.dds" },
-        { "slotId": "dissolve", "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/fm_a_stone_001.wmodel"
+        }
       ],
       "material": {
-        "templateId": "effect.standard",
+        "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_05.fx_mi.fx_e_me_ht_03_4_ma",
-        "renderProfile": "alpha_two_sided_depth_read",
-        "sourceProfile": { "enabled": false }
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.05.fx.m.fx.e.me.rock.01.ma.73e384596c5a",
+          "runtimeShaderProfileId": "effect.ue3.kouku-2452-native.v1",
+          "parentMaterialPath": "fx_m_mi_05.fx_m.fx_e_me_rock_01_ma",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "normal_tex",
+              "sourceObjectPath": "fx_tex_00.fx_a_environ_002_n",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_environ_002_n.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "emissive_tex",
+              "sourceObjectPath": "fx_tex_00.fx_a_environ_002",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_environ_002.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "tex_tiling",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "specular_power",
+              "group": "None",
+              "value": 40.0
+            },
+            {
+              "name": "specular_intensity",
+              "group": "None",
+              "value": 0.5
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "transmission_color&intensity",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                0.10000000149011612
+              ]
+            },
+            {
+              "name": "light_color",
+              "group": "None",
+              "value": [
+                1.100000023841858,
+                1.100000023841858,
+                1.100000023841858,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "use_under_light",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": false,
@@ -37,35 +127,89 @@
         "runtimeBoneName": "",
         "snapshotRootSourceBasisYawDegrees": 0.0,
         "socketLocalTransform": {
-          "position": [0.0, 0.0, 0.0],
-          "rotationDegrees": [0.0, 0.0, 0.0],
-          "scale": [1.0, 1.0, 1.0]
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
         }
       },
-      "transformInheritance": { "enabled": false, "masterElementId": "" },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
       "detail": {
         "transform": {
-          "position": [0.0, 0.0, 0.0],
-          "rotationDegrees": [0.0, 0.0, 0.0],
-          "revolutionDegreesPerSecond": [0.0, 540.0, 0.0],
-          "scale": [1.0, 1.0, 1.0],
-          "velocityPerSecond": [0.0, 0.0, 0.0]
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            540.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
         },
         "color": {
-          "offset": [0.0, 0.0, 0.0, 0.0],
-          "multiply": [0.9, 0.72, 0.55, 1.0],
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
           "clip": 0.0,
-          "emissiveIntensity": 1.8,
+          "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
           "radialIntensity": 0.0
         },
         "uv": {
-          "start": [0.0, 0.0],
-          "speed": [0.0, 0.0],
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
           "wave": false,
-          "waveAmplitude": [0.0, 0.0],
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
           "waveFrequency": 1.0,
           "sequence": false,
           "loop": false,
@@ -84,45 +228,114 @@
         "mesh": {
           "useModelMaterial": false,
           "modelPreScale": 0.01,
-          "sourceTypeDataRotationDegrees": [0.0, 0.0, 0.0]
+          "sourceTypeDataRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ]
         },
         "sprite": {
           "billboard": false,
           "billboardRollDegrees": 0.0,
           "billboardRollDegreesPerSecond": 0.0
         },
-        "decal": { "size": [1.0, 1.0], "depth": 0.25 },
+        "decal": {
+          "size": [
+            1.0,
+            1.0
+          ],
+          "depth": 0.25
+        },
         "linearLerp": {
           "position": false,
-          "endPosition": [0.0, 0.0, 0.0],
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
           "rotation": false,
-          "endRotationDegrees": [0.0, 0.0, 0.0],
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
           "revolution": false,
-          "endRevolutionDegreesPerSecond": [0.0, 540.0, 0.0],
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            540.0,
+            0.0
+          ],
           "scale": false,
-          "endScale": [1.0, 1.0, 1.0],
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
           "velocity": false,
-          "endVelocityPerSecond": [0.0, 0.0, 0.0],
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
           "colorOffset": false,
-          "endColorOffset": [0.0, 0.0, 0.0, 0.0],
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
           "colorMultiply": true,
-          "endColorMultiply": [0.08, 0.05, 0.03, 0.0],
+          "endColorMultiply": [
+            0.08,
+            0.05,
+            0.03,
+            0.0
+          ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1.8
         },
         "particle": {
           "maxParticles": 24,
           "spawnRatePerSecond": 0.0,
-          "burstCount": 16,
+          "burstCount": 0,
           "randomSeed": 40044002,
-          "lifeTimeSeconds": [0.65, 1.1],
-          "initialPositionMin": [-0.25, 0.0, -0.25],
-          "initialPositionMax": [0.25, 0.35, 0.25],
-          "initialVelocityMin": [-5.5, 2.0, -5.5],
-          "initialVelocityMax": [5.5, 8.0, 5.5],
-          "acceleration": [0.0, -9.8, 0.0],
-          "startSize": [1.25, 1.25],
-          "endSize": [0.0, 0.0],
+          "lifeTimeSeconds": [
+            0.65,
+            1.1
+          ],
+          "initialPositionMin": [
+            -0.25,
+            0.0,
+            -0.25
+          ],
+          "initialPositionMax": [
+            0.25,
+            0.35,
+            0.25
+          ],
+          "initialVelocityMin": [
+            -5.5,
+            2.0,
+            -5.5
+          ],
+          "initialVelocityMax": [
+            5.5,
+            8.0,
+            5.5
+          ],
+          "acceleration": [
+            0.0,
+            -9.8,
+            0.0
+          ],
+          "startSize": [
+            1.25,
+            1.25
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
           "localSpace": false,
           "billboard": false
         },
@@ -137,20 +350,916 @@
           "distanceTessellationStepWorldUnits": 0.0,
           "faceCamera": true
         },
-        "afterImage": { "sampleIntervalSeconds": 0.05, "maxCopies": 16, "alphaExponent": 1.0 },
-        "light": { "enabled": false },
-        "screenPost": { "enabled": false }
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
       },
       "sourceRecipe": {
-        "enabled": false,
-        "rendererShape": "",
-        "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 0.0,
+        "enabled": true,
+        "rendererShape": "mesh",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1.2,
         "emitterLoopCount": 1,
-        "bursts": [],
-        "modules": []
+        "bursts": [
+          {
+            "timeSeconds": 0,
+            "countMinimum": 16,
+            "countMaximum": 16
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulerequired",
+            "className": "particlemodulerequired",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulerequired",
+            "literals": [
+              {
+                "propertyPath": "ballowimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "buselegacyemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "busemaxdrawcount",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 1.2
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "farculldistance",
+                "kind": "number",
+                "value": 2100.0
+              },
+              {
+                "propertyPath": "farfadedistance",
+                "kind": "number",
+                "value": 2000.0
+              },
+              {
+                "propertyPath": "interpolationmethod",
+                "kind": "string",
+                "value": "psuvim_random"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "material",
+                "kind": "number",
+                "value": -132.0
+              },
+              {
+                "propertyPath": "material.objectpath",
+                "kind": "string",
+                "value": "fx_m_mi_05.fx_mi.fx_e_me_ht_03_4_ma"
+              },
+              {
+                "propertyPath": "maxdrawcount",
+                "kind": "number",
+                "value": 500.0
+              },
+              {
+                "propertyPath": "nearculldistance",
+                "kind": "number",
+                "value": 10.0
+              },
+              {
+                "propertyPath": "nearfadedistance",
+                "kind": "number",
+                "value": 150.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.z",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.z",
+                "kind": "number",
+                "value": 100.0
+              },
+              {
+                "propertyPath": "offsetcenterx",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "offsetcentery",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "randomimagetime",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_horizontal",
+                "kind": "number",
+                "value": 4.0
+              },
+              {
+                "propertyPath": "subimages_vertical",
+                "kind": "number",
+                "value": 2.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulelifetime",
+            "className": "particlemodulelifetime",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulelifetime",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 2,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.65,
+                  1.1,
+                  0.65,
+                  1.1,
+                  0.65,
+                  1.1
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulespawn",
+            "className": "particlemodulespawn",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulespawn",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessburstlist",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessspawnrate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "burstlist[0].count",
+                "kind": "number",
+                "value": 16
+              },
+              {
+                "propertyPath": "burstlist[0].countlow",
+                "kind": "number",
+                "value": -1.0
+              },
+              {
+                "propertyPath": "burstlist[0].time",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemoduletypedatamesh",
+            "className": "particlemoduletypedatamesh",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemoduletypedatamesh",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "boverridematerial",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "mesh",
+                "kind": "number",
+                "value": -429.0
+              },
+              {
+                "propertyPath": "mesh.objectpath",
+                "kind": "string",
+                "value": "fx_sm_00.fm_a_stone_001"
+              }
+            ],
+            "distributions": []
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulesize",
+            "className": "particlemodulesize",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulesize",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 4,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.25,
+                  1.25,
+                  1.25,
+                  1.25,
+                  1.25,
+                  1.25,
+                  1.25,
+                  1.25
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulesizemultiplylife",
+            "className": "particlemodulesizemultiplylife",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulesizemultiplylife",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "multiplyx",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "multiplyy",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "multiplyz",
+                "kind": "boolean",
+                "value": true
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifemultiplier",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 1,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulelocation",
+            "className": "particlemodulelocation",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulelocation",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupported3ddrawmode",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startlocation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  -25.0,
+                  35.0,
+                  -25.0,
+                  -25.0,
+                  0.0,
+                  25.0,
+                  25.0,
+                  35.0,
+                  -25.0,
+                  -25.0,
+                  0.0,
+                  25.0,
+                  25.0,
+                  35.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemodulevelocity",
+            "className": "particlemodulevelocity",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemodulevelocity",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startvelocity",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 2,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 6,
+                "lookupTableNumElements": 2,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  -550.0,
+                  800.0,
+                  -550.0,
+                  -550.0,
+                  200.0,
+                  550.0,
+                  550.0,
+                  800.0,
+                  -550.0,
+                  -550.0,
+                  200.0,
+                  550.0,
+                  550.0,
+                  800.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "startvelocityradial",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.six-pizza.rock.explode.debris.particlemoduleacceleration",
+            "className": "particlemoduleacceleration",
+            "objectPath": "authored.six-pizza.rock.explode.debris.particlemoduleacceleration",
+            "literals": [
+              {
+                "propertyPath": "balwaysinworldspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bapplyownerscale",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "acceleration",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  -980.0000000000001,
+                  -0.0,
+                  -0.0,
+                  0.0,
+                  -980.0000000000001,
+                  -0.0,
+                  0.0,
+                  -980.0000000000001
+                ],
+                "keys": []
+              }
+            ]
+          }
+        ]
       },
-      "sourcePresentation": { "enabled": false }
+      "sourcePresentation": {
+        "enabled": false
+      }
     }
   ]
 }

@@ -856,6 +856,14 @@ HRESULT CLoader::Ready_MapArea(
 				entry.prototypeTag,
 				std::move(pModel))))
 		{
+			// Preserve the failed asset in session recovery, not only the last counter.
+			{
+				lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+				g_ActiveStatus = "Map " + areaId + ": model prototype failed " +
+					entry.id + " / " + entry.modelRelativePath.generic_string() +
+					" (" + std::to_string(loadedModelCount) + "/" +
+					std::to_string(requiredModelCount) + ")";
+			}
 			const std::wstring detail =
 				L"[Loader][Map] Model failed: " +
 				entry.prototypeTag +

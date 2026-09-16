@@ -24,14 +24,26 @@
 #include "VIBuffer_DynamicTrail.h"
 #include "VIBuffer_Rect.h"
 
+namespace
+{
+	bool_t Is_DeferredModelCue(const Client::EFFECT_MODEL_CUE_DESC& Cue)
+	{
+		// CModel surface passes write the GBuffer before scene lighting. Explicit
+		// Effect material programs and translucent cues keep their forward pass.
+		return !Cue.Material &&
+			(Cue.eAlphaMode == Client::EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ||
+			 Cue.eAlphaMode == Client::EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE);
+	}
+}
+
 bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
 {
 	if (m_bOccurrenceElementSelected || !m_bModelCueRenderingEnabled) return false;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	return std::ranges::any_of(Document.ModelCues,
-		[&Document](const EFFECT_MODEL_CUE_DESC& Cue)
+		[](const EFFECT_MODEL_CUE_DESC& Cue)
 		{
-			return Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
+			return Is_DeferredModelCue(Cue);
 		});
 }
 
@@ -436,7 +448,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
 
 HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 	const EFFECT_EVALUATED_FRAME& Frame,
-	const bool_t bNonBlendCharacterSurfaceOnly)
+	const bool_t bNonBlendSurfaceOnly)
 {
 	// Keep model cues available for anchor sampling, but an explicitly selected
 	// occurrence Element must not draw the source document's standalone models.
@@ -446,7 +458,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 	{
 		const bool_t bCharacterSurface =
 			Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
-		if (bCharacterSurface != bNonBlendCharacterSurfaceOnly)
+		if (Is_DeferredModelCue(Cue) != bNonBlendSurfaceOnly)
 			continue;
 		const f32_t fLocalTime =
 			Frame.fSampleTimeSeconds - Cue.fStartDelaySeconds;
@@ -519,6 +531,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 			}
 			if (Resource->second.pMaterialResource)
 				iPass = Cue.Material->eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ? 8u : 7u;
+			// The exact T summon keeps its depth/mask path without receiving map light.
+			if (bCharacterSurface) iPass = 11u;
 			hResult = Bind_BloomInputs(m_pAnimatedModelShader);
 			if (FAILED(hResult)) return hResult;
 			hResult = m_pAnimatedModelShader->Begin(iPass);

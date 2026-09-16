@@ -537,11 +537,12 @@ namespace Client::EffectDocumentCodecDetail
                 !ReadPortableBoolLiteral(Module, "bcollidewithworld", false, World) || !World ||
                 !ReadPortableBoolLiteral(Module, "bapplyphysics", false, ApplyPhysics) || ApplyPhysics ||
                 !ReadPortableBoolLiteral(Module, "bonlyverticalnormalsdecrementcount", false, VerticalOnly) || VerticalOnly ||
-                !ReadPortableStringLiteral(Module, "collisioncompletionoption", "epcc_kill", Completion) || Completion != "epcc_kill" ||
+                !ReadPortableStringLiteral(Module, "collisioncompletionoption", "epcc_kill", Completion) ||
+                (Completion != "epcc_kill" && Completion != "epcc_freezemovement") ||
                 !ReadPortableNumberLiteral(Module, "dirscalar", 1.0, Scalar) || Scalar < 0.0 ||
                 !ReadPortableNumberLiteral(Module, "maxcollisiondistance", 1000.0, Distance) || Distance < 0.0)
             {
-                strOutError = "Source Collision requires static-world bounce followed by Kill.";
+                strOutError = "Source Collision requires static-world bounce followed by Kill or FreezeMovement.";
                 return false;
             }
         }
@@ -624,7 +625,7 @@ namespace Client::EffectDocumentCodecDetail
 			bool_t bReflected = false;
 			bool_t bOrbit = false;
 			if (!ReadPortableStringLiteral(Module, "events[0].type", "",
-					strType) || (strType != "epet_spawn" && strType != "epet_death") ||
+					strType) || (strType != "epet_spawn" && strType != "epet_death" && strType != "epet_collision") ||
 				!ReadPortableStringLiteral(Module, "events[0].customname", "",
 					strName) || strName.empty() ||
 				!ReadPortableNumberLiteral(Module, "events[0].frequency", 0.0,
@@ -646,7 +647,7 @@ namespace Client::EffectDocumentCodecDetail
 					false, bOrbit) || bOrbit)
 			{
 				strOutError =
-					"Portable authored particle Spawn/Death-event generator semantics are unsupported.";
+					"Portable authored particle Spawn/Death/Collision-event generator semantics are unsupported.";
 				return false;
 			}
 		}
@@ -658,18 +659,18 @@ namespace Client::EffectDocumentCodecDetail
 			bool_t bInheritVelocity = false;
 			bool_t bUseSystemLocation = false;
 			if (!ReadPortableStringLiteral(Module, "eventgeneratortype", "",
-					strType) || (strType != "epet_spawn" && strType != "epet_death") ||
+					strType) || (strType != "epet_spawn" && strType != "epet_death" && strType != "epet_collision") ||
 				!ReadPortableStringLiteral(Module, "eventname", "", strName) ||
 				strName.empty() ||
 				!ReadPortableBoolLiteral(Module, "buseparticletime", false,
 					bUseParticleTime) || bUseParticleTime ||
 				!ReadPortableBoolLiteral(Module, "binheritvelocity", false,
-					bInheritVelocity) ||
+					bInheritVelocity) || (strType == "epet_collision" && bInheritVelocity) ||
 				!ReadPortableBoolLiteral(Module, "busepsyslocation", false,
 					bUseSystemLocation) || bUseSystemLocation)
 			{
 				strOutError =
-					"Portable authored particle Spawn/Death-event receiver semantics are unsupported.";
+					"Portable authored particle Spawn/Death/Collision-event receiver semantics are unsupported.";
 				return false;
 			}
 		}
@@ -1125,7 +1126,7 @@ namespace Client::EffectDocumentCodecDetail
 					std::string_view strType;
 					std::string_view strName;
 					if (!ReadPortableStringLiteral(Module, "events[0].type",
-							"", strType) || (strType != "epet_spawn" && strType != "epet_death") ||
+							"", strType) || (strType != "epet_spawn" && strType != "epet_death" && strType != "epet_collision") ||
 						!ReadPortableStringLiteral(Module,
 							"events[0].customname", "", strName) ||
 						strName.empty())
@@ -1144,7 +1145,7 @@ namespace Client::EffectDocumentCodecDetail
 					std::string_view strName;
 					if (!ReadPortableStringLiteral(Module,
 							"eventgeneratortype", "", strType) ||
-						(strType != "epet_spawn" && strType != "epet_death") ||
+						(strType != "epet_spawn" && strType != "epet_death" && strType != "epet_collision") ||
 						!ReadPortableStringLiteral(Module, "eventname", "",
 							strName) || strName.empty())
 					{

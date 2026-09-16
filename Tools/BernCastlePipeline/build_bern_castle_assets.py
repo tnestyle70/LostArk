@@ -24,6 +24,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ModelAssetConverter"))
+import cook_wmodel_geometry_contract as geometry
+
 
 STATIC_CLASS_DIRS = {"staticmesh", "staticmesh2", "staticmesh3"}
 TEXTURE_PARAMETER_TO_SWITCH = {
@@ -108,6 +111,7 @@ MATERIAL_VECTOR_PARAMETERS = frozenset({
     "reflection_tiling_panning",
 })
 SOURCE_RECEIPT_SCHEMA_VERSION = 2
+RUNTIME_RECEIPT_SCHEMA_VERSION = 2
 REQUIRED_WMODEL_MAGICS = {b"WINT", b"WMOD"}
 PRINT_LOCK = threading.Lock()
 
@@ -195,19 +199,44 @@ def inventory_assets(
     directories: Sequence[Path], level_prefix: str, expect_assets: int | None,
     expect_placements: int | None,
 ) -> dict[str, Any]:
+    # Keep the same source visibility validation as the actual scene consumer.
+    # Import lazily: the variant pipeline imports this module while starting up.
+    extractor_directory = str(Path(__file__).resolve().parents[1] / "LevelPlacementExtractor")
+    if extractor_directory not in sys.path:
+        sys.path.insert(0, extractor_directory)
+    from build_maptool_scene import placement_source_visibility
+
     by_path: dict[str, dict[str, Any]] = {}
     source_files: list[dict[str, Any]] = []
     level_counts: Counter[str] = Counter()
+    visibility_counts: Counter[str] = Counter()
+    visibility_basis_counts: Counter[str] = Counter()
     placement_count = 0
     for path in placement_files(directories):
         document = load_json(path)
-        if document.get("schemaVersion") != 1 or document.get("propertyErrors"):
+        schema_version = document.get("schemaVersion")
+        if (type(schema_version) is not int or schema_version not in (1, 2, 3)
+                or document.get("propertyErrors")):
             raise PipelineError(f"invalid placement source: {path}")
         selected = []
+        source_visibility_counts: Counter[str] = Counter()
+        source_visibility_basis_counts: Counter[str] = Counter()
         for row in document.get("placements", []):
             level = str(row.get("levelPackage", ""))
             if level_prefix and not level.casefold().startswith(level_prefix.casefold()):
                 continue
+            try:
+                visibility = placement_source_visibility(row, schema_version)
+            except ValueError as error:
+                raise PipelineError(f"invalid placement visibility in {path}: {error}") from error
+            state = ("visible" if visibility["visible"] is True else
+                     "hidden" if visibility["visible"] is False else "unrecorded")
+            source_visibility_counts[state] += 1
+            source_visibility_basis_counts[visibility["basis"]] += 1
+            visibility_counts[state] += 1
+            visibility_basis_counts[visibility["basis"]] += 1
+            # Hidden placements still own source assets. The pinned source file
+            # retains their complete evidence chains for the scene consumer.
             selected.append(row)
             asset = row.get("asset", {})
             full_path = str(asset.get("objectPath", "")).strip().casefold()
@@ -240,7 +269,10 @@ def inventory_assets(
                 {
                     "path": str(path.resolve()),
                     "sha256": sha256(path),
+                    "schemaVersion": schema_version,
                     "selectedPlacementCount": len(selected),
+                    "sourceVisibilityCounts": dict(sorted(source_visibility_counts.items())),
+                    "sourceVisibilityBasisCounts": dict(sorted(source_visibility_basis_counts.items())),
                 }
             )
     assets = sorted(by_path.values(), key=lambda row: row["fullPath"])
@@ -259,6 +291,8 @@ def inventory_assets(
         "assetCount": len(assets),
         "placementCount": placement_count,
         "levelCounts": dict(sorted(level_counts.items())),
+        "sourceVisibilityCounts": dict(sorted(visibility_counts.items())),
+        "sourceVisibilityBasisCounts": dict(sorted(visibility_basis_counts.items())),
         "sources": source_files,
         "assets": assets,
     }
@@ -622,7 +656,12 @@ def receipt_is_valid(directory: Path, receipt_name: str, asset: dict[str, Any]) 
         # A receipt written before the material contract was preserved has no
         # scalars, render flags or auxiliary textures. Resuming on it would
         # keep the gap forever, so an older schema counts as not exported.
-        if receipt.get("schemaVersion") != SOURCE_RECEIPT_SCHEMA_VERSION:
+        expected_schema = (RUNTIME_RECEIPT_SCHEMA_VERSION
+                           if receipt_name == "runtime.receipt.json"
+                           else SOURCE_RECEIPT_SCHEMA_VERSION)
+        if receipt.get("schemaVersion") != expected_schema:
+            return False
+        if not receipt.get("outputs"):
             return False
         for item in receipt.get("outputs", []):
             path = directory / str(item["path"])
@@ -772,6 +811,8 @@ def export_one(
             "fullPath": asset["fullPath"],
             "logicalPackage": asset["logicalPackage"],
             "physicalPackage": physical_match.group(1).strip(),
+            "physicalPackagePath": str(resolve_geometry_package(
+                {"physicalPackage": physical_match.group(1).strip()}, package_root)),
             "objectName": asset["objectName"],
             "gltf": target.name,
             "materials": material_receipts,
@@ -855,9 +896,129 @@ def source_remaps(source: Path, receipt: dict[str, Any]) -> list[str]:
     return command
 
 
+def resolve_geometry_package(receipt: dict[str, Any], package_root: Path | None) -> Path:
+    """Resolve only the export's recorded physical package, never a name search."""
+    physical = Path(str(receipt.get("physicalPackage", "")))
+    candidates: list[Path] = []
+    recorded = receipt.get("physicalPackagePath")
+    if isinstance(recorded, str) and Path(recorded).is_absolute():
+        candidates.append(Path(recorded))
+    if physical.is_absolute():
+        candidates.append(physical)
+    elif package_root is not None and str(physical) not in ("", "."):
+        candidate = (package_root / physical).resolve()
+        if not candidate.is_relative_to(package_root.resolve()):
+            raise PipelineError("recorded physical package escapes package root")
+        candidates.append(candidate)
+    for path in candidates:
+        if path.is_file():
+            return path.resolve()
+    raise PipelineError(
+        "geometry provenance requires the recorded physical package: "
+        f"{receipt.get('physicalPackage')!r}; provide --package-root or re-extract the source pack"
+    )
+
+
+def validate_geometry_source(receipt_path: Path, source_object: str) -> tuple[dict[str, Any], Path]:
+    receipt = load_json(receipt_path)
+    if str(receipt.get("fullPath", "")).casefold() != source_object.casefold():
+        raise PipelineError(f"geometry source receipt object mismatch: {receipt_path}")
+    root = receipt_path.parent.resolve()
+    outputs = receipt.get("outputs")
+    if not isinstance(outputs, list) or not outputs:
+        raise PipelineError(f"geometry source receipt has no pinned outputs: {receipt_path}")
+    pinned: set[Path] = set()
+    for output in outputs:
+        path = (root / str(output["path"])).resolve()
+        if not path.is_relative_to(root) or path in pinned:
+            raise PipelineError(f"invalid/duplicate geometry source output: {output['path']}")
+        if not path.is_file() or sha256(path).casefold() != str(output["sha256"]).casefold():
+            raise PipelineError(f"geometry source output hash mismatch: {path}")
+        pinned.add(path)
+    gltf = (root / str(receipt.get("gltf", ""))).resolve()
+    if gltf not in pinned:
+        raise PipelineError(f"source glTF is not pinned by the receipt: {gltf}")
+    _materials, buffers = gltf_contract(gltf)
+    if any(path.resolve() not in pinned for path in buffers):
+        raise PipelineError(f"source glTF buffer is not pinned by the receipt: {gltf}")
+    return receipt, gltf
+
+
+def preserve_cooked_geometry(
+    *, source_gltf: Path, model: Path, source_receipt_path: Path, converter: Path,
+    command: Sequence[str], source_object: str, package_root: Path | None = None,
+) -> dict[str, Any]:
+    """Upgrade a staged legacy cook; retain only source channels and observed evidence.
+
+    Variant callers may rename material slots. Their decoded geometry must still
+    equal the receipt-pinned source before the shared contract checks the cook.
+    The caller owns the staging directory and commits only after this succeeds.
+    """
+    receipt_hash = sha256(source_receipt_path)
+    receipt, original_gltf = validate_geometry_source(source_receipt_path, source_object)
+    package = resolve_geometry_package(receipt, package_root)
+    try:
+        original, original_hash, original_buffers = geometry.parse_source_gltf(original_gltf)
+        staged, staged_hash, staged_buffers = geometry.parse_source_gltf(source_gltf)
+        if original != staged:
+            raise PipelineError("staged material variant changed source geometry channels")
+        package_hash, converter_hash = sha256(package), sha256(converter)
+        legacy_hash = sha256(model)
+        inputs_path = model.parent / "geometry.inputs.json"
+        atomic_write_json(inputs_path, {
+            "schema": "lostark.map-geometry-cook-inputs", "formatVersion": 1,
+            "sourceObject": source_object, "sourceReceiptSha256": receipt_hash,
+            "originalGltfSha256": original_hash.hex(),
+            "originalBufferSetSha256": original_buffers.hex(),
+            "cookGltfSha256": staged_hash.hex(), "cookBufferSetSha256": staged_buffers.hex(),
+            "sourcePackage": {"path": str(package), "sha256": package_hash,
+                              "status": "OBSERVED_UNBOUND"},
+        })
+        cook_receipt_path = model.parent / "geometry.legacy-cook.receipt.json"
+        atomic_write_json(cook_receipt_path, {
+            "schema": "lostark.map-legacy-geometry-cook-receipt", "formatVersion": 1,
+            "sourceReceiptSha256": receipt_hash, "inputManifestSha256": sha256(inputs_path),
+            "sourceGltfSha256": staged_hash.hex(), "legacyWModelSha256": legacy_hash,
+            "converterSha256": converter_hash, "command": list(command),
+            "scale": 100.0, "legacyPayload": "TRANSIENT_STAGING_INPUT",
+        })
+        provenance = geometry.GeometryProvenanceEvidence(
+            source_object=source_object,
+            source_manifest_canonical_lf_sha256=geometry.sha256_bytes(
+                geometry.canonical_lf_utf8_bytes(inputs_path.read_bytes(), "geometry inputs")),
+            source_manifest_legacy_hash_correlation="GENERATED_COOK_INPUTS_PINNED_BY_LEGACY_RECEIPT",
+            source_package_observed_unbound_sha256=bytes.fromhex(package_hash),
+            legacy_converter_observed_unbound_sha256=bytes.fromhex(converter_hash),
+            source_export_receipt_sha256=bytes.fromhex(receipt_hash),
+            legacy_cook_receipt_sha256=bytes.fromhex(sha256(cook_receipt_path)),
+            source_manifest_hash_role="OBSERVED_GENERATED_COOK_INPUTS_CANONICAL_LF",
+        )
+        payload, contract = geometry.cook_wmodel_geometry_contract(
+            source_gltf, model, provenance, expected_source_gltf_sha256=staged_hash,
+            expected_legacy_wmodel_sha256=bytes.fromhex(legacy_hash),
+        )
+        candidate = model.with_suffix(".geometry-candidate.wmodel")
+        geometry.write_atomic(candidate, payload)
+        try:
+            geometry.verify_source_against_geometry_contract(source_gltf, candidate)
+        except BaseException:
+            candidate.unlink()
+            raise
+        if sha256(source_receipt_path) != receipt_hash or sha256(converter) != converter_hash:
+            raise PipelineError("geometry source receipt or converter changed during cook")
+        validate_geometry_source(source_receipt_path, source_object)
+        # The shared helper never edits an input. Only this caller replaces its
+        # private stage after both topology and complete channel checks succeed.
+        os.replace(candidate, model)
+        atomic_write_json(model.parent / "geometry.receipt.json", contract)
+        return contract
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        raise PipelineError(f"geometry contract failed for {source_object}: {error}") from error
+
+
 def cook_one(
     asset: dict[str, Any], output_root: Path, converter: Path, timeout: float,
-    force: bool,
+    force: bool, package_root: Path | None = None,
 ) -> dict[str, Any]:
     asset_id = str(asset["assetId"])
     source = output_root / "source" / asset_id
@@ -866,7 +1027,12 @@ def cook_one(
         raise PipelineError(f"source receipt mismatch: {asset_id}")
     destination = output_root / "runtime" / asset_id
     if not force and receipt_is_valid(destination, "runtime.receipt.json", asset):
-        return {"assetId": asset_id, "status": "resumed"}
+        previous = load_json(destination / "runtime.receipt.json")
+        if (previous.get("sourceReceiptSha256") == sha256(source / "source.receipt.json")
+                and previous.get("geometryToolSha256") == sha256(Path(geometry.__file__))
+                and previous.get("converterSha256") == sha256(converter)):
+            validate_geometry_source(source / "source.receipt.json", str(asset["fullPath"]))
+            return {"assetId": asset_id, "status": "resumed"}
     staging_parent = output_root / ".staging" / "cook"
     staging_parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix=asset_id + ".", dir=staging_parent))
@@ -876,6 +1042,7 @@ def cook_one(
         source_gltf = source / str(source_receipt["gltf"])
         if not source_gltf.is_file():
             raise PipelineError(f"source glTF is missing: {source_gltf}")
+        validate_geometry_source(source / "source.receipt.json", str(asset["fullPath"]))
         for source_texture in sorted((source / "textures").glob("*")):
             if source_texture.is_file():
                 destination_texture = pack / "textures" / source_texture.name
@@ -900,6 +1067,11 @@ def cook_one(
         completed = run(command, pack, timeout, f"ModelAssetConverter cook {asset_id}")
         if not model.is_file() or model.read_bytes()[:4] not in REQUIRED_WMODEL_MAGICS:
             raise PipelineError(f"invalid cooked WModel: {model}")
+        geometry_receipt = preserve_cooked_geometry(
+            source_gltf=source_gltf, model=model,
+            source_receipt_path=source / "source.receipt.json", converter=converter,
+            command=command, source_object=str(asset["fullPath"]), package_root=package_root,
+        )
         info = run(
             [str(converter), "info", str(model)], pack, timeout,
             f"ModelAssetConverter info {asset_id}",
@@ -916,11 +1088,15 @@ def cook_one(
             for path in sorted(path for path in pack.rglob("*") if path.is_file())
         ]
         receipt = {
-            "schemaVersion": 1,
+            "schemaVersion": RUNTIME_RECEIPT_SCHEMA_VERSION,
             "assetId": asset_id,
             "fullPath": asset["fullPath"],
             "model": f"{asset_id}/{asset_id}.wmodel",
             "sourceReceiptSha256": sha256(source / "source.receipt.json"),
+            "geometryToolSha256": sha256(Path(geometry.__file__)),
+            "converterSha256": sha256(converter),
+            "geometry": geometry_receipt["geometry"],
+            "runtimeProductAdmission": geometry_receipt["runtimeProductAdmission"],
             "outputs": outputs,
         }
         atomic_write_json(pack / "runtime.receipt.json", receipt)
@@ -939,6 +1115,8 @@ def build_runtime_manifest(
         asset_id = str(asset["assetId"])
         pack = output_root / "runtime" / asset_id
         receipt = load_json(pack / "runtime.receipt.json")
+        if not receipt_is_valid(pack, "runtime.receipt.json", asset):
+            raise PipelineError(f"runtime geometry pack is stale or incomplete; cook again: {asset_id}")
         model_relative = str(receipt["model"])
         model = output_root / "runtime" / model_relative
         if receipt.get("fullPath") != asset["fullPath"] or not model.is_file():
@@ -998,6 +1176,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     cook.add_argument("--inventory", type=Path, required=True)
     cook.add_argument("--output-root", type=Path, required=True)
     cook.add_argument("--converter", type=Path, required=True)
+    cook.add_argument("--package-root", type=Path,
+                      help="Resolve physical packages recorded by older source receipts")
     cook.add_argument("--workers", type=int, default=2)
     cook.add_argument("--converter-timeout", type=float, default=180.0)
     cook.add_argument("--expect-assets", type=int, default=950)
@@ -1093,7 +1273,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             "cook", selected, args.workers,
             lambda asset: cook_one(
                 asset, output_root, args.converter.resolve(), args.converter_timeout,
-                args.force,
+                args.force, args.package_root.resolve() if args.package_root else None,
             ),
         )
         if len(selected) != len(inventory["assets"]):

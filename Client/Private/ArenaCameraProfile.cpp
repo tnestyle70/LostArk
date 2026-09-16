@@ -254,6 +254,24 @@ float3_t CArenaCameraProfile::LookOffset(const ARENA_CAMERA_PROFILE& profile)
 	return look;
 }
 
+bool_t CArenaCameraProfile::Set_OrbitAroundFocus(ARENA_CAMERA_PROFILE& profile,
+	f32_t distance, f32_t pitchDegrees, f32_t yawDegrees, std::string& status)
+{
+	if (!Validate(profile, status)) return false;
+	const float3_t focus = LookOffset(profile);
+	ARENA_CAMERA_PROFILE staged = profile;
+	staged.focusDistance = distance;
+	staged.rotationDegrees.x = pitchDegrees;
+	staged.rotationDegrees.y = yawDegrees;
+	if (!Validate(staged, status)) return false;
+	staged.positionOffset = {};
+	const float3_t direction = LookOffset(staged);
+	staged.positionOffset = {focus.x - direction.x, focus.y - direction.y, focus.z - direction.z};
+	if (!Validate(staged, status)) return false;
+	profile = staged;
+	return true;
+}
+
 bool_t CArenaCameraProfile::Load(const ARENA_CAMERA_MAP map, ARENA_CAMERA_PROFILE& outProfile,
 	std::string& status, std::string* sourceBaseline)
 {

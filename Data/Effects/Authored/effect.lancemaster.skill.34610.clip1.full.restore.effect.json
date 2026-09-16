@@ -86794,7 +86794,7 @@
             0.0,
             0.0
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": false
         },
         "trail": {

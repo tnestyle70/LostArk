@@ -555,6 +555,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 	{
 		if ((m_Surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
 			m_Surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+            m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
              m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
              m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED) ||
@@ -579,7 +580,9 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
             (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
              m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
              m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
-             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial && material.normalPath.empty()) ||
+             m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+             m_Surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE && material.normalPath.empty()) ||
             (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
              m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
              m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&

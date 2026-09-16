@@ -1410,46 +1410,6 @@
       }
     },
     {
-      "bindingId": "cue.valtan.whirlwind.active",
-      "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
-      "patternId": "VALTAN_WHIRLWIND",
-      "stageId": "SPIN",
-      "actionId": "valtan.attack.whirlwind.active",
-      "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
-      "effectAssetId": "effect.valtan.pattern.420633.active",
-      "anchorSlotId": "root",
-      "followPolicy": "follow",
-      "stopPolicy": "natural",
-      "repeatPolicy": "once",
-      "sourceStartMs": 0,
-      "sourceEndMs": null,
-      "localTransform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      "scalePolicy": {
-        "kind": "GAMEPLAY_FOOTPRINT",
-        "worldScale": [
-          1.5,
-          1.5,
-          1.5
-        ]
-      }
-    },
-    {
       "bindingId": "cue.valtan.entrance-whirlwind.sweep.carrier-v1",
       "occurrenceId": "cue.valtan.entrance-whirlwind.sweep.carrier-v1.occurrence.01",
       "patternId": "VALTAN_ENTRANCE_WHIRLWIND",
@@ -2692,6 +2652,46 @@
       },
       "scalePolicy": {
         "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.whirlwind.active",
+      "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
+      "patternId": "VALTAN_WHIRLWIND",
+      "stageId": "SPIN",
+      "actionId": "valtan.attack.whirlwind.active",
+      "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+      "effectAssetId": "effect.valtan.pattern.420633.active",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     }
   ]

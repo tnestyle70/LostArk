@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "Engine_RenderTypes.h"
 #include "KoukuSaydonPresentationPlayer.h"
+#include <random>
 #include "KoukuSaydonAnimationBlend.h"
 
 #include "ActionPresentationTimeline.h"
@@ -24,6 +25,7 @@
 #include "Model.h"
 #include "Npc.h"
 #include "WorldSequencePlayer.h"
+#include "WorldGameplayDocument.h"
 #include "ProjectDataRoot.h"
 #include "RenderingProfileService.h"
 #include "RuntimeAssetRoot.h"
@@ -34,6 +36,7 @@
 #include <cmath>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -266,6 +269,14 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     const auto& follow = Field(row, "followBoss");
     if (!follow.Is_Boolean()) throw std::runtime_error("followBoss must be Boolean.");
     box.bFollowBoss = follow.Get_Boolean();
+    if (const auto* fit = row.Find("fitEffectToDuration"))
+    {
+        if (!fit->Is_Boolean()) throw std::runtime_error("fitEffectToDuration must be Boolean.");
+        box.bFitEffectToDuration = fit->Get_Boolean();
+        if (box.bFitEffectToDuration && (kind != KIND::EFFECT ||
+            (Field(row, "resourceKind").Get_String() != "V1_EFFECT" && Field(row, "resourceKind").Get_String() != "V1_ELEMENT")))
+            throw std::runtime_error("Fit Effect lifetime requires a V1 Effect resource.");
+    }
     if (const auto* debug = row.Find("debugRender"))
     {
         if (!debug->Is_Boolean()) throw std::runtime_error("debugRender must be Boolean.");
@@ -301,6 +312,29 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     return box;
 }
 
+DATA_JSON_VALUE Read_ProductPresentationRoot()
+{
+        const auto path = CProjectDataRoot::Resolve(
+            "Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json");
+        std::error_code error;
+        const auto bytes = std::filesystem::file_size(path, error);
+        if (error || bytes > 16u * 1024u * 1024u)
+            throw std::runtime_error("KoukuSaydon Product presentation is missing or oversized.");
+        std::ifstream input(path, std::ios::binary);
+        const std::string text{ std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+        if (!input || input.bad() || text.size() != bytes)
+            throw std::runtime_error("KoukuSaydon Product presentation read failed.");
+        DATA_JSON_VALUE root;
+        std::string parseStatus;
+        if (!CDataJson::Parse(text, root, parseStatus) || !root.Is_Object())
+            throw std::runtime_error("KoukuSaydon Product parse failed: " + parseStatus);
+        if (Text(root, "schema") != "lostark.kouku-saydon-pattern-bindings" ||
+            UInt(root, "formatVersion", 1u, 1u) != 1u ||
+            Text(root, "bossArchetypeId") != "BOSS_KAKULSAYDON_G1_KOUKU")
+            throw std::runtime_error("KoukuSaydon Product presentation header is incompatible.");
+    return root;
+}
+
 struct PRESENTATION_WINDOW final
 {
     KIND kind;
@@ -321,8 +355,13 @@ bool Admit_PresentationWindow(std::vector<PRESENTATION_WINDOW>& windows,
 
 std::uint32_t Pattern_Duration(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 {
-    std::uint64_t duration = 0;
-    for (const auto& stage : pattern.Stages) duration += stage.iDurationMs;
+    std::uint64_t stageDuration = 0;
+    for (const auto& stage : pattern.Stages) stageDuration += stage.iDurationMs;
+    std::uint64_t duration = (std::max)(stageDuration, std::uint64_t(pattern.iDurationMs));
+    for (const auto& row : pattern.LogicOccurrences)
+        duration = (std::max)(duration, std::uint64_t(row.iStartMs) + row.iDurationMs);
+    for (const auto& row : pattern.SummonOccurrences)
+        duration = (std::max)(duration, std::uint64_t(row.iStartMs) + row.iDurationMs);
     for (const auto& row : pattern.PresentationOccurrences)
         duration = (std::max)(duration, std::uint64_t(row.iStartMs) + row.iDurationMs);
     for (const auto& row : pattern.SceneProfileOccurrences)
@@ -391,9 +430,15 @@ bool Make_ResolvedEffectPivot(const OCCURRENCE& box, const float4x4_t& anchor,
 
 CEffectV2Object::PIVOT_SAMPLER Effect_PivotSampler(const OCCURRENCE& box,
     const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
-    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory)
+    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory,
+    CEffectV2Object::PIVOT_SAMPLER exactRoot = {})
 {
     if (box.strAnchorKind == "MAP" || !box.bFollowBoss) return {};
+    if (exactRoot && box.strAnchorKind == "BOSS" && box.strBone.empty())
+        return [box, exactRoot = std::move(exactRoot)](float seconds, float4x4_t& output, std::string& error) {
+            float4x4_t root;
+            return exactRoot(box.iStartMs / 1000.f + seconds, root, error) && Make_Pivot(box, root, {}, output);
+        };
     const bool resolved = box.strAnchorKind == "WORLD" || !box.strBone.empty();
     return [box, history = resolved ? anchorHistory : rootHistory, resolved]
         (float seconds, float4x4_t& output, std::string& error)
@@ -578,7 +623,8 @@ bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
 
 CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSampler(
     const RESOURCE& resource, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
-    const std::shared_ptr<CModel>& model, const float4x4_t& ownerRoot, uint32_t startMs)
+    const std::shared_ptr<CModel>& model, const float4x4_t& ownerRoot, uint32_t startMs,
+    CEffectV2Object::PIVOT_SAMPLER exactRoot = {})
 {
     const auto document = CEffectCatalog::Find_Loaded(resource.strAssetId);
     if (!document) return [](float, const float4x4_t&, SOURCE_BONES&, std::string& error)
@@ -623,7 +669,7 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         }
     return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
         frozenBones = std::move(frozenBones), frozenError = std::move(frozenError), freezeResourcePose,
-        blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs]
+        blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs, exactRoot = std::move(exactRoot)]
         (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
     {
         if (!std::isfinite(seconds) || seconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
@@ -632,6 +678,11 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         { error = "Kouku Product camera-view source attachment requires recorded camera history."; return false; }
         EFFECT_V2_TARGET_VIEW view;
         view.pModel = weakModel.lock(); view.BoneRoot = ownerRoot; view.YawBasis = ownerRoot;
+        if (exactRoot)
+        {
+            if (!exactRoot(startMs / 1000.f + seconds, view.BoneRoot, error)) return false;
+            view.YawBasis = view.BoneRoot;
+        }
         if (freezeResourcePose)
         {
             if (!frozenError.empty()) { error = frozenError; return false; }
@@ -643,14 +694,23 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
     };
 }
 
+float Effect_SourceClockRate(const RESOURCE& resource, const OCCURRENCE& box)
+{
+    return box.bFitEffectToDuration ? float(resource.iDurationMs) / float(box.iDurationMs) : 1.f;
+}
+
 EFFECT_FIXED_STEP_TRANSFORM_PROVIDER Effect_V1TransformProvider(const OCCURRENCE& box,
     const float4x4_t& frozenPivot, const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
     const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory,
-    CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER sourceAnchors)
+    CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER sourceAnchors,
+    float sourceSecondsPerBoxSecond = 1.f, CEffectV2Object::PIVOT_SAMPLER exactRoot = {})
 {
-    return [sampler = Effect_PivotSampler(box, rootHistory, anchorHistory), frozenPivot, sourceAnchors = std::move(sourceAnchors)]
+    return [sampler = Effect_PivotSampler(box, rootHistory, anchorHistory, std::move(exactRoot)), frozenPivot,
+        sourceAnchors = std::move(sourceAnchors), sourceSecondsPerBoxSecond]
         (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error)
     {
+        // Source particles keep their own clock; owner/bone history keeps the box clock.
+        seconds /= sourceSecondsPerBoxSecond;
         output.RootWorld = frozenPivot;
         output.SourceAnchorWorlds.clear();
         if (sampler && !sampler(seconds, output.RootWorld, error)) return false;
@@ -879,6 +939,7 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
         }
     };
     for (const auto& [id, session] : m_BossSessions) collect(session, false, id);
+    for (const auto& [id, session] : m_ChildBossSessions) collect(session, false, id);
     for (const auto& [id, session] : m_MarioEntrySessions) collect(session, false, id);
     if (m_bPreviewPlaying) collect(m_PreviewSession, true);
     for (const auto& member : m_BundlePreviewMembers) collect(member.session, true);
@@ -983,6 +1044,275 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ProductWorldEmissionAnchor(
     return true;
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(
+    const std::string_view archetypeId) noexcept
+{
+    return archetypeId == "combatobject.kouku.showtime.fixed" ||
+        archetypeId == "combatobject.kouku.showtime.tracking";
+}
+
+Client::CKoukuSaydonPresentationPlayer::TARGETED_COMBAT_VISUALS
+Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JSON_VALUE& root)
+{
+    TARGETED_COMBAT_VISUALS staged;
+    const auto* definitions = root.Find("targetedCombatVisuals");
+    if (!definitions) return staged;
+    if (!definitions->Is_Array() || definitions->Get_Array().size() > 8192u)
+        throw std::runtime_error("Targeted combat visuals require a bounded array.");
+    const auto stableId = [](const std::string& id) {
+        return !id.empty() && id.size() <= 128u && id != "." && id != ".." &&
+            std::all_of(id.begin(), id.end(), [](const unsigned char c) {
+                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                    (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_'; });
+    };
+    for (const auto& row : definitions->Get_Array())
+    {
+        auto definition = std::make_shared<TARGETED_COMBAT_VISUAL>();
+        const auto id = Text(row, "clientVisualId");
+        definition->archetypeId = Text(row, "combatObjectArchetypeId");
+        const auto& loop = Field(row, "loop");
+        if (!stableId(id) || !Is_TargetedCombatObjectArchetype(definition->archetypeId) || !loop.Is_Boolean())
+            throw std::runtime_error("Invalid targeted combat visual identity or loop.");
+        definition->loop = loop.Get_Boolean();
+        if (definition->loop != (definition->archetypeId == "combatobject.kouku.showtime.tracking"))
+            throw std::runtime_error("Targeted visual loop must match its fixed/tracking archetype.");
+        auto& presentation = definition->presentation;
+        presentation.pattern.strPatternId = id;
+        presentation.durationMs = UInt(row, "durationMs", 1u, MAX_TIMELINE_MS);
+        auto& sourceBossPresentation = definition->sourceBossPresentation;
+        sourceBossPresentation.pattern.strPatternId = id;
+        sourceBossPresentation.durationMs = presentation.durationMs;
+        const auto& resources = Field(row, "resources");
+        const auto& occurrences = Field(row, "occurrences");
+        if (!resources.Is_Array() || resources.Get_Array().empty() || resources.Get_Array().size() > 1024u ||
+            !occurrences.Is_Array() || occurrences.Get_Array().empty() || occurrences.Get_Array().size() > 1024u)
+            throw std::runtime_error("Targeted visual resources/occurrences require bounded nonempty arrays.");
+        std::map<std::string, KIND> kinds;
+        for (const auto& value : resources.Get_Array())
+        {
+            auto resource = Read_Resource(value);
+            if (resource.eKind != KIND::EFFECT || !stableId(resource.strResourceId) ||
+                !kinds.emplace(resource.strResourceId, resource.eKind).second)
+                throw std::runtime_error("Targeted visual requires unique Effect resources.");
+            presentation.document.PresentationResources.push_back(std::move(resource));
+        }
+        sourceBossPresentation.document = presentation.document;
+        std::set<std::string> ids;
+        for (const auto& value : occurrences.Get_Array())
+        {
+            const auto resource = kinds.find(Text(value, "resourceId"));
+            if (resource == kinds.end()) throw std::runtime_error("Targeted occurrence has no resource.");
+            auto box = Read_Occurrence(value, presentation.durationMs, resource->second);
+            const bool sourceBoss = box.strAnchorKind == "BOSS" && box.bFollowBoss && !definition->loop;
+            const bool map = box.strAnchorKind == "MAP" && !box.bFollowBoss;
+            if (!stableId(box.strOccurrenceId) || !ids.insert(box.strOccurrenceId).second ||
+                (!map && !sourceBoss) || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
+                !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() ||
+                !box.strLogicOccurrenceId.empty() || box.iWorldEmissionIndex != 0u)
+                throw std::runtime_error("Targeted occurrence requires a relative MAP or following source BOSS placement.");
+            if (sourceBoss)
+            {
+                sourceBossPresentation.pattern.PresentationOccurrences.push_back(std::move(box));
+                continue;
+            }
+            // Private execution copy: the existing root/follow sampler consumes the
+            // authoritative CombatObject translation, without a boss model or yaw.
+            // Published MAP offsets and the ordinary fixed-MAP path are unchanged.
+            box.strAnchorKind = "BOSS";
+            box.bFollowBoss = definition->loop;
+            presentation.pattern.PresentationOccurrences.push_back(std::move(box));
+        }
+        if (presentation.pattern.PresentationOccurrences.empty())
+            throw std::runtime_error("Targeted visual requires at least one MAP occurrence.");
+        if (!staged.emplace(id, std::move(definition)).second)
+            throw std::runtime_error("Duplicate targeted combat visual identity.");
+    }
+    return staged;
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Start_TargetedCombatVisual(
+    const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawn, std::string& status)
+{
+    if (!Is_TargetedCombatObjectArchetype(spawn.strCombatObjectArchetypeId) ||
+        !spawn.iCombatObjectId || !spawn.iSourceNetEntityId || !spawn.PinnedDefinitionRevision.Is_Valid() ||
+        !std::isfinite(spawn.fPositionX) || !std::isfinite(spawn.fPositionY) || !std::isfinite(spawn.fPositionZ))
+    { status = "Targeted combat visual spawn identity or position is invalid."; return false; }
+    float age = 0.f;
+    if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(spawn.iServerTick, spawn.iSpawnTick, 30.f, age))
+    { status = "Targeted combat visual spawn clock is invalid."; return false; }
+    if (m_TargetedCombatSessions.contains(spawn.iCombatObjectId))
+    { status = "Targeted combat visual already has a live owner."; return false; }
+    auto definition = m_TargetedCombatVisuals.find(spawn.strClientVisualId);
+    if (definition == m_TargetedCombatVisuals.end())
+    {
+        try
+        {
+            // A content-addressed new visual can arrive before MainApp observes
+            // the new Product run. Refresh this registry only; old sessions pin
+            // their immutable definitions and keep their existing child clocks.
+            auto staged = Read_TargetedCombatVisuals(Read_ProductPresentationRoot());
+            m_TargetedCombatVisuals = std::move(staged);
+        }
+        catch (const std::exception& error) { status = error.what(); return false; }
+        definition = m_TargetedCombatVisuals.find(spawn.strClientVisualId);
+    }
+    if (definition == m_TargetedCombatVisuals.end() ||
+        definition->second->archetypeId != spawn.strCombatObjectArchetypeId)
+    { status = "Targeted combat visual has no exact published ID/archetype join."; return false; }
+    TARGETED_COMBAT_SESSION candidate;
+    candidate.definition = definition->second;
+    candidate.sourceId = spawn.iSourceNetEntityId;
+    candidate.pinnedRevision = spawn.PinnedDefinitionRevision;
+    candidate.spawnTick = spawn.iSpawnTick;
+    candidate.serverTick = spawn.iServerTick;
+    candidate.elapsedMs = double(age) * 1000.0;
+    candidate.playback.key = "targeted:" + std::to_string(spawn.iCombatObjectId) + ":" +
+        std::to_string(spawn.iSpawnTick);
+    candidate.sourceBossPlayback.key = candidate.playback.key + ":source-boss";
+    XMStoreFloat4x4(&candidate.root, XMMatrixTranslation(spawn.fPositionX, spawn.fPositionY, spawn.fPositionZ));
+    const auto [entry, inserted] = m_TargetedCombatSessions.emplace(spawn.iCombatObjectId, std::move(candidate));
+    if (!inserted) { status = "Targeted combat visual identity collided."; return false; }
+    if (!Sample_TargetedCombatVisual(entry->second))
+    {
+        status = entry->second.failure;
+        Stop_TargetedCombatVisual(spawn.iCombatObjectId);
+        return false;
+    }
+    status = "Started targeted combat visual from the Server clock.";
+    return true;
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Update_TargetedCombatVisual(
+    const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot, const std::uint32_t serverTick,
+    std::string& status)
+{
+    const auto found = m_TargetedCombatSessions.find(snapshot.iCombatObjectId);
+    if (found == m_TargetedCombatSessions.end())
+    { status = "Targeted combat visual has no live session."; return false; }
+    auto& session = found->second;
+    float age = 0.f;
+    if (session.sourceId != snapshot.iSourceNetEntityId || session.pinnedRevision != snapshot.PinnedDefinitionRevision ||
+        !std::isfinite(snapshot.fPositionX) || !std::isfinite(snapshot.fPositionY) || !std::isfinite(snapshot.fPositionZ) ||
+        !CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, session.spawnTick, 30.f, age))
+    { status = "Targeted combat visual snapshot identity, pose or clock changed."; return false; }
+    if (!session.failure.empty()) { status = session.failure; return false; }
+    session.serverTick = serverTick;
+    session.elapsedMs = (std::max)(session.elapsedMs, double(age) * 1000.0);
+    if (session.definition->loop)
+        XMStoreFloat4x4(&session.root, XMMatrixTranslation(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ));
+    // MainApp samples all child groups once per presentation frame after the
+    // complete snapshot batch. No Client tracking velocity is synthesized.
+    return true;
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Sample_TargetedCombatVisual(
+    TARGETED_COMBAT_SESSION& session, const KOUKU_BOSS_PRESENTATION_VIEW* sourceBoss)
+{
+    if (session.finished) return true;
+    if (!session.failure.empty()) return false;
+    const auto& presentation = session.definition->presentation;
+    if (!session.definition->loop && session.elapsedMs >= presentation.durationMs)
+    {
+        Stop_Session(session.playback);
+        Stop_Session(session.sourceBossPlayback);
+        session.finished = true;
+        return true;
+    }
+    const auto cycle = session.definition->loop ?
+        static_cast<std::uint64_t>(session.elapsedMs / presentation.durationMs) : 0u;
+    if (cycle != session.cycle)
+    {
+        Stop_Session(session.playback);
+        Stop_Session(session.sourceBossPlayback);
+        session.cycle = cycle;
+    }
+    const float clock = static_cast<float>(session.definition->loop ?
+        std::fmod(session.elapsedMs, double(presentation.durationMs)) : session.elapsedMs);
+    if (session.definition->loop && !session.playback.rootHistory)
+    {
+        // A late join has no earlier tracking snapshots. Bind pre-join births
+        // to the first authoritative pose, then record only observed movement.
+        // This seeds the existing sampler without inventing a tracking path.
+        session.playback.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+        std::string historyStatus;
+        if (!session.playback.rootHistory->Record(0.f, session.root, false, historyStatus))
+        { session.failure = std::move(historyStatus); return false; }
+        session.playback.rootRecordedSeconds = 0.f;
+        session.playback.rootRecordedPivot = session.root;
+    }
+    Sample(session.playback, presentation.document, presentation.pattern, clock, false, session.root, nullptr);
+    const auto& sourcePresentation = session.definition->sourceBossPresentation;
+    bool sampledSourceBoss = false;
+    if (!sourcePresentation.pattern.PresentationOccurrences.empty() && sourceBoss &&
+        sourceBoss->Snapshot.iNetEntityId == session.sourceId)
+    {
+        if (const auto npc = sourceBoss->pNpc.lock(); npc && npc->Get_Transform())
+        {
+            const auto& pivot = *npc->Get_Transform()->Get_WorldMatrixPtr();
+            if (!session.sourceBossPlayback.rootHistory)
+            {
+                // Spawns can precede the first actor view. As with tracking late
+                // joins, bind earlier particle births to the first observed pose.
+                session.sourceBossPlayback.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+                std::string historyStatus;
+                if (!session.sourceBossPlayback.rootHistory->Record(0.f, pivot, false, historyStatus))
+                {
+                    session.failure = std::move(historyStatus);
+                    Stop_Session(session.playback);
+                    Stop_Session(session.sourceBossPlayback);
+                    return false;
+                }
+                session.sourceBossPlayback.rootRecordedSeconds = 0.f;
+                session.sourceBossPlayback.rootRecordedPivot = pivot;
+            }
+            // Both placements use the same Server birth clock. The muzzle follows
+            // its actual source actor; only ground children use the random root.
+            Sample(session.sourceBossPlayback, sourcePresentation.document, sourcePresentation.pattern,
+                clock, false, pivot, npc->Get_Model());
+            sampledSourceBoss = true;
+        }
+    }
+    if (!sampledSourceBoss && (session.sourceBossPlayback.rootHistory || !session.sourceBossPlayback.rows.empty()))
+        Stop_Session(session.sourceBossPlayback);
+    for (const auto* playback : { &session.playback, &session.sourceBossPlayback })
+        for (const auto& [id, row] : playback->rows)
+            if (row.failed)
+            {
+                session.failure = "Targeted combat visual " + id + ": " +
+                    (row.failureStatus.empty() ? m_strStatus : row.failureStatus);
+                break;
+            }
+    if (session.failure.empty()) return true;
+    Stop_Session(session.playback);
+    Stop_Session(session.sourceBossPlayback);
+    return false;
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_TargetedCombatVisuals(
+    const float dt, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses)
+{
+    for (auto& [id, session] : m_TargetedCombatSessions)
+    {
+        (void)id;
+        if (!session.finished && session.failure.empty()) session.elapsedMs += double(dt) * 1000.0;
+        const auto source = std::find_if(bosses.begin(), bosses.end(), [&](const auto& boss) {
+            return boss.Snapshot.iNetEntityId == session.sourceId;
+        });
+        if (!Sample_TargetedCombatVisual(session, source == bosses.end() ? nullptr : &*source))
+            m_strStatus = session.failure;
+    }
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Stop_TargetedCombatVisual(
+    const LostArk::Shared::COMBAT_OBJECT_ID objectId)
+{
+    const auto found = m_TargetedCombatSessions.find(objectId);
+    if (found == m_TargetedCombatSessions.end()) return;
+    Stop_Session(found->second.playback);
+    Stop_Session(found->second.sourceBossPlayback);
+    m_TargetedCombatSessions.erase(found);
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
     std::string& status, const std::uint32_t expectedSourceRevision)
 {
@@ -992,24 +1322,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
     m_bProductAttempted = true;
     try
     {
-        const auto path = CProjectDataRoot::Resolve(
-            "Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json");
-        std::error_code error;
-        const auto bytes = std::filesystem::file_size(path, error);
-        if (error || bytes > 16u * 1024u * 1024u)
-            throw std::runtime_error("KoukuSaydon Product presentation is missing or oversized.");
-        std::ifstream input(path, std::ios::binary);
-        const std::string text{ std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
-        if (!input || input.bad() || text.size() != bytes)
-            throw std::runtime_error("KoukuSaydon Product presentation read failed.");
-        DATA_JSON_VALUE root;
+        const auto root = Read_ProductPresentationRoot();
         std::string parseStatus;
-        if (!CDataJson::Parse(text, root, parseStatus) || !root.Is_Object())
-            throw std::runtime_error("KoukuSaydon Product parse failed: " + parseStatus);
-        if (Text(root, "schema") != "lostark.kouku-saydon-pattern-bindings" ||
-            UInt(root, "formatVersion", 1u, 1u) != 1u ||
-            Text(root, "bossArchetypeId") != "BOSS_KAKULSAYDON_G1_KOUKU")
-            throw std::runtime_error("KoukuSaydon Product presentation header is incompatible.");
         const auto sourceRevision = UInt(root, "sourceRevision", 1u, UINT32_MAX);
         if (expectedSourceRevision && sourceRevision != expectedSourceRevision)
             throw std::runtime_error("KoukuSaydon presentation source revision mismatch: requested " +
@@ -1285,12 +1599,17 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
             }
         }
 
+        auto stagedTargeted = Read_TargetedCombatVisuals(root);
+
         // Only a fully staged replacement may stop the old running presentation.
         for (auto& [id, session] : m_BossSessions) Stop_Session(session);
+        for (auto& [id, session] : m_ChildBossSessions) Stop_Session(session);
         m_BossSessions.clear();
+        m_ChildBossSessions.clear();
         for (auto& [id, session] : m_MarioEntrySessions) Stop_Session(session);
         m_MarioEntrySessions.clear();
         m_Product = std::move(staged);
+        m_TargetedCombatVisuals = std::move(stagedTargeted);
         Stop_Session(m_FearSession);
         m_FearSession.key.clear();
         m_strCompletedFearKey.clear();
@@ -1374,6 +1693,25 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     const bool previewSession = &session == &m_PreviewSession || std::any_of(
         m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
         [&](const auto& member) { return &session == &member.session; });
+    CEffectV2Object::PIVOT_SAMPLER exactRoot;
+    const auto previewMember = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+        [&](const auto& member) { return &session == &member.session && member.spatialLogicPreview; });
+    if (previewMember != m_BundlePreviewMembers.end())
+        exactRoot = [this, memberId = previewMember->memberId, generation = m_iPreviewGeneration]
+            (float seconds, float4x4_t& output, std::string& error) {
+            const auto member = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+                [&](const auto& candidate) { return candidate.memberId == memberId; });
+            float3_t position;
+            float yaw = 0.f;
+            if (generation != m_iPreviewGeneration || member == m_BundlePreviewMembers.end() ||
+                !Sample_BundlePreviewPose(*member, seconds * 1000.f, position, yaw, false))
+            { error = "Spatial preview root has no recorded target input at this source clock."; return false; }
+            const matrix_t root = XMLoadFloat4x4(member->actor->Get_Transform()->Get_WorldMatrixPtr());
+            XMStoreFloat4x4(&output, XMMatrixScaling(XMVectorGetX(XMVector3Length(root.r[0])),
+                XMVectorGetX(XMVector3Length(root.r[1])), XMVectorGetX(XMVector3Length(root.r[2]))) *
+                XMMatrixRotationY(XMConvertToRadians(yaw)) * XMMatrixTranslation(position.x, position.y, position.z));
+            error.clear(); return true;
+        };
     // Preview's external clocks already handle forward/rewind samples. A slow
     // frame must not destroy a live occurrence and its frozen screen capture,
     // or the capture resolver repeatedly returns to the same boundary.
@@ -1488,6 +1826,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             ~ROW_FAILURE_GUARD() { if (row.failed && row.failureStatus.empty()) row.failureStatus = status; }
         } failureGuard{row, m_strStatus};
         const float age = (clockMs - box.iStartMs) / 1000.f;
+        const float effectRate = Effect_SourceClockRate(resource, box);
+        const float effectAge = age * effectRate;
         row.kind = resource.eKind;
         row.debugRender = box.bDebugRender;
         row.startMs = float(box.iStartMs);
@@ -1507,6 +1847,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         {
             OCCURRENCE placedBox = box;
             float4x4_t anchor = pivot;
+            if (exactRoot && !box.bFollowBoss && box.strAnchorKind == "BOSS" && box.strBone.empty() &&
+                !exactRoot(box.iStartMs / 1000.f, anchor, m_strStatus))
+            { row.failed = true; return; }
             auto anchorModel = model;
             if ((resource.eKind == KIND::LIGHT || resource.eKind == KIND::EFFECT) && box.strAnchorKind == "MAP")
             { XMStoreFloat4x4(&anchor, XMMatrixIdentity()); anchorModel.reset(); }
@@ -1586,14 +1929,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                         break;
                     }
                     if (!preparation.bCatalogRevisionCurrent || !preparation.bSettled) break;
-                    row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs);
+                    row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs, exactRoot);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
                     spawn.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
                     spawn.strPlacementId = "kouku:" + session.key + ":" + box.strOccurrenceId;
                     spawn.strEffectAssetId = resource.strAssetId;
                     spawn.strElementId = resource.strElementId;
                     spawn.RootWorld = row.pivot;
-                    spawn.fInitialSampleTimeSeconds = age;
+                    spawn.fInitialSampleTimeSeconds = effectAge;
                     spawn.bExternallySampled = true;
                     EFFECT_WORLD_ROOT_HANDLE handle;
                     if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_strStatus))
@@ -1620,7 +1963,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 // MainApp's general Effect clock cannot advance it a second time.
                 playback.bProductOwned = true;
                 playback.bExternalClock = true;
-                playback.PivotSampler = Effect_PivotSampler(box, session.rootHistory, row.effectPivotHistory);
+                playback.PivotSampler = Effect_PivotSampler(box, session.rootHistory, row.effectPivotHistory, exactRoot);
                 if (resource.strResourceKind == "GROUP")
                 {
                     const auto* group = effects->Find_Group(resource.strAssetId);
@@ -1688,9 +2031,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             // A capture boundary continues the same fixed-step history. Commit
             // it before render without replaying every active particle from birth.
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
-                !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, age,
-                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler),
-                    false, static_cast<float>(box.iDurationMs) / 1000.f) || (captureSample && FAILED(
+                !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, effectAge,
+                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler, effectRate, exactRoot),
+                    false, static_cast<float>(box.iDurationMs) * effectRate / 1000.f) || (captureSample && FAILED(
                         CEffectPresentationService::Commit_WorldRootCaptureSample({row.v1EffectHandle}))))
             {
                 CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
@@ -1751,6 +2094,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         row = session.rows.erase(row);
     }
     session.lastClockMs = clockMs;
+    Sample_LogicPreview(session, document, pattern, clockMs, paused);
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Restore_Scene()
@@ -1795,6 +2139,7 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
     };
     inspectGlobals(m_ProductBundleSession);
     for (const auto& [id, session] : m_BossSessions) inspectGlobals(session);
+    for (const auto& [id, session] : m_ChildBossSessions) inspectGlobals(session);
     if (!conflictingGlobals.empty())
         m_strStatus = "Bundle global presentation owner conflict; overlapping Camera/Scene rows isolated.";
     const auto choose = [&](const SESSION& session, bool product)
@@ -1823,6 +2168,7 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
     };
     // Stable entity/id order resolves overlapping presentation; preview owns the final choice.
     for (const auto& [id, session] : m_BossSessions) choose(session, true);
+    for (const auto& [id, session] : m_ChildBossSessions) choose(session, true);
     choose(m_ProductBundleSession, true);
     for (const auto& member : m_BundlePreviewMembers) choose(member.session, false);
     if (m_bPreviewPlaying) choose(m_PreviewSession, false);
@@ -1923,6 +2269,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
     const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
 {
+    m_LogicPreviewPlayers = players;
     if (!std::isfinite(dt) || dt < 0.f) return;
     m_LightPlayerPivots.clear();
     m_LightBossFollowers.clear();
@@ -1945,6 +2292,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
             m_LightPlayerPivots.push_back(*character->Get_Transform()->Get_WorldMatrixPtr());
     }
     if (!m_bProductAttempted) { std::string status; (void)Reload_Product(status); }
+    Update_TargetedCombatVisuals(dt, bosses);
     const auto* arena = CLevel_KakulSaydonArena::Get_Active();
     const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
     using RUN_STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
@@ -2054,6 +2402,50 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (liveBosses.contains(session->first)) { ++session; continue; }
         Stop_Session(session->second);
         session = m_BossSessions.erase(session);
+    }
+    // Child effects use their own Server clock and the same live body. Keeping
+    // a separate session preserves every common row on the parent timeline.
+    std::set<std::uint32_t> liveChildren;
+    for (const auto& view : bosses)
+    {
+        if (runLive && run->iPinnedSourceRevision != m_iProductSourceRevision) continue;
+        if (view.Snapshot.strPresentationPatternId.empty() || !view.Snapshot.iCurrentHp) continue;
+        const auto npc = view.pNpc.lock();
+        const auto child = m_Product.find(view.Snapshot.strPresentationPatternId);
+        if (m_bProductLoaded && child == m_Product.end() &&
+            m_MissingProductPatterns.insert(view.Snapshot.strPresentationPatternId).second)
+        {
+            m_strStatus = "Snapshot child pattern has no Product presentation: " + view.Snapshot.strPresentationPatternId;
+            OutputDebugStringA(("[KoukuSaydonPresentationPlayer] " + m_strStatus + "\n").c_str());
+        }
+        if (!npc || !npc->Get_Transform() || child == m_Product.end()) continue;
+        float seconds = 0.f;
+        if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(view.iServerTick,
+            view.Snapshot.iPresentationPatternStartTick, 30.f, seconds)) continue;
+        const auto id = view.Snapshot.iNetEntityId;
+        liveChildren.insert(id);
+        SESSION& session = m_ChildBossSessions[id];
+        const auto key = std::to_string(id) + ":child:" + view.Snapshot.strPresentationPatternId + ":" +
+            std::to_string(view.Snapshot.iPatternSequence) + ":" + std::to_string(view.Snapshot.iPresentationPatternStartTick);
+        if (session.key != key) { Stop_Session(session); session.key = key; }
+        session.runEpoch = 0u; session.memberId.clear();
+        if (runLive)
+            for (const auto& member : run->Members)
+                if (member.iBossNetEntityId == id)
+                { session.runEpoch = run->iRunEpoch; session.memberId = member.strMemberId; break; }
+        const float clock = session.lastClockMs < 0.f ? seconds * 1000.f :
+            (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
+        ANIMATION_MODEL_TARGET_VIEW weaponView;
+        const bool hasWeapon = npc->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
+        Sample(session, child->second.document, child->second.pattern,
+            (std::min)(clock, float(child->second.durationMs)), false,
+            *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), hasWeapon ? &weaponView : nullptr);
+    }
+    for (auto session = m_ChildBossSessions.begin(); session != m_ChildBossSessions.end();)
+    {
+        if (liveChildren.contains(session->first)) { ++session; continue; }
+        Stop_Session(session->second);
+        session = m_ChildBossSessions.erase(session);
     }
     std::set<std::uint32_t> liveCards;
     for (const auto& view : players)
@@ -2296,6 +2688,174 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     members.clear();
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    std::vector<BUNDLE_PREVIEW_MEMBER>& members, std::string& status)
+{
+    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    std::vector<BUNDLE_PREVIEW_MEMBER> clones;
+    const auto fail = [&](const std::string& reason) {
+        Release_BundlePreviewMembers(clones); status = reason; return false;
+    };
+    const auto flatten = [](const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern) {
+        std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> rows;
+        uint32_t start = 0u;
+        for (const auto& stage : pattern.Stages)
+        {
+            for (auto row : stage.AnimationOccurrences)
+            {
+                const auto first = std::min_element(stage.AnimationOccurrences.begin(), stage.AnimationOccurrences.end(),
+                    [](const auto& a, const auto& b) { return a.iStartOffsetMs < b.iStartOffsetMs; });
+                row.iPoseStartMs = start + (row.strOccurrenceId == first->strOccurrenceId ? 0u : row.iStartOffsetMs);
+                row.iStartOffsetMs += start;
+                rows.push_back(std::move(row));
+            }
+            start += stage.iDurationMs;
+        }
+        std::stable_sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) {
+            return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId;
+        });
+        return rows;
+    };
+    const auto findPattern = [&](const std::string& id) -> const KOUKU_SAYDON_COMPOSITION_PATTERN* {
+        const auto found = std::find_if(document.Patterns.begin(), document.Patterns.end(),
+            [&](const auto& pattern) { return pattern.strPatternId == id; });
+        return found == document.Patterns.end() ? nullptr : &*found;
+    };
+    const auto prepareClone = [&](const KOUKU_SAYDON_COMPOSITION_PATTERN& source, const std::string& id,
+        uint32_t startTicks, uint32_t duration, const float3_t& position, float yaw) {
+        clones.emplace_back();
+        auto& clone = clones.back();
+        clone.memberId = id; clone.offsetTicks = startTicks; clone.durationMs = duration;
+        clone.pattern = source; clone.facingStages = source.Stages; clone.finiteActorLifetime = true;
+        clone.animations = flatten(source);
+        if (!level || !duration || clone.animations.empty() ||
+            !level->Create_CompositionPreviewActor(source, clone.actor, status)) return false;
+        clone.actor->Set_PresentationVisible(false);
+        if (!clone.actor->Apply_NetworkState(position, yaw)) return false;
+        clone.initialPosition = position; clone.initialYawDegrees = yaw;
+        const auto model = clone.actor->Get_Model();
+        clone.initialAnimation = model->Get_CurrentAnimIndex();
+        float ignored = 0.f;
+        model->Get_AnimationProgress(clone.initialAnimation, clone.initialTicks, ignored);
+        clone.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
+        return clone.rootMotion->Prepare(model, clone.animations, float(source.fAnimationRootVerticalScale), status) &&
+            clone.rootMotion->Begin_Suppression();
+    };
+    for (auto& member : members)
+    {
+        const auto authoredPattern = member.pattern;
+        std::vector<KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW> splitBoxes;
+        if (!CKoukuSaydonCompositionDocument::Try_ResolveCrossDirectionWindows(
+            document, authoredPattern, splitBoxes, status)) return fail(status);
+        for (const auto& box : splitBoxes)
+        {
+            if (box.DirectionPatternIds.size() != 4u || !box.iDurationMs)
+                return fail("Cross-direction preview needs four Patterns and a finite duration.");
+            CWorldGameplayDocument world;
+            if (!world.Load(CProjectDataRoot::Resolve(std::filesystem::path("Worlds") / document.strAreaId / "Gameplay.world.json"),
+                document.strAreaId, status)) return fail(status);
+            const auto* spawn = world.Find(member.pattern.strTargetBossPlacementId);
+            if (!spawn || !Sample_BundlePreviewFacing(member, box.iStartMs))
+                return fail("Cross-direction preview cannot resolve its boss spawn or starting transform.");
+            const auto root = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
+            const float3_t position{root._41, root._42, root._43};
+            const float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
+            std::array<const KOUKU_SAYDON_COMPOSITION_PATTERN*, 4u> candidates{};
+            std::array<uint32_t, 4u> cutoffs{};
+            size_t selected = 0u;
+            double bestDistance = (std::numeric_limits<double>::max)();
+            for (size_t i = 0u; i < candidates.size(); ++i)
+            {
+                const auto* candidate = findPattern(box.DirectionPatternIds[i]);
+                if (!candidate || candidate->strTargetBossPlacementId != member.pattern.strTargetBossPlacementId)
+                    return fail("Cross-direction preview names an unavailable boss Pattern.");
+                bool cutoffFound = false;
+                for (const auto& stage : candidate->Stages)
+                {
+                    cutoffs[i] += stage.iDurationMs;
+                    if (stage.strStageId == box.strCloneEndStageId) { cutoffFound = true; break; }
+                }
+                if (!cutoffFound || Pattern_Duration(*candidate) > box.iDurationMs)
+                    return fail("Cross-direction preview has an invalid cutoff or child duration.");
+                const auto rows = flatten(*candidate);
+                CKoukuSaydonPreviewRootMotion motion;
+                float3_t endpoint;
+                const std::vector<float> yaws(rows.size(), yaw);
+                if (!motion.Prepare(member.actor->Get_Model(), rows, float(candidate->fAnimationRootVerticalScale), status) ||
+                    !motion.Sample_Displacement(cutoffs[i], yaws, endpoint)) return fail(status);
+                const double dx = position.x + endpoint.x - spawn->position.x;
+                const double dz = position.z + endpoint.z - spawn->position.z;
+                const double distance = dx * dx + dz * dz;
+                if (distance < bestDistance - 0.00001) { selected = i; bestDistance = distance; }
+                candidates[i] = candidate;
+            }
+            const uint32_t startTicks = (uint64_t(box.iStartMs) * 30u + 999u) / 1000u;
+            for (size_t i = 0u; i < candidates.size(); ++i)
+            {
+                if (i == selected) continue;
+                auto fake = *candidates[i];
+                fake.PresentationOccurrences.clear();
+                if (!prepareClone(fake, member.memberId + ":" + box.strOccurrenceId + ":" + std::to_string(i),
+                    member.offsetTicks + startTicks, cutoffs[i], position, yaw)) return fail(status);
+            }
+            const auto prefix = box.strOccurrenceId + ".selected.";
+            for (auto row : flatten(*candidates[selected]))
+            {
+                row.strOccurrenceId = prefix + row.strOccurrenceId;
+                row.iStartOffsetMs += box.iStartMs; row.iPoseStartMs += box.iStartMs;
+                member.cloneAnimationWindows.emplace(row.strOccurrenceId,
+                    std::pair{box.iStartMs, box.iStartMs + box.iDurationMs});
+                member.animations.push_back(std::move(row));
+            }
+            for (auto effect : candidates[selected]->PresentationOccurrences)
+            {
+                effect.strOccurrenceId = prefix + effect.strOccurrenceId;
+                effect.iStartMs += box.iStartMs;
+                if (!effect.strSelectionGroupId.empty()) effect.strSelectionGroupId = prefix + effect.strSelectionGroupId;
+                if (!effect.strLogicOccurrenceId.empty()) effect.strLogicOccurrenceId = prefix + effect.strLogicOccurrenceId;
+                member.pattern.PresentationOccurrences.push_back(std::move(effect));
+            }
+            std::stable_sort(member.animations.begin(), member.animations.end(), [](const auto& a, const auto& b) {
+                return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId;
+            });
+            KOUKU_SAYDON_COMPOSITION_STAGE previewStage;
+            previewStage.strStageId = "preview.clone-split";
+            previewStage.iDurationMs = member.durationMs;
+            previewStage.AnimationOccurrences = member.animations;
+            member.pattern.Stages = {std::move(previewStage)};
+            member.rootMotion.reset();
+            member.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
+            if (!member.rootMotion->Prepare(member.actor->Get_Model(), member.animations,
+                float(member.pattern.fAnimationRootVerticalScale), status) ||
+                !member.rootMotion->Begin_Suppression()) return fail(status);
+        }
+        for (const auto& summon : authoredPattern.SummonOccurrences)
+        {
+            if (summon.PatternSpawns.empty()) continue;
+            if (!Sample_BundlePreviewFacing(member, summon.iStartMs)) return fail("Summon preview cannot sample its owner.");
+            const auto root = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
+            const float yaw = XMConvertToDegrees(std::atan2(root._31, root._33));
+            const auto rotation = XMMatrixRotationY(XMConvertToRadians(yaw));
+            for (const auto& spawn : summon.PatternSpawns)
+            {
+                const auto* candidate = findPattern(spawn.strPatternId);
+                if (!candidate) return fail("Summon preview child Pattern is unavailable: " + spawn.strPatternId);
+                float3_t offset;
+                XMStoreFloat3(&offset, XMVector3TransformNormal(XMVectorSet(float(spawn.PositionOffset[0]),
+                    float(spawn.PositionOffset[1]), float(spawn.PositionOffset[2]), 0.f), rotation));
+                const float3_t position{root._41 + offset.x, root._42 + offset.y, root._43 + offset.z};
+                const uint32_t startTicks = (uint64_t(summon.iStartMs) * 30u + 999u) / 1000u;
+                if (!prepareClone(*candidate, member.memberId + ":" + summon.strOccurrenceId + ":" + spawn.strSpawnId,
+                    member.offsetTicks + startTicks, (std::min)(summon.iDurationMs, Pattern_Duration(*candidate)),
+                    position, yaw + float(spawn.fYawOffsetDegrees))) return fail(status);
+            }
+        }
+        (void)member.actor->Apply_NetworkState(member.initialPosition, member.initialYawDegrees);
+    }
+    for (auto& clone : clones) members.push_back(std::move(clone));
+    return true;
+}
 bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const std::string& bundleId,
     std::uint32_t clockMs, bool paused, std::string& status, const CWorldSequenceDocument* sourceDocument,
@@ -2366,6 +2926,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         member.memberId = sourceMember.strMemberId;
         member.offsetTicks = static_cast<std::uint32_t>((std::uint64_t(sourceMember.iStartOffsetMs) * 30u + 999u) / 1000u);
         member.pattern = *source;
+        member.facingStages = source->Stages;
         if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(document, *source,
             member.pattern.AnimationBlendWindows, status)) return fail(status);
         member.durationMs = Pattern_Duration(*source);
@@ -2403,14 +2964,40 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         }
         std::sort(member.animations.begin(), member.animations.end(), [](const auto& a, const auto& b)
             { return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
-        if (automaticRootMotion && !member.animations.empty() &&
+        bool airborne = false, spatialLogic = false;
+        for (const auto& box : source->LogicOccurrences)
+        {
+            if (!box.bEnabled) continue;
+            const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
+                [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
+            if (definition == document.Logics.end()) continue;
+            airborne |= definition->strTriggerKind == "ALBION_AIRBORNE";
+            spatialLogic |= definition->strTriggerKind == "BOSS_TELEPORT_XZ";
+            if (definition->strJudgementKind == "BOSS_TRACK_TARGET" ||
+                definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS")
+            {
+                auto& tracking = member.targetTracking.emplace_back();
+                tracking.occurrenceId = box.strOccurrenceId;
+                tracking.startMs = box.iStartMs; tracking.durationMs = box.iDurationMs;
+                tracking.immediate = definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
+                spatialLogic = true;
+            }
+        }
+        member.spatialLogicPreview = airborne || spatialLogic;
+        if ((airborne || spatialLogic) && !CKoukuSaydonPreviewRootMotion::Allows_AutomaticMotion(document, *source))
+            return fail("Spatial Logic preview requires no competing boss motion owner.");
+        if (airborne && member.animations.empty())
+            return fail("Albion airborne preview requires its original source animations.");
+        if (((automaticRootMotion && !member.animations.empty()) || airborne || spatialLogic) &&
             CKoukuSaydonPreviewRootMotion::Allows_AutomaticMotion(document, *source))
         {
             member.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
             if (!member.rootMotion->Prepare(model, member.animations,
                     float(source->fAnimationRootVerticalScale), status) ||
+                !member.rootMotion->Prepare_Airborne(document, *source, status) ||
                 !member.rootMotion->Begin_Suppression())
                 return fail("Bundle child root motion: " + status);
+            if (airborne) member.airborneSelectionSeed = std::random_device{}();
         }
         for (const auto& box : source->WorldOccurrences)
         {
@@ -2461,6 +3048,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                 box.iStartMs + static_cast<std::uint64_t>(std::ceil(worldSpan)));
             if (duration > MAX_TIMELINE_MS) return fail("Bundle WORLD tail exceeds the timeline duration limit.");
         }
+    if (!Prepare_CloneSplitPreview(document, staged, status)) return fail(status);
     // All models, clips and WORLD inputs are prepared before replacing the live preview.
     auto stagedDocument = document;
     Stop_Preview();
@@ -2626,58 +3214,184 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ModelReferenceTarget(
 bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
     BUNDLE_PREVIEW_MEMBER& member, const double localMs)
 {
+    float3_t position;
+    float yaw = 0.f;
+    return Sample_BundlePreviewPose(member, localMs, position, yaw, true) &&
+        member.actor->Apply_NetworkState(position, yaw);
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
+    BUNDLE_PREVIEW_MEMBER& member, const double localMs, float3_t& position, float& yaw,
+    const bool recordTargets)
+{
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     const auto player = level ? level->Get_LocalCharacter() : nullptr;
-    const auto root = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
-    float yaw = member.initialYawDegrees;
-    std::vector<float> rowYaws(member.animations.size(), yaw);
-    std::uint32_t stageStartMs = 0u;
-    for (const auto& stage : member.pattern.Stages)
+    std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+    if (level && (!member.targetTracking.empty() ||
+        (member.rootMotion && !member.rootMotion->Airborne_Events().empty())))
+        level->Collect_KoukuPresentationViews(bosses, players);
+    players.erase(std::remove_if(players.begin(), players.end(), [](const auto& view) {
+        const auto& s = view.Snapshot;
+        using LostArk::Shared::PLAYER_ACTION_STATE;
+        return !s.iCurrentHp || s.eAction == PLAYER_ACTION_STATE::DEAD ||
+            s.eAction == PLAYER_ACTION_STATE::FALLING || s.eAction == PLAYER_ACTION_STATE::GRABBED ||
+            !std::isfinite(s.fPositionX) || !std::isfinite(s.fPositionY) || !std::isfinite(s.fPositionZ);
+    }), players.end());
+    std::sort(players.begin(), players.end(), [](const auto& a, const auto& b) { return a.Snapshot.iNetEntityId < b.Snapshot.iNetEntityId; });
+    std::vector<float3_t> selectionPositions;
+    if (member.rootMotion && !member.rootMotion->Airborne_Events().empty())
     {
-        if (localMs < stageStartMs) break;
-        if (stage.bRetargetOnEnter)
+        const auto& events = member.rootMotion->Airborne_Events();
+        selectionPositions.resize(events.size(), member.initialPosition);
+        const auto pin = [&](const std::string& id) {
+            if (!recordTargets || players.empty()) return false;
+            uint32_t seed = member.airborneSelectionSeed;
+            for (const unsigned char c : id) seed = (seed ^ c) * 16777619u;
+            std::mt19937 generator(seed);
+            const auto& target = players[std::uniform_int_distribution<size_t>(0u, players.size() - 1u)(generator)].Snapshot;
+            member.airborneSelections[id] = {target.iNetEntityId, {target.fPositionX, target.fPositionY, target.fPositionZ}};
+            return true;
+        };
+        size_t selection = SIZE_MAX;
+        for (size_t i = 0u; i < events.size(); ++i)
         {
-            auto [sample, inserted] = member.stageFacingYawDegrees.try_emplace(stage.strStageId, yaw);
-            if (inserted && player && player->Get_Transform())
+            const auto& event = events[i];
+            if (event.clockMs > localMs) break;
+            if (event.phase == "SELECT_PLAYER")
             {
-                float3_t stagePosition{root._41, root._42, root._43};
-                if (member.rootMotion)
-                {
-                    float3_t preceding;
-                    if (!member.rootMotion->Sample_Displacement(stageStartMs, rowYaws, preceding)) return false;
-                    stagePosition = {member.initialPosition.x + preceding.x,
-                        member.initialPosition.y + preceding.y, member.initialPosition.z + preceding.z};
-                }
-                const auto& target = *player->Get_Transform()->Get_WorldMatrixPtr();
-                const float dx = target._41 - stagePosition.x, dz = target._43 - stagePosition.z;
-                if (std::isfinite(dx) && std::isfinite(dz) && dx * dx + dz * dz > .000001f)
-                {
-                    sample->second = XMConvertToDegrees(std::atan2(dx, dz));
-                    // Match the Server's measured catalog +X face/hammer forward for Big Saydon.
-                    if (CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
-                        member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
-                        sample->second -= 90.f;
-                }
+                selection = i;
+                if (!member.airborneSelections.contains(event.occurrenceId) && !pin(event.occurrenceId)) return false;
             }
-            // Reuse each stage's first facing on backward/forward scrubs.
-            yaw = sample->second;
+            else if (event.phase == "APPEAR_PLAYER" && !member.airborneAppearancePositions.contains(event.occurrenceId))
+            {
+                if (!recordTargets || selection == SIZE_MAX) return false;
+                const auto& id = events[selection].occurrenceId;
+                auto chosen = member.airborneSelections.at(id).first;
+                if (std::none_of(players.begin(), players.end(), [&](const auto& view) { return view.Snapshot.iNetEntityId == chosen; }))
+                { if (!pin(id)) return false; chosen = member.airborneSelections.at(id).first; }
+                const auto target = std::find_if(players.begin(), players.end(), [&](const auto& view) { return view.Snapshot.iNetEntityId == chosen; });
+                if (target == players.end()) return false;
+                const auto& s = target->Snapshot;
+                member.airborneAppearancePositions[event.occurrenceId] = {s.fPositionX, s.fPositionY, s.fPositionZ};
+            }
         }
-        for (size_t i = 0u; i < member.animations.size(); ++i)
-            if (member.animations[i].iPoseStartMs >= stageStartMs &&
-                member.animations[i].iPoseStartMs < stageStartMs + stage.iDurationMs)
-                rowYaws[i] = yaw;
-        stageStartMs += stage.iDurationMs;
+        for (size_t i = 0u; i < events.size(); ++i)
+        {
+            if (const auto pin = member.airborneSelections.find(events[i].occurrenceId); pin != member.airborneSelections.end())
+                selectionPositions[i] = pin->second.second;
+            if (const auto pin = member.airborneAppearancePositions.find(events[i].occurrenceId); pin != member.airborneAppearancePositions.end())
+                selectionPositions[i] = pin->second;
+        }
     }
-    float3_t position{root._41, root._42, root._43};
-    if (member.rootMotion)
-    {
+    yaw = member.initialYawDegrees;
+    std::vector<float> rowYaws(member.animations.size(), yaw);
+    const auto positionAt = [&](double clock, float3_t& position) {
+        position = member.initialPosition;
+        if (!member.rootMotion) return true;
+        if (!selectionPositions.empty())
+            return member.rootMotion->Sample_AirbornePosition(clock, rowYaws,
+                member.initialPosition, selectionPositions, position);
         float3_t displacement;
-        if (!member.rootMotion->Sample_Displacement((std::clamp)(localMs, 0.0, double(member.durationMs)),
-            rowYaws, displacement)) return false;
+        if (!member.rootMotion->Sample_Displacement(clock, rowYaws, displacement)) return false;
         position = {member.initialPosition.x + displacement.x,
             member.initialPosition.y + displacement.y, member.initialPosition.z + displacement.z};
+        return true;
+    };
+    const auto targetYawAt = [&](const float3_t& origin, const float3_t& target, float& targetYaw) {
+        const float dx = target.x - origin.x, dz = target.z - origin.z;
+        if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz <= .000001f) return false;
+        targetYaw = XMConvertToDegrees(std::atan2(dx, dz));
+        if (CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
+            member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_BIG_SAYDON") targetYaw -= 90.f;
+        return true;
+    };
+    struct FACING_EVENT final
+    {
+        double clock = 0.0;
+        const KOUKU_SAYDON_COMPOSITION_STAGE* stage = nullptr;
+        BUNDLE_PREVIEW_MEMBER::TARGET_TRACKING_WINDOW* tracking = nullptr;
+        uint32_t tick = 0u, remainingTicks = 0u;
+    };
+    std::vector<FACING_EVENT> facingEvents;
+    uint32_t stageStartMs = 0u;
+    for (const auto& stage : member.facingStages)
+    {
+        if (stageStartMs <= localMs) facingEvents.push_back({double(stageStartMs), &stage});
+        stageStartMs += stage.iDurationMs;
     }
-    return member.actor->Apply_NetworkState(position, yaw);
+    for (auto& window : member.targetTracking)
+    {
+        const auto begin = (uint64_t(window.startMs) * 30u + 999u) / 1000u;
+        const auto end = ((uint64_t(window.startMs) + window.durationMs) * 30u + 999u) / 1000u;
+        for (auto tick = begin; tick < end && double(tick) * 1000.0 / 30.0 <= localMs; ++tick)
+            facingEvents.push_back({double(tick) * 1000.0 / 30.0, nullptr, &window,
+                uint32_t(tick), uint32_t(end - tick)});
+    }
+    std::stable_sort(facingEvents.begin(), facingEvents.end(), [](const auto& a, const auto& b) {
+        if (a.clock != b.clock) return a.clock < b.clock;
+        return a.stage != nullptr && b.stage == nullptr;
+    });
+    for (const auto& event : facingEvents)
+    {
+        float3_t origin;
+        if (!positionAt(event.clock, origin)) return false;
+        if (event.stage)
+        {
+            const auto& stage = *event.stage;
+            if (stage.bRetargetOnEnter)
+            {
+                auto sample = member.stageFacingYawDegrees.find(stage.strStageId);
+                const bool inserted = sample == member.stageFacingYawDegrees.end();
+                if (inserted)
+                {
+                    if (!recordTargets) return false;
+                    sample = member.stageFacingYawDegrees.emplace(stage.strStageId, yaw).first;
+                }
+                if (inserted && player && player->Get_Transform())
+                {
+                    const auto& target = *player->Get_Transform()->Get_WorldMatrixPtr();
+                    (void)targetYawAt(origin, {target._41, target._42, target._43}, sample->second);
+                }
+                yaw = sample->second;
+            }
+            for (size_t i = 0u; i < member.animations.size(); ++i)
+                if (member.animations[i].iPoseStartMs >= event.clock &&
+                    member.animations[i].iPoseStartMs < event.clock + stage.iDurationMs)
+                    rowYaws[i] = yaw;
+            continue;
+        }
+        auto& window = *event.tracking;
+        auto sample = window.targetSamples.find(event.tick);
+        const bool inserted = sample == window.targetSamples.end();
+        if (inserted)
+        {
+            if (!recordTargets) return false;
+            sample = window.targetSamples.emplace(event.tick, std::nullopt).first;
+        }
+        if (inserted && !players.empty())
+        {
+            auto target = std::find_if(players.begin(), players.end(), [&](const auto& view) {
+                return view.Snapshot.iNetEntityId == window.targetEntityId;
+            });
+            if (target == players.end())
+            {
+                uint32_t seed = member.airborneSelectionSeed;
+                for (const unsigned char c : window.occurrenceId) seed = (seed ^ c) * 16777619u;
+                target = players.begin() + seed % players.size();
+                window.targetEntityId = target->Snapshot.iNetEntityId;
+            }
+            const auto& s = target->Snapshot;
+            sample->second = float3_t{s.fPositionX, s.fPositionY, s.fPositionZ};
+        }
+        float targetYaw = yaw;
+        if (!sample->second || !targetYawAt(origin, *sample->second, targetYaw)) continue;
+        if (window.immediate) yaw = targetYaw;
+        else yaw = float(std::remainder(double(yaw) +
+            std::remainder(double(targetYaw) - yaw, 360.0) / event.remainingTicks, 360.0));
+    }
+    if (!positionAt((std::clamp)(localMs, 0.0, double(member.durationMs)), position)) return false;
+    return true;
 }
 
 bool Client::CKoukuSaydonPresentationPlayer::Prepare_PreviewEffects()
@@ -2691,9 +3405,11 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_PreviewEffects()
                     if (resource.strResourceId == box.strResourceId && resource.eKind == KIND::EFFECT &&
                         (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
                         targets.insert(resource.strAssetId);
+            return Collect_LogicPreviewEffects(m_PreviewDocument, pattern, targets);
         };
-        collect(m_PreviewPattern);
-        for (const auto& member : m_BundlePreviewMembers) collect(member.pattern);
+        if (!collect(m_PreviewPattern)) { const auto status = m_strStatus; Fail_Preview(status); return false; }
+        for (const auto& member : m_BundlePreviewMembers)
+            if (!collect(member.pattern)) { const auto status = m_strStatus; Fail_Preview(status); return false; }
         m_PreviewPreparationTargets.assign(targets.begin(), targets.end());
         if (!m_PreviewPreparationTargets.empty())
         {
@@ -2708,9 +3424,47 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_PreviewEffects()
     const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(m_PreviewPreparationTargets);
     // Failed targets are reported by their own occurrence. Preparation time
     // never consumes a short Effect window on the authoring clock.
-    if (probe.bCatalogRevisionCurrent && probe.bSettled) return true;
-    m_strStatus = "Preparing preview Effects; timeline is held at " + std::to_string(Preview_ClockMs()) + " ms.";
+    if (probe.bCatalogRevisionCurrent && probe.bSettled)
+    {
+        // Do not leave a held-clock message visible after this gate has opened,
+        // or overwrite a later occurrence-specific failure on every sample.
+        if (m_strStatus.starts_with("Preparing preview Effects;"))
+            m_strStatus = "Preview Effects prepared: " + std::to_string(probe.iPreparedCount) + " ready, " +
+                std::to_string(probe.iFailedCount) + " failed, " + std::to_string(probe.iUnavailableCount) + " unavailable.";
+        return true;
+    }
+    if (!probe.strBlockingFailure.empty())
+    {
+        Fail_Preview("Preview Effect preparation stopped: " + probe.strBlockingFailure);
+        return false;
+    }
+    m_strStatus = "Preparing preview Effects; " + std::to_string(probe.iTargetCount - probe.iPendingCount) +
+        "/" + std::to_string(probe.iTargetCount) + " settled (" + std::to_string(probe.iFailedCount) +
+        " failed, " + std::to_string(probe.iUnavailableCount) + " unavailable); timeline is held at " +
+        std::to_string(Preview_ClockMs()) + " ms.";
     return false;
+}
+
+const Client::KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*
+Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewAnimation(
+    const BUNDLE_PREVIEW_MEMBER& member, const double localMs,
+    const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*& previous)
+{
+    const auto eligible = [&](const auto& row) {
+        const auto window = member.cloneAnimationWindows.find(row.strOccurrenceId);
+        return window == member.cloneAnimationWindows.end() ||
+            (localMs >= window->second.first && localMs < window->second.second);
+    };
+    const auto sampleMs = (std::clamp)(localMs, 0.0, double(member.durationMs));
+    const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* selected = nullptr;
+    previous = nullptr;
+    for (const auto& row : member.animations)
+        if (eligible(row) && sampleMs >= row.iPoseStartMs && localMs >= 0.0)
+        { previous = selected; selected = &row; }
+    if (!selected)
+        for (const auto& row : member.animations)
+            if (eligible(row)) { selected = &row; break; }
+    return selected;
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
@@ -2726,6 +3480,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     for (auto& member : m_BundlePreviewMembers)
     {
         const double localMs = m_fPreviewClockMs - double(member.offsetTicks) * 1000.0 / 30.0;
+        if (member.finiteActorLifetime)
+            member.actor->Set_PresentationVisible(localMs >= 0.0 && localMs < member.durationMs);
         const auto model = member.actor->Get_Model();
         (void)model->Set_RootMotionVerticalScale(member.rootMotion ? 0.f : float(member.pattern.fAnimationRootVerticalScale));
         const auto sampleMs = static_cast<float>((std::clamp)(localMs, 0.0, double(member.durationMs)));
@@ -2736,12 +3492,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         if (Sample_KoukuSaydonBossMotion(member.pattern, sampleMs, bossPosition, bossYaw))
             (void)member.actor->Apply_NetworkState(
                 {float(bossPosition[0]), float(bossPosition[1]), float(bossPosition[2])}, float(bossYaw));
-        const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* animation = nullptr;
         const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* previousAnimation = nullptr;
-        for (const auto& box : member.animations)
-            if (sampleMs >= box.iPoseStartMs && localMs >= 0.0)
-            { previousAnimation = animation; animation = &box; }
-        if (!animation && !member.animations.empty()) animation = &member.animations.front();
+        const auto* animation = Resolve_PreviewAnimation(member, localMs, previousAnimation);
         std::uint32_t animationIndex = member.initialAnimation;
         float ticks = member.initialTicks;
         if (animation)
@@ -2798,7 +3550,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         }
         for (const auto& box : member.pattern.WorldOccurrences)
         {
-            if (m_bBundleWorldExternal) continue;
+            if (m_bBundleWorldExternal && !member.finiteActorLifetime) continue;
             const auto world = std::find_if(m_PreviewDocument.Worlds.begin(), m_PreviewDocument.Worlds.end(),
                 [&](const auto& value) { return value.strWorldId == box.strWorldId; });
             auto& player = member.session.previewWorlds.at(box.strOccurrenceId);
@@ -2832,7 +3584,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         }
         member.actor->Synchronize_WeaponPose();
 #ifdef _DEBUG
-        if (m_bBundleWorldExternal)
+        if (m_bBundleWorldExternal && !member.finiteActorLifetime)
         {
             // External WORLD is admitted only for one zero-offset member. Its
             // freshly sampled BODY, WORLD props and Effects share this clock.
@@ -2918,13 +3670,14 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
                     EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE || element.Detail.ScreenPost.eProfile !=
                     EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
                 (!resource->strElementId.empty() && resource->strElementId != element.strElementId)) continue;
-            const double delayMs = double(element.Detail.Timing.fStartDelaySeconds) * 1000.0;
+            const double effectRate = Effect_SourceClockRate(*resource, box);
+            const double delayMs = double(element.Detail.Timing.fStartDelaySeconds) * 1000.0 / effectRate;
             if (!std::isfinite(delayMs) || delayMs < 0.0 || delayMs >= box.iDurationMs) continue;
             // Float seconds can put an authored integer millisecond a fraction
             // of a microsecond above itself; retain that cursor before rounding up.
             const auto captureMs = static_cast<std::uint32_t>(boxStartMs + std::ceil(delayMs - 0.001));
             const double captureEndMs = double(boxStartMs) + delayMs +
-                double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0;
+                double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0 / effectRate;
             if (captureMs > requestedMs || double(requestedMs) >= captureEndMs) continue;
             const auto row = owner.session->rows.find(box.strOccurrenceId);
             if (row != owner.session->rows.end())
@@ -3090,6 +3843,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Consume_CompletedPreview(std::strin
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
 {
+    Clear_LogicPreview();
 #ifdef _DEBUG
     if (m_bBundleWorldExternal)
         if (auto* level = CLevel_KakulSaydonArena::Get_Active()) level->Debug_StopCompositionWorldPreview();
@@ -3360,12 +4114,18 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     m_LightPlayerPivots.clear();
     m_LightBossFollowers.clear();
     m_iProductReloadRunEpoch = 0u;
+    for (auto& [id, session] : m_TargetedCombatSessions)
+    { Stop_Session(session.playback); Stop_Session(session.sourceBossPlayback); }
+    m_TargetedCombatSessions.clear();
+    m_TargetedCombatVisuals.clear();
     Stop_Session(m_FearSession);
     m_FearSession.key.clear();
     m_strCompletedFearKey.clear();
     m_QueuedV1Effects.clear();
     for (auto& [id, session] : m_BossSessions) Stop_Session(session);
+    for (auto& [id, session] : m_ChildBossSessions) Stop_Session(session);
     m_BossSessions.clear();
+    m_ChildBossSessions.clear();
     for (auto& [id, session] : m_MarioEntrySessions) Stop_Session(session);
     m_MarioEntrySessions.clear();
     Stop_Session(m_ProductBundleSession);
@@ -3682,6 +4442,7 @@ void Client::CKoukuSaydonPresentationPlayer::Render_Debug() const
             }
     };
     for (const auto& [id, session] : m_BossSessions) draw(session, false);
+    for (const auto& [id, session] : m_ChildBossSessions) draw(session, false);
     for (const auto& [id, session] : m_MarioEntrySessions) draw(session, false);
     if (m_bPreviewPlaying) draw(m_PreviewSession, true);
     for (const auto& member : m_BundlePreviewMembers) draw(member.session, true);

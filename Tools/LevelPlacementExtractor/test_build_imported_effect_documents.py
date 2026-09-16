@@ -12,6 +12,7 @@ from build_imported_effect_documents import (
     SourceObject,
     build_distribution_recipe,
     build_document,
+    build_source_recipe,
     choose_resources,
     default_detail,
     flatten_source_properties,
@@ -58,6 +59,20 @@ def raw_vector(*samples: float):
 
 
 class ImportedEffectDocumentTests(unittest.TestCase):
+    def test_native_infinite_emitter_loop_is_not_replaced_by_preview_default(self) -> None:
+        index = SourceIndex({"nodes": [], "edges": []}, {"packages": []})
+        required = SourceObject(
+            key="source.required", source_id="required",
+            class_name="particlemodulerequired", object_path="source.required",
+            properties={"emitterduration": value("FloatProperty", 3.0),
+                        "emitterloops": value("IntProperty", 0)},
+            reference_paths=[])
+        recipe = build_source_recipe(index, [required], "sprite", [])
+        self.assertEqual(0, recipe["emitterLoopCount"])
+        self.assertEqual(3.0, recipe["emitterDurationSeconds"])
+        required.properties["emitterloops"] = value("IntProperty", 2)
+        self.assertEqual(2, build_source_recipe(index, [required], "mesh", [])["emitterLoopCount"])
+
     def test_texture_roles_do_not_promote_normal_or_alpha_to_base(self) -> None:
         self.assertIsNone(texture_slot("normal_tex"))
         self.assertIsNone(texture_slot("cracknormal_tex"))

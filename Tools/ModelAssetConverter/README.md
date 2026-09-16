@@ -182,6 +182,20 @@ UModel glTF는 좌표가 meter입니다. 현재 맵 Loader가 기존 centimeter 
 
 크기 계약은 `glTF meters × 100 × Loader 0.01 = 게임 월드 meters`입니다.
 
+### 맵 공통 cook에서 추가 geometry 채널 보존
+
+`Tools/BernCastlePipeline/build_bern_castle_assets.py`의 `cook_one`은 위 legacy 변환 직후
+`preserve_cooked_geometry`를 통해 `cook_wmodel_geometry_contract.py`를 호출합니다.
+material variant도 같은 함수로 슬롯 이름 변경 전 원본과 geometry를 대조합니다.
+원본 glTF에 실제 존재하는 tangent.w·COLOR0·UV1·UV2를 WINT 1.1/1.2/1.4에 보존하고
+legacy WMA2 재질 section은 유지합니다. converter CLI만 단독 실행하면 이 후처리는 수행되지 않습니다.
+
+receipt에 기록된 glTF와 buffer hash, 실제 package와 converter, 현재 legacy cook 입력·출력,
+최종 geometry hash를 함께 기록합니다. 생성 input manifest를 Git 추적 정본으로 표시하지 않으며,
+원본 package와 glTF의 무손실 대응이나 최종 화면을 확인하지 않은 상태는 별도 미확정으로 남깁니다.
+채널 누락·mixed presence·기하 불일치는 실패이고, 없는 UV·색·접선을 만들어 검사를 통과시키지 않습니다.
+상세 재개 조건과 명령은 [Bern 공통 cook](../BernCastlePipeline/README.md#공통-geometry-cook의-근거와-실패-처리)을 따릅니다.
+
 ## 결과 검사
 
 ```powershell

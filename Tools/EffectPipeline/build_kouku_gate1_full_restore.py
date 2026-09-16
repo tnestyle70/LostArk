@@ -436,6 +436,10 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
         detail['particle']['localSpace']=bool(imported.prop(required.properties,'buselocalspace',False))
         for field,prop in [('emitterDurationSeconds','emitterduration'),('emitterDelaySeconds','emitterdelay'),('emitterLoopCount','emitterloops')]:
             if prop in required.properties:recipe[field]=imported.prop(required.properties,prop)
+        # The acquired Required module includes its archetype/CDO closure. An
+        # absent integer is the native zero default; preserving it sustains
+        # EmitterLoops=0 instead of turning ambient systems into one-shot cues.
+        recipe['emitterLoopCount']=int(imported.prop(required.properties,'emitterloops',0))
         active=o['sourceDurationSeconds'] or recipe['emitterDurationSeconds']*max(1,recipe['emitterLoopCount'])+recipe['emitterDelaySeconds']
         assert active>0,('no source active window',o)
         detail['timing'].update(startDelaySeconds=o['sourceTimeSeconds'],lifeTimeSeconds=active)
@@ -523,7 +527,8 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
             rate=next(d for d in light_spawn['distributions'] if d['propertyPath']=='rate')
             assert distribution_bounds(rate)==(0,0) and len(recipe['bursts'])==1
             burst=recipe['bursts'][0];assert burst['countMinimum']==burst['countMaximum']==1
-            assert recipe['emitterLoopCount']==1 and len(life)==1 and detail['particle']['lifeTimeSeconds'][0]==detail['particle']['lifeTimeSeconds'][1]
+            assert recipe['emitterLoopCount']==1 or (o.get('sourceLightBirthsExpanded') is True and o['sourceDurationSeconds']>0)
+            assert len(life)==1 and detail['particle']['lifeTimeSeconds'][0]==detail['particle']['lifeTimeSeconds'][1]
             detail['timing']['startDelaySeconds']+=recipe['emitterDelaySeconds']+burst['timeSeconds']
             detail['timing']['lifeTimeSeconds']=detail['particle']['lifeTimeSeconds'][0]
             typed=next(m for m in modules if 'typedatalight' in m.class_name)

@@ -223,7 +223,7 @@ void Client::CSequencerTool::Open(const TARGET target, const BOSS boss)
     {
         // Stage the requested gate before entering the session. Never briefly
         // select the previous gate and discard an exact typed deep-link selection.
-        if (target == TARGET::SEQUENCE && boss != BOSS::VALTAN) m_eSequenceBoss = boss;
+        if (target == TARGET::SEQUENCE) m_eSequenceBoss = boss;
         if (target == TARGET::BOSS) m_eSelectedBoss = boss;
         Select_Target(target);
     }
@@ -255,8 +255,6 @@ void Client::CSequencerTool::Open(const COMPOSITION_WORKBENCH_BOSS boss)
 
 void Client::CSequencerTool::Select_Boss(const COMPOSITION_WORKBENCH_BOSS boss)
 {
-    if ((m_bSequenceWorkspace || m_eSelectedTarget == TARGET::SEQUENCE) && boss == BOSS::VALTAN)
-        return;
     auto& selectedBoss = m_eSelectedTarget == TARGET::SEQUENCE ? m_eSequenceBoss : m_eSelectedBoss;
     if (selectedBoss != boss)
     {
@@ -274,13 +272,14 @@ Client::ICompositionWorkbenchSession* Client::CSequencerTool::Selected_Session()
     {
     case TARGET::CHARACTER: return m_pCharacterSession;
     case TARGET::OBJECT: return m_pObjectSession;
-    case TARGET::SEQUENCE: return m_pSequenceSession;
+    case TARGET::SEQUENCE:
+        return m_eSequenceBoss == BOSS::VALTAN ? m_pValtanSession : m_pSequenceSession;
     case TARGET::BOSS: break;
     default: return nullptr;
     }
     switch (m_eSelectedBoss)
     {
-    case BOSS::VALTAN: return m_bSequenceWorkspace ? nullptr : m_pValtanSession;
+    case BOSS::VALTAN: return m_pValtanSession;
     case BOSS::KOUKU_SAYDON:
     case BOSS::KOUKU_SAYDON_GATE2:
     case BOSS::KOUKU_SAYDON_GATE3:
@@ -519,8 +518,6 @@ void Client::CSequencerTool::Render_BossSelector()
     {
         for (const BOSS boss : BOSS_ENTRIES)
         {
-            if ((m_bSequenceWorkspace || m_eSelectedTarget == TARGET::SEQUENCE) && boss == BOSS::VALTAN)
-                continue;
             const bool selected = boss == Get_SelectedBoss();
             if (ImGui::Selectable(BossLabel(boss), selected))
             {

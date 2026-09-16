@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 59,
+  "revision": 60,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -11,7 +11,7 @@
   "nextPatternOrdinal": 9,
   "nextFolderOrdinal": 4,
   "nextBundleOrdinal": 1,
-  "nextLogicOrdinal": 37,
+  "nextLogicOrdinal": 38,
   "nextSummonOrdinal": 2,
   "nextWorldOrdinal": 34,
   "nextSceneProfileOrdinal": 6,
@@ -349,6 +349,12 @@
       "displayName": "세이튼_1관문연출_애니메이션_블렌딩",
       "logicType": "TRIGGER",
       "triggerKind": "ANIMATION_BLEND"
+    },
+    {
+      "logicId": "kakulsaydon.g1.logic.37",
+      "displayName": "1관문_연출_플레이어 생성",
+      "logicType": "TRIGGER",
+      "triggerKind": "ROOM_PLAYER_ARRIVAL"
     }
   ],
   "summons": [
@@ -1517,7 +1523,7 @@
       "category": "MECHANIC",
       "nextStageOrdinal": 2,
       "nextAnimationOrdinal": 1,
-      "nextLogicOccurrenceOrdinal": 1,
+      "nextLogicOccurrenceOrdinal": 5,
       "nextSummonOccurrenceOrdinal": 1,
       "nextWorldOccurrenceOrdinal": 22,
       "nextSceneProfileOccurrenceOrdinal": 4,
@@ -1532,6 +1538,78 @@
         }
       ],
       "logicOccurrences": [
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.logic.1",
+          "logicId": "kakulsaydon.g1.logic.37",
+          "startMs": 42253,
+          "durationMs": 1,
+          "enabled": true,
+          "onSuccessLogicIds": [],
+          "onFailLogicIds": [],
+          "onTimeoutLogicIds": [],
+          "roomPlayerArrival": {
+            "playerSlot": 0,
+            "position": [
+              -3.9135882568359364,
+              1.317625641822815,
+              739.883125
+            ]
+          }
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.logic.2",
+          "logicId": "kakulsaydon.g1.logic.37",
+          "startMs": 42985,
+          "durationMs": 1,
+          "enabled": true,
+          "onSuccessLogicIds": [],
+          "onFailLogicIds": [],
+          "onTimeoutLogicIds": [],
+          "roomPlayerArrival": {
+            "playerSlot": 1,
+            "position": [
+              -3.290586547851561,
+              1.3176255226135254,
+              742.070390625
+            ]
+          }
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.logic.3",
+          "logicId": "kakulsaydon.g1.logic.37",
+          "startMs": 43331,
+          "durationMs": 1,
+          "enabled": true,
+          "onSuccessLogicIds": [],
+          "onFailLogicIds": [],
+          "onTimeoutLogicIds": [],
+          "roomPlayerArrival": {
+            "playerSlot": 2,
+            "position": [
+              -5.32406311035156,
+              1.3176257610321045,
+              738.52828125
+            ]
+          }
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.logic.4",
+          "logicId": "kakulsaydon.g1.logic.37",
+          "startMs": 43516,
+          "durationMs": 1,
+          "enabled": true,
+          "onSuccessLogicIds": [],
+          "onFailLogicIds": [],
+          "onTimeoutLogicIds": [],
+          "roomPlayerArrival": {
+            "playerSlot": 3,
+            "position": [
+              -1.1560418701171855,
+              1.3176255226135254,
+              742.51203125
+            ]
+          }
+        }
       ],
       "summonOccurrences": [
       ],

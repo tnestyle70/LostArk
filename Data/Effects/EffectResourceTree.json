@@ -183,7 +183,11 @@
     {"id": "kouku.category.fa2cab44f7cefadb55a3", "parentId": "kouku.category.08d402c24ebfae39fbc7", "kind": "CATEGORY", "displayName": "저주의식"},
     {"id": "kouku.category.f20d85c12b1f39e952da", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "빙고"},
     {"id": "kouku.category.29d760822330b86c7936", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "앵콜세이튼"},
-    {"id": "kouku.category.503e8dff75a3ee404bf5", "parentId": "kouku.category.3af3bc051c90cf62aa71", "kind": "CATEGORY", "displayName": "사각형 장판"}
+    {"id": "kouku.category.503e8dff75a3ee404bf5", "parentId": "kouku.category.3af3bc051c90cf62aa71", "kind": "CATEGORY", "displayName": "사각형 장판"},
+    {"id": "kouku.category.04ceab6684ca96fe8e7f", "parentId": "kouku.category.e8d63dc07f59a4959a51", "kind": "CATEGORY", "displayName": "십자 전기 폭발"},
+    {"id": "kouku.category.515f8695f406565bda9c", "parentId": "kouku.category.e8d63dc07f59a4959a51", "kind": "CATEGORY", "displayName": "전방 3갈레 전기 폭발"},
+    {"id": "kouku.category.6e1564c2bba2d33cd8c9", "parentId": "kouku.category.e8d63dc07f59a4959a51", "kind": "CATEGORY", "displayName": "소멸 이펙트"},
+    {"id": "kouku.category.mario.pattern", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "마리오 패턴"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -946,7 +950,7 @@
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.outerdonut.warning.expand", "displayName": "쇼타임_도넛2_예고_채움확장(고정경계)", "parentId": "kouku.category.ac8d699485e3ca68cb9f"},
     {"kind": "V1", "assetId": "effect.kouku.common.circus.innerdonut.warning.expand", "displayName": "쓰리투원투하_도넛1_예고_채움확장(고정경계)", "parentId": "kouku.category.09e8f3783398b64fe729"},
     {"kind": "V1", "assetId": "effect.kouku.common.circus.outerdonut.warning.expand", "displayName": "쓰리투원투하_도넛2_예고_채움확장(고정경계)", "parentId": "kouku.category.09e8f3783398b64fe729"},
-    {"kind": "V1", "assetId": "effect.kouku.gate3.backstep.electric.threeway.authored", "displayName": "백스텝_세갈래전격(편집용배치)", "parentId": "kouku.category.36085383a796da20cec4"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.backstep.electric.threeway.authored", "displayName": "백스텝_전방세갈레전기폭발", "parentId": "kouku.category.36085383a796da20cec4"},
     {"kind": "V1", "assetId": "effect.kouku.common.circus.ball.drop.split", "displayName": "세이튼_서커스공_낙하분열(편집용)", "parentId": "kouku.category.824077a92a3229098976"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.ritual.hand.trail.full.restore", "displayName": "저주의식 | 왼손 트레일", "parentId": "kouku.category.fa2cab44f7cefadb55a3"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.firebreath.shared", "displayName": "3관문_세이튼_공통 불뿜기", "parentId": "kouku.category.6cdee3447a8e5d9cb7cb"},
@@ -960,8 +964,15 @@
     {"kind": "V2_LEAF", "assetId": "kouku.gate1.authored.p4.popup.transition.fade", "displayName": "1관문_캡처 암전·팝업북 페이드인", "parentId": "root.v2"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.bomb.fuse", "displayName": "쇼타임_해골 폭탄_심지 불꽃", "parentId": "kouku.category.5612ed573dd3bcc3c244"},
     {"kind": "V1", "assetId": "effect.kouku.bingo.encore.blackhole.beam.full.restore", "displayName": "빙고 | 앵콜세이튼 | 블랙홀빔", "parentId": "kouku.category.29d760822330b86c7936"},
-    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.saydon.disappear", "displayName": "쿠크세이튼_사라지기", "parentId": "kouku.category.3af3bc051c90cf62aa71"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.saydon.disappear", "displayName": "알비온_사라지기이펙트", "parentId": "kouku.category.6e1564c2bba2d33cd8c9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.rectangle.warning", "displayName": "쇼타임_사각형_예고", "parentId": "kouku.category.503e8dff75a3ee404bf5"},
-    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.rectangle.impact", "displayName": "쇼타임_사각형_폭발", "parentId": "kouku.category.503e8dff75a3ee404bf5"}
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.rectangle.impact", "displayName": "쇼타임_사각형_폭발", "parentId": "kouku.category.503e8dff75a3ee404bf5"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.bomb.full.restore", "displayName": "쇼타임_해골 폭탄_본체와 심지", "parentId": "kouku.category.5612ed573dd3bcc3c244"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.bomb.drop.full.restore", "displayName": "쇼타임_해골 폭탄_낙하 본체와 심지", "parentId": "kouku.category.5612ed573dd3bcc3c244"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore", "displayName": "쇼타임_해골 폭탄_원본 파란 광역폭발", "parentId": "kouku.category.5612ed573dd3bcc3c244"},
+    {"kind": "V1", "assetId": "effect.kouku.albion.cross.electric.impact", "displayName": "알비온_십자전기폭발", "parentId": "kouku.category.04ceab6684ca96fe8e7f"},
+    {"kind": "V1", "assetId": "effect.kouku.albion.frontthree.electric.impact", "displayName": "알비온_전방세갈레전기폭발", "parentId": "kouku.category.515f8695f406565bda9c"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.blade.normal.full.restore", "displayName": "일반칼날이펙트", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.blade.instant-death.full.restore", "displayName": "즉사칼날이펙트", "parentId": "kouku.category.mario.pattern"}
   ]
 }

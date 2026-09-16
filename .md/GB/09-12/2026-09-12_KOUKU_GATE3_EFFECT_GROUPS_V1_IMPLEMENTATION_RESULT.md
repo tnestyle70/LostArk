@@ -1063,3 +1063,286 @@ fade·brightness·위치·회전·크기는 유지됐다. 신규 박스만 기�
 않는다. 기존 그룹 Collect/Translate/Duplicate, Save와 pending geometry overlay 본문은
 이전 179검사 PASS 시점과 hash가 동일하다. 검증 전후 소스·DLL·사용자 Data도 동일했다.
 최종 git diff --check는 PASS이며 제품 EXE와 사용자 저작물을 추가 변경하지 않았다.
+
+## G19. 양손 발사 섬광·장판 V1 준비 실패 교정
+
+사용자 screenshot의 gun.signature 오류는 `Loading Product Effect result does not
+match the owned FIFO front`다. 실제 queue로 normal/priority late enqueue를 각각
+재현했으며 소유 front는 gun 그대로인데 m_bYieldNextFrame 때문에 완료 poll이
+YIELDED/빈 ID를 반환했다. 소비자는 이를 identity 실패로 취급하고 결과를 폐기했다.
+이 실패는 해당 target의 terminal failure receipt와 V1 occurrence failed 상태로 남는다.
+이는 저장된 Composition·Effect 문서 손상이 아닌 비동기 완료 소비 순서 결함이다.
+
+Advance_LoadingProductCuePreparation에서 결과가 있는지 확인한 뒤 pacing gate를
+먼저 평가한다. YIELDED면 mailbox에 payload를 유지하고 다음 frame에서 Pop한다.
+기존 exact ID/epoch/revision 검증, terminal completion, stage/commit/ACK 및 진짜
+구조 오류의 fail-closed 처리는 유지했다. 새 H/API·프로젝트 파일은 추가하지 않았다.
+기존 Client vcxproj/filters의 CPP 등록도 확인했다. UTF-8 및 기존 CRLF를 보존했다.
+
+실제 P35 쇼타임은 13개 V1 준비 target을 사용하며 양손 발사 섬광 occurrence228개는
+gun.signature 하나로 중복 제거된다. 13개 Authored JSON과 직접 Resources 참조에서
+누락은 없었다. gun은 양손 b_wp_1/2 각각11개 particle, napalm은7개다. 현재 장판은
+circle/innerdonut/outerdonut의 warning/impact를 사용한다. 이 작업은 사용자 저장
+Composition, Effect catalog/documents 및 Resources를 수정하지 않았다.
+
+검증: 수정 전/후 실제 service poll 분기 원문을 추출하고 실제 queue/job 구현과
+std::thread 생산자를 연결한 native 8검사 PASS. normal/priority 구버전 오류 재현2개,
+수정 후 결과 보존→다음 frame commit→IDLE terminal close2개, 실제 wrong ID1개,
+job stale epoch/revision2개와 consumer revision 변경1개를 확인했다.
+근거: out/EffectOwnedFifoYield20260915/job_probe_result.txt, job_probe.receipt.json.
+전체 GPU/renderer stage commit과 실제 화면은 이 probe의 범위가 아니다.
+
+Effect_PresentationService.cpp의 제품 설정 최소 Debug TU 컴파일 PASS(exit0),
+기존 include C4819 경고만 남았다. 근거 out/EffectPreparationFifo20260915/compile.log.
+변경 소스/문서 diff 검사 PASS. 사용자 수행 Product 빌드와 실행 프로세스를 건드리지
+않았다. 최종 Client 링크·배포 및 양손 섬광/장판 실제 재생은 새 빌드에서 확인해야 한다.
+기존 실패 receipt는 같은 revision에서 Stop/Start나 Seek만으로 사라지지 않으므로
+수정된 Client를 재빌드·재시작하고 기존 저장본을 그대로 사용한다.
+
+## G20-Server. 쇼타임 플레이어별 고정·추적 duration 소비
+
+Server 소스 연결과 격리 검증을 완료했다. GameplayCatalog의 새
+`PATTERNSHOWTIMETARGETS` 11필드는 실제 Kouku pattern의 `SHOWTIME_PLAYER_TARGETS`
+mechanic으로 로드하며, Logic ledger는 이 항목을 one-shot cue와 분리한 duration window로
+소유한다. 고정·추적의 단독/동시 선택, 비활성 ID `-`, lifetime/interval/speed의 동일한
+publisher 범위를 소비한다. 같은 ID, 둘 다 비활성, 잘못된 수명·간격·비유한 속도는 기존
+admitted catalog를 보존하며 거부한다. 별도 Shared enum/message나 C++ 파일을 추가하지 않았다.
+
+GameRoom의 기존 Kouku fixed tick에서 시작 tick과 60 tick 간격마다 준비된 생존 player의
+현재 XZ와 Server navigation 지면 Y에 고정 그룹을 생성한다. 시작 후 이동은 이 위치에
+영향을 주지 않는다. window별 player당 tracking CombatObject 하나를 만들고 실제 이동
+속도 resolver에 사용자 비율 0.5를 곱해 30 Hz로 접근한다. 같은 tick 중복 호출은 한 번만
+처리한다. death/leave/window end에 tracking을 제거하고 join/revive는 새 stable object ID를
+받는다. 기존 고정 그룹은 자체 저작 수명을 끝까지 소비한다. 자연 pattern 완료는 tracking만,
+명시 stop/abort와 room reset은 전체 owner를 정리한다. 저작 run owner의 퇴장은 기존 전체
+abort 계약을 유지한다. 단계별 snapshot pose와 group basis는 world yaw 0을 사용한다.
+
+고정·추적은 기존 CombatObject stage/commit, spawn/snapshot/despawn과 late-join live spawn을
+사용한다. 전체 새 volley의 지면·capacity·wire 검증이 실패하면 기존 객체와 다음 object ID를
+보존하고 다음 tick에 다시 시도한다. 생성 시점의 iSpawnTick과 pinned revision이 기존 wire를
+통과한다. Hits는 비어 있으며 0ms의 시각 lifecycle marker만 갖는다. 신규 damage는 없다.
+
+검증은 기존 `Run_ServerKoukuSupportSurfaceContractTests`에 추가했다. 기존 검사를 포함한
+56개가 PASS이며 1~4인, tick 0/60/120, 서로 다른 이동속도, same-tick 중복, join/leave/revive,
+고정 위치 보존, exclusive end, authored tail, optional template, 원자적 rollback/retry,
+실제 bootstrap parse와 실패 시 이전 catalog 보존을 검사했다. 기존 실제 GameRoom과
+CombatObject 구현 및 Shared packet serializer를 호출하며 Client 화면/네트워크 세션을
+대신한 visual 판정은 하지 않는다.
+
+근거는 `out/KoukuShowtimeTargets20260915/server_compile.log`, `server_link.log`,
+`server_result.log`다. 변경 struct를 소비하는 Server TU를 포함한 격리 Debug 컴파일·링크,
+최종 변경 7 TU 재컴파일과 실행은 exit 0이다. Server 파일은 UTF-8/CRLF를 보존했고
+변경 소스·문서 `git diff --check`는 PASS다. 새 project/filter 등록은 필요하지 않다.
+
+이 Server 작업은 사용자 Composition/Resources/runtime bootstrap, 실행 중 Client/Server를
+변경하지 않았다. Client visual mapping, publisher, 사용자 Save 복구와 최종 Product 빌드는
+별도 통합 담당이 마무리한다. 2000ms·0.5는 사용자 튜닝값이며 원작 재현 수치나 제품 적용
+완료로 기록하지 않는다.
+
+## G20-통합. 사용자 Duration 보존과 플레이어별 쇼타임 연결
+
+### 완료한 소스와 독립 검증
+
+- 사용자 Save 뒤 source817에서 logic64 `쿠크세이튼_쇼타임_추적고정조준점타겟`과
+  P35.logic.7의 start37685/duration16050ms를 확인하고 원본 바이트를 백업했다.
+  저장 실패 중에는 새 Duration이 디스크에 없었고, 재Save 뒤64번째 정의와 시간표가
+  실제 생성됐다. Save freshness/lock은 제거하지 않았다.
+- 새 SHOWTIME_PLAYER_TARGETS의 ref/interval/speed를 C++ parse/validate/serialize와
+  Workbench Apply UI에 연결했다. fixed group636의4행, tracking454 한 행이 대상이다.
+  2000ms와0.5는 사용자 튜닝값이다. 결과/Collider 슬롯은 갖지 않는다.
+- MainApp이 소유하는 PresentationPlayer를 arena replication에 연결했다. 기존
+  CombatObject ID/시계/위치와 Sample 재생 경로를 사용하며 새 packet은 없다.
+- Workbench 그룹 회전은149검사, 서버 실제 room은56검사, Client parser/기존
+  ProjectionRuntime/history는52검사, 저장 codec은17검사에서 실패0이었다.
+  Codec은 실제817 전체 왕복, 네 fixed child 확장 보존, Save로 한 revision 증가,
+  잘못된 값 거부와 외부 변경 시 저장 거부·기존 디스크 보존을 검사했다.
+- 최종 Client Workbench/Composition/MainApp 개별 TU와 서버7 TU, Client
+  PresentationPlayer/Replication2 TU 컴파일을 수행했다. 부모 반복에서 잘린
+  template를 허용하지 않는 C++ preflight와 speed 최소값 double clamp를 포함했다.
+  개별 compile은 Product EXE 재링크 증거가 아니다. GPU/UI 조작은 수행하지 않았다.
+
+### 적용 후보와 실행 경계
+
+`out/KoukuShowtimeTargets20260915/authoring-stage.json`은 exact817 SHA와 candidate818을
+보관한다. 후보에는 logic64 typed field와 바주카 world23/원본 notify 기반5구간만
+추가했다. 사용자 logic 발생 시간, presentation 발생 정보,183개 resource는 유지했다.
+12개의 원본 바주카 notify를 최신817 stage로 재계산해도5구간은 이전 설치값과 같았다.
+
+이 절 작성 시점에는 candidate818을 정본에 쓰거나 발행하지 않았으며 실행 중
+Client41664/Server29600은 이전 제품이었다. 새 logic을 모르는 이전 EXE와 JSON을
+섞지 않도록 ProductOutputGuard 종료 조건을 확인한 후 적용·발행한다. 이후 발행 결과와
+사용자 제품 빌드/화면 확인은 아래 후속 기록으로 구분한다.
+
+### G20 최종 반영 결과
+
+사용자가 “JSON 반영만, 빌드는 직접”을 명시하여 실행 중 EXE를 유지한 채 요청 범위의
+정본을 exact817 writer-lock/CAS로818에 반영했다. 사용자 원본817 백업은 유지한다.
+Client/Server를 에이전트가 종료하거나 제품 빌드를 실행하지 않았다. 이 요청은 저작 데이터
+반영과 사용자의 후속 빌드·재실행을 구분하는 명시적인 작업 지시였다.
+
+첫 Owner 발행은 World publisher의 optional showtimeTargets 키 누락으로 거부됐고
+이전 Product/Server/receipt로 rollback됐다. World 검증기에 Kouku 전용 optional 배열
+경계를 추가한 뒤 최종 Owner 발행은 exit0: Product PASS, Map REUSED, World PASS,
+Gameplay PASS였다. 정본과 patternbindings는818이고 targetedCombatVisuals는2개다.
+실제 Server Gameplay.bootstrap의11field PATTERNSHOWTIMETARGETS 한 행은
+P35.logic.7 /37685/16050/fixed4384/interval2000/speed0.5와 두 content hash ID를
+정확히 가진다. 바주카5구간도 정본·생성물에 합쳐졌다.
+
+사용자가 진행한 빌드 이후 Client.exe17:24:27/Server.exe17:24:25 KST와 새 프로세스를
+관측했다. 이는 에이전트 Product 빌드/사용자 visual PASS 기록이 아니다. 이후 C++
+수정은 없으며 마지막 수정은 World 발행용 PowerShell 소비자였다. 실행 중인 기존
+Complete Play는 핀된 revision을 유지하므로 새로운 재생으로 검증한다.
+근거: out/KoukuShowtimeTargets20260915/{authoring-install.json,owner-publish-final.log,
+installed-verification.json}. 최종 화면 판정은 사용자에게 남아 있다.
+
+## G21-Bomb. 저장된 폭탄 수명과 원본 파란 폭발
+
+### 원인과 변경 범위
+
+사용자는 낙하 폭탄 본체와 심지가 실제 보인다고 확인했다. source844의 P35.presentation.638은
+start4247/duration5290ms였으나 `effect.kouku.gate3.showtime.bomb.drop.full.restore` 내부
+ModelCue duration과 세 심지의 emission window는 모두2초였다. `holdLastFrame=true`는
+source clip의 마지막 자세를 유지하는 선택이고 visible cue window를 자동 연장하지 않는다.
+Composition occurrence를 늘리는 것만으로 내부 ModelCue나 emitter 시간이 변하지 않았다.
+
+후보는 ModelCue duration과 세 element의 timing.lifeTimeSeconds 네 값만2→5.29초로
+바꿨다. 원본 Bomb_respawn_1의2초, holdLastFrame, model scale3, cm preScale0.01,
+b_body/fx_01 부착, emitter 원본 loops0과 개별 입자 수명·속도·재질은 보존했다.
+몸체는2초에 착지하고5290ms까지 남는다. 원본 fuse particle tail355ms도 유지하므로
+Effect 리소스 기본 전체 길이는5645ms이고, 사용자 occurrence의5290ms는 그대로다.
+순수 심지·idle 폭탄·빙고 문서는 수정하지 않았다. 공통 C++ 정책 변경은 없다.
+
+### 원본 폭발과 발생 시간
+
+신규 `effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore`는 원본
+`FX_MN_RHCN_01.Par_X_RHCN_Exp_02`의 first LOD18개 emitter를 복원한다. Action4223102의
+HidePawn5.0초 뒤 notify012가5.0100002289초에 발생한다. MN_RHCN_01.loa offset66671의
+payload는 Color=[1,1,1], SNAPSHOT_ROOT, source scale2와 UE Z=2.5cm를 기록한다.
+후보는 runtime Y=0.025m/scale2를 각 element에 한 번 적용하며 body scale3과 혼합하지 않는다.
+
+P35.presentation.639는 기존 폭탄 종료9537ms 뒤10ms인9547ms에 시작한다. 원본 particle
+tail 포함3301ms를 가지므로 종료는12848ms다. Exp01과 Exp02 모두 blue-purple source
+color module이 있으며 Exp02는5초형의 더 큰18개 emitter 조합이다. 사용자 요청에 맞는
+원본5초형을 선택했지만 NPC480712의 AI action selector까지 입증한 것은 아니다.
+ZoomBlur나 원본 근거 없는 자동 전투 spawn은 추가하지 않았다.
+
+소스 재질18tuple 중14개는 기존 exact native를 재사용하고4개만3680~3683으로 추가했다.
+DDS30개와 mesh3개는 이미 설치된 exact source 파일이다. 기존 native 함수1359개와
+table1264행은 모두 동일하게 보존했다. 네 base 함수와 세 distortion 함수, group3648
+dispatch/particle carrier, table와 프로젝트 등록을 같은 후보에 포함했다.
+
+### 실행한 검증과 반영 상태
+
+- 후보 native table C++ 컴파일과 실제 ParticleKouku3648 carrier의 fxc /T fx_5_0 /O1은
+  PASS다. 기존 uninitialized shader 경고만 있었고 오류는 없었다.
+- 기존 제품 객체와 후보 native table을 연결한 실제 CEffectCatalog/DocumentCodec/
+  Playback 및 설치 CModel 검사230개에서 실패0이었다. source clip은2초다.
+  실제 fx_01 anchor Y는72.7249→2.22591m이며2.5/4/5.28초에 착지 matrix가 같았다.
+  해당 구간 심지3종이 모두 활성이고5.66초에는 원본 tail도 끝났다.
+- 파란 폭발은18개 emitter 모두 입자를 생성하고3301ms tail 이후 종료했다.
+  별도 root 부채꼴 후보도 실제 DocumentCodec Load를 통과했다.
+- Client/UI 실행과 GPU draw는0이다. 수치·source closure 확인은 사용자 화면 판정을
+  대신하지 않는다. 전체 opacity/색/가림의 visual fidelity는 아직 사용자 확인 대상이다.
+
+근거는 `out/KoukuBombLifetime20260915/{manifest.json,native_manifest.json,native_result.json,
+native_source_receipt.json,blue_shader_compile.log}`와 `BlueExplosion/actual_notify_receipt.json`이다.
+준비 단계에서는13개 파일 후보와 source844 semantic patch만 만들었다. 이후 통합 담당이
+최신 정본을 writer-lock/CAS로844→845에 반영했으며 부채꼴과 typed teleport를 함께 합친
+최종 변경은14개 파일이다. root가 수정한 Composition은 이 후보 전체 바이트로 덮지 않았다.
+이 절 작성 시 Owner 발행은 진행 중이며 제품 빌드·발행 최종 결과는 통합 후속 기록을 따른다.
+
+## G21-Server. 쇼타임 XZ 순간이동과 서버 대상 방향 검증
+
+### 구현한 소비 경로
+
+- TRIGGER `BOSS_TELEPORT_XZ`를 기존 Composition 검증·왕복 저장·Workbench Trigger
+  선택/XZ 입력, Python projection, Gameplay/World publisher와 Server catalog/brain에 연결했다.
+  기존 `PATTERNMECHANICTRIGGER` 25필드와 world snapshot을 재사용하며 새 packet은 없다.
+- Server는 실제 보스 radius의 목적지 overlap과 navigation을 먼저 검사한 뒤 XZ만 바꾼다.
+  참고 Y=1.30, 현재 캐릭터 Y, 캡처된 root origin Y, action/stage/pattern clock·ID는 바꾸지 않는다.
+  캡처된 root XZ와 지면 기준을 함께 이동하므로 다음 root frame이 이전 위치로 돌아가지 않는다.
+  실패하면 pose와 root 기준 모두 보존한다. 절대 BossMotion과는 병용을 거부한다.
+- SHOWTIME duration은 현재 Server pattern target, 기존 target 순으로 유효한 대상을 유지한다.
+  대상 소실 시 기존 RETARGET_RANDOM_ALIVE의 후보/seed 함수를 재사용한다. 활성 tick의
+  실제 target 좌표로 yaw를 갱신하며 종료 tick부터 멈춘다. 각 플레이어의 fixed/tracking 그룹은
+  map 축을 유지한다. 새 damage는 없다.
+- `GameRoom_Replication::Broadcast_WorldSnapshot`의 기존 XYZ/yaw/action clock 필드가
+  이 결과를 보낸다. ClientReplication은 actionId/actionStartTick/patternSequence/stageIndex가
+  같으면 `Play_NetworkAction`을 다시 부르지 않는다. `CNpc::Apply_NetworkState`도 모델의
+  root scale/animation clock을 초기화하지 않는다. Client에서 yaw나 애니메이션 Y를 우회하지 않았다.
+
+### 실행한 검증
+
+- 기존 Server 계약 67검사 PASS. 기존 56검사에 target 유지·이동·사망 재선택·종료,
+  airborne Y/clock 보존, 다른 지면으로 이동한 뒤 실제 다음 root sample의 연속성,
+  충돌/nav 거부 시 rollback, 25필드 parser와 잘못된 좌표의 이전 catalog 보존을 추가했다.
+  변경 Server 9 TU와 out runner를 격리 컴파일·링크했다.
+- 실제 설치 `LV_LUT_MIDNIGHTC_ED.navgrid`를 CServerNavigation으로 읽어 목적지의 exact
+  walkable/sample을 확인했다: X=2.57, ground Y=1.29901, Z=952.27. 이 지면 Y는 캐릭터의
+  현재 animation Y에 강제로 대입하지 않는다. 실제 전투 중 동적 overlap은 실행 시 검사한다.
+- 실제 C++ codec 11검사 PASS: 최신844+logic63 후보 전체 왕복과 그룹·시간 보존, P35 확장,
+  값 거부, 실제 `Save_Atomic` revision 증가, 외부 수정 후 stale Save 거부/디스크 보존.
+  Composition TU PASS, Stage 담당의 최종 Workbench TU가 새 Trigger UI를 포함해 PASS했다.
+- 기존 Python 테스트에 XZ 값/참고 Y 투영, clone 미생성, 범위 밖 좌표와 BossMotion 병용 거부를
+  추가해 PASS했다. 테스트가 드러낸 normalized logic의 `kind` 조회 계약을 유지했다.
+  PowerShell 실제 publisher AST의 기존 mechanic loop에서 P35의 25필드 TSV 생성 PASS.
+  관련 파일 `git diff --check` PASS.
+
+### 후보와 설치 경계
+
+`out/KoukuShowtimeTargets20260915/TeleportXZ/stage.json`은 저장844 SHA
+`1a3eb882513e0765e165f393c9070e16d5fd1ff3ea0da63407b2baa36c0682c2`와 logic63의 before/after만
+합칠 수 있게 기록한다. 원본 occurrence의 start54054/duration1000ms와 다른 사용자 저작을 보존했다.
+처음 raw 전체 검증은 unrelated 미완성 Pattern과 P35의 빈 tail Stage52를 만났다. Stage 담당의
+기존 자세 유지 투영을 적용한 뒤 실제 `prepare_publication`에서 Product 51개/P35 admission PASS다.
+
+Root 통합845 out 후보 SHA
+`477de0dd75a83e17fc2bc498e4c2603c3e063d741dc85163d860d28e538b59c3`도 전체 Product projection PASS다.
+P35.logic.6은 XZ teleport이고 logic.7은 start61563/duration16050ms,
+fixed lifetime4384/interval2000/speed0.5/visual2개를 유지한다.
+근거는 같은 폴더의 `combined-validation.json`, `teleport.bootstrap.tsv`, `codec_probe.cpp`와
+상위 `server_result.log`다. 이 절 검증 시점에는 정본844를 변경하지 않았으며 Product publish,
+제품 EXE/DLL 빌드·실행·종료·UI 캡처를 하지 않았다. 최종 CAS 설치·발행은 root가 수행하고
+사용자 제품 빌드와 실제 화면 확인을 별도 기록한다.
+
+## G21-Install. 쇼타임 통합845 설치·발행
+
+사용자가 폭탄 본체와 심지의 실제 표시를 확인한 이후 요청한 수정의 최종 통합이다. source844의 모든 기존 값은 요청한 변경을 역적용하면 그대로 복원됨을 확인했고,14파일의 최신 hash를 검사한 뒤 Composition writer lock 안에서 CAS 설치했다. 사용자 Stage57의 현재3809ms와 마지막 빈 Stage52의2580ms는 정본에서 바꾸지 않았다.
+
+- `logic63`은 `BOSS_TELEPORT_XZ`로 연결했다. 원본 저작 참고 위치[2.57,1.3,952.27] 중XZ만 사용하며 현재Y·action clock·root 연속성을 보존한다. 현재 .logic.6은54054ms에 시작한다. 플레이어 추적 Duration 중 몸 yaw는 Server의 현재 살아 있는 대상에게 향한다.
+- 폭탄 .presentation.638의4247ms 시작·5290ms 수명과TRS를 보존했다. 내부2초 clip은 착지 뒤hold하고 모델 표시·심지 방출창을5.29초로 맞췄다. 개별 fuse particle tail을 포함한 resource 기본 길이는5645ms다.
+- 원본 Action4223102의 Exp02 blue18요소를 별도 .presentation.639에 등록했다. 원래 hide→notify10ms 간격을 보존해9547ms에 시작하고3301ms 동안 재생한다. 원본 notify scale2/Y0.025m·색과 사용자 배치를 구분해 적용했다. native3680..3683의 신규4개와 기존14개 프로그램을 사용하며 기존DDS/mesh를 재사용한다.
+- 노란 GroundEffect는 실제 skinned receiver와 native skin/equipment를 구분해 캐릭터·폭탄 수신을 제외한다. 정적 Map program30은 보존한다. 부채꼴 inner는 첫 값0으로 고정했고 관련 시간 track만 제거했다. 상세 수치/컴파일은 warning RESULT G04를 따른다.
+- Stage 길이 변경은 연결된 lane의 시작/종료도 함께 조정한다. 삭제된 시간에 완전히 들어간 row도ID를 보존하며 최소1ms로 남긴다. 늦은 row 이동·겹친 window trim·fade/blend 경계를 검증했다. 원하는 Stage57 길이값은 사용자가 편집기에서 지정한다.
+- 빈 마지막 Stage52는 편집기의 직전 끝 자세 hold와 같은 기존 runtime 경로로만 투영한다. Source clip이나 Stage를 추가·삭제하지 않는다. Product의 직전Stage12 duration6443/play2400/holdAtWindowEnd=true이며 native root는2400→6443ms에 그대로 유지된다.
+
+`Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 845`는 exit0으로 끝났고 product/map/world/gameplay 네 domain이 모두 PASS다. Product51패턴/P35 ready, targeted visual2개를 확인했다. 실제 설치 `Gameplay.bootstrap`에서 teleport25필드와 SHOWTIME11필드를 읽었고 interval2000ms·speed0.5·고정그룹4384ms를 확인했다. source/encounter/patternbindings는 모두845다.
+
+최소 검사: Stage 편집2610, Server67, C++ Composition codec11, 실제 CModel·Effect codec/playback230검사, 신규 native 및 receiver 관련 FX 분리 컴파일, 변경 JSON/XML parse·diff-check가 통과했다. 이 결과는 실제 Client 전투 화면의 품질 판정이 아니다. 제품 EXE/DLL/CSO 빌드·교체 및 Client/UI 실행·조작·캡처는 하지 않았고 사용자의 제품 빌드와 화면 확인이 남아 있다. 발탄의 신규 full restore Product 승격 보류는 유지한다.
+
+근거: `out/KoukuShowtimePolish20260915/{installation-receipt.json,installed-verification.json,owner-publish.log}`, `out/KoukuStageResize20260915/combined845.publication.receipt.json`, `out/KoukuShowtimeTargets20260915/TeleportXZ/combined-validation.json`, `out/KoukuBombLifetime20260915/validation.json`.
+
+## G22-Sector — 노란 외곽선 out 후보 (2026-09-15)
+
+- `effect.kouku.gate3.showtime.sector.warning.shot`의 기존 1 element는 deep equality로 보존하고 `kouku.showtime.warning.sector.outline` 1개만 덧붙였다. 원본 Fan native 3602의 양쪽 직선/외곽 원호를 재사용하며 RGB만 `[1,1,0]`으로 저작했다. 별도 원본 ParticleSystem 복원으로 분류하지 않는다.
+- `inner=0`, radius 11m, authored full angle 45도, TypeData roll 180도, 22×6×22m 투영 World, source recipe/TRS/alpha fade를 복사했다. 새 shader, native ID, texture, mesh는 없다. 원본 shader가 사용하는 `3.1400001` 상수도 유지한다.
+- 실제 Catalog/Codec/Playback 12 사례(부모 yaw 0/90/180도 × 0.1/0.5/1.3/1.6초)에서 두 투영 World와 alpha 차이 0. 1.6초에는 두 element 모두 종료한다. 사용자 timeline-fit 변경은 root의 별도 공통 경로가 소유한다.
+- original native mask 식과 실제 `fx_d_line_003_ycl.dds` bilinear 표본: 내부 alpha 0.00000465, 양쪽 선 각 0.3000, 외곽 원호 0.50089, 범위/각도 밖 0. 원본 blur tail은 보존하므로 내부 모든 픽셀의 수학적 0을 주장하지 않는다. 두 layer의 mask 입력은 동일하다.
+- generator append 재실행/기존 사용자가 수정한 outline 보존/warning-only 재생성 및 Python compile PASS. Product C++ 변경 없음, 기존 객체를 재사용한 out probe만 컴파일·링크했다. Client/UI 실행·GPU draw·화면 판정 없음.
+- 후보: `out/KoukuBombLifetime20260915/SectorOutline/candidate/effect.kouku.gate3.showtime.sector.warning.shot.effect.json`. baseline SHA `72ce4c429f6d848dacb800072bafdeaca1b8cd70ea6947616f902cec279df572`, candidate SHA `25827fbd92b35235077ad0a1d96ad982b052a9deb2678d12897d7db26dc0f388`.
+- `sector_outline_candidate.json`은 stable ID별 append payload와 freshness를 담고, `validation.json`/`runtime_decals.csv`가 수치 근거다. 정본 JSON 미설치 단계이며 root가 최신 저장본에 병합/CAS한다. 사용자 화면 판정은 대기다.
+
+G22 재생성 보완: compose의 sector 마지막 단계도 기존 warning-only 변환을 거쳐, 사용자가 제거한 3개 shot sprite를 다시 넣지 않고 기존 warning+outline 2개를 유지한다. 원형/도넛 생성 경로는 그대로다.
+
+## G23-Bomb — 수명 마지막 구간의 원본 애니메이션
+
+**사용자 정정으로 철회 / 제품 미적용.** 사용자가 폭탄 복제 후 위치를 옮기지 않아 겹쳤으며 기존 폭탄 애니메이션과 대형 폭발 크기가 정상임을 확인했다. 아래는 취소된 후보의 준비·검증 기록이다. `endAlignedAnimation` 관련 이번 7개 파일의 field/codec/runtime/UI 변경은 지정 구문만 제거했고, 폭탄·폭발 정본 JSON은 변경하지 않았다. sector 외곽선과 generator 변경은 유지한다. 이 후보를 설치하거나 재활성화하지 않는다.
+
+- `EFFECT_MODEL_CUE_DESC::bEndAlignedAnimation`/JSON optional `endAlignedAnimation`을 연결했다. 기본 false이고 true만 serialize하므로 기존 문서의 동작·값을 바꾸지 않는다. Model Cue detail의 `Play Animation At End`가 기존 Apply/Save 경로를 사용한다.
+- `Sample_ModelCuePose`는 first pose hold 뒤 실제 CModel clip을 cue 종료에 맞춰 한 번 재생한다. Render_ModelCues와 Collect_ModelCueAnchorWorlds가 동일 함수를 소비하므로 모델·심지에 다른 시계를 만들지 않는다. loop 병용은 codec에서 거부하고, 실제 clip보다 짧은 cue는 신규 준비·cache 재사용·pose sampling 모두 거부한다. 기존 holdLastFrame/loop 경로는 유지했다.
+- 후보는 `kouku.showtime.skull_bomb.model`의 durationSeconds 5.29→5.645와 endAlignedAnimation=true 두 field만 바꾼다. 심지 3개 emission 5.29초+tail 0.355초, 모델·재질·source clip·socket·TRS·사용자 크기를 보존했다. root가 소유하는 전체 source-clock fit와 결합하면 6.355초 박스에서 원본 2초 clip 표시가 약 2.25155초로 늘어난다.
+- 실제 codec/설치 CModel 검사 78 checks, 0 failures. 원본 clip은 2초/60ticks. 0~3.645초 first fx_01 Y=72.7249, 4.145초 track15/Y47.0127, 5.645초 track60/Y2.22591. 실제 bone 3개 anchor를 검증했다. JSON 왕복·기본 false·잘못된 bool type/loop 병용 거부·Parse 실패 시 기존 문서 보존·기존 즉시 hold/loop도 확인했다.
+- `Effect_DocumentCodec`, `Effect_DocumentCodec_Validation`, `Effect_DocumentRenderer_Rendering`, `Effect_DocumentRenderer_Catalog`, `Effect_DocumentRenderer_ResourceStaging`, `Effect_Tool_Detail` 6 TU를 out에 격리 컴파일하여 모두 통과했다. 실제 pose 함수의 현재 source 본문을 out probe로 추출해 CModel pose를 수치 검사했다. Product build/Client/UI/GPU draw는 실행하지 않았다.
+- out 후보/field patch: `out/KoukuBombLifetime20260915/EndAligned/candidate.receipt.json`. before SHA `4d0d5a84506c20b713a78c9c8abc61e3972f70d7c071e0ec1751b088e8093d04`, after SHA `17d532fedcf62016f07bdfc9bbde182adad37660e9d1f47bae6d937e58b7f2b5`. C++ 소스 반영 완료, 정본 JSON 설치·제품 빌드·화면 판정은 root 통합/사용자 단계다.
+
+G23 철회 검증: 7개 파일에서 이번 추가 구문만 제거한 뒤 위 6 TU를 `out/KoukuBombLifetime20260915/EndAligned/Retraction`에 다시 컴파일하여 전부 통과했다. Client/Tools 제품 source에 endAlignedAnimation 관련 symbol은 0개이며, 기존 dirty 변경과 sector 외곽선을 보존했다. before/after SHA 및 컴파일 근거는 `EndAligned/retraction.receipt.json`에 있다. Product/UI/정본 폭탄 리소스는 변경하지 않았다.

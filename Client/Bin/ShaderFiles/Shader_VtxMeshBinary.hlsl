@@ -697,6 +697,8 @@ void PS_MAIN_SHADOW(VS_OUT input)
             clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).a - 0.3333f);
         else if (g_SurfaceProgram == 7u && (g_SourceOverlayFlags & 64u) != 0u)
             clip(SampleMapDiffuseTexture(MapSourceOverlayUV(input.vRawTexcoord), SurfaceAnisotropicSampler).a - 0.3333f);
+        else if (IsMapSurfacePBR() && g_SurfacePBRMasked != 0u)
+            clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vRawTexcoord * g_SurfaceUVTiling).a - 0.3333f);
         else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
             clip(SampleMapDiffuseTexture(input.vRawTexcoord, SurfaceAnisotropicSampler).a - 0.3333f);
         return;

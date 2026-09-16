@@ -18,13 +18,17 @@ namespace EffectToolDetail
     {
         std::string key, label, editReason;
         std::vector<std::string> elementIds;
-        float3_t center{};
+        float3_t center{}, rotationDegrees{};
+        std::string rotationEditReason;
+        bool rotationEditable = false;
         bool editable = false;
         bool rootLocal = false;
     };
     std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document);
     bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
         const std::string& groupKey, const float3_t& delta, std::string& error);
+    bool Rotate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, const float3_t& rotationDegrees, std::string& error);
 
     bool Resolve_ElectricPreviewDestinations(const Client::EFFECT_DOCUMENT_DESC& document,
         std::array<float3_t, 3>& destinationsCm, std::string& error);
@@ -495,6 +499,10 @@ namespace EffectToolDetail
 
     const char* Resource_DomainId(
         const LostArk::Shared::CHARACTER_CLASS_ID eClass);
+
+
+    // Valtan recovery documents keep their boss clip clock in World Preview.
+    bool Is_SequencerRecoveryEffectAssetId(const std::string_view strEffectAssetId);
 
 
     bool Is_KoukuEffectAssetId(const std::string_view strEffectAssetId);

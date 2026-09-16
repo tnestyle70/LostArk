@@ -1195,6 +1195,27 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	return true;
 }
 
+bool_t Client::CPlayerController::Request_KoukuRoomPlayerArrival(
+	const std::uint32_t requestSequence, const std::uint32_t runEpoch,
+	const std::string& rootPatternId, const std::string& occurrenceId, const std::uint32_t playerSlot,
+	const f32_t x, const f32_t y, const f32_t z, std::string& outStatus)
+{
+	using namespace LostArk::Shared;
+	if (!m_pCommandSink || m_pLocalCharacter.expired() || !requestSequence || !runEpoch || playerSlot > 3u ||
+		rootPatternId.empty() || occurrenceId.empty() || !std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+	{ outStatus = "Room player arrival requires a connected player and valid Sequence occurrence."; return false; }
+	C2S_DEBUG_WORLD_PLAYBACK request{};
+	request.iRequestSequence = requestSequence; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	request.eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER;
+	request.strTargetId = rootPatternId; request.iRunEpoch = runEpoch; request.strOccurrenceId = occurrenceId;
+	request.iRoomPlayerSlot = static_cast<std::uint8_t>(playerSlot);
+	request.fPositionX = x; request.fPositionY = y; request.fPositionZ = z;
+	if (!m_pCommandSink->Request_DebugWorldPlayback(request))
+	{ outStatus = "Could not send Server room player arrival request."; return false; }
+	outStatus = "Waiting for Server room player arrival approval.";
+	return true;
+}
+
 bool_t Client::CPlayerController::Request_DebugReturnToKoukuStart()
 {
 	if (Is_DebugPlayerPlacementPending() || m_pLocalCharacter.expired() || nullptr == m_pCommandSink)

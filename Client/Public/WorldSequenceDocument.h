@@ -197,6 +197,23 @@ struct WORLD_SEQUENCE_EFFECT_TRACK
 	float3_t scale = {1.f, 1.f, 1.f};
 };
 
+struct WORLD_SEQUENCE_COLLIDER_TRACK
+{
+	std::string colliderTrackId;
+	std::string slotId;
+	uint32_t startMs = 0;
+	uint32_t durationMs = 1000;
+	float3_t positionOffset = {};
+	float3_t halfExtents = {.5f, .5f, .5f};
+	// Ground BOX yaw is independent of the visual mesh spin.
+	f32_t yawDegrees = 0.f;
+	std::string behavior = "DAMAGE";
+	f32_t damagePercent = 20.f;
+	// Bone-local metres: after model import scale, before object placement scale.
+	float3_t gripLocalOffset = {};
+	std::string attachmentBone;
+};
+
 struct WORLD_SEQUENCE_TEMPLATE
 {
 	std::string sequenceId;
@@ -208,6 +225,7 @@ struct WORLD_SEQUENCE_TEMPLATE
 	std::vector<WORLD_SEQUENCE_TRACK> tracks;
 	std::vector<WORLD_SEQUENCE_ANIMATION_TRACK> animationTracks;
 	std::vector<WORLD_SEQUENCE_EFFECT_TRACK> effectTracks;
+	std::vector<WORLD_SEQUENCE_COLLIDER_TRACK> colliderTracks;
 	WORLD_SEQUENCE_OBJECT_MOTION objectMotion;
 	uint32_t EffectStartMs(const WORLD_SEQUENCE_EFFECT_TRACK& effect) const noexcept
 	{ return effect.timing == "MOTION_END" ? durationMs : effect.startMs; }
@@ -298,6 +316,9 @@ public:
 	bool_t Is_Equivalent(const CWorldSequenceDocument& other) const;
     // Stage and validate before replacing one template. Failure preserves the document.
     bool_t Duplicate_TimelineBox(const std::string& sequenceId, bool animation, size_t index,
+        const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+        const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus);
+    bool_t Duplicate_ColliderTrack(const std::string& sequenceId, size_t index,
         const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
         const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus);
 	WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId);

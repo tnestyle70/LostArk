@@ -63,8 +63,8 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 10u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT" };
+	inline constexpr std::array<const char_t*, 13u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES" };
 	inline constexpr std::array<const char_t*, 12u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
 		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
@@ -94,7 +94,7 @@ namespace Client
 		const std::string_view judgementKind,
 		const KOUKU_SAYDON_OUTCOME_SLOT slot)
 	{
-		if (judgementKind == "ATTACHMENT_HOLD") return false;
+		if (judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES") return false;
 		if (judgementKind == "PATTERN_COMPLETION_COUNT") return slot == KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS;
 		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
 			return judgementKind != "GAZE_REAL_BOSS" && judgementKind != "OBJECT_CONTACT";
@@ -121,6 +121,19 @@ namespace Client
 		std::string strLogicType;
 		/* DURATION values. Only the keys of strJudgementKind are meaningful. */
 		std::string strJudgementKind;
+		std::string strFixedSelectionGroupId;
+		std::string strTrackingPresentationOccurrenceId;
+		std::uint32_t iSpawnIntervalMs = 0u;
+		double fFollowSpeedScale = 0.0;
+		// Ordered complete Effect sets; Server cycles one set per arena spawn interval.
+		std::vector<std::vector<std::string>> RandomVolleyOccurrenceSets;
+		std::uint32_t iRandomSpawnIntervalMs = 0u;
+		double fRandomArenaRadiusM = 0.0;
+		double fRandomArenaHeightToleranceM = 0.0;
+		// Ordered front/back/left/right choices; the Server owns the actual selection.
+		std::vector<std::string> DirectionPatternIds;
+		std::string strCloneEndStageId;
+		std::string strSummonOccurrenceId;
 		std::vector<std::string> PatternIds;
 		std::uint32_t iCompletionCount = 0u;
 		std::uint32_t iSectorCount = 0u;
@@ -172,6 +185,9 @@ namespace Client
         double fChargeYawOffsetDegrees = 0.0;
 		std::string strHudMode;
 		std::array<double, 3> TeleportPosition{};
+		std::string strAirbornePhase;
+		double fAirborneHeightM = 0.0;
+		std::uint32_t iAirborneDurationMs = 0u;
 		std::string strClonePatternId;
 		std::vector<std::uint32_t> ClockHours;
 		double fFaceCenterYawOffsetDegrees = 0.0;
@@ -188,18 +204,25 @@ namespace Client
 
 	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "ATTACHMENT_HOLD") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline bool_t Kouku_LogicAcceptsColliders(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "PATTERN_COMPLETION_COUNT" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "PATTERN_COMPLETION_COUNT" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline const std::string& Kouku_LogicOutcomeKind(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
 		return logic.strLogicType == "TRIGGER" ? logic.strTriggerKind : logic.strJudgementKind;
 	}
+
+	struct KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL final
+	{
+		std::uint32_t iPlayerSlot = 0u;
+		std::array<double, 3> Position{};
+		bool operator==(const KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL&) const = default;
+	};
 
 	/* One placed Logic box. Its window is pattern-relative, not Stage-relative,
 	   so a box can span the repeated clips it judges. */
@@ -218,6 +241,8 @@ namespace Client
 		std::vector<std::string> OnSuccessLogicIds;
 		std::vector<std::string> OnFailLogicIds;
 		std::vector<std::string> OnTimeoutLogicIds;
+		// Sequence-only placement intent, approved by the current Server room.
+		std::optional<KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL> RoomPlayerArrival;
 		// ENTER_AREA capture uses this same-pattern ATTACHMENT_HOLD deadline.
 		std::string strHoldLogicOccurrenceId;
 
@@ -236,16 +261,28 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE&) const = default;
 	};
 
-	/* One reusable Summon definition. Only its name is authored today; the
-	   archetype it spawns and the Pattern the spawn plays are later fields. */
+	// Reusable Summon policy; each occurrence owns its one execution clock.
 	struct KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION final
 	{
 		std::string strSummonId;
 		std::string strDisplayName;
+		std::string strSummonKind;
+		std::vector<std::string> DirectionPatternIds;
+		std::string strCloneEndStageId;
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION&) const = default;
 	};
+
+    // Resolved, read-only execution windows; never serialized as hidden Logic.
+    struct KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW final
+    {
+        std::string strOccurrenceId;
+        std::uint32_t iStartMs = 0u;
+        std::uint32_t iDurationMs = 0u;
+        std::vector<std::string> DirectionPatternIds;
+        std::string strCloneEndStageId;
+    };
 
     struct KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN final
     {
@@ -380,6 +417,8 @@ namespace Client
 		double fVolume = 1.0;
 		double fBrightnessMultiplier = 1.0;
 		bool_t bFollowBoss = true;
+		// Retimes the V1 source clock to this occurrence window without adding loops.
+		bool_t bFitEffectToDuration = false;
 		bool_t bDebugRender = true;
 		std::string strBone;
 		std::string strBoneTarget = "BODY";
@@ -614,6 +653,11 @@ namespace Client
 		static bool_t Load_ImmutableActionReferences(
 			KOUKU_SAYDON_ACTION_REFERENCE_SET& outReferences,
 			std::string& outStatus);
+        static bool_t Try_ResolveCrossDirectionWindows(
+            const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+            const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+            std::vector<KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW>& outWindows,
+            std::string& outStatus);
         static bool_t Validate_SummonPatternTarget(
             const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
             const KOUKU_SAYDON_COMPOSITION_PATTERN& owner,

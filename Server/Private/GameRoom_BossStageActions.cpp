@@ -25,6 +25,29 @@
 
 using namespace GameRoomDetail;
 
+LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Select_BossRandomAliveTarget(
+	const SERVER_WORLD_ENTITY& boss, const std::string& actionId,
+	const std::string& targetId, const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	std::vector<SERVER_PLAYER*> candidates;
+	candidates.reserve(m_Players.size());
+	for (auto& [playerId, player] : m_Players)
+	{
+		if (player.iCurrentHp == 0u || !player.isCombatReady ||
+			player.eAction == PLAYER_ACTION_STATE::GRABBED || player.eAction == PLAYER_ACTION_STATE::DEAD ||
+			player.eAction == PLAYER_ACTION_STATE::FALLING) continue;
+		candidates.push_back(&player);
+	}
+	if (candidates.empty()) return nullptr;
+	const std::uint64_t seed = Mix_DeterministicRandom(
+		Hash_StableId(actionId) ^ Hash_StableId(targetId) ^
+		(static_cast<std::uint64_t>(boss.iNetEntityId) << 32u) ^
+		static_cast<std::uint64_t>(boss.iPatternSequence) ^
+		(static_cast<std::uint64_t>(serverTick) << 1u));
+	return candidates[static_cast<std::size_t>(seed % candidates.size())];
+}
+
 bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 	const SERVER_WORLD_ENTITY& boss,
 	const CGameplayCatalog& catalog,
@@ -1065,33 +1088,14 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 		if (BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE ==
 			action.eKind)
 		{
-			std::vector<SERVER_PLAYER*> candidates;
-			candidates.reserve(m_Players.size());
-			for (auto& [playerId, player] : m_Players)
-			{
-				(void)playerId;
-				if (0u == player.iCurrentHp || !player.isCombatReady ||
-					PLAYER_ACTION_STATE::GRABBED == player.eAction ||
-					PLAYER_ACTION_STATE::DEAD == player.eAction ||
-					PLAYER_ACTION_STATE::FALLING == player.eAction)
-				{
-					continue;
-				}
-				candidates.push_back(&player);
-			}
-			if (candidates.empty())
+			auto* target = Select_BossRandomAliveTarget(boss, actionId, action.strTargetId, serverTick);
+			if (!target)
 			{
 				boss.iPatternTargetEntityId = INVALID_NET_ENTITY_ID;
 				boss.bHasPatternTargetLastPosition = false;
 				continue;
 			}
-			const std::uint64_t seed = Mix_DeterministicRandom(
-				Hash_StableId(actionId) ^ Hash_StableId(action.strTargetId) ^
-				(static_cast<std::uint64_t>(boss.iNetEntityId) << 32u) ^
-				static_cast<std::uint64_t>(boss.iPatternSequence) ^
-				(static_cast<std::uint64_t>(serverTick) << 1u));
-			SERVER_PLAYER& selected = *candidates[
-				static_cast<std::size_t>(seed % candidates.size())];
+			SERVER_PLAYER& selected = *target;
 			boss.iTargetEntityId = selected.iNetEntityId;
 			boss.iPatternTargetEntityId = selected.iNetEntityId;
 			boss.bHasPatternTargetLastPosition = true;

@@ -2524,11 +2524,11 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
-          "verticalOffsetM": 0.5,
           "bossResponse": {
             "kind": "ACCUMULATED_HEALTH_DAMAGE",
             "threshold": 1000
-          }
+          },
+          "verticalOffsetM": 0.5
         },
         {
           "stageId": "FINAL_ATTACK",

@@ -94,6 +94,7 @@ enum class EFFECT_RENDER_PROFILE : uint8_t
 	ADDITIVE_TWO_SIDED_DEPTH_READ,
 	ALPHA_ONE_SIDED_DEPTH_READ,
 	ADDITIVE_ONE_SIDED_DEPTH_READ,
+	MULTIPLY_ONE_SIDED_DEPTH_READ,
 	END
 };
 
@@ -632,11 +633,11 @@ struct EFFECT_MESH_DETAIL_DESC final
 struct EFFECT_SPRITE_DETAIL_DESC final
 {
 	bool_t bBillboard = true;
+	// Fixed source-axis sprites may rotate with the authored emitter basis.
+	bool_t bFollowEmitterAxisRotation = false;
 	f32_t fBillboardRollDegrees = 0.f;
-	/* A billboard's world orientation is rebuilt from the camera every frame,
-	   so Detail.Transform rotation cannot reach it and the only rotation a
-	   billboarded quad has is this roll about the view axis. The constant above
-	   sets where it starts; this rate is what actually makes it spin. */
+	// Camera-facing billboards use roll; fixed source-axis sprites can also
+	// opt into emitter Transform rotation with bFollowEmitterAxisRotation.
 	f32_t fBillboardRollDegreesPerSecond = 0.f;
 	EFFECT_LINEAR_REVEAL_DESC LinearReveal;
 };

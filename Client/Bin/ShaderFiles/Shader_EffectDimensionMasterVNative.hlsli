@@ -2876,6 +2876,36 @@ float4 VNative76(V_NATIVE_INPUT input)
     output.xyz = ((r1.xywx)*(v5.wwww)+(v5.xyzx)).xyz;
     return output;
 }
+// Original localcrack distortion PS 9aa5e61191a9654290657484e8c9cae6.
+// Same local-mesh VS e520045fc771e74d9a67d28b8621c46c as the existing native distortion path.
+float4 VNative66Distortion(V_NATIVE_INPUT input)
+{
+    // Native CB0 scalar group 4: fresnel_pow / distortion; the source PS uses Y only.
+    const float distortion = g_VSourceMaterialParameters[0u].x;
+    float facing = input.tangentView.z * rsqrt(dot(input.tangentView, input.tangentView));
+    facing = max(facing, 0.f);
+    const float edge = abs(1.f - facing);
+    float fifth = edge * edge;
+    fifth = fifth * fifth;
+    fifth = fifth * edge;
+    float amount = edge < 0.000001f ? 1.f : fifth * 0.5f + 1.f;
+    amount = amount * distortion;
+    amount = amount * input.dynamicParameter.w;
+    float4 projected = amount * float4(2.f, -2.f, 2.f, -2.f) + float4(-1.f, 1.f, -1.f, 1.f);
+    projected = projected * float4(0.5f, -0.5f, 0.5f, -0.5f) + 0.5f;
+    // The original separate distortion pass discards without discarding the base material.
+    if (dot(projected.zw, projected.zw) < 0.1f)
+        return 0.f;
+    const float2 sampleUV = input.screenUV + projected.xy * float2(1.f / 255.f, -1.f / 255.f);
+    const float2 accumulated = clamp(projected.zw * 4.f, -255.f, 255.f) / 255.f;
+    // Same depth adapter as native mesh distortion: runtime Y is view metres / 1000.
+    const float sceneDepthCm = g_EffectSceneDepthTexture.SampleLevel(
+        EffectSliceDepthSampler, sampleUV, 0.f).y * 100000.f;
+    if (input.projectionW >= sceneDepthCm)
+        return 0.f;
+    return float4(max(accumulated, 0.f), -min(accumulated, 0.f));
+}
+
 bool VNativeIsAdditive(uint profile) { return profile==52u || profile==53u || profile==54u || profile==55u || profile==56u || profile==57u || profile==58u || profile==61u || profile==62u || profile==64u || profile==65u || profile==70u || profile==71u || profile==72u || profile==73u || profile==74u; }
 
 EFFECT_PS_OUT Shade_EffectDimensionMasterVNative(uint profile, float2 uv,
@@ -2925,7 +2955,12 @@ EFFECT_PS_OUT Shade_EffectDimensionMasterVNative(uint profile, float2 uv,
     const bool additive=VNativeIsAdditive(profile);
     output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,
         additive ? 1.f : nativeColor.a);
-    output.Distortion=0.f; // Separate native distortion/MRT passes not claimed.
+    output.Distortion=0.f;
+    if (profile==66u)
+    {
+        const float4 accumulated=VNative66Distortion(input);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+    }
     if (g_ColorClip>0.f) clip(output.SceneColor.a-g_ColorClip);
     return output;
 }

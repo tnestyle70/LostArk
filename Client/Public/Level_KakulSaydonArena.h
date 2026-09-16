@@ -200,7 +200,8 @@ public:
 	   submits the player teleport, points the HUD and the pattern audition at
 	   the gate boss. Every step is a typed Server command; nothing local is
 	   spawned or moved. */
-	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus);
+	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus, bool_t preservePlayerPosition = false);
+	void Debug_ReturnToPlayerCamera();
 	bool_t Debug_DespawnArenaBosses(std::string& outStatus);
 	bool_t Debug_DespawnFireObjects(std::string& outStatus);
 	bool_t Debug_ReturnToStart(std::string& outStatus);
@@ -239,6 +240,8 @@ public:
 	}
 	// MainApp calls once after the final camera, before Render.World.
 	void Submit_EntranceTriggerMarkers();
+    void Set_TargetedCombatPresentationPlayer(CKoukuSaydonPresentationPlayer* player)
+    { m_Replication.Set_TargetedCombatPresentationPlayer(player); }
 	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
@@ -271,6 +274,7 @@ public:
 		std::string& status, bool_t previewAtCharacter = true);
 	bool_t Debug_SampleWorldObjectPreview(f32_t clockMs, std::string& status);
 	void Debug_StopWorldObjectPreview();
+	void Debug_DrawWorldObjectColliderPreview() const;
 #endif
 	const std::vector<KAKUL_CAMERA_SHOT>& Get_PublishedCameraShots() const { return m_CameraShots; }
 	bool_t Reload_PublishedCameraShots(std::string& outStatus) { return Load_CameraShots(outStatus); }
@@ -556,6 +560,7 @@ private:
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
 	bool_t m_bDebugGateFailed = false;
+	bool_t m_bDebugGatePreservesPlayerPosition = false;
 	bool_t m_bDebugStartPending = false;
 	bool_t m_bDebugStartSucceeded = false;
 	f32_t m_fDebugGatePendingSeconds = 0.f;

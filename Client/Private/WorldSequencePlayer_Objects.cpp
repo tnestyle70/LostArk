@@ -26,6 +26,42 @@ CWorldSequencePlayer::~CWorldSequencePlayer() { Clear(); }
 
 namespace
 {
+#ifdef _DEBUG
+bool Sample_ObjectCollider(const WORLD_SEQUENCE_COLLIDER_TRACK& collider,
+    const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const WORLD_SEQUENCE_TRANSFORM_KEY& key,
+    const WORLD_SEQUENCE_OBJECT_MOTION& motion, const uint32_t emitter,
+    const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement,
+    const CWorldSequenceObject& object, CWorldSequencePlayer::OBJECT_COLLIDER_SAMPLE& out)
+{
+    const float emissionYaw = motion.emissions.empty() ? 0.f : motion.emissions[emitter].yawDegrees;
+    const vector_t localScale = XMLoadFloat3(&resource.scale) * XMLoadFloat3(&key.scaleMultiplier);
+    const vector_t placementScale = placement ? XMLoadFloat3(&placement->scale) : XMVectorReplicate(1.f);
+    const float placementYaw = placement ? placement->rotationDegrees.y : 0.f;
+    const matrix_t groundBasis = XMMatrixScalingFromVector(localScale) *
+        XMMatrixRotationY(XMConvertToRadians(emissionYaw)) * XMMatrixScalingFromVector(placementScale) *
+        XMMatrixRotationY(XMConvertToRadians(placementYaw));
+    out.behavior = collider.behavior;
+    out.yawDegrees = emissionYaw + placementYaw + collider.yawDegrees;
+    XMStoreFloat3(&out.halfExtents, XMVectorAbs(XMLoadFloat3(&collider.halfExtents) * localScale * placementScale));
+    out.hasGrip = collider.behavior == "HOOK_CAPTURE";
+    if (out.hasGrip)
+    {
+        float4x4_t attachment;
+        if (!object.Try_GetAttachmentWorld(collider.attachmentBone, attachment)) return false;
+        const matrix_t world = XMLoadFloat4x4(&attachment);
+        XMStoreFloat3(&out.center, XMVector3TransformCoord(XMLoadFloat3(&collider.positionOffset), world));
+        XMStoreFloat3(&out.gripPosition, XMVector3TransformCoord(XMLoadFloat3(&collider.gripLocalOffset), world));
+    }
+    else
+    {
+        const matrix_t world = XMLoadFloat4x4(&object.Get_SampledWorld());
+        XMStoreFloat3(&out.center, world.r[3] +
+            XMVector3TransformNormal(XMLoadFloat3(&collider.positionOffset), groundBasis));
+    }
+    return true;
+}
+#endif
+
 // Use the same clip windows, ticks and end policy as WorldSequenceObject::Sample,
 // but sample the immutable CModel skeleton without changing the visible palette.
 bool Sample_ObjectEffectBone(const std::shared_ptr<CModel>& model,
@@ -457,6 +493,11 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                     { m_Status = "World Object V1 source bone is unavailable: " + attachment.strRuntimeBoneName; return false; }
                 }
             }
+        if (sequence)
+            for (const auto& collider : sequence->colliderTracks)
+                if (collider.slotId == binding.slotId && !collider.attachmentBone.empty() &&
+                    !model->second.model->Has_Bone(collider.attachmentBone.c_str()))
+                { m_Status = "World Object collider bone is unavailable: " + collider.attachmentBone; return false; }
         Remember_SharedObjectModel(*resource, model->second, targets);
     }
     return true;
@@ -564,6 +605,9 @@ void CWorldSequencePlayer::Clear_PreparedObjects()
 
 void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
 {
+#ifdef _DEBUG
+    active.objectColliderSamples.clear();
+#endif
     for (const auto& effect : active.effects)
     {
         if (effect.handle) CEffectV2Runtime::Stop_Group(effect.handle);
@@ -623,6 +667,15 @@ bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, f
     out = found->Get_SampledWorld();
     return true;
 }
+
+#ifdef _DEBUG
+void CWorldSequencePlayer::Collect_ObjectColliderSamples(std::vector<OBJECT_COLLIDER_SAMPLE>& out) const
+{
+    out.clear();
+    for (const auto& active : m_Active)
+        out.insert(out.end(), active.objectColliderSamples.begin(), active.objectColliderSamples.end());
+}
+#endif
 
 std::string CWorldSequencePlayer::Get_ObjectSampleStatus(const std::string& instanceId) const
 {
@@ -754,6 +807,10 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
     const f32_t emissionStartMs, const f32_t emissionRate, const std::string& emissionMotionId)
 {
     active.objectSampleStatus.clear();
+#ifdef _DEBUG
+    active.objectColliderSamples.clear();
+    std::vector<OBJECT_COLLIDER_SAMPLE> colliderSamples;
+#endif
     for (auto& entry : active.objects) entry.object->Hide();
     if (!visible || std::none_of(instance.bindings.begin(), instance.bindings.end(),
         [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; })) return true;
@@ -863,6 +920,22 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 { m_Status = found->object->Get_RenderStatus() + " / " + resource->objectId; return false; }
                 if (!found->object->Sample(stored, key.visible, animation, ageMs, windowEnd))
                 { m_Status = "World Object transform/animation sample failed: " + resource->objectId; return false; }
+#ifdef _DEBUG
+                if (found->object->Is_Visible())
+                    for (const auto& collider : sequence.colliderTracks)
+                    {
+                        if (collider.slotId != binding.slotId || ageMs < collider.startMs ||
+                            ageMs >= static_cast<double>(collider.startMs) + collider.durationMs) continue;
+                        OBJECT_COLLIDER_SAMPLE sample;
+                        if (!Sample_ObjectCollider(collider, *resource, key, motion, emitter,
+                            active.placement, *found->object, sample))
+                        { m_Status = "World Object collider attachment sample failed: " + collider.colliderTrackId; return false; }
+                        sample.instanceId = active.instanceId;
+                        sample.colliderTrackId = collider.colliderTrackId;
+                        sample.emissionIndex = emitter;
+                        colliderSamples.push_back(std::move(sample));
+                    }
+#endif
                 if (anchor.liveBossAnchor &&
                     (resource->objectId == "world.object.kouku.saydon_showtime_gun_left" ||
                      resource->objectId == "world.object.kouku.saydon_showtime_gun_right"))
@@ -871,6 +944,9 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 else found->weaponReplacement.reset();
             }
     }
+#ifdef _DEBUG
+    active.objectColliderSamples = std::move(colliderSamples);
+#endif
     return true;
 }
 

@@ -277,6 +277,14 @@ function Get-EncounterProfiles {
 				$patternProperties += 'verticalOffsetM'
 			}
 			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['showtimeTargets']) {
+				# Gameplay publication owns the strict target/template join and Server rows.
+				# World placement admission preserves this bounded optional Product lane.
+				$patternProperties += 'showtimeTargets'
+				if ($pattern.showtimeTargets -isnot [Array] -or @($pattern.showtimeTargets).Count -gt 64) {
+					throw 'KoukuSaydon showtimeTargets must be a bounded array.'
+				}
+			}
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['bossMotion']) { $patternProperties += 'bossMotion' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['fixedTimeline']) {
@@ -333,7 +341,7 @@ function Get-EncounterProfiles {
 					}
 				}
 				if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
-				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -ceq 'REAL_GAZE_TELEPORT' }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
+				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 			}
 		}
 		if ($isKoukuSaydon) {

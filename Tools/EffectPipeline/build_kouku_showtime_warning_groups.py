@@ -220,12 +220,13 @@ def animate_radial_fill(element):
     """Retain native fixed boundaries and animate only the fill radius.
 
     GroundEffect supplied the material/area/fade, but no serialized inner curve
-    was recovered. The chosen timing is project authored. Native 3600/3601 draw
+    was recovered. The chosen timing is project authored. Native 3600/3601/3602 draw
     their own boundaries, so cloning extra boundary elements would double blend.
     """
     profile = element['material']['sourceProfile']
     native = profile.get('runtimeShaderProfileId')
-    assert native in ('effect.ue3.kouku-3600-native.v1', 'effect.ue3.kouku-3601-native.v1')
+    assert native in ('effect.ue3.kouku-3600-native.v1', 'effect.ue3.kouku-3601-native.v1',
+                      'effect.ue3.kouku-3602-native.v1')
     assert element['kind'] == 'decal' and element['sourceRecipe']['enabled']
     assert element['sourceRecipe']['rendererShape'] == 'decal'
     detail, track = element['detail'], element['sourceTransformTrack']
@@ -424,11 +425,14 @@ def compose(evidence):
         if row['shape'] == 'donut':
             overrides.update(thickness=row['sourceArea']['AreaRemoveRange'] / row['sourceArea']['AreaRange'], angle=1)
         if row['shape'] == 'sector':
-            overrides.update(angle=row['sourceArea']['AreaAngle'] / 360)
+            overrides.update(angle=row['sourceArea']['AreaAngle'] / 360, inner=0)
         for parameter in warning['material']['sourceProfile']['scalars']:
             if parameter['name'] in overrides:
                 parameter['value'] = overrides[parameter['name']]
         document['elements'].insert(0, warning)
+        document, _ = sector_static_inner_candidate(document)
+        document, _ = sector_outline_candidate(document)
+        document, _ = sector_warning_only_candidate(document)
         install_independent_documents([document])
         record = dict(effectAssetId=asset_id, displayName=row['displayName'], sourceAttackEffectAssetId=attack_asset,
             sourceAttackAuthoringPath=attack_path.relative_to(ROOT).as_posix(), warningSeconds=lead,
@@ -441,13 +445,8 @@ def compose(evidence):
     return records
 
 
-def sector_fill_candidate(document):
-    """Animate the source Fan's inner radius; its outer boundary stays native.
-
-    The material has a radial mask input, but no serialized source timing curve
-    was found. This curve is project authored and ends before the existing fade.
-    Existing attack elements and their clocks are not regenerated.
-    """
+def sector_static_inner_candidate(document):
+    """Keep the Fan at its authored first inner position; no radial fill."""
     candidate = copy.deepcopy(document)
     warnings = [element for element in candidate['elements']
                 if element['id'] == 'kouku.showtime.warning.sector']
@@ -456,39 +455,31 @@ def sector_fill_candidate(document):
     assert warning['kind'] == 'decal'
     profile = warning['material']['sourceProfile']
     assert profile['runtimeShaderProfileId'] == 'effect.ue3.kouku-3602-native.v1'
-    assert len([p for p in profile['scalars'] if p['name'] == 'inner']) == 1
-    track = warning['sourceTransformTrack']
-    timing = warning['detail']['timing']
-    start = float(timing['startDelaySeconds']) + float(track['sourceTimeOriginSeconds'])
-    lifetime = float(timing['lifeTimeSeconds'])
-    assert math.isfinite(start) and math.isfinite(lifetime) and lifetime > 0
-    # Respect the existing authored fade plateau; reach the outer edge before it.
-    fade_keys = track.get('alphaScaleKeys', [])
-    full_alpha_times = [float(k['timeSeconds']) for k in fade_keys
-                       if min(k['value']) >= 1 and start < float(k['timeSeconds']) <= start + lifetime]
-    finish = max(full_alpha_times) if full_alpha_times else start + lifetime
-    assert finish > start
-    def key(t, value):
-        return dict(timeSeconds=t, value=[value], arriveTangent=[0],
-                    leaveTangent=[0], interpolation='linear')
-    fill = dict(name='inner', kind='SCALAR', keys=[key(start, 0), key(finish, 1)])
-    tracks = track.setdefault('materialParameterTracks', [])
-    existing = [row for row in tracks if row['name'] == 'inner']
-    assert not existing or existing == [fill], 'Preserve the user-authored inner parameter curve'
-    if not existing:
-        tracks.append(fill)
-    return candidate, dict(authority='PROJECT_AUTHORED_FILL_TIMING',
+    scalars = [row for row in profile['scalars'] if row['name'] == 'inner']
+    assert len(scalars) == 1
+    tracks = warning['sourceTransformTrack'].get('materialParameterTracks', [])
+    inner_tracks = [row for row in tracks if row['name'] == 'inner']
+    assert len(inner_tracks) <= 1
+    value = float(scalars[0]['value'])
+    if inner_tracks:
+        track = inner_tracks[0]
+        assert track['kind'] == 'SCALAR' and track['keys']
+        first = min(track['keys'], key=lambda row: row['timeSeconds'])
+        assert len(first['value']) == 1
+        value = float(first['value'][0])
+    assert math.isfinite(value) and 0 <= value <= 1
+    scalars[0]['value'] = value
+    warning['sourceTransformTrack']['materialParameterTracks'] = [row for row in tracks if row['name'] != 'inner']
+    return candidate, dict(authority='USER_REQUEST_STATIC_INNER',
         sourceMaterial=profile['runtimeShaderProfileId'], parameter='inner',
-        nativeParameterRow=0, nativeParameterLane=2,
-        fillStartSeconds=start, fillCompleteSeconds=finish, endSeconds=start + lifetime,
-        startRadiusRatio=0, endRadiusRatio=1,
-        outerBoundary='Original native Fan boundary and caustic equations retained',
-        sourceTimeCurve='No serialized source curve found; timing is a project authoring choice')
+        nativeParameterRow=0, nativeParameterLane=2, innerRadiusRatio=value,
+        outerBoundary='Original native Fan boundary, caustic equations and fade retained',
+        timeCurve='Removed; the authored first inner value is constant')
 
 
 def sector_warning_only_candidate(document):
-    """Keep the authored Fan warning and its inner fill, without shot sprites."""
-    candidate, policy = sector_fill_candidate(document)
+    """Keep the static authored Fan warning, without shot sprites."""
+    candidate, policy = sector_static_inner_candidate(document)
     removed_ids = {
         'kouku.207274005.bb19206744ae8c60c97f': 'particlespriteemitter_0',
         'kouku.207274005.7ec0d88461ee250102b5': 'particlespriteemitter_17',
@@ -499,10 +490,62 @@ def sector_warning_only_candidate(document):
     for element in removed:
         assert element['kind'] == 'particle' and element['displayName'].endswith(removed_ids[element['id']])
     candidate['elements'] = [element for element in candidate['elements'] if element['id'] not in removed_ids]
-    assert len(candidate['elements']) == 1 and candidate['elements'][0]['id'] == 'kouku.showtime.warning.sector', \
+    assert candidate['elements'][0]['id'] == 'kouku.showtime.warning.sector' and \
+        {element['id'] for element in candidate['elements']} <= \
+        {'kouku.showtime.warning.sector', 'kouku.showtime.warning.sector.outline'}, \
         'Preserve and review additional user-authored elements before removing the shot group'
     policy['removedElementIds'] = [element['id'] for element in removed]
     return candidate, policy
+
+
+def sector_outline_candidate(document):
+    """Emphasize the same native Fan perimeter with a separate yellow layer.
+
+    This is an authored overlay using the original 3602 perimeter, not an
+    independently recovered source emitter. With inner=0, its fill is absent.
+    Copying the existing recipe/projection/track keeps both radial sides and
+    the outer arc aligned under any later occurrence transform or time fit.
+    """
+    candidate = copy.deepcopy(document)
+    warning_id = 'kouku.showtime.warning.sector'
+    outline_id = warning_id + '.outline'
+    warnings = [e for e in candidate['elements'] if e['id'] == warning_id]
+    assert len(warnings) == 1
+    warning = warnings[0]
+    profile = warning['material']['sourceProfile']
+    assert warning['kind'] == 'decal' and profile['runtimeShaderProfileId'] == 'effect.ue3.kouku-3602-native.v1'
+    assert next(p['value'] for p in profile['scalars'] if p['name'] == 'inner') == 0
+    assert not any(t['name'] == 'inner' for t in warning['sourceTransformTrack'].get('materialParameterTracks', []))
+    existing = [e for e in candidate['elements'] if e['id'] == outline_id]
+    assert len(existing) <= 1
+    if not existing:
+        outline = copy.deepcopy(warning)
+        outline.update(id=outline_id, displayName='부채꼴 노란 외곽선 (원본 Fan 경계 강조)',
+            sourceNode='project.authored.sector.yellow-outline|' + profile['runtimeShaderProfileId'])
+        outline['detail']['color']['multiply'] = [1, 1, 0, warning['detail']['color']['multiply'][3]]
+        candidate['elements'].append(outline)
+    return candidate, dict(authority='USER_AUTHORED_YELLOW_OVERLAY_WITH_ORIGINAL_NATIVE_FAN_PERIMETER',
+        elementId=outline_id, materialProfile=profile['runtimeShaderProfileId'], inner=0,
+        copiedFields=['sourceRecipe', 'sourceTransformTrack', 'projection', 'transform', 'timing'],
+        existingLayerPreserved=bool(existing), newNativePrograms=0, newResourceFiles=0)
+
+
+def stage_sector_outline(evidence):
+    """Stage an append-only element patch without replacing live authoring."""
+    target = ROOT / 'Data/Effects/Authored/effect.kouku.gate3.showtime.sector.warning.shot.effect.json'
+    original = target.read_bytes()
+    document = json.loads(original)
+    candidate, policy = sector_outline_candidate(document)
+    path = evidence / 'candidate' / target.name
+    source.write(path, candidate)
+    assert target.read_bytes() == original, 'Sector document changed during out-only preparation'
+    receipt = dict(target=target.relative_to(ROOT).as_posix(),
+        baselineSha256=hashlib.sha256(original).hexdigest(), candidate=path.resolve().as_posix(),
+        candidateSha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        appendElement=next(e for e in candidate['elements'] if e['id'] == policy['elementId']),
+        preservedElementIds=[e['id'] for e in document['elements']], policy=policy, applied=False)
+    source.write(evidence / 'sector_outline_candidate.json', receipt)
+    return receipt
 
 
 def stage_sector_fill(evidence, warning_only=False):
@@ -510,7 +553,7 @@ def stage_sector_fill(evidence, warning_only=False):
     target = ROOT / 'Data/Effects/Authored/effect.kouku.gate3.showtime.sector.warning.shot.effect.json'
     original = target.read_bytes()
     document = json.loads(original)
-    candidate, policy = (sector_warning_only_candidate(document) if warning_only else sector_fill_candidate(document))
+    candidate, policy = (sector_warning_only_candidate(document) if warning_only else sector_static_inner_candidate(document))
     path = evidence / 'candidate' / target.name
     source.write(path, candidate)
     receipt = dict(target=target.relative_to(ROOT).as_posix(),
@@ -564,8 +607,11 @@ if __name__ == '__main__':
     parser.add_argument('--register-groups', action='store_true')
     parser.add_argument('--stage-sector-fill', action='store_true')
     parser.add_argument('--stage-sector-warning-only', action='store_true')
+    parser.add_argument('--stage-sector-outline', action='store_true')
     args = parser.parse_args()
-    if args.stage_sector_warning_only:
+    if args.stage_sector_outline:
+        stage_sector_outline(args.evidence_root.resolve())
+    elif args.stage_sector_warning_only:
         stage_sector_fill(args.evidence_root.resolve(), warning_only=True)
     elif args.stage_sector_fill:
         stage_sector_fill(args.evidence_root.resolve())

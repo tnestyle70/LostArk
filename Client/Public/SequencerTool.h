@@ -42,6 +42,10 @@ public:
     void Deactivate();
     [[nodiscard]] COMPOSITION_WORKBENCH_TARGET Get_SelectedTarget() const noexcept { return m_eSelectedTarget; }
     [[nodiscard]] bool Is_BossSelected() const noexcept { return m_eSelectedTarget == COMPOSITION_WORKBENCH_TARGET::BOSS; }
+    [[nodiscard]] bool Uses_ValtanSession() const noexcept {
+        return (Is_BossSelected() || m_eSelectedTarget == COMPOSITION_WORKBENCH_TARGET::SEQUENCE) &&
+            Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
+    }
     void Open();
     void Open(COMPOSITION_WORKBENCH_BOSS boss);
     [[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }

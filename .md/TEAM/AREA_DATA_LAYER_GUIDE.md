@@ -9,6 +9,19 @@ Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 en
 `Data/Worlds`는 gameplay placement, `Data/Navigation`은 bake/paint/blocker를 소유한다.
 `Client/Bin/DataFiles`와 `Server/Bin/DataFiles`는 publisher 생성물이므로 직접 수정하지 않는다.
 
+### 원본 맵 재추출 입력
+
+placement schema3의 source visibility와 geometry/material 준비 상태를 분리한다.
+`LV_MODULE`, nav, water, FX 같은 이름은 표시 여부의 정본이 아니다. source actor/component와
+archetype/CDO의 실효 값을 보존하며 구버전 입력은 명시적인 검토 없이 원본 visibility로 인증하지 않는다.
+
+공통 source material compiler는 기존 `mapmaterials` formatVersion2와 placementLighting을
+생성한다. stable asset/slot/MIC, 원본 RNM pair·scale/bias, component 환경 입력을 함께 전달한다.
+같은 geometry라도 MIC나 RNM texture pair가 다르면 variant 정의를 구분한다. scene builder는
+재질 receipt의 원본 입력 hash, Resources hash, 실제 slot과 필드별 coverage를 검사하고 기존
+Area publisher가 게시한다. geometry preview 허용은 미지원 재질의 제품 지원 승인이 아니다.
+입력·명령과 지원 범위는 [공통 추출 README](../../Tools/LevelPlacementExtractor/README.md)를 따른다.
+
 ```text
 LevelCatalog scenario
   -> MapCatalog area
@@ -25,16 +38,28 @@ LevelCatalog scenario
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
-| `LV_LUT_HEARTRB_ED` | 717 assets / 13,184 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair/rail source surfaces, source-exact outer towers, map point light 22, source stone material/baked lighting 443 placements, BossProfile, ValtanEncounter |
+| `LV_LUT_HEARTRB_ED` | shard-set 8개, 3,967 unique assets / 13,184 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair/rail source surfaces, source-exact outer towers, map point light 22, source material 4,511행 / placementLighting 11,076행, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
-| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
+| `LV_LOBBY_CLASSSELECT_SL00` | 181 catalog entries / 804 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
+
+Character Select의 Loader와 Level placement는 같은 `MakeFullMapScope()`를 소비한다.
+같은 SL00의 원격 원판11개·별11개도 포함한다. 이 로딩 범위는 Server navigation 범위를
+확장하지 않으며 재질·조명 복원이나 화면 표시 완료를 뜻하지 않는다.
+
+Debug F1의 `Character Select Floor Swap` 목록은
+`Data/Rendering/Authored/CharacterSelectFloorSwap.json`의 stable source placement ID를
+현재 로드된 Area에 결합한다. 중앙 원판·별의 교체는 기존 MapPlacementRuntime에서2개를
+stage한 뒤 visibility와 함께 commit하며 실패하면 이전 선택을 보존한다. 선택별 환경
+입력은 CModel material variant로 분리한다. 현재 맵 방문 중 시각 비교 기능이며 MapTool
+저장·runtime map publisher·Server navigation의 정본은 바꾸지 않는다. Source/Center
+environment 선택과 무관하게 RNM은 원본 tile이며 새 위치에서 구운 조명이 아니다.
 
 수련장은 Lobby의 `Enter Training`에서 Server 승인을 받은 뒤 `LEVEL::DEVELOPMENT`로 진입한다. Debug/Release network smoke는 map load, player spawn, Q command, Server action 승인, cooldown HUD 반영까지 검사한다.
 
 ## 3. 레이어별 생략 규칙
 
-발탄 바닥·바위 443배치는 `MapCatalog.json`의 `sourceMaterials/materials` 쌍으로 선언한
+발탄 전체 PS·SL 배치의 source material은 `MapCatalog.json`의 `sourceMaterials/materials` 쌍으로 선언한
 `LV_LUT_HEARTRB_ED.mapmaterials.json` formatVersion 2를 소비한다. 선택 family
 `bg_base_opa_overlay`는 기본/overlay D/N 네 입력과 배치별 원본 COLOR0, UV1 및 tangent
 handedness가 필요하다. `placementLighting`은 sourcePlacementId와 variant assetId별
@@ -46,6 +71,16 @@ catalog는 `Data/Maps/Imported`, placement/materials는 `Data/Maps/Authoring`에
 때는 Git 제외 `Resources/Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/`와
 `Resources/Map/Lighting/Valtan/`도 필요하다. 기존 Deploy·파괴·Server gameplay 계약은
 이 표면 재질 문서에 포함되지 않는다.
+
+`bg_base_opa_overlay`의 `sourceOverlayFlags` 범위는 0~2047이다. 기존 bit0~8의 의미를
+보존하고 bit9(512)는 원본 bump UV/밝기/opacity, bit10(1024)은 방향 기반 overlay의
+mixed-normal specular lobe를 선택한다. bit512와 `sourceBump` float4의 존재는 일치해야 한다.
+선택적 `sourceSubspecular` float2와 `sourceSpecularSaturation`은 일반 direct specular와
+독립 입력이다. `emissive`는 기존 texture/color/intensity/uvTiling/colorSpace/flicker 구조를
+사용하되 확인한 overlay permutation은 flicker 세 값이 모두 0이어야 한다.
+Map parser → CModel override 검증 → CMaterial texture 준비 → 공통 map surface binder와
+static/instanced GBuffer → Deferred가 같은 입력을 소비한다. 새 overlay cohort의 제품 배치
+활성화 여부는 대응 RESULT에서 구분한다.
 
 정적 Deploy 모델의 named surface는 `BossCatalog.modelMaterialOverrides`에서도 기존 map material
 family를 사용할 수 있다. `modelAssetId + materialName`을 `CMapAssetCatalog::Parse_ModelSurface`의
@@ -73,6 +108,10 @@ family를 사용할 수 있다. `modelAssetId + materialName`을 `CMapAssetCatal
 `Client/Bin/DataFiles/Map/<AreaId>.mapmaterials.json`을 선언한다.
 `lostark.map-materials` formatVersion 1/2의 재질 key는 `assetId + materialName`이다.
 `sourceMaterial`은 원본 근거이며 WModel의 material 이름과 별개다.
+PBR 계열의 optional `emissive.flicker.mode`는 `none` 또는 `nested`다. `none`은
+minimum/speed/phaseOffset 세 값이0이어야 하며 시간에 무관한 발광을 뜻한다. 생략/`nested`는
+기존 PBR 시간식을 유지한다. 이 필드를 게시한 데이터는 대응 parser·shader를 빌드한 Client가
+소비해야 한다. BG/foliage/overlay의 기존 flicker 계약으로 이 필드를 확대하지 않는다.
 v1/2의 `diffuse-sampler` 행은 `assetId`, `materialName`, `sourceMaterial`, `family`,
 `sourceTexture`, `addressU`만 저장하며 `addressU`는 `WRAP` 또는 `MIRROR`다.
 원본 Texture2D의 주소 방식이 필요한 legacy diffuse 재질에만 사용하고 V축은 WRAP을 유지한다.
@@ -411,6 +450,12 @@ Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
 `ACTIVE.maparea`도 selector 변경 때 자동 저장하지 않는다.
 
+Server navigation publisher는 optional `-AreaId <AreaId>`로 해당 Area의 source/paint/regions만
+검증·게시한다. 생략하면 기존 모든 Area를 처리하며 알 수 없는 ID는 쓰기 전에 거부한다.
+Client/Server의 navgrid·navpolicy·navblockers는 기존 Area별 transaction으로 함께 교체한다.
+실행 중 프로그램은 재시작해야 새 데이터를 읽는다. 예를 들어 Character Select만 갱신할 때는
+`powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-ServerNavigation.ps1 -AreaId LV_LOBBY_CLASSSELECT_SL00 -Mode Validate` 후 같은 명령의 `-Mode Publish`를 실행한다.
+
 Visual publisher는 `-AreaId <AreaId> -Mode Validate|Check|Publish`를 지원한다.
 Validate는 source를 검증하고, Check는 같은 예상 파일과 현재 runtime의 byte 일치만 검사한다.
 두 모드는 runtime을 쓰지 않으며 Publish만 기존 파일 집합 transaction을 실행한다. 기본값은
@@ -727,3 +772,13 @@ Area 진입 시 여섯 class binary를 모두 선로드하지 않는다. Lobby�
 WORLD resource의 optional `motionInstanceIds`는1..32개의 기존 Map Object motion stable instance ID를 참조한다. 이 모델 없는 묶음은 `modelAssetId`가 빈 문자열, `animated=false`, `scale=[1,1,1]`이며 별도 default/alias/material을 갖지 않는다. 각 member는 모델 resource 하나에 바인딩된 WORLD/STOP motion이어야 한다. 중복·누락·중첩 묶음은 codec/publisher가 거부한다. 기존6모션의 값은 복사하지 않고 같은 worldsequences 문서에서 참조한다.
 
 World Object Tool → Object Resources에서 통합 묶음은 자식 없는 한 항목이다. 클릭하면 모든 member를 기존 Object preview에서 함께 표시하고 첫 member의 전체 Motion 편집기를 Object Detail에 연다. Object Sequencer에는 공통 시간축과 각 member Transform/animation/effect 행이 나타난다. 행/키를 클릭하거나 Editing Motion을 바꾸면 편집 대상만 전환하며 전체 preview와 현재 재생 시간은 유지한다. 기존 Physics / Motion / Emission, Authored Emissions, Effect Rows, Selected Key, Animation Clips를 그대로 편집하고 기존 Save/readback/CAS/publisher 경로로 저장한다. 그룹의 WORLD/STOP 계약은 유지하며 일반 개별 Object를 선택하면 통합 scope에서 나간다. 모델과 제품 Boss WORLD binding으로 사용하는 리소스가 아니라 Object Tool의 통합 저작·미리보기 단위다.
+
+### Object Motion의 Collider 행
+
+WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackId`, Transform `slotId`, `startMs`, `durationMs`, `positionOffset`, `halfExtents`, `yawDegrees`, `behavior`, `damagePercent`, `gripLocalOffset`을 저장한다. `attachmentBone`은 선택 필드다. 모든 Transform/Animation/Effect/Collider 행을 합해 32개 이하이며, 시간 창은 Motion 내부여야 한다. Collider가 있는 instance는 같은 슬롯에 WORLD Object Resource 하나를 바인딩한다.
+
+사각형은 수평 BOX다. DAMAGE는 정수 1~100의 최대 HP 비율을 사용하고, INSTANT_DEATH와 HOOK_CAPTURE는 damagePercent 0을 사용한다. 본과 grip은 HOOK_CAPTURE만 사용하며 본이 있으면 실제 animated CModel에서 존재해야 한다. 본 offset은 모델 import scale 적용 후, Object/placement scale 적용 전의 미터 단위다. 칼날의 시각적 자전이나 메시를 세우는 회전은 사각형의 방향을 바꾸지 않는다.
+
+Object Tool은 Collider 행의 생성·시간·형태·결과·복제·삭제를 저장한다. 현재 객체와 본에서 읽은 와이어는 편집용이며 피해 권위가 없다. Kouku WORLD occurrence를 게시하면 projector가 emission·delay·속도·반복·원본 본 이동을 기존 ENTER_AREA region.WorldTrack으로 변환하고 Server가 접촉을 판정한다. 갈고리는 접촉 창 이후에도 이미 잡힌 플레이어가 원래 숨김 시점까지 본 끝을 따라갈 수 있다. 새 별도 collision runtime은 없다.
+
+움직이는 갈고리의 원본 본 궤적을 보존하기 위해 Gameplay bootstrap 전체 행 상한은 publisher와 CGameplayCatalog 모두 32,768이다. 패턴당64접촉 창과 track당4,096key 제한은 유지한다. 비결정적 spawn/spread나 기울어진 ground placement는 지원 완료로 간주하지 않고 명시적으로 거절한다.

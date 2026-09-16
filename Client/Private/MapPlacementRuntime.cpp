@@ -6,6 +6,7 @@
 #include "Model.h"
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 
 #include <algorithm>
 #include <cmath>
@@ -124,6 +125,7 @@ bool_t CMapPlacementRuntime::Load_Area(
 
 	Clear();
 	m_iLevelIndex = levelIndex;
+	m_FrustumCulling = loadScope.frustumCulling;
 	m_Catalog = std::move(stagedCatalog);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
@@ -224,6 +226,10 @@ void CMapPlacementRuntime::Clear()
 	}
 
 	m_iLevelIndex = ETOUI(LEVEL::END);
+#ifdef _DEBUG
+	m_DebugPreviewIds.clear();
+	m_DebugHiddenPlacements.clear();
+#endif
 }
 
 bool_t CMapPlacementRuntime::Try_Get_PlacementBounds(
@@ -365,7 +371,8 @@ bool_t CMapPlacementRuntime::Create_Placement(
 	const CMapAssetCatalog& catalog,
 	const MAP_PLACEMENT_RECORD& record,
 	MAP_RUNTIME_PLACED_ENTRY& outEntry,
-	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling)
+	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling,
+	const std::vector<Engine::MODEL_MATERIAL_OVERRIDE>* materialOverrides)
 {
 	const MAP_ASSET_ENTRY* asset = catalog.Find(record.assetId);
 	if (nullptr == asset ||
@@ -389,6 +396,14 @@ bool_t CMapPlacementRuntime::Create_Placement(
 	desc.visible = record.visible;
 	desc.renderProfile = asset->renderProfile;
 	desc.bakedLighting = record.bakedLighting;
+	if (nullptr != materialOverrides)
+	{
+		Engine::MODEL_ASSET_LOAD_DESC load;
+		load.assetRoot = CRuntimeAssetRoot::Get();
+		load.meshPath = asset->resolvedModelPath;
+		load.materialOverrides = *materialOverrides;
+		desc.materialVariant = std::move(load);
+	}
 	desc.frustumCulling = frustumCulling;
 	if (const MAP_ASSET_WATER_PROFILE* water = catalog.Find_Water(asset->id))
 	{
@@ -396,6 +411,10 @@ bool_t CMapPlacementRuntime::Create_Placement(
 		desc.waterProfile = *water;
 	}
 
+	/* Allocate the record strings before attaching an object to the live layer. */
+	MAP_RUNTIME_PLACED_ENTRY stagedEntry;
+	stagedEntry.record = record;
+	stagedEntry.layerTag = layerTag;
 	shared_ptr<CGameObject> gameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
 		levelIndex,
@@ -417,10 +436,8 @@ bool_t CMapPlacementRuntime::Create_Placement(
 		return false;
 	}
 
-	outEntry = {};
-	outEntry.record = record;
-	outEntry.layerTag = layerTag;
-	outEntry.object = std::move(mapObject);
+	stagedEntry.object = std::move(mapObject);
+	outEntry = std::move(stagedEntry);
 	return true;
 }
 
@@ -615,6 +632,222 @@ bool_t CMapPlacementRuntime::Try_GetRuntimeVisible(
 }
 
 #ifdef _DEBUG
+bool_t CMapPlacementRuntime::Replace_DebugPlacementPreview(
+	const std::vector<MAP_DEBUG_PLACEMENT_PREVIEW>& previews,
+	const std::vector<std::string>& hiddenSourcePlacementIds,
+	std::string& outStatus)
+{
+	if (m_iLevelIndex >= ETOUI(LEVEL::END) || previews.empty() ||
+		previews.size() > 64u || hiddenSourcePlacementIds.empty())
+	{
+		outStatus = "Preview requires a loaded map, placements, and explicit hidden source IDs.";
+		return false;
+	}
+	auto isPreview = [&](const uint64_t id) {
+		return m_DebugPreviewIds.end() != std::find(m_DebugPreviewIds.begin(), m_DebugPreviewIds.end(), id);
+	};
+	if (!m_DebugHiddenPlacements.empty())
+	{
+		if (hiddenSourcePlacementIds.size() != m_DebugHiddenPlacements.size() ||
+			!std::equal(hiddenSourcePlacementIds.begin(), hiddenSourcePlacementIds.end(),
+				m_DebugHiddenPlacements.begin(), [](const auto& id, const auto& entry) {
+					return id == entry.sourcePlacementId;
+				}))
+		{
+			outStatus = "Restore the current preview before changing its hidden source IDs.";
+			return false;
+		}
+	}
+	std::vector<DEBUG_HIDDEN_PLACEMENT> hidden = m_DebugHiddenPlacements;
+	std::vector<size_t> hiddenIndices;
+	std::vector<bool_t> priorVisibility;
+	std::unordered_set<std::string> hiddenIds;
+	for (const std::string& sourceId : hiddenSourcePlacementIds)
+	{
+		if (sourceId.empty() || !hiddenIds.insert(sourceId).second)
+		{
+			outStatus = "Preview hidden source IDs must be nonempty and unique.";
+			return false;
+		}
+		size_t index = m_Placements.size();
+		for (size_t i = 0; i < m_Placements.size(); ++i)
+		{
+			if (!isPreview(m_Placements[i].record.placementId) &&
+				m_Placements[i].record.sourcePlacementId == sourceId)
+			{
+				if (index != m_Placements.size())
+				{
+					outStatus = "Preview target source ID is ambiguous: " + sourceId;
+					return false;
+				}
+				index = i;
+			}
+		}
+		bool_t visible = false;
+		if (index == m_Placements.size() || !Try_GetRuntimeVisible(m_Placements[index], visible))
+		{
+			outStatus = "Preview target is missing or has no visibility consumer: " + sourceId;
+			return false;
+		}
+		hiddenIndices.push_back(index);
+		priorVisibility.push_back(visible);
+		if (m_DebugHiddenPlacements.empty())
+			hidden.push_back({ m_Placements[index].record.placementId, sourceId,
+				m_Placements[index].record.visible, visible });
+	}
+	std::unordered_set<uint64_t> usedIds;
+	std::unordered_set<std::string> usedSourceIds;
+	for (const auto& entry : m_Placements)
+	{
+		if (!isPreview(entry.record.placementId))
+		{
+			usedIds.insert(entry.record.placementId);
+			usedSourceIds.insert(entry.record.sourcePlacementId);
+		}
+	}
+	for (const auto& preview : previews)
+	{
+		if (!CMapPlacementDocument::Is_Valid(preview.record, m_Catalog) ||
+			!usedIds.insert(preview.record.placementId).second ||
+			!usedSourceIds.insert(preview.record.sourcePlacementId).second)
+		{
+			outStatus = "Preview placement is invalid or collides with an existing stable ID.";
+			return false;
+		}
+	}
+
+	std::string committedStatus = "Preview committed; source placements and their baked lighting remain unchanged.";
+	std::vector<MAP_RUNTIME_PLACED_ENTRY> staged;
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> noBatches;
+	std::vector<MAP_RUNTIME_PLACED_ENTRY> committed;
+	std::vector<MAP_RUNTIME_PLACED_ENTRY> previous;
+	std::vector<uint64_t> ids;
+	try
+	{
+		staged.reserve(previews.size());
+		ids.reserve(previews.size());
+		committed.reserve(m_Placements.size() + previews.size());
+		previous.reserve(m_DebugPreviewIds.size());
+		for (const auto& entry : m_Placements)
+		{
+			if (isPreview(entry.record.placementId)) previous.push_back(entry);
+			else committed.push_back(entry);
+		}
+		for (const auto& preview : previews)
+		{
+			MAP_PLACEMENT_RECORD record = preview.record;
+			record.visible = false;
+			staged.emplace_back();
+			if (!Create_Placement(m_iLevelIndex, m_Catalog, record, staged.back(),
+				m_FrustumCulling, preview.materialOverrides.empty() ? nullptr : &preview.materialOverrides))
+			{
+				Remove_PlacementRuntime(m_iLevelIndex, staged, noBatches);
+				outStatus = "Preview material/object creation failed; previous selection retained: " + record.assetId;
+				return false;
+			}
+			staged.back().record.visible = preview.record.visible;
+			ids.push_back(record.placementId);
+			committed.push_back(staged.back());
+		}
+		for (auto& entry : committed)
+			if (hiddenIds.count(entry.record.sourcePlacementId)) entry.record.visible = false;
+	}
+	catch (const std::exception& error)
+	{
+		Remove_PlacementRuntime(m_iLevelIndex, staged, noBatches);
+		outStatus = std::string("Preview staging failed; previous selection retained: ") + error.what();
+		return false;
+	}
+
+	auto rollbackVisibility = [&]() {
+		for (size_t i = 0; i < hiddenIndices.size(); ++i)
+			(void)Set_RuntimeVisible(m_Placements[hiddenIndices[i]], priorVisibility[i]);
+		Remove_PlacementRuntime(m_iLevelIndex, staged, noBatches);
+	};
+	for (const size_t index : hiddenIndices)
+	{
+		if (!Set_RuntimeVisible(m_Placements[index], false))
+		{
+			rollbackVisibility();
+			outStatus = "Preview visibility commit failed; previous selection retained.";
+			return false;
+		}
+	}
+	for (auto& entry : staged)
+	{
+		if (!Set_RuntimeVisible(entry, entry.record.visible))
+		{
+			rollbackVisibility();
+			outStatus = "Preview activation failed; previous selection retained.";
+			return false;
+		}
+	}
+	/* A removed object may still be in this frame's render queue. */
+	for (auto& entry : previous) (void)Set_RuntimeVisible(entry, false);
+	Remove_PlacementRuntime(m_iLevelIndex, previous, noBatches);
+	m_Placements.swap(committed);
+	m_DebugPreviewIds.swap(ids);
+	m_DebugHiddenPlacements.swap(hidden);
+	outStatus.swap(committedStatus);
+	return true;
+}
+
+bool_t CMapPlacementRuntime::Clear_DebugPlacementPreview(std::string& outStatus)
+{
+	if (m_DebugPreviewIds.empty())
+	{
+		outStatus = "Original central floor is active.";
+		return true;
+	}
+	std::vector<size_t> indices;
+	std::vector<bool_t> previousVisibility;
+	for (const auto& hidden : m_DebugHiddenPlacements)
+	{
+		const auto found = std::find_if(m_Placements.begin(), m_Placements.end(),
+			[&](const auto& entry) { return entry.record.placementId == hidden.placementId; });
+		bool_t visible = false;
+		if (found == m_Placements.end() || !Try_GetRuntimeVisible(*found, visible))
+		{
+			outStatus = "Cannot restore the missing original central placement; preview retained.";
+			return false;
+		}
+		indices.push_back(static_cast<size_t>(found - m_Placements.begin()));
+		previousVisibility.push_back(visible);
+	}
+	std::string restoredStatus = "Original central floor and star restored.";
+	for (size_t i = 0; i < indices.size(); ++i)
+	{
+		if (!Set_RuntimeVisible(m_Placements[indices[i]], m_DebugHiddenPlacements[i].runtimeVisible))
+		{
+			for (size_t j = 0; j < indices.size(); ++j)
+				(void)Set_RuntimeVisible(m_Placements[indices[j]], previousVisibility[j]);
+			outStatus = "Original visibility restore failed; preview retained.";
+			return false;
+		}
+	}
+	for (size_t i = 0; i < indices.size(); ++i)
+		m_Placements[indices[i]].record.visible = m_DebugHiddenPlacements[i].recordVisible;
+	for (auto iter = m_Placements.begin(); iter != m_Placements.end(); )
+	{
+		if (m_DebugPreviewIds.end() == std::find(m_DebugPreviewIds.begin(),
+			m_DebugPreviewIds.end(), iter->record.placementId))
+		{
+			++iter;
+			continue;
+		}
+		if (iter->object)
+		{
+			iter->object->Set_Visible(false);
+			CGameInstance::Get().Remove_GameObject_from_Layer(m_iLevelIndex, iter->layerTag, iter->object);
+		}
+		iter = m_Placements.erase(iter);
+	}
+	m_DebugPreviewIds.clear();
+	m_DebugHiddenPlacements.clear();
+	outStatus.swap(restoredStatus);
+	return true;
+}
+
 bool_t CMapPlacementRuntime::Set_DebugSourceLevelVisible(
 	const std::string& sourceLevel,
 	const bool_t visible,

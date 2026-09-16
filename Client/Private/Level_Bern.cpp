@@ -19,6 +19,7 @@
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "MapLightPresentationRuntime.h"
+#include "MapEffectPresentationRuntime.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "PlayerCommandSink.h"
@@ -337,6 +338,11 @@ CLevel_Bern::CLevel_Bern(
 CLevel_Bern::~CLevel_Bern()
 {
 	End_EntranceCinematic();
+	if (nullptr != m_pMapEffectPresentation)
+	{
+		m_pMapEffectPresentation->Clear();
+		m_pMapEffectPresentation.reset();
+	}
 	if (nullptr != m_pMapLightPresentation)
 	{
 		m_pMapLightPresentation->Clear();
@@ -383,6 +389,15 @@ HRESULT CLevel_Bern::Initialize()
 	if (FAILED(Ready_Layer_Camera(
 			TEXT("Layer_Camera"), pEntry->pMapAreaId)))
 	{
+		return E_FAIL;
+	}
+
+	auto mapEffectPresentation = make_shared<CMapEffectPresentationRuntime>();
+	std::string mapEffectStatus;
+	if (!mapEffectPresentation->Load_AmbientArea(
+			ETOUI(LEVEL::BERN), pEntry->pMapAreaId, mapEffectStatus))
+	{
+		OutputDebugStringA(("[Level_Bern][MapEffect] " + mapEffectStatus + "\n").c_str());
 		return E_FAIL;
 	}
 
@@ -479,6 +494,7 @@ HRESULT CLevel_Bern::Initialize()
 	}
 
 	m_pMapLightPresentation = std::move(mapLightPresentation);
+	m_pMapEffectPresentation = std::move(mapEffectPresentation);
 	m_bMapLightSubmissionFailureReported = false;
 	OutputDebugStringA(("[Level_Bern][MapLight] " +
 		m_pMapLightPresentation->Get_Status() + "\n").c_str());
@@ -493,6 +509,9 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	{
 		return;
 	}
+
+	if (nullptr != m_pMapEffectPresentation)
+		m_pMapEffectPresentation->Update_LevelPresentation(fTimeDelta);
 
 	if (nullptr != m_pMapLightPresentation &&
 		!m_pMapLightPresentation->Submit_Frame() &&

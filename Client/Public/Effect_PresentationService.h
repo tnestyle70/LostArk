@@ -62,7 +62,7 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
-	// A real boss world-root owner may sustain source EmitterLoops=0 until teardown.
+	// A real boss or level world-root owner sustains only source EmitterLoops=0.
 	bool_t bOwnerSustainedSourceLoops = false;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
@@ -99,6 +99,8 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	uint32_t iSpawnTick = 0u;
 	f32_t fInitialSampleTimeSeconds = 0.f;
 	bool_t bExternallySampled = false;
+	// Native infinite emitters advance naturally until the level releases the handle.
+	bool_t bOwnerSustainedSourceLoops = false;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
 };
@@ -232,9 +234,10 @@ public:
 		EFFECT_SCENE_BUDGET_COST& OutCost,
 		std::string& strOutStatus);
 	static EFFECT_SCENE_BUDGET_PROBE Get_SceneBudgetProbe();
-	// Only measured document contracts may remove the source import basis scale.
+	// Only measured document/anchor contracts may remove the source import basis scale.
 	static bool_t Requires_SourceBoneImportScaleNormalization(
-		const std::string& strEffectAssetId);
+		const std::string& strEffectAssetId,
+		const std::string& strRuntimeAnchorSlotId = {});
 	static bool_t Build_SourceBoneAnchorWorld(
 		const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
 		float4x4_t& OutWorld);

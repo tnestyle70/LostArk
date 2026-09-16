@@ -718,6 +718,27 @@ def write_harness_suite(output_root: Path) -> None:
 
 
 class WModelGeometryContractTests(unittest.TestCase):
+    def test_geometry_key_ignores_zero_sign_only(self):
+        positive = (1.0,) + (0.0,) * 10
+        negative = (1.0,) + (-0.0,) * 10
+        nearby = (1.0,) + (0.0,) * 9 + (1e-20,)
+        self.assertEqual(geometry.geometry_key(positive), geometry.geometry_key(negative))
+        self.assertNotEqual(geometry.geometry_key(positive), geometry.geometry_key(nearby))
+
+    def test_repeated_vertex_triangle_has_no_winding(self):
+        a = (1.0, 0.0, 0.0) + (0.0,) * 8
+        b = (2.0, 0.0, 0.0) + (0.0,) * 8
+        vertices = [a, a, b]
+        self.assertEqual(geometry.triangle_signatures(vertices, [0, 1, 2]),
+                         geometry.triangle_signatures(vertices, [0, 2, 1]))
+
+    def test_distinct_vertex_triangle_preserves_winding(self):
+        vertices = [(1.0, 0.0, 0.0) + (0.0,) * 8,
+                    (0.0, 1.0, 0.0) + (0.0,) * 8,
+                    (0.0, 0.0, 1.0) + (0.0,) * 8]
+        self.assertNotEqual(geometry.triangle_signatures(vertices, [0, 1, 2]),
+                            geometry.triangle_signatures(vertices, [0, 2, 1]))
+
     def test_skinned_uv_tail_preserves_legacy_and_animation_sections(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

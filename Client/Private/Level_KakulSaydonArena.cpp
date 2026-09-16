@@ -1457,7 +1457,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	if (m_iPendingDebugGate != NO_ACTIVE_DEBUG_GATE && m_DebugGatePendingPlacements.empty() &&
 		!m_PlayerController.Is_DebugPlayerPlacementPending())
 	{
-		if (!m_bDebugGateFailed && m_PlayerController.Did_DebugPlayerPlacementSucceed())
+		if (!m_bDebugGateFailed && (m_bDebugGatePreservesPlayerPosition || m_PlayerController.Did_DebugPlayerPlacementSucceed()))
 		{
 			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
 			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
@@ -1494,6 +1494,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			m_strDebugGateStatus += "\nGate activation failed; correct the reported cause and retry.";
 		}
 		m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+		m_bDebugGatePreservesPlayerPosition = false;
 		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
 	}
 	if (m_bDebugStartPending && !m_PlayerController.Is_DebugPlayerPlacementPending())
@@ -2610,7 +2611,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ReturnToStart(std::string& outStat
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
-	const size_t gateIndex, std::string& outStatus)
+	const size_t gateIndex, std::string& outStatus, const bool_t preservePlayerPosition)
 {
 	const auto& gates = Get_DebugGates();
 	if (gateIndex >= gates.size())
@@ -2677,6 +2678,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(true);
 	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_iPendingDebugGate = gateIndex;
+	m_bDebugGatePreservesPlayerPosition = preservePlayerPosition;
 	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = false;
 	m_DebugGatePendingPlacements.clear();
@@ -2696,7 +2698,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 		m_DebugGatePendingPlacements.emplace(pPlacementId, requestToken);
 		++spawnRequests;
 	}
-	const bool_t teleportSubmitted = m_PlayerController.Request_DebugTeleportToPosition(
+	const bool_t teleportSubmitted = preservePlayerPosition || m_PlayerController.Request_DebugTeleportToPosition(
 		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA,
 		gate.vPlayerPosition.x, gate.vPlayerPosition.y, gate.vPlayerPosition.z);
 	m_bDebugGateFailed = !teleportSubmitted;
@@ -2705,7 +2707,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 		": despawn + %zu spawn request(s) sent; player -> (%.2f, %.2f, %.2f) %s",
 		spawnRequests, gate.vPlayerPosition.x, gate.vPlayerPosition.y,
 		gate.vPlayerPosition.z, teleportSubmitted ? "submitted" : "not submitted");
-	m_strDebugGateStatus = label + summary;
+	m_strDebugGateStatus = preservePlayerPosition ?
+		label + ": boss activation submitted; preserving Server-approved sequence arrival positions." : label + summary;
 	if (!teleportSubmitted)
 	{
 		m_strDebugGateStatus += " (" +
@@ -2713,6 +2716,19 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	}
 	outStatus = m_strDebugGateStatus;
 	return teleportSubmitted;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_ReturnToPlayerCamera()
+{
+	const auto character = m_Replication.Get_LocalCharacter();
+	if (!m_pCamera || !character || !character->Get_Transform()) return;
+	Stop_CompositionCamera(true);
+	Release_CameraShot();
+	m_pCamera->Set_FollowTarget(character->Get_Transform());
+	m_pCamera->Set_FollowEnabled(true);
+	(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset,
+		CArenaCameraProfile::LookOffset(m_FollowCameraProfile), m_FollowCameraProfile.rotationDegrees.z,
+		m_FollowCameraProfile.fovYDegrees, m_FollowCameraProfile.followResponse);
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::string& reason)
@@ -2726,6 +2742,7 @@ void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::stri
 	m_DebugGatePendingPlacements.clear();
 	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = true;
+	m_bDebugGatePreservesPlayerPosition = false;
 	m_strDebugGateStatus = finalReason;
 	m_PlayerController.Retire_DebugPlayerPlacementRequest(finalReason);
 	CCombatHUDViewModel::Get().Set_BossFocusArchetype("");

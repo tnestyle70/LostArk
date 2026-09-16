@@ -127,6 +127,18 @@ public:
 	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
 	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
+#ifdef _DEBUG
+	struct OBJECT_COLLIDER_SAMPLE
+	{
+		std::string instanceId, colliderTrackId, behavior;
+		uint32_t emissionIndex = 0;
+		float3_t center{}, halfExtents{}, gripPosition{};
+		f32_t yawDegrees = 0.f;
+		bool_t hasGrip = false;
+	};
+	// Read the last successful Apply_Objects result; never advance or reconstruct its clock.
+	void Collect_ObjectColliderSamples(std::vector<OBJECT_COLLIDER_SAMPLE>& out) const;
+#endif
 	void Clear();
 
 	bool_t Is_Ready() const noexcept
@@ -274,6 +286,9 @@ private:
 		uint32_t durationMs = 0;
 		std::string objectSampleStatus;
 		std::vector<OBJECT_INSTANCE> objects;
+#ifdef _DEBUG
+		std::vector<OBJECT_COLLIDER_SAMPLE> objectColliderSamples;
+#endif
 		struct EFFECT_INSTANCE
 		{
 			std::string key;

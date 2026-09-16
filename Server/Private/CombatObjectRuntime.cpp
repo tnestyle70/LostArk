@@ -1081,6 +1081,43 @@ void LostArk::Server::CCombatObjectRuntime::Cancel_Source(
 	}
 }
 
+bool LostArk::Server::CCombatObjectRuntime::Set_OwnedVisualPosition(
+	const LostArk::Shared::COMBAT_OBJECT_ID objectId,
+	const LostArk::Shared::NET_ENTITY_ID sourceId, const std::uint32_t patternSequence,
+	const float x, const float y, const float z)
+{
+	if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) return false;
+	for (auto& object : m_Objects)
+	{
+		if (object.iCombatObjectId != objectId) continue;
+		if (object.iSourceNetEntityId != sourceId || object.LiveState.iOwnerPatternSequence != patternSequence ||
+			!object.Hits.empty() || object.fSpeedMps != 0.f || object.bTrackLockedTargetUntilFirstPulse) return false;
+		object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+		auto& pose = object.LiveState.CurrentPose;
+		pose.fPositionX = x; pose.fPositionY = y; pose.fPositionZ = z;
+		++m_iRevision;
+		if (m_iRevision == 0u) m_iRevision = 1u;
+		return true;
+	}
+	return false;
+}
+
+bool LostArk::Server::CCombatObjectRuntime::Cancel_OwnedVisualObject(
+	const LostArk::Shared::COMBAT_OBJECT_ID objectId,
+	const LostArk::Shared::NET_ENTITY_ID sourceId, const std::uint32_t patternSequence)
+{
+	for (std::size_t index = 0u; index < m_Objects.size(); ++index)
+	{
+		const auto& object = m_Objects[index];
+		if (object.iCombatObjectId != objectId) continue;
+		if (object.iSourceNetEntityId != sourceId || object.LiveState.iOwnerPatternSequence != patternSequence ||
+			!object.Hits.empty()) return false;
+		Despawn_At(index);
+		return true;
+	}
+	return false;
+}
+
 void LostArk::Server::CCombatObjectRuntime::Reset()
 {
 	while (!m_Objects.empty())

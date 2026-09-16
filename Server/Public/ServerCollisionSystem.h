@@ -71,6 +71,9 @@ namespace LostArk::Server
 		not a valid admission test for teleporting into a body. */
 		bool Is_PlayerPositionClear(float x, float y, float z,
 			LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const;
+		bool Is_CirclePositionClear(float x, float y, float z, float radius,
+			float halfHeight, float centerOffsetY,
+			LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const;
 		void Set_BlockingBodies(std::vector<SERVER_BLOCKING_BODY> bodies);
 		bool Update_BlockingBody(
 			LostArk::Shared::NET_ENTITY_ID netEntityId,

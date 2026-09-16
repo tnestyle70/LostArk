@@ -72,6 +72,34 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
     return true;
 }
 
+#ifdef _DEBUG
+bool_t CWorldSequenceObject::Try_GetAttachmentWorld(const std::string& bone, float4x4_t& out) const
+{
+    if (!m_Model || !m_Visible) return false;
+    matrix_t attachment = XMMatrixIdentity();
+    if (!bone.empty())
+    {
+        if (!m_Model->Has_Bone(bone.c_str())) return false;
+        // Get_BoneMatrix includes model preScale, including the pivot translation.
+        // Normalize only its axes: applying import scale again shrinks the grip offset.
+        attachment = m_Model->Get_BoneMatrix(bone.c_str());
+        for (int axis = 0; axis < 3; ++axis)
+        {
+            const float length = XMVectorGetX(XMVector3LengthSq(attachment.r[axis]));
+            if (!std::isfinite(length) || length < 1e-12f) return false;
+            attachment.r[axis] = XMVectorSetW(XMVector3Normalize(attachment.r[axis]), 0.f);
+        }
+    }
+    float4x4_t sampled;
+    XMStoreFloat4x4(&sampled, attachment * XMLoadFloat4x4(&m_World));
+    for (const auto& row : sampled.m)
+        for (const float component : row)
+            if (!std::isfinite(component)) return false;
+    out = sampled;
+    return true;
+}
+#endif
+
 bool_t CWorldSequenceObject::Reset_ForReuse()
 {
     Hide();

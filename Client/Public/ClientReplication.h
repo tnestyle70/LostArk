@@ -349,6 +349,8 @@ namespace Client
 			DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const;
 		DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT
 			Commit_DeferredLocalCharacterClassReplacement();
+		void Set_TargetedCombatPresentationPlayer(CKoukuSaydonPresentationPlayer* player)
+        { m_pTargetedCombatPresentationPlayer = player; }
 		void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 			std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const;
 		void Collect_KoukuMazeTargets(std::vector<KOUKU_MAZE_TARGET_VIEW>& targets) const;
@@ -586,7 +588,7 @@ namespace Client
 			std::string& outStatus);
 		bool Update_CombatObjectPresentation(
 			COMBAT_OBJECT_PRESENTATION_HANDLE handle,
-			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot);
+			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot, std::uint32_t serverTick);
 		void Stop_CombatObjectPresentation(
 			COMBAT_OBJECT_PRESENTATION_HANDLE handle);
 		void Release_CombatObjectPresentation(
@@ -594,6 +596,7 @@ namespace Client
 		struct COMBAT_OBJECT_PRESENTATION_SINK final
 		{
 			CClientReplication& Owner;
+            std::uint32_t serverTick = 0u;
 			bool Spawn(
 				const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& message,
 				COMBAT_OBJECT_PRESENTATION_HANDLE& outHandle,
@@ -606,7 +609,7 @@ namespace Client
 				COMBAT_OBJECT_PRESENTATION_HANDLE handle,
 				const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
 			{
-				return Owner.Update_CombatObjectPresentation(handle, snapshot);
+				return Owner.Update_CombatObjectPresentation(handle, snapshot, serverTick);
 			}
 			void Stop(COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 			{
@@ -658,6 +661,8 @@ namespace Client
 		std::string m_strPendingPresentationFailure;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
+        // MainApp owns the player for the active Kouku level; Reset_World drops this view.
+        CKoukuSaydonPresentationPlayer* m_pTargetedCombatPresentationPlayer = nullptr;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
 		std::deque<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>
 			m_WorldDestructionLiveEvents;

@@ -24,7 +24,7 @@ namespace
 	accepts would make Validate and Load disagree about the same document. */
 	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
 	// Matches the publisher bound for the complete gameplay document.
-	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 8192u;
+	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 32768u;
 	/* The wire names one plate per bit, so a boss cannot wear more than the
 	snapshot can carry. The publisher rejects a larger authored count. */
 	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
@@ -2767,7 +2767,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && ("PATTERNLOGICREGIONWORLD" == fields[0] || "PATTERNLOGICREGIONWORLDKEY" == fields[0]))
 		{
 			const bool isKey = "PATTERNLOGICREGIONWORLDKEY" == fields[0];
-			if ((isKey ? 16u : 17u) != fields.size())
+			if (isKey ? (fields.size() != 16u && fields.size() != 19u) : fields.size() != 17u)
 			{ m_strStatus = "Boss Logic WORLD row width is invalid"; return false; }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end()) { m_strStatus = "Boss Logic WORLD encounter is missing"; return false; }
@@ -2800,7 +2800,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					if (!ParseNumber(fields[index+10u],*numbers[index]) || !std::isfinite(*numbers[index]))
 					{ m_strStatus = "Boss Logic WORLD baseline is invalid"; return false; }
 				if (track.fBaselineScaleX <= 0.f || track.fBaselineScaleY <= 0.f || track.fBaselineScaleZ <= 0.f ||
-					std::fabs(track.fBaselineScaleX-track.fBaselineScaleZ) > 0.0001f)
+					((region->bCircle || region->bSector) && std::fabs(track.fBaselineScaleX-track.fBaselineScaleZ) > 0.0001f))
 				{ m_strStatus = "Boss Logic WORLD baseline scale is invalid"; return false; }
 				track.bEnabled = true; track.bSmoothStep = 1u == smooth;
 			}
@@ -2819,9 +2819,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					if (!ParseNumber(fields[index+7u],*numbers[index]) || !std::isfinite(*numbers[index]))
 					{ m_strStatus = "Boss Logic WORLD key transform is invalid"; return false; }
 				if (key.fScaleX < 0.f || key.fScaleY < 0.f || key.fScaleZ < 0.f ||
-					std::fabs(key.fScaleX-key.fScaleZ) > 0.0001f ||
+					((region->bCircle || region->bSector) && std::fabs(key.fScaleX-key.fScaleZ) > 0.0001f) ||
 					std::fabs(key.fRotationY*key.fRotationY+key.fRotationW*key.fRotationW-1.f) > 0.001f)
 				{ m_strStatus = "Boss Logic WORLD key scale/quaternion is invalid"; return false; }
+				key.bHasGripPosition = fields.size() == 19u;
+				if (key.bHasGripPosition)
+					for (size_t axis = 0; axis < 3u; ++axis)
+						if (!ParseNumber(fields[16u + axis], key.GripPosition[axis]) || !std::isfinite(key.GripPosition[axis]) || std::abs(key.GripPosition[axis]) > 100000.f)
+						{ m_strStatus = "Hook grip position must be finite world metres."; return false; }
+				if (!track.Keys.empty() && track.Keys.front().bHasGripPosition != key.bHasGripPosition)
+				{ m_strStatus = "Hook grip positions must be present on every WORLD key."; return false; }
 				key.bVisible = 1u == visible; track.Keys.push_back(key);
 			}
 		}
@@ -3046,6 +3053,30 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				}
 			}
 		}
+		else if (!fields.empty() && "PATTERNCROSSDIRECTION" == fields[0])
+		{
+			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
+			trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES;
+			if (fields.size() != 11u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], trigger.iStartMs) || !ParseNumber(fields[5], trigger.iDurationMs) ||
+				trigger.iDurationMs == 0u || trigger.iDurationMs > 600000u || !IsStableId(fields[10]))
+			{ m_strStatus = "Cross direction row has invalid identity or duration"; return false; }
+			trigger.strTriggerId = fields[3]; trigger.strCloneEndStageId = fields[10];
+			for (std::size_t index = 6u; index < 10u; ++index)
+			{
+				if (!IsStableId(fields[index]) || fields[index] == fields[2] ||
+					std::find(trigger.DirectionPatternIds.begin(), trigger.DirectionPatternIds.end(), fields[index]) != trigger.DirectionPatternIds.end())
+				{ m_strStatus = "Cross direction references must be four distinct child Patterns"; return false; }
+				trigger.DirectionPatternIds.emplace_back(fields[index]);
+			}
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end()) { m_strStatus = "Cross direction encounter is missing"; return false; }
+			const auto parent = std::find_if(encounter->second.begin(), encounter->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (parent == encounter->second.end() || parent->MechanicTriggers.size() >= 64u ||
+				std::any_of(parent->MechanicTriggers.begin(), parent->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == trigger.strTriggerId; }))
+			{ m_strStatus = "Cross direction parent or occurrence is missing or duplicated"; return false; }
+			parent->MechanicTriggers.push_back(std::move(trigger));
+		}
 		else if (!fields.empty() && "PATTERNMECHANICTRIGGER" == fields[0])
 		{
 			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
@@ -3124,6 +3155,29 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
 				{ m_strStatus = "KoukuSaydon Albion layout is invalid"; return false; }
 			}
+			else if (fields[4] == "ALBION_AIRBORNE")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE;
+				if (fields.size() != 25u || mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+					trigger.fFaceCenterYawOffsetDegrees != 0.f)
+				{ m_strStatus = "Albion airborne base row carries unrelated values"; return false; }
+			}
+			else if (fields[4] == "BOSS_TRACK_TARGET")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
+				if (mode != 0u || trigger.iDurationMs > 600000u || fields[11] != "-" ||
+					fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+					trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
+				{ m_strStatus = "Boss tracking duration carries unrelated values"; return false; }
+			}
+			else if (fields[4] == "BOSS_TELEPORT_XZ")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ;
+				if (mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+					trigger.fFaceCenterYawOffsetDegrees != 0.f || std::abs(trigger.fTeleportX) > 100000.f ||
+					std::abs(trigger.fTeleportY) > 100000.f || std::abs(trigger.fTeleportZ) > 100000.f)
+				{ m_strStatus = "Boss XZ teleport carries invalid coordinates or unrelated values"; return false; }
+			}
 			else if (fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER")
 			{
 				trigger.eKind = fields[4] == "CARD_MAZE_HIDE_NEXT" ?
@@ -3145,6 +3199,83 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners->second.end() == owner || owner->MechanicTriggers.size() >= 64u)
 				return false;
 			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNALBIONAIRBORNE" == fields[0])
+		{
+			if (fields.size() != 7u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
+			{ m_strStatus = "Albion airborne supplemental identity is invalid"; return false; }
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end()) { m_strStatus = "Albion airborne encounter is missing"; return false; }
+			const auto pattern = std::find_if(encounter->second.begin(), encounter->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == encounter->second.end()) { m_strStatus = "Albion airborne pattern is missing"; return false; }
+			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == pattern->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
+				trigger->eAirbornePhase != ALBION_AIRBORNE_PHASE::NONE || !ParseNumber(fields[5], trigger->fAirborneHeightM) ||
+				!std::isfinite(trigger->fAirborneHeightM) || !ParseNumber(fields[6], trigger->iAirborneDurationMs))
+			{ m_strStatus = "Albion airborne owner, duplicate or values are invalid"; return false; }
+			if (fields[4] == "JUMP") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::JUMP;
+			else if (fields[4] == "SELECT_PLAYER") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::SELECT_PLAYER;
+			else if (fields[4] == "APPEAR_PLAYER") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::APPEAR_PLAYER;
+			else if (fields[4] == "DISAPPEAR") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::DISAPPEAR;
+			else if (fields[4] == "CENTER") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::CENTER;
+			else if (fields[4] == "SLAM") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::SLAM;
+			else { m_strStatus = "Albion airborne phase is unknown"; return false; }
+		}
+		else if (!fields.empty() && "PATTERNSHOWTIMETARGETS" == fields[0])
+		{
+			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
+			trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS;
+			if (fields.size() != 11u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], trigger.iStartMs) || !ParseNumber(fields[5], trigger.iDurationMs) ||
+				trigger.iDurationMs == 0u || trigger.iDurationMs > 600000u ||
+				(fields[6] != "-" && !IsStableId(fields[6])) || (fields[7] != "-" && !IsStableId(fields[7])) || fields[6] == fields[7] ||
+				!ParseNumber(fields[8], trigger.iFixedLifetimeMs) || (fields[6] == "-") != (trigger.iFixedLifetimeMs == 0u) || trigger.iFixedLifetimeMs > 600000u ||
+				!ParseNumber(fields[9], trigger.iSpawnIntervalMs) || trigger.iSpawnIntervalMs == 0u || trigger.iSpawnIntervalMs > 600000u ||
+				!ParseNumber(fields[10], trigger.fFollowSpeedScale) || !std::isfinite(trigger.fFollowSpeedScale) ||
+				trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f)
+			{ m_strStatus = "Showtime player-target window is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Showtime player-target encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end() || owner->MechanicTriggers.size() >= 64u ||
+				std::any_of(owner->MechanicTriggers.begin(), owner->MechanicTriggers.end(),
+					[&](const auto& row) { return row.strTriggerId == fields[3]; }))
+			{ m_strStatus = "Showtime player-target owner or occurrence is invalid"; return false; }
+			trigger.strTriggerId = fields[3];
+			if (fields[6] != "-") trigger.strFixedVisualId = fields[6];
+			if (fields[7] != "-") trigger.strTrackingVisualId = fields[7];
+			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNSHOWTIMERANDOM" == fields[0])
+		{
+			BOSS_SHOWTIME_RANDOM_VOLLEY volley;
+			std::uint32_t ordinal = 0u, interval = 0u;
+			float radius = 0.f, height = 0.f;
+			if (fields.size() != 10u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], ordinal) || ordinal >= 32u || !IsStableId(fields[5]) ||
+				!ParseNumber(fields[6], volley.iLifetimeMs) || volley.iLifetimeMs == 0u || volley.iLifetimeMs > 600000u ||
+				!ParseNumber(fields[7], interval) || interval == 0u || interval > 600000u ||
+				!ParseNumber(fields[8], radius) || !std::isfinite(radius) || radius <= 0.f || radius > 1000.f ||
+				!ParseNumber(fields[9], height) || !std::isfinite(height) || height <= 0.f || height > 10.f)
+			{ m_strStatus = "Showtime random volley row is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Showtime random volley encounter is missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end())
+			{ m_strStatus = "Showtime random volley pattern is missing"; return false; }
+			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(),
+				[&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == pattern->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS ||
+				trigger->RandomVolleys.size() != ordinal || (!trigger->RandomVolleys.empty() &&
+				(trigger->iRandomSpawnIntervalMs != interval || trigger->fRandomArenaRadiusM != radius || trigger->fRandomArenaHeightToleranceM != height)))
+			{ m_strStatus = "Showtime random volley owner, order or repeated settings do not match"; return false; }
+			volley.strClientVisualId = fields[5];
+			trigger->iRandomSpawnIntervalMs = interval; trigger->fRandomArenaRadiusM = radius; trigger->fRandomArenaHeightToleranceM = height;
+			trigger->RandomVolleys.push_back(std::move(volley));
 		}
 		else if (!fields.empty() && "PATTERNSUMMONSPAWN" == fields[0])
 		{
@@ -5494,8 +5625,23 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		std::unordered_set<std::uint64_t> healthMechanicOrderKeys;
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
+			const bool hasAirborne = std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
+				[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE; });
+            const bool hasPhysicalHook = std::any_of(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [](const auto& window) {
+                return std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [](const auto& region) {
+                    return std::any_of(region.WorldTrack.Keys.begin(), region.WorldTrack.Keys.end(), [](const auto& key) { return key.bHasGripPosition; }); }); });
+            if ((hasAirborne || hasPhysicalHook) && (!isKoukuSaydonGateOne || !CKoukuSaydonBrain::Validate_AnimationOnlyPattern(pattern, m_strStatus)))
+			{ if (m_strStatus.empty()) m_strStatus = "Albion airborne requires a Kouku Product pattern"; return false; }
 			for (const auto& trigger : pattern.MechanicTriggers)
 			{
+				if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES)
+				{
+					SERVER_WORLD_ENTITY candidate{};
+					std::size_t selected = 0u; std::array<std::uint32_t, 4u> durations{};
+					if (!isKoukuSaydonGateOne || !CKoukuSaydonBrain::Validate_AnimationOnlyPattern(pattern, m_strStatus) ||
+						!CKoukuSaydonBrain::Select_CrossDirection(candidate, pattern, trigger, *this, selected, durations, m_strStatus))
+					{ if (m_strStatus.empty()) m_strStatus = "Cross direction requires a Kouku Product parent"; return false; }
+				}
 				if (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS) continue;
 				if (!isKoukuSaydonGateOne || trigger.PatternSpawns.empty() || trigger.PatternSpawns.size() > 4u)
 				{ m_strStatus = "Summon Pattern trigger requires one to four spawns"; return false; }
@@ -5625,7 +5771,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				if (!isKoukuSaydonGateOne || pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
 					pattern.BossMotion->iEndMs > durationMs ||
 					std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(), [](const auto& trigger)
-					{ return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT; }))
+					{ return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT ||
+						trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ; }))
 				{ m_strStatus = "Boss Motion exceeds its Pattern or conflicts with another position policy"; return false; }
 			}
 			std::unordered_set<std::string> activeStageActions;

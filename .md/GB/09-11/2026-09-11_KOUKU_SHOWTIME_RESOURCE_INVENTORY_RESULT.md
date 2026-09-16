@@ -364,3 +364,65 @@ Buff4219979의 Key35 / ValueA421991207은 원본 필드로 보존했지만, 이 
 [모델 경로·clip section·길이의 원본 대조 JSON](<C:/Users/user/Desktop/LostArk/out/KoukuShowtimeInventory20260911/actions.json>)
 
 본체 MN_RPCT_05에는 WANM 249개가 있고 요청한 본편 16종과 이벤트 clip이 모두 있다. 이벤트 clip 자체는 150 ticks / 30 = 5초이며 시퀀스 문서 duration 5.03초와 별도다. 폭탄 모델은 5개 clip을 가지며 `Bomb_respawn_1`이 60 ticks / 30 = 2초다. 원본 `Respawn_1`과 runtime 접두사 차이는 명시적인 연결 시 확인할 항목이다.
+
+## 15. 09-15 해골폭탄 본체·심지 및 CModel Cue 조명 연결
+
+현재 순수 심지 V1 `effect.kouku.gate3.showtime.bomb.fuse`는 원본 sprite3개만
+포함한다. 기존 빙고 WorldObject가 본체를 생성하고 이 V1을 b_body/fx_01에
+붙이는 consumer가 있으므로 기존 심지에 본체를 추가하면 중복 생성된다.
+별도의 전체 모델 V1 대기형/낙하형을 만들고 현재 저작본에 등록했다.
+
+- `effect.kouku.gate3.showtime.bomb.full.restore`: Bomb_idle_normal_1 loop,2초.
+- `effect.kouku.gate3.showtime.bomb.drop.full.restore`: Bomb_respawn_1,원본2초.
+
+두 문서는 동일한 MN_RHCN_01.wmodel, native source.character program30과
+원본7DDS를 CActorCatalog→CModel로 로드한다. 올바른 빨강·청록·흰 해골 diffuse가
+설치돼 있음을 실제 texture를 열어 확인했다. 심지3요소의 material/recipe/size를
+보존하고 modelCueId→b_body→fx_01만 연결한다. 소켓은 cooked basis의
+position[.2,0,-.521496]m,rotation[-90,0,0]이다.
+
+원본 NPC480712의 ModelSize300, 같은 모델 일반형100 및 빙고480724의200을
+대조했다. 기존 빙고 scale2와 분리해 Showtime 후보는 scale3/preScale.01을
+사용한다. source engine의 ModelSize reader 자체는 확보하지 못했으며100 기준
+정규화는 같은 모델 variant 및 기존 빙고 계약을 근거로 한 변환이다. 사용자 추가
+5배/10배는 적용하지 않았다. 원본2127 정점의 착지 상태 bounds는 약2.0066m 폭,
+2.4519m 높이다. 원본 바닥 아래 -.1860m도 유지하며 전역 ground offset은 넣지 않았다.
+
+원본 source drop을 실제 CModel로 샘플하면 b_body 높이가23.7732→.273579m로
+변한다. cue scale3 후 심지도 함께 낙하하며 고정 root에 남지 않는다. actual
+Product CPU stage, native30/7DDS, 실제 본과 현재 ModelCue pose 함수로 yaw0/90/180,
+고정 step 및 반복 seek를 검사했다.79,769검사/실패0,3 emitter 양수 alpha,
+반복 seek 위치오차0이다. 근거는 `out/KoukuShowtimeBomb20260915`이다.
+
+실제 renderer는 일반 OPAQUE/MASKED CModel Cue의 GBuffer pass를 Effect BLEND
+시간에 호출했다. `Effect_DocumentRenderer_Rendering.cpp`에서 명시 Cue.Material이
+없는 OPAQUE/MASKED만 기존 NONBLEND 제출과 같은 분류로 옮겼다. 이 소스 변경은
+적용했고 격리 TU compile은 성공했다. 기존 dirty DimensionMaster T pass11은
+보존했다. 기존14문서36cue와 후보2cue의 총38개 분류 검사에서 pre-light5개
+(기존 인형2+폭탄2 pass2,T1 pass11),forward33개(투명2 pass4,명시 native31 pass7/8)를
+확인했다. 새로운 shader나 별도 모델 렌더러는 추가하지 않았다.
+
+두 V1, EffectCatalog/Tree, Composition resource2개와 project/filter 등록을
+`out/KoukuBazookaBombInstall20260915`의 단일 fresh merge/CAS로 설치했다.
+사용자 저장 완료·등록 동안 편집 중지 확인 후 Composition815→816, World1848→1849로
+바주카와 함께 등록했고 기존 181개 resource와 62개 Pattern의 편집을 보존했다.
+두 Effect 문서는 기존 79,769검사 candidate와 bytes가 같고 각각 심지3요소와
+본체 ModelCue1개다. 기존 순수 심지와 Bingo WorldObject/template은 변경하지 않았다.
+
+| 표시 이름 | Composition resource ID |
+|---|---|
+| 쇼타임_해골 폭탄_본체와 심지 | kakulsaydon.effect.8cfdaa60b18621a50c30 |
+| 쇼타임_해골 폭탄_낙하 본체와 심지 | kakulsaydon.effect.97b02ba6078bab1e78f5 |
+
+Effect Tool에서 `Refresh Index` 후 위 전체 Effect를 열어 Preview한다. 개별
+emitter isolation은 기존 정책상 standalone model을 숨긴다. Composition에는 `Reload`로
+새 저장본을 읽는다. P35에 임의 폭탄 spawn시점/AI/폭발 선택은 넣지 않았다.
+Map WorldSequences와 Kouku Composition publish/check, 설치 31검사 실패0을 확인했다.
+현재 EXE는 앞서 빌드된 generic ModelCue NONBLEND 수정을 포함하므로 이번 데이터
+등록을 위한 재빌드나 실행 중 EXE 교체는 하지 않았다. Client/UI 실행·조작·캡처와
+사용자 최종 시각 판정은 수행하지 않았다.
+
+기존 KoukuSaydon owner publish도 revision816으로 완료했다. 4도메인 PASS와
+Server Gameplay.bootstrap의 Product revision816을 확인했다. 실행 중 Server는 새
+Complete Play에서 해당 Kouku generation을 검증해 받으므로 이번 등록 때문에
+재시작하지 않는다. 현재 쿠크 Level의 새 바주카 WorldSequence는 아레나 재입장 후 읽는다.

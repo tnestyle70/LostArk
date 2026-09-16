@@ -22,6 +22,7 @@ NS_BEGIN(Client)
 class CCamera_Free;
 class CCharacter;
 class CMapLightPresentationRuntime;
+class CMapEffectPresentationRuntime;
 class CTrigger_Box;
 class IPlayerCommandSink;
 
@@ -182,6 +183,7 @@ private:
 	Network Player 수명과 섞지 않는다.*/
 	CMapPlacementRuntime m_MapRuntime;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	shared_ptr<CMapEffectPresentationRuntime> m_pMapEffectPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;
 
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };

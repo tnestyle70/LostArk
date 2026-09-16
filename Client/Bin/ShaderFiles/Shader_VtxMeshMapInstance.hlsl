@@ -719,6 +719,8 @@ void PS_MAIN_SHADOW(
             clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).a - 0.3333f);
         else if (g_SurfaceProgram == 7u && (g_SourceOverlayFlags & 64u) != 0u)
             clip(SampleMapDiffuseTexture(MapSourceOverlayUV(input.vRawTexcoord), SurfaceAnisotropicSampler).a - 0.3333f);
+        else if (IsMapSurfacePBR() && g_SurfacePBRMasked != 0u)
+            clip(g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vRawTexcoord * g_SurfaceUVTiling).a - 0.3333f);
         else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
             clip(SampleMapDiffuseTexture(input.vRawTexcoord, LinearSampler).a - 0.3333f);
         return;
@@ -767,7 +769,9 @@ void PS_SHADOW_SIMPLE(VS_SHADOW_SIMPLE_OUT input)
     if (g_SurfaceProgram != 0u)
     {
         // PBR/source-specular are opaque; programs 1/2 use raw source UVs.
-        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular())
+        if (IsMapSurfacePBR() && g_SurfacePBRMasked != 0u)
+            clip(g_DiffuseTexture.Sample(LinearSampler, input.vRawTexcoord * g_SurfaceUVTiling).a - 0.3333f);
+        else if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular())
             clip(SampleMapDiffuseTexture(input.vRawTexcoord, LinearSampler).a - 0.3333f);
         return;
     }
