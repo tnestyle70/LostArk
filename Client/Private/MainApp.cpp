@@ -7449,6 +7449,20 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			}
 		}
         m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
+        m_pEffectTool->Set_KoukuPatternPreviewProvider(
+            [this](const std::string& effectId, EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status)
+            {
+                status.clear();
+                CKoukuSaydonActionWorkbench* workbench = nullptr;
+                if (m_pSequencerTool && m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE)
+                    workbench = m_pSequenceActionWorkbench.get();
+                else if (m_pSequencerTool && m_pSequencerTool->Is_BossSelected())
+                    workbench = m_pKoukuSaydonActionWorkbench.get();
+                if (!workbench || !workbench->Has_Composition()) return false;
+                return CEffect_Tool::Build_KoukuPatternPreviewContext(workbench->Get_Composition(),
+                    workbench->Get_SelectedPatternId(), workbench->Get_SelectedPresentationOccurrenceId(),
+                    effectId, context, status);
+            });
         break;
 	}
     case DEBUG_TOOL::EFFECT_V2:
@@ -9708,6 +9722,8 @@ void CMainApp::RefreshWorldObjectResources()
 				row.strObjectResourceId = owner->objectId;
 				row.strObjectDisplayName = owner->displayName;
 				row.bDefaultMotion = owner->defaultMotionInstanceId == instance.instanceId;
+				row.bUntilDestroyed = owner->combatBody && owner->combatBody->lifetimePolicy == "UNTIL_DESTROYED";
+				row.iMaximumHp = owner->combatBody ? owner->combatBody->maxHp : 0u;
 				row.bSupportsPlacement = owner->sequenceInstanceId.empty() &&
 					instance.anchorKind == owner->anchorKind &&
 					(instance.anchorKind == "WORLD" || instance.anchorKind == "BOSS" || instance.anchorKind == "PLAYER");
@@ -9732,6 +9748,8 @@ void CMainApp::RefreshWorldObjectResources()
 			row.strObjectResourceId = object.objectId;
 			row.strObjectDisplayName = object.displayName; row.strDisplayName = object.displayName;
 			row.strAnchorKind = object.anchorKind; row.bEnabled = false;
+			row.bUntilDestroyed = object.combatBody && object.combatBody->lifetimePolicy == "UNTIL_DESTROYED";
+			row.iMaximumHp = object.combatBody ? object.combatBody->maxHp : 0u;
 			resources.push_back(std::move(row));
 		}
 	}

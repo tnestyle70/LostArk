@@ -529,7 +529,7 @@ namespace EffectDocumentRendererDetail
 			Distortion.DestBlendAlpha == D3D11_BLEND_ONE &&
 			Distortion.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
 			Distortion.RenderTargetWriteMask ==
-				(D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN) &&
+				D3D11_COLOR_WRITE_ENABLE_ALL &&
 			Bloom.BlendEnable == SceneColor.BlendEnable &&
 			Bloom.SrcBlend == SceneColor.SrcBlend &&
 			Bloom.DestBlend == SceneColor.DestBlend &&

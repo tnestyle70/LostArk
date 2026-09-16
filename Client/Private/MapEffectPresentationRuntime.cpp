@@ -454,6 +454,16 @@ bool_t CMapEffectPresentationRuntime::Probe_WorldEffectAdmissions(
 		outStatus.clear();
 		return true;
 	}
+	const uint32_t probeLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
+	if (levelIndex >= ETOUI(LEVEL::END) || probeLevelIndex >= ETOUI(LEVEL::END) ||
+		(probeLevelIndex != levelIndex && probeLevelIndex != ETOUI(LEVEL::LOADING)))
+	{
+		outStatus = "Map Effect admission probe requires its active Level or the loading Level.";
+		return false;
+	}
+	// Initialize runs before Change_Level. These temporary probes belong to the
+	// current loading layer and are stopped before returning; real spawns retain
+	// the target levelIndex committed by Commit_StagedDocument.
 	std::vector<STAGED_ADMISSION_PROBE> probes;
 	probes.reserve(worlds.size());
 	const auto stopProbes = [&probes]()
@@ -474,13 +484,14 @@ bool_t CMapEffectPresentationRuntime::Probe_WorldEffectAdmissions(
 		if (!std::isfinite(sampleSeconds) || sampleSeconds < 0.f ||
 			sampleSeconds > durations[index] + TIMELINE_EPSILON_SECONDS)
 		{
+			stopProbes();
 			outStatus = "Map Effect world admission sample is outside the prepared duration: " +
 				world.effectAssetId;
 			return false;
 		}
 
 		EFFECT_LEVEL_PLACEMENT_SPAWN_DESC probe;
-		probe.iLevelIndex = levelIndex;
+		probe.iLevelIndex = probeLevelIndex;
 		probe.strPlacementId = world.placementId +
 			".__map_effect_admission_probe__" + std::to_string(index);
 		probe.strEffectAssetId = world.effectAssetId;

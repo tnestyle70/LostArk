@@ -23,6 +23,11 @@ STAR = 'effect.kouku.gate3.mario.boss.pentagram.full.restore'
 HAND_SYSTEM = 'fx_mn_rpct_07_v.par_v_rpct_handswing_trail_01_loc_int'
 SHOT_SYSTEM = 'fx_mn_rpct_07_v.par_v_rpct_star_shot_01_loc_int'
 SHOT_ACTION = 10304
+BURST_ACTION = 4219932
+BURST_SYSTEMS = {
+    'fx_mn_rpct_07_v.par_v_rptm_down_lighting_atk_02_loc_int': (12, 1.9939700365066528),
+    'fx_mn_rpct_07_v.par_v_rpct_atk_09_01_loc_int': (13, 2.051466941833496),
+}
 FLOOR_IDS = {'kouku.mario.small.pentagram.floor.child.authored.' + str(i).zfill(5) for i in range(16, 21)}
 
 
@@ -108,7 +113,10 @@ def source_projection(evidence):
 
 def complete_small_pentagram(document, explosion, shot_time):
     """Preserve the eight authored drawing emitters and replace only gray floor5."""
-    drawing = [copy.deepcopy(e) for e in document['elements'] if e['id'] not in FLOOR_IDS]
+    companions = [copy.deepcopy(e) for e in document['elements']
+                  if e.get('sourcePresentation', {}).get('sourceObjectPath', '').rsplit('.', 1)[0] in BURST_SYSTEMS]
+    drawing = [copy.deepcopy(e) for e in document['elements'] if e['id'] not in FLOOR_IDS and
+               e.get('sourcePresentation', {}).get('sourceObjectPath', '').rsplit('.', 1)[0] not in BURST_SYSTEMS]
     # Re-running after installation preserves the same original drawing stream.
     drawing = [e for e in drawing if not e['id'].startswith('kouku.' + str(SHOT_ACTION) + '.')]
     assert len(drawing) == 8 and all(e['sourcePresentation']['sourceObjectPath'].startswith(
@@ -124,12 +132,104 @@ def complete_small_pentagram(document, explosion, shot_time):
         assert element['detail']['timing']['startDelaySeconds'] == shot_time
     result = copy.deepcopy(document)
     result['displayName'] = '작은 오망성'
-    result['elements'] = drawing + shot
+    result['elements'] = drawing + shot + companions
     return result, dict(preservedDrawingCount=8, preservedDrawingSha256=fingerprint(drawing),
         removedGrayFloorIds=sorted(FLOOR_IDS), addedSourceStarExplosionCount=7,
         sourceActionId=4219911, sourceNotify='action-4219911/stage-000/notify-008',
         sourceNotifyEnabled=False, compositionDecision='USER_REQUESTED_INDEPENDENT_SOURCE_SYSTEM_SEQUENCE',
         shotStartSeconds=shot_time)
+
+
+def complete_small_pentagram_impact(document, evidence):
+    """Append the original beam/debris impact without changing the saved star.
+
+    Action4219932 uses the same 27_01 clip and impact times as Action4219911,
+    but enables the companion impact too. The library intentionally contains
+    that complete impact. Hand attachment, precast/gray floor and screen-post
+    notifies remain separate resources instead of being silently folded in.
+    """
+    from build_kouku_encore_blackhole_beam import restore_nested_raw_defaults
+    evidence.mkdir(parents=True, exist_ok=True)
+    action = copy.deepcopy(next(a for a in source.read(ACTION)['actions'] if a['actionId'] == BURST_ACTION))
+    stage = next(s for s in action['stages'] if s['stageIndex'] == 0)
+    assert stage['animationClips'][0]['clipName'].lower() == 'att_battle_27_01'
+    selected = []
+    for system, (ordinal, seconds) in BURST_SYSTEMS.items():
+        notify = next(n for n in stage['notifies'] if n['notifyId'].endswith('/notify-' + str(ordinal).zfill(3)))
+        decoded = source.decode_typed_payload(notify['sourceType'], notify['serializedPayload'], None,
+                                             notify['assetReferences'], notify['serializedLabels'])
+        assert decoded['enabled'] and notify['localTimeSeconds'] == seconds
+        assert notify['assetReferences'][0]['objectPath'].lower() == system
+        assert decoded['attachment']['mode'] == 'SNAPSHOT_ROOT'
+        assert decoded['localTransform']['scale'] == [2.0, 2.0, 2.0]
+        selected.append(copy.deepcopy(notify))
+    stage['notifies'] = selected
+    action['stages'] = [stage]
+    selected_path = evidence / 'selected_source_actions.json'
+    source.write(selected_path, dict(actions=[action]))
+    previous = source.ACTION, source.SELECTED
+    source.ACTION, source.SELECTED = selected_path, {BURST_ACTION: ([0], 'Small pentagram original beam and impact')}
+    try:
+        index, notifies, occurrences, records = source.acquire(evidence)
+        assert len(notifies) == 2 and len(occurrences) == 23
+        programs = []
+        for system in BURST_SYSTEMS:
+            leaf = source.read(ROOT / 'Data/Effects/Authored' / ('effect.kouku.source.' + system + '.effect.json'))
+            materials = {(e['sourcePresentation']['sourceObjectPath'], e['material']['sourceMaterialPath']): e['material']
+                         for e in leaf['elements']}
+            for occurrence in (o for o in occurrences if o['sourceSystem'] == system):
+                material = materials[(occurrence['sourceEmitter'], occurrence['sourceMaterial'])]
+                assert material['sourceProfile']['enabled']
+                programs.append(dict(occurrences=[occurrence['elementId']], material=material))
+        patch = evidence / 'native_material_patch.json'
+        source.write(patch, dict(programs=programs))
+        source.project(evidence, index, notifies, occurrences, records, evidence / 'projected', material_patch=patch)
+    finally:
+        source.ACTION, source.SELECTED = previous
+    projected = source.read(evidence / 'projected' / ('effect.kouku.gate1.' + str(BURST_ACTION) + '.full.restore.effect.json'))
+    restore_nested_raw_defaults(projected, evidence)
+    notify_windows = {n['notifyId']: n['durationSeconds'] for n in notifies}
+    window_repairs = []
+    preserved = [copy.deepcopy(e) for e in document['elements']
+                 if e.get('sourcePresentation', {}).get('sourceObjectPath', '').rsplit('.', 1)[0] not in BURST_SYSTEMS]
+    assert len(preserved) == 15
+    for element in projected['elements']:
+        recipe = element['sourceRecipe']
+        window = notify_windows[element['sourcePresentation']['sourceEventId']]
+        if window > 0 and recipe['emitterDurationSeconds'] > window:
+            assert recipe['emitterLoopCount'] == 1 and recipe['emitterDelaySeconds'] == 0
+            recipe['emitterLoopCount'] = 0
+            window_repairs.append(element['id'])
+        element['groupId'] = STAR
+        # Reuse the existing independent cast/shot root basis. Source notify TRS
+        # and mesh/particle units are retained; do not apply the action-only yaw.
+        element['actionCueAttachment']['enabled'] = False
+        element['actionCueAttachment'].pop('snapshotRootSourceBasisYawDegrees', None)
+    existing = [e for e in document['elements']
+                if e.get('sourcePresentation', {}).get('sourceObjectPath', '').rsplit('.', 1)[0] in BURST_SYSTEMS]
+    assert not existing or existing == projected['elements'], 'Saved impact edits differ; preserve the user draft instead of replacing it'
+    result = copy.deepcopy(document)
+    result['elements'] = preserved + projected['elements']
+    source.write(evidence / 'impact-closure.json', dict(sourceActionId=BURST_ACTION,
+        sourceClip='Att_Battle_27_01', preservedElementCount=15,
+        preservedElementsSha256=fingerprint(preserved), addedElementCount=23,
+        systems=BURST_SYSTEMS, sourceNotifyTransforms=[n['cue']['localTransform'] for n in notifies],
+        notifyStopWindowElements=window_repairs,
+        scope='USER_REQUESTED_LIBRARY_IMPACT; SOURCE_4219911_DISABLE_FLAGS_ARE_NOT_CHANGED'))
+    return result
+
+
+def stage_small_pentagram_impact(evidence):
+    path = ROOT / 'Data/Effects/Authored' / (STAR + '.effect.json')
+    before = path.read_bytes()
+    document = complete_small_pentagram_impact(json.loads(before), evidence / 'impact_source')
+    candidate = evidence / 'candidate' / path.name
+    source.write(candidate, document)
+    source.write(evidence / 'installation.json', dict(installed=False, path=str(path.relative_to(ROOT)),
+        beforeSha256=hashlib.sha256(before).hexdigest(), candidatePath=str(candidate),
+        candidateSha256=hashlib.sha256(candidate.read_bytes()).hexdigest(), elementCount=len(document['elements']),
+        manualVisualValidation='USER_PENDING'))
+    print(json.dumps(dict(staged=True, elements=len(document['elements']), candidatePath=str(candidate))))
 
 
 def build(evidence):
@@ -146,6 +246,7 @@ def build(evidence):
     baseline = source.read(baseline_path)
     source.write(evidence / 'small_pentagram.before.json', baseline)
     star, sequence = complete_small_pentagram(baseline, explosion, shot_time)
+    star = complete_small_pentagram_impact(star, evidence / 'impact_source')
     source.write(evidence / 'small_pentagram_sequence.json', sequence)
     rows = []
     for document in (hand, star):
@@ -189,11 +290,39 @@ def stage_left_hand(evidence):
         assert attachment['enabled'] and attachment['follow']
         attachment.update(runtimeAnchorSlotId='fx_l_hand_01', runtimeBoneName='bip001-l-hand')
         attachment['socketLocalTransform'] = dict(position=[.15, 0, 0], rotationDegrees=[-90, 0, 0], scale=[1, 1, 1])
+    # The original startcontrol/weapon emitter places this white ribbon 100cm
+    # away from its socket. The user-requested hand adaptation emits at the
+    # hand socket; retain the raw source leaf and record this local override.
+    white = next(element for element in hand['elements'] if
+        element['material']['sourceProfile']['runtimeShaderProfileId'] == 'effect.ue3.kouku-3007-native.v1')
+    location = next(module for module in white['sourceRecipe']['modules'] if
+        module['className'] == 'particlemodulelocation' and module['stableId'].endswith('.particlemodulelocation_1'))
+    distribution = next(value for value in location['distributions'] if value['propertyPath'] == 'startlocation')
+    original_location_table = [0.0, 100.0, 100.0, 0.0, 0.0, 100.0, 0.0, 0.0]
+    assert distribution['operation'] == 1 and distribution['componentCount'] == 3
+    assert distribution['lookupTable'] in (original_location_table, [0.0] * 8)
+    before_location = copy.deepcopy(distribution['lookupTable'])
+    ribbon_type = next(module for module in white['sourceRecipe']['modules'] if
+        module['stableId'] == white['runtimeCarrier']['typeDataModuleStableId'])
+    clip_source = next(value for value in ribbon_type['literals'] if value['propertyPath'] == 'bclipsourcesegement')
+    assert clip_source['kind'] == 'boolean'
+    before_clip_source = clip_source['value']
+    # Keep the visible trail head on the hand between distance-based births.
+    # This explicit user adaptation changes geometry only, not RNG or spawning.
+    clip_source['value'] = False
+    distribution['lookupTable'] = [0.0] * 8
+    white['detail']['particle']['initialPositionMin'] = [0.0, 0.0, 0.0]
+    white['detail']['particle']['initialPositionMax'] = [0.0, 0.0, 0.0]
+    hand_adaptation = dict(elementId=white['id'], sourceModuleStableId=location['stableId'],
+        originalStartLocationCm=[100, 0, 0], handStartLocationCm=[0, 0, 0],
+        beforeLookupTable=before_location, rawSourceLeafModified=False,
+        originalClipSourceSegment=True, handClipSourceSegment=False, beforeClipSourceSegment=before_clip_source,
+        reason='USER_REQUESTED_LEFT_HAND_SOCKET_ORIGIN_AND_CONNECTED_HEAD; preserve original source facts.')
     candidate = evidence / 'candidate' / path.name
     source.write(candidate, hand)
     source.write(evidence / 'source-left-hand-socket.json', dict(sourceSocket=socket,
         authoredOverride='User requested left hand; original notify startcontrol remains provenance only.',
-        beforeAttachments=previous, basisEvidence=str(basis_path),
+        beforeAttachments=previous, basisEvidence=str(basis_path), handAdaptation=hand_adaptation,
         sourceClip='rpct00_att_battle_27_01', originalNotifyAction=4219911))
     source.write(evidence / 'installation.json', dict(installed=False, documents=[dict(
         effectAssetId=HAND, displayName=hand['displayName'], path=str(path.relative_to(ROOT)).replace('\\', '/'),
@@ -212,8 +341,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--evidence-root', type=Path, default=ROOT / 'out/KoukuRitualHandTrail20260913')
     parser.add_argument('--left-hand-only', action='store_true', help='Stage the saved ritual with the source left-hand socket; leave pentagram untouched.')
+    parser.add_argument('--burst-only', action='store_true', help='Stage only the missing original small-pentagram beam/impact; preserve all saved star elements.')
     options = parser.parse_args()
-    if options.left_hand_only:
+    if options.burst_only:
+        stage_small_pentagram_impact(options.evidence_root)
+    elif options.left_hand_only:
         stage_left_hand(options.evidence_root)
     else:
         build(options.evidence_root)

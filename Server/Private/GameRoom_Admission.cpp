@@ -246,6 +246,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 	{
 		for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 		{
+			if (entity.eKind == WORLD_BOOTSTRAP_KIND::WORLD_OBJECT) continue;
 			const bool isDependent = INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId;
 			if (isDependent != dependentPass)
 				continue;
@@ -286,10 +287,20 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		if (!append(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE, bundleState)) return false;
 		for (auto play : m_KoukuSaydonPatternAudition.WorldPlays)
 		{
+			if (play.bUntilDestroyed) continue; // Persistent bodies below own late join replay.
 			if (play.iDurationMs && Has_ReachedServerTick(m_iServerTick, Add_ServerTicksSkippingReservedZero(play.iStartTick, CKoukuSaydonLogicRuntime::Ticks_FromMs(play.iDurationMs)))) continue;
 			play.iServerTick = m_iServerTick;
 			if (!append(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, play)) return false;
 		}
+	}
+	for (const auto& cue : m_KoukuDamageableWorldCues)
+	{
+		if (cue.bCancelled) continue;
+		const auto live = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& row) { return row.iNetEntityId == cue.iBodyId && row.iCurrentHp; });
+		const auto pending = std::find_if(m_PendingKoukuWorldBodies.begin(), m_PendingKoukuWorldBodies.end(), [&](const auto& row) { return row.iNetEntityId == cue.iBodyId && row.iCurrentHp; });
+		if (live == m_WorldEntities.end() && pending == m_PendingKoukuWorldBodies.end()) continue;
+		auto play = cue.Play; play.iServerTick = m_iServerTick;
+		if (!append(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, play)) return false;
 	}
 #endif
 	std::vector<S2C_COMBAT_OBJECT_SPAWNED> combatObjects;
@@ -522,6 +533,7 @@ void LostArk::Server::CGameRoom::Leave(
 	{
 		Stop_ValtanTimelineRow();
 	}
+	Cancel_KoukuWorldBodies({}, sessionId);
 	const bool koukuOwnerLeft = sessionId == m_KoukuSaydonPatternAudition.iOwnerSessionId;
 	const auto soloMarioDeparture = std::find_if(
 		m_KoukuSaydonPatternAudition.Members.begin(), m_KoukuSaydonPatternAudition.Members.end(),

@@ -358,8 +358,16 @@ CLevel_Bern::~CLevel_Bern()
 
 HRESULT CLevel_Bern::Initialize()
 {
-	if (FAILED(__super::Initialize()))
+	const auto FailActivation = [](const std::string_view source, const std::string_view detail)
+	{
+		// Preserve the refusing stage before MainApp reports its generic create failure.
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
+			source, detail, E_FAIL);
 		return E_FAIL;
+	};
+	if (FAILED(__super::Initialize()))
+		return FailActivation("bern.level-initialize", "Base level initialization failed.");
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::BERN);
@@ -373,7 +381,7 @@ HRESULT CLevel_Bern::Initialize()
 			"[Level_Bern] " +
 			m_MapRuntime.Get_Status() +
 			"\n").c_str());
-		return E_FAIL;
+		return FailActivation("bern.map-area", m_MapRuntime.Get_Status());
 	}
 
 	// Keep the provider local until the rest of Level initialization commits.
@@ -383,13 +391,13 @@ HRESULT CLevel_Bern::Initialize()
 		OutputDebugStringA(("[Level_Bern][MapLight] " +
 			mapLightPresentation->Get_Status() + "\n").c_str());
 		m_MapRuntime.Clear();
-		return E_FAIL;
+		return FailActivation("bern.map-light", mapLightPresentation->Get_Status());
 	}
 
 	if (FAILED(Ready_Layer_Camera(
 			TEXT("Layer_Camera"), pEntry->pMapAreaId)))
 	{
-		return E_FAIL;
+		return FailActivation("bern.camera", "Bern camera layer creation failed.");
 	}
 
 	auto mapEffectPresentation = make_shared<CMapEffectPresentationRuntime>();
@@ -398,7 +406,7 @@ HRESULT CLevel_Bern::Initialize()
 			ETOUI(LEVEL::BERN), pEntry->pMapAreaId, mapEffectStatus))
 	{
 		OutputDebugStringA(("[Level_Bern][MapEffect] " + mapEffectStatus + "\n").c_str());
-		return E_FAIL;
+		return FailActivation("bern.map-effect", mapEffectStatus);
 	}
 
 	(void)Ready_EntranceCinematic();
@@ -422,15 +430,15 @@ HRESULT CLevel_Bern::Initialize()
 	if (!m_Replication.Initialize(replicationDesc))
 	{
 		m_MapRuntime.Clear();
-		return E_FAIL;
+		return FailActivation("bern.replication", "Approved Bern replication initialization failed.");
 	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	if (!m_PlayerController.Initialize_TargetingPreview(ETOUI(LEVEL::BERN)))
-		return E_FAIL;
+		return FailActivation("bern.targeting-preview", "Player targeting preview initialization failed.");
 	if (!m_PlayerController.Initialize_ClickMoveEffect(ETOUI(LEVEL::BERN)))
-		return E_FAIL;
+		return FailActivation("bern.click-move-effect", "Player click-move Effect initialization failed.");
 
 	if (!Ready_ValtanEntryNpcs(pEntry->pMapAreaId))
 	{

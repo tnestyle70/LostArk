@@ -190,6 +190,10 @@ public:
 	{
 		return m_Playback.Enable_OwnerSustainedSourceLoops(strOutError);
 	}
+	bool_t Set_SourceLoopEndSeconds(f32_t fEndSeconds, std::string& strOutError)
+	{
+		return m_Playback.Set_SourceLoopEndSeconds(fEndSeconds, strOutError);
+	}
 	bool_t Is_Finished() const
 	{
 		return m_Playback.Is_Finished() &&

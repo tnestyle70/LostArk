@@ -459,3 +459,44 @@ Server 재시작 필요와 제품 EXE 미링크를 명시하고 사용자가 새
 실제 설치 WModel의 본·배율 및 시간 수치, 변경 JSON/XML parse와 scoped diff 검사를 수행한다.
 Client/Server 실행 중 EXE/DLL을 교체하지 않는다. 사용자 화면 조작·최종 판정은 별도이며,
 미확정 원본 입력·제품 빌드 상태와 실제 완료 증거는 대응 RESULT에 분리한다.
+
+## G26. 발탄·베른 맵 프레임과 활성 렌더링, 진입 실패 — 2026-09-16
+
+발탄 사용자 캡처 `profiler_20260916_104620_729_frame12_67768_0.json`의12프레임과 유효GPU8프레임을 기준으로 수정한다. GPU 평균142.518ms 중Shadow112.852ms이며 Render.Blend는0.038ms다. source BG의 완전 불투명 shadow는 재질·RNM·tangent 계산을 생략하는 기존 depth-only instancing을 재사용한다. fallback 정적 맵도 같은 조건에서 depth-only로 연결하고, masked·fade/dither 및 실제vertex변형이 필요한 경로를 보존한다. 정상/반전 winding과 실제 depth parity를 기존 수치 fixture로 확인한다. MapAssetRenderUtils, MapStaticBatchObject, MapAssetObject 및 해당 정적 mesh shader만 우선 변경한다.
+
+활성 발탄 렌더링 revision49는 원본 LUT와 base/region 후처리를 다시 사용 중이다. LUT 표본의 검정은0이며 동일HDR입력에 단독 white lift가 발생하지 않는다. baseBloom threshold0.3, region0.7의 넓은 blur기여와 현재노출1을 발탄 기본profile에서 조정한다. 원본 LUT·tone식과 source-rendering 비교profile은 보존하고, 기본profile의 exposure0.73, base/regionBloom threshold2.74와intensity0.5로 낮춘다. 이는 현재 렌더링용 밝기튜닝이며 원본값 복원으로 표시하지 않는다. 다른profile/전역품질/광원기하/원본texture는 그대로 두고 공식 RenderingProfiles publisher로 검증·게시한다.
+
+베른은 현재 세션의 Server승인 후 target-level-create 실패를 실제 Initialize 소비자까지 조사한다. ambient 물보라두effect의 velocitycone admission실패는 지원가능 원본값을 기존carrier로 연결하고, 실패표시가 단순loading.complete로 바뀌지 않도록 원인을 전달한다. 별도로 실제23555행 Gameplay.bootstrap을 거부하는 Client의8192행상한을 Server정본계약과 맞춘다. 실패한로드의 기존상태보존과 malformed입력거부를 유지한다.
+
+Root가 제품빌드를 조율한다. Client/UI 자동실행·캡처나 최종FPS/밝기판정을 하지 않는다. 실행중인 저작내용을 보존하고 필요한최소컴파일, depth/데이터진단, JSON/XMLparse와diff-check를 수행한다. 최종실제FPS는 같은위치에서 사용자가 저장한후속캡처로 비교한다. 작은오망성은 기존Sequence작업의별도복원범위에서 원본활성burst를 연결한다.
+
+## G27. 발탄 후속 캡처의 정적 그림자 재제출과 조명 범위 — 2026-09-16
+
+사용자가 저장한 `profiler_20260916_155102_918_frame26_62472_0.json`은26프레임 중 GPU22프레임이 유효하다. 평균 Shadow54.724ms, NonBlend20.001ms, Lights4.570ms이며 shadow VS는 약1160만회다. CPU scope403405개가 누락되어 부분 CPU scope합으로 주원인을 확정하지 않는다. 화면 mapVisibleInstances601개에 전체draw8113회, instanced4874회가 기록됐다. 기존 카메라 및 light-volume 컬링과 G26 depth-only 경로는 유지한다.
+
+`CGameObject::Try_GetStaticShadowRevision`은 기본false인 선택적 정적 depth 계약이다. `CMapStaticBatchObject`만 모든 shadow mesh가 기존 opaque pass 조건을 만족할 때 revision을 제공한다. instance transform·visible 변경은 revision을 증가시키고, source-material 설정 전환은 별도 key로 검사한다. animated/masked/fade 및 미지원 객체는 매 프레임 기존 Render_Shadow를 사용한다.
+
+`CRenderer::Render_Shadow`는 최종 frame provider 뒤 light view/projection, 캐시 대상의 weak owner와 revision, source-material 설정 및 scene replacement를 비교한다. miss에서는 기존 shadow depth에 정적 객체를 먼저 그리고 동일규격 GPU texture에 보존한다. hit에서는 기존 depth target으로 복사하고 동적 객체를 이어 그린다. 카메라 frustum으로 그림자 caster를 제한하지 않는다. 실패·객체 추가/삭제·light 변경·scene replacement는 캐시를 무효화하며 cached weak owner가 객체 수명을 연장하지 않는다. 크기와 depth format, cull mode, 원래 geometry와 shadow sampling은 유지한다.
+
+`CMapAssetObject::Render_Shadow`는 실제 light view/projection과 이미 계산한 보수적 world bounds로 완전히 벗어난 fallback 객체를 제외한다. `Shader_Deferred.hlsl::Resolve_LocalLight`는 유효한 감쇠값이0인 경우 최종0기여를 일찍 반환하여 뒤의 map/legacy 재질 계산을 생략한다. Engine 정본과 Client 사본을 함께 유지하고 광원 값·순서·개수와 수광 계약을 바꾸지 않는다.
+
+기존 C++/HLSL만 수정하므로 신규 project/filter 등록은 없다. 실제 depth copy와 static/dynamic 합성의 수치 동일성, 캐시 무효화·owner 수명·실패 복구, fallback light frustum 경계, local attenuation0의 출력 동일성을 확인한다. 관련 최소 컴파일과 HLSL 컴파일, XMLparse/diff검사를 수행하며 Engine public virtual 변경은 최종 Product 빌드의 SDK 및 Client 재컴파일이 필요하다. 실행 중 Client/Server를 자율 종료하지 않고 제품 빌드 가능 상태를 확인한다. 후속 사용자 캡처 전에는 개선 FPS를 확정하지 않는다.
+
+## G28. 베른 직접 입장의 audition identity와 생성 transaction 보존
+
+`CCharacterSelectionState::Try_Resolve_ForWorld(BERN)`만 pending/created identity가 없으면false를 반환하고 `CLevel_Lobby::Begin_NetworkEntry`가 캐릭터 생성 안내로 바꾼다. F1은 이미 typed Lobby 경로를 사용한다. 베른의pending우선·created재사용은 그대로 두고, 둘 다 없을 때 기존 선택class와 process-local Test nickname으로 AUDITION을 선택한다. Lobby Bern버튼과F1은 같은 Server 승인 경로를 소비한다. 생성된 identity를 가장하거나 local world로 우회하지 않는다.
+
+`CharacterSelectionState.cpp`와 `Level_Lobby.cpp`만 변경한다. MainApp의 실제 Bern활성화 성공 뒤 pending commit, 실패 cancel과 이전created 보존은 유지한다. 실제 identity함수와 현재Shared nickname validator로 초기audition·class선택·pending우선·실패취소·성공commit·created재진입·미지원world의출력보존을 검사한다. 변경된public입장계약은 AGENTS와팀핸드북의nickname문장에 반영한다.
+
+## G29. 네 제품 맵의 공통 최적화 연결 확인
+
+Character Select, Bern, Valtan, KoukuSaydon은 CLevelRegistry의scope를 기존 CMapPlacementRuntime에 전달하고 동일 MapStaticBatchObject/MapAssetObject를 생성한다. 공통camera/light 컬링, 동일instance GPU업로드생략, 불투명shadow, Shader clone공유입력재사용, 조명instancing, animation palette와Effect simulation/render준비의 실제caller를 대조한다. G27은 레벨이름을조건으로 삼지 않으므로 동일재질계약을 만족하는 네맵이 함께 사용한다. Bern의far-plane안전여유와쿠크의시퀀스가시성변경은 보존하고, 원래disabled인shadow를최적화명목으로켜지 않는다. 기존GPU LOD의draw크기·재질·morph검증도 각레벨에서같은조건으로사용하며미지원재질에강제하지 않는다. 확인한연결과미측정실제FPS를RESULT에서구분한다.
+
+## G30. 활성화 전 맵 이펙트 admission과 SOURCE_LOOP 소유자 일치
+
+Bern Initialize는 실제 Change_Level 전에 실행되어 current level이 LOADING이다. 이때 대상 BERN으로 임시 probe를 제출하면 기존 active-level 검사에 거절된다. CMapEffectPresentationRuntime의 admission probe는 current가 대상이면 그대로, LOADING이면 LOADING 소유 임시 객체로 시험한 뒤 모두 Stop한다. 실제 맵 런타임의 대상 level과 활성화 이후 spawn은 변경하지 않는다. 다른 활성 level 불일치는 명시 실패하며 Effect 서비스의 active-level 검사를 제거하지 않는다.
+
+queued Spawn의 owner-sustained source-loop 조건을 기존 Spawn_Immediate와 동일하게 정렬한다. world-root·NATURAL·비 external·비 character 조건을 유지하고 level-owned/no-boss 또는 boss-owned/boss만 허용한다. MapEffectPresentationRuntime.cpp와 Effect_PresentationService.cpp만 변경하며 잘못된 sample을 포함한 probe 실패 경로도 이미 만들어진 후보를 전부 Stop한다. 실제 함수 기반 검증으로 LOADING/대상/다른 level, queued와 immediate descriptor 일치, clone 실패·중간 실패 cleanup을 확인한다. 제품 빌드와 사용자 Bern 직접/생성 진입 화면 확인은 구분한다.
+### G29 추가 확인: Bern 선택 캐릭터의 로딩 중 Effect 준비
+
+실제 Level_Loading::Advance_TargetEffectPreparation의 선택 player cue 조건은 Character Select/Valtan/Kouku만 포함하고 Bern을 빠뜨린다. Bern도 같은 worker/map effect gate를 통과하지만 player cue는 Character spawn 이후 공통 incremental worker로 뒤늦게 등록된다. Bern을 기존 선택 class의 Queue_ProductCues_Priority 및 loading progress 표시에 포함한다. boss별 준비 조건, 맵 effect 집합, 실패 격리, epoch/cancel과 준비 완료 gate는 그대로 둔다. Level_Loading.cpp의 기존 소비자 조건만 확장하며 신규 API나 파일은 추가하지 않는다. 진행 중 Product 빌드 완료 후 반영하고 정상 증분 Product Build로 연결한다.

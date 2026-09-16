@@ -74,7 +74,7 @@ namespace
 			if (!std::isfinite(rate) || rate <= 0.f) return false;
 			const f32_t delayed = elapsedMs - motion->startDelayMs;
 			const f32_t raw = (std::max)(0.f, delayed) * rate;
-			const f32_t duration = static_cast<f32_t>(sequence->ObjectSpanMs());
+			const f32_t duration = static_cast<f32_t>(motion->CycleSpanMs(*sequence));
 			if (!std::isfinite(raw)) return false;
 			if (delayed < 0.f && previousSequence)
 			{
@@ -993,7 +993,7 @@ f32_t CWorldSequencePlayer::Get_InstanceElapsedSpanMs(const std::string& instanc
         if (!std::isfinite(rate) || rate <= 0.) return 0.f;
         start += instance->startDelayMs;
         if (start >= cutoff) break;
-        const double period = sequence->ObjectSpanMs() / rate;
+        const double period = instance->CycleSpanMs(*sequence) / rate;
         const bool loop = instance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP;
         if (loop && !durationMs) return static_cast<f32_t>(CWorldSequenceDocument::MAX_DURATION_MS);
         double tail = sequence->durationMs;

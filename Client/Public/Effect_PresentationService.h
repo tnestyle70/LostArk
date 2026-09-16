@@ -64,6 +64,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bExternallySampled = false;
 	// A real boss or level world-root owner sustains only source EmitterLoops=0.
 	bool_t bOwnerSustainedSourceLoops = false;
+	// External occurrence end for native infinite source emitters; zero keeps authored timing.
+	f32_t fSourceLoopEndSeconds = 0.f;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
 	// External occurrence end age; zero retains the authored screen-post duration.
@@ -101,6 +103,8 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	bool_t bExternallySampled = false;
 	// Native infinite emitters advance naturally until the level releases the handle.
 	bool_t bOwnerSustainedSourceLoops = false;
+	// External occurrence end for native infinite source emitters; zero keeps authored timing.
+	f32_t fSourceLoopEndSeconds = 0.f;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
 };

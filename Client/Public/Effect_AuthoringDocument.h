@@ -635,6 +635,8 @@ struct EFFECT_SPRITE_DETAIL_DESC final
 	bool_t bBillboard = true;
 	// Fixed source-axis sprites may rotate with the authored emitter basis.
 	bool_t bFollowEmitterAxisRotation = false;
+	// Authored native-sprite culling only; the source blend/depth contract stays intact.
+	bool_t bTwoSided = false;
 	f32_t fBillboardRollDegrees = 0.f;
 	// Camera-facing billboards use roll; fixed source-axis sprites can also
 	// opt into emitter Transform rotation with bFollowEmitterAxisRotation.

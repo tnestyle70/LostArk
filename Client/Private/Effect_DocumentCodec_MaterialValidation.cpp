@@ -870,10 +870,12 @@ namespace Client::EffectDocumentCodecDetail
 			{
 				for (const auto& Literal : Module.Literals)
 				{
+					// A non-null MeshMaterial slot precedes the Required.Material override.
+					// Exact array and CModel slot coverage below still forbid fallback holes.
 					if (Literal.strPropertyPath == "boverridematerial" &&
-						(Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN || Literal.bBoolean))
+						Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN)
 					{
-						strOutError = "Mesh TypeData override conflicts with source material slots.";
+						strOutError = "Mesh TypeData material override must be boolean.";
 						return false;
 					}
 				}

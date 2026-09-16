@@ -21,6 +21,7 @@
 
 #include <array>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <set>
@@ -36,6 +37,16 @@ class CCamera;
 NS_END
 
 NS_BEGIN(Client)
+
+struct KOUKU_SAYDON_COMPOSITION_DOCUMENT;
+struct EFFECT_TOOL_KOUKU_PATTERN_PREVIEW final
+{
+    EFFECT_SOURCE_MODEL_PREVIEW SourceModelPreview;
+    std::uint32_t iEffectStartMs = 0u;
+    std::uint32_t iDurationMs = 0u;
+    bool bLoopEffectToDuration = false;
+    std::string strPatternId, strOccurrenceId;
+};
 
 class CCharacterPreviewPanel;
 class CEffectObject;
@@ -516,6 +527,13 @@ public:
     ~CEffect_Tool();
 
     void Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* player);
+    using KOUKU_PATTERN_PREVIEW_PROVIDER = std::function<bool(const std::string&,
+        EFFECT_TOOL_KOUKU_PATTERN_PREVIEW&, std::string&)>;
+    void Set_KoukuPatternPreviewProvider(KOUKU_PATTERN_PREVIEW_PROVIDER provider)
+    { m_KoukuPatternPreviewProvider = std::move(provider); }
+    static bool Build_KoukuPatternPreviewContext(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const std::string& patternId, const std::string& occurrenceId, const std::string& effectId,
+        EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status);
     shared_ptr<CEffectAuthoringSequencer> Create_CompositionSequencer(const char* sequenceId);
     void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
     void Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera);
@@ -907,6 +925,8 @@ private:
 		EFFECT_AUTHORING_FAMILY eFamily);
 	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
 	bool_t Try_PlayActiveUnifiedEffect();
+    void Resolve_KoukuPatternPreviewContext(EFFECT_DOCUMENT_DESC& preview,
+        std::optional<std::uint32_t>& durationMs, std::uint32_t& modelStartMs, bool& loopEffectToDuration);
 	bool_t Prepare_RecoveryPreviewTarget();
 	bool_t Try_PlayRecoveryEffect();
 	bool_t Try_PreviewElementTimeline(const std::string& strElementId);
@@ -1485,6 +1505,8 @@ private:
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
     std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
     std::shared_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
+    KOUKU_PATTERN_PREVIEW_PROVIDER m_KoukuPatternPreviewProvider;
+    std::string m_strKoukuPatternPreviewStatus;
     std::vector<EFFECT_COMPOSITION_WORLD_RESOURCE> m_AuthoringWorldObjects;
     std::unordered_map<CEffectObject*, uint32_t> m_AuthoringOccurrenceLevels;
     std::unordered_map<CEffectObject*, std::shared_ptr<const EFFECT_DOCUMENT_DESC>> m_AuthoringOccurrenceDocuments;

@@ -6,6 +6,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_ReconstructedExecution.h"
 
+#include <algorithm>
 #include <functional>
 #include <deque>
 #include <string>
@@ -434,8 +435,13 @@ public:
 		EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const;
 	// Runtime owner-lifetime contract; authored finite previews retain their duration.
 	bool_t Enable_OwnerSustainedSourceLoops(std::string& strOutError);
+	// Per-instance occurrence clock; zero keeps the immutable document lifetime.
+	bool_t Set_SourceLoopEndSeconds(f32_t fEndSeconds, std::string& strOutError);
 	bool_t Is_Finished() const;
-	f32_t Get_DurationSeconds() const { return m_fDurationSeconds; }
+	f32_t Get_DurationSeconds() const
+	{
+		return (std::max)(m_fDurationSeconds, m_fSourceLoopEndSeconds);
+	}
 	f64_t Get_FixedStepClockSeconds() const;
 	bool_t Is_ReconstructedSourceRuntimeActive() const
 	{
@@ -714,6 +720,7 @@ private:
 	f32_t m_fSampleTimeSeconds = 0.f;
 	f64_t m_fAccumulatorSeconds = 0.0;
 	f32_t m_fDurationSeconds = 0.f;
+	f32_t m_fSourceLoopEndSeconds = 0.f;
 	bool_t m_bOwnerSustainedSourceLoops = false;
 	uint64_t m_iSimulationStep = 0u;
 	bool_t m_bSourceVisualProgramActive = false;

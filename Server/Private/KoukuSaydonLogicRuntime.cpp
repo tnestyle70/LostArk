@@ -6,6 +6,7 @@
 #include "ServerCollisionSystem.h"
 #include "ServerNavigation.h"
 #include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
 #include <cmath>
@@ -933,18 +934,36 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	}
 }
 
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Can_EnterMarioEntry(
+	const SERVER_PLAYER& player) noexcept
+{
+	return Is_Judgeable(player) && !player.iMarioStage && !player.TriggerMove.isActive &&
+		!player.bPatternBound && !player.bArenaEjectionActive &&
+		player.iAttachmentOwnerNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID;
+}
+
 bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(
 	const BOSS_PATTERN_DEFINITION& root, const SERVER_WORLD_ENTITY& anchor,
 	const SERVER_PLAYER& player, const std::uint32_t elapsedTicks)
 {
-	if (!Is_Judgeable(player) || player.iMarioStage || player.TriggerMove.isActive ||
-		player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::NONE) return false;
+	using namespace LostArk::Shared::WorldCollision;
+	if (!Can_EnterMarioEntry(player)) return false;
+	// Movement stops one contact margin short of a blocking body. Admit the
+	// player's body at that same boundary rather than waiting for its centre.
+	const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ body{
+		player.fPositionX, player.fPositionZ, PLAYER_HALF_EXTENT_X + CONTACT_MARGIN };
 	for (const auto& window : root.LogicWindows)
 	{
 		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || elapsedTicks < Ticks_FromMs(window.iStartMs) ||
 			window.OnSuccess.size() != 1u || window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER) continue;
 		for (const auto& region : window.CardRegions)
-			if (Contains_LogicRegion(region, anchor, player, elapsedTicks)) return true;
+		{
+			LOGIC_REGION_TRANSFORM transform;
+			if (!Resolve_LogicRegionTransform(region, anchor, elapsedTicks, transform) ||
+				(transform.hasGrip && std::abs(player.fPositionY + PLAYER_CENTER_OFFSET_Y - transform.centerY) >
+					transform.halfY + PLAYER_HALF_EXTENT_Y + CONTACT_MARGIN)) continue;
+			if (Intersects_LogicRegion(region, anchor, body, elapsedTicks)) return true;
+		}
 	}
 	return false;
 }
@@ -1105,6 +1124,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		play.strInstanceId = sequence.strInstanceId; play.fPlaybackSpeed = sequence.fPlaybackSpeed;
 		play.iDurationMs = sequence.iDurationMs; play.strOccurrenceId = sequence.strOccurrenceId; play.iStartTick = cue.iStartTick;
 		play.Placement = sequence.Placement;
+		play.CombatBody = sequence.CombatBody;
 		if (!play.Placement)
 		{
 			play.fPositionOffsetX = sequence.fPositionOffsetX + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionX - sequence.fAnchorPositionX : 0.f);

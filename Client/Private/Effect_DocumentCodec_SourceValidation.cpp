@@ -151,6 +151,11 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 	std::unordered_set<std::string> LocalReferenceOccurrenceIds;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+		if (Element.Detail.Sprite.bTwoSided)
+		{
+			strOutError = "Source contracts cannot contain an authored Two Sided override.";
+			return false;
+		}
 		if (!Is_StableId(Element.strElementId) ||
 			!ElementIds.insert(Element.strElementId).second ||
 			Element.eKind >= EFFECT_ELEMENT_KIND::END ||

@@ -1355,3 +1355,91 @@ Server navigation은 이미 새 파일로 게시됐어도 실행 중 Server는 �
 정규화 출력,37개 실제 CModel,Client/Server nav bytes를 대조했다. 별도 게시 스크립트의
 PowerShell parse, 기존 project/filter XML2개와 변경 JSON parse, scoped diff 검사를 통과했다.
 Navigation의 AreaId 생략 전체5Area/쿠크4region Validate도 통과해 기존 호출을 보존했다.
+
+## G26. 발탄·베른 맵 shadow 비용, 발탄 밝기와 베른 진입 — 2026-09-16
+
+### 확인한 병목과 소스 반영
+
+사용자 저장본 `Client/Bin/ProfilerCaptures/profiler_20260916_104620_729_frame12_67768_0.json`은 12프레임 중 유효 GPU 8프레임의 평균이 142.518ms다. Shadow 112.852ms가 약79%이며 NonBlend 10.944ms, Lights 4.999ms, Render.Blend 0.038ms다. CPU 평균140.627ms이나 세부 scope 261318개가 누락돼 CPU 세부 합계를 병목 증거로 쓰지 않았다. 마지막 카운터는 draw8223, instanced4929, map placement13184다. 복원 이펙트의 입자 렌더링이 주 병목이라고 단정할 근거는 없었다.
+
+`Uses_OpaqueShadowPass`가 source material을 사용하는 완전 불투명 DEFERRED 정적 맵 표면만 선별한다. PBR3/4는 alphaMasked가 없을 때, SOURCE_SPECULAR_OPAQUE5, SOURCE_OVERLAY7/SOURCE_BG8은 mask flag64가 없을 때 허용한다. source off, fade, masked, 식생/캐릭터와 미확인 vertex 변형은 기존 경로를 유지한다. MapStaticBatchObject는 기존 depth-only pass21~23을 재사용하고, MapAssetObject는 binary shader의 새 pass20~22를 사용한다. 허용된 mesh는 Bind_ShadowMaterial과 재질 texture/RNM 계산을 생략한다. geometry, preScale, world/projection 곱셈 순서, cull mode와 draw count는 유지했다. 이는 두 맵이 공유하는 비용 절감이며 실제 FPS 상승률은 아직 측정하지 않았다.
+
+변경 CPP3개 개별 컴파일과 binary/instance 전체 FX 컴파일이 통과했다. 실제 전체 셰이더를 사용한 headless D3D11 WARP의 3264조건/835584 depth값은 기존 경로와 불일치0, nonfinite0, D3D오류0이다. 실제 두 맵의 family7/8 flag65조합, source on/off, fade, alpha, 3개 cull과 반전·비균일·shear basis를 포함한다. authored material coverage는 발탄10160배치, 베른16182배치에서 하나 이상 적용 가능하지만 light/frustum culling 전 집계이므로 실제 draw 절감 수로 보고하지 않는다. 증거는 `out/MapShadowPerf20260916/{capture_summary.json,source_material_coverage.json,verification.json,result.json}`이다.
+
+### 발탄 밝기
+
+RenderingProfiles revision49→50에서 활성 `scene.valtan.cool-low-key.v1`만 exposure1→0.73, base/두 region bloom threshold→2.74, intensity→0.5로 조정하고 공식 publisher의 Validate/Publish를 통과했다. 원본 LUT와 source tone 식, 비교용 source-rendering profile, 다른21개 profile/전역품질/광원은 유지했다. LUT 표본의 검정 출력은0이며 단독 white floor를 확인하지 못했다. 이 변경은 사용자가 보고한 밝기·번짐을 줄이는 프로젝트 튜닝이지 원본 값 복원이나 장면 픽셀 검증이 아니다. 증거는 `out/MapFrameAndValtanBrightness20260916/brightness-profile-change.json`이다. 실행 중 Client의 메모리 profile을 자동 reload하지 않았다.
+
+### 베른 진입과 bootstrap 소비
+
+`Client/Bin/Debug/Diagnostics/client-session-61448.jsonl`은 Server 승인 뒤 약250.295초에 target-level-create가 실패한 기록이다. `loading.complete`는 실패 원인이 아니라 activation 요청 이름이었다. 실제 MapEffect91배치/MapLight315개는 parse에 통과했지만, installed Resources를 사용하는 Product 준비에서는 물보라 `par_d_fallsplash_w1_001`과 `par_d_fallsplash_w3_001`의 `particlemodulevelocitycone`이 거절돼 9/11개만 준비됐다. Loader가 격리한 실패를 Bern Initialize의 필수 ambient transaction이 거절하는 재현 가능한 차단점이다. 이전 로그가 모든 Initialize 원인을 구분하지 않으므로 다른 실패가 전혀 없었다고 주장하지 않는다.
+
+기존 codec/spawn carrier에 exact VelocityCone의 scalar angle/velocity, 유효 direction과 emitter-space 모드를 연결했다. 원본85~100cm/s와 direction(0,0,1)을 한 번만 좌표·단위 변환한다. angle0~10을 degree로 해석한 수치 재구성이며 원작 random 알고리즘/원본 실행 코드 동일성까지 확인한 것은 아니다. world-space velocity, 추가 owner scale, vector 분포와 zero direction은 계속 거절한다. Bern Initialize는 실제 실패 단계의 recovery를 먼저 기록하고 기존 first-recovery 소비자가 generic MainApp detail의 덮어쓰기를 막는다.
+
+별도로 Client presentation reader의8192행 제한을 기존 Server/publisher32768행과 같은 Shared 상수로 통일했다. 실제23555행 bootstrap의 admission 실패를 제거하고, 엄격한 unsigned 파싱 및 선언 행 수와 payload 일치를 검사한다. 이 결함을 Bern map-effect 실패와 동일한 원인으로 기록하지 않는다.
+
+Client CPP4개·Server CPP1개·Shared CPP 개별 컴파일과 publisher PowerShell parse가 통과했다. 실제11/11 ambient가 준비·10초 CPU 재생에 통과했으며, cone velocity 표본6449개의 속도와 각도가 입력 범위 안이었다. 2배 크기/90도 회전에서도 기존 root basis가 한 번 적용됨을 확인했다. 미지원8개 입력 거절, 실제23555행/32768행과 malformed·초과·부족 bootstrap14개 검사가 통과했다. 상세 근거는 `out/BernEntry20260916/RESULT_NOTES.md`와 해당 폴더의 native 결과다.
+
+### 빌드·화면 경계
+
+에이전트는 실행 중 Client/Server를 종료하거나 제품 EXE/DLL을 교체하지 않았다. 사용자가 현재 Product 빌드를 직접 수행 중이다. 위 기록은 최소 컴파일·shader/depth/데이터 검증이며, 새 제품 빌드 성공·실제 베른 입장·개선 후 FPS·밝기 및 원작 시각 일치의 완료 기록이 아니다. 사용자 새 profiler를 같은 위치·설정으로 저장하면 기존 프레임과 비교할 수 있다. 작은 오망성과 독립 진입 포탈은 09-13 RADIAL MOTION RESULT의 후속 절에서 별도로 기록한다.
+
+## G27. 발탄 후속 캡처의 정적 depth 재사용과 local light 비용
+
+`profiler_20260916_155102_918_frame26_62472_0.json`의 CPU frame 평균은85.231ms, frame interval은86.565ms(11.552fps), 유효 GPU22개 평균은86.746ms다. Shadow54.724ms(63.1%), NonBlend20.001ms, Lights4.570ms이며 shadow VS11,602,859회다. 기존 G26 이후 shadow PS는 약573만→98만으로 줄었으나 geometry 재제출은 그대로였다. camera-visible601/placement13184로 컬링은 이미 작동한다. CPU scope403405개 누락 때문에 GPU elapsed만으로 순수 GPU 연산과 CPU 제출 지연의 비중을 확정하지 않는다.
+
+### 공통 소스 반영
+
+Engine의 기본 거절 `Try_GetStaticShadowRevision`을 통해 완전 불투명·비 morph인 기존 map batch만 정적 depth 캐시에 참여한다. light view/projection, source-material 설정, ordered weak owner/control block과 instance revision이 같을 때 이전 정적 depth를 복사하고 동적 caster를 이어 그린다. transform·visible·bounds 변경, 구성 변경, source 모드, scene replacement와 실패는 캐시를 무효화한다. 추가 texture 생성 실패는 기존 매 프레임 경로를 유지하며 weak owner는 객체 수명을 연장하지 않는다. 캐시 copy가 그림자 해상도·depth format·geometry·sampling을 바꾸지 않는다.
+
+fallback MapAssetObject는 실제 light volume 밖이면 shadow 제출을 생략한다. morph와 source-character43의 vertex displacement는 bounds 검사에서 제외한다. Deferred local light는 최종 attenuation이 정확히0인 pixel에서 뒤의 재질/BRDF 계산을 생략한다. 실제 광원 개수·범위·순서와 map visibility는 유지한다. Engine 정본과 Client shader 사본을 함께 변경했다.
+
+### 수치 검증
+
+- 실제 Renderer의 Render_Shadow/Ready_Shadow_Resources 본문을 추출한 headless WARP 비교:97검사,557056 depth값, 비배경538210값, bitwise 차이0, D3D오류·경고0. cold/hit,동적 ghost,revision·light·source·scene 변경,추가/삭제/순서,실패/재시도,queue append,weak lifetime 및 같은주소의 다른control block을 포함한다. 실제 맵 대신 통제한 caster를 썼으므로 실제 맵 FPS 증거는 아니다.
+- 실제 map 함수6개 기반 admission/culling:45검사 실패0. mutable morph·masked/fade·source off·revision overflow와 보수적6평면 경계를 포함한다. 설치 발탄 asset/material 기준 캐시 후보3384batch·8711배치·3615submesh·14,197,926indices는 light culling 전 집계이며 실제 절감량은 아니다.
+- 실제 전체 Deferred baseline/candidate FX를 hardware와 WARP에서 각각2176조건·163,931,136 FP16 channel 비교:차이0,nonfinite0,D3D오류0. 통제한1280×720·22point·9쌍 표본의 좁은범위 조건6.083→0.709ms는 shader fixture 결과이고 제품 Lights4.570ms나 FPS에 곧바로 환산하지 않는다.
+- Renderer/MapStaticBatchObject/MapAssetObject 개별 Debug 컴파일과 전체 Deferred FX 컴파일 통과. 제품 빌드는 아래 통합 빌드 절에서 별도 기록한다.
+
+근거는 `out/ValtanPerf20260916/{CaptureAnalysis,ShadowCache,ShadowAdmission,LightEarlyOut}`다. 실제 사용자 후속 캡처는 아직 없으며 새 FPS를 측정한 것으로 보고하지 않는다.
+
+## G28. 베른 직접 입장과 Create Character transaction
+
+Bern만 pending/created identity가 없으면 admission 이전에 실패했다. CharacterSelectionState의 pending Bern identity 우선은 유지하고, pending이 없을 때 Valtan/Kouku의 기존 created→AUDITION 선택을 공유하도록 수정했다. Lobby와 F1은 Server 승인 경로를 그대로 사용한다. 선택 class가 없으면 기존 Lance Master 기본값, created identity가 없으면 Test-<PID>를 사용한다. 직접 입장을 created identity로 만들지 않으며 실제 Bern Change_Level 이후 pending commit과 실패 cancel은 그대로다.
+
+실제 CharacterSelectionState.cpp와 현재 Shared Debug.lib를 사용한23검사 실패0, Level_Lobby 최소 Debug 컴파일 통과다. 초기 입장,선택class,pending우선,잘못된nickname,취소,commit,기존created재진입과 미지원world의출력보존을 확인했다. UTF-8-noBOM/CRLF와 무관한 dirty 변경을 보존했다. AGENTS 및 팀핸드북의 direct Bern 계약을 함께 갱신했다. 근거는 `out/BernDirectEntry20260916/`이며 실제 Client 화면 입장은 사용자 확인 영역이다.
+## G29. Character Select 최적화의 네 레벨 연결
+
+Character Select/Bern/Valtan/Kouku의 Loader map 준비, registry scope, MapPlacementRuntime,
+MapStaticBatchObject/MapAssetObject, Model/Material/Shader, player animation, Effect playback 및
+local light 실제 호출자를 대조했다. 배치·camera/light 컬링·GPU LOD·동일 instance 업로드 생략,
+geometry/texture/shader 입력 공유, pose/palette 및 Effect 평가 재사용은 공통 경로다. 이를
+Character Select에만 허용하는 레벨 조건은 발견하지 못했다. 감사 근거는
+`out/ValtanPerf20260916/CaptureAnalysis/common-level-optimization-audit.md`다.
+
+실제 누락은 Level_Loading의 선택 player Effect 사전 준비 조건이었다. Bern도 기존
+Queue_ProductCues_Priority와 로딩 worker의 target set에 포함하고 Effects 진행 표시와
+BERN label을 연결했다. boss별 준비 조건, optional 실패 격리, epoch/cancel과 activation gate는
+유지했다. 기존 Bern은 Character spawn 뒤 공통 incremental worker로 등록하므로 이는
+입장 후 cold preparation을 로딩 단계로 옮긴 변경이며, 측정한 첫 스킬 지연 수치는 없다.
+
+Bern의 far-plane 여유/hysteresis와 맵별 scope·재질 admission·LOD threshold를 유지했다.
+revision50의 기본 Bern 및 Kouku profile은 shadow가 꺼져 있으므로 G27의 캐시가 이 설정에서
+실행되지 않는 것은 연결 누락이 아니다. Character Select와 Valtan은 켜져 있다. 공통 최적화가
+연결돼도 맵의 배치 수·재질·광원 부하는 달라 실제 FPS가 같아지는 것은 아니다.
+
+## G30. 베른 Map Effect admission 거절 수정
+
+후속 `client-session-62472.jsonl` generation4는 Server 승인 뒤185.238초에 bern.map-effect admission이 실패했다. Initialize는 Change_Level 이전에 실행되므로 current가 LOADING인 상태에서 BERN 소유 descriptor를 제출했고 Spawn_LevelPlacement의 active-level 검사가 거절했다. 이 검사를 통과시켜도 queued Spawn의 SOURCE_LOOP 조건이 level-owned를 금지해 즉시 Spawn_Immediate와 불일치하는 두 번째 거절이 있었다.
+
+MapEffectPresentationRuntime은 임시 admission probe만 current==target 또는 current==LOADING을 허용하며 그 current layer에 잠깐 생성한다. 모든 probe는 반환 전에 Stop하며 실제 m_iLevelIndex와 활성화 후 spawn의 target은 유지한다. 잘못된 두 번째 sample 등 중간 실패에도 앞서 생성한 후보를 정리한다. 다른 활성 level의 요청과 실제 target-owned spawn의 LOADING 중 제출은 계속 거절한다. queued SOURCE_LOOP는 즉시 경로와 같은 world-root/NATURAL/비 external/비 character 및 level-owned/no-boss 또는 boss-owned/boss 조건으로 정렬했다.
+
+변경2CPP 최소 컴파일 통과. 실제 Build_WorldRoot/Spawn_LevelPlacement/Probe_WorldEffectAdmissions와 두 source-loop predicate를 추출한 검증152개 실패0, owner/policy 조합128개 일치다. 실제 게시된 Bern91행의 LOADING/BERN admission과 전probe정리, foreign level·invalid root·queue/clone/seek 실패·중간 sample 실패를 검사했다. clone backend는 fixture이므로 실제 GPU attach, Client Bern 입장 또는 FPS 성공 증거로 확대하지 않는다. 근거는 `out/ValtanPerf20260916/BernAdmission/`이다.
+
+### G27~G30 통합 빌드와 남은 화면 확인
+
+사용자가 미저장 편집을 저장하고 Client62472/Server51828을 종료했다고 확인한 뒤 실행 중 제품 프로세스가 없음을 검사했다. 공식 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`로 Engine→Shared→Server→Client가 모두 PASS다. 첫 빌드는354.597초, Bern 사전 준비를 추가한 마지막 증분 빌드는8.281초로 성공했고 마지막에는 Level_Loading OBJ1개와 Client binary1개만 갱신했다. receipt는 `out/BuildPipeline/runs/20260916T071531345Z-debug-product.json` 및 `20260916T071624844Z-debug-product.json`이다. 기존 C4819/FXC 경고는 남지만 컴파일·링크 오류는 없다.
+
+Engine DLL, Deferred CSO와 새 GameObject SDK 헤더의 원본/배포 SHA-256 일치를 확인했다. Client.exe 최종 수정 시각은2026-09-16 16:16:24 KST이며 Server는 현재 소스로 up-to-date라 기존 산출물을 재사용했다. 관련 project/filter XML5개 parse와 변경 범위 diff-check도 통과했다. 일반 Product 경로대로 별도 Data publish나 광역 runtime 진단은 실행하지 않았다.
+
+Client와 Server를 자율 실행하지 않았고 둘 다 종료 상태다. 사용자는 Server와 새 Client를 실행해 F1 Level Navigation→Bern 직접 입장, Character Select→Create Character→Bern, 세 맵의 같은 위치 profiler를 확인한다. 실제 Bern 입장·최종 시각 결과·개선 FPS는 아직 사용자 확인 전이며 이 기록을 화면 PASS로 사용하지 않는다.

@@ -60,7 +60,7 @@ namespace
 	{
 		using namespace LostArk::Server;
 		return (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind ||
-			WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind) &&
+			(WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == target.eKind)) &&
 			LostArk::Shared::INVALID_NET_ENTITY_ID == target.iOwnerBossNetEntityId &&
 			SERVER_ENTITY_ACTION::DEAD != target.eAction &&
 			0u != target.iCurrentHp;
@@ -103,7 +103,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 {
 	if (!IsDamageableWorldTarget(target) ||
-		(WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind && hit.iRawDamage == 0u) ||
+		((WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == target.eKind) && hit.iRawDamage == 0u) ||
 		(target.strSpawnGroupId == "cardmaze.targets" && hit.iSkillId != 56411u) ||
 		LostArk::Shared::INVALID_SKILL_ID == hit.iSkillId)
 	{

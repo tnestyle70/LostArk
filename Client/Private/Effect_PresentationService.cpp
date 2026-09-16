@@ -4764,6 +4764,9 @@ bool_t Client::CEffectPresentationService::Spawn(
 		Desc.fInitialSampleTimeSeconds >= 0.f &&
 		std::isfinite(Desc.fExternalPlaybackEndSeconds) && Desc.fExternalPlaybackEndSeconds >= 0.f &&
 		(Desc.fExternalPlaybackEndSeconds == 0.f || Desc.bExternallySampled) &&
+		std::isfinite(Desc.fSourceLoopEndSeconds) && Desc.fSourceLoopEndSeconds >= 0.f &&
+		(Desc.fSourceLoopEndSeconds == 0.f ||
+			(Desc.bExternallySampled && !Desc.bOwnerSustainedSourceLoops)) &&
 		EFFECT_FOLLOW_POLICY::END != Desc.eFollowPolicy &&
 		Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) &&
 		(!Desc.bUseWorldRoot ||
@@ -4783,8 +4786,9 @@ bool_t Client::CEffectPresentationService::Spawn(
 			 !Desc.strLevelPlacementId.empty())) &&
 		(!Desc.bExternallySampled || Desc.bLevelOwned) &&
 		(!Desc.bOwnerSustainedSourceLoops ||
-			(Desc.bUseWorldRoot && !Desc.bLevelOwned && !Desc.bExternallySampled &&
-				Owner.pBoss && !Owner.pCharacter && Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL));
+			(Desc.bUseWorldRoot && !Desc.bExternallySampled && !Owner.pCharacter &&
+				(Desc.bLevelOwned || Owner.pBoss) && (!Desc.bLevelOwned || !Owner.pBoss) &&
+				Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL));
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
@@ -4953,7 +4957,10 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
 		Desc.fInitialSampleTimeSeconds < 0.f ||
 		(Desc.bExternalModelCueAnchors && !Desc.bExternallySampled) ||
-		(Desc.bOwnerSustainedSourceLoops && Desc.bExternallySampled))
+		(Desc.bOwnerSustainedSourceLoops && Desc.bExternallySampled) ||
+		!std::isfinite(Desc.fSourceLoopEndSeconds) || Desc.fSourceLoopEndSeconds < 0.f ||
+		(Desc.fSourceLoopEndSeconds > 0.f &&
+			(!Desc.bExternallySampled || Desc.bOwnerSustainedSourceLoops)))
 	{
 		strOutStatus = "Level-placement Effect spawn descriptor is invalid.";
 		return false;
@@ -4975,6 +4982,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 	spawn.iLevelOwnerIndex = Desc.iLevelIndex;
 	spawn.bExternallySampled = Desc.bExternallySampled;
 	spawn.bOwnerSustainedSourceLoops = Desc.bOwnerSustainedSourceLoops;
+	spawn.fSourceLoopEndSeconds = Desc.fSourceLoopEndSeconds;
 	spawn.bExternalModelCueAnchors = Desc.bExternalModelCueAnchors;
 	spawn.strLevelPlacementId = Desc.strPlacementId;
 	if (!Spawn(spawn, strOutStatus))
@@ -5301,6 +5309,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         Desc.fInitialSampleTimeSeconds < 0.f ||
         !std::isfinite(Desc.fExternalPlaybackEndSeconds) || Desc.fExternalPlaybackEndSeconds < 0.f ||
         (Desc.fExternalPlaybackEndSeconds > 0.f && !Desc.bExternallySampled) ||
+        !std::isfinite(Desc.fSourceLoopEndSeconds) || Desc.fSourceLoopEndSeconds < 0.f ||
+        (Desc.fSourceLoopEndSeconds > 0.f &&
+            (!Desc.bExternallySampled || Desc.bOwnerSustainedSourceLoops)) ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
 		!Is_ValidCueScaleDescriptor(Desc.eScalePolicy, Desc.vWorldScale) ||
 		(Desc.bUseWorldRoot && Desc.eScalePolicy !=
@@ -5477,6 +5488,13 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 
     if (Desc.bOwnerSustainedSourceLoops &&
         !pEffect->Enable_OwnerSustainedSourceLoops(strOutStatus))
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+        g_strStatus = strOutStatus;
+        return false;
+    }
+    if (Desc.fSourceLoopEndSeconds > 0.f &&
+        !pEffect->Set_SourceLoopEndSeconds(Desc.fSourceLoopEndSeconds, strOutStatus))
     {
         CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
         g_strStatus = strOutStatus;

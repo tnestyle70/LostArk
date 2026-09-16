@@ -145,6 +145,15 @@ VS_OUT VS_MAIN(VS_IN input)
     return output;
 }
 
+// Matches VS_MAIN position operation order for the admitted static opaque families.
+// Source character/map vertex motion never selects this pass.
+float4 VS_SHADOW_OPAQUE(VS_IN input) : SV_POSITION
+{
+    matrix worldView = mul(g_WorldMatrix, g_ViewMatrix);
+    matrix worldViewProjection = mul(worldView, g_ProjMatrix);
+    return mul(float4(input.vPosition, 1.f), worldViewProjection);
+}
+
 VS_OUT VS_MAIN_SKY(VS_IN input)
 {
     VS_OUT output = VS_MAIN(input);
@@ -1040,5 +1049,34 @@ technique11 DefaultTechnique
         VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
+    }
+
+    // Appended 20-22: no opacity discard, texture input or source vertex displacement.
+    pass OpaqueShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+    pass OpaqueShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        GeometryShader = NULL;
+        PixelShader = NULL;
+    }
+    pass OpaqueShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        GeometryShader = NULL;
+        PixelShader = NULL;
     }
 }

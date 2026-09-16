@@ -1088,3 +1088,166 @@ G40/G41의 소스 구현과 out 후보 검증만 완료했으며, 최종 사용�
 Client/Server 실행 프로세스가 없고 저장본 SHA가 그대로인 것을 확인한 뒤 writer lock과 파일별 SHA 비교·원본 백업·원자 교체로 Composition+전기 LocalSpace 두 문서+화염링 옵션 두 문서, 총5개 정본을 설치했다. 기존 G39~G41의 ‘정본 적용 대기’ 상태는 이 설치로 해소했다. Source revision은1051이다.
 
 Debug Product 빌드는 Engine/Shared/Server/Client 모두 PASS, SkipBuild=false다. 앞선 다른 빌드의 잠금 해제 뒤 최신 상태를 증분 확인했으며 코드의 임시 우회나 실행 중 EXE 교체는 하지 않았다. 근거: out/BuildPipeline/runs/20260916T013403657Z-debug-product.json 및 out/KoukuSummonParent20260916/product-build.log. 설치 근거는 installation-receipt.json, 소스 후보/보존 근거는 composition-stage.json, Client 수치 근거는 out/KoukuCrossClones20260916/Client/summon-validation.receipt.json이다. Client/UI는 실행하지 않았다.
+
+
+G43 서버 검증: 후보1051을 현행 publisher로 생성한23556줄 Gameplay bootstrap을 fresh GameplayCatalog/KoukuSaydonBrain으로 로드했다. 세 Parent마다 정확히 하나의 CROSS trigger가 Summon occurrence ID와 원래 시계를 사용하며 네 child 의존성, 실제 root endpoint의 중앙 거리 선택, cutoff1600ms가 모두 통과했다. P39 단독 파란 장판 Logic도 게시 가능하다. 기존 P37의 동적 FOLLOWUP_PATTERN 미지원과 비어 있는 Pattern의 unavailable 상태는 이번 수정과 무관하게 유지했다. out/KoukuSummonParent20260916/catalog-probe.log 및 projection.json이 근거다.
+
+
+G43 최종 게시 완료: `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 1051`이 exit0으로 완료했다. koukusaydon.product/world.gameplay/gameplay.balance는PASS, map.kakulsaydon은REUSED다. 공식 Server Gameplay.bootstrap은 실제 Server 카탈로그로 검사한23556줄 후보와 byte-identical이고 Client patternbindings의 sourceRevision도1051이다. 정본5개 JSON과 프로젝트 XML parse, scoped git diff --check를 통과했다. 마무리 시 Client/Server는 실행하지 않은 상태다. 사용자는 재실행한 쿠크 편집기에서 각 분신 Parent를 선택해 Play하고, 화염링 Sprite Particle02의 Element/Group 회전을 화면으로 확인하면 된다. 결과: out/KoukuSummonParent20260916/{publish.log,completion.receipt.json}.
+
+
+## G45. 불뿜기 쇼 clip 추가의 explicit duration 거절 — 2026-09-16
+
+현재 source1052의 P67은 Stage 합6267ms와 explicit duration6267ms가 같다. MN_RPCT_07 action4219940 `쿠크세이튼_불뿜기 쇼`의 첫 clip1667ms 또는 전체9668ms를 추가하면 기존 Workbench는 Stage만 늘리고 explicit duration을 유지해 `Explicit Pattern duration is shorter than its Stages`로 candidate를 거절한다. 검증기는9월12일5f0b1046부터 존재했고 P67은560741ac의 G43에서 명시 길이와 함께 추가됐다. pull 병합이 append 코드를 삭제한 것이 아니라 기존 누락이 새 데이터에서 드러난 회귀다.
+
+`KoukuSaydonActionWorkbench.cpp`의 Add_Stage, Append_AnimationAsStage, Bind_Animation, Append_ActionAsStages, Append_ActionToStage, Append_CinematicGroup 및 Set_PatternStartOffset은 commit 전에 기존 lifetime 확장 함수를 호출한다. 기존 긴 tail과 Effect/Logic 등 비애니메이션 행의 시간·TRS·ID를 유지하고 Stage 합이 더 길 때만 전체 수명을 확장한다. implicit clock은 필요 없으면 그대로0이며 600000ms 상한과 candidate 검증·rollback을 유지한다. 정본 Composition JSON, schema, 헤더, project/filter는 수정하지 않았다.
+
+변경 Workbench 전체 TU를 현행 헤더로 out에 격리 Debug 컴파일해 exit0을 확인했다. 기존 Engine header의 C4828 경고는 남았다. `out/KoukuClipDurationBuild20260916/compile.log`가 근거다. C++ UTF-8 BOM 없음/CRLF 유지, 두 Composition JSON parse와 scoped diff-check를 확인했다. 실행 중 Client61448/Server50504의 편집을 보존하기 위해 종료·UI 조작·정본 덮어쓰기를 하지 않았다. 이 격리 컴파일은 Product 재링크 증거와 구분하며 실제 UI 입력 확인은 사용자 전용이다. 이후 사용자 종료가 확인되어 Debug Product Build를 진행했다.
+
+실제7개 편집 함수와 Commit_Candidate, 현행 codec으로 focused311검사/실패0을 확인했다. 원래 P67에 첫1667ms clip을 추가한7934ms, 실제 Save_Atomic→새 owner Reload와 revision 증가, 외부 변경 후 stale Save 거절이 통과했다. 기존30000ms tail 보존, implicit0 보존,600000ms 초과와 잘못된 입력에서 draft·ordinal·dirty·generation 보존을 확인했다. UI 선택·동기화만 검증용 shim을 사용했으며 Client UI는 실행하지 않았다. 근거는 `out/KoukuClipDuration20260916/{result.log,result-summary.md,source-extraction.json}`이다.
+
+전체 Action9668ms 추가는 합15935ms이므로 원래 P66의 Summon window15000ms 검사가 계속 거절한다. 이는 이번 버그와 별도인 정상 보호 조건이다. 전체 Action 추가를 허용하려면 사용자가 Parent와 해당 Summon occurrence 길이를 먼저15935ms 이상으로 늘려야 한다. 전체 Action 및 긴 tail 검사는 out 사본의 Parent/Summon만40000ms로 늘려 실제 의존 그래프를 유지했고 정본은 변경하지 않았다.
+
+최종 Product 명령은 Engine/Shared/Server가 통과했으나 Client에서 동시에 진행된 VS 빌드와 `Effect_Tool.obj` 출력이 겹쳐 C1083 Permission denied 및 D8040으로 실패했다. `out/BuildPipeline/runs/20260916T023249078Z-debug-product.json`과 `out/KoukuClipDurationBuild20260916/product-build.log`가 근거이며 이 Product 명령을 PASS로 기록하지 않는다. 시작 전 발견한 VS 재사용 MSBuild node를 실제 빌드 유무 확인 없이 진행한 것은 피해야 하는 중복 실행이었다. 빌드를 재시도하거나 실행 중 프로그램을 종료하지 않았다.
+
+별도 VS 빌드의 `Client/Bin/Debug/Client.exe`는11:32:58에 갱신됐고11:32:59에 Client62548/Server63068이 실행됐다. Workbench source11:19:50, Product OBJ11:31:44이며 새 EXE에는 변경한 `Stage edit would exceed the 600000 ms Pattern lifetime.` 문자열이1개, 이전 `Stage resize` 문자열은0개라 이번 TU 반영을 확인했다. 이는 EXE 반영의 증거이며 에이전트 Product 명령의 성공이나 사용자 UI 확인을 대신하지 않는다. 사용자는 현재 Client에서 Pattern67의 `Append as Stage`를 다시 입력해 실제 편집을 확인한다.
+
+## G46. 외부 Composition 편집과 미저장 draft의 보존 병합 — 2026-09-16
+
+작은 오망성의 재생 길이 두 필드를 외부에서3000→5052ms로 바꾸자 실행 중 편집기의 Save가 실패했다. 설치 직후 source SHA를 writer lock 안에서 확인해 Composition만1061→1060의 정확한 bytes로 복구했고 사용자가 Reload 없이 Save 성공을 확인했다. 이후 정본은 계속 사용자 소유 편집 상태이며 추가 외부 수정을 하지 않았다. 이것은 기존 실행 파일의 저장 복구이며 아래 새 병합 코드가 실행됐다는 증거가 아니다.
+
+원인은 Save_Atomic의 외부 변경 허용 범위가 PresentationResources의 끝에 추가된 항목으로 한정된 데 있었다. Document 내부에서 LastGood·사용자 candidate·현재 디스크의 canonical typed JSON을 비교하도록 수정했다. schema에 명시된 stable ID 배열은 행별, 객체는 필드별로 병합한다. 동일 변경과 한쪽만 바꾼 값은 보존하며 같은 필드의 다른 값·동일 ID의 다른 추가·삭제와 수정·서로 다른 재정렬·순환 insertion anchor는 경로를 알려 거절한다. 좌표와 비-ID 배열은 원자 값이며 임의 asset 참조를 행 ID로 추정하지 않는다.
+
+정확한 root/Pattern/Bundle의 allocation counter만 최댓값으로 합친다. current revision의 증가·상한, writer lock, 후보 검증, 임시파일 durable write/검증, 마지막 bytes CAS, 원자 교체와 reopen 후 LastGood commit은 유지했다. Workbench는 기존 Save 성공 후 LastGood을 draft로 가져오는 경로를 그대로 사용하므로 해당 파일의 다른 작업을 변경하지 않았다. 기존 invalid/orphan Pattern·Folder·Bundle의 원문 보존은 유지하되 두 개의 유효 편집을 합쳐 새 invalid 행이 생기면 저장을 거절한다.
+
+검증은 실제 Save_Atomic→디스크→Reload의 기본30건, Pattern 경계6건, 최종 Pattern/Folder/Bundle 공용 guard6건이 모두 통과했다. 동일 occurrence의 외부duration5052와 사용자Scale2/3/4 보존, 같은duration경쟁 거절, 삭제/순서/삽입, Sequence workspace, -0.0/1.0 보존, 충돌 해결 후 재시도, live writer lock과 실제 임시파일 생성 중 경쟁쓰기의 CAS 거절을 포함한다. 각각의 거절에서 디스크·LastGood·호출자 draft가 보존됐다. 각 반복의 정확한 소스/범위는 `out/CompositionThreeWaySave20260916/RESULT_NOTES.md`, `probe_result.log`, `nested_result.log`, `hierarchy_result.log`에 기록했다.
+
+최종 Document CPP의 독립 native 컴파일과 scoped diff-check가 통과했다. 새 제품 EXE/DLL을 빌드하거나 교체하지 않았다. 현재 실행 Client에는 편집 저장 후 사용자가 새 빌드로 재실행해야 적용되며 UI에서의 새 병합 저장 확인은 사용자 전용이다. 새 H/CPP와 프로젝트 등록은 없다.
+
+
+## G47. 화염링 fx_a_noise_001 양면 적용 — 2026-09-16
+
+사용자가 한 면에서만 보인다고 한 대상은 화염링_동일화염포의 Sprite Particle02, `kouku.backstep.c03d483eb0e60fc432c2.1`이다. native2876의 기존 Additive One Sided(pass4, back cull)는 회전 옵션과 별개로 유지돼 있었다. 사용자의 후속 지시대로 ImGui 옵션은 추가하지 않았고 해당 요소에만 `detail.sprite.twoSided=true`를 설치했다. 최신 사용자 저장본 SHA315a82a7…를 다시 확인해 18bytes 필드 삽입만 적용했으며 결과SHA118a7975…다. 재질·TRS·followEmitterAxisRotation·나머지34요소와 Composition은 동일하다. 생성기도 조립ring.flame 하나의 해당 요소만 재생성하며 원본leaf와 다른5문서는 동일하다.
+
+선택bool은 기본false/저장시false생략이다. 지원범위는 기존 Artist registry의 정상 native SourceRecipe Sprite 중 Alpha/Additive One Sided다. Material renderProfile/native ID/원본 descriptor equality를 그대로 두고 실제 sprite draw에서 양면pass1/2로 바꾼다. 지원하지 않는 carrier·compiled adapter·원래양면profile·Multiply/Opaque는 true를 거절한다. 별도native-v14 SourceContract에는 이 저작옵션을 허용하지 않는다. 이는 원본복원값이 아닌 사용자 요청의 컬링 변경이다.
+
+현재헤더로 codec/core/material 관련35CPP를 모두 다시 컴파일했고 Renderer TU의 별도컴파일도 통과했다. native probe371검사 실패0, 실제fixture의Alpha8/Additive3지원, bool오류66건·미지원10건거절과 실패시이전문서보존, 기본false·true왕복·native ID보존을 확인했다. 실제Kouku2816과3136 FX를 메모리컴파일하고 headless WARP에서 pass Apply 후 CULL_NONE과 기존blend/depth state 동일성을 확인했다. 재수입의Detail전체보존은 현재코드로 확인했으나 native fixture에 generic reimport의Base DDS전제가없어 실제reimport 검사는 완료로 쓰지 않는다.
+
+근거는 `out/KoukuSpriteTwoSided20260916/{source-installation.json,native_result.json,native_source_receipt.json,installed/receipt.json,authoring/focused-verification.json}`이다. 기존인코딩과줄끝을보존했고 Python AST·JSON parse·scoped diffcheck를 통과했다. UI수정은 이번작업전bytes로 정확히 회복했다. 제품EXE/DLL/CSO를 설치하거나 Client/UI를 실행하지 않았으며 사용자의 새빌드·재실행 후 해당Effect 재로드가 필요하다. GPU상태검사는 원작외형 또는 사용자화면승인이 아니다.
+
+실제 설치한35요소 ring.flame도 별도15검사로 Load/Validate_Drawable/정확target2876의Supports·원본contract·실효AdditiveTwoSide 및 Serialize→Parse→Validate를 통과했다. canonical 전체가같아재질/source/TRS/flag가보존됐다. `target_result.json`이 근거이며 최종sourceSHA는설치receipt와같다.
+
+## G48. 패턴 사이 Animation·Effect Ctrl+C/V — 2026-09-16
+
+Workbench의 기존 다중 선택을 세션 내 값 snapshot으로 복사하고, 다른 Pattern 끝에 한 번의 candidate commit으로 붙여넣는다. 전체 Stage와 개별 Animation·Effect 혼합을 지원하고 Stage 자식을 중복 복사하지 않는다. 원본 source clip identity·trim·속도·끝 정책, Effect 수명·follow/fit·TRS·선택 그룹과 유효한 미저장 배치를 보존한다. 필요한 World owner와 두 선택 clip 사이의 Animation Blend도 새 occurrence ID에 연결한다. 선택한 전체 Stage 또는 의존 owner가 먼저 시작하면 그 선행 구간까지 포함하며 선택 항목 사이의 간격은 유지한다. 선택하지 않은 clip과의 외부 blend 경계는 제외하고 메시지로 알린다.
+
+원본을 편집하거나 삭제해도 snapshot은 유지된다. 없는 공유 정의는 snapshot에서 복구하지만 같은 ID의 정의가 달라졌으면 기존 것을 덮지 않고 거절한다. 지원하지 않는 lane, gameplay Logic 연결 Effect, 다른 actor의 animation/bone Effect, 잘못된 참조, ID 소진과 600000ms 초과는 전체 실패하며 draft·선택·이전 clipboard를 보존한다. 붙여넣은 항목은 새 stable ID와 선택을 가지며 자동 Save·Publish는 하지 않는다.
+
+Patterns와 Sequencer 창의 focus를 기록하고 frame-local 행 포인터 사용이 끝난 뒤 단축키를 한 번 처리한다. standalone에도 같은 경로를 연결했다. 텍스트 입력·활성 widget·popup/modal·마우스 드래그·marquee와 다른 도구 focus에서는 Ctrl+C/V를 소비하지 않는다. Ctrl+D/Delete는 기존 동작을 유지한다. 별도 OS clipboard나 두 편집 세션 사이 전송은 지원 범위가 아니다.
+
+현재 실제 Copy/Paste/Commit/Validate_SourceStart 함수와 전체 Composition codec의 격리 native 검증 182개가 통과했다. 혼합·반복 Paste, 빈 Stage, Effect-only, snapshot 유지, 미저장 TRS, World remap, 실제 resolver의 내부 blend 새 ID/7400~7800ms 창, 실패 원자성과 out 사본 Save_Atomic→Reload를 포함한다. UI 입력 guard는 실제 handler에 ImGui/API stub만 연결한 25개 검사로 확인했다. 전체 Workbench CPP의 Debug 격리 컴파일은 오류 0이며 기존 Engine C4828 경고만 남았다. Client/UI를 실행하지 않았고 제품 EXE는 교체하지 않았다. 사용자가 저장 후 새 빌드로 재실행해야 실제 단축키가 적용된다. 정본 Composition은 외부 수정하지 않았다.
+
+근거는 `out/KoukuTimelineClipboard20260916`의 native 검증 결과와 `ui/hotkey_guard_result.log`, `ui/compile_workbench.log`다. H/CPP의 기존 UTF-8/CRLF와 scoped `git diff --check`를 확인했다. 새 C++ 파일이나 프로젝트 등록은 없다.
+
+## G49. 마리오 소환 공·인형 HP 수명과 Object Tool — 2026-09-16
+
+### 소스 구현 및 후보
+
+본무대 공은 NPC480713/MN_PPCC_00이고 설치 StripedBall은 원본 MN_PPCC_00_SK에서 나온 모델이다. 원본290정점/512삼각형의 위치·UV 오차는3.58e-8m, topology와 c/n/s decoded pixel은 일치한다. preScale.01·Object scale1에서 높이0.941609497m, 바닥 보정0.00146865845m다. 신규 `world.object.kouku.mario_circus_ball`을 `마리오 소환 공 (원본 크기)`로 인형 옆에 추가하는 후보를 준비했다. 기존 미니게임 공과 MN_RHCN 공의 데이터는 유지한다.
+
+원본 action4194527 stage002 notify003의 `Par_L_PPCC_SK_02_Single`15요소를 `effect.kouku.gate3.mario.circus.ball.aura`로 구성했다. 무지개빛·문양·고리와 요소별 빨간색 전환 곡선을 유지하며 저장 주기는7500ms다. MeshMaterial 배열3개가 Required보다 우선하는 원본 계약을 적용했다. 기존14개 native 계약을 재사용하고 누락된117/118 MIC에만 native3687/3688과 DDS1개를 추가했다. 기존 shader 함수1372개의 본문은 보존했다. 외형의 사용자 승인은 아직 없다.
+
+인형은 기존 작은/큰 크기와17314ms Motion, 사용자 large Effect 회전90도,3개 clip의trim/속도를 보존했다. 준비·끝8요소를 유지하고 본화염28요소만 공통 불뿜기25요소×두 입으로 교체한58요소 `effect.kouku.gate3.doll.flame.shared`를 준비했다. 실제 설치 CModel의 b_mouth_f/b_mouth_b와 기존 FX_Prj_01/02 socket을 사용한다. 공통+Z를 원본 socket+X로 yaw90도 연결하고 cm basis100을 한 번 보상하여 공통의 기존1.7배를 유지했다. 이는 사용자가 요청한 공통 화염 교체이며 원본 인형 불꽃과 동일하다는 주장은 아니다.
+
+두 인형과 공은HP2000이며 실제 설치 모델 bounds를 body에 기록했다. 인형은33개 실제 애니메이션 pose/9301정점의 union bounds, 공은 실제290정점의 구형 bounds다. 구형 공만 ELLIPSOID를 사용하므로 Server 피격 반지름은0.4708047485m이며 AABB 대각선0.665816m로 커지지 않는다. Object/placement 배율은 그 뒤 한 번 적용한다.
+
+### 재생·서버·도구 계약
+
+선택적 combatBody→Kouku projector→PATTERNWORLDCOMBAT→WORLD_OBJECT→기존 melee/projectile HP adapter를 연결했다. WORLD 박스는 spawn 시각만 소유하고 정상 Pattern/Bundle 종료 뒤에도 살아 있는 개체가 재생된다. HP0·명시 취소·새 run·owner session 퇴장·room reset·원래 boss의 제거/사망은 정확한 STOP_CUE를 보낸다. 늦은 PLAY는 tombstone으로 막고 late join은 살아 있는 cue만 받는다. boss iteration에서는 body를 stage한 뒤 tick 경계에 commit하고 실제 packet preflight 실패는 commit하지 않는다. 일반 bootstrap에서 WORLD_OBJECT를 직접 만들지 않는다. wire는protocol88로 Client/Server를 함께 갱신해야 한다.
+
+고정 WORLD/count1/단일 binding/LOOP만 이 생존 정책의 제품 지원 범위다. body는 기존 Object→player Collider와 별도이며 Client가 HP를 판정하지 않는다. Object Tool에서 Loop Animation + Effects를 켜면 저장된 model/Effect 창의 최대 길이로 한 단위를 반복한다. 공7500ms, 인형17314ms가 같은 model/Effect 시계다. 보수적 native tail 추정값13.5초로 공 주기를 늘리지 않는다.
+
+Object Tool의 Zoom·Ctrl+wheel·Fit, Stage 끝 드래그·Stage Duration·Fit Stage to Animation, V1 Effect lifetime fit과 HP/body 편집을 연결했다. Stage 확장은 기존 clip/Effect/TRS 시점을 재분배하지 않으며 잘리는 축소는 원자적으로 거절한다. MOTION_END→TIME 고정은 상태에 알린다. Workbench WORLD Resource/Box Detail은 HP 수명과 박스 길이를 구분해 표시한다.
+
+### 실행한 검증
+
+- 실제 인형 CModel+production bone/socket helper와 Effect CPU 재생1040프레임:58요소, peak202입자,15~16초에도 두 입이 계속 방출, 실제 본 basis의100배 보상 오차1.00136e-5, backward seek 재생 통과. canonical 문서 전체 왕복 일치. UI를 실행하지 않았다.
+- Object codec/Stage/loop/fit 시계94검사, publisher31case 및 기존 회귀2test, 최신 정본253template/449object/309instance 저장 왕복 통과. WorldDocument/Tool/Player/Objects4TU와 Workbench/MainApp2TU 격리 컴파일 오류0.
+- Server 변경15TU 컴파일 오류0. 실제 HP/packet/lifecycle24검사, Client cue race14검사, projection16검사와 기존 collider13검사 통과. peer 보강 후 boss 제거·사망·불량 packet rollback 등을 포함한51검사와 변경2TU 컴파일 통과.
+- ELLIPSOID codec27검사·publisher10검사·수치34검사, 변경2TU 컴파일 통과. MeshMaterial 기존4다중재질 element의 실제codec78검사와 변경TU 컴파일 통과.
+- 공 원본 후보 CPU의0.1~7.5초에 빈 프레임0, peak134입자, 마지막 실제 입자7.5초, 이후0, seek/reset TRS·color 오차0.15/15emitter를 유지했다.
+
+검증 근거는 `out/KoukuMarioObjectLife20260916`의 body-bounds/doll-probe/ball/world, `out/WorldObjectParity20260916`, `out/KoukuWorldObjectHealth20260916`, `out/KoukuWorldObjectHealthPeer20260916`, `out/KoukuEllipsoidCombatBody20260916`, `out/KoukuMeshMaterialOverride20260916`이다. 개별 assertion 반복 횟수는 서로 다른 테스트 수로 합산하지 않는다.
+
+### 게시 승인 전 상태 — 이후 G49-01에서 데이터 게시 완료
+
+현재 이 기록 시점의 새 Effect2개와 WorldSequences는 out 후보이며, 기존 Client/Server가 실행 중이라 열린 Object Tool의 저장 기준본을 외부 교체하지 않았다. native2개·DDS1개는 추가 설치했다. candidate builder는 World JSON의16MiB 공통 상한을 검사하며, 배열 숫자까지 전부 들여쓰기해21.8MB가 된 최초 후보는 폐기하고 stable entity별 compact row로 약7.98MB 후보를 다시 만들었다. 제한을 늘리거나 검증을 우회하지 않았다.
+
+사용자 저장·종료 확인 후 최신 source SHA에서 후보를 다시 확인해 새 Effect/cat/tree/project와 WorldSequences를 설치하고 공식 Map/Kouku/Gameplay publisher를 실행해야 한다. 현재 제품 EXE/DLL/CSO는 교체하지 않았으며 격리 TU/CPU 검증은 제품 전체 링크 또는 화면 완료가 아니다. 최종 Client 화면 판정은 사용자에게 남는다.
+
+G49 후속 후보 전체 검증도 통과했다. 후보 rev2033/SHA1b590ac2…/7,982,844bytes는 실제 Client Load→Save→Reload→IsEquivalent와 원본 WModel material slot/Area material을 포함한 전체 publisher 함수를 통과했다. 254template/450object/310instance이며 기존 stable row 삭제0, 새 공3행 외에는 인형 두 형태의 요청 필드만 바뀌었다. native3687/3688이 포함된 실제 MeshKouku3648 fx_5_0/O1 컴파일은53,822bytes로 통과했고 source 재생성도 candidate와 일치했다. `out/KoukuMarioObjectLifeValidation20260916/final-validation.json`과 ball manifest가 근거다. 사용자가 계속 사용 중이며 소스 작업만 진행하라고 답했으므로 World 정본·런타임 게시·제품 설치는 보류했다. 이후 저장·종료가 확인되면 최신 저장본에서 후보를 다시 생성한다.
+
+
+## G50. 중앙 포탈·쇼타임 노이즈의 화면 중복 보호 — 2026-09-16
+
+### 확인한 원인과 수정 범위
+
+사용자는 중앙 오망성과 캐릭터·쿠크가 겹쳐 두 개처럼 보이며 이전 쇼타임 폭탄도 같은 noise 문제였다고 보고했다. 소스 조사에서 정본6문서의 native에는 직접 SceneColor 읽기가 없고 별도 distortion pass14개가 연결됐다. 중앙 문양2584와 폭탄 도화선2847/2805/2848에는 이 왜곡이 없다. 조합된 중앙 waterflow2587, 폭발 mesh2461 및 큰 푸른 폭발3682가 texture-dependent offset을 갖고 나머지11개 pass는 원본 상수0이다. 따라서 화면 왜곡이 이미 그려진 actor 영상을 옮길 수 있는 소비 경로를 수정했다. 이 연결 근거가 사용자 화면 결함을 단독으로 확정하는 visual 판정은 아니다.
+
+기존 Target_Distortion의 RGBA16_FLOAT에서 RG 일반 왜곡은 유지하고 해당3개 offset만 BA로 분리했다. native 함수1374개와 해당 정본6문서의 SHA는 그대로이며 원본 색·시각·크기·재질식을 바꾸지 않았다. installer도 같은 명시적 ID만 재생성하므로 후속 native 추가로 보호 채널이 사라지지 않는다. 기존 source[0].w mesh-prefix 때문에2461의 실제 출력이0일 가능성은 별도 경계로 기록했으며 이번 수정에서 원본식·prefix를 추측 변경하지 않았다.
+
+EffectCommon의 RT1 RGBA One+One, RingFill/LinearReveal/scale 네 채널 coverage와 material adapter fixed-function 검사를 연결했다. Engine SceneResolve는 BA에만 depth/PickPos 검사를 적용한다. 현재 actor 픽셀, 일반RG와 BA합성 샘플의 실제 bilinear footprint에 있는 actor, 깊이 불연속을 넘는 sample은 BA를 거절한다. 경사면은 NDC 평면 기울기로 비교하며 일반RG는 보존한다. HDR와 가중 Bloom은 같은 UV를 소비한다. 별도 화면 캡처나 추가 render target/pass는 없다.
+
+Renderer는 Depth/PickPos를 명시 바인딩한다. 독립 peer가 불투명 G-buffer→SceneHDR/Blend 종료→SceneResolve 순서, 기존 PS SRV 해제, 분리된 post RTV와 DSVnull을 대조했고 신규 SRV/RTV hazard를 찾지 못했다. 실제 default/source actor writer의 marker0/5 bit8과 source skin/equipment1~24,26~29가 검사와 일치하며 다른 map marker payload는 보호 actor로 오인하지 않는다.
+
+### 실행한 검증
+
+- native regeneration 회귀4개 통과. 실제 MeshKouku2432/ParticleKouku2560/ParticleKouku3648의 FXC fx_5_0/O1 전체 컴파일3종 오류0. 원본 함수1374개와 대상 JSON6개 불변 확인.
+- 공통 Sprite/MeshPreview/Decal3개 실제 FXC fx_5_0/O1 및 MaterialHelpers.cpp 전체TU 컴파일 오류0. 등록 adapter16개가 공유하는 실제 Effects11 pass14개의 RT1 RGBA/MRT0·Bloom 불변 상태를 확인했다. RGBA16F WARP12상황×2회=24draw/192성분 readback과 상태 검사를 포함한333assertion으로 signedRG·BA 누적, RingFill/LinearReveal50%coverage 및 시작 전discard가 통과했다. 일반 writer의 zero-init/명시float4도 확인했다. 근거는 `out/KoukuScopedDistortion20260916/common/final-validation.json`이며333을 독립 시나리오 수로 해석하지 않는다.
+- Engine Deferred 전체 FX 컴파일 통과. 실제 Effects11 SceneResolve pass와 실제 named SRV를 사용한 D3D11 WARP66검사/69draw/1,130,496 RGBA pixel 수치 검증 통과, D3D11 debug 오류0. Client/UI나 화면 캡처는 사용하지 않았다.
+- 일반RG3fixture는 HEAD의 실제 기존PS와 두 MRT 모든 픽셀이 bit 단위 동일했다. BA 배경 유지, actor marker와 program 범위, map payload 보존, 양수/음수/대각 bilinear 이웃, depth 단절·빈 깊이·경사면·가림 경계, mixed clamp와 HDR/Bloom UV 일치를 확인했다.
+- WARP resolve 검증은 제어된 float32 texture를 사용했다. 해석식 대비 최대 오차0.00938416은 bilinear fraction 양자화 범위였고 HDR/Bloom 동일UV 불변식은0.0001 허용오차로 통과했다. 제품 전체 frame/실 GPU 시간/최종 화면 동일성은 판정하지 않았다.
+- Renderer.cpp 격리TU 컴파일 오류0. 이후 같은 파일의 Target_Distortion 주석만 RG/BA 설명으로 갱신했다. 변경 JSON10개, 프로젝트 XML2개, Python11개 parse 및 해당 변경 diff-check 통과.
+
+근거는 `out/KoukuNoiseOverlay20260916/{source_audit.json,native_compile_result.json}`, `out/ProtectedNoiseReceiver20260916/{gpu-summary.json,gpu-results.csv,source-receipt.json,RESULT_NOTES.md}`, `out/KoukuNoiseReceiver20260916/{renderer_compile.log,final-parse.json}`이다. 컴파일한 Deferred SHA는5dc80cff46470aa5373b841e83d66994d40bee32e9846983355e8eab416231d9다.
+
+### 현재 설치와 화면 확인 경계
+
+사용자는 계속 편집 중이며 소스 작업만 진행하라고 명시했다. 현재 Composition/WorldSequences를 외부 교체하지 않았고 Client/Server를 종료·실행·조작하지 않았다. G49 공·인형 Effect2개와 WorldSequences 추가 후보는 검증된 out에 있으며 아직 Object Tool 정본에 게시되지 않았다. 제품 EXE/DLL/CSO 전체 빌드·설치도 보류했다. Engine 정본과 Client carrier를 기존 build/deploy 경로로 함께 갱신한 뒤 사용자가 중앙 포탈·쇼타임을 재생해 최종 화면을 확인해야 한다.
+
+보호 범위는 G-buffer actor 표식과 깊이 경계다. actor 표식이 없는 정적 prop의 같은 연속면 내부나 G-buffer를 기록하지 않는 투명 객체까지 종류별로 완전히 제외하는 수정은 아니다. 일반RG 왜곡과 원본 노이즈의 배경 표현을 유지한 범위를 기록하며 사용자 관찰 전에 화면 PASS 또는 이중상 완전 해결로 쓰지 않는다.
+
+
+## G49-01. 공·인형 데이터 정본 설치와 제품 게시 완료 — 2026-09-16
+
+사용자가 데이터 전체 게시를 명시 요청했고 Client/Server 및 빌드 프로세스가 종료된 것을 확인했다. 최신 World source revision2032는 검증 기준 SHA와 같았고, Composition은 사용자 최신 revision1140/SHA07228abb2ffd232d9851f6ea202be7638a37be2ce94f637e9418e78887a34a6a를 유지했다. 추가 확인 요청 없이 기존 검증 후보7개를 정본에 설치했다. World는 revision2033이며 Effect2개·Catalog·Tree·프로젝트 None/filter 등록을 포함한다.
+
+Object Tool에 `마리오 소환 공 (원본 크기)`를 등록하고 작은/큰 괴기스러운 인형의 기존 항목을 갱신했다. 세 Object는 HP2000·UNTIL_DESTROYED·LOOP·loopFullPresentation=true다. 공은 기존 실측 원본 크기와7500ms aura15요소, 인형 두 크기는 기존17314ms 모션과 공통 불뿜기58요소를 사용한다. 큰 인형의 yaw90도와 기존 사용자 TRS/clip은 보존했다. 새 공을 사용자가 선택하지 않은 Pattern 위치에 임의 배치하지 않았다.
+
+정본 전체 재직렬화를 피하도록 staging serializer를 보강했다. 원본 숫자 표기와 기존 행을 유지하고 변경 필드·새3행만 반영했다. 최종 World는13,246,294bytes로16MiB 제한 안이며 Git diff18추가/15삭제다. SHA1009328035bd7e9dbb74c40ed9c18c95f209391c08699d2f4021315f90f5c4b7이고, Map publisher의 정상 CRLF→LF 처리 후 runtime SHA는9ae637c78148bf5e7b4c06a0349ec5b231fdae1b522afb6fc2d86cee723cb199다. 줄바꿈 정규화 후 bytes와 JSON 내용이 일치했다. compact 후보의 이전 SHA는 과거 검증 기록이며 최종 설치값은 이 항목을 따른다.
+
+공식 `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 1140`으로 product→map→쿠크 world→gameplay balance 게시가 모두 통과했다. 최종 서식 보존본의 product/map도 재게시했고 변경 없는 world/balance는 정식 fingerprint 검증 후 REUSED였다. P34.world.1의 인형은 Encounter combatBody와 Server Gameplay.bootstrap의 PATTERNWORLDCOMBAT에 HP2000·radius1.085593201691381m가 실제 생성됐다. 아직 Pattern에 Append하지 않은 새 공의 bootstrap spawn 행이 없는 것은 정상이며, Append·저장·패턴 게시 시 해당 배치가 생성된다.
+
+설치 파일7개 JSON/XML parse, source 보존 serializer 재생성/의미 동일성, catalog/tree/payload 연결, authoring/runtime 일치와 현재 Composition SHA 보존을 확인했다. 원본 Effect·크기·재질 검증은 G49의 선행 결과와 같다. 근거는 `out/KoukuMarioObjectLife20260916/{installation-result.json,world-format-preservation.json,publish-world.log,publish-kouku.log,publish-kouku-final.log,publication-final.json}`이다. 이전 게시 보류 상태는 이 완료 기록으로 대체한다.
+
+남은 작업은 사용자의 최신 제품 솔루션 빌드와 Server/Client 재실행·화면 확인이다. 이번에는 데이터만 게시했고 EXE/DLL/CSO 빌드나 Client/UI 실행은 하지 않았다. Server Play는 정상 Pattern 종료 뒤 HP0/명시 취소·리셋까지 유지한다. 일반 Play preview는 여전히 Pattern 종료 시 정리되며 데이터 게시가 그 경계를 바꾸지 않는다.
+
+
+## G51. F1 Saved Pattern Flow·All Patterns 목록 로드 복구 — 2026-09-16
+
+### 실제 원인과 수정
+
+사용자가 Publish All Patterns 완료 후 두 목록이 비었다고 보고했다. 현재 revision1143 Encounter16,061,098bytes를 기존 `CKoukuSaydonBossTool::Load_ProductIndex`의8MiB 상한이 거절했다. Reload가 Flow 로드 전에 return하여 저장된 Gate1/2/3 Flow6/11/5개도 없는 것처럼 표시됐다. 게시 실패나 Composition 누락은 아니었다.
+
+BossTool의 파일 읽기·CDataJson 허용량을64MiB, JSON value4,000,000개로 일치시켰다. depth64, 패턴·ID·참조·Stage 검증은 유지한다. 선행 측정 크기까지만 읽고 크기 변화·읽기/파싱 실패를 정확히 보고하며 기존 목록을 보존한다. Product/Flow 로드 오류를 별도 멤버로 보존해 F1 각 목록 내부에 표시하고, 아직 로드되지 않은 상태를 `No saved Pattern Flow`로 오인하지 않게 했다. projector도 같은 byte/value/depth 상한을 출력 교체 전에 검사한다. 정본 Composition·사용자 편집·기존 게시 데이터는 수정하지 않았다. 신규 C++/프로젝트 항목은 없다.
+
+### 실행한 검증
+
+- HEAD의 기존 실제 로더+현재 게시 파일:8MiB 거절과 Flow 미로드4checks PASS.
+- 수정한 실제 로더/Reload/Flow/selection 함수와 현재 Composition·DataJson·ProjectDataRoot codec:28checks PASS. 패턴77개 중 실행 가능63개, 폴더19개, 묶음11개 중 실행 가능8개, Gate Flow6/11/5개 확인. 기존 unavailable14패턴/3묶음은 숨기지 않는다.
+-20MiB로 공백 padding한 유효 JSON도 실제 parser 통과하여 기본16MiB 한도가 남지 않음을 확인했다. 손상JSON·초과크기·틀린schema 재로드 거절 시 마지막 정상 목록·revision·Flow 보존 확인.
+- publisher admission 신규3테스트 PASS:현재 게시 데이터, 출력 전 byte 거절, depth/value 경계.
+- Debug x64 격리TU 컴파일:KoukuSaydonBossTool/MainApp/KoukuSaydonActionWorkbench 모두 exit0. 헤더·클래스 크기 변경의 실제 소비자까지 확인했다. 기본 빌드 산출물 변경 없음.
+- 변경 코드/문서 `git diff --check` PASS. 기존 C++ CRLF/UTF-8 유지.
+
+증거는 `out/KoukuInventoryLoading20260916/{baseline.run.log,fixed.run.log,compile/compile-results.json}`에 있다. Client/UI는 실행·조작하지 않았으며 EXE 전체 링크·교체는 수행하지 않았다. 사용자 Client 저장·종료 후 Debug x64 빌드·재실행, F1 > KoukuSaydon Complete Play > Load/Reload KoukuSaydon Inventory에서 해당 Gate와 두 Category를 확인한다. 이번 소스 수정은 추가 Publish를 요구하지 않는다. 화면 확인은 사용자 대기다.

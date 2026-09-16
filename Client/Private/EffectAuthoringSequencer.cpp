@@ -598,9 +598,11 @@ bool CEffectAuthoringSequencer::Update_PreviewPlacementInput(const bool active)
 }
 
 bool CEffectAuthoringSequencer::Select_KoukuEffect(const std::string& assetId, const bool requiresSourceModel,
-    const bool reusePlayerAnchor, const EFFECT_DOCUMENT_DESC* sourceDocument)
+    const bool reusePlayerAnchor, const EFFECT_DOCUMENT_DESC* sourceDocument,
+    const std::optional<std::uint32_t> previewDurationMs, const std::uint32_t modelStartMs, const bool loopEffectToDuration)
 {
-    return Select_SceneEffectTarget(assetId, requiresSourceModel, reusePlayerAnchor, std::nullopt, std::nullopt, sourceDocument);
+    return Select_SceneEffectTarget(assetId, requiresSourceModel, reusePlayerAnchor, std::nullopt,
+        previewDurationMs, sourceDocument, modelStartMs, loopEffectToDuration);
 }
 
 bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, const bool reusePlayerAnchor)
@@ -614,9 +616,15 @@ bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, c
 
 bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& assetId, const bool requiresSourceModel,
     const bool reusePlayerAnchor, const std::optional<bool> loopPolicy,
-    const std::optional<std::uint32_t> previewDurationMs, const EFFECT_DOCUMENT_DESC* sourceDocument)
+    const std::optional<std::uint32_t> previewDurationMs, const EFFECT_DOCUMENT_DESC* sourceDocument,
+    const std::uint32_t modelStartMs, const bool loopEffectToDuration)
 {
     m_PendingKoukuEffectPreview.reset();
+    if ((loopEffectToDuration && !previewDurationMs) || modelStartMs > 600000u || (previewDurationMs &&
+        (*previewDurationMs == 0u || *previewDurationMs > 600000u - modelStartMs)))
+    { m_Status = "Current Pattern preview exceeds the supported animation window."; return false; }
+    const std::optional<EFFECT_SOURCE_MODEL_PREVIEW> sourceModelPreview = sourceDocument ?
+        sourceDocument->SourceModelPreview : std::nullopt;
     const bool sourceModel = requiresSourceModel || (sourceDocument && sourceDocument->SourceModelPreview);
     const bool useProps = m_UseKouku && m_PreviewSavedHandProps && assetId.starts_with("effect.kouku.");
     std::string worldContext = useProps ? m_ExplicitKoukuPatternId : std::string{};
@@ -643,7 +651,10 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     const bool needsModel = sourceModel || !worldOccurrence.empty();
     if (reuseTarget && m_KoukuEffectPreview->model.has_value() == needsModel &&
         m_KoukuEffectPreview->loopPolicy == loopPolicy &&
-        m_KoukuEffectPreview->previewDurationMs == previewDurationMs) return true;
+        m_KoukuEffectPreview->previewDurationMs == previewDurationMs &&
+        m_KoukuEffectPreview->modelStartMs == modelStartMs &&
+        m_KoukuEffectPreview->loopEffectToDuration == loopEffectToDuration &&
+        m_KoukuEffectPreview->sourceModelPreview == sourceModelPreview) return true;
     KOUKU_EFFECT_PREVIEW_TARGET target;
     target.assetId = assetId;
     target.worldContextPatternId = worldContext;
@@ -651,6 +662,9 @@ bool CEffectAuthoringSequencer::Select_SceneEffectTarget(const std::string& asse
     target.propReferenceRevision = m_PreviewPropReferenceRevision;
     target.loopPolicy = loopPolicy;
     target.previewDurationMs = previewDurationMs;
+    target.modelStartMs = modelStartMs;
+    target.loopEffectToDuration = loopEffectToDuration;
+    target.sourceModelPreview = sourceModelPreview;
     target.placementRevision = m_PreviewPlacementRevision;
     if (reuseTarget) target.playerRoot = m_KoukuEffectPreview->playerRoot;
     else if (!Resolve_ScenePreviewPlacement(target.playerRoot)) return false;
@@ -741,7 +755,7 @@ bool CEffectAuthoringSequencer::Begin_Model()
         if (g_ModelClockOwner && g_ModelClockOwner != this) g_ModelClockOwner->Stop();
         g_ModelClockOwner = this;
         auto& model = *m_KoukuEffectPreview->model;
-        if (!model.Is_Active() && !model.Begin(ClockMs(), true))
+        if (!model.Is_Active() && !model.Begin(ClockMs() + m_KoukuEffectPreview->modelStartMs, true))
         { m_Status = model.Status(); return false; }
         return Sample_Model(ClockMs());
     }
@@ -771,7 +785,7 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
     if (m_KoukuEffectPreview)
     {
         if (!m_KoukuEffectPreview->model) return true;
-        if (!m_KoukuEffectPreview->model->Sample(clockMs, true) ||
+        if (!m_KoukuEffectPreview->model->Sample(clockMs + m_KoukuEffectPreview->modelStartMs, true) ||
             !m_KoukuEffectPreview->model->Place_Root(m_KoukuEffectPreview->playerRoot))
         { m_Status = "Kouku source animation preview owner changed."; return false; }
         return true;
@@ -1002,7 +1016,12 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
         // Reapply only this temporary target's bounded source cycle afterward.
         if (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId == row.key.strStableId &&
             m_KoukuEffectPreview->previewDurationMs)
+        {
             row.durationMs = *m_KoukuEffectPreview->previewDurationMs;
+            if (m_KoukuEffectPreview->loopEffectToDuration &&
+                !row.v1->Set_SourceLoopEndSeconds(static_cast<float>(row.durationMs) * .001f, m_Status))
+            { Release_Row(row); return false; }
+        }
         if (!row.previewElementIds.empty() &&
             (!row.durationMs || row.durationMs > MAX_MS || row.previewStartMs >= row.durationMs))
         { m_Status = "The selected elements have no valid preview window."; Release_Row(row); return false; }
@@ -1129,7 +1148,13 @@ bool CEffectAuthoringSequencer::Resolve_KoukuSourceAnchors(
         model->Actors().front().memberId : m_AnchorMember;
     if (!Uses_KoukuSourceModel() || !model || !model->Resolve_Target(member, target, view))
     { error = "The selected Kouku animation target is unavailable."; return false; }
-    return CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(document, view, root, seconds, anchors, error);
+    const bool usePreviewSource = m_KoukuEffectPreview &&
+        m_KoukuEffectPreview->assetId == document.strEffectAssetId && m_KoukuEffectPreview->sourceModelPreview;
+    const auto* source = usePreviewSource ? &*m_KoukuEffectPreview->sourceModelPreview : nullptr;
+    // Fixed-step trail birth samples must share the displayed Pattern pose clock.
+    const float sourceSeconds = seconds + (usePreviewSource ? m_KoukuEffectPreview->modelStartMs * .001f : 0.f);
+    return CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
+        document, view, root, sourceSeconds, anchors, error, source);
 }
 
 bool CEffectAuthoringSequencer::Record_V1Anchors(EFFECT_ROW& row, const float4x4_t& pivot, const float age)

@@ -3771,8 +3771,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		if ($windowKind -ceq 'PATTERN_COMPLETION_COUNT') {
 			Assert-JsonInteger $window.completionCount 'Pattern completionCount' 1 16
 			if ($window.patternIds -isnot [Array] -or @($window.patternIds).Count -lt $window.completionCount -or
-				@($window.patternIds).Count -gt 16 -or @($window.onSuccess).Count -ne 1 -or $window.onSuccess[0].kind -cne 'FOLLOWUP_PATTERN' -or
-				@($window.onFail).Count -ne 0 -or @($window.onTimeout).Count -ne 0 -or @($window.cardRegions).Count -ne 0) { throw 'Pattern completion chain requires candidates, Success followup, and no Collider/Fail/Timeout' }
+				@($window.patternIds).Count -gt 16 -or @($window.onSuccess).Count -gt 1 -or
+				(@($window.onSuccess).Count -eq 1 -and $window.onSuccess[0].kind -cne 'FOLLOWUP_PATTERN') -or
+				@($window.onFail).Count -ne 0 -or @($window.onTimeout).Count -ne 0 -or @($window.cardRegions).Count -ne 0) { throw 'Pattern completion chain requires candidates, optional Success followup, and no Collider/Fail/Timeout' }
 			$chainIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 			foreach ($candidate in $window.patternIds) {
 				Assert-StableId $candidate 'Pattern completion candidate'
@@ -4371,6 +4372,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		if ($null -ne $worldSequence.PSObject.Properties['walkableSurface']) { $worldSequenceProperties += 'walkableSurface' }
 		$hasPlacement = $null -ne $worldSequence.PSObject.Properties['placement']
 		if ($hasPlacement) { $worldSequenceProperties += 'placement' }
+		$hasCombatBody = $null -ne $worldSequence.PSObject.Properties['combatBody']
+		if ($hasCombatBody) { $worldSequenceProperties += 'combatBody' }
 		Assert-ExactProperties $worldSequence $worldSequenceProperties 'KoukuSaydon world sequence cue'
         Assert-JsonString $worldSequence.occurrenceId 'World source occurrenceId'
         Assert-StableId $worldSequence.occurrenceId 'World source occurrenceId'
@@ -4423,6 +4426,24 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$placementNumbers = @($placement.position) + @($placement.rotationDegrees) + @($placement.scale)
 			$placementText = @($placementNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'WORLD placement transform' })
 			$patternRows.Add((@('PATTERNWORLDPLACEMENT',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,$worldSequence.occurrenceId) + $placementText -join "`t"))
+		}
+		if ($hasCombatBody) {
+			$body = $worldSequence.combatBody
+			Assert-ExactProperties $body @('maxHp','centerM','radiusM','lifetimePolicy') 'World combat body'
+			Assert-JsonInteger $body.maxHp 'World combat HP' 1 1000000000
+			Assert-JsonString $body.lifetimePolicy 'World combat lifetime'
+			Assert-JsonNumber $body.radiusM 'World combat radius'
+			if ($body.lifetimePolicy -cne 'UNTIL_DESTROYED' -or $body.radiusM -le .001 -or $body.radiusM -gt 1000 -or
+				$body.centerM -isnot [Array] -or @($body.centerM).Count -ne 3 -or $worldSequence.anchorKind -cne 'NONE' -or
+				$null -ne $worldSequence.PSObject.Properties['walkableSurface']) { throw 'World combat body requires one stationary non-support cue' }
+			foreach ($number in $body.centerM) {
+				Assert-JsonNumber $number 'World combat center'
+				if ([math]::Abs([double]$number) -gt 100000) { throw 'World combat center exceeds bounds' }
+			}
+			$numbers = @($body.centerM) + @($body.radiusM)
+			$text = @($numbers | ForEach-Object { Format-InvariantSignedFloat $_ 'World combat geometry' })
+			$patternRows.Add((@('PATTERNWORLDCOMBAT',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+				$worldSequence.occurrenceId,[uint32]$body.maxHp) + $text -join "`t"))
 		}
 		if ($null -ne $worldSequence.PSObject.Properties['walkableSurface']) {
 			$surface = $worldSequence.walkableSurface
@@ -6613,13 +6634,14 @@ function Get-BootstrapRowSortKey {
 			$fields[3], $dependencyOrder) + @($fields[4..($fields.Count - 1)])) -join "`t"
 	}
 	if ($fields.Count -ge 4 -and $fields[0] -cin @(
-		'PATTERNWORLDSEQUENCE','PATTERNWORLDPLACEMENT','PATTERNWORLDSUPPORT')) {
+		'PATTERNWORLDSEQUENCE','PATTERNWORLDPLACEMENT','PATTERNWORLDSUPPORT','PATTERNWORLDCOMBAT')) {
 		# Placement/support rows resolve an already loaded World occurrence.
 		# Preserve the original ordering inside each kind after its parent rank.
 		$dependencyOrder = switch -CaseSensitive ($fields[0]) {
 			'PATTERNWORLDSEQUENCE' { 0 }
 			'PATTERNWORLDPLACEMENT' { 1 }
 			'PATTERNWORLDSUPPORT' { 2 }
+			'PATTERNWORLDCOMBAT' { 3 }
 		}
 		$Row = (@('PATTERNWORLDSEQUENCE', $dependencyOrder) +
 			@($fields[1..($fields.Count - 1)])) -join "`t"
@@ -6716,7 +6738,14 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
 # Matches CGameplayCatalog admission; reject before any bootstrap is staged.
-$maximumGameplayBootstrapRows = 32768
+$gameplayRevisionContract = [IO.File]::ReadAllText(
+    (Join-Path $repoRoot 'Shared/Public/GameplayDataRevision.h'))
+$maximumGameplayBootstrapRowsMatch = [regex]::Match($gameplayRevisionContract,
+    'GAMEPLAY_BOOTSTRAP_MAX_ROWS\s*=\s*(\d+)u;')
+if (-not $maximumGameplayBootstrapRowsMatch.Success) {
+    throw 'Shared gameplay bootstrap row bound is missing.'
+}
+$maximumGameplayBootstrapRows = [uint32]::Parse($maximumGameplayBootstrapRowsMatch.Groups[1].Value)
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }

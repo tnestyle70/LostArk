@@ -1,6 +1,11 @@
 #include "MapAssetObject.h"
 #include "CardMazeVisualPolicy.h"
 
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
+
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
@@ -264,10 +269,33 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 HRESULT CMapAssetObject::Render_Shadow()
 {
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
+	constexpr uint32_t OPAQUE_SHADOW_PASS_BASE = 20u;
 	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f ||
         CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
     if (!m_RenderProfile.castsShadow) return S_OK;
+
+	// Use the final light volume after frame providers, never the camera volume.
+	// The beach-wave source VS displaces vertices beyond the static model bounds.
+	bool_t hasVertexDisplacement = false;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
+			(surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+				surface->sourceCharacter.program == 43u))
+		{
+			hasVertexDisplacement = true;
+			break;
+		}
+	}
+	MAP_SHADOW_CULL_SNAPSHOT lightSnapshot{};
+	if (m_bHasWorldCullBounds && !hasVertexDisplacement &&
+		CMapAssetRenderUtils::Capture_ShadowCullSnapshot(lightSnapshot) &&
+		!CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(
+			lightSnapshot, m_vWorldCullCenter, m_fWorldCullRadius))
+		return S_OK;
+
     if (FAILED(Bind_ShadowShaderResources())) return E_FAIL;
 
 	for (uint32_t iMesh = 0;
@@ -278,11 +306,14 @@ HRESULT CMapAssetObject::Render_Shadow()
         const uint32_t iCullPass = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
         if (iCullPass > 2u) return E_UNEXPECTED;
         presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
-		if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(
+		const bool_t opaqueShadow = CMapAssetRenderUtils::Uses_OpaqueShadowPass(
+			m_pModelCom->Get_MaterialSurface(iMesh), presentationProfile,
+			CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials);
+		if ((!opaqueShadow && FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(
 				m_pModelCom, m_pShaderCom, iMesh,
-				presentationProfile, m_fElapsedTime)) ||
+				presentationProfile, m_fElapsedTime))) ||
 			FAILED(m_pShaderCom->Begin(
-				STATIC_SHADOW_PASS_BASE + iCullPass)) ||
+				(opaqueShadow ? OPAQUE_SHADOW_PASS_BASE : STATIC_SHADOW_PASS_BASE) + iCullPass)) ||
 			FAILED(m_pModelCom->Render(iMesh)))
 		{
 			return E_FAIL;

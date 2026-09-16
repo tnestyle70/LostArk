@@ -71,6 +71,8 @@ namespace Client
 		std::vector<std::string> AnimationClips;
 		// Authored emission rows of this Motion (1 for seeded emitters); Box Detail offers the row index.
 		std::uint32_t iEmissionCount = 1u;
+		bool_t bUntilDestroyed = false;
+		std::uint32_t iMaximumHp = 0u;
 	};
 
 	struct KOUKU_WORLD_OBJECT_EDIT_REQUEST final
@@ -220,6 +222,8 @@ namespace Client
 		[[nodiscard]] const std::string& Get_SelectedPatternId() const noexcept {
 			return m_strSelectedPatternId;
 		}
+        [[nodiscard]] const std::string& Get_SelectedPresentationOccurrenceId() const noexcept
+        { return m_strSelectedPresentationOccurrenceId; }
 		bool_t Select_PatternById(
 			std::string_view patternId,
 			std::string& outStatus);
@@ -346,6 +350,12 @@ namespace Client
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
 			std::string& outStatus);
+		// Immutable session copy; Paste appends to another Pattern without shifting its existing clocks.
+		bool_t Copy_TimelineSelection(std::string_view patternId,
+			const std::vector<std::string>& stageIds,
+			const std::vector<std::string>& occurrenceIds, std::string& outStatus);
+		bool_t Paste_TimelineClipboard(std::string_view patternId, std::string& outStatus);
+		bool_t Has_TimelineClipboard() const noexcept { return m_TimelineClipboard.has_value(); }
 		// All lane occurrence IDs share this atomic copy command; Stage children are copied only once.
 		// Mixed blocks preserve relative clocks, splice later lanes and remap owned stable references.
 		bool_t Duplicate_TimelineSelection(
@@ -749,10 +759,12 @@ namespace Client
 		void Render_ResourcesWindow();
 		void Render_Timeline();
 		void Clear_TimelineSelection();
+		void Process_TimelineClipboardShortcuts();
 		void Select_TimelineBox(const std::string& stageId,
 			const std::string& occurrenceId, bool_t toggle);
 		void Render_Transport();
 		void Render_ServerPlayButton(const char_t* label);
+		void Synchronize_ServerPatternPlayback();
 		bool_t Queue_CompleteSequenceItem(std::vector<std::string> patternIds,
 			std::size_t index, std::string& outStatus);
 		void Render_CompleteSequenceTransport();
@@ -929,6 +941,21 @@ namespace Client
 		int32_t m_iPatternBoxStartMs = 0, m_iPatternBoxDurationMs = 1000;
 		int32_t m_iParentLoopWindowMs = 30000;
 		bool_t m_bPatternBoxRepeat = false;
+		struct TIMELINE_CLIPBOARD final
+		{
+			std::string strCompositionId, strAreaId, strActorProfileId;
+			std::uint32_t iDurationMs = 0u, iDetachedBoundaryBlends = 0u;
+			std::uint32_t iNextPresentationResourceOrdinal = 1u, iNextWorldOrdinal = 1u, iNextLogicOrdinal = 1u;
+			std::vector<std::string> SelectedStageIds;
+			std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> Effects;
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> Resources;
+			std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> Worlds;
+			std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION> WorldDefinitions;
+			std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
+			std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> LogicDefinitions;
+		};
+		std::optional<TIMELINE_CLIPBOARD> m_TimelineClipboard;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		KOUKU_PATTERN_SELECTION m_ePatternSelection = KOUKU_PATTERN_SELECTION::GATE;
 		std::string m_strSelectedGateId = "GATE1";
@@ -972,6 +999,10 @@ namespace Client
 		std::uint64_t m_iPublishStartedAtMilliseconds = 0u;
 		std::string m_strPendingServerPlayPatternId;
 		std::uint32_t m_iPendingServerPlaySourceRevision = 0u;
+		std::string m_strServerFollowRootPatternId;
+		std::string m_strServerFollowLivePatternId;
+		std::uint32_t m_iServerFollowPreviousRequest = 0u;
+		bool_t m_bServerSelectionFollowSuspended = false;
 
         struct PATTERN_CHILD_ROW
         {
@@ -1015,6 +1046,8 @@ namespace Client
 		int32_t m_iSelectedNewStageKind = 0;
 		bool_t m_bOpen = true;
 		bool_t m_bSharedWorkspaceActive = false;
+		bool_t m_bTimelineClipboardFocusThisFrame = false;
+		int32_t m_iTimelineClipboardShortcutFrame = -1;
 		bool_t m_bLoadAttempted = false;
 		bool_t m_bHasDraft = false;
 		bool_t m_bDirty = false;

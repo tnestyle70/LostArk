@@ -537,6 +537,7 @@ void CLevel_Loading::Render_LoadingProgressDiagnostics()
 	{
 		ImGui::TextUnformatted(loadingStatus.c_str());
 		if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+			 LEVEL::BERN == m_eNextLevelID ||
 			 LEVEL::VALTAN_ARENA == m_eNextLevelID ||
 			 LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID) &&
 			!m_strEffectPreparationStatus.empty())
@@ -575,6 +576,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 {
 	const bool_t bCharacterSelect =
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID;
+	const bool_t bBern = LEVEL::BERN == m_eNextLevelID;
 	const bool_t bValtanArena = LEVEL::VALTAN_ARENA == m_eNextLevelID;
 	const bool_t bKoukuArena = LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID;
 	if (!CClickMoveEffect::Uses_LevelMarkers(m_eNextLevelID))
@@ -587,8 +589,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		return false;
 	}
 	const std::string TargetLabel =
-		bCharacterSelect ? "CHARACTER SELECT" :
-		(bValtanArena ? "VALTAN ARENA" : (bKoukuArena ? "KOUKUSAYDON ARENA" : "PLAYABLE LEVEL"));
+		bCharacterSelect ? "CHARACTER SELECT" : (bBern ? "BERN" :
+		(bValtanArena ? "VALTAN ARENA" : (bKoukuArena ? "KOUKUSAYDON ARENA" : "PLAYABLE LEVEL")));
 
 	const auto IsolateFailure = [this, &TargetLabel](const std::string& Status)
 	{
@@ -628,7 +630,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		// CPU resources join this same Loader worker; per-target failures already
 		// settle as isolated decorations and never require a first-click load.
 		m_EffectPreparationTargets = CClickMoveEffect::Queue_LevelResources(m_eNextLevelID);
-		if (bCharacterSelect || bValtanArena || bKoukuArena)
+		if (bCharacterSelect || bBern || bValtanArena || bKoukuArena)
 		{
 		using LostArk::Shared::CHARACTER_CLASS_ID;
 		CHARACTER_CLASS_ID SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;

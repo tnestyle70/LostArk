@@ -77,6 +77,28 @@ def route_scene_bloom_samples(text):
                   lambda match: 'Read_EffectSceneColor' + (match[1] or '') + '(', text)
 
 
+def route_receiver_isolated_distortion(case_text):
+    """Keep the reviewed Mario/Showtime noise offsets out of actor pixels.
+
+    These three original material passes produce texture-dependent offsets.
+    Their native color/depth expressions stay intact; BA selects the renderer's
+    receiver-isolated resolve. Other native passes retain ordinary RG routing.
+    """
+    isolated_programs = {2461, 2587, 3682}
+    ordinary = 'output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);'
+    isolated = 'output.Distortion=float4(0.f,0.f,accumulated.xy-accumulated.zw);'
+    for block in conditional_blocks(case_text):
+        identifier = int(re.search(r'case (\d+)u:', block)[1])
+        if identifier not in isolated_programs:
+            continue
+        assert f'ArtistNative{identifier}Distortion(input)' in block, (
+            'Receiver-isolated native requires its reviewed distortion pass', identifier)
+        assert block.count(ordinary) + block.count(isolated) == 1, (
+            'Receiver-isolated native distortion output changed', identifier)
+        case_text = case_text.replace(block, block.replace(ordinary, isolated), 1)
+    return case_text
+
+
 def install_partitioned_groups(shader_text, case_text):
     """Generate declarations, dispatch, runtime selection and project inputs together."""
     shaders = ROOT / 'Client/Bin/ShaderFiles'
@@ -99,7 +121,7 @@ def install_partitioned_groups(shader_text, case_text):
         condition = f'!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {group}'
         return condition + ''.join(f' || defined(EFFECT_NATIVE_{carrier.upper()}_CARRIER)' for carrier in shared_carriers)
     cases, programs, carrier_groups = [], set(), {carrier: set() for carrier in ('Mesh', 'Particle', 'Decal', 'Trail')}
-    input_blocks = conditional_blocks(case_text)
+    input_blocks = conditional_blocks(route_receiver_isolated_distortion(case_text))
     incoming = {int(re.search(r'case (\d+)u:', block)[1]): block for block in input_blocks}
     assert len(incoming) == len(input_blocks), 'Duplicate incoming Kouku native case'
     previous = conditional_blocks(installed_kouku_cases(shaders))
@@ -225,12 +247,32 @@ def append_reviewed(source_dir):
     assert rows and not contract.get('deferredPrograms')
     owned = {row['program'] for row in rows}
     assert len(owned) == len(rows) and owned <= set(range(2304, 3712))
-    assert all(not row.get('distortionPass') for row in rows), 'Use the full pass-aware installer for a new distortion cohort'
+    merged_path = source_dir / 'merged_native_runtime_contract.json'
+    if merged_path.is_file():
+        merged = json.loads(merged_path.read_bytes())
+        assert not merged.get('deferredPrograms')
+        merged_rows = {row['program']: row for row in merged['programs']}
+        for row in rows:
+            recovered = merged_rows[row['program']]
+            for field in ('sourceMaterial', 'sourceVS', 'sourcePS', 'rendererShape'):
+                assert row[field] == recovered[field], ('Reviewed native identity changed', row['program'], field)
+            if recovered.get('distortionPass'):
+                # Pass recovery also closes depth/texture/constant inputs. The
+                # descriptor and shader must consume the same merged row.
+                row.update(recovered)
     generated = route_scene_bloom_samples(
         (source_dir / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8'))
     additions = re.findall(r'(#ifndef ARTIST_NATIVE_MODEL_ONLY\n// [^\n]+\nfloat4 ArtistNative(\d+)\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\}\n#endif)', generated, re.S)
     additions = {int(identifier): block for block, identifier in additions if int(identifier) in owned}
     assert set(additions) == owned, 'Reviewed native function closure is incomplete'
+    distortion = {}
+    for row in rows:
+        if row.get('distortionPass'):
+            identifier = row['program']
+            companion = route_scene_bloom_samples((source_dir / row['distortionPass']['hlsli']).read_text(encoding='utf8'))
+            blocks = re.findall(r'(float4 ArtistNative' + str(identifier) + r'Distortion\(ARTIST_NATIVE_INPUT input\)\n\{.*?\n\})', companion, re.S)
+            assert len(blocks) == 1, ('Reviewed distortion function closure is incomplete', identifier)
+            distortion[identifier] = blocks[0]
     shaders = ROOT / 'Client/Bin/ShaderFiles'
     installed = '\n'.join(path.read_text(encoding='utf8') for path in sorted(shaders.glob('Shader_EffectKoukuNativeGroup*.hlsli')))
     cases = installed_kouku_cases(shaders)
@@ -238,8 +280,10 @@ def append_reviewed(source_dir):
     for block in conditional_blocks(installed):
         identifier = int(re.search(r'float4 ArtistNative(\d+)', block)[1])
         if identifier in owned:
-            body = re.search(r'float4 ArtistNative\d+\(.*?\n\}', block, re.S)
-            expected = re.search(r'float4 ArtistNative\d+\(.*?\n\}', additions[identifier], re.S)
+            is_distortion = bool(re.search(r'float4 ArtistNative\d+Distortion\(', block))
+            expected_block = distortion.get(identifier, '') if is_distortion else additions[identifier]
+            body = re.search(r'float4 ArtistNative\d+(?:Distortion)?\(.*?\n\}', block, re.S)
+            expected = re.search(r'float4 ArtistNative\d+(?:Distortion)?\(.*?\n\}', expected_block, re.S)
             assert body and expected and body[0] == expected[0], ('Native ID already owns a different program', identifier)
         else:
             previous_blocks.append(block)
@@ -253,11 +297,27 @@ def append_reviewed(source_dir):
                            ('MESH', 'PARTICLE', 'DECAL', 'TRAIL', 'SCREEN_POST') if kind != carrier)
         identifier = row['program']
         previous_blocks.append('#if ' + guard + '\n' + additions[identifier] + '\n#endif\n')
+        if identifier in distortion:
+            previous_blocks.append('#if !defined(ARTIST_NATIVE_MODEL_ONLY) && ' + guard + '\n' + distortion[identifier] + '\n#endif\n')
+            opaque = row['nativeBlend'] in ('blend_additive', 'blend_masked', 'blend_opaque')
+            case = (f'    case {identifier}u:\n    {{\n'
+                    f'        nativeColor=ArtistNative{identifier}(input);\n'
+                    f'        const float4 accumulated=ArtistNative{identifier}Distortion(input);\n'
+                    f'        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,{"1.f" if opaque else "nativeColor.a"});\n'
+                    '        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);\n'
+                    '        return output;\n    }\n')
+        else:
+            case = color_case(row)
         case_blocks.append(f'#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {identifier // 64 * 64}) && {guard}\n'
-                           + color_case(row) + '#endif\n')
+                           + case + '#endif\n')
     # Material descriptors have the same reviewed IDs and preserve peer arrays.
     import install_kouku_gate1_native_materials as materials
-    materials.install(source_dir / 'native_runtime_contract.json', source_dir, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
+    # Keep the all-occurrence projection patch intact: it also owns reused
+    # programs that this bounded installation deliberately does not rewrite.
+    reviewed_evidence = source_dir / 'append_reviewed'
+    reviewed_contract = reviewed_evidence / 'native_runtime_contract.json'
+    materials.write(reviewed_contract, dict(contract, programs=rows))
+    materials.install(reviewed_contract, reviewed_evidence, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
     return install_partitioned_groups('\n'.join(previous_blocks), ''.join(case_blocks))
 
 

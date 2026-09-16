@@ -28,7 +28,7 @@ namespace Client::EffectDocumentCodecDetail
 {
 
 
-	constexpr std::array<std::string_view, 51u>
+	constexpr std::array<std::string_view, 52u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemodulecollision",
 			"particlemoduleattractorpoint",
@@ -78,13 +78,14 @@ namespace Client::EffectDocumentCodecDetail
 			"particlemodulevectorfieldscale",
 			"particlemodulevectorfieldscaleoverlife",
 			"particlemodulevelocity",
+			"particlemodulevelocitycone",
 			"particlemodulevelocityinheritparent",
 			"particlemodulevelocityoverlifetime",
 			"particlemodulevortex"
 		};
 
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 80u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 82u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
 			std::pair{ "particlemoduleattractorpoint", "position" },
 			std::pair{ "particlemoduleattractorpoint", "range" },
@@ -162,6 +163,8 @@ namespace Client::EffectDocumentCodecDetail
 			std::pair{ "particlemodulevectorfieldscaleoverlife", "scaleoverlife" },
 			std::pair{ "particlemodulevelocity", "startvelocity" },
 			std::pair{ "particlemodulevelocity", "startvelocityradial" },
+			std::pair{ "particlemodulevelocitycone", "angle" },
+			std::pair{ "particlemodulevelocitycone", "velocity" },
 			std::pair{ "particlemodulevelocityinheritparent", "scale" },
 			std::pair{ "particlemodulevelocityoverlifetime", "veloverlife" },
 			std::pair{ "efparticlemodulevortex", "poweracceleration" }
@@ -528,7 +531,35 @@ namespace Client::EffectDocumentCodecDetail
 			return false;
 		}
 
-        if (strNormalizedClass == "particlemodulecollision")
+		if (strNormalizedClass == "particlemodulevelocitycone")
+		{
+			f64_t x = 0.0, y = 0.0, z = 1.0;
+			bool_t worldSpace = false, ownerScale = false;
+			// The current portable consumer admits the measured emitter-space cone.
+			// Other velocity-base modes must not become an implicit fallback.
+			if (Module.strClassName != strNormalizedClass ||
+				!ReadPortableNumberLiteral(Module, "direction.x", 0.0, x) ||
+				!ReadPortableNumberLiteral(Module, "direction.y", 0.0, y) ||
+				!ReadPortableNumberLiteral(Module, "direction.z", 1.0, z) ||
+				!std::isfinite(x * x + y * y + z * z) ||
+				x * x + y * y + z * z < 1.e-12 ||
+				x * x + y * y + z * z > (std::numeric_limits<f32_t>::max)() ||
+				!ReadPortableBoolLiteral(Module, "binworldspace", false, worldSpace) || worldSpace ||
+				!ReadPortableBoolLiteral(Module, "bapplyownerscale", false, ownerScale) || ownerScale)
+			{
+				strOutError = "Source VelocityCone requires a finite nonzero direction and emitter-space velocity without owner scaling.";
+				return false;
+			}
+			for (const auto& Distribution : Module.Distributions)
+			{
+				if (Distribution.iComponentCount != 1u)
+				{
+					strOutError = "Source VelocityCone angle and velocity distributions must be scalar.";
+					return false;
+				}
+			}
+		}
+        else if (strNormalizedClass == "particlemodulecollision")
         {
             bool World = false, ApplyPhysics = false, VerticalOnly = false;
             std::string_view Completion;

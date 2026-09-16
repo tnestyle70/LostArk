@@ -1738,6 +1738,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.object-sustain15.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.pentagram.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.entry.portal.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.full.restore.effect.json"></None>
   </ItemGroup>
@@ -2546,5 +2547,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage004.full.restore.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3648.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.shared.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.circus.ball.aura.effect.json"></None>
   </ItemGroup>
 </Project>

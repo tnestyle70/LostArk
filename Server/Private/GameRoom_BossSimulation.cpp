@@ -1595,7 +1595,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	Update_PendingEstherSummons(fixedDeltaSeconds);
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
-		if (entity.bKoukuGazeClone)
+		if (entity.bKoukuGazeClone || entity.eKind == WORLD_BOOTSTRAP_KIND::WORLD_OBJECT)
 			continue;
 		if (entity.isEstherSummon)
 		{

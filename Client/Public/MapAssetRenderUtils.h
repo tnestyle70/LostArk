@@ -96,6 +96,12 @@ public:
 		const MAP_ASSET_RENDER_PROFILE& profile,
 		bool_t mirrored);
 
+	// Only families whose source shadow cannot discard or displace vertices.
+	static bool_t Uses_OpaqueShadowPass(
+		const Engine::MODEL_SURFACE_PARAMETERS* surface,
+		const MAP_ASSET_RENDER_PROFILE& profile,
+		bool_t useSourceMaterials);
+
 	static HRESULT Bind_ShadowMaterial(
 		const shared_ptr<Engine::CModel>& model,
 		const shared_ptr<Engine::CShader>& shader,

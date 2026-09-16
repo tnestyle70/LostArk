@@ -2,6 +2,7 @@
 
 namespace LostArk::Shared::WorldCollision
 {
+	inline constexpr float CONTACT_MARGIN = 0.001f;
 	inline constexpr float PLAYER_HALF_EXTENT_X = 0.45f;
 	inline constexpr float PLAYER_HALF_EXTENT_Y = 0.90f;
 	inline constexpr float PLAYER_HALF_EXTENT_Z = 0.45f;

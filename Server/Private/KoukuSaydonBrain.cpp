@@ -367,7 +367,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		case BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT:
 			valuesValid = !window.PatternIds.empty() && window.PatternIds.size() <= 16u && window.iCompletionCount > 0u &&
 				window.iCompletionCount <= window.PatternIds.size() && window.CardRegions.empty() && window.OnFail.empty() &&
-				window.OnTimeout.empty() && window.OnSuccess.size() == 1u && window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+				window.OnTimeout.empty() && window.OnSuccess.size() <= 1u && (window.OnSuccess.empty() ||
+				 window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN);
 			break;
 		case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
 			valuesValid = window.CardRegions.size() == 8u || (window.iSectorCount >= 2u &&
@@ -530,6 +531,16 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	}
 	for (const BOSS_PATTERN_WORLD_SEQUENCE& sequence : pattern.WorldSequences)
 	{
+		if (sequence.CombatBody)
+		{
+			const auto& body = *sequence.CombatBody;
+			if (sequence.strOccurrenceId.empty() || sequence.bAnchorBossSpawn || !sequence.SupportWindows.empty() ||
+				!body.iMaximumHp || body.iMaximumHp > 1000000000u || !std::isfinite(body.fRadiusM) ||
+				body.fRadiusM <= .001f || body.fRadiusM > 1000.f || !std::isfinite(body.fCenterX) ||
+				!std::isfinite(body.fCenterY) || !std::isfinite(body.fCenterZ) || std::abs(body.fCenterX) > 100000.f ||
+				std::abs(body.fCenterY) > 100000.f || std::abs(body.fCenterZ) > 100000.f)
+			{ status = "World combat body is outside the fixed owned cue contract"; return false; }
+		}
 		if (sequence.Placement)
 		{
 			const auto& placement = *sequence.Placement;

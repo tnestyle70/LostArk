@@ -133,7 +133,7 @@
         nativeColor=ArtistNative2461(input);
         const float4 accumulated=ArtistNative2461Distortion(input);
         output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
-        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        output.Distortion=float4(0.f,0.f,accumulated.xy-accumulated.zw);
         return output;
     }
 #endif

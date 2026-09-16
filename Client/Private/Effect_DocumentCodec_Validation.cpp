@@ -301,6 +301,12 @@ bool_t Client::CEffectDocumentCodec::Validate(
             strOutError = "Multiply requires an admitted native source sprite material: " + Element.strElementId;
             return false;
         }
+		if (Element.Detail.Sprite.bTwoSided && !Supports_ArtistSpriteTwoSided(Element))
+		{
+			strOutError = "Two Sided requires an admitted native alpha/additive one-sided sprite: " +
+				Element.strElementId;
+			return false;
+		}
 		ElementsById.emplace(Element.strElementId, &Element);
 		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 			Element.ActionCueAttachment;

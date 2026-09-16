@@ -26,7 +26,8 @@ namespace
 	constexpr std::string_view ENCOUNTER_ID = "ENCOUNTER_KAKULSAYDON_G1";
 	constexpr std::string_view BOSS_ARCHETYPE_ID =
 		"BOSS_KAKULSAYDON_G1_KOUKU";
-	constexpr std::uintmax_t MAX_PRODUCT_BYTES = 8u * 1024u * 1024u;
+	constexpr std::uintmax_t MAX_PRODUCT_BYTES = 64u * 1024u * 1024u;
+	constexpr std::size_t MAX_PRODUCT_VALUES = 4'000'000u;
 
 	const Client::DATA_JSON_VALUE* Required(
 		const Client::DATA_JSON_VALUE& object,
@@ -265,12 +266,23 @@ namespace
 		const auto path = CProjectDataRoot::Resolve(L"Encounters/KoukuSaydon/KoukuSaydonEncounter.json");
 		std::error_code error;
 		const auto size = std::filesystem::file_size(path, error);
-		if (error || size == 0u || size > MAX_PRODUCT_BYTES)
-		{ outStatus = "KoukuSaydon Product index is missing or oversized; previous list retained."; return false; }
+		if (error || size == 0u)
+		{ outStatus = "KoukuSaydon Product index is missing, empty or unreadable: " + path.string() + "; previous list retained."; return false; }
+		if (size > MAX_PRODUCT_BYTES)
+		{ outStatus = "KoukuSaydon Product index exceeds the 64 MiB limit (" + std::to_string(size) + " bytes); previous list retained."; return false; }
 		std::ifstream input(path, std::ios::binary);
-		const std::string text{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+		if (!input)
+		{ outStatus = "KoukuSaydon Product index could not be opened; previous list retained."; return false; }
+		std::string text(static_cast<std::size_t>(size), '\0');
+		input.read(text.data(), static_cast<std::streamsize>(size));
+		if (!input || input.peek() != std::char_traits<char>::eof())
+		{ outStatus = "KoukuSaydon Product index changed while reading; reload the inventory after publishing; previous list retained."; return false; }
 		DATA_JSON_VALUE root;
-		if (!input || !CDataJson::Parse(text, root, outStatus)) return false;
+		DATA_JSON_PARSE_LIMITS limits;
+		limits.iMaximumBytes = static_cast<std::size_t>(MAX_PRODUCT_BYTES);
+		limits.iMaximumValues = MAX_PRODUCT_VALUES;
+		if (!CDataJson::Parse(text, root, outStatus, limits))
+		{ outStatus = "KoukuSaydon Product index could not be parsed: " + outStatus + "; previous list retained."; return false; }
 		const auto* schema = Required(root, "schema", DATA_JSON_TYPE::STRING);
 		const auto* version = Required(root, "formatVersion", DATA_JSON_TYPE::NUMBER);
 		const auto* encounter = Required(root, "encounterId", DATA_JSON_TYPE::STRING);
@@ -452,9 +464,11 @@ bool Client::CKoukuSaydonBossTool::Reload(std::string& outStatus)
 	if (!Load_ProductIndex(
 			stagedPatterns, stagedPlayAll, stagedFolders, stagedBundles, stagedSourceRevision, outStatus))
 	{
+		m_strProductLoadError = outStatus;
 		m_strStatus = outStatus;
 		return false;
 	}
+	m_strProductLoadError.clear();
 	m_ProductFolders=std::move(stagedFolders); m_ProductBundles=std::move(stagedBundles);
 	m_ProductPatterns = std::move(stagedPatterns);
 	m_PlayAllPatternIds = std::move(stagedPlayAll);
@@ -542,7 +556,9 @@ bool Client::CKoukuSaydonBossTool::Play_All(std::string& outStatus)
 
 bool Client::CKoukuSaydonBossTool::Load_PatternFlows(std::string& status)
 {
-	if (!m_FlowDocument.Reload(status)) return false;
+	if (!m_FlowDocument.Reload(status))
+	{ m_strFlowLoadError = status; return false; }
+	m_strFlowLoadError.clear();
 	m_FlowDraft = m_FlowDocument.Get_LastGood().PatternFlows;
 	m_bFlowDirty = false;
 	m_strSelectedFlowEntryId.clear();
@@ -740,6 +756,12 @@ bool Client::CKoukuSaydonBossTool::Play_CompositionAll(const std::string_view ga
 bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_view gateId,
 	int& selectionKind, std::string& selectedId) const
 {
+	if (!m_strProductLoadError.empty())
+		ImGui::TextWrapped("Inventory load failed: %s", m_strProductLoadError.c_str());
+	if (!m_bHasSavedComposition) return false;
+	if (!m_strFlowLoadError.empty())
+		ImGui::TextWrapped("Pattern Flow load failed: %s", m_strFlowLoadError.c_str());
+	if (!m_FlowDocument.Has_LastGood()) return false;
 	const auto* flow = Get_SavedFlow(gateId);
 	if (!flow || flow->Entries.empty())
 	{
@@ -822,6 +844,9 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedBundleById(const std::string_view 
 bool Client::CKoukuSaydonBossTool::Render_PatternTree(
 	const std::string_view gateId, int& selectionKind, std::string& selectedId) const
 {
+	if (!m_strProductLoadError.empty())
+		ImGui::TextWrapped("Inventory load failed: %s", m_strProductLoadError.c_str());
+	if (!m_bHasSavedComposition) return false;
 	const std::string gate(gateId);
 	const auto& patterns = m_ProductPatterns;
 	const auto& folders = m_ProductFolders;

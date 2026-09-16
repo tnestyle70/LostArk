@@ -327,6 +327,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "Mario test requires one entry pattern and no player inside Mario");
 	}
 	if (restart) Clear_KoukuSaydonPatternAudition();
+	Cancel_KoukuWorldBodies(); // A newly accepted run resets persistent objects from the preceding encounter.
 	if (request.iMarioTestStartStage) m_iNextMarioEntryStage = request.iMarioTestStartStage;
 	m_KoukuSaydonPatternAudition = std::move(staged);
 	m_pKoukuPublishedProductGeneration = m_KoukuSaydonPatternAudition.pProductGeneration;
@@ -462,7 +463,16 @@ bool LostArk::Server::CGameRoom::Build_KoukuBundleState(LostArk::Shared::S2C_KOU
 	{
 		KOUKUSAYDON_BUNDLE_MEMBER_STATE state;
 		state.strMemberId = member.strMemberId; state.iBossNetEntityId = member.iBossEntityId;
-		state.strPatternId = member.PatternIds[member.iPatternIndex]; state.iPatternSequence = member.iPatternSequence; state.iStartTick = member.iScheduledStartTick;
+		state.strPatternId = member.PatternIds[member.iPatternIndex]; state.iPatternSequence = member.iPatternSequence;
+		state.iStartTick = member.iNextStartTick;
+		if (member.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE)
+		{
+			const auto boss = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& entity) {
+				return entity.iNetEntityId == member.iBossEntityId && entity.strPatternId == state.strPatternId &&
+					entity.iPatternSequence == member.iPatternSequence;
+			});
+			if (boss != m_WorldEntities.end() && boss->iPatternStartTick) state.iStartTick = boss->iPatternStartTick;
+		}
 		state.eState = member.bCompleted ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED :
 			(member.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING : KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
         if (member.MarioEntryAnchor && !member.bMarioEntryConsumed && member.iMarioEntryStage >= 1u && member.iMarioEntryStage <= 4u)
@@ -513,9 +523,92 @@ void LostArk::Server::CGameRoom::Broadcast_OwnedWorldSequence(const LostArk::Sha
 #endif
 
 #ifdef _DEBUG
+bool LostArk::Server::CGameRoom::Stage_KoukuWorldBody(
+	const BOSS_PATTERN_WORLD_COMBAT_BODY& body, const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play)
+{
+	using namespace LostArk::Shared;
+	if (!body.iMaximumHp || body.iMaximumHp > 1000000000u || !std::isfinite(body.fRadiusM) ||
+		body.fRadiusM <= .001f || body.fRadiusM > 1000.f || !play.bUntilDestroyed || !play.iRunEpoch ||
+		play.strMemberId.empty() || play.strCueId.empty() || play.strOccurrenceId.empty() ||
+		m_iNextNetEntityId == INVALID_NET_ENTITY_ID || m_KoukuDamageableWorldCues.size() >= 1024u)
+	{ m_strStatus = "World combat body is invalid or its capacity is exhausted"; return false; }
+	for (const float coordinate : { body.fCenterX, body.fCenterY, body.fCenterZ })
+		if (!std::isfinite(coordinate) || std::abs(coordinate) > 100000.f)
+		{ m_strStatus = "World combat body center is invalid"; return false; }
+	if (std::any_of(m_KoukuDamageableWorldCues.begin(), m_KoukuDamageableWorldCues.end(), [&](const auto& cue) {
+		return cue.Play.iRunEpoch == play.iRunEpoch && cue.Play.strMemberId == play.strMemberId && cue.Play.strCueId == play.strCueId; }))
+	{ m_strStatus = "World combat cue identity is already active"; return false; }
+	CPacketWriter validationWriter;
+	if (!Write_Message(validationWriter, play))
+	{ m_strStatus = "World combat cue cannot be serialized"; return false; }
+	SERVER_WORLD_ENTITY entity;
+	entity.eKind = WORLD_BOOTSTRAP_KIND::WORLD_OBJECT;
+	entity.iNetEntityId = m_iNextNetEntityId;
+	entity.strPlacementId = play.strOccurrenceId;
+	entity.iCurrentHp = entity.iMaximumHp = body.iMaximumHp;
+	entity.fPositionX = body.fCenterX; entity.fPositionY = body.fCenterY; entity.fPositionZ = body.fCenterZ;
+	entity.fCollisionRadius = body.fRadiusM;
+	entity.PinnedDefinitionRevision = m_GameplayCatalog.Get_ActiveRevision();
+	KOUKU_DAMAGEABLE_WORLD_CUE cue;
+	cue.Play = play; cue.iBodyId = entity.iNetEntityId;
+	cue.iOwnerSessionId = m_KoukuSaydonPatternAudition.iOwnerSessionId;
+	m_PendingKoukuWorldBodies.reserve(m_PendingKoukuWorldBodies.size() + 1u);
+	m_KoukuDamageableWorldCues.reserve(m_KoukuDamageableWorldCues.size() + 1u);
+	m_PendingKoukuWorldBodies.push_back(std::move(entity));
+	m_KoukuDamageableWorldCues.push_back(std::move(cue));
+	++m_iNextNetEntityId;
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Cancel_KoukuWorldBodies(
+	const std::string& memberId, const SESSION_ID ownerSession)
+{
+	for (auto& cue : m_KoukuDamageableWorldCues)
+		if ((memberId.empty() || cue.Play.strMemberId == memberId) &&
+			(ownerSession == INVALID_SESSION_ID || cue.iOwnerSessionId == ownerSession))
+		{
+			cue.bCancelled = true;
+			for (auto& body : m_WorldEntities) if (body.iNetEntityId == cue.iBodyId) body.iCurrentHp = 0u;
+			for (auto& body : m_PendingKoukuWorldBodies) if (body.iNetEntityId == cue.iBodyId) body.iCurrentHp = 0u;
+		}
+}
+
+void LostArk::Server::CGameRoom::Update_KoukuWorldBodies(const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	// Called only at room tick boundaries, never while a boss/entity iterator is live.
+	for (auto cue = m_KoukuDamageableWorldCues.begin(); cue != m_KoukuDamageableWorldCues.end();)
+	{
+		const auto live = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& row) { return row.iNetEntityId == cue->iBodyId; });
+		const auto pending = std::find_if(m_PendingKoukuWorldBodies.begin(), m_PendingKoukuWorldBodies.end(), [&](const auto& row) { return row.iNetEntityId == cue->iBodyId; });
+		const bool alive = (live != m_WorldEntities.end() && live->iCurrentHp != 0u) ||
+			(pending != m_PendingKoukuWorldBodies.end() && pending->iCurrentHp != 0u);
+		const bool ownerAlive = std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& row) {
+			return row.iNetEntityId == cue->Play.iBossNetEntityId && row.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
+				row.iCurrentHp != 0u && row.eAction != SERVER_ENTITY_ACTION::DEAD; });
+		if (!cue->bCancelled && alive && ownerAlive) { ++cue; continue; }
+		S2C_WORLD_SEQUENCE_PLAY stop;
+		stop.eOperation = WORLD_SEQUENCE_OPERATION::STOP_CUE;
+		stop.iRunEpoch = cue->Play.iRunEpoch; stop.strMemberId = cue->Play.strMemberId;
+		stop.strCueId = cue->Play.strCueId; stop.strOccurrenceId = cue->Play.strOccurrenceId;
+		stop.strSequenceInstanceId = cue->Play.strSequenceInstanceId; stop.iServerTick = serverTick;
+		Broadcast_OwnedWorldSequence(stop);
+		const auto bodyId = cue->iBodyId;
+		std::erase_if(m_WorldEntities, [&](const auto& row) { return row.eKind == WORLD_BOOTSTRAP_KIND::WORLD_OBJECT && row.iNetEntityId == bodyId; });
+		std::erase_if(m_PendingKoukuWorldBodies, [&](const auto& row) { return row.iNetEntityId == bodyId; });
+		std::erase_if(m_KoukuSaydonPatternAudition.WorldPlays, [&](const auto& row) {
+			return row.iRunEpoch == stop.iRunEpoch && row.strMemberId == stop.strMemberId && row.strCueId == stop.strCueId; });
+		cue = m_KoukuDamageableWorldCues.erase(cue);
+	}
+	m_WorldEntities.reserve(m_WorldEntities.size() + m_PendingKoukuWorldBodies.size());
+	for (auto& body : m_PendingKoukuWorldBodies) m_WorldEntities.push_back(std::move(body));
+	m_PendingKoukuWorldBodies.clear();
+}
+
 void LostArk::Server::CGameRoom::Stop_KoukuWorldOwner(const std::string& memberId, const bool finished)
 {
 	using namespace LostArk::Shared;
+	if (!finished) Cancel_KoukuWorldBodies(memberId);
 	if (!m_KoukuSaydonPatternAudition.iRoomAuditionEpoch) return;
 	S2C_WORLD_SEQUENCE_PLAY stop;
 	stop.eOperation = finished ? WORLD_SEQUENCE_OPERATION::FINISH_OWNER : WORLD_SEQUENCE_OPERATION::STOP_OWNER;
@@ -532,6 +625,7 @@ void LostArk::Server::CGameRoom::Stop_KoukuWorldOwner(const std::string& memberI
 void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool completed, std::string reason)
 {
 	m_PendingKoukuMarioEntries.clear();
+	if (!completed) Cancel_KoukuWorldBodies();
 	using namespace LostArk::Shared;
 	auto& run = m_KoukuSaydonPatternAudition;
 	if (run.Members.empty()) { run = {}; return; }
@@ -769,7 +863,7 @@ bool LostArk::Server::CGameRoom::Start_KoukuCompletionChain(
 		member.iCompletionChainFirstIndex = insertAt;
 		member.iCompletionChainCount = window.iCompletionCount;
 		member.iCompletionChainCompleted = 0u;
-		member.strCompletionChainSuccessPatternId = window.OnSuccess.front().strPatternId;
+		member.strCompletionChainSuccessPatternId = window.OnSuccess.empty() ? std::string{} : window.OnSuccess.front().strPatternId;
 		member.bCompletionChainStarted = true;
 		std::cout << "[MarioPatternChain] stage=" << static_cast<unsigned>(member.iMarioEntryStage) << " count=" << candidates.size();
 		for (const auto& id : candidates) std::cout << " " << id;
@@ -853,7 +947,7 @@ void LostArk::Server::CGameRoom::Complete_KoukuMarioReturn(
 			Clear_KoukuSaydonPatternAudition(false, m_strStatus); return;
 		}
 		member.bMarioReturnCompleted = true;
-		m_strStatus = "Mario solo entrant returned to Gate 3; waiting for three completed patterns";
+		m_strStatus = "Mario solo entrant returned to Gate 3; waiting for the selected patterns to complete";
 		std::cout << "[MarioReturn] player=" << player.iPlayerId << " stage=" << static_cast<unsigned>(member.iMarioEntryStage)
 			<< " completedTick=" << updateTick << '\n';
 	}
@@ -881,7 +975,7 @@ void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
 	Queue_KoukuSaydonPatternAuditionLifecycle(member.PatternIds[member.iPatternIndex], 0u, 0u,
 		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING, {}, member.iBossEntityId);
 	if (m_KoukuSaydonPatternAudition.Members.size() == 1u) m_KoukuSaydonPatternAudition.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
-	m_strStatus = "Mario phase 2 admitted after three patterns and the required solo return";
+	m_strStatus = "Mario phase 2 admitted after the selected patterns and the required solo return";
 }
 #endif
 
@@ -977,9 +1071,18 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 		{
 			// Keep the anchor until this tick's pending entry has committed.
 			// Prepare closes it and schedules success after the solo return gate.
-			member->bCompletionChainAwaitingReturn = true;
-			Broadcast_KoukuBundleState(KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
-			return true;
+			if (!member->strCompletionChainSuccessPatternId.empty())
+			{
+				member->bCompletionChainAwaitingReturn = true;
+				Broadcast_KoukuBundleState(KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+				return true;
+			}
+			// A chain without Success ends on the final real completion receipt.
+			// Do not leave a portal or a queued last-tick entry after the run ends.
+			member->MarioEntryAnchor.reset();
+			std::erase_if(m_PendingKoukuMarioEntries, [&](const auto& entry) {
+				return entry.strMemberId == member->strMemberId;
+			});
 		}
 	}
 	if (completedIndex + 1u < member->PatternIds.size())

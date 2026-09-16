@@ -628,6 +628,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 	}
 	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
+		if (entity.eKind == WORLD_BOOTSTRAP_KIND::WORLD_OBJECT) continue; // Owned World cue presents this body.
 		WORLD_ENTITY_SNAPSHOT snapshot{};
 		snapshot.iNetEntityId = entity.iNetEntityId;
 		snapshot.eAction = To_NetworkAction(entity.eAction);
