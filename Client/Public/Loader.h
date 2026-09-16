@@ -5,6 +5,7 @@
 #include "MapLoadScope.h"
 #include "Network/PacketType.h"
 #include "PlayableCharacterAssetService.h"
+#include "AssetPreparationBatch.h"
 
 #include <atomic>
 #include <chrono>
@@ -119,6 +120,7 @@ private:
 	LostArk::Shared::CHARACTER_CLASS_ID m_ePreparedCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	std::shared_ptr<const CPlayableCharacterAssetService::AUTHORING_INPUT> m_pCharacterAuthoringInput;
 	HANDLE m_hThread = {};
+	CAssetPreparationBatch m_AssetPreparationBatch;
 	tchar_t m_szLoadingText[MAX_PATH] = {};
 	mutable std::mutex m_StatusMutex;
 	bool_t m_bProgressDeterminate = false;

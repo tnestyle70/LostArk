@@ -327,6 +327,10 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 		return false;
 	}
 
+	// An accepted standalone submission replaces any previous Flow result.
+	// Keep that result on send failure and while controlling the same run.
+	if (!control && !m_bSubmittingFlowEntry) m_FlowSnapshot = {};
+
 	// A test override belongs to this explicit request, never to subsequent Flow entries.
 	if (request.iMarioTestStartStage) Set_MarioTest(0u, 0u);
 	m_ControlPreviousSnapshot = m_Snapshot;
@@ -570,7 +574,8 @@ void Client::CKoukuSaydonPatternAuditionService::Reset(
 	m_RequestScope = {};
 	m_bControlRequest = false;
 	m_bRunHasStarted = false;
-	Cancel_Flow(reason.empty() ? "Pattern Flow reset." : std::string(reason));
+	Cancel_Flow({});
+	m_FlowSnapshot = {};
 	m_bStopFlowWhenAdmitted = false;
 	m_bTargetTransitionPending = false;
 	Set_TargetBoss({}, {});

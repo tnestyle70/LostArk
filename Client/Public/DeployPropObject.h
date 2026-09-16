@@ -97,6 +97,7 @@ public:
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_DeferredOverlay() override;
 	virtual HRESULT Render_Shadow() override;
+	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
 
 	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
@@ -286,6 +287,7 @@ private:
 		bool_t visible);
 	void End_DebrisPresentation(DEBRIS_PRESENTATION_OWNER owner);
 	void Apply_Transform();
+	bool_t Should_CullStaticIntact(bool_t shadowPass) const;
 
 private:
 	DEPLOY_PROP_PLACEMENT m_Placement;
@@ -322,6 +324,16 @@ private:
 	shared_ptr<CModel> m_pFracturedModelCom = { nullptr };
 	std::vector<DEBRIS_PREVIEW_RESOURCE> m_DebrisPreviewResources;
 	std::vector<DEBRIS_PREVIEW_INSTANCE> m_DebrisPreviewInstances;
+
+	// The intact model and its alpha inputs are immutable; actual root changes,
+	// fades, destruction and preview/debris ownership leave the shared depth cache.
+	mutable const CModel* m_pStaticShadowModel = nullptr;
+	mutable float4x4_t m_StaticShadowWorld{};
+	mutable uint64_t m_iStaticShadowRevision = 0u;
+	mutable bool_t m_bStaticShadowSnapshotValid = false;
+	mutable bool_t m_bStaticCullBoundsValid = false;
+	mutable float3_t m_vStaticCullCenter{};
+	mutable f32_t m_fStaticCullRadius = 0.f;
 
 public:
 	static unique_ptr<CDeployPropObject> Create(

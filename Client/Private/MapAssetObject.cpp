@@ -227,6 +227,9 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 
     const float4_t worldCullSphere(m_vWorldCullCenter.x, m_vWorldCullCenter.y,
         m_vWorldCullCenter.z, m_fWorldCullRadius);
+	// Only PS_WATER consumes the water uniforms. Ordinary meshes need no
+	// identity bind, including WATER rows downgraded to TRANSLUCENT below.
+	bool_t waterBindingsAttempted = false;
 	HRESULT renderResult = Bind_ShaderResources(
 		hasCameraSnapshot ? &cameraSnapshot : nullptr);
 	if (SUCCEEDED(renderResult))
@@ -240,8 +243,14 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
                 presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
             const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
             presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
-            renderResult = Bind_WaterShaderResources(bWater);
-            if (FAILED(renderResult)) break;
+            if (bWater)
+            {
+                // Mark before binding so a partial failure still clears every
+                // shared FX11 water input before the next object is drawn.
+                waterBindingsAttempted = true;
+                renderResult = Bind_WaterShaderResources(true);
+                if (FAILED(renderResult)) break;
+            }
 			if (FAILED(
 				CMapAssetRenderUtils::Bind_Material(
 					m_pModelCom, m_pShaderCom, meshIndex,
@@ -262,7 +271,8 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 	   draw so a later character, prop or ordinary map asset cannot inherit the
 	   presentation-only branch. */
 	const HRESULT resetResult = Reset_PresentationVortexShaderResources();
-	const HRESULT waterResetResult = Bind_WaterShaderResources(false);
+	const HRESULT waterResetResult = waterBindingsAttempted ?
+		Bind_WaterShaderResources(false) : S_OK;
 	if (FAILED(renderResult))
 		return renderResult;
 	return FAILED(resetResult) ? resetResult : waterResetResult;

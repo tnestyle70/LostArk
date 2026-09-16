@@ -24,6 +24,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CAssetPreparationBatch;
+
 // Owns the one runtime path that admits playable character model prototypes.
 // The level loader admits the locally selected class first. Replication uses
 // the same service when a remote class is observed for the first time.
@@ -77,7 +79,8 @@ public:
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		const std::atomic_bool* pCancellationRequested = nullptr,
 		const PROGRESS_CALLBACK& progress = {},
-		const std::shared_ptr<const AUTHORING_INPUT>& authoringInput = {});
+		const std::shared_ptr<const AUTHORING_INPUT>& authoringInput = {},
+		CAssetPreparationBatch* preparationBatch = nullptr);
 	static bool_t Is_Ready(
 		uint32_t iLevelIndex,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
@@ -88,7 +91,8 @@ private:
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		const std::atomic_bool* pCancellationRequested,
 		const PROGRESS_CALLBACK& progress, PREPARED_MODELS& staged,
-		const AUTHORING_INPUT& authoring, std::shared_ptr<const PREPARED_PRESENTATION>& presentation);
+		const AUTHORING_INPUT& authoring, std::shared_ptr<const PREPARED_PRESENTATION>& presentation,
+		CAssetPreparationBatch& preparationBatch);
 	static HRESULT Commit_Models(uint32_t iLevelIndex,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		uint64_t generation, PREPARED_MODELS& staged,

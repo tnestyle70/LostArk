@@ -243,6 +243,7 @@
     <ClInclude Include="..\Public\RenderingBenchmark.h" />
     <ClInclude Include="..\Public\BossCompositionDocument.h" />
     <ClInclude Include="..\Public\SequencerTool.h" />
+    <ClInclude Include="..\Public\AssetPreparationBatch.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
     <ClInclude Include="..\Public\MapEffectDocument.h" />
     <ClInclude Include="..\Public\MapEffectPresentationRuntime.h" />
@@ -518,7 +519,15 @@
     <ClCompile Include="..\Private\RenderingBenchmark.cpp" />
     <ClCompile Include="..\Private\BossCompositionDocument.cpp" />
     <ClCompile Include="..\Private\SequencerTool.cpp" />
-    <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\AssetPreparationBatch.cpp" />
+    <ClCompile Include="..\Private\MapAssetCatalog.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
     <ClCompile Include="..\Private\MapEffectDocument.cpp" />
     <ClCompile Include="..\Private\MapEffectPresentationRuntime.cpp" />
     <ClCompile Include="..\Private\MapLightDocument.cpp" />
@@ -534,7 +543,14 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
     </ClCompile>
     <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
-    <ClCompile Include="..\Private\DeployPropObject.cpp" />
+    <ClCompile Include="..\Private\DeployPropObject.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
     <ClCompile Include="..\Private\DeployPropRuntime.cpp" />
     <ClCompile Include="..\Private\WorldSequencePlayer.cpp" />
     <ClCompile Include="..\Private\DestructionSimulationDocument.cpp" />
@@ -563,9 +579,23 @@
     <ClCompile Include="..\Private\NavGridBaker.cpp" />
     <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />
     <ClCompile Include="..\Private\NavRuntimeBlockerDocument.cpp" />
-    <ClCompile Include="..\Private\RuntimeAssetRoot.cpp" />
+    <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
     <ClCompile Include="..\Private\ProjectDataRoot.cpp" />
-    <ClCompile Include="..\Private\DataJson.cpp" />
+    <ClCompile Include="..\Private\DataJson.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SupportJustMyCode>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    </ClCompile>
     <ClCompile Include="..\Private\Valtan.cpp" />
     <ClCompile Include="Client.cpp" />
   </ItemGroup>

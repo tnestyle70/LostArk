@@ -91,7 +91,7 @@ namespace
 		const std::initializer_list<std::string_view> required =
 			{"schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings"};
 		const std::initializer_list<std::string_view> optional =
-			{"patterns", "lightResourceRevision", "folders", "bundles", "fearPresentations", "attachmentGrips"};
+			{"patterns", "lightResourceRevision", "folders", "bundles", "fearPresentations", "attachmentGrips", "targetedCombatVisuals"};
 		if (!root.Is_Object()) return false;
 		for (const auto key : required) if (!root.Find(key)) return false;
 		for (const auto& [key, value] : root.Get_Object())

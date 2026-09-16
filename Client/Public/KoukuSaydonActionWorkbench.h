@@ -278,6 +278,9 @@ namespace Client
 		bool_t Consume_ServerPlayRequest(
 			std::string& outPatternId,
 			std::uint32_t& outSourceRevision);
+		void Set_ServerPlayPreparationPending(bool_t pending) { m_bServerPlayPreparationPending = pending; }
+		bool_t Consume_ServerPlayCancelRequest()
+		{ const bool_t requested = m_bServerPlayCancelRequested; m_bServerPlayCancelRequested = false; return requested; }
 
 		// Create Pattern's Parent/Bundle controls validate their destination before editing session state.
 		bool_t Set_PatternCreationDestination(std::string_view folderId,
@@ -631,6 +634,10 @@ namespace Client
 			std::string_view displayName, std::string& outStatus);
 		bool_t Render_RenameControl(RENAME_TARGET target, std::string_view id,
 			std::string_view displayName);
+		std::vector<std::string> Collect_PatternDeleteReferences(std::string_view patternId) const;
+		void Request_PatternDelete(std::string_view patternId);
+		void Render_PatternDeleteContext(std::string_view patternId);
+		void Render_PatternDeleteConfirmation();
 		void Render_PresentationWorldAnchor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
 		void Render_PresentationAnchor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
@@ -869,6 +876,9 @@ namespace Client
 		// Rename text stays local until Apply; stable IDs and references never change.
 		std::string m_strRenameItemId;
 		char_t m_RenameDisplayName[256]{};
+		std::string m_strDeletePatternId;
+		std::uint64_t m_iDeletePatternGeneration = 0u;
+		bool_t m_bPatternDeleteConfirmationRequested = false;
 		std::string m_strSelectedPresentationOccurrenceId;
 		char_t m_NewPresentationName[256]{};
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_PresentationBoxEdit;
@@ -1060,5 +1070,7 @@ namespace Client
 		// Show the next consumed start result even when its diagnostic repeats.
 		bool_t m_bPreviewResultStatusPending = false;
 		bool_t m_bServerPlayRequestPending = false;
+		bool_t m_bServerPlayPreparationPending = false;
+		bool_t m_bServerPlayCancelRequested = false;
 	};
 }

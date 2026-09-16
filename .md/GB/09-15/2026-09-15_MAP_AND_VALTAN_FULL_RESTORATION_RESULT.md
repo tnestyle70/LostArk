@@ -1469,3 +1469,41 @@ Client와 Server를 자율 실행하지 않았고 둘 다 종료 상태다. 사�
 ### G31~G32 사용자 빌드 인계
 
 사용자가 직접 빌드하겠다고 확인하여 모든 C++/헤더/project 변경을 동결하고 에이전트는 후속 Product 빌드를 시작하지 않았다. 위 결과는 소스 반영·개별 컴파일·수치 검증이며 새 통합 EXE/DLL 성공 기록은 아니다. 사용자는 Debug x64 솔루션의 정상 Build로 Engine SDK와 Client를 함께 갱신한다. Rebuild/Clean 또는 산출물 삭제는 필요하지 않다. 변경 전 실행 파일은 G27~G30의16:16 빌드이며 G31~G32는 이번 사용자 빌드가 성공한 뒤 실행에 반영된다. 최종 FPS와 화면 확인은 이후 사용자 실행 결과로 구분한다.
+
+## G34. 21:47 발탄 캡처 — 정적 Deploy 그림자와 CPU 렌더 제출
+
+### 실제 진단과 해석 범위
+
+사용자 profiler_20260916_214714_277_frame41_76132_0.json은30프레임이며 첫 interval0을 제외한29프레임/1.083초 평균37.3546ms=26.77fps다. 유효GPU25프레임 평균36.7595ms, Shadow19.5227ms(Dynamic19.4509), NonBlend4.9101ms다. CPU scope45420개 누락으로13/15/16의완전한3프레임만세부CPU비교에사용했다. 이표본의NonBlend18.6224ms 중기록된자식을뺀self12.1049ms,batch mesh submit4.0361ms,Shadow cache admission3.5575ms다. 이 값은 서로 중첩되며 합산하지 않는다.
+
+Present(0,0)과완전한프레임의Present0.038~0.056ms는30fps제한이주원인이라는주장을뒷받침하지않는다. GPU Shadow elapsed는CPU명령공급공백을포함할수있으므로19.5ms를순수GPU shader시간이라고하지않는다. 안개가포함된Combined0.0514ms,Blend0.1355ms,Lights0.6364ms,Bloom0.0163ms,Final0.0162ms로이번표본에서안개가주병목이라는증거도없다. 캡처에장면·해상도·binary hash가없어장시간안정FPS나통제된이전버전A/B로확대하지않는다. 근거는out/Valtan60Fps20260916/Capture의원본hash,summary와30프레임table이다.
+
+### 실제 소스 반영
+
+일반맵MapStaticBatch/MapAsset는정적shadow캐시에참여했지만CDeployPropObject는같은shadow큐에서매프레임Render_Static/pass12를실행했다. 새override는intact STATIC,실제world/model,opacity1과시간·camera독립alpha입력이같으면기존Renderer캐시를재사용한다. 파괴·숨김·fade·physics/animation preview·debris·suppression·morph·texture override는기존동적경로로돌아간다. 원래shader·pass·depth/alpha연산은유지한다. 실제world에서보수적으로확장한bounds로본체는최종camera,shadow는최종light범위를검사하며잘못된범위는draw를유지한다. Map.Deploy.Render/Shadow계측을추가해후속캡처에서소품비용을분리한다.
+
+MapAssetObject는실제WATER패스가없는mesh에대한물전용17uniform쓰기와불필요한종료reset을생략한다. 물설정시도는실패전표시하고실패해도reset하며vortex와공용입력계약을보존한다. Model/Material/Mesh/VIBuffer 및DeployPropObject의Debug x64에기존hot-TU와같은/O2를적용하고/MDd,_DEBUG,STL ABI,/fp:precise를유지한다. shader,geometry,해상도,광원·안개·투명품질,Server simulation간격은변경하지않았다.
+
+Profiler는전체8192개,detail/worker7168개,main depth3은8064개,depth0~2는8192개로bounded예약한다. 최대CPU sample payload는프레임256KiB/history1200개300MiB이며Snapshot복사는별도다. 기존drop와long-operation기록을유지한다. detail이잘린프레임의SelfMs는정확한exclusive시간이아니므로inclusive및drop상태와함께판단한다.
+
+### 수행한 자동 검증
+
+실제MapAssetObject의기존/수정Render_Group와water binder를추출한22571검사실패0이다.625mixed layout,water row유무,3rendergroup,water→일반공유FX,17uniform실패주입과camera/material/pass/draw/reset실패를포함한다. 일반4mesh의water전용raw bind85→0이며실제물draw의소비입력과종료상태는같다. 28개transitive shader include에서이17변수가water전용임을독립대조했다. GPU backend가stub인CPU계약검증이며게임FPS개선값이아니다.
+
+실제Profiler.cpp /MDd/O2 probe는6000/60000detail,20000pass,worker4개60000scope,late부모유지,정확한drop,누락long-operation,hard bound,nesting overflow,capture-off,1205frame순환을통과했다. 해당CPP/프로젝트설정과Deploy키·bounds·실패경계의독립읽기전용검토에서추가수정이필요한결함은발견하지못했다. Engine/Client project/filter XML4개parse와git diff --check가통과했다. 상세증거는out/Valtan60Fps20260916/FallbackWater,profiler,DeployShadow에둔다.
+
+### Deploy 검증과 실제 적용 후보
+
+실제 수정된 admission/cull 함수와 기존 shared alpha 판정·frustum 함수를 사용하는 5,060검사가 통과했다. 500개 affine/shear/비균일 변환의 4,000꼭짓점 포함 여부, 실제 world/model revision, 파괴 후 respawn, fade/preview/debris/morph/override/source-off, 잘못된 bounds/planes의 기존 draw 유지, camera/light 범위 분리와 revision overflow를 포함한다. 개별 Deploy CPP /O2 컴파일도 통과했다. 기존 Render_Static/Render_Animated/Bind_ShadowShaderResources/Render_DebrisPreview 본문 및 shader는 변경하지 않았다.
+
+설치된 12종/151개 authored Deploy 배치 중 143개 정적 intact 소품이 캐시 후보이며 animated 8개는 제외된다. 후보 원본은 302 mesh, 1,493,349 vertices, 3,699,690 indices지만 runtime phase/scope/visibility/light culling 전 집계다. 이를 실제 프레임 draw 절감량이나 19.5ms 전체 제거 증거로 쓰지 않는다. out/Valtan60Fps20260916/DeployShadow/installed_coverage.json과 snapshot_probe.result.json에 분모를 보존했다.
+
+### Debug 제품 빌드·배포와 사용자 확인
+
+공식 Product Debug Build가 2026-09-16 22:10:52 KST에 PASS로 종료됐다. 전체 134.828초이며 Engine→Shared→Server→Client 모두 성공했다. Engine OBJ35개·binary2개, Client OBJ186개·binary2개가 정상 증분 의존성에 따라 갱신됐고 PCH/CSO 갱신은0이다. Shared/Server는 기존 최신 산출물을 재사용했다. 기존 C4819/C4828 및 라이브러리 경고가 남아 있으며 무경고 빌드라는 뜻은 아니다. receipt는 out/BuildPipeline/runs/20260916T131052462Z-debug-product.json, 로그는 out/Valtan60Fps20260916/product-build.log다.
+
+빌드 전 동결한6개 수정 source/project hash는 종료 뒤 동일했다. 실제 CL tracking에서 대상 Engine4개/Profiler 및 Client Deploy/MapAsset의 /O2·/MDd·_DEBUG·/fp:precise와 RTC 미사용을 확인했다. Engine 원본/Client 배포 DLL 및 Deferred CSO가 각각 동일하다. 새 Client/Bin/Debug/Client.exe는 22:10:50 KST, Engine.dll은22:08:54 KST 산출물이다. 배포 hash·경로는 out/Valtan60Fps20260916/deployment-check.json에 기록했다.
+
+기존 쿠크 및 RenderingProfiles 미커밋 변경은 보존했고 자동 stage/commit·Data publish를 하지 않았다. Client/Server는 종료 상태이며 이 작업에서 Client/UI 실행·조작·화면 캡처는 하지 않았다. 사용자는 최신 Debug Server+Client로 Lobby→Valtan에 진입해 같은 위치·카메라·해상도·도구 조건에서 정지/이동/기둥 파괴를 확인한다. F1→Composition Profiler→Reset→Capture로 5~10초 수집하고 Save JSON을 누른다. 안쪽과 바깥쪽 위치의 캡처를 구분하면 소품 캐시 hit와 이동 중 남은 비용을 대조할 수 있다.
+
+이번 수정의 구현·자동 검증·제품 빌드는 완료다. 실제60fps 달성과 기둥 파괴/그림자 최종 화면은 사용자 후속 실행·캡처 전까지 미확인이다. 파괴 소품은 확인된 중복 렌더 경로이지만 30fps의 유일한 원인이나 전체 비용 비율로 단정하지 않는다.

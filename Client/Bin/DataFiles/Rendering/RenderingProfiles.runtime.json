@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  52,
+    "revision":  53,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -613,7 +613,7 @@
                                                  "ssaoIntensity":  0.689999998,
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
-                                                 "bloomEnabled":  true,
+                                                 "bloomEnabled":  false,
                                                  "bloomThreshold":  0.400000006,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  1.25,
@@ -7775,11 +7775,11 @@
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
                                                  "bloomEnabled":  true,
-                                                 "bloomThreshold":  2.74,
+                                                 "bloomThreshold":  2.74000001,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  0.5,
                                                  "bloomScatter":  1,
-                                                 "exposure":  0.73,
+                                                 "exposure":  0.730000019,
                                                  "whitePoint":  1,
                                                  "gamma":  2.20000005,
                                                  "fxaaEnabled":  true,
@@ -7976,7 +7976,7 @@
                                                         "blendTimeOut":  3,
                                                         "priority":  0,
                                                         "postProcess":  {
-                                                                            "bloomThreshold":  2.74,
+                                                                            "bloomThreshold":  2.74000001,
                                                                             "bloomIntensity":  0.5,
                                                                             "bloomTint":  [
                                                                                               1,
@@ -8107,7 +8107,7 @@
                                                         "blendTimeOut":  3,
                                                         "priority":  0,
                                                         "postProcess":  {
-                                                                            "bloomThreshold":  2.74,
+                                                                            "bloomThreshold":  2.74000001,
                                                                             "bloomIntensity":  0.5,
                                                                             "bloomTint":  [
                                                                                               1,

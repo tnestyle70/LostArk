@@ -886,6 +886,9 @@ F1은 관문별 `Saved Pattern Flow`와 `All Patterns`를 구분한다. Boss Too
 Pattern 또는 Bundle stable ID를 추가하고 순서·대기 시간을 편집하여 `Save Pattern Flow` →
 `Publish Saved Patterns`로 게시한다. 정본은 기존 KoukuSaydon Composition의 optional `patternFlows`다.
 Action Workbench는 모델 선택과 무관하게 전체 Gate→Parent→Bundle→Pattern 트리를 표시한다.
+단독 Pattern/Bundle Complete Play는 대상 관문이 준비되지 않았으면 기존 Gate 활성화를 먼저 요청한다.
+보스 spawn·플레이어 이동 승인과 같은 world session·저장 source revision을 확인한 뒤 재생을 제출한다.
+이미 준비된 관문은 위치를 초기화하지 않는다. 준비 중 Stop·실패·관문/연결 변경은 지연 재생을 취소한다.
 `Complete Play - Sequences + Pattern Flow`는 관문의 `enterCombatOnFinish=true` 입장 Sequence 하나를
 0ms부터 재생하고 Server Gate 승인 뒤 플레이어 follow camera로 복귀하여 저장 Flow를 시작한다.
 정상 완료 이벤트만 연결되며 Stop/실패/관문·world·게시 revision 변경은
@@ -1655,4 +1658,9 @@ WORLD timeline은 한 번의 spawn을 소유하고 Server HP와 개별 cue ident
 
 V1_EFFECT/V1_ELEMENT presentation occurrence의 optional `loopEffectToDuration`(기본false)은 원본 loop0 emitter를 occurrence duration까지 원래 속도로 유지한다. `fitEffectToDuration`과 동시true는 거절한다. sprite/mesh/CASCADE_RIBBON_V1의 실제 source recipe만 지원하며 particle 고유수명·원본 emitter 주기·finite loop·공용 Effect asset을 변경하지 않는다. 기존 occurrence 종료 owner가 정리한다. Workbench의 `Loop Effect through lifetime`와 `Match remaining animation time` 후 Apply/Save로 마지막 animation end에 맞출 수 있다.
 
-Effect Tool Open/Play는 현재 Composition의 선택 Pattern과 해당 Effect occurrence가 유일하거나 명시 선택됐을 때 그 animation snapshot·effect start·duration을 사용한다. 본 sampling도 같은 snapshot과 시작 시각을 소비한다. 저장 SourceModelPreview는 원본 참고로 유지하며 중복 미선택/미지원 nested·blend/trim은 상태를 표시하고 기존 source preview로 돌아간다. 제품 게시와 새 Client 적용 및 사용자 화면 판정은 별개다.
+Effect Tool에서 Effect를 열면 저장된 SourceModelPreview를 기본 애니메이션으로 사용한다. Use current Pattern animation을 명시적으로 누르면 현재 Composition의 해당 Effect occurrence가 유일하거나 선택됐을 때 animation snapshot·effect start·duration을 고정하며 본 sampling도 같은 값을 소비한다. 이후 Boss Tool 선택 변화는 고정된 snapshot을 바꾸지 않으며 다시 버튼을 누르면 갱신한다. Use saved source animation과 성공한 문서 재오픈은 저장 원본으로 복귀한다. 로드 실패·미저장 취소는 현재 선택을 보존한다. 중복 미선택/미지원 nested·blend·trim은 이유를 표시하고 기존 preview 선택을 유지한다. 공용 Effect asset은 수정하지 않는다. 제품 빌드와 사용자 화면 판정은 별개다.
+
+
+### Kouku Pattern 삭제
+
+Patterns 창의 Delete Selected Pattern 또는 Pattern 우클릭 Delete는 같은 확인창을 연다. Flow·Bundle·Parent timeline/Pattern box·Logic의 후속/분신/방향/랜덤 후보·Summon 참조가 있으면 owner와 stable ID를 표시하고 삭제를 차단한다. 해당 owner에서 연결을 먼저 제거한다. Delete from Draft는 candidate 검증 후 draft만 바꾸며 Save와 Publish All Patterns가 각각 저장과 제품 반영을 소유한다. 공용 Animation/Effect/Logic 원본은 삭제하지 않는다. 오래된 확인창·외부 수정·게시 중·검증 실패는 기존 draft를 보존한다.

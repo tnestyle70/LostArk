@@ -526,3 +526,33 @@ MapStaticBatch의 미참여 재질도 실제 설치asset/material/shader의 alph
 사용자 의도는 오늘 밝기 문제를 되돌린 발탄의 렌더링 옵션을 베른에도 적용하는 것이다. 발탄의 FXAA가 켜져 있다는 현재 정본으로는 FXAA가 밝기의 원인이라고 판단할 수 없다. 최초 해석에서 베른 exposure/bloom만 복사하고 FXAA를 끈 revision51은 이 의도를 충족하지 않는다.
 
 사용자가 성능 수정과 빌드를 먼저 요청했으므로 이번에 바꾼 베른 profile만 작업 전 값으로 복귀하여 공식 Validate/Publish한다. 다른 profile을 되돌리지 않는다. 최종 옵션 복사는 실제 발탄 복구 내역과 적용 설정을 확인한 뒤 별도로 진행한다.
+
+## G34. 21:47 발탄 캡처의 CPU 제출 비용과 계측 손실
+
+사용자가 갱신한 profiler_20260916_214714_277_frame41_76132_0.json은 interval이 있는29프레임 평균37.3546ms(26.77fps)다. 4096 CPU scope 상한으로45420개가 누락되어 완전한13/15/16프레임만 CPU 부모/자식 비용 비교에 사용한다. 이3프레임의 NonBlend18.6224ms 중 계측되지 않은 self12.1049ms, batch mesh submit4.0361ms, Shadow cache admission3.5575ms가 남았다. Present는0.038~0.056ms이며 코드도Present(0,0)이므로30fps 제한으로 보지 않는다. GPU Shadow19.5227ms는 명령 공급 공백을 포함할 수 있는 elapsed이고 순수GPU shader시간으로 단정하지 않는다.
+
+### G34-01. Engine의 실제 draw 소비 경로
+
+MapStaticBatchObject/MapAssetObject는 이미Debug /O2이나 그 호출을 받는 Model/Material/Mesh/VIBuffer.cpp는/Od다. 이4CPP에 기존 프로젝트의Debug x64 MaxSpeed, BasicRuntimeChecks Default, ProgramDatabase, JMC false, PCH NotUsing 정책을 적용한다. Debug CRT/STL ABI와float precise, Release설정, geometry/draw 순서와shader입력은 유지한다. 해당 코드에 중복 준비가 있으면 실제 소비입력을 확인한 동일결과 변경만 반영한다. 신규C++ 파일과filters 재배치는 없다.
+
+### G34-02. 개별 맵 객체의 불필요한 water 입력
+
+MapAssetObject::Render_Group의 non-water mesh에서도 매번물전용17변수를 설정하고객체종료에서다시초기화한다. Shader_VtxMeshBinary의실제water전용소비를대조한뒤실제water bind시도에만해당설정과종료reset을수행한다. water의실패에도reset을유지하고shared FX를object별값cache로오인하지않는다. Vortex와다른공용shader입력의초기화는유지한다.
+
+### G34-03. 부모 구간을 보존하는 bounded profiler
+
+Profiler::End_Scope는자식scope부터4096개를채우고늦게끝나는Client.Render/Render.NonBlend를버린다. 예산을bounded로유지하며얕은부모구간의별도여유를확보하고누락수를계속기록한다. 다음캡처에선실제큰CPU구간이누락되어0처럼보이지않게한다. thread/중첩/long-operation동작과원래frame귀속을보존한다.
+
+### G34 검증과 실행 경계
+
+기존focused fixture와실제함수기반수치비교를사용한다. 물/비물/혼합/실패후공용FX상태,정적/변경world행렬,profiler overflow시부모유지와누락수,project XMLparse와diff-check를검사한다. C++변경은정상증분Product Debug Build로Engine SDK와Client에배포한다. 기존쿠크dirty변경과사용자JSON은보존하고자동stage/commit하지않는다. Client/UI를실행하지않으며최소60fps달성은사용자가동일위치·해상도·도구조건으로다시저장한캡처에서판정한다.
+
+### G34-04. 파괴 가능한 Deploy 소품의 정지 상태 그림자 재사용
+
+CDeployPropObject는기존MapAsset/MapStaticBatch와별도소비자로Try_GetStaticShadowRevision을구현하지않아움직이지않는기둥도매프레임깊이를그린다. 설치된발탄deployplacement151개는최대1493349개원본정점을가지며이개수는실제light-visible draw의측정치가아니다. 실제Render_Static의world,선택model,활성상태와opacity가일치하고정적depth입력이검증된경우만기존Renderer의캐시에참여한다. 파괴·숨김·source suppression·debris·preview·animated/morph·texture override는거절하거나revision을갱신하여기존경로로돌린다. 현재shadow pass12와재질alpha를보존하고Client DeployPropObject.cpp에도동일Debug x64 최적화정책을적용한다.
+
+Render시점의카메라/광원컬링도기존CModel bounds와최종world가정적입력조건을만족하는경우에만허용한다. 동적vertex변형이나불확실한범위에는적용하지않고화면밖그림자는light volume기준으로판정한다. 기존Draw 경로에집계scope를추가하여다음실제캡처에서Deploy와일반맵비용을구분한다. 새shader·runtime·geometry변환은추가하지않는다.
+
+### G34-05. 안개·투명·후처리의 실제 분모
+
+사용자추가요청에따라복구된안개와투명·후처리도전체GPU패스와실제shader소비로대조한다. 현재유효25프레임의Render.Combined는평균0.0514ms(안개포함),Blend0.1355ms,Lights0.6364ms,Bloom0.0163ms,Final0.0162ms다. 이표본의30fps주원인으로안개를지목하지않고이미작은항목의품질·주기를임의로낮추지않는다. 입력변경시에만재계산하는Deploy그림자최적화와CPU제출중복제거가이번변경의우선범위다.
