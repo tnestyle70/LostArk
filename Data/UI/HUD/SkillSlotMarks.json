@@ -1,0 +1,172 @@
+{
+ "schema": "lostark.hud-skill-slot-marks",
+ "formatVersion": 1,
+ "source": "Data/Balance/PlayerSkills.json skillKind first (HOLD -> holding, COMBO -> combo), else EFTable_Skill.Type (table enum = ARKNewSlot skillType + 1): 4 charge / 5 holding -> holding, 6 / 7 chain -> combo, 14 -> perfectCombo",
+ "assets": {
+  "combo": "UI/HUD/Common/SkillType_Combo.png",
+  "holding": "UI/HUD/Common/SkillType_Holding.png",
+  "perfectCombo": "UI/HUD/Common/SkillType_PerfectCombo.png"
+ },
+ "marks": [
+  {
+   "skillId": 34160,
+   "characterClass": "LANCE_MASTER",
+   "inputSlot": "R",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 34140,
+   "characterClass": "LANCE_MASTER",
+   "inputSlot": "A",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 34610,
+   "characterClass": "LANCE_MASTER",
+   "inputSlot": "V",
+   "mark": "holding",
+   "skillKind": "ACTIVE",
+   "retailType": 5
+  },
+  {
+   "skillId": 38020,
+   "characterClass": "GUNSLINGER",
+   "inputSlot": "Q",
+   "mark": "combo",
+   "skillKind": "ACTIVE",
+   "retailType": 6
+  },
+  {
+   "skillId": 34010,
+   "characterClass": "LANCE_MASTER",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 1
+  },
+  {
+   "skillId": 38200,
+   "characterClass": "GUNSLINGER",
+   "inputSlot": "R",
+   "mark": "combo",
+   "skillKind": "ACTIVE",
+   "retailType": 6
+  },
+  {
+   "skillId": 38260,
+   "characterClass": "GUNSLINGER",
+   "inputSlot": "F",
+   "mark": "combo",
+   "skillKind": "ACTIVE",
+   "retailType": 6
+  },
+  {
+   "skillId": 38290,
+   "characterClass": "GUNSLINGER",
+   "inputSlot": "T",
+   "mark": "holding",
+   "skillKind": "ACTIVE",
+   "retailType": 5
+  },
+  {
+   "skillId": 38000,
+   "characterClass": "GUNSLINGER",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 45620,
+   "characterClass": "SLAYER",
+   "inputSlot": "E",
+   "mark": "combo",
+   "skillKind": "ACTIVE",
+   "retailType": 6
+  },
+  {
+   "skillId": 45070,
+   "characterClass": "SLAYER",
+   "inputSlot": "S",
+   "mark": "holding",
+   "skillKind": "ACTIVE",
+   "retailType": 5
+  },
+  {
+   "skillId": 45000,
+   "characterClass": "SLAYER",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 1
+  },
+  {
+   "skillId": 34510,
+   "characterClass": "LANCE_MASTER",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 1
+  },
+  {
+   "skillId": 34590,
+   "characterClass": "LANCE_MASTER",
+   "inputSlot": "S",
+   "mark": "holding",
+   "skillKind": "HOLD",
+   "retailType": 5
+  },
+  {
+   "skillId": 17000,
+   "characterClass": "WARLORD",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 1
+  },
+  {
+   "skillId": 17080,
+   "characterClass": "WARLORD",
+   "inputSlot": "E",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 17240,
+   "characterClass": "WARLORD",
+   "inputSlot": "T",
+   "mark": "holding",
+   "skillKind": "HOLD",
+   "retailType": 4
+  },
+  {
+   "skillId": 31000,
+   "characterClass": "ARTIST",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 31210,
+   "characterClass": "ARTIST",
+   "inputSlot": "R",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 2050010,
+   "characterClass": "DIMENSIONMASTER",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  }
+ ]
+}

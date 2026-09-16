@@ -252,11 +252,13 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;
 	m_Player.iSilenceEndTick = snapshot.iSilenceEndTick;
 	m_Player.iSilenceDurationTicks = snapshot.iSilenceDurationTicks;
+	m_Player.iFearEndTick = snapshot.iFearEndTick;
 	m_Player.eAction = snapshot.eAction;
 	m_Player.iCurrentSkillId = snapshot.iSkillId;
 	m_Player.eStance = snapshot.eStance;
 	m_Player.iComboStage = snapshot.iComboStage;
 	m_Player.iActionStartTick = snapshot.iActionStartTick;
+	m_Player.Cooldowns = snapshot.Cooldowns;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
 }
 

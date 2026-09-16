@@ -65,6 +65,8 @@ namespace Client
 		std::uint32_t iPatternBindEndTick = 0;
 		std::uint32_t iSilenceEndTick = 0;
 		std::uint32_t iSilenceDurationTicks = 0;
+		/* Fear debuff end tick (0 = none); the buff bar shows it with its remaining time. */
+		std::uint32_t iFearEndTick = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
@@ -81,6 +83,9 @@ namespace Client
 		std::uint8_t iComboStage = 0;
 		std::uint32_t iActionStartTick = 0;
 		std::vector<HUD_SKILL_STATE> Skills;
+		/* The raw replicated cooldown list. Skills above covers the class quick slots;
+		the mounted HUD looks the ridden vehicle's SPACE/Q/W/E skill ids up here. */
+		std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
 
 	struct HUD_BOSS_STATE

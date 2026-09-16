@@ -29,7 +29,7 @@ namespace
 	reference (2/3 x the document's own enlargement), so every retail px offset below goes
 	through m_fRetailScale, read from the VH_WinBg slot against this retail width. */
 	constexpr f32_t TEXT_BOOST = 1.15f;
-	constexpr int32_t ROW_COUNT = 4;
+	constexpr int32_t ROW_COUNT = 6;
 	/* VehicleListItem text placement (retail px inside the row): name (99,10), description
 	(99,32), additionalStat right-aligned to x 427 -- see the 09-14 extraction doc 3.2. */
 	constexpr f32_t ROW_X = 14.f;
@@ -50,8 +50,9 @@ namespace
 	constexpr f32_t ROW_W = WINDOW_WIDTH - ROW_X * 2.f;
 	constexpr f32_t ROW_TEXT_RIGHT_PAD = 10.f;
 	constexpr f32_t HINT_X = 17.f;
-	constexpr f32_t HINT_Y = 310.f;
-	constexpr f32_t BUTTON_Y = 340.f;
+	/* Under the last row (build_vehicle_ui.py HINT_Y / BUTTON_Y). */
+	constexpr f32_t HINT_Y = ROW_Y0 + ROW_PITCH * ROW_COUNT + 10.f;
+	constexpr f32_t BUTTON_Y = HINT_Y + 30.f;
 	constexpr f32_t BUTTON_W = 103.f;
 	constexpr f32_t BUTTON_H = 36.f;
 	constexpr f32_t MOUNT_BUTTON_X = 259.f;
@@ -199,12 +200,19 @@ void Client::CVehicleWindowView::Load_Catalog()
 			for (const DATA_JSON_VALUE& Skill : pSkills->Get_Array())
 			{
 				const DATA_JSON_VALUE* pSlot = Skill.Is_Object() ? Skill.Find("slot") : nullptr;
+				const DATA_JSON_VALUE* pSkillId = Skill.Is_Object() ? Skill.Find("skillId") : nullptr;
+				const DATA_JSON_VALUE* pCooldown = Skill.Is_Object() ? Skill.Find("cooldownMs") : nullptr;
 				const DATA_JSON_VALUE* pAsset = Skill.Is_Object() ? Skill.Find("iconAsset") : nullptr;
-				if (nullptr == pSlot || !pSlot->Is_String() || nullptr == pAsset || !pAsset->Is_String())
+				if (nullptr == pSlot || !pSlot->Is_String() || nullptr == pSkillId || !pSkillId->Is_Number() ||
+					nullptr == pAsset || !pAsset->Is_String())
 					continue;
-				const size_t iSlot = string("QWER").find(pSlot->Get_String());
-				if (string::npos != iSlot && 1 == pSlot->Get_String().size())
-					Row.SkillIconAssets[iSlot] = pAsset->Get_String();
+				VEHICLE_SKILL_UI Entry{};
+				Entry.strSlot = pSlot->Get_String();
+				Entry.iSkillId = static_cast<uint32_t>(pSkillId->Get_Number());
+				Entry.iCooldownMs = (nullptr != pCooldown && pCooldown->Is_Number()) ?
+					static_cast<uint32_t>(pCooldown->Get_Number()) : 0u;
+				Entry.strIconAsset = pAsset->Get_String();
+				Row.Skills.push_back(std::move(Entry));
 			}
 		}
 		m_Rows.push_back(std::move(Row));
@@ -399,12 +407,12 @@ const string* Client::CVehicleWindowView::Find_IconAsset(const uint32_t iVehicle
 	return nullptr;
 }
 
-const std::array<string, 4>* Client::CVehicleWindowView::Find_SkillIcons(const uint32_t iVehicleId) const
+const std::vector<VEHICLE_SKILL_UI>* Client::CVehicleWindowView::Find_Skills(const uint32_t iVehicleId) const
 {
 	for (const VEHICLE_ROW& Row : m_Rows)
 	{
 		if (Row.iVehicleId == iVehicleId)
-			return &Row.SkillIconAssets;
+			return &Row.Skills;
 	}
 	return nullptr;
 }
