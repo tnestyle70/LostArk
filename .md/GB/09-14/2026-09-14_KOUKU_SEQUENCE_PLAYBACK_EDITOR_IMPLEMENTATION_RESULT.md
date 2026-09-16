@@ -1,5 +1,20 @@
 # 쿠크 Sequence 재생과 Object 편집 구현 결과
 
+
+## G44. PR #393 Composition·Sequence 병합 검증 — 2026-09-16
+
+우리560741ac와 이전 작업자의 #392가 반영된 main af056661을 공통 기준c65b2cf4로 병합했다. Gate1 Composition은 우리72패턴과392직접 애니메이션 및 기존 WORLD40/Presentation186/Logic72/Summon7/Scene2/folder19/bundle11/flow3을 구조적으로 그대로 보존했다. 상대 신규 컷신5개는 P63~67→P73~77, 충돌 WORLD23→27, Presentation64/65→67/68로 옮겼다. 내부 action/occurrence·리소스 참조를 함께 재발급해 총77패턴/58WORLD/234Presentation, revision1052가 됐다.
+
+실제 추가 이름은 `2관문_진입컷씬`, `2관문클리어_3관문진입`, `빙고_최종엔딩씬`, `쇼타임_연출`, `카드미로연출`이다. 처음 두 패턴은 각각 WORLD31/3과 연결된 animationTracks11/3, CAMERA7/18을 가진다. 카드미로는 WORLD1의 애니메이션과 CAMERA7을 가진다. 빙고엔딩과 쇼타임은 상대 원문 그대로 camera-only이며 새 배우 애니메이션을 추가했다고 기록하지 않는다. 신규5패턴과 WORLD18/Presentation48의 내용은 지정 ID치환 외 상대 원문과 동일하다. DRAFT/Product 상태와 기존 Flow는 바꾸지 않았다.
+
+Sequence는 이전 작업자의 카메라·컷신을 기준으로 rev63/9패턴/37Logic/150Presentation으로 병합했다. 상대 P3 수정·P9 빙고엔딩을 그대로 유지하고 겹치지 않는 우리 플레이어 도착 트리거4개도 보존했다. WorldSequences는 상대 HandBook·촛대1/2 원문, 우리 바주카·즉사톱날 및 나머지 개선을 모두 유지한 rev2032/449objectResources/253templates/309instances다. 기존 숫자 원문을 행 단위로 보존했으며 모든 양쪽 stable ID와 수정 행을 대조했다.
+
+검증 완료: 변경 C++4개(MainApp, KoukuSaydonActionWorkbench, Level_KakulSaydonArena, Level_KakulSaydonArena_WorldObjects)를 병합된 Client/Shared 헤더와 기존 EngineSDK로 격리 Debug `/c` 컴파일해 모두 exit0/OBJ생성을 확인했다. 기존 헤더의 C4828 경고는 남는다. C++/H6파일의 자동 병합 호출 흐름·서명도 대조했고 변경 JSON8개/XML2개 parse와 diff-check를 통과했다. WorldSequences 정식 Publish/Check는 exit0이며 source/runtime SHA256이 `5111f45e6262e3fc8031f8833a9c7662f02360d0997edb7d9de2d5c2c655c8e7`로 같다. 새 패턴 WORLD→instance→template→animation/model, CAMERA→source114샷 참조 누락은0개다.
+
+구분할 기존 검사 한계: generic `composition_pipeline.py validate`는 병합 전 우리560741ac에 이미 있던 colliderTracks를 unknown field로 거부한다. 실제 Workbench는 두 Composition 정본을 직접 읽고 Product는 patternbindings, World runtime은 현재 codec/Map publisher를 사용한다. generic Boss/Sequence 출력은 현재 호출자가 없는 REFERENCE_ONLY/SHADOW이므로 이번 병합에서는 이 별도 검사기의 스키마를 확장하지 않았다. 초기 Kouku Product validate의 stale1051 출력은 revision1052 공식 publisher로 갱신할 대상이지 누락을 허용하는 근거가 아니다.
+
+증거는 `out/Pr393Merge20260916/{gate1-preservation.json,sequence-merge-evidence.json,parse-validation.json,world-sequences-publish.log,world-sequences-check.log,compile/result.json}`에 있다. 기존10:34 Product 전체빌드 성공과 이번4TU 컴파일 성공은 별개다. 사용자가 Client/Server를 계속 사용 중이므로 이 병합 검증에서 제품 최종 링크·바이너리 교체나 UI 실행·캡처·화면 판정은 수행하지 않았다.
+
 ## G00. 반영 범위와 상태
 
 소스·데이터 반영 및 아래 수치 검증을 완료했다. Client/UI 실행·조작·캡처는 하지 않았다.

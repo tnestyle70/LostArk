@@ -445,9 +445,14 @@ void CLevel_KakulSaydonArena::Get_WorldObjectValidationTargets(
 }
 
 bool_t CLevel_KakulSaydonArena::Try_GetWorldSequencePlacementBaseline(
-    const WORLD_SEQUENCE_INSTANCE& instance, float3_t& outPosition) const
+    const WORLD_SEQUENCE_INSTANCE& instance, float3_t& outPosition, const CWorldSequenceDocument* document) const
 {
     if (instance.anchorKind != "WORLD" || instance.bindings.empty()) return false;
+    // Imported cutscene motions keep a zero instance position and absolute map
+    // coordinates in their keys; their first key is the placed centre.
+    const auto* sequence = document ? document->Find_Template(instance.templateId) : nullptr;
+    const bool absoluteKeys = sequence && sequence->objectMotion.emissions.empty() &&
+        instance.position.x == 0.f && instance.position.y == 0.f && instance.position.z == 0.f;
     std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> seen;
     double sumX = 0.0, sumY = 0.0, sumZ = 0.0;
     size_t count = 0u;
@@ -456,7 +461,11 @@ bool_t CLevel_KakulSaydonArena::Try_GetWorldSequencePlacementBaseline(
         if (!seen.emplace(binding.targetKind, binding.targetId).second) continue;
         float3_t position{};
         if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+        {
             position = instance.position;
+            const auto* track = absoluteKeys ? CWorldSequencePlayer::Find_Track(*sequence, binding.slotId) : nullptr;
+            if (track && !track->keys.empty()) position = track->keys.front().positionOffset;
+        }
         else
         {
             uint64_t id = 0u;
@@ -872,7 +881,7 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     if (previewAtCharacter && instance && instance->anchorKind == "WORLD")
     {
         float3_t previewPosition{}, baseline{};
-        if (!Try_GetWorldSequencePlacementBaseline(*instance, baseline))
+        if (!Try_GetWorldSequencePlacementBaseline(*instance, baseline, &document))
         { status = "World preview cannot resolve every saved placement in this object group."; return false; }
         if (!Try_Get_AuthoringForwardPlacement(previewPosition, status)) return false;
         previewOffset = {previewPosition.x - baseline.x,

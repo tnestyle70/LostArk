@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 2031,
+  "revision": 2032,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -141063,288 +141063,288 @@
             },
             {
               "timeMs": 4530,
-              "positionOffset": [-1.50151837, 2.36794162, 738.02002],
-              "rotationQuaternion": [-0.669536948, 0.159796536, 0.301303715, 0.659849524],
+              "positionOffset": [-1.440165, 2.565459, 738.086845],
+              "rotationQuaternion": [-0.0745847973, 0.364393187, -0.0432563984, 0.927245166],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4650,
-              "positionOffset": [-1.49803567, 2.368047, 738.016785],
-              "rotationQuaternion": [-0.676792622, 0.17432557, 0.290783733, 0.65345782],
+              "positionOffset": [-1.435512, 2.570232, 738.075515],
+              "rotationQuaternion": [-0.0829580021, 0.365798209, -0.0596525015, 0.925068224],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4800,
-              "positionOffset": [-1.49444258, 2.36266303, 738.012207],
-              "rotationQuaternion": [-0.682167947, 0.185998768, 0.281787246, 0.648573279],
+              "positionOffset": [-1.430621, 2.570888, 738.061053],
+              "rotationQuaternion": [-0.0907444012, 0.366949505, -0.076575901, 0.922631912],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4950,
-              "positionOffset": [-1.49161685, 2.35671949, 738.005615],
-              "rotationQuaternion": [-0.68625766, 0.193503231, 0.274054736, 0.645368814],
+              "positionOffset": [-1.428068, 2.5702, 738.045863],
+              "rotationQuaternion": [-0.0955509017, 0.365882107, -0.0883576016, 0.921516817],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5100,
-              "positionOffset": [-1.48668969, 2.34549618, 737.992859],
-              "rotationQuaternion": [-0.687531471, 0.192343831, 0.269491464, 0.646280646],
+              "positionOffset": [-1.427119, 2.564801, 738.030979],
+              "rotationQuaternion": [-0.094845098, 0.362245892, -0.0902700981, 0.922839981],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5250,
-              "positionOffset": [-1.48543584, 2.34017348, 737.981934],
-              "rotationQuaternion": [-0.687400699, 0.187776104, 0.26755631, 0.648563027],
+              "positionOffset": [-1.42972, 2.564301, 738.019419],
+              "rotationQuaternion": [-0.0927268992, 0.358392097, -0.0887750993, 0.924703092],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5400,
-              "positionOffset": [-1.48762, 2.34098625, 737.976074],
-              "rotationQuaternion": [-0.687524378, 0.184933096, 0.266413331, 0.649718285],
+              "positionOffset": [-1.434652, 2.570084, 738.011795],
+              "rotationQuaternion": [-0.0914839996, 0.355373998, -0.0876445996, 0.926098495],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5550,
-              "positionOffset": [-1.48814631, 2.33192682, 737.970215],
-              "rotationQuaternion": [-0.683273375, 0.178757444, 0.271409661, 0.653850198],
+              "positionOffset": [-1.438755, 2.563535, 738.008992],
+              "rotationQuaternion": [-0.0841753032, 0.354215213, -0.0771243029, 0.928169135],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5700,
-              "positionOffset": [-1.49072647, 2.32140374, 737.963318],
-              "rotationQuaternion": [-0.67624855, 0.172957733, 0.281489283, 0.658435524],
+              "positionOffset": [-1.445154, 2.558615, 738.008057],
+              "rotationQuaternion": [-0.0743082981, 0.352639391, -0.0609296985, 0.930812177],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5850,
-              "positionOffset": [-1.49749744, 2.32127094, 737.964172],
-              "rotationQuaternion": [-0.672800124, 0.176475927, 0.290592611, 0.657078564],
+              "positionOffset": [-1.453033, 2.563139, 738.011008],
+              "rotationQuaternion": [-0.0680453994, 0.351698897, -0.0467167996, 0.932467292],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6000,
-              "positionOffset": [-1.50398564, 2.3178966, 737.971741],
-              "rotationQuaternion": [-0.668987155, 0.185114115, 0.302893788, 0.653027058],
+              "positionOffset": [-1.459997, 2.564641, 738.020067],
+              "rotationQuaternion": [-0.0618015991, 0.353141695, -0.0298792996, 0.933048087],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6150,
-              "positionOffset": [-1.50961149, 2.31372571, 737.98822],
-              "rotationQuaternion": [-0.664886236, 0.19711186, 0.318369061, 0.646308243],
+              "positionOffset": [-1.465407, 2.565104, 738.038765],
+              "rotationQuaternion": [-0.0569560008, 0.357753605, -0.0111869002, 0.932010314],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6300,
-              "positionOffset": [-1.51333225, 2.30797124, 738.013855],
-              "rotationQuaternion": [-0.660601974, 0.212121144, 0.335805684, 0.637059033],
+              "positionOffset": [-1.469229, 2.564432, 738.061926],
+              "rotationQuaternion": [-0.0530009014, 0.36402941, 0.00705840019, 0.929851425],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6450,
-              "positionOffset": [-1.51721263, 2.30114865, 738.035828],
-              "rotationQuaternion": [-0.65709734, 0.228881359, 0.34897694, 0.627735198],
+              "positionOffset": [-1.471775, 2.56229, 738.081562],
+              "rotationQuaternion": [-0.049659599, 0.369554093, 0.0213349996, 0.927635982],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6600,
-              "positionOffset": [-1.52429259, 2.29602289, 738.03595],
-              "rotationQuaternion": [-0.654636919, 0.241541222, 0.352799952, 0.623410404],
+              "positionOffset": [-1.475047, 2.559272, 738.081667],
+              "rotationQuaternion": [-0.0446230007, 0.367798506, 0.0287814005, 0.928388215],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6750,
-              "positionOffset": [-1.53344297, 2.29486012, 738.024902],
-              "rotationQuaternion": [-0.652663767, 0.250606626, 0.353015363, 0.621776879],
+              "positionOffset": [-1.48141, 2.559722, 738.068617],
+              "rotationQuaternion": [-0.0391319015, 0.363203814, 0.0332341013, 0.930294135],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6900,
-              "positionOffset": [-1.54182291, 2.29682088, 738.009338],
-              "rotationQuaternion": [-0.649609983, 0.252984583, 0.355661988, 0.622503161],
+              "positionOffset": [-1.489263, 2.561791, 738.057343],
+              "rotationQuaternion": [-0.0331042998, 0.360753998, 0.0408845998, 0.931176196],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7050,
-              "positionOffset": [-1.54486477, 2.2853725, 738.000122],
-              "rotationQuaternion": [-0.63812387, 0.236486718, 0.373240501, 0.630526364],
+              "positionOffset": [-1.500406, 2.549816, 738.060483],
+              "rotationQuaternion": [-0.0167037996, 0.358451091, 0.0656058984, 0.931090578],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7200,
-              "positionOffset": [-1.53824055, 2.28216004, 738.001709],
-              "rotationQuaternion": [-0.628915846, 0.221106574, 0.390563041, 0.634852171],
+              "positionOffset": [-1.503103, 2.543035, 738.072415],
+              "rotationQuaternion": [-0.00136149999, 0.355993697, 0.0953416991, 0.929610991],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7350,
-              "positionOffset": [-1.53464603, 2.27240562, 738.010864],
-              "rotationQuaternion": [-0.621887982, 0.216977119, 0.402308583, 0.635864794],
+              "positionOffset": [-1.502298, 2.529204, 738.087612],
+              "rotationQuaternion": [0.00733539978, 0.358993789, 0.110128697, 0.926790872],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7500,
-              "positionOffset": [-1.53385651, 2.26630378, 738.02417],
-              "rotationQuaternion": [-0.622353435, 0.228957236, 0.40129301, 0.631837547],
+              "positionOffset": [-1.497401, 2.522264, 738.096339],
+              "rotationQuaternion": [0.00503910008, 0.363831006, 0.104682402, 0.925550215],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7650,
-              "positionOffset": [-1.53590059, 2.26760674, 738.037415],
-              "rotationQuaternion": [-0.628134191, 0.250441641, 0.390668273, 0.624583662],
+              "positionOffset": [-1.490905, 2.521655, 738.100395],
+              "rotationQuaternion": [-0.00344080015, 0.368954117, 0.088203504, 0.925246542],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7800,
-              "positionOffset": [-1.53911269, 2.2739048, 738.041992],
-              "rotationQuaternion": [-0.631492794, 0.26208663, 0.383446932, 0.620883167],
+              "positionOffset": [-1.487911, 2.525689, 738.100188],
+              "rotationQuaternion": [-0.00960489953, 0.370945482, 0.0757688963, 0.925508655],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7950,
-              "positionOffset": [-1.54378176, 2.28537536, 738.036743],
-              "rotationQuaternion": [-0.632424235, 0.262787759, 0.3803837, 0.621522665],
+              "positionOffset": [-1.491826, 2.536066, 738.094604],
+              "rotationQuaternion": [-0.00912119961, 0.367607084, 0.0750317968, 0.926904561],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8100,
-              "positionOffset": [-1.55267954, 2.30912495, 738.029602],
-              "rotationQuaternion": [-0.635420382, 0.263065815, 0.374596864, 0.621863723],
+              "positionOffset": [-1.498294, 2.555473, 738.088543],
+              "rotationQuaternion": [-0.0103677996, 0.363541886, 0.0727094973, 0.928678165],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8250,
-              "positionOffset": [-1.5605948, 2.33301473, 738.028809],
-              "rotationQuaternion": [-0.640523076, 0.270900279, 0.365162879, 0.618869364],
+              "positionOffset": [-1.501336, 2.575544, 738.084718],
+              "rotationQuaternion": [-0.0158205997, 0.362328692, 0.0634690986, 0.929752279],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8400,
-              "positionOffset": [-1.56533098, 2.34723043, 738.030518],
-              "rotationQuaternion": [-0.644129157, 0.278311878, 0.357858241, 0.616098702],
+              "positionOffset": [-1.501779, 2.590349, 738.082969],
+              "rotationQuaternion": [-0.0218242993, 0.362833389, 0.0528120984, 0.930100271],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8550,
-              "positionOffset": [-1.5675987, 2.35343957, 738.033264],
-              "rotationQuaternion": [-0.646035731, 0.283193499, 0.353313297, 0.614498973],
+              "positionOffset": [-1.500376, 2.595119, 738.084669],
+              "rotationQuaternion": [-0.0249976004, 0.364639606, 0.0461408007, 0.929668814],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8700,
-              "positionOffset": [-1.56712878, 2.35262084, 738.03772],
-              "rotationQuaternion": [-0.646893382, 0.287441343, 0.350345045, 0.613322735],
+              "positionOffset": [-1.496986, 2.592797, 738.088816],
+              "rotationQuaternion": [-0.0265462004, 0.367708405, 0.0415362006, 0.928633713],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8850,
-              "positionOffset": [-1.5658375, 2.3490181, 738.044739],
-              "rotationQuaternion": [-0.647023737, 0.290834785, 0.348893225, 0.612412393],
+              "positionOffset": [-1.493237, 2.588226, 738.095563],
+              "rotationQuaternion": [-0.0275141009, 0.371905312, 0.0378908013, 0.927088831],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9000,
-              "positionOffset": [-1.56670499, 2.34956336, 738.053284],
-              "rotationQuaternion": [-0.647498906, 0.293756127, 0.34731403, 0.611412644],
+              "positionOffset": [-1.491141, 2.586841, 738.105201],
+              "rotationQuaternion": [-0.0290181991, 0.377140388, 0.033946099, 0.925078772],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9150,
-              "positionOffset": [-1.57123959, 2.35671568, 738.065002],
-              "rotationQuaternion": [-0.64831084, 0.296923727, 0.345641553, 0.609968305],
+              "positionOffset": [-1.493451, 2.593278, 738.118442],
+              "rotationQuaternion": [-0.0311006996, 0.383235395, 0.0298787996, 0.922643288],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9300,
-              "positionOffset": [-1.57640612, 2.35985446, 738.076599],
-              "rotationQuaternion": [-0.647084177, 0.291934371, 0.349401563, 0.611534953],
+              "positionOffset": [-1.498662, 2.594745, 738.132841],
+              "rotationQuaternion": [-0.0289793999, 0.387206599, 0.0344041999, 0.920894997],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9450,
-              "positionOffset": [-1.58171606, 2.35769582, 738.08313],
-              "rotationQuaternion": [-0.644361734, 0.277631938, 0.356872261, 0.616733849],
+              "positionOffset": [-1.506861, 2.592078, 738.146445],
+              "rotationQuaternion": [-0.0236360993, 0.388384588, 0.0459158986, 0.920049171],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9509,
-              "positionOffset": [-1.58315921, 2.35719299, 738.084106],
-              "rotationQuaternion": [-0.64396584, 0.273932368, 0.357720166, 0.618308485],
+              "positionOffset": [-1.510642, 2.59006, 738.151577],
+              "rotationQuaternion": [-0.0209067007, 0.388404012, 0.0515242016, 0.919810029],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9510,
-              "positionOffset": [-1.58316958, 2.35720754, 738.084106],
-              "rotationQuaternion": [-0.643977284, 0.273926675, 0.357689768, 0.618316591],
+              "positionOffset": [-1.510708, 2.590013, 738.151664],
+              "rotationQuaternion": [-0.0208562003, 0.388402706, 0.0516261008, 0.919806014],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9600,
-              "positionOffset": [-1.58640814, 2.35214329, 738.086121],
-              "rotationQuaternion": [-0.641191065, 0.262228966, 0.363461316, 0.622901201],
+              "positionOffset": [-1.516658, 2.584517, 738.159494],
+              "rotationQuaternion": [-0.0159040007, 0.388277918, 0.0613100029, 0.919363043],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9750,
-              "positionOffset": [-1.58943927, 2.33826804, 738.08728],
-              "rotationQuaternion": [-0.634759128, 0.242306247, 0.373710096, 0.631434321],
+              "positionOffset": [-1.526452, 2.564555, 738.173881],
+              "rotationQuaternion": [-0.0025172999, 0.388020885, 0.0848583967, 0.917732264],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9900,
-              "positionOffset": [-1.58690763, 2.30128622, 738.083557],
-              "rotationQuaternion": [-0.618335128, 0.209082544, 0.395425618, 0.646207988],
+              "positionOffset": [-1.532959, 2.526046, 738.187808],
+              "rotationQuaternion": [0.0175194, 0.3880355, 0.1162364, 0.9141174],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10050,
-              "positionOffset": [-1.58511114, 2.25073171, 738.068542],
-              "rotationQuaternion": [-0.61497879, 0.233444616, 0.378625005, 0.651112735],
+              "positionOffset": [-1.516547, 2.48421, 738.172444],
+              "rotationQuaternion": [0.0138292997, 0.39987779, 0.0802835981, 0.912940878],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10079,
-              "positionOffset": [-1.58545232, 2.2511344, 738.068726],
-              "rotationQuaternion": [-0.61536938, 0.233252943, 0.377515256, 0.651456714],
+              "positionOffset": [-1.513838, 2.462642, 738.169034],
+              "rotationQuaternion": [0.0262623011, 0.402847116, 0.0892377037, 0.910527937],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
@@ -147509,1274 +147509,1274 @@
             {
               "timeMs": 0,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272069216, 0.653889477, 0.652670145, 0.269125491],
+              "rotationQuaternion": [0.652654535, -0.269087715, 0.272106715, 0.653905035],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 150,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272081435, 0.653858781, 0.652700782, 0.26911363],
+              "rotationQuaternion": [0.652685108, -0.269075903, 0.272118903, 0.653874308],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 300,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272117704, 0.653767288, 0.652791798, 0.269078314],
+              "rotationQuaternion": [0.652776213, -0.269040505, 0.272155205, 0.653782813],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 450,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272177637, 0.65361619, 0.652942181, 0.269019961],
+              "rotationQuaternion": [0.652926591, -0.268982196, 0.272215096, 0.653631691],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 600,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272260755, 0.653406441, 0.653150797, 0.268938959],
+              "rotationQuaternion": [0.653135179, -0.268901191, 0.272298191, 0.653421979],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 750,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272366613, 0.653139174, 0.653416395, 0.268835753],
+              "rotationQuaternion": [0.653400827, -0.268797911, 0.272404011, 0.653154727],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 900,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272494733, 0.652815402, 0.653737903, 0.268710732],
+              "rotationQuaternion": [0.653722289, -0.268672896, 0.272532096, 0.652830989],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1050,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272644639, 0.652436137, 0.654114068, 0.268564254],
+              "rotationQuaternion": [0.65409851, -0.268526404, 0.272682004, 0.65245171],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1200,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.272815913, 0.652002454, 0.654543698, 0.268396765],
+              "rotationQuaternion": [0.654528123, -0.26835891, 0.27285331, 0.652018023],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1350,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.273008019, 0.651515245, 0.655025661, 0.268208623],
+              "rotationQuaternion": [0.655010123, -0.268170709, 0.27304541, 0.651530823],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1500,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.273220539, 0.650975585, 0.655558705, 0.268000215],
+              "rotationQuaternion": [0.655543184, -0.267962293, 0.273257793, 0.650991184],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1650,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.273452908, 0.650384426, 0.656141639, 0.26777193],
+              "rotationQuaternion": [0.656126099, -0.267734, 0.2734902, 0.650399999],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1800,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.273704708, 0.649742723, 0.65677315, 0.267524123],
+              "rotationQuaternion": [0.656757611, -0.267486105, 0.273741905, 0.649758411],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1950,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.273975462, 0.649051487, 0.657452047, 0.267257214],
+              "rotationQuaternion": [0.657436504, -0.267219202, 0.274012602, 0.649067204],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2100,
               "positionOffset": [-298.1073, -90.5897675, 447.537567],
-              "rotationQuaternion": [-0.274264604, 0.648311675, 0.658177078, 0.266971499],
+              "rotationQuaternion": [0.658161591, -0.266933396, 0.274301796, 0.648327391],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2250,
               "positionOffset": [-298.1073, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.274571717, 0.647524238, 0.658947051, 0.266667426],
+              "rotationQuaternion": [0.658931573, -0.266629289, 0.274608789, 0.647539974],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2400,
               "positionOffset": [-298.1073, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.274896264, 0.64669019, 0.659760594, 0.266345322],
+              "rotationQuaternion": [0.659745169, -0.266307187, 0.274933287, 0.64670587],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2550,
               "positionOffset": [-298.1073, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.275237769, 0.645810366, 0.660616517, 0.266005576],
+              "rotationQuaternion": [0.660601105, -0.265967302, 0.275274802, 0.645826105],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2700,
               "positionOffset": [-298.107269, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.275595725, 0.644885719, 0.661513567, 0.265648514],
+              "rotationQuaternion": [0.661498208, -0.265610203, 0.275632703, 0.644901507],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2850,
               "positionOffset": [-298.107269, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.275969654, 0.643917322, 0.662450492, 0.265274525],
+              "rotationQuaternion": [0.662435124, -0.265236209, 0.27600651, 0.643933123],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3000,
               "positionOffset": [-298.107269, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.276359022, 0.64290601, 0.663425982, 0.264883995],
+              "rotationQuaternion": [0.663410616, -0.264845607, 0.276395907, 0.642921816],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3150,
               "positionOffset": [-298.107269, -90.5897675, 447.537537],
-              "rotationQuaternion": [-0.27676335, 0.641852796, 0.664438725, 0.264477253],
+              "rotationQuaternion": [0.664423424, -0.264438809, 0.27680011, 0.641868623],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3300,
               "positionOffset": [-298.107269, -90.5897751, 447.537506],
-              "rotationQuaternion": [-0.277182162, 0.640758574, 0.665487528, 0.264054716],
+              "rotationQuaternion": [0.665472216, -0.264016206, 0.277218907, 0.640774415],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3450,
               "positionOffset": [-298.107269, -90.5897751, 447.537506],
-              "rotationQuaternion": [-0.277614921, 0.639624238, 0.666571081, 0.263616681],
+              "rotationQuaternion": [0.666555827, -0.263578111, 0.277651611, 0.639640126],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3600,
               "positionOffset": [-298.107269, -90.5897751, 447.537506],
-              "rotationQuaternion": [-0.278061122, 0.638450861, 0.667688131, 0.263163537],
+              "rotationQuaternion": [0.6676729, -0.2631249, 0.2780977, 0.6384668],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3750,
               "positionOffset": [-298.107269, -90.5897751, 447.537506],
-              "rotationQuaternion": [-0.278520286, 0.637239337, 0.668837368, 0.26269567],
+              "rotationQuaternion": [0.668822186, -0.262656994, 0.278556794, 0.637255286],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3900,
               "positionOffset": [-298.107269, -90.5897751, 447.537506],
-              "rotationQuaternion": [-0.278991938, 0.63599062, 0.6700176, 0.262213439],
+              "rotationQuaternion": [0.670002389, -0.262174696, 0.279028395, 0.63600659],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4050,
               "positionOffset": [-298.107269, -90.5897751, 447.537506],
-              "rotationQuaternion": [-0.27947554, 0.634705663, 0.671227455, 0.26171723],
+              "rotationQuaternion": [0.671212317, -0.261678407, 0.279511907, 0.634721616],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4200,
               "positionOffset": [-298.107269, -90.5897751, 447.537476],
-              "rotationQuaternion": [-0.279970616, 0.63338536, 0.672465742, 0.261207342],
+              "rotationQuaternion": [0.672450603, -0.261168501, 0.280006901, 0.633401402],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4350,
               "positionOffset": [-298.107239, -90.5897751, 447.537476],
-              "rotationQuaternion": [-0.28047663, 0.632030785, 0.673731148, 0.260684222],
+              "rotationQuaternion": [0.6737161, -0.2606453, 0.2805129, 0.6320468],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4500,
               "positionOffset": [-298.107239, -90.5897751, 447.537476],
-              "rotationQuaternion": [-0.280993164, 0.630642831, 0.675022483, 0.260148227],
+              "rotationQuaternion": [0.675007433, -0.260109213, 0.281029314, 0.630658931],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4650,
               "positionOffset": [-298.107239, -90.5897751, 447.537476],
-              "rotationQuaternion": [-0.281519651, 0.629222512, 0.676338434, 0.259599715],
+              "rotationQuaternion": [0.676323442, -0.259560616, 0.281555718, 0.62923864],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4800,
               "positionOffset": [-298.107239, -90.5897827, 447.537476],
-              "rotationQuaternion": [-0.282055646, 0.627770782, 0.67767781, 0.259039074],
+              "rotationQuaternion": [0.677662798, -0.258999899, 0.282091599, 0.627786998],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4950,
               "positionOffset": [-298.107239, -90.5897827, 447.537445],
-              "rotationQuaternion": [-0.282600611, 0.626288652, 0.679039299, 0.258466691],
+              "rotationQuaternion": [0.679024374, -0.25842739, 0.282636489, 0.626304876],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5100,
               "positionOffset": [-298.107239, -90.5897827, 447.537445],
-              "rotationQuaternion": [-0.28315413, 0.624777138, 0.68042171, 0.257882923],
+              "rotationQuaternion": [0.680406826, -0.25784361, 0.283189911, 0.624793324],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5250,
               "positionOffset": [-298.107239, -90.5897827, 447.537445],
-              "rotationQuaternion": [-0.283715665, 0.623237133, 0.68182379, 0.257288188],
+              "rotationQuaternion": [0.681808907, -0.257248803, 0.283751403, 0.623253407],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5400,
               "positionOffset": [-298.107239, -90.5897827, 447.537445],
-              "rotationQuaternion": [-0.284284741, 0.621669769, 0.683244348, 0.256682843],
+              "rotationQuaternion": [0.683229532, -0.256643312, 0.284320413, 0.621686029],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5550,
               "positionOffset": [-298.107239, -90.5897827, 447.537445],
-              "rotationQuaternion": [-0.284860879, 0.620076001, 0.684682131, 0.256067306],
+              "rotationQuaternion": [0.684667329, -0.256027711, 0.284896412, 0.620092327],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5700,
               "positionOffset": [-298.107208, -90.5897827, 447.537415],
-              "rotationQuaternion": [-0.285443634, 0.618456841, 0.686135948, 0.255441964],
+              "rotationQuaternion": [0.686121182, -0.255402293, 0.285479093, 0.618473184],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5850,
               "positionOffset": [-298.107208, -90.5897827, 447.537415],
-              "rotationQuaternion": [-0.286032468, 0.616813302, 0.687604547, 0.254807204],
+              "rotationQuaternion": [0.687589895, -0.254767498, 0.286067798, 0.616829695],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6000,
               "positionOffset": [-298.107208, -90.5897903, 447.537415],
-              "rotationQuaternion": [-0.286626965, 0.615146518, 0.689086854, 0.254163444],
+              "rotationQuaternion": [0.689072188, -0.254123596, 0.286662195, 0.615162989],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6150,
               "positionOffset": [-298.107208, -90.5897903, 447.537415],
-              "rotationQuaternion": [-0.287226647, 0.613457501, 0.69058156, 0.253511071],
+              "rotationQuaternion": [0.690566958, -0.253471185, 0.287261783, 0.613473963],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6300,
               "positionOffset": [-298.107208, -90.5897903, 447.537384],
-              "rotationQuaternion": [-0.287831008, 0.611747265, 0.692087591, 0.252850503],
+              "rotationQuaternion": [0.692072991, -0.252810497, 0.287866096, 0.611763792],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6450,
               "positionOffset": [-298.107208, -90.5897903, 447.537384],
-              "rotationQuaternion": [-0.288439631, 0.610016942, 0.693603694, 0.252182186],
+              "rotationQuaternion": [0.693589171, -0.25214209, 0.288474588, 0.610033475],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6600,
               "positionOffset": [-298.107208, -90.5897903, 447.537384],
-              "rotationQuaternion": [-0.289052069, 0.608267546, 0.695128798, 0.251506448],
+              "rotationQuaternion": [0.69511431, -0.251466303, 0.289086904, 0.608284108],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6750,
               "positionOffset": [-298.107178, -90.5897903, 447.537384],
-              "rotationQuaternion": [-0.289667815, 0.606500208, 0.696661651, 0.250823796],
+              "rotationQuaternion": [0.696647231, -0.250783511, 0.289702613, 0.606516827],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6900,
               "positionOffset": [-298.107178, -90.5897903, 447.537384],
-              "rotationQuaternion": [-0.290286452, 0.604716003, 0.698201239, 0.250134617],
+              "rotationQuaternion": [0.69818687, -0.250094289, 0.290321088, 0.604732674],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7050,
               "positionOffset": [-298.107178, -90.5897903, 447.537354],
-              "rotationQuaternion": [-0.290907532, 0.602916062, 0.69974637, 0.249439344],
+              "rotationQuaternion": [0.699732069, -0.249398889, 0.290942087, 0.602932773],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7200,
               "positionOffset": [-298.107178, -90.589798, 447.537354],
-              "rotationQuaternion": [-0.291530609, 0.601101518, 0.701295972, 0.248738393],
+              "rotationQuaternion": [0.70128167, -0.248697889, 0.291565087, 0.601118274],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7350,
               "positionOffset": [-298.107178, -90.589798, 447.537354],
-              "rotationQuaternion": [-0.292155236, 0.599273503, 0.702848911, 0.248032227],
+              "rotationQuaternion": [0.702834674, -0.247991591, 0.292189589, 0.599290277],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7500,
               "positionOffset": [-298.107178, -90.589798, 447.537354],
-              "rotationQuaternion": [-0.292780995, 0.59743309, 0.704404116, 0.247321263],
+              "rotationQuaternion": [0.704389897, -0.247280599, 0.292815299, 0.597449897],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7650,
               "positionOffset": [-298.107178, -90.589798, 447.537323],
-              "rotationQuaternion": [-0.29340744, 0.595581532, 0.705960512, 0.246605963],
+              "rotationQuaternion": [0.705946299, -0.2465652, 0.2934416, 0.595598399],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7800,
               "positionOffset": [-298.107178, -90.589798, 447.537323],
-              "rotationQuaternion": [-0.294034153, 0.5937199, 0.707516968, 0.245886758],
+              "rotationQuaternion": [0.707502881, -0.245845893, 0.294068192, 0.593736784],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7950,
               "positionOffset": [-298.107147, -90.589798, 447.537323],
-              "rotationQuaternion": [-0.294660717, 0.591849446, 0.70907253, 0.245164111],
+              "rotationQuaternion": [0.709058509, -0.245123103, 0.294694704, 0.591866308],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8100,
               "positionOffset": [-298.107147, -90.589798, 447.537323],
-              "rotationQuaternion": [-0.295286685, 0.589971244, 0.710626125, 0.244438469],
+              "rotationQuaternion": [0.710612129, -0.24439741, 0.295320512, 0.589988224],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8250,
               "positionOffset": [-298.107147, -90.5898056, 447.537292],
-              "rotationQuaternion": [-0.2959117, 0.588086605, 0.71217674, 0.243710309],
+              "rotationQuaternion": [0.71216278, -0.243669193, 0.295945392, 0.588103583],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8400,
               "positionOffset": [-298.107147, -90.5898056, 447.537292],
-              "rotationQuaternion": [-0.296535313, 0.586196661, 0.713723302, 0.242980078],
+              "rotationQuaternion": [0.713709406, -0.242938802, 0.296568903, 0.586213705],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8550,
               "positionOffset": [-298.107147, -90.5898056, 447.537292],
-              "rotationQuaternion": [-0.297157139, 0.584302664, 0.715264857, 0.242248267],
+              "rotationQuaternion": [0.715251, -0.2422069, 0.2971907, 0.5843197],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8700,
               "positionOffset": [-298.107147, -90.5898056, 447.537292],
-              "rotationQuaternion": [-0.297776759, 0.582405806, 0.716800392, 0.241515309],
+              "rotationQuaternion": [0.716786591, -0.241473897, 0.297810196, 0.582422893],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8850,
               "positionOffset": [-298.107147, -90.5898056, 447.537262],
-              "rotationQuaternion": [-0.298393786, 0.580507398, 0.718328953, 0.240781724],
+              "rotationQuaternion": [0.7183152, -0.2407402, 0.2984271, 0.5805245],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9000,
               "positionOffset": [-298.107117, -90.5898056, 447.537262],
-              "rotationQuaternion": [-0.299007833, 0.578608572, 0.719849586, 0.240047961],
+              "rotationQuaternion": [0.719835894, -0.240006398, 0.299040998, 0.578625696],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9150,
               "positionOffset": [-298.107117, -90.5898056, 447.537262],
-              "rotationQuaternion": [-0.299618512, 0.576710641, 0.721361279, 0.239314526],
+              "rotationQuaternion": [0.721347588, -0.239272896, 0.299651595, 0.576727891],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9300,
               "positionOffset": [-298.107117, -90.5898132, 447.537262],
-              "rotationQuaternion": [-0.300225466, 0.574814856, 0.722863197, 0.238581911],
+              "rotationQuaternion": [0.72284961, -0.238540103, 0.300258404, 0.574832108],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9450,
               "positionOffset": [-298.107117, -90.5898132, 447.537231],
-              "rotationQuaternion": [-0.300828278, 0.572922587, 0.724354327, 0.237850577],
+              "rotationQuaternion": [0.724340693, -0.237808698, 0.300861197, 0.572939895],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9600,
               "positionOffset": [-298.107117, -90.5898132, 447.537231],
-              "rotationQuaternion": [-0.301426619, 0.571034968, 0.725833774, 0.237121046],
+              "rotationQuaternion": [0.725820214, -0.237079105, 0.301459406, 0.571052311],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9750,
               "positionOffset": [-298.107117, -90.5898132, 447.537231],
-              "rotationQuaternion": [-0.302020103, 0.569153368, 0.727300644, 0.236393809],
+              "rotationQuaternion": [0.727287191, -0.236351797, 0.302052796, 0.569170693],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9900,
               "positionOffset": [-298.107117, -90.5898132, 447.537231],
-              "rotationQuaternion": [-0.302608341, 0.5672791, 0.728754103, 0.235669389],
+              "rotationQuaternion": [0.728740629, -0.235627309, 0.302640912, 0.567296523],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10050,
               "positionOffset": [-298.107086, -90.5898132, 447.537201],
-              "rotationQuaternion": [-0.303191006, 0.565413475, 0.730193198, 0.234948263],
+              "rotationQuaternion": [0.730179796, -0.234906099, 0.303223499, 0.565430897],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10200,
               "positionOffset": [-298.107086, -90.5898132, 447.537201],
-              "rotationQuaternion": [-0.303767771, 0.563557804, 0.731617093, 0.23423095],
+              "rotationQuaternion": [0.731603722, -0.234188707, 0.303800109, 0.563575317],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10350,
               "positionOffset": [-298.107086, -90.5898132, 447.537201],
-              "rotationQuaternion": [-0.304338217, 0.561713457, 0.733024955, 0.23351799],
+              "rotationQuaternion": [0.733011678, -0.233475693, 0.304370491, 0.561730883],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10500,
               "positionOffset": [-298.107086, -90.5898209, 447.537201],
-              "rotationQuaternion": [-0.304902077, 0.559881687, 0.734415948, 0.232809871],
+              "rotationQuaternion": [0.734402694, -0.232767498, 0.304934198, 0.559899196],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10650,
               "positionOffset": [-298.107086, -90.5898209, 447.53717],
-              "rotationQuaternion": [-0.305458933, 0.558063865, 0.735789239, 0.232107118],
+              "rotationQuaternion": [0.735776036, -0.232064612, 0.305491015, 0.558081428],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10800,
               "positionOffset": [-298.107086, -90.5898209, 447.53717],
-              "rotationQuaternion": [-0.306008518, 0.556261361, 0.737144053, 0.231410265],
+              "rotationQuaternion": [0.737130867, -0.23136769, 0.306040486, 0.556278975],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10950,
               "positionOffset": [-298.107086, -90.5898209, 447.53717],
-              "rotationQuaternion": [-0.306550473, 0.554475605, 0.738479495, 0.230719835],
+              "rotationQuaternion": [0.738466396, -0.230677199, 0.306582298, 0.554493197],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11100,
               "positionOffset": [-298.107086, -90.5898209, 447.53717],
-              "rotationQuaternion": [-0.307084441, 0.552707851, 0.73979485, 0.230036348],
+              "rotationQuaternion": [0.739781798, -0.229993599, 0.307116199, 0.552725498],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11250,
               "positionOffset": [-298.107056, -90.5898209, 447.53717],
-              "rotationQuaternion": [-0.307610154, 0.550959527, 0.741089344, 0.229360342],
+              "rotationQuaternion": [0.741076301, -0.2293176, 0.307641801, 0.550977201],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11400,
               "positionOffset": [-298.107056, -90.5898209, 447.53714],
-              "rotationQuaternion": [-0.308127254, 0.549232066, 0.742362142, 0.228692368],
+              "rotationQuaternion": [0.742349156, -0.228649487, 0.308158782, 0.549249768],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11550,
               "positionOffset": [-298.107056, -90.5898209, 447.53714],
-              "rotationQuaternion": [-0.308635414, 0.547526777, 0.743612528, 0.228032947],
+              "rotationQuaternion": [0.743599585, -0.227989995, 0.308666894, 0.547544489],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11700,
               "positionOffset": [-298.107056, -90.5898285, 447.53714],
-              "rotationQuaternion": [-0.309134364, 0.545845032, 0.744839787, 0.227382615],
+              "rotationQuaternion": [0.744826888, -0.227339596, 0.309165695, 0.545862791],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11850,
               "positionOffset": [-298.107056, -90.5898285, 447.53714],
-              "rotationQuaternion": [-0.309623778, 0.544188321, 0.746043086, 0.226741925],
+              "rotationQuaternion": [0.746030236, -0.226698811, 0.309655015, 0.544206126],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12000,
               "positionOffset": [-298.107056, -90.5898285, 447.537109],
-              "rotationQuaternion": [-0.310103327, 0.542558014, 0.747221768, 0.226111412],
+              "rotationQuaternion": [0.747208929, -0.226068309, 0.310134512, 0.542575821],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12150,
               "positionOffset": [-298.107056, -90.5898285, 447.537109],
-              "rotationQuaternion": [-0.310572714, 0.540955484, 0.748375058, 0.225491628],
+              "rotationQuaternion": [0.74836228, -0.225448394, 0.310603792, 0.540973386],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12300,
               "positionOffset": [-298.107056, -90.5898285, 447.537109],
-              "rotationQuaternion": [-0.31103164, 0.539382219, 0.749502301, 0.224883124],
+              "rotationQuaternion": [0.749489581, -0.224839894, 0.311062592, 0.539400086],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12450,
               "positionOffset": [-298.107025, -90.5898285, 447.537109],
-              "rotationQuaternion": [-0.311479837, 0.537839532, 0.750602782, 0.224286452],
+              "rotationQuaternion": [0.750590073, -0.224243092, 0.311510689, 0.53785748],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12600,
               "positionOffset": [-298.107025, -90.5898285, 447.537109],
-              "rotationQuaternion": [-0.311916977, 0.536328971, 0.751675725, 0.223702148],
+              "rotationQuaternion": [0.751663079, -0.223658694, 0.311947791, 0.536346885],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12750,
               "positionOffset": [-298.107025, -90.5898285, 447.537109],
-              "rotationQuaternion": [-0.312342793, 0.534851849, 0.752720535, 0.223130763],
+              "rotationQuaternion": [0.752707888, -0.223087296, 0.312373495, 0.534869791],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12900,
               "positionOffset": [-298.107025, -90.5898285, 447.537079],
-              "rotationQuaternion": [-0.312756956, 0.533409655, 0.753736377, 0.222572878],
+              "rotationQuaternion": [0.753723805, -0.222529401, 0.312787602, 0.533427603],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13050,
               "positionOffset": [-298.107025, -90.5898361, 447.537079],
-              "rotationQuaternion": [-0.313159198, 0.53200376, 0.754722774, 0.222029015],
+              "rotationQuaternion": [0.754710181, -0.221985394, 0.313189792, 0.532021787],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13200,
               "positionOffset": [-298.107025, -90.5898361, 447.537079],
-              "rotationQuaternion": [-0.313549221, 0.530635655, 0.755678833, 0.221499741],
+              "rotationQuaternion": [0.755666323, -0.221456107, 0.31357971, 0.530653716],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13350,
               "positionOffset": [-298.107025, -90.5898361, 447.537079],
-              "rotationQuaternion": [-0.313926756, 0.529306769, 0.756604016, 0.220985621],
+              "rotationQuaternion": [0.756591502, -0.220941901, 0.313957201, 0.529324902],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13500,
               "positionOffset": [-298.107025, -90.5898361, 447.537079],
-              "rotationQuaternion": [-0.314291507, 0.528018534, 0.757497609, 0.220487207],
+              "rotationQuaternion": [0.757485172, -0.220443492, 0.314321889, 0.528036581],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13650,
               "positionOffset": [-298.107025, -90.5898361, 447.537079],
-              "rotationQuaternion": [-0.314643204, 0.52677238, 0.758358955, 0.22000505],
+              "rotationQuaternion": [0.758346489, -0.219961297, 0.314673495, 0.526790492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13800,
               "positionOffset": [-298.107025, -90.5898361, 447.537048],
-              "rotationQuaternion": [-0.31498155, 0.525569677, 0.7591874, 0.219539702],
+              "rotationQuaternion": [0.759174986, -0.219495896, 0.315011694, 0.52558779],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13950,
               "positionOffset": [-298.107025, -90.5898361, 447.537048],
-              "rotationQuaternion": [-0.315306246, 0.524411917, 0.759982169, 0.219091743],
+              "rotationQuaternion": [0.759969779, -0.219047894, 0.315336391, 0.524430086],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14100,
               "positionOffset": [-298.106995, -90.5898361, 447.537048],
-              "rotationQuaternion": [-0.315617025, 0.523300529, 0.760742724, 0.218661696],
+              "rotationQuaternion": [0.760730386, -0.218617796, 0.315647094, 0.52331869],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14250,
               "positionOffset": [-298.106995, -90.5898361, 447.537048],
-              "rotationQuaternion": [-0.315913618, 0.522237003, 0.761468291, 0.218250141],
+              "rotationQuaternion": [0.761455986, -0.218206196, 0.315943594, 0.52225519],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14400,
               "positionOffset": [-253.524521, -90.5897522, 256.724243],
-              "rotationQuaternion": [-0.316195697, 0.521222651, 0.762158334, 0.217857614],
+              "rotationQuaternion": [0.762146017, -0.217813605, 0.316225707, 0.521240812],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14550,
               "positionOffset": [-253.524521, -90.5897522, 256.724243],
-              "rotationQuaternion": [-0.316463023, 0.520258963, 0.762812018, 0.217484698],
+              "rotationQuaternion": [0.762799715, -0.217440704, 0.316492906, 0.52027721],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14700,
               "positionOffset": [-253.524506, -90.5897522, 256.724243],
-              "rotationQuaternion": [-0.31671527, 0.51934737, 0.763428748, 0.217131913],
+              "rotationQuaternion": [0.763416519, -0.217087805, 0.316745108, 0.519365613],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14850,
               "positionOffset": [-253.524506, -90.5897522, 256.724213],
-              "rotationQuaternion": [-0.316952199, 0.518489242, 0.764007866, 0.216799825],
+              "rotationQuaternion": [0.763995628, -0.216755708, 0.316982012, 0.518507519],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15000,
               "positionOffset": [-253.524506, -90.5897522, 256.724213],
-              "rotationQuaternion": [-0.317173481, 0.517686069, 0.764548659, 0.216488972],
+              "rotationQuaternion": [0.764536449, -0.216444814, 0.317203221, 0.517704333],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15150,
               "positionOffset": [-253.524506, -90.5897522, 256.724213],
-              "rotationQuaternion": [-0.317378819, 0.516939223, 0.765050411, 0.21619992],
+              "rotationQuaternion": [0.765038204, -0.216155801, 0.317408502, 0.516957503],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15300,
               "positionOffset": [-253.524506, -90.5897522, 256.724213],
-              "rotationQuaternion": [-0.317567945, 0.516250074, 0.765512466, 0.215933219],
+              "rotationQuaternion": [0.765500275, -0.215888993, 0.31759759, 0.516268383],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15450,
               "positionOffset": [-253.524506, -90.5897522, 256.724213],
-              "rotationQuaternion": [-0.31774056, 0.515620112, 0.76593405, 0.215689376],
+              "rotationQuaternion": [0.765921874, -0.215645193, 0.317770189, 0.515638382],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15600,
               "positionOffset": [-253.524506, -90.5897522, 256.724213],
-              "rotationQuaternion": [-0.317896336, 0.51505059, 0.766314507, 0.215468973],
+              "rotationQuaternion": [0.766302393, -0.215424698, 0.317925897, 0.515068895],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15750,
               "positionOffset": [-297.96048, -90.5772781, 447.68335],
-              "rotationQuaternion": [-0.318034977, 0.514543056, 0.766653061, 0.215272516],
+              "rotationQuaternion": [0.769050983, -0.224134995, 0.312040793, 0.510837189],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15900,
               "positionOffset": [-295.547546, -90.7814941, 450.096283],
-              "rotationQuaternion": [-0.318156183, 0.514098763, 0.766949058, 0.215100557],
+              "rotationQuaternion": [0.785229019, -0.296315907, 0.260898806, 0.477015811],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16050,
               "positionOffset": [-291.992004, -92.5434418, 453.651825],
-              "rotationQuaternion": [-0.318259656, 0.513719201, 0.767201602, 0.214953631],
+              "rotationQuaternion": [0.795576294, -0.396371097, 0.182388899, 0.420336297],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16200,
               "positionOffset": [-289.52652, -94.8854065, 456.11731],
-              "rotationQuaternion": [-0.31834504, 0.513405561, 0.7674101, 0.214832246],
+              "rotationQuaternion": [0.791015723, -0.483998714, 0.104897303, 0.35921571],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16350,
               "positionOffset": [-286.827576, -99.1882553, 458.816254],
-              "rotationQuaternion": [-0.318412036, 0.513159394, 0.767573655, 0.214736938],
+              "rotationQuaternion": [0.770014417, -0.570563513, 0.0177057004, 0.284994006],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16500,
               "positionOffset": [-285.632538, -102.729645, 460.011292],
-              "rotationQuaternion": [-0.318460315, 0.512981832, 0.767691493, 0.214668229],
+              "rotationQuaternion": [0.7389522, -0.6354524, -0.0575633, 0.2164171],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16650,
               "positionOffset": [-285.182312, -105.281708, 460.461517],
-              "rotationQuaternion": [-0.318489522, 0.512874365, 0.76776278, 0.21462664],
+              "rotationQuaternion": [0.713821095, -0.670858195, -0.103926299, 0.172069899],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16800,
               "positionOffset": [-285.013062, -107.166634, 460.630737],
-              "rotationQuaternion": [-0.318499357, 0.512838244, 0.767786741, 0.214612663],
+              "rotationQuaternion": [0.697551484, -0.689259484, -0.130121197, 0.146327597],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16950,
               "positionOffset": [-284.987183, -107.738998, 460.656433],
-              "rotationQuaternion": [-0.312748194, 0.562520683, 0.728772283, 0.233773321],
+              "rotationQuaternion": [0.679197202, -0.686564202, -0.177875201, 0.188894601],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17100,
               "positionOffset": [-284.985413, -107.769119, 460.656372],
-              "rotationQuaternion": [-0.333987832, 0.581113875, 0.690012038, 0.273207158],
+              "rotationQuaternion": [0.641243329, -0.705778232, -0.192228909, 0.231801911],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17250,
               "positionOffset": [-284.985107, -107.769295, 460.655884],
-              "rotationQuaternion": [-0.398438752, 0.557615161, 0.612389386, 0.39406994],
+              "rotationQuaternion": [0.514143123, -0.784483936, -0.195512509, 0.286385513],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17400,
               "positionOffset": [-284.985016, -107.76931, 460.65567],
-              "rotationQuaternion": [-0.447979391, 0.537970245, 0.547744393, 0.458125025],
+              "rotationQuaternion": [0.426589593, -0.822127186, -0.182793497, 0.329719194],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17550,
               "positionOffset": [-284.984985, -107.76931, 460.655579],
-              "rotationQuaternion": [-0.498557687, 0.504514098, 0.489712298, 0.507038116],
+              "rotationQuaternion": [0.344369912, -0.85291573, -0.154838605, 0.360512313],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17700,
               "positionOffset": [-284.984985, -107.76931, 460.655579],
-              "rotationQuaternion": [-0.556308091, 0.402291924, 0.42929396, 0.586846828],
+              "rotationQuaternion": [0.2105427, -0.907907502, -0.1028514, 0.347559101],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17850,
               "positionOffset": [-284.984985, -107.769302, 460.655579],
-              "rotationQuaternion": [-0.601014555, 0.305713832, 0.360841721, 0.644293249],
+              "rotationQuaternion": [0.0850744029, -0.936557732, -0.0516958018, 0.336079611],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18000,
               "positionOffset": [-284.985107, -107.769249, 460.655762],
-              "rotationQuaternion": [-0.633471847, 0.259780049, 0.325393796, 0.652186036],
+              "rotationQuaternion": [0.0330922992, -0.940630277, -0.00973189976, 0.337675692],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18150,
               "positionOffset": [-284.985474, -107.769096, 460.656311],
-              "rotationQuaternion": [-0.654545546, 0.250426203, 0.294019043, 0.649930477],
+              "rotationQuaternion": [0.00739260023, -0.933878229, 0.0109572003, 0.357346811],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18300,
               "positionOffset": [-284.986206, -107.768768, 460.657623],
-              "rotationQuaternion": [-0.654876471, 0.265917987, 0.272832841, 0.652676582],
+              "rotationQuaternion": [-0.00117579995, -0.925369361, 0.00205489991, 0.379059284],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18450,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18580,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18600,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18750,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18900,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19050,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19200,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19350,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19500,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19650,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19800,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19950,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20100,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20250,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20400,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20550,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20700,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20850,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21000,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21150,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21300,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21450,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21600,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21750,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21900,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22050,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22200,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22350,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22500,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22650,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22800,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22950,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23100,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23250,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23400,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23550,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23700,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23850,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24000,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24150,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24300,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24450,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24600,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24750,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24900,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25050,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25200,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25350,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25500,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25650,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25800,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25950,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26100,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26250,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26400,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26550,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26700,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26850,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 27000,
               "positionOffset": [-284.986328, -107.7687, 460.657867],
-              "rotationQuaternion": [-0.653490543, 0.269480735, 0.270977825, 0.653376818],
+              "rotationQuaternion": [-0.00105110003, -0.924240124, -0.00105870003, 0.38180881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             }
@@ -148806,1274 +148806,1274 @@
             {
               "timeMs": 0,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.654686451, -0.274007827, 0.26718089, 0.651858687],
+              "rotationQuaternion": [-0.267092899, 0.651821898, 0.654722398, 0.274095199],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 150,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.654705703, -0.274000108, 0.267188787, 0.651839375],
+              "rotationQuaternion": [-0.267100802, 0.651802604, 0.654741604, 0.274087502],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 300,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.654762924, -0.27397722, 0.267212212, 0.651781917],
+              "rotationQuaternion": [-0.267124198, 0.651745194, 0.654798794, 0.274064598],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 450,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.654857397, -0.273939401, 0.267250955, 0.651687026],
+              "rotationQuaternion": [-0.267162986, 0.651650266, 0.654893266, 0.274026786],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 600,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.654988468, -0.273886919, 0.267304659, 0.6515553],
+              "rotationQuaternion": [-0.2672167, 0.651518599, 0.655024299, 0.2739743],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 750,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.655155361, -0.273820043, 0.267373055, 0.651387513],
+              "rotationQuaternion": [-0.267285098, 0.651350795, 0.655191195, 0.273907498],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 900,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.65535742, -0.27373904, 0.267455876, 0.65118432],
+              "rotationQuaternion": [-0.267367901, 0.651147503, 0.655393303, 0.273826501],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1050,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.655593872, -0.273644179, 0.267552763, 0.650946319],
+              "rotationQuaternion": [-0.2674649, 0.650909501, 0.655629701, 0.2737317],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1200,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.655864, -0.273535728, 0.267663479, 0.650674164],
+              "rotationQuaternion": [-0.267575602, 0.650637405, 0.655899805, 0.273623302],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1350,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.65616709, -0.273413926, 0.267787725, 0.650368631],
+              "rotationQuaternion": [-0.2676999, 0.650331799, 0.656202899, 0.2735015],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1500,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.656502366, -0.273279071, 0.267925143, 0.650030255],
+              "rotationQuaternion": [-0.267837393, 0.649993383, 0.656538182, 0.273366693],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1650,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.656869113, -0.273131371, 0.268075466, 0.649659693],
+              "rotationQuaternion": [-0.267987804, 0.649622811, 0.656904911, 0.273219104],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1800,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.657266617, -0.272971123, 0.268238395, 0.64925766],
+              "rotationQuaternion": [-0.268150693, 0.649220783, 0.657302383, 0.273058893],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 1950,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.657694101, -0.272798598, 0.268413603, 0.648824751],
+              "rotationQuaternion": [-0.26832601, 0.648787823, 0.657729823, 0.27288641],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2100,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.658150792, -0.272614002, 0.268600821, 0.648361623],
+              "rotationQuaternion": [-0.268513293, 0.648324684, 0.658186484, 0.272701793],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2250,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.658635914, -0.272417605, 0.268799692, 0.647868872],
+              "rotationQuaternion": [-0.268712208, 0.647831919, 0.658671619, 0.272505508],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2400,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.659148812, -0.272209674, 0.269009948, 0.647347212],
+              "rotationQuaternion": [-0.268922511, 0.647310227, 0.659184427, 0.272297711],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2550,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.659688652, -0.271990448, 0.26923126, 0.64679718],
+              "rotationQuaternion": [-0.26914391, 0.646760224, 0.659724225, 0.27207851],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2700,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.660254657, -0.271760195, 0.269463331, 0.646219552],
+              "rotationQuaternion": [-0.269376089, 0.646182473, 0.660290272, 0.271848288],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 2850,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.660846174, -0.271519184, 0.269705862, 0.645614803],
+              "rotationQuaternion": [-0.269618698, 0.645577696, 0.660881696, 0.271607398],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3000,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.661462307, -0.271267623, 0.269958496, 0.644983649],
+              "rotationQuaternion": [-0.26987141, 0.644946524, 0.661497825, 0.27135591],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3150,
               "positionOffset": [-298.03656, -90.9089127, 447.589325],
-              "rotationQuaternion": [0.662102401, -0.27100578, 0.270220965, 0.644326687],
+              "rotationQuaternion": [-0.270134007, 0.644289517, 0.662137917, 0.271094107],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3300,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.662765682, -0.270733893, 0.270492941, 0.643644571],
+              "rotationQuaternion": [-0.270406005, 0.643607413, 0.662801113, 0.270822405],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3450,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.663451374, -0.270452261, 0.270774156, 0.642937958],
+              "rotationQuaternion": [-0.270687302, 0.642900706, 0.663486806, 0.270540802],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3600,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.664158702, -0.270161092, 0.271064222, 0.642207444],
+              "rotationQuaternion": [-0.270977508, 0.642170219, 0.66419402, 0.270249708],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3750,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.664886892, -0.269860655, 0.271362901, 0.641453683],
+              "rotationQuaternion": [-0.271276295, 0.641416387, 0.664922187, 0.269949395],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 3900,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.665635228, -0.269551188, 0.271669835, 0.640677273],
+              "rotationQuaternion": [-0.271583312, 0.640639927, 0.665670528, 0.269640012],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4050,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.666402936, -0.269232959, 0.271984726, 0.639878929],
+              "rotationQuaternion": [-0.271898301, 0.639841503, 0.666438203, 0.269321901],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4200,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.66718924, -0.268906236, 0.272307307, 0.639059186],
+              "rotationQuaternion": [-0.272220999, 0.639021798, 0.667224398, 0.268995299],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4350,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.667993426, -0.268571258, 0.272637218, 0.63821876],
+              "rotationQuaternion": [-0.272550995, 0.638181287, 0.668028587, 0.268660395],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4500,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.668814719, -0.268228263, 0.272974163, 0.637358248],
+              "rotationQuaternion": [-0.27288811, 0.637320724, 0.668849825, 0.26831751],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4650,
               "positionOffset": [-298.03656, -90.908905, 447.589294],
-              "rotationQuaternion": [0.669652402, -0.267877519, 0.273317844, 0.636478364],
+              "rotationQuaternion": [-0.273231895, 0.636440788, 0.669687388, 0.267966895],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4800,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.670505643, -0.267519325, 0.273667961, 0.635579646],
+              "rotationQuaternion": [-0.273582105, 0.635542011, 0.670540612, 0.267608805],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 4950,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.671373725, -0.267153859, 0.274024218, 0.634662807],
+              "rotationQuaternion": [-0.273938493, 0.634625084, 0.671408683, 0.267243493],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5100,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.672255933, -0.266781449, 0.274386257, 0.633728504],
+              "rotationQuaternion": [-0.274300692, 0.633690781, 0.672290779, 0.266871192],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5250,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.673151553, -0.266402334, 0.274753839, 0.632777333],
+              "rotationQuaternion": [-0.274668397, 0.632739594, 0.673186294, 0.266492198],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5400,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.674059749, -0.266016752, 0.275126606, 0.631810009],
+              "rotationQuaternion": [-0.2750413, 0.6317722, 0.6740945, 0.2661067],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5550,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.674979866, -0.265625, 0.275504291, 0.630827188],
+              "rotationQuaternion": [-0.275419094, 0.630789285, 0.675014584, 0.265715094],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5700,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.675911129, -0.265227318, 0.275886625, 0.629829526],
+              "rotationQuaternion": [-0.275801489, 0.629791575, 0.675945773, 0.265317589],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 5850,
               "positionOffset": [-298.03653, -90.9088974, 447.589294],
-              "rotationQuaternion": [0.676852822, -0.264823973, 0.276273221, 0.628817677],
+              "rotationQuaternion": [-0.276188296, 0.628779692, 0.676887391, 0.264914296],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6000,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.677804172, -0.264415264, 0.27666387, 0.627792299],
+              "rotationQuaternion": [-0.276579113, 0.627754231, 0.677838733, 0.264505713],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6150,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.678764582, -0.264001429, 0.277058214, 0.626754045],
+              "rotationQuaternion": [-0.27697351, 0.626716022, 0.678799023, 0.264092009],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6300,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.679733217, -0.263582736, 0.277455986, 0.625703692],
+              "rotationQuaternion": [-0.277371504, 0.625665509, 0.67976761, 0.263673504],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6450,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.680709362, -0.263159454, 0.277856916, 0.624641836],
+              "rotationQuaternion": [-0.27777251, 0.624603624, 0.680743726, 0.26325031],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6600,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.681692362, -0.26273188, 0.278260678, 0.623569131],
+              "rotationQuaternion": [-0.278176391, 0.62353088, 0.681726679, 0.262822892],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6750,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.682681501, -0.262300253, 0.278666973, 0.622486353],
+              "rotationQuaternion": [-0.278582894, 0.622448087, 0.682715685, 0.262391394],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 6900,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.683676004, -0.261864871, 0.279075533, 0.621394217],
+              "rotationQuaternion": [-0.278991596, 0.62135579, 0.683710189, 0.261956196],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7050,
               "positionOffset": [-298.03653, -90.9088898, 447.589294],
-              "rotationQuaternion": [0.684675276, -0.261426032, 0.27948609, 0.62029326],
+              "rotationQuaternion": [-0.279402286, 0.620254869, 0.684709366, 0.261517387],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7200,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.685678542, -0.260983974, 0.279898316, 0.619184315],
+              "rotationQuaternion": [-0.279814594, 0.619145887, 0.685712585, 0.261075494],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7350,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.686685145, -0.260538995, 0.280311942, 0.618068099],
+              "rotationQuaternion": [-0.280228414, 0.61802953, 0.686719133, 0.260630713],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7500,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.687694371, -0.260091394, 0.280726731, 0.616945207],
+              "rotationQuaternion": [-0.280643402, 0.616906605, 0.687728306, 0.260183202],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7650,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.688705623, -0.259641439, 0.281142354, 0.615816474],
+              "rotationQuaternion": [-0.281059092, 0.615777783, 0.688739481, 0.259733393],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7800,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.689718068, -0.259189397, 0.281558514, 0.614682496],
+              "rotationQuaternion": [-0.281475495, 0.614643788, 0.689751887, 0.259281495],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 7950,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.690731227, -0.258735597, 0.281975001, 0.613544106],
+              "rotationQuaternion": [-0.281892099, 0.613505397, 0.690764897, 0.258827799],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8100,
               "positionOffset": [-298.03653, -90.9088821, 447.589294],
-              "rotationQuaternion": [0.691744268, -0.258280307, 0.282391489, 0.612402022],
+              "rotationQuaternion": [-0.282308699, 0.612363198, 0.691777898, 0.258372699],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8250,
               "positionOffset": [-298.03653, -90.9088745, 447.589294],
-              "rotationQuaternion": [0.692756593, -0.257823795, 0.282807738, 0.611256897],
+              "rotationQuaternion": [-0.282725099, 0.611217999, 0.692790198, 0.257916299],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8400,
               "positionOffset": [-298.03653, -90.9088745, 447.589294],
-              "rotationQuaternion": [0.693767548, -0.257366389, 0.28322345, 0.610109508],
+              "rotationQuaternion": [-0.283140991, 0.61007058, 0.693801077, 0.257458992],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8550,
               "positionOffset": [-298.036499, -90.9088745, 447.589294],
-              "rotationQuaternion": [0.694776475, -0.256908387, 0.283638388, 0.608960569],
+              "rotationQuaternion": [-0.283556109, 0.608921618, 0.694809921, 0.257001108],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8700,
               "positionOffset": [-298.036499, -90.9088745, 447.589294],
-              "rotationQuaternion": [0.695782721, -0.256450057, 0.284052253, 0.607810915],
+              "rotationQuaternion": [-0.283970092, 0.607771883, 0.695816081, 0.256542993],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 8850,
               "positionOffset": [-298.036499, -90.9088745, 447.589294],
-              "rotationQuaternion": [0.696785629, -0.255991727, 0.284464777, 0.606661201],
+              "rotationQuaternion": [-0.284382794, 0.606622087, 0.696818986, 0.256084695],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9000,
               "positionOffset": [-298.036499, -90.9088745, 447.589264],
-              "rotationQuaternion": [0.697784603, -0.255533665, 0.284875751, 0.605512202],
+              "rotationQuaternion": [-0.2847939, 0.605473, 0.697817899, 0.2556268],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9150,
               "positionOffset": [-298.036499, -90.9088745, 447.589264],
-              "rotationQuaternion": [0.698778987, -0.25507617, 0.285284847, 0.604364634],
+              "rotationQuaternion": [-0.285203105, 0.604325412, 0.698812213, 0.255169505],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9300,
               "positionOffset": [-298.036499, -90.9088745, 447.589264],
-              "rotationQuaternion": [0.699768126, -0.254619598, 0.285691857, 0.60321939],
+              "rotationQuaternion": [-0.285610293, 0.603180085, 0.699801283, 0.254712994],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9450,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.700751424, -0.254164189, 0.286096483, 0.602077067],
+              "rotationQuaternion": [-0.286015094, 0.602037787, 0.700784485, 0.254257694],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9600,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.701728284, -0.2537103, 0.286498487, 0.600938559],
+              "rotationQuaternion": [-0.286417192, 0.600899184, 0.701761281, 0.253803993],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9750,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.702698052, -0.253258198, 0.286897629, 0.59980458],
+              "rotationQuaternion": [-0.286816504, 0.599765108, 0.702731009, 0.253352003],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 9900,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.703660071, -0.252808213, 0.287293673, 0.598675907],
+              "rotationQuaternion": [-0.287212695, 0.598636389, 0.703692988, 0.252902196],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10050,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.704613864, -0.252360672, 0.287686288, 0.597553313],
+              "rotationQuaternion": [-0.287605491, 0.597513781, 0.704646678, 0.252454792],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10200,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.705558717, -0.251915872, 0.288075328, 0.596437633],
+              "rotationQuaternion": [-0.287994686, 0.596398071, 0.705591466, 0.252010088],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10350,
               "positionOffset": [-298.036499, -90.9088669, 447.589264],
-              "rotationQuaternion": [0.706494153, -0.251474112, 0.288460493, 0.595329642],
+              "rotationQuaternion": [-0.288380002, 0.595290004, 0.706526804, 0.251568402],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10500,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.707419455, -0.25103572, 0.288841516, 0.594230056],
+              "rotationQuaternion": [-0.288761184, 0.594190366, 0.70745206, 0.251130186],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10650,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.708334088, -0.250601023, 0.289218217, 0.593139768],
+              "rotationQuaternion": [-0.289138012, 0.593100025, 0.708366629, 0.25069561],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10800,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.709237456, -0.25017032, 0.289590299, 0.592059553],
+              "rotationQuaternion": [-0.289510202, 0.592019705, 0.709270006, 0.250265002],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 10950,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.710129023, -0.249743953, 0.289957553, 0.590990126],
+              "rotationQuaternion": [-0.289877612, 0.590950324, 0.710161428, 0.24983881],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11100,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.711008191, -0.249322236, 0.290319741, 0.589932442],
+              "rotationQuaternion": [-0.290240007, 0.589892514, 0.711040517, 0.249417206],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11250,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.711874366, -0.24890548, 0.290676624, 0.588887155],
+              "rotationQuaternion": [-0.290596994, 0.588847188, 0.711906686, 0.249000495],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11400,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.71272701, -0.248494014, 0.291027933, 0.58785516],
+              "rotationQuaternion": [-0.290948387, 0.587815173, 0.712759268, 0.248589189],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11550,
               "positionOffset": [-298.036499, -90.9088593, 447.589264],
-              "rotationQuaternion": [0.713565528, -0.248088151, 0.291373491, 0.586837292],
+              "rotationQuaternion": [-0.291294117, 0.586797234, 0.713597741, 0.248183414],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11700,
               "positionOffset": [-298.036499, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.714389443, -0.247688249, 0.291713059, 0.585834265],
+              "rotationQuaternion": [-0.291633792, 0.585794184, 0.714421581, 0.247783593],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 11850,
               "positionOffset": [-298.036499, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.7151981, -0.24729459, 0.292046338, 0.584847033],
+              "rotationQuaternion": [-0.291967192, 0.584806883, 0.71523018, 0.247390093],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12000,
               "positionOffset": [-298.036499, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.715990961, -0.246907547, 0.29237318, 0.583876252],
+              "rotationQuaternion": [-0.292294199, 0.583836098, 0.716022997, 0.247003199],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12150,
               "positionOffset": [-298.036499, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.71676755, -0.246527418, 0.292693317, 0.582922935],
+              "rotationQuaternion": [-0.292614505, 0.58288271, 0.716799513, 0.246623104],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12300,
               "positionOffset": [-298.036469, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.71752727, -0.246154532, 0.293006539, 0.581987739],
+              "rotationQuaternion": [-0.292927799, 0.581947499, 0.717559198, 0.246250299],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12450,
               "positionOffset": [-298.036469, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.718269587, -0.24578923, 0.293312609, 0.581071615],
+              "rotationQuaternion": [-0.29323401, 0.581031319, 0.718301424, 0.245885108],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12600,
               "positionOffset": [-298.036469, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.718993902, -0.24543184, 0.293611288, 0.580175281],
+              "rotationQuaternion": [-0.293532803, 0.580135006, 0.719025707, 0.245527802],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12750,
               "positionOffset": [-298.036469, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.71969974, -0.245082691, 0.293902367, 0.579299688],
+              "rotationQuaternion": [-0.293824007, 0.579259313, 0.719731516, 0.245178805],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 12900,
               "positionOffset": [-298.036469, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.720386624, -0.24474211, 0.294185638, 0.578445554],
+              "rotationQuaternion": [-0.294107408, 0.578405117, 0.720418321, 0.244838307],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13050,
               "positionOffset": [-298.036469, -90.9088516, 447.589264],
-              "rotationQuaternion": [0.721053839, -0.24441044, 0.294460863, 0.577613771],
+              "rotationQuaternion": [-0.294382712, 0.577573324, 0.72108553, 0.24450671],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13200,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.721701026, -0.244087994, 0.294727802, 0.576805174],
+              "rotationQuaternion": [-0.29464978, 0.576764661, 0.721732651, 0.244184383],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13350,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.72232759, -0.243775129, 0.294986278, 0.576020539],
+              "rotationQuaternion": [-0.294908295, 0.575979989, 0.722359187, 0.243871595],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13500,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.722932935, -0.243472159, 0.295236021, 0.575260758],
+              "rotationQuaternion": [-0.295158197, 0.575220194, 0.722964492, 0.243568697],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13650,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.723516643, -0.24317944, 0.295476854, 0.574526668],
+              "rotationQuaternion": [-0.295399097, 0.574486094, 0.723548092, 0.243276097],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13800,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.724078119, -0.242897272, 0.295708507, 0.573819041],
+              "rotationQuaternion": [-0.29563091, 0.573778419, 0.724109524, 0.242994008],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 13950,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.724616766, -0.242626011, 0.295930803, 0.573138773],
+              "rotationQuaternion": [-0.295853212, 0.573098123, 0.724648229, 0.24272281],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14100,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.725132227, -0.242365986, 0.296143502, 0.572486699],
+              "rotationQuaternion": [-0.296066007, 0.572446013, 0.725163616, 0.242462805],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14250,
               "positionOffset": [-298.036469, -90.908844, 447.589264],
-              "rotationQuaternion": [0.725623786, -0.242117509, 0.296346366, 0.571863651],
+              "rotationQuaternion": [-0.296268995, 0.57182289, 0.725655188, 0.242214396],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14400,
               "positionOffset": [-253.453979, -90.9087524, 256.776459],
-              "rotationQuaternion": [0.726091087, -0.241880953, 0.296539217, 0.571270406],
+              "rotationQuaternion": [-0.296461889, 0.571229679, 0.726122374, 0.241977891],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14550,
               "positionOffset": [-253.453979, -90.9087524, 256.776459],
-              "rotationQuaternion": [0.726533413, -0.241656616, 0.296721816, 0.570707798],
+              "rotationQuaternion": [-0.296644596, 0.570667093, 0.726564691, 0.241753597],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14700,
               "positionOffset": [-253.453979, -90.9087524, 256.776459],
-              "rotationQuaternion": [0.726950407, -0.241444826, 0.296893924, 0.57017678],
+              "rotationQuaternion": [-0.296816708, 0.570136015, 0.726981619, 0.241541906],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 14850,
               "positionOffset": [-253.453979, -90.9087524, 256.776459],
-              "rotationQuaternion": [0.727341354, -0.24124594, 0.297055304, 0.569678009],
+              "rotationQuaternion": [-0.296978203, 0.569637205, 0.727372607, 0.241343102],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15000,
               "positionOffset": [-253.453979, -90.9087524, 256.776459],
-              "rotationQuaternion": [0.727705896, -0.241060287, 0.297205776, 0.569212437],
+              "rotationQuaternion": [-0.2971287, 0.5691716, 0.7277371, 0.2411575],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15150,
               "positionOffset": [-253.453979, -90.9087524, 256.776428],
-              "rotationQuaternion": [0.728043377, -0.240888163, 0.297345102, 0.568780839],
+              "rotationQuaternion": [-0.297268107, 0.568740014, 0.728074518, 0.240985406],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15300,
               "positionOffset": [-253.453979, -90.9087524, 256.776428],
-              "rotationQuaternion": [0.728353262, -0.240729928, 0.297473043, 0.568384051],
+              "rotationQuaternion": [-0.297396099, 0.568343198, 0.728384397, 0.240827199],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15450,
               "positionOffset": [-253.454422, -90.9086838, 256.776001],
-              "rotationQuaternion": [0.728635073, -0.240585893, 0.297589391, 0.568022847],
+              "rotationQuaternion": [-0.297520009, 0.567986017, 0.728663121, 0.240673607],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15600,
               "positionOffset": [-253.706161, -90.8826828, 256.524261],
-              "rotationQuaternion": [0.728888154, -0.240456387, 0.297693878, 0.567698121],
+              "rotationQuaternion": [-0.305207202, 0.571671405, 0.725771906, 0.230858202],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15750,
               "positionOffset": [-299.205933, -90.8818817, 446.419617],
-              "rotationQuaternion": [0.729112029, -0.240341738, 0.297786325, 0.567410588],
+              "rotationQuaternion": [-0.331479709, 0.584668415, 0.713942019, 0.196394605],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 15900,
               "positionOffset": [-301.045288, -91.1733398, 444.580261],
-              "rotationQuaternion": [0.729306102, -0.240242273, 0.297866464, 0.567161202],
+              "rotationQuaternion": [-0.3691319, 0.6018228, 0.6933273, 0.1443891],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16050,
               "positionOffset": [-304.244995, -92.7060699, 441.380585],
-              "rotationQuaternion": [0.729469836, -0.240158305, 0.297934055, 0.566950619],
+              "rotationQuaternion": [-0.429467089, 0.624688585, 0.649961284, 0.0535958987],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16200,
               "positionOffset": [-306.803894, -95.1236038, 438.821655],
-              "rotationQuaternion": [0.729602695, -0.240090147, 0.297988921, 0.566779733],
+              "rotationQuaternion": [0.491323706, -0.640055808, -0.588411307, 0.0519780006],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16350,
               "positionOffset": [-309.354889, -99.4034195, 436.27066],
-              "rotationQuaternion": [0.729704022, -0.240038142, 0.298030764, 0.566649318],
+              "rotationQuaternion": [0.544928076, -0.643255672, -0.513801478, 0.159008093],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16500,
               "positionOffset": [-310.527985, -102.945061, 435.097595],
-              "rotationQuaternion": [0.729773283, -0.240002573, 0.298059344, 0.56656009],
+              "rotationQuaternion": [0.582922802, -0.635593403, -0.440095702, 0.250075601],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16650,
               "positionOffset": [-311.0271, -105.59156, 434.59845],
-              "rotationQuaternion": [0.72980988, -0.239983782, 0.298074454, 0.566513002],
+              "rotationQuaternion": [0.603294334, -0.625145735, -0.387297022, 0.308593217],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16800,
               "positionOffset": [-311.194, -107.315315, 434.43158],
-              "rotationQuaternion": [0.715768337, -0.247024104, 0.292274982, 0.584149063],
+              "rotationQuaternion": [0.620045199, -0.626866299, -0.344574899, 0.322258799],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 16950,
               "positionOffset": [-311.218628, -107.772507, 434.406982],
-              "rotationQuaternion": [0.654699087, -0.274039477, 0.267149925, 0.651845396],
+              "rotationQuaternion": [0.652647509, -0.653911809, -0.272124704, 0.269070104],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17100,
               "positionOffset": [-311.222534, -107.872681, 434.402405],
-              "rotationQuaternion": [0.680821061, -0.206820011, 0.199252799, 0.673800051],
+              "rotationQuaternion": [0.582714586, -0.716027783, -0.244293094, 0.296763893],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17250,
               "positionOffset": [-311.222351, -107.87291, 434.402191],
-              "rotationQuaternion": [0.705762029, -0.134614706, 0.126568154, 0.683929384],
+              "rotationQuaternion": [0.500387699, -0.772212098, -0.220457399, 0.323572499],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17400,
               "positionOffset": [-311.222198, -107.872917, 434.402161],
-              "rotationQuaternion": [0.719571888, -0.0156326238, 0.0453991033, 0.692755997],
+              "rotationQuaternion": [0.38792802, -0.826151842, -0.165944408, 0.373426619],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17550,
               "positionOffset": [-311.221954, -107.872887, 434.402039],
-              "rotationQuaternion": [0.713084638, 0.0748510584, -0.0558359772, 0.694830894],
+              "rotationQuaternion": [0.272280191, -0.875225572, -0.114866796, 0.382948188],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17700,
               "positionOffset": [-311.221771, -107.87281, 434.401917],
-              "rotationQuaternion": [0.701110363, 0.157265142, -0.149337232, 0.679271877],
+              "rotationQuaternion": [0.157266809, -0.905249854, -0.0728458044, 0.387921823],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 17850,
               "positionOffset": [-311.222076, -107.872879, 434.40213],
-              "rotationQuaternion": [0.669381738, 0.271311551, -0.241131321, 0.648208141],
+              "rotationQuaternion": [0.0197665001, -0.913581304, -0.00882290004, 0.406079602],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18000,
               "positionOffset": [-311.222473, -107.872978, 434.402435],
-              "rotationQuaternion": [0.65816164, 0.261928976, -0.271495521, 0.65154171],
+              "rotationQuaternion": [0.00479539985, -0.925547071, -0.00396939988, 0.378581388],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18150,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18300,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18450,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18580,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18600,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18750,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 18900,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19050,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19200,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19350,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19500,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19650,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19800,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 19950,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20100,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20250,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20400,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20550,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20700,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 20850,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21000,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21150,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21300,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21450,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21600,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21750,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 21900,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22050,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22200,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22350,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22500,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22650,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22800,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 22950,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23100,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23250,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23400,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23550,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23700,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 23850,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24000,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24150,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24300,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24450,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24600,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24750,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 24900,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25050,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25200,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25350,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25500,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25650,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25800,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 25950,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26100,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26250,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26400,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26550,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26700,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 26850,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             },
             {
               "timeMs": 27000,
               "positionOffset": [-311.222717, -107.873039, 434.402618],
-              "rotationQuaternion": [0.65809691, 0.26828149, -0.274668127, 0.647681177],
+              "rotationQuaternion": [-0.00256899995, -0.924392981, -0.00267159994, 0.381423492],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             }

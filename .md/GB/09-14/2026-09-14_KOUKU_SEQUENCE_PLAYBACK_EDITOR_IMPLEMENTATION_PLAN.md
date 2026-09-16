@@ -1740,3 +1740,12 @@ P39.logic.12에 저장된4426ms의 새 logic72를 기존 ALBION_BLUE_CIRCLE로 �
 ## G43. Summon 하나로 재사용하는 분신 Parent
 
 Parent는 Summon occurrence 하나를 배치하고 그 start/duration만 실행 시계로 사용한다. 재사용 Summon definition의 optional `summonKind=CROSS_DIRECTION_CLONES`, `directionPatternIds` 네 개, `cloneEndStageId`가 방향별 Animation/Effect leaf를 지정한다. 기존 DURATION Logic 연결도 유지하되 두 입력을 같은 실행 window로 resolve한다. 서버의 기존 중앙 거리/실제 대시 endpoint 본체 선택 경로를 재사용하며 별도 숨은 Logic을 저장하지 않는다. MainApp, ordinary Play, publisher 모두 같은 설정을 소비한다. 기분나빠, 십자 화염폭발, 3갈래 불뿜기는 각각의 Summon 설정으로 동일 기능을 재사용한다. Parent의 빈 Pattern 안내는 Summon/Logic 실행 가능 상태를 반영한다. 현재 사용자 편집과 공유 Summon 참조를 보존하며 fresh source에서 필요한 후보만 작성한다. 기존 파일 확장만 사용하고 새 C++ 파일은 없다. 코드/codec/preview/projector/서버 카탈로그 검증 후 사용자 저장·종료 상태가 확인된 경우에만 해시 비교로 정본을 설치한다.
+
+
+## G44. PR #393과 #392의 Composition·Sequence 병합 — 2026-09-16
+
+기준은 우리 `560741ac`와 #392가 반영된 main `af056661`이며 공통 기준은 `c65b2cf4`다. Gate1 Composition은 우리 revision1051의 기존72패턴과392개 직접 애니메이션을 그대로 유지한다. 상대의 새 컷신5개(P63~67)는73~77로 옮기고 그 내부 action/occurrence 참조를 함께 재발급한다. 충돌 WORLD23은27, Presentation64/65는67/68로 옮기며 새 의존 행을 모두 추가한다. 최종 revision1052/nextPattern78/nextWorld28/nextPresentation69로 저장한다.
+
+Sequence는 이전 작업자의 카메라·컷신 수정과 빙고 엔딩을 기준으로 병합한다. 겹치지 않는 우리 플레이어 도착 트리거4개와 바주카·절단칼 등 WORLD 수정도 보존한다. WorldSequences의 촛대·HandBook 수정은 상대 값을 유지하며 authoring/runtime을 같은 게시 결과로 맞춘다. 자동 병합 C++6파일은 카메라 편집 연결과 기존 preview 호출 흐름을 대조한다.
+
+원본 작업 폴더의 미커밋 RESULT는 별도 보존하고, 분리 worktree에서 병합·참조/ID/수명 검사와 해당 publisher를 수행한다. 변경 JSON/XML parse, diff-check와 필요한 컴파일을 확인하고 PR을 병합한 뒤 원래 작업 폴더에서 main을 fast-forward pull한다. 실행 중 편집기의 미저장 상태를 버리거나 Client를 자동 실행·종료·조작하지 않는다. 화면 최종 판정은 사용자에게 남긴다.

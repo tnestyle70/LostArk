@@ -258,7 +258,7 @@ public:
     CWorldSequencePlayer::TARGET_SET Get_CompositionWorldTargets() { return Make_WorldSequenceTargets(); }
 	// Authoring inventory reads the placed centre even before any sequence plays.
 	bool_t Try_GetWorldSequencePlacementBaseline(const WORLD_SEQUENCE_INSTANCE& instance,
-		float3_t& outPosition) const;
+		float3_t& outPosition, const CWorldSequenceDocument* document = nullptr) const;
 	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const { return m_pPlayerCommandSink; }
 	const CWorldSequenceDocument& Get_WorldSequenceDocument() const { return m_SequencePlayer.Get_Document(); }
 	const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_Replication.Get_KoukuBundleState(); }
@@ -283,6 +283,8 @@ public:
 	bool_t Create_CameraShot(std::string_view name, std::string& outShotId, std::string& outStatus);
 	bool_t Update_CameraShot(const KAKUL_CAMERA_SHOT& shot, std::string& outStatus);
 	bool_t Capture_CameraShot(std::string_view shotId, std::string& outStatus);
+	bool_t Duplicate_CameraShot(std::string_view sourceShotId, std::string_view name, std::string& outShotId, std::string& outStatus);
+	bool_t Discard_UnsavedCameraShot(std::string_view shotId, std::string& outStatus);
 	bool_t Save_CameraShots(std::string& outStatus);
 	static bool_t Parse_CameraShots(std::string_view text, std::vector<KAKUL_CAMERA_SHOT>& outShots, std::string& outStatus);
 	static VALTAN_CINEMATIC_CAMERA_CUE CameraShot_ToCue(const KAKUL_CAMERA_SHOT& shot);

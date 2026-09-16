@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 1051,
+  "sourceRevision": 1052,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -470357,6 +470357,53 @@
         "actorProfileId": "MN_RPCT_05",
         "unavailableReason": "",
         "folderId": "kakulsaydon.folder.18"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_73",
+        "displayName": "2관문_진입컷씬",
+        "category": "MECHANIC",
+        "gateId": "GATE2",
+        "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+        "actorProfileId": "MN_RPCZ_00",
+        "unavailableReason": "PRODUCT stage must contain exactly one animation occurrence: KAKULSAYDON_G1_PATTERN_73/STAGE_1"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_74",
+        "displayName": "2관문클리어_3관문진입",
+        "category": "MECHANIC",
+        "gateId": "GATE2",
+        "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+        "actorProfileId": "MN_RPCZ_00",
+        "unavailableReason": "PRODUCT stage must contain exactly one animation occurrence: KAKULSAYDON_G1_PATTERN_74/STAGE_1"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_75",
+        "displayName": "빙고_최종엔딩씬",
+        "category": "MECHANIC",
+        "gateId": "BINGO",
+        "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "PRODUCT stage must contain exactly one animation occurrence: KAKULSAYDON_G1_PATTERN_75/STAGE_1"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_76",
+        "displayName": "쇼타임_연출",
+        "category": "MECHANIC",
+        "gateId": "GATE3",
+        "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+        "actorProfileId": "MN_RPCT_05",
+        "unavailableReason": "PRODUCT stage must contain exactly one animation occurrence: KAKULSAYDON_G1_PATTERN_76/STAGE_1",
+        "folderId": "kakulsaydon.folder.12"
+      },
+      {
+        "patternId": "KAKULSAYDON_G1_PATTERN_77",
+        "displayName": "카드미로연출",
+        "category": "MECHANIC",
+        "gateId": "GATE2",
+        "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+        "actorProfileId": "MN_RPCZ_00",
+        "unavailableReason": "PRODUCT stage must contain exactly one animation occurrence: KAKULSAYDON_G1_PATTERN_77/STAGE_1",
+        "folderId": "kakulsaydon.folder.4"
       }
     ],
     "bundles": [
