@@ -1997,6 +1997,8 @@ Loader가 effect 준비 실패를 격리해도 Level Initialize는 필수 ambien
 
 반복되는 정적 shadow geometry는 time-invariant depth 조건을 만족하는 batch만 캐시한다. owner/revision과 최종 light 행렬·source 모드가 모두 같아야 하며 화면 밖 caster도 light 범위 안이면 유지한다. weak owner의 control block까지 대조하고 scene replacement·실패·mutable morph는 기존 draw로 돌아간다. authored 적용 가능 개수와 실제 cache hit/FPS는 다르다. local light는 최종 감쇠0의 불필요한 재질 계산만 생략하고 출력 동일성을 확인한다. G27/G29가 해당 검증 근거다.
 
+캐시 hit인데 shadow가 비싸면 미참여 batch와 개별 fallback을 구분한다. alpha-tested라는 이유만으로 매 프레임 변하는 것은 아니지만 BG parallax는 camera, panning/UV 이동은 time에 의존할 수 있다. 기존 alpha PS를 유지하고 해당 입력이 정적인 경우만 캐시한다. 외부 texture override는 내용 변이를 추적하지 않고 dynamic으로 제외한다. 개별 객체는 placement setter뿐 아니라 실제 Transform과 bounds·mesh별 cast/pass도 비교해야 하며, 배치 WorldInvTranspose 변경도 revision에 포함한다. G31은 이 누락과 후속 캡처를 다룬다.
+
 Level 생성은 Change_Level 전이므로 ambient probe의 target level과 current LOADING이 다를 수 있다. probe만 현재 LOADING 소유로 잠깐 생성하고 모든 성공·실패 경로에서 제거한다. 실제 활성화 후 effect는 원래 target 소유를 유지한다. queued Spawn과 Spawn_Immediate의 SOURCE_LOOP owner 허용 조건이 다르면 첫 검사 수정 뒤 다음 단계에서 재거절된다. 두 경로를 함께 대조하고 active-level validation을 넓게 우회하지 않는다. Bern 직접 입장 identity는 pending 생성 우선, 이후 기존 created/audition을 사용하며 audition을 created로 commit하지 않는다. G28/G30에 구현 범위를 기록한다.
 
 ### 같은 animation의 동반 burst와 effect 수명

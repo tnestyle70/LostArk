@@ -1443,3 +1443,29 @@ MapEffectPresentationRuntime은 임시 admission probe만 current==target 또는
 Engine DLL, Deferred CSO와 새 GameObject SDK 헤더의 원본/배포 SHA-256 일치를 확인했다. Client.exe 최종 수정 시각은2026-09-16 16:16:24 KST이며 Server는 현재 소스로 up-to-date라 기존 산출물을 재사용했다. 관련 project/filter XML5개 parse와 변경 범위 diff-check도 통과했다. 일반 Product 경로대로 별도 Data publish나 광역 runtime 진단은 실행하지 않았다.
 
 Client와 Server를 자율 실행하지 않았고 둘 다 종료 상태다. 사용자는 Server와 새 Client를 실행해 F1 Level Navigation→Bern 직접 입장, Character Select→Create Character→Bern, 세 맵의 같은 위치 profiler를 확인한다. 실제 Bern 입장·최종 시각 결과·개선 FPS는 아직 사용자 확인 전이며 이 기록을 화면 PASS로 사용하지 않는다.
+
+## G31. 후속 발탄 캡처와 남은 정적 그림자 제출
+
+사용자 16:22:57 저장본은 37 CPU/33 유효 GPU 프레임 모두 기존 정적 캐시에 적중한다. 이전 수정은 동작하지만 캐시에서 제외된 경로가 남았다. Shadow 전체 평균47.947ms, Dynamic46.498ms이며 shadow VS는 이전1160만에서542만으로 감소했다. 전체 캡처의 frame interval은75.981ms이고, 카메라·창 상태가 다른 표본이므로 이전 캡처와 통제된 A/B FPS로 비교하지 않는다. 근거는 `out/ValtanPerf20260916/Followup1622/`다.
+
+공통 MapAssetRenderUtils에 시간·카메라에 독립적인 alpha depth 조건을 추가하고 MapStaticBatchObject와 개별 MapAssetObject를 같은 정적 캐시에 연결했다. 기존 shader의 alpha 판정과 pass는 유지한다. BG parallax/panning, 움직이는 UV, morph, native 및 texture override는 기존 동적 경로를 사용한다. 개별 객체는 실제 world/bounds/pass를 비교하며 batch는 WorldInvTranspose 변경도 revision에 포함한다. Material/Model의 override 조회는 이 두 실제 소비자에 연결된다.
+
+설치 발탄의 기존 미참여653 active batch 중652개가 추가 후보이며, 나머지 BG parallax+mask는 제외한다. 이 숫자는 stage/light culling 전 집계이며 실제 draw 절감량이 아니다. MapStaticBatch 관련 실제 함수141검사와 최소3CPP 컴파일, 개별 MapAssetObject72검사와 최소 컴파일을 통과했다. 전체 원본 FX의 instance/binary 경로를 WARP 및 하드웨어에서 시간5개·카메라4개로 비교한106,168,320 depth값은 차이0, D3D 오류·경고0이다. 실제로 값이 변하는 parallax/panning 등5종 대조군도 확인했다. 근거는 `out/ValtanPerf20260916/{StaticMaskedCoverage,FallbackShadow}` 및 `out/MapShadowPerf20260916/G31StaticAlpha/`다. 실제 맵 FPS 검증을 대신하지 않는다.
+
+## G32. 베른 대형 맵의 Debug 순회와 빈 작업 계측
+
+사용자 16:35:32 베른 저장본34프레임은 placement50017, batch16421, visible429, 실제 draw883이다. shadow는 꺼져 있고 평균0.0044ms로, 발탄의 주 병목과 다르다. NonBlend36.9525ms와 Client.Update24.7043ms가 남았으며 CPU scope4096 상한 뒤 기록이 잘려 세부 CPU 전체를 분해할 수 없다. GPU elapsed에는 CPU 제출 대기도 포함될 수 있다. 베른의 배치 수는 발탄13184·쿠크3369·Character Select804보다 크다.
+
+기존 Debug 최적화 정책을 MapStaticBatchObject/MapAssetObject와 Engine GameObject/Layer/Object_Manager/GameInstance/Renderer의7CPP에 적용했다. Debug x64에만 MaxSpeed, ProgramDatabase, JMC 해제와 PCH 미사용을 지정하고 Debug CRT/STL ABI, float 정책 및 Release 설정은 보존한다. 프레임 순서·컬링·광원·그릴 객체를 바꾸는 정책은 추가하지 않았다.
+
+실제10개 hot 함수와 기존 Profiler.cpp를 사용한 CPU fixture는16421 batch/429 visible/매 프레임 카메라 변경에서 /Od7.469→/O2 3.778ms, profiler ON에서는13.513→10.064ms였다. 각80프레임×3회 비교에서 draw/instance/material/pass 수와 제출 순서 hash가 일치했다. GPU와 material backend는 stub이므로 제품 프레임 향상치로 환산하지 않는다. 근거는 `out/ValtanPerf20260916/Bern1635/HotPath/comparison.json`이다.
+
+동일 visibility cache를 즉시 반환하는 호출은 Visibility scope를 열지 않고, batch 전체가 컬링되면 비어 있는 CullAndPack scope를 만들지 않도록 위치를 옮겼다. 실제 계측이 필요한 작업과 카운터는 유지한다. 이는 profiler를 켠 상태의 불필요한 계측 비용도 줄이는 변경이다. 수정 후 실제 MapStaticBatchObject TU의 /O2 컴파일과 G31 141검사를 다시 통과했고, actual10 함수의 draw429/instance429와 제출 checksum도 동일하다. 근거는 `Bern1635/HotPath/trimmed_scope_verification.json`이다.
+
+## G33. 렌더링 기본값 요청의 정정과 보류
+
+최초 해석으로 베른에 발탄의 노출·블룸 일부만 복사하고 FXAA를 끈 revision51을 게시했다. 사용자는 FXAA를 원인으로 확정한 것이 아니라 오늘 밝기를 복구한 발탄의 옵션을 베른에도 원한다고 정정했다. 현재 발탄 FXAA는 true이며 이를 밝기 원인으로 판단한 근거는 없다. 사용자의 성능 우선 요청에 따라 이번 베른 변경을 이전 값으로 되돌렸으며 revision52 공식 Validate/Publish가 16:47:02 KST에 성공했다. parsed authoring/runtime은 revision 이외에 작업 전 전체22 profile과 일치한다. 근거는 `out/ValtanPerf20260916/BernRenderingDefaults/rollback52_*`다. 최종 옵션 복사는 보류한다.
+
+### G31~G32 사용자 빌드 인계
+
+사용자가 직접 빌드하겠다고 확인하여 모든 C++/헤더/project 변경을 동결하고 에이전트는 후속 Product 빌드를 시작하지 않았다. 위 결과는 소스 반영·개별 컴파일·수치 검증이며 새 통합 EXE/DLL 성공 기록은 아니다. 사용자는 Debug x64 솔루션의 정상 Build로 Engine SDK와 Client를 함께 갱신한다. Rebuild/Clean 또는 산출물 삭제는 필요하지 않다. 변경 전 실행 파일은 G27~G30의16:16 빌드이며 G31~G32는 이번 사용자 빌드가 성공한 뒤 실행에 반영된다. 최종 FPS와 화면 확인은 이후 사용자 실행 결과로 구분한다.

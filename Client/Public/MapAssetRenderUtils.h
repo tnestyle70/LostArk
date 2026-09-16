@@ -96,6 +96,13 @@ public:
 		const MAP_ASSET_RENDER_PROFILE& profile,
 		bool_t mirrored);
 
+	// Existing alpha-tested shadow passes may also be invariant under time/camera.
+	// The caller must reject mutable texture overrides and morph geometry.
+	static bool_t Uses_StaticShadowInputs(
+		const Engine::MODEL_SURFACE_PARAMETERS* surface,
+		const MAP_ASSET_RENDER_PROFILE& profile,
+		bool_t useSourceMaterials);
+
 	// Only families whose source shadow cannot discard or displace vertices.
 	static bool_t Uses_OpaqueShadowPass(
 		const Engine::MODEL_SURFACE_PARAMETERS* surface,

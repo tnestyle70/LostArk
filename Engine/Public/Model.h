@@ -299,6 +299,8 @@ public:
 	HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SourceCharacterForwardLight(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	const MODEL_SURFACE_PARAMETERS* Get_MaterialSurface(uint32_t iMeshIndex) const;
+	// Invalid material references also opt out of callers' static texture assumptions.
+	bool_t Has_MaterialTextureOverrides(uint32_t iMeshIndex) const;
 	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
 		const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType);
 	// Returns the preserved source material slot, independently of mesh order.
