@@ -369,7 +369,7 @@ for ordinal, selection in enumerate(selections):
             '5add713d06b8684d84689591b7ef144f': ('0c1413bd3ee54d449ce7fdac8c7f1542', 10, 'none', [10, 11, 12]),
             '3a96e00bdfda46489bb6aa32ae1ac89c': ('0c1413bd3ee54d449ce7fdac8c7f1542', 6, 'color', [0, 5, 6, 7, 8]),
             '8c7feae3b54e7a46835555bfa86e7e6e': ('239396ffe9f57b47a19ee2955207d2e8', 26, 'actor', [0, 1, 2, 26, 27, 28]),
-        }.get(sid) if arguments.profile_domain=='kouku' else None
+        }.get(sid) if arguments.profile_domain=='kouku' and not model else None
         if kouku_lit:
             assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_lit[3], ('Kouku lit engine rows mismatch', bindings['constantBufferClosure']['unownedConstantBuffer0Slots'], kouku_lit[3])
@@ -476,6 +476,13 @@ for ordinal, selection in enumerate(selections):
             if 'tig_00' in r['sourceMaterial']:
                 lines += ['    source[2]=float4(input.sourceActorPosition,0.f); // Native actor-position seed for the emissive pulse.', '    source[3].x=input.color.a;']
                 sky=28
+            elif arguments.profile_domain == 'kouku':
+                # Skinned kouku-domain skins (vehicle PlaySkeletalMesh): engine rows are
+                # the world prefix [0,1] and the three trailing sky rows of this PS.
+                unowned = bindings['constantBufferClosure']['unownedConstantBuffer0Slots']
+                sky = unowned[2] if len(unowned) == 5 else None
+                assert sky is not None and unowned == [0, 1, sky, sky + 1, sky + 2], ('Skinned engine rows', sid, unowned)
+                lines += ['    source[1].w=input.color.a;']
             else:
                 lines += ['    source[1].w=input.color.a;'];sky=24
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);',f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);',f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']

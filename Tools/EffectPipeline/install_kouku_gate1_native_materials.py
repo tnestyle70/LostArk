@@ -30,10 +30,12 @@ def install(contract_path,evidence,header_path):
         source_transform_mesh = bool(p.get('sourceTransformMesh', False))
         render=('ADDITIVE' if p['nativeBlend']=='blend_additive' else 'ALPHA')+('_TWO_SIDED_DEPTH_READ' if p['nativeTwoSided'] else '_ONE_SIDED_DEPTH_READ')
         # Static masked surfaces retain their native PS discard and write
-        # depth through the existing opaque pass. Particle masks keep their
+        # depth through the existing opaque pass. A masked model cue is the same
+        # kind of solid surface: blending a self-overlapping skin without depth
+        # write resolves per pixel by submission order. Particle masks keep their
         # authored translucent ordering/depth-read contract.
         if not p['nativeTwoSided'] and (p['nativeBlend']=='blend_opaque' or
-                source_transform_mesh and p['nativeBlend']=='blend_masked'):
+                (source_transform_mesh or p.get('modelCue')) and p['nativeBlend']=='blend_masked'):
             render='OPAQUE_BACK_DEPTH_WRITE'
         textures=p['textures'];parameters=p['parameters'];switches=p['staticSwitches']
         for texture in textures:

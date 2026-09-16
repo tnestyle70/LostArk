@@ -5,7 +5,7 @@ closures are read directly from the installed game packages, reusing the Kouku
 full-restore acquisition without its CanonicalSource extract.
 """
 from pathlib import Path
-import argparse, base64, collections, copy, json, re, struct, sys
+import argparse, base64, collections, copy, json, math, re, struct, sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'Tools/EffectPipeline'))
@@ -157,6 +157,19 @@ MODEL_CUE_MESHES = {
     'mn_pmstg_00.mesh.mn_pmstg_00_parts1_sk': dict(contract='TerpeionWing', vehicle='Terpeion', cueId='terpeion.wing',
         package='MN_PMSTG_00', mesh='mesh.mn_pmstg_00_parts1_sk',
         model='Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel'),
+    # The Aufstehen hologram doll: cooked per material slot. The puppet is the body's own
+    # prop, grafted onto socket wp_2 by build_npc, so it shares the doll skeleton and clip.
+    'mn_admg_00.mesh.mn_admg_00_sk': dict(contract='AufstehenDoll', vehicle='Aufstehen', cueId='aufstehen.doll',
+        package='MN_ADMG_00', mesh='mesh.mn_admg_00_sk', materialRoot='admg',
+        model='Effect/Vehicle/Aufstehen/AufstehenDoll/AufstehenDoll.wmodel',
+        parts=[dict(cueId='aufstehen.doll', model='Effect/Vehicle/Aufstehen/AufstehenDoll/AufstehenDoll.wmodel',
+                    material='mn_admg_00.mat.sk_admg_00_mi_dead'),
+               dict(cueId='aufstehen.doll.hair', model='Effect/Vehicle/Aufstehen/AufstehenDollHair/AufstehenDollHair.wmodel',
+                    material='mn_admg_00.mat.sk_admg_00_hair_mi_dead'),
+               dict(cueId='aufstehen.doll.lashes', model='Effect/Vehicle/Aufstehen/AufstehenDollLashes/AufstehenDollLashes.wmodel',
+                    material='mn_admg_00.mat.sk_admg_00_mi_dead'),
+               dict(cueId='aufstehen.puppet', model='Effect/Vehicle/Aufstehen/AufstehenPuppet/AufstehenPuppet.wmodel',
+                    material='wp_mn_admg_00.mat.sk_admg_00_mi_dead')]),
 }
 
 
@@ -171,6 +184,12 @@ def socket_contracts(evidence):
     for name, logical, mesh_path, model in meshes:
         package = load_package(resolve_physical_package(UMODEL, RELEASE, logical, 'kr'), ue3.LOSTARK_KR_AES_KEY)
         mesh = source.record_from_export(package, logical.lower(), find_export(package, mesh_path))
+        if mesh['className'] == 'objectredirector':
+            # MN_ADMG_00 keeps an ObjectRedirector and the SkeletalMesh under one path.
+            meshes_at_path = [record for record in (source.record_from_export(package, logical.lower(), export)
+                              for export in package.exports) if record['fullPath'] == mesh['fullPath'] and record['className'] == 'skeletalmesh']
+            assert len(meshes_at_path) == 1, (name, mesh['fullPath'])
+            mesh = meshes_at_path[0]
         sockets = []
         prop = source.imported.prop
         for order, export_index in enumerate(prop(mesh['properties'], 'sockets')):
@@ -509,24 +528,34 @@ WING_MATERIALS = ['mn_pmstg_00.mat.mn_pmstg_00-2_aa_mi']
 WING_FIRST = 3828
 
 
-def wing_native_materials(evidence):
-    """Recover the skinned model-cue program of the Terpeion wing skin material.
+MODEL_CUE_MATERIALS = {
+    'wing': (WING_MATERIALS, WING_FIRST, 'vehicle.terpeion.wing.'),
+    'admg': (['mn_admg_00.mat.sk_admg_00_mi_dead', 'mn_admg_00.mat.sk_admg_00_hair_mi_dead',
+              'wp_mn_admg_00.mat.sk_admg_00_mi_dead'], 3831, 'vehicle.aufstehen.admg.'),
+}
+
+
+def wing_native_materials(evidence, cue='wing'):
+    """Recover the skinned model-cue programs of a PlaySkeletalMesh skin material.
 
     The shared pattern extractor selects only particle and static-mesh vertex
     factories. Its 'mesh' branch is fed with the material map's GPU-skin factory
     renamed to the local factory, then the selection is restored to the
     original fgpuskinvertexfactory / skeletalMesh identity before generation.
     """
+    materials, first, prefix = MODEL_CUE_MATERIALS[cue]
     pattern = native_environment()
-    root = evidence / 'wing' / 'material'
+    root = evidence / cue / 'material'
     root.mkdir(parents=True, exist_ok=True)
-    required = 'vehicle.terpeion.wing.particlemodulerequired'
+    required = prefix + 'particlemodulerequired'
     source.write(root / 'source_module_inputs.json', dict(records={required: dict(fullPath=required,
         classPath='engine.particlemodulerequired', className='particlemodulerequired', archetypeFullPath=None, properties={}, references=[])}))
     source.write(root / 'source_class_defaults.json', source.read(evidence / 'source_class_defaults.json'))
-    source.write(root / 'source_occurrences.json', [dict(elementId='vehicle.terpeion.wing.' + path.rsplit('.', 1)[-1],
+    names = [path.rsplit('.', 1)[-1] for path in materials]
+    source.write(root / 'source_occurrences.json', [dict(
+        elementId=prefix + (path.rsplit('.', 1)[-1] if names.count(path.rsplit('.', 1)[-1]) == 1 else path.replace('.mat.', '.')),
         sourceMaterial=path, rendererShape='mesh', sourceMesh='', moduleOrder=[required], sourceEmitter=required, actionId=0)
-        for path in WING_MATERIALS])
+        for path in materials])
     parse = pattern.sm.parse_material_map
 
     def skinned_as_local(*args, **kwargs):
@@ -542,7 +571,7 @@ def wing_native_materials(evidence):
     # not the parent's three-entry default array the shared resolver reads.
     obj = pattern.obj
     parents = {}
-    for path in WING_MATERIALS:
+    for path in materials:
         row = pattern.material(path)
         mic = obj(path)
         count = struct.unpack_from('<I', mic['tail'], 36)[0]
@@ -559,7 +588,7 @@ def wing_native_materials(evidence):
         return dict(original, tail=rebuilt, package=mic['package'], sourceStaticPermutationTextures=mic['path'])
     pattern.obj = permutation_parent
     try:
-        native_materials_prepare(pattern, root, WING_FIRST, VEHICLE_NATIVE_LAST)
+        native_materials_prepare(pattern, root, first, VEHICLE_NATIVE_LAST)
     except AssertionError as error:
         # prepare() lowers the renamed 'mesh' selection once; the skinned
         # selection is regenerated below.
@@ -572,7 +601,7 @@ def wing_native_materials(evidence):
         assert program['sourceVF'] == 'flocalvertexfactory'
         program.update(sourceVF='fgpuskinvertexfactory', rendererShape='skeletalMesh')
     source.write(out / 'selected_runtime_material_programs.json', selection)
-    pattern.generate_native(root, WING_FIRST, VEHICLE_NATIVE_LAST)
+    pattern.generate_native(root, first, VEHICLE_NATIVE_LAST)
     contract = source.read(out / 'native_runtime_contract.json')
     print(json.dumps(dict(programs=[(p['program'], p['sourceMaterial'], p['rendererShape'], p['nativeBlend']) for p in contract['programs']],
         deferred=contract['deferredPrograms']), ensure_ascii=False))
@@ -583,25 +612,31 @@ WING_LIGHT_TYPE = 'tlightpixelshaderfdirectionallightpolicyfnostaticshadowingpol
 WING_SHADER = ROOT / 'Client/Bin/ShaderFiles/Shader_EffectVehicleModelNative.hlsli'
 
 
-def wing_light_program(evidence):
-    """Translate the wing MIC's directional light PS into ArtistNative3828Light.
+def function_body(text, name):
+    at = text.index(f'float4 {name}(')
+    head = text.rfind('\n// ', 0, at) + 1
+    return text[head:text.index('\n}\n', at) + 3]
+
+
+def light_program_function(dump, program, base_text):
+    """Translate a model-cue MIC's directional light PS into ArtistNative<program>Light.
 
     The dump comes from build_vehicle_source_material.py extract (same material
-    map as program 3828). Both PS read one uniform expression set, so each light
-    row reuses the base program's packed parameter expression for the same
-    expression index. Light inputs: v2 UV, v3 tangent light, v5 tangent view;
-    CB0[0].x opacity and CB0[19] light colour are engine rows.
+    map as the base program). Both PS read one uniform expression set, so each
+    light row reuses the base program's packed parameter expression for the same
+    expression index. Two source light VS layouts occur: the ghost skin reads
+    v2 UV, v3 tangent light, v5 tangent view with CB0[0].x opacity; the monster
+    skins read v0/v1 tangent basis, v4 UV, v5 tangent light, v7 tangent view,
+    v8 source world position with the [0,1] world prefix. The trailing engine
+    rows are light colour then its unit scale, and an unbound texture is the
+    light attenuation (no shadow).
     """
-    dump = source.read(evidence / 'wing' / 'source_light' / (WING_MATERIALS[0] + '.json'))
     base_program = dump['programs']['tbasepasspixelshaderfnolightmappolicyskylight']
     light = dump['programs'][WING_LIGHT_TYPE]
-    assert base_program['shaderId'] == WING_BASE_PS
-    assert light['bindings']['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 19]
     generator = (ROOT / 'Tools/EffectPipeline/generate_artist_native_runtime_shader.py').read_text(encoding='utf-8')
     helpers = {'re': re}
     exec(generator[generator.index('def args(s):'):generator.index('ns = {name:')], helpers)
-    text = WING_SHADER.read_text(encoding='utf-8')
-    base_body = text[text.index('float4 ArtistNative3828(ARTIST_NATIVE_INPUT input)'):]
+    base_body = base_text[base_text.index(f'float4 ArtistNative{program}(ARTIST_NATIVE_INPUT input)'):]
     base_body = base_body[:base_body.index('\n}\n')]
     assignments = {}
     for row, lane, value in re.findall(r'^    source\[(\d+)\](?:\.([xyzw]))? = (.*);$', base_body, re.M):
@@ -615,12 +650,65 @@ def wing_light_program(evidence):
             key = (binding['baseIndex'] // 16, lane)
             if key in assignments:
                 expression[('scalar', binding['expressionIndexOrGroup'], index)] = assignments[key]
-    rows = light['bindings']['constantBufferClosure']['declaredConstantBuffer0Float4Count'] if 'declaredConstantBuffer0Float4Count' in light['bindings']['constantBufferClosure'] else 20
-    lines = [f'// {WING_MATERIALS[0]}: directional light PS {light["shaderId"]}; parameter rows reuse program 3828 packing.',
-             'float4 ArtistNative3828Light(ARTIST_NATIVE_INPUT input, float3 tangentLight, float3 lightColor)', '{',
-             f'    float4 source[{rows}]; [unroll] for (uint i=0u; i<{rows}u; ++i) source[i]=0.f;',
-             '    source[0]=float4(input.color.a,0.f,0.f,0.f);',
-             '    source[19]=float4(lightColor,1.f);']
+    # Light-only uniform expressions (shadowfactor, orennayar, pbr specular...) are
+    # static MIC values: fold them with the dump's effective parameters.
+    def fold(node):
+        kind = node['typeName']
+        if kind == 'fmaterialuniformexpressionconstant':
+            return [float(v) for v in node['value']] + [0.0] * (4 - len(node['value']))
+        if kind == 'fmaterialuniformexpressionscalarparameter':
+            return [float(dump['scalars'].get(node['parameterName'], node['defaultValue']))] * 4
+        if kind == 'fmaterialuniformexpressionvectorparameter':
+            return [float(v) for v in dump['vectors'].get(node['parameterName'], node['defaultValue'])]
+        if kind == 'fmaterialuniformexpressionfoldedmath':
+            a, b = fold(node['a']), fold(node['b'])
+            return [(x + y, x - y, x * y)[node['operationOrdinal']] for x, y in zip(a, b)]
+        if kind == 'fmaterialuniformexpressionsine':
+            return [(math.cos if node['isCosine'] else math.sin)(x) for x in fold(node['input'])]
+        if kind == 'fmaterialuniformexpressionappendvector':
+            a, b = fold(node['a']), fold(node['b'])
+            return (a[:node['componentsFromA']] + b)[:4]
+        if kind == 'fmaterialuniformexpressionclamp':
+            return [min(max(x, lo), hi) for x, lo, hi in zip(fold(node['input']), fold(node['minimum']), fold(node['maximum']))]
+        raise ValueError(('unsupported light-only uniform expression', kind))
+
+    def literal(values):
+        return 'float4(' + ', '.join(format(v, '.9g') + ('' if '.' in format(v, '.9g') or 'e' in format(v, '.9g') else '.0') for v in values) + ')'
+    uniforms = dump['uniformExpressionSet']
+    for binding in light['bindings']['vectors']:
+        key = ('vector', binding['expressionIndexOrGroup'])
+        if key not in expression:
+            expression[key] = literal(fold(uniforms['pixelVectorExpressions'][key[1]]))
+    for binding in light['bindings']['scalarGroups']:
+        for index in range(4):
+            key = ('scalar', binding['expressionIndexOrGroup'], index)
+            position = key[1] * 4 + index
+            if key not in expression and position < len(uniforms['pixelScalarExpressions']):
+                expression[key] = literal(fold(uniforms['pixelScalarExpressions'][position]))
+    declarations = light['disassembly']['declarations']
+    rows = int(next(re.search(r'CB0\[(\d+)\]', d)[1] for d in declarations if d.startswith('dcl_constantbuffer CB0[')))
+    inputs = sorted(int(re.search(r'\bv(\d+)\.', d)[1]) for d in declarations if d.startswith('dcl_input_ps '))
+    unowned = light['bindings']['constantBufferClosure']['unownedConstantBuffer0Slots']
+    lines = [f'// {dump["sourceMaterial"]}: directional light PS {light["shaderId"]}; parameter rows reuse program {program} packing.',
+             f'float4 ArtistNative{program}Light(ARTIST_NATIVE_INPUT input, float3 tangentLight, float3 lightColor)', '{',
+             f'    float4 source[{rows}]; [unroll] for (uint i=0u; i<{rows}u; ++i) source[i]=0.f;']
+    if inputs == [2, 3, 5]:
+        assert unowned == [0, rows - 1], unowned
+        lines += ['    source[0]=float4(input.color.a,0.f,0.f,0.f);', f'    source[{rows - 1}]=float4(lightColor,1.f);']
+        registers = ['    float4 v2 = float4(input.uv,0.f,0.f); // native texcoord0',
+                     '    float4 v3 = float4(tangentLight,0.f); // native tangent light vector',
+                     '    float4 v5 = float4(input.tangentView,0.f); // native tangent camera vector']
+    else:
+        assert inputs == [0, 1, 4, 5, 7, 8] and unowned == [0, 1, rows - 2, rows - 1], (inputs, unowned)
+        lines += ['    source[0]=0.f;', '    source[1]=float4(input.sourceCameraPosition,input.color.a);',
+                  f'    source[{rows - 2}]=float4(lightColor,1.f);', f'    source[{rows - 1}].x=1.f;',
+                  '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
+        registers = ['    float4 v0 = float4(input.sourceBasisX,0.f); // native tangent basis row 0',
+                     '    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native tangent basis row 1',
+                     '    float4 v4 = float4(input.uv,0.f,0.f); // native texcoord0',
+                     '    float4 v5 = float4(tangentLight,1.f); // native tangent light vector',
+                     '    float4 v7 = float4(input.tangentView,1.f); // native tangent camera vector',
+                     '    float4 v8 = float4(input.sourceWorldPosition,1.f); // native source world position']
     for binding in light['bindings']['vectors']:
         lines.append(f'    source[{binding["baseIndex"] // 16}] = {expression[("vector", binding["expressionIndexOrGroup"])]};')
     for binding in light['bindings']['scalarGroups']:
@@ -628,16 +716,14 @@ def wing_light_program(evidence):
             key = ('scalar', binding['expressionIndexOrGroup'], index)
             if key in expression:
                 lines.append(f'    source[{binding["baseIndex"] // 16}].{lane} = ({expression[key]}).x;')
-    temps = next(int(d.split()[1]) for d in light['disassembly']['declarations'] if d.startswith('dcl_temps'))
-    lines += ['    float4 passValues[5]; [unroll] for(uint passIndex=0u;passIndex<5u;++passIndex) passValues[passIndex]=0.f;',
+    temps = next(int(d.split()[1]) for d in declarations if d.startswith('dcl_temps'))
+    passes = max(5, int(next(re.search(r'CB2\[(\d+)\]', d)[1] for d in declarations if d.startswith('dcl_constantbuffer CB2['))))
+    lines += [f'    float4 passValues[{passes}]; [unroll] for(uint passIndex=0u;passIndex<{passes}u;++passIndex) passValues[passIndex]=0.f;',
               '    passValues[0]=float4(.5f,-.5f,.5f,.5f);',
-              '    passValues[3]=float4(0.f,0.f,0.f,1.f); // Neutral source diffuse override, as program 3828.',
-              '    passValues[4]=float4(0.f,0.f,0.f,1.f); // Neutral specular override, as program 3828.',
-              '    float4 v2 = float4(input.uv,0.f,0.f); // native texcoord0',
-              '    float4 v3 = float4(tangentLight,0.f); // native tangent light vector',
-              '    float4 v5 = float4(input.tangentView,0.f); // native tangent camera vector',
-              '    float4 ' + ', '.join(f'r{i}=0.f' for i in range(temps)) + ';',
-              '    float4 output=0.f;']
+              f'    passValues[3]=float4(0.f,0.f,0.f,1.f); // Neutral source diffuse override, as program {program}.',
+              f'    passValues[4]=float4(0.f,0.f,0.f,1.f); // Neutral specular override, as program {program}.']
+    lines += registers
+    lines += ['    float4 ' + ', '.join(f'r{i}=0.f' for i in range(temps)) + ';', '    float4 output=0.f;']
     texture_map = {binding['baseIndex']: binding['expressionIndexOrGroup'] for binding in light['bindings']['textures']}
     for number, instruction in enumerate(light['disassembly']['instructions'], 1):
         if re.search(r'\bo[1-9]\.', instruction):
@@ -646,21 +732,86 @@ def wing_light_program(evidence):
             op, _, tail = instruction.partition(' ')
             a = helpers['args'](tail)
             register, swizzle = re.match(r't(\d+)\.([xyzw]+)', a[2]).groups()
-            sample = (f'ArtistNativeSample{texture_map[int(register)]}((' + helpers['operand'](a[1]) + ').xy, ('
-                + helpers['operand'](a[4]) + ').x, ' + ('true' if 'sample_l' in op else 'false') + ')')
+            if int(register) not in texture_map:
+                sample = 'float4(1.f,1.f,1.f,1.f)'
+            else:
+                bias = helpers['operand'](a[4]) if len(a) > 4 else 'float4(0.f,0.f,0.f,0.f)'
+                sample = (f'ArtistNativeSample{texture_map[int(register)]}((' + helpers['operand'](a[1]) + ').xy, ('
+                    + bias + ').x, ' + ('true' if 'sample_l' in op else 'false') + ')')
             translated = helpers['result_mask'](a[0], sample + '.' + swizzle)
+        elif instruction.startswith('discard_nz'):
+            translated = 'if ((' + helpers['uint_operand'](instruction.split(' ', 1)[1]) + ').x != 0u) clip(-1.f);'
         else:
             translated = helpers['translated'](instruction, {}, 'base')
         translated = re.sub(r'\bo0\b', 'output', translated)
         lines += [f'    // {number}: {instruction}', '    ' + translated]
     lines += ['}', '']
-    function = '\n'.join(lines)
-    marker = '// ' + WING_MATERIALS[0] + ': directional light PS'
-    head = text[:text.index(marker)] if marker in text else text
-    updated = head + function
+    return '\n'.join(lines)
+
+
+def wing_light_program(evidence):
+    dump = source.read(evidence / 'wing' / 'source_light' / (WING_MATERIALS[0] + '.json'))
+    assert dump['programs']['tbasepasspixelshaderfnolightmappolicyskylight']['shaderId'] == WING_BASE_PS
+    text = WING_SHADER.read_text(encoding='utf-8')
+    function = light_program_function(dump, 3828, text)
+    if 'float4 ArtistNative3828Light(' in text:
+        updated = text.replace(function_body(text, 'ArtistNative3828Light'), function)
+    else:
+        updated = text + function
     if updated != text:
         WING_SHADER.write_text(updated, encoding='utf-8', newline='\n')
-    print('ArtistNative3828Light', len(light['disassembly']['instructions']), 'instructions, changed', updated != text)
+    print('ArtistNative3828Light changed', updated != text)
+
+
+def install_model_cue_programs(evidence, cue):
+    """Install a PlaySkeletalMesh cue's native skin programs with their light PS.
+
+    Tables go through install_kouku_gate1_native_materials; the base and light
+    functions live in Shader_EffectVehicleModelNative.hlsli and dispatch from
+    Shade_ArtistModelNative and Shade_VehicleModelNativeLight.
+    """
+    import install_kouku_gate1_native_materials as materials
+    folder = evidence / cue / 'material' / 'native'
+    contract = source.read(folder / 'native_runtime_contract.json')
+    programs = {row['program']: row['sourceMaterial'] for row in contract['programs']}
+    assert not contract['deferredPrograms'] and all(row['modelCue'] for row in contract['programs'])
+    materials.install(folder / 'native_runtime_contract.json', folder, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
+    generated = (folder / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf-8')
+    original = WING_SHADER.read_text(encoding='utf-8')
+    text = original
+    marker = '// Vehicle model-cue light dispatch.'
+    if marker in text:
+        text = text[:text.index(marker)]
+    for program, material in sorted(programs.items()):
+        base = function_body(generated, f'ArtistNative{program}')
+        dump = source.read(evidence / cue / 'source_light' / (material + '.json'))
+        light = light_program_function(dump, program, base)
+        for name in (f'ArtistNative{program}', f'ArtistNative{program}Light'):
+            if f'float4 {name}(' in text:
+                text = text.replace(function_body(text, name), '')
+        text = text.rstrip('\n') + '\n' + base + light
+    light_programs = sorted(int(n) for n in re.findall(r'float4 ArtistNative(\d+)Light\(', text))
+    text = text.rstrip('\n') + '\n' + marker + '\n'
+    text += 'float4 Shade_VehicleModelNativeLight(uint profile, ARTIST_NATIVE_INPUT input, float3 tangentLight, float3 lightColor)\n{\n    switch (profile)\n    {\n'
+    text += ''.join(f'    case {n}u: return ArtistNative{n}Light(input, tangentLight, lightColor);\n' for n in light_programs)
+    text += '    default: return 0.f;\n    }\n}\n'
+    if text != original:
+        WING_SHADER.write_text(text, encoding='utf-8', newline='\n')
+    main = ROOT / 'Client/Bin/ShaderFiles/Shader_EffectArtistNative.hlsli'
+    raw = main.read_bytes()
+    newline = '\r\n' if b'\r\n' in raw else '\n'
+    main_text = raw.decode('utf-8').replace('\r\n', '\n')
+    anchor = '    case 3828u: return ArtistNative3828(input);\n'
+    assert main_text.count(anchor) == 1
+    for program in sorted(programs):
+        case = f'    case {program}u: return ArtistNative{program}(input);\n'
+        if case not in main_text:
+            main_text = main_text.replace(anchor, anchor + case, 1)
+        anchor = case
+    updated = main_text.replace('\n', newline).encode('utf-8')
+    if updated != raw:
+        main.write_bytes(updated)
+    print('Installed model cue programs', sorted(programs), 'light dispatch', light_programs)
 
 
 def install_native(evidence):
@@ -877,19 +1028,64 @@ def model_cues(evidence, stage, identity):
         if notify['sourceType'] != 'PlaySkeletalMesh' or mesh not in MODEL_CUE_MESHES:
             continue
         row = MODEL_CUE_MESHES[mesh]
-        clip = 'npc_' + notify['serializedLabels'][10].lower()
-        assert notify['serializedLabels'][10].lower().startswith('sk_'), notify['notifyId']
-        patch = source.read(evidence / 'wing' / 'material' / 'native' / 'native_material_patch.json')
-        cues.append(dict(cueId=row['cueId'], modelAssetId=row['model'], clipName=clip,
-            startDelaySeconds=notify['localTimeSeconds'], durationSeconds=notify['durationSeconds'],
-            opacity=1, colorMultiply=[1, 1, 1, 1], holdLastFrame=False, alphaMode='TRANSLUCENT', visible=True,
-            localTransform=dict(position=[0, 0, 0], rotationDegrees=[0, 0, 0], revolutionDegreesPerSecond=[0, 0, 0],
-                scale=[1, 1, 1], velocityPerSecond=[0, 0, 0]),
-            assetPreTransform=dict(scale=[0.0001] * 3, rotationDegrees=[0, -90, 0]),
-            material=copy.deepcopy(patch['programs'][0]['material'])))
+        animation = [label for label in notify['serializedLabels'] if re.match(r'S[CK]_', label)]
+        assert len(animation) == 1, (notify['notifyId'], animation)
+        clip = 'npc_' + animation[0].lower()
+        root = row.get('materialRoot', 'wing')
+        patch = {program['sourceMaterial']: program['material']
+                 for program in source.read(evidence / root / 'material' / 'native' / 'native_material_patch.json')['programs']}
         tracks = model_cue_material_tracks(notifies, mesh_index)
-        if tracks:
-            cues[-1]['materialParameterTracks'] = tracks
+        duration = notify['durationSeconds']
+        loop = duration <= 0
+        if loop:
+            # Open-ended mesh: it lives until its last material event (the dead fade) ends.
+            # The notify carries no window, so the clip repeats for that lifetime instead of
+            # ending with its own length. The payload int after the play rate is the source
+            # loop count (Q 2, W 3, E 1), and clip x count covers the fade window in each case.
+            duration = max(key['timeSeconds'] for track in tracks for key in track['keys'])
+        raw = base64.b64decode(notify['serializedPayload']['data'])
+        tail = raw.index(animation[0].encode('ascii') + b'\0') + len(animation[0]) + 1
+        local = dict(position=[0, 0, 0], rotationDegrees=[0, 0, 0], revolutionDegreesPerSecond=[0, 0, 0],
+            scale=[1, 1, 1], velocityPerSecond=[0, 0, 0])
+        if len(raw) >= tail + 64 and struct.unpack_from('<2i', raw, tail + 20) == (1, 1):
+            # Relative spawn transform: UE cm location, rotator units, scale. The
+            # vehicle cooked skin frame is the snapshot particle basis RotY(-90)
+            # applied to UE3_CentimetersToClient (x, z, -y).
+            location = struct.unpack_from('<3f', raw, tail + 28)
+            pitch, yaw, roll = struct.unpack_from('<3i', raw, tail + 40)
+            scale = struct.unpack_from('<3f', raw, tail + 52)
+            client = (location[0] * 0.01, location[2] * 0.01, -location[1] * 0.01)
+            local.update(position=[-client[2], client[1], client[0]],
+                rotationDegrees=[pitch * 360.0 / 65536.0, yaw * 360.0 / 65536.0, roll * 360.0 / 65536.0], scale=list(scale))
+        sockets = None
+        for part in row.get('parts', [dict(cueId=row['cueId'], model=row['model'], material=next(iter(patch)))]):
+            cue = dict(cueId=part['cueId'], modelAssetId=part['model'], clipName=clip,
+                startDelaySeconds=notify['localTimeSeconds'], durationSeconds=duration,
+                opacity=1, colorMultiply=[1, 1, 1, 1], holdLastFrame=False, loop=loop,
+                alphaMode='TRANSLUCENT', visible=True,
+                localTransform=copy.deepcopy(local),
+                assetPreTransform=dict(scale=[0.0001] * 3, rotationDegrees=[0, -90, 0]),
+                material=copy.deepcopy(patch[part['material']]))
+            if tracks:
+                cue['materialParameterTracks'] = tracks
+            if part.get('parent'):
+                sockets = sockets or {s['socketName'].casefold(): s for s in
+                    source.read(evidence / 'sockets' / (row['contract'] + '.socket-contract.json'))['sockets']}
+                socket = sockets[part['socket'].casefold()]['runtimeLocalTransform']
+                assert socket['rotationDegrees'] in ([0, 0, 0], [0.0, -0.0, -0.0], [0.0, 0.0, 0.0]), socket
+                # Sample_ModelCuePose composes localTransform x root only: assetPreTransform
+                # is baked into the child's own geometry at load, so the socket carries the
+                # source rotation. The psk importer mirrors the bone local Y, which leaves the
+                # child facing backwards along the socket, so the source rotation is taken with
+                # a yaw turn. The model-cue bone basis 0.01 is undone like wing-attached particles.
+                cue.update(localTransform=dict(position=[0, 0, 0], rotationDegrees=[0, 0, 0], revolutionDegreesPerSecond=[0, 0, 0],
+                    scale=[1, 1, 1], velocityPerSecond=[0, 0, 0]),
+                    parentAttachment=dict(cueId=part['parent'], boneName=sockets[part['socket'].casefold()]['boneName'],
+                        socketLocalTransform=dict(position=[v * WING_BONE_BASIS_INVERSE for v in socket['position']],
+                            rotationDegrees=[socket['rotationDegrees'][0],
+                                socket['rotationDegrees'][1] + 180.0, socket['rotationDegrees'][2]],
+                            scale=[WING_BONE_BASIS_INVERSE] * 3)))
+            cues.append(cue)
     assert len({c['cueId'] for c in cues}) == len(cues), identity
     return cues
 
@@ -1124,12 +1320,16 @@ if __name__ == '__main__':
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--catalog', action='store_true')
     parser.add_argument('--wing-native', action='store_true')
+    parser.add_argument('--model-cue', default='wing', choices=sorted(MODEL_CUE_MATERIALS))
     parser.add_argument('--wing-light', action='store_true')
+    parser.add_argument('--install-model-cue', action='store_true')
     options = parser.parse_args()
-    if options.wing_light:
+    if options.install_model_cue:
+        install_model_cue_programs(options.evidence_root.resolve(), options.model_cue)
+    elif options.wing_light:
         wing_light_program(options.evidence_root.resolve())
     elif options.wing_native:
-        wing_native_materials(options.evidence_root.resolve())
+        wing_native_materials(options.evidence_root.resolve(), options.model_cue)
     elif options.catalog:
         write_skill_cues(options.evidence_root)
     elif options.project:

@@ -291,8 +291,14 @@ inline bool Has_ArtistModelCueMaterialContract(const EFFECT_MODEL_CUE_DESC& Cue)
     const std::string_view expected=Program->iProfileIndex==460u ?
         "Effect/Artist/Models/SK_SDM_TIG_00/sk_sdm_tig_00_sk.wmodel" :
         Program->iProfileIndex==3828u ? "Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel" :
+        Program->iProfileIndex==3831u ? "Effect/Vehicle/Aufstehen/AufstehenDoll/AufstehenDoll.wmodel" :
+        Program->iProfileIndex==3832u ? "Effect/Vehicle/Aufstehen/AufstehenDollHair/AufstehenDollHair.wmodel" :
+        Program->iProfileIndex==3833u ? "Effect/Vehicle/Aufstehen/AufstehenPuppet/AufstehenPuppet.wmodel" :
         "Effect/Artist/Models/SK_SDM_DRA_00/sk_sdm_dra_00_sk.wmodel";
-    if (Cue.strModelAssetId!=expected) return false;
+    // The Aufstehen doll's eyelash section shares its body skin material.
+    const bool bSharedDollSkin = Program->iProfileIndex==3831u &&
+        Cue.strModelAssetId=="Effect/Vehicle/Aufstehen/AufstehenDollLashes/AufstehenDollLashes.wmodel";
+    if (Cue.strModelAssetId!=expected && !bSharedDollSkin) return false;
     for (const auto name: Program->TextureNames)
         if(std::count_if(Source.Textures.begin(),Source.Textures.end(),[&](const auto& T){return T.strName==name&&!T.strAssetId.empty()&&!T.strSourceObjectPath.empty();})!=1) return false;
     for (const auto& S:Program->StaticSwitches)

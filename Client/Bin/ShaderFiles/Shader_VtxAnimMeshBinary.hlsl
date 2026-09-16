@@ -509,12 +509,15 @@ float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFa
         color = Shade_LanceVAModelNative(g_ArtistModelCueProfile,lanceInput);
     }
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP)
-    else if (g_ArtistModelCueProfile == 3828u)
+    else if (g_ArtistModelCueProfile == 3828u ||
+        (g_ArtistModelCueProfile >= 3831u && g_ArtistModelCueProfile <= 3833u))
     {
-        // Source BLEND_Translucent lit skin: sky-light base pass with the forward
+        // Vehicle PlaySkeletalMesh lit skins: sky-light base pass with the forward
         // ambient, then the native directional light PS per forward light.
         nativeInput.ambientColor = SourceCharacterForwardAmbient(input.vWorldPos.xyz, input.vNormal.xyz);
         color = Shade_ArtistModelNative(g_ArtistModelCueProfile,nativeInput);
+        // BLEND_Masked skins write zero alpha; coverage is their own native discard.
+        if (g_ArtistModelCueProfile >= 3831u) color.a = 1.f;
         [loop] for (uint lightIndex = 0u; lightIndex < g_SourceMapForwardLightCount; ++lightIndex)
         {
             float3 direction;
@@ -523,7 +526,7 @@ float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFa
             if (attenuation <= 0.f) continue;
             direction = SourceCharacterSafeUnit(direction);
             const float3 tangentLight = float3(dot(t,direction), dot(b,direction), dot(n,direction));
-            color.rgb += ArtistNative3828Light(nativeInput, tangentLight,
+            color.rgb += Shade_VehicleModelNativeLight(g_ArtistModelCueProfile, nativeInput, tangentLight,
                 g_SourceMapForwardLightColorExponent[lightIndex].rgb).rgb * attenuation;
         }
     }
@@ -843,5 +846,27 @@ technique11 DefaultTechnique
         VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
+    }
+    // Appended index 11: recovered BLEND_Masked skeletal material. Its coverage is the
+    // native clip, so the surface writes depth instead of blending a self-overlapping
+    // skin against itself in submission order.
+    pass EffectModelCueNativeMasked
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = EffectSourceModelPS;
+    }
+    // Appended index 12 preserves a masked source material's two-sided rasterizer.
+    pass EffectModelCueNativeMaskedTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = EffectSourceModelPS;
     }
 }

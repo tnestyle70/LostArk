@@ -12,8 +12,9 @@
 | G03 native 재질 | 완료. 113 program 설치, Debug Product 빌드 PASS. 4재질 13 emitter 보류 |
 | G04 프로젝션·설치 | 완료. 문서 24개·요소 368개 설치, 탈것 문서 검사·리소스 closure PASS. 저장소 전체 validator는 기존 쿠크/차원술사 문서 때문에 원래 실패 |
 | G05 카탈로그 v3 | 완료. effectCues 24·soundCues 30 기록, Client 파서 v2/v3 수용, `ActorCatalog.cpp` 단일 컴파일 PASS. 전체 빌드는 G06과 함께 |
-| G06 런타임 연결 | 구현 완료, Debug Product 빌드 PASS. 사용자 화면 확인 대기 |
-| G07~G08 | 미착수 |
+| G06 런타임 연결 | 구현 완료, Debug Product 빌드 PASS. 탈것 6종 중 아우프슈텐 홀로그램 인형까지 사용자 화면 확인 |
+| G07 사운드 | 미착수. 이 PC에 `D:\로아 리소스` 추출본이 없다. 게임의 `SOUND_VEHICLE`/`_2026`/`_2026_NONSTREAM` `.pck`는 AKPK가 아니라 `3E CE A6 74` 공통 헤더로 암호화돼 있어 뱅크 해석 도구가 필요하다 |
+| G08 문서 | 이 RESULT 갱신 |
 
 ## G01. 원본 closure
 
@@ -318,6 +319,42 @@ translation은 미터)과 같아서 같은 정규화 경로를 쓴다. 정규화
 | (테르페이온) 날개가 원작보다 어두움 | 모델큐 native 경로가 base pass(sky-light) PS만 쓰고 sky 입력 0·장면 주변광만 받음. 탈것 몸체는 원본 light PS로 방향광을 받음 | `build_vehicle_source_material.py extract`로 날개 MIC의 방향광 PS `1a678e80…`(base는 3828과 같은 `5f33bef7…`) 추출, `--wing-light`가 같은 uniform expression 기준으로 3828 packing을 재사용해 `ArtistNative3828Light` 생성. `Shader_VtxAnimMeshBinary.hlsl` 3828 분기에서 program 88과 같이 forward 주변광 + 조명별 light PS 합산, 렌더러가 3828일 때 forward 조명 바인딩. 그림자 없는 policy(NoStaticShadowing) | 좋음 |
 
 위 C++ 변경은 Debug Product 빌드 PASS 후 실행했다. 문서 재생성은 데이터만 바뀌어 Client 재시작으로 반영했다.
+
+### 아우프슈텐 홀로그램 인형 (2026-09-15 야간 ~ 2026-09-16)
+
+아우프슈텐 Q/W/E의 원본 `PlaySkeletalMesh` notify는 `MN_ADMG_00.Mesh.MN_ADMG_00_SK` 홀로그램 인형이다.
+인형은 재질 슬롯 3개(몸 `mn_admg_00_mi`, 머리카락 `mn_admg_00_hair_mi`, 속눈썹 `pc_mg_eylashes_mi`)를 갖고,
+몸의 `b_wp_2`에 프롭 인형 `WP_MN_ADMG_00.Mesh.WP_MN_ADMG_01_SK`를 들고 있다.
+
+native program은 3831 몸 / 3832 머리카락 / 3833 퍼펫이며 속눈썹은 3831 skin을 공유한다.
+셋 다 `nativeBlend=blend_masked`, `nativeTwoSided=false`, `modelCue=true`다.
+
+| 증상 | 원인(실측) | 조치 | 사용자 확인 |
+|---|---|---|---|
+| Q/W/E 이펙트가 통째로 사라짐 (파티클까지) | 문서 전체 fail-closed. `ResourceStaging.cpp:2720`은 loop도 holdLastFrame도 아니면 cue 수명 ≤ 클립 길이를 요구한다. 원본 notify `durationSeconds`가 0이라 생성기가 `dead` 페이드 끝 시각을 수명으로 대체했는데 그건 클립 길이가 아니다. Q 4.810s vs 클립 4.167s, W 4.677s vs 1.600s | 원본 duration이 0이면 `loop: true`로 투영. payload의 재생속도 float 다음 int가 원본 반복 횟수(Q 2, W 3, E 1)이고 클립×횟수가 각 페이드 창을 덮는다 | 나옴 |
+| 〃 (E는 `aufstehen.doll.hair`에서 거부) | 같은 파일 `:2741`은 복원 skeletal 재질의 모든 mesh가 원본 슬롯 0일 것을 요구한다. `cook_npc.py --exclude`가 다른 슬롯 submesh만 버리고 남은 submesh의 원본 번호를 유지해 머리카락 1, 속눈썹 2로 남았다. 컨버터는 07-29 빌드 exe라 소스가 없다 | 쿠킹 후 패치 `Tools/VehiclePipeline/normalize_model_cue_material_slot.py`. 이 WModel들은 WGEOMETRY/WUVS 페이로드 해시가 없어 descriptor를 제자리에서 고친다 | 〃 |
+| 인형 표면 전체에 흰 점이 자글자글 | IBL을 `SampleLevel`(명시 LOD)로 읽는데(`Shader_EffectVehicleModelNative.hlsli:923`) 재질이 요구하는 `ibl_reflect_lodbias=80.0`에 쓸 밉이 없다. `hdr07_1.dds`가 512² DXT1 **0밉**이라 픽셀마다 원본 해상도 환경맵을 찍는다. `ibl_exposer=5.0`, `pbr_specular_intensity=10.0`이 증폭한다. 마스크는 무관함을 확인: `texture_dead` R 41~255(0 텍셀 0%), diffuse 알파 100% 255, `dead=0`, `dead_texture_tiling=0.5` | `hdr07_1.dds`에 밉 10단계 생성(texconv `-m 0 -f DXT1`). 원본은 `.nomips.bak` 보존. BRDF LUT `brdf_beckmann_spec.dds`는 `SampleBias`로 읽혀 밉을 넣으면 LUT가 틀어지므로 제외 | 좋아짐 |
+| 치마 등에 흰 점 잔존 | 인형 텍스처도 전부 0밉. 1024² 법선맵을 화면 수십 픽셀에 밀어 넣어 스페큘러가 픽셀 단위로 튄다 | `mn_admg_00{,-1}_{n,s,d}.dds` 6장에 밉 생성(법선 BC5, 나머지 DXT1/5). 염색 마스크 `_cm`은 영역 선택 마스크라 제외 | 잘 나옴 |
+| 손에 든 퍼펫 방향이 90도 틀어짐 | 퍼펫을 독립 엔티티(`admg.json` id 830202)로 따로 굽고 V1 ModelCue `parentAttachment`로 손 본에 붙였다. 퍼펫은 자기 19본 골격(`b_doll_*`)과 자기 애니메이션을 가져서 손 본 기준 위치·방향이 상수 오프셋이 아니다. 소켓 yaw를 +90/0/180 어느 값으로 줘도 맞지 않았다 | 원본대로 몸의 프롭으로 접합. `build_npc.py --wp-socket fx_01`이 `rest @ offset @ rotation`으로 배치하고 전 정점을 `b_wp_2`에 강체 스키닝한다. 퍼펫이 인형과 같은 78본 골격·클립을 쓰게 되어 `parentAttachment` 자체가 불필요 | 방향 맞음 |
+| 퍼펫이 손 위에 살짝 떠 있음 | 프롭 소켓을 `wp_2`(오프셋 0)로 접합했다. 같은 본에 `fx_01`이 Z −20cm 오프셋으로 선언돼 있다 | `--wp-socket fx_01`로 재접합 | 잘 맞음 |
+
+- 재쿠킹 결과: 병합 13758 정점, 재질 4슬롯(`sk_admg_00_mi_dead__WP_MN_ADMG_00` 추가). 파츠별 cook은 submesh 1개씩
+  (몸 8079 / 머리카락 2397 / 속눈썹 167 / 퍼펫 6305), 넷 다 슬롯 0 정규화. 퍼펫 골격 19본 → 78본.
+- 파츠 폴더마다 재질 4개를 모두 선언하므로 텍스처 10장을 전부 둬야 한다. wmodel만 교체하고 텍스처를 빠뜨리면
+  `Animated CModel or clip load failed`로 문서가 거부된다.
+- `build_npc`의 프롭 경로는 무기를 강체로 붙이므로 퍼펫 자체 골격 애니메이션은 재생되지 않는다.
+- 실패한 Product target은 같은 catalog revision 동안 fail-closed로 캐시된다. 리소스나 문서를 고친 뒤에는
+  Client를 재시작해야 다시 준비를 시도한다.
+
+masked 재질이 깊이 쓰기 없는 반투명 패스(pass 7, `DSS_ReadOnly`+`BS_AlphaBlend`)에 있던 것도 함께 고쳤다.
+자글자글의 원인은 아니었지만 계약 위반이다. `install_kouku_gate1_native_materials.py`의 기존 규칙
+(정적 masked 표면은 native discard로 커버리지를 처리하고 opaque 패스로 깊이를 쓴다)이 `sourceTransformMesh`에만
+걸려 있어 model cue를 포함하도록 넓혔고, `Shader_VtxAnimMeshBinary.hlsl`에 pass 11/12
+`EffectModelCueNativeMasked(TwoSided)`를 덧붙였다(기존 0~10 인덱스 보존). 영향 범위는 3831~3833뿐이며
+다른 skeletalMesh program(3828, artist 460/461, lance-va 772~775·1360)은 전부 translucent다.
+
+Debug Product 빌드 PASS(`out/BuildPipeline/runs/20260916T033530502Z-debug-product.json`, 2064초,
+CSO 7·OBJ 2·binary 1). 이후 변경은 데이터·리소스뿐이라 Client 재시작으로 반영했다.
 
 ### 하지 않은 확인
 

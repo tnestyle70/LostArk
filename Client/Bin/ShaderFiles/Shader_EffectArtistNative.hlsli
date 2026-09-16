@@ -519,6 +519,9 @@ float4 Shade_ArtistModelNative(uint profile, ARTIST_NATIVE_INPUT input)
 #endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP)
     case 3828u: return ArtistNative3828(input);
+    case 3831u: return ArtistNative3831(input);
+    case 3832u: return ArtistNative3832(input);
+    case 3833u: return ArtistNative3833(input);
 #endif
     default: clip(-1.f); return 0.f;
     }

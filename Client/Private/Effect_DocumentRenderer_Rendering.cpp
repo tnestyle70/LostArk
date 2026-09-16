@@ -401,8 +401,9 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(const EFFEC
 		Ambient.z += Light.vAmbient.z;
 	}
 	const auto& Shader = m_pAnimatedModelShader;
-	// The Terpeion wing skin adds its native directional light PS per forward light.
-	if (Resource.iSourceMaterialProfile == 3828u &&
+	// Vehicle PlaySkeletalMesh skins add their native directional light PS per forward light.
+	if ((Resource.iSourceMaterialProfile == 3828u ||
+		(Resource.iSourceMaterialProfile >= 3831u && Resource.iSourceMaterialProfile <= 3833u)) &&
 		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(Shader)))
 		return Fail_RenderOperation("Model Cue forward light binding failed: " + Cue.strCueId, E_FAIL, true);
 	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
@@ -526,7 +527,14 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				iPass = 4u;
 			}
 			if (Resource->second.pMaterialResource)
-				iPass = Cue.Material->eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ? 8u : 7u;
+			{
+				switch (Cue.Material->eRenderProfile)
+				{
+				case EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ: iPass = 8u; break;
+				case EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE: iPass = 11u; break;
+				default: iPass = 7u; break;
+				}
+			}
 			hResult = Bind_BloomInputs(m_pAnimatedModelShader);
 			if (FAILED(hResult)) return hResult;
 			hResult = m_pAnimatedModelShader->Begin(iPass);

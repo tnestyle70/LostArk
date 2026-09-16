@@ -24,6 +24,7 @@
         1
       ],
       "holdLastFrame": false,
+      "loop": false,
       "alphaMode": "TRANSLUCENT",
       "visible": true,
       "localTransform": {
