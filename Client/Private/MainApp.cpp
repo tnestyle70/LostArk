@@ -3447,6 +3447,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			if (m_pHonorTitleWindowView->Take_TitleRequest(iTitleId))
 			{
 				CPlayerController* pController = Find_ActivePlayerController();
+			/* Same covering rule as the avatar book: the info window's labels under the open
+			title window's rect are skipped so the title window really sits on top. */
+			if (m_pHonorTitleWindowView->Is_Open())
+				m_pCharacterInfoView->Set_Covered(true);
 				if (nullptr == pController || !pController->Request_HonorTitle(iTitleId))
 					OutputDebugStringA("[Client][HonorTitleWindow] Title request not sent (no controller, or one is still pending).\n");
 			}

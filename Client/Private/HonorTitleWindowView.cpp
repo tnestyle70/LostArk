@@ -172,14 +172,22 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 		Close();
 	m_bEscapeDownLastFrame = bEscapeDown;
 
-	/* Anything over the window belongs to the window. */
+	/* Anything over the window belongs to the window; while open it is the topmost runtime UI
+	(it opens over the info window), so the other windows' text passes skip its rect. */
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	if (m_pView->Get_SlotRect("HT_WinBg", fX, fY, fWidth, fHeight) &&
-		Router.Is_Hovered(fX, fY, fWidth, fHeight,
-			m_pView->Get_ResolutionWidth(), m_pView->Get_ResolutionHeight()))
+	if (m_pView->Get_SlotRect("HT_WinBg", fX, fY, fWidth, fHeight))
 	{
-		Router.Claim_Mouse_This_Frame();
+		if (Router.Is_Hovered(fX, fY, fWidth, fHeight,
+			m_pView->Get_ResolutionWidth(), m_pView->Get_ResolutionHeight()))
+			Router.Claim_Mouse_This_Frame();
+		const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+		if (vViewport.x > 0.f && vViewport.y > 0.f)
+		{
+			const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
+			const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
+			Router.Set_TopWindowRect(fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
+		}
 	}
 }
 

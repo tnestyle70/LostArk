@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""Build the over-head player status (nameplate) art and layout from the retail headstatus.gfx.
+"""Build the over-head chat bubble art and layout from the retail headstatus.gfx.
+
+The name plate itself is a LOA-font text pass (CWorldPlayerNameplateView) and needs no art; the
+HeadStatusHPGauge of PcHeadStatusMc is not reproduced (the reference screen shows no gauge over a
+player), so only the balloon is cut from the atlas.
 
 Outputs
 -------
-  Client/Bin/Resources/UI/HeadStatus/HS_Frame_{Player,Party,Friend,Enemy}.png   82x9
-  Client/Bin/Resources/UI/HeadStatus/HS_Fill_{Player,Party,Friend,Enemy}.png    78x5
-      the HeadStatusHPGauge frame / fill pairs of progress_{Player,Party,Friend,Enemy}HP_PickingHead
-      (headStatus_I6 DefineSubImage rectangles).
-  Data/UI/HeadStatus/HeadStatus_Layout.json
-      lostark.ui-layout with HS_<i>_HpFrame / HS_<i>_HpFill slots for up to PLAYER_SLOTS players.
-      CWorldPlayerNameplateView moves them under each projected head every frame and swaps the
-      relation art; the rects here only fix the size (retail 82x9 on the 1920 stage -> 2/3).
   Client/Bin/Resources/UI/HeadStatus/HS_Balloon_Normal.png   72x50
       HeadStatus_Balloon normalBG (headStatus_I6 384,0), a 9-slice whose DefineScalingGrid centre is
       x 18.75..20.5 / y 17.75..19.75 px -- the fixed right/bottom slices carry the tail.
@@ -36,14 +32,6 @@ from PIL import Image
 
 ATLAS = Path(r"D:/ClaudeWork/Extracted/HeadStatus/tex/EFUI_STATUS/Texture2D/headstatus_i6.dds")
 
-# relation -> ((frame x, y, w, h), (fill x, y, w, h)) in headStatus_I6
-GAUGES = {
-    "Player": ((515, 53, 82, 9), (763, 53, 78, 5)),   # progress_PlayerHP_PickingHead
-    "Party":  ((599, 53, 82, 9), (875, 41, 78, 5)),   # progress_PartyHP_PickingHead
-    "Friend": ((431, 53, 82, 9), (929, 32, 78, 5)),   # progress_FriendHP_PickingHead
-    "Enemy":  ((347, 53, 82, 9), (683, 53, 78, 5)),   # progress_EnemyHP_PickingHead
-}
-PLAYER_SLOTS = 8
 RETAIL_SCALE = 2.0 / 3.0
 BALLOON = (384, 0, 72, 50)                 # HeadStatus_Balloon normalBG
 BALLOON_GRID = (18.75, 20.5, 17.75, 19.75) # scaling grid x0, x1, y0, y1 in art px (twips/20)
@@ -71,23 +59,11 @@ def main() -> int:
     art_dir = repo / "Client/Bin/Resources/UI/HeadStatus"
     art_dir.mkdir(parents=True, exist_ok=True)
     atlas = Image.open(ATLAS).convert("RGBA")
-    for name, (frame, fill) in GAUGES.items():
-        for kind, (x, y, w, h) in (("Frame", frame), ("Fill", fill)):
-            atlas.crop((x, y, x + w, y + h)).save(art_dir / ("HS_%s_%s.png" % (kind, name)))
-
     bx, by, bw, bh = BALLOON
     atlas.crop((bx, by, bx + bw, by + bh)).save(art_dir / "HS_Balloon_Normal.png")
 
-    slots = []
-    for i in range(PLAYER_SLOTS):
-        slots.append(slot("HS_%d_HpFrame" % i, 82, 9, "UI/HeadStatus/HS_Frame_Friend.png"))
-        slots.append(slot("HS_%d_HpFill" % i, 78, 5, "UI/HeadStatus/HS_Fill_Friend.png"))
     data_dir = repo / "Data/UI/HeadStatus"
     data_dir.mkdir(parents=True, exist_ok=True)
-    (data_dir / "HeadStatus_Layout.json").write_text(json.dumps({
-        "schema": "lostark.ui-layout", "formatVersion": 1,
-        "resolution": {"width": 1280, "height": 720}, "classes": ["Default"], "slots": slots,
-    }, ensure_ascii=False, indent=2), encoding="utf-8")
     bubble_slots = [slot("CB_%d_%s" % (i, piece), 8, 8, "UI/HeadStatus/HS_Balloon_Normal.png")
                     for i in range(BUBBLE_SLOTS) for piece in BUBBLE_PIECES]
     (data_dir / "ChatBubble_Layout.json").write_text(json.dumps({
@@ -96,7 +72,7 @@ def main() -> int:
         "balloon": {"artWidth": bw, "artHeight": bh,
                     "grid": {"x0": BALLOON_GRID[0], "x1": BALLOON_GRID[1], "y0": BALLOON_GRID[2], "y1": BALLOON_GRID[3]}},
     }, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("art: %d pairs + balloon -> %s; layout: %d gauge slots, %d bubble slots" % (len(GAUGES), art_dir, len(slots), len(bubble_slots)))
+    print("art: balloon -> %s; layout: %d bubble slots" % (art_dir, len(bubble_slots)))
     return 0
 
 

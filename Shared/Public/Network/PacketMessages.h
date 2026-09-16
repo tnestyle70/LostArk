@@ -1475,7 +1475,7 @@ namespace LostArk::Shared
 		A ridden vehicle implies a living, idle, normal-form player outside Mario
 		and pattern bind; the Server dismounts before any other action is sent. */
 		VEHICLE_ID iVehicleId = INVALID_VEHICLE_ID;
-		/* Honor title worn over the head (protocol 88); INVALID_HONOR_TITLE_ID = none. */
+		/* Honor title worn over the head (protocol 89); INVALID_HONOR_TITLE_ID = none. */
 		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
 		/* KoukuSaydon interaction state. The card is the symbol a roulette
 		window dealt this player; the mode and its slot layout are the HUD the

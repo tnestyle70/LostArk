@@ -1317,7 +1317,6 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
-	m_PlayerNameplateView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 #ifdef _DEBUG
 	m_PlayerController.Set_DebugMarioJumpEnabled(true);
@@ -1995,8 +1994,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	const HRESULT drawn = __super::Render();
 	if (FAILED(drawn))
 		return drawn;
-	m_PlayerNameplateView.Render(m_NameplatePlayers,
-		m_Replication.Get_PartyRoster(), m_Replication.Get_PlayerHealth());
+	m_PlayerNameplateView.Render(m_NameplatePlayers);
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(

@@ -17,12 +17,11 @@
 
 namespace
 {
-	/* Same head anchor as the nameplate; the bubble stacks above the name from there. */
-	constexpr f32_t HEAD_OFFSET = 2.2f;
+	/* The bubble is the next head-status stack element after the name plate: its bottom (tail
+	tip) lands where the nameplate's stack ends (CWorldPlayerNameplateView::Stack_Top_RefPx,
+	layout-reference px on a 720 tall reference). Art sizes stay retail px on the 1080 stage. */
 	constexpr f32_t RETAIL_STAGE_HEIGHT = 1080.f;
-	/* Retail: name plate top is 37 px above the anchor (HeadStatusNamePlate at -37); the balloon
-	is the next stack element, so its bottom (tail tip) lands there. */
-	constexpr f32_t STACK_BOTTOM_Y = -37.f;
+	constexpr f32_t REFERENCE_HEIGHT = 720.f;
 
 	/* HeadStatus_Balloon normalBG: 72x50 art, DefineScalingGrid centre x 18.75..20.5 /
 	y 17.75..19.75 px; everything right of / below the centre is the fixed tail side. */
@@ -152,13 +151,9 @@ void Client::CWorldPlayerChatBubbleView::Render(
 		const std::shared_ptr<CCharacter> pCharacter = player.pCharacter.lock();
 		if (nullptr == pCharacter)
 			continue;
-		const std::shared_ptr<Engine::CTransform> pTransform = pCharacter->Get_Transform();
-		if (nullptr == pTransform)
-			continue;
-
 		float3_t vHeadPosition{};
-		XMStoreFloat3(&vHeadPosition, pTransform->Get_State(STATE::POSITION));
-		vHeadPosition.y += HEAD_OFFSET;
+		if (!CWorldPlayerNameplateView::Try_GetHeadAnchor(*pCharacter, vHeadPosition))
+			continue;
 		float2_t vAnchor{};
 		if (!CWorldPlayerNameplateView::Try_ProjectWorldPosition(
 			vHeadPosition, *pViewMatrix, *pProjectionMatrix, vViewportSize, vAnchor))
@@ -182,7 +177,8 @@ void Client::CWorldPlayerChatBubbleView::Render(
 		const f32_t fW = (std::max)(ART_W * fS, fTextW + PAD_X * 2.f * fS);
 		const f32_t fH = (std::max)(ART_H * fS, fTextH + (PAD_TOP + PAD_BOTTOM + TAIL_H) * fS);
 		const f32_t fLeft = std::round(vAnchor.x - fW * 0.5f);
-		const f32_t fTop = std::round(vAnchor.y + STACK_BOTTOM_Y * fS - fH);
+		const f32_t fStackTop = CWorldPlayerNameplateView::Stack_Top_RefPx() * (vViewportSize.y / REFERENCE_HEIGHT);
+		const f32_t fTop = std::round(vAnchor.y - fStackTop - fH);
 
 		if (nullptr != m_pView)
 		{
