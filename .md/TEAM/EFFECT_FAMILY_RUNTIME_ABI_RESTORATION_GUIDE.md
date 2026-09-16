@@ -710,3 +710,19 @@ provider와 함께 제출한 프레임으로 검증한다.
 ### External Composition capture window
 
 The existing `CEffectPresentationService::Seek_WorldRoot` accepts an optional playback end age in seconds (zero preserves the authored duration). Only externally sampled occurrences may supply a positive end. Pending spawns retain it in their descriptor; active objects forward it to their renderer. Scene-collapse clamps its authored shrink interval to the remaining owning box time. Frozen Color/Bloom and authored particle clocks remain unchanged; cube/model-cue capture keeps its original contract. Both ordinary sequence sampling and live geometry sampling supply the owning box duration. Non-finite/negative values fail without mutating the occurrence.
+
+
+### Native Sprite의 양면 저작 옵션
+
+Authored `detail.sprite.twoSided`는 기본false인 carrier 옵션이다. 현재 Artist registry의 검증된 native SourceRecipe Sprite에 한해 Alpha/Additive One Sided의 blend·depth를 유지하고 양면 pass로 그린다. 원본 material.renderProfile과 native program identity는 변경하지 않으며 다른 carrier·compiled adapter·source-contract 문서에는 허용하지 않는다. 원본의 two-sided 근거로 취급하지 않고 사용자 저작 변경으로 구분한다. false는 JSON에서 생략한다.
+
+
+### 화면 왜곡 MRT의 수신 표면 보호
+
+`Target_Distortion`의 RGBA16_FLOAT는 signed 화면 UV offset 두 쌍을 누적한다. RG는 기존 일반 왜곡이고 BA는 actor와 깊이 경계를 보호하는 왜곡이다. 현재 BA writer는 검토한 쿠크 native2461/2587/3682뿐이다. native source 식을 바꾸거나 JSON renderProfile을 새 값으로 위장하지 않는다. installer의 명시 routing도 같은 범위를 유지한다.
+
+V1 공통 Opaque/Alpha/Additive의 RT1은 RGBA 전체에 One+One을 적용한다. SceneColor와 Bloom의 원래 blend는 유지하며 RingFill/LinearReveal coverage와 distortionScale은 offset 네 채널에 적용한다. 일반 writer의 BA=0은 이미 누적한 BA를 지우지 않는다. compiled material adapter의 fixed-function 검사도 동일 RGBA write mask를 요구한다. V2의 별도 기존 RG 경로는 유지한다.
+
+Engine SceneResolve가 Depth와 PickPos를 명시적으로 바인딩하고 BA를 소비한다. depth marker0/5의 skinned bit8 또는 marker5의 source skin/equipment program1~24,26~29만 actor로 해석한다. 다른 map marker payload를 actor ID로 읽지 않는다. 현재 픽셀과 RG 적용 전후·BA를 합친 bilinear 샘플의 실제 footprint를 확인해 actor/깊이 불연속을 넘는 BA를 차단한다. 경사면의 NDC 깊이 기울기는 허용하고 HDR와 가중 Bloom은 같은 UV를 쓴다. BA=0이면 기존 RG resolve와 동일하다.
+
+이 계약은 불투명 G-buffer에 기록된 actor와 표면 경계를 보호한다. 동일 native map program을 쓰는 unskinned prop 내부와 G-buffer를 쓰지 않는 투명 객체를 종류별로 완전히 제외하는 계약은 아니다. 설치된 Engine/Client 셰이더와 바인딩 코드는 함께 갱신해야 하며 소스 반영·GPU 수치 검증·제품 빌드·사용자 화면 판정을 구분한다. 개별 검증 근거는 09-14 Sequence Implementation RESULT G50에 둔다.

@@ -531,8 +531,9 @@ namespace Client
 		/* Same send-path a normal click-to-move uses (sequence, resend-gate,
 		click effect) but for a caller-computed goal instead of the cursor's
 		own ground-plane pick -- e.g. walking the local character up to an
-		NPC that was right-clicked from outside interaction range. */
-		bool_t Request_MoveToPoint(const float3_t& goal);
+		NPC that was right-clicked from outside interaction range. Held movement
+		updates suppress the effect; discrete NPC clicks keep the default feedback. */
+		bool_t Request_MoveToPoint(const float3_t& goal, bool_t playClickEffect = true);
 		// Presentation basis only. The replicated Mario stage owns input mode.
 
 	private:
@@ -621,6 +622,7 @@ namespace Client
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;
+		bool_t m_wasRightMousePhysicallyDown = false;
 		bool_t m_isMoveClickSuppressed = false;
 		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
 		float3_t m_LastSentMoveGoal{};

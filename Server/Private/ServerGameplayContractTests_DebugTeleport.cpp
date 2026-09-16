@@ -38,6 +38,7 @@ using namespace LostArk::Shared;
 
 int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tests)
 {
+	Run_KoukuMarioEntryContact(tests);
 		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{
 			auto room = std::make_unique<CGameRoom>(world);

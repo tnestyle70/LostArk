@@ -1433,7 +1433,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds','combatBody')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1468,6 +1468,27 @@ function Read-WorldSequenceDocument {
                 throw 'World object boss anchor requires a stable boss ID and bounded optional bone; other anchors cannot carry boss fields'
             }
             $alias = $null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne ''
+            if ($null -ne $resource.PSObject.Properties['combatBody']) {
+                $body = $resource.combatBody
+                $bodyFields = @('maxHp','localCenterM','halfExtentsM','lifetimePolicy')
+                if ($null -ne $body.PSObject.Properties['shape']) {
+                    $bodyFields += 'shape'
+                    if ($body.shape -isnot [string] -or $body.shape -cnotin @('BOX','ELLIPSOID')) { throw 'World Object combat shape must be BOX or ELLIPSOID' }
+                }
+                Assert-ExactJsonProperties $body $bodyFields 'World Object combat body'
+                if ($alias -or $resourceAnchor -cne 'WORLD' -or
+                    $null -ne $resource.PSObject.Properties['motionInstanceIds'] -or
+                    -not (Test-JsonNumber $body.maxHp) -or [double]$body.maxHp -lt 1 -or [double]$body.maxHp -gt 1000000000 -or
+                    [double]$body.maxHp -ne [math]::Floor([double]$body.maxHp) -or
+                    $body.lifetimePolicy -isnot [string] -or $body.lifetimePolicy -cne 'UNTIL_DESTROYED') {
+                    throw 'Combat body requires a WORLD model, bounded HP and UNTIL_DESTROYED lifetime'
+                }
+                Assert-SequenceVector $body.localCenterM 'World Object combat center'
+                Assert-SequenceVector $body.halfExtentsM 'World Object combat half extents' $true
+                foreach ($axis in $body.halfExtentsM) {
+                    if ([double]$axis -lt 0.001 -or [double]$axis -gt 1000) { throw 'Combat half extents must be 0.001..1000 metres' }
+                }
+            }
             if ($null -ne $resource.PSObject.Properties['motionInstanceIds']) {
                 $members = $resource.motionInstanceIds
                 if ($members -isnot [System.Array] -or $members.Count -lt 1 -or $members.Count -gt 32 -or
@@ -1820,10 +1841,15 @@ function Read-WorldSequenceDocument {
             }
             foreach ($effect in $template.effectTracks) {
                 $effectProperties = @('effectTrackId','slotId','resourceKind','resourceId','timing','startMs','durationMs','positionOffset','rotationDegrees','scale')
-                foreach ($optional in @('followObject','bone')) {
+                foreach ($optional in @('followObject','bone','fitEffectToDuration')) {
                     if ($null -ne $effect.PSObject.Properties[$optional]) { $effectProperties += $optional }
                 }
                 Assert-ExactJsonProperties $effect $effectProperties 'World Object effect track'
+                if ($null -ne $effect.PSObject.Properties['fitEffectToDuration'] -and
+                    ($effect.fitEffectToDuration -isnot [bool] -or
+                    ($effect.fitEffectToDuration -and $effect.resourceKind -cne 'V1_EFFECT'))) {
+                    throw 'World Object Effect fit must be boolean and true requires V1_EFFECT'
+                }
                 if (($null -ne $effect.PSObject.Properties['followObject'] -and $effect.followObject -isnot [bool]) -or
                     ($null -ne $effect.PSObject.Properties['bone'] -and ($effect.bone -isnot [string] -or
                     [Text.Encoding]::UTF8.GetByteCount([string]$effect.bone) -gt 256 -or $effect.bone -match '[\x00-\x1f\x7f]'))) {
@@ -1891,7 +1917,7 @@ function Read-WorldSequenceDocument {
     $instanceRows = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     foreach ($instance in $instances) {
         $instanceProperties = @('instanceId','templateId','enabled','startDelayMs','playbackSpeed','bindings')
-        foreach ($optional in @('anchorKind','position','motionEnd','nextMotionId','walkableSurface')) {
+        foreach ($optional in @('anchorKind','position','motionEnd','nextMotionId','walkableSurface','loopFullPresentation')) {
             if ($document.formatVersion -eq 3 -and $null -ne $instance.PSObject.Properties[$optional]) { $instanceProperties += $optional }
         }
         Assert-ExactJsonProperties $instance $instanceProperties 'World sequence instance'
@@ -1926,6 +1952,12 @@ function Read-WorldSequenceDocument {
         if ($null -ne $instance.PSObject.Properties['motionEnd']) {
             if ($instance.motionEnd -isnot [string] -or $instance.motionEnd -cnotin @('STOP','HOLD','LOOP','NEXT')) { throw 'Invalid world object motion completion' }
             $motionEnd = [string]$instance.motionEnd
+        }
+        if ($null -ne $instance.PSObject.Properties['loopFullPresentation'] -and
+            ($instance.loopFullPresentation -isnot [bool] -or
+            ($instance.loopFullPresentation -and ($motionEnd -cne 'LOOP' -or
+             $bindings.Count -ne 1 -or $bindings[0].targetKind -cne 'OBJECT_RESOURCE')))) {
+            throw 'Full presentation loop requires a boolean and one looping Object Resource'
         }
         $nextMotionId = ''
         if ($null -ne $instance.PSObject.Properties['nextMotionId']) {

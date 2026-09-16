@@ -426,6 +426,7 @@ private:
 		std::uint32_t runEpoch = 0, startTick = 0, durationMs = 0;
 		std::string memberId, cueId, occurrenceId, sequenceId;
 		float clockMs = 0.f;
+		bool untilDestroyed = false;
 		WORLD_EMISSION_ANCHOR emissionAnchor;
 		std::shared_ptr<CWorldSequencePlayer> player;
 	};
@@ -433,6 +434,7 @@ private:
 	std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingOwnedWorldCues;
 	std::map<std::string, OWNED_WORLD_CUE> m_OwnedWorldCues;
 	std::set<std::string> m_StoppedWorldOwners;
+	std::set<std::string> m_FinishedWorldOwners;
 	std::set<std::string> m_ConsumedWorldCueIds;
 	std::uint32_t m_iLatestWorldRunEpoch = 0u;
 	void Consume_OwnedWorldCue(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play,

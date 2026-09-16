@@ -17,6 +17,8 @@ namespace LostArk::Server
 		MONSTER,
 		TRIGGER_BOX,
 		COLLISION_BOX,
+		// Dynamic owned World cue body; never a bootstrap Monster or an AI actor.
+		WORLD_OBJECT,
 		END
 	};
 

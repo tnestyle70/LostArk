@@ -328,6 +328,7 @@
     {"kind": "V1", "assetId": "effect.kouku.gate3.doll.flame.full.restore", "displayName": "3관문_세이튼_마리오_기괴한 인형 양쪽 화염", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.pentagram.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.portal.full.restore", "displayName": "3관문_세이튼_마리오_중앙 진입 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore", "displayName": "진입 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore", "displayName": "작은 오망성", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.mario.center.full.restore", "displayName": "3관문_세이튼_마리오_중앙 오망성와 포탈", "parentId": "kouku.category.f204b0c871d711d0dee9"},
     {"kind": "V1", "assetId": "effect.kouku.dance.aura.root", "displayName": "무지개댄스_오라_루트배치", "parentId": "kouku.category.03e59f4ad8e6e6e3f9d3"},
@@ -973,6 +974,8 @@
     {"kind": "V1", "assetId": "effect.kouku.albion.cross.electric.impact", "displayName": "알비온_십자전기폭발", "parentId": "kouku.category.04ceab6684ca96fe8e7f"},
     {"kind": "V1", "assetId": "effect.kouku.albion.frontthree.electric.impact", "displayName": "알비온_전방세갈레전기폭발", "parentId": "kouku.category.515f8695f406565bda9c"},
     {"kind": "V1", "assetId": "effect.kouku.mario.blade.normal.full.restore", "displayName": "일반칼날이펙트", "parentId": "kouku.category.mario.pattern"},
-    {"kind": "V1", "assetId": "effect.kouku.mario.blade.instant-death.full.restore", "displayName": "즉사칼날이펙트", "parentId": "kouku.category.mario.pattern"}
+    {"kind": "V1", "assetId": "effect.kouku.mario.blade.instant-death.full.restore", "displayName": "즉사칼날이펙트", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.doll.flame.shared", "displayName": "괴기스러운 인형_회전 화염 뿜기_세이튼 공통 불뿜기", "parentId": "kouku.category.f204b0c871d711d0dee9"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.circus.ball.aura", "displayName": "서커스 공_무지개와 붉은 기운", "parentId": "kouku.category.f204b0c871d711d0dee9"}
   ]
 }

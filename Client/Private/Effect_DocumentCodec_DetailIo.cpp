@@ -441,6 +441,8 @@ namespace Client::EffectDocumentCodecDetail
 			Read_Bool(*pSprite, "billboard", Out.Sprite.bBillboard, strOutError) &&
 			Read_OptionalBool(*pSprite, "followEmitterAxisRotation",
 				Out.Sprite.bFollowEmitterAxisRotation, strOutError) &&
+			Read_OptionalBool(*pSprite, "twoSided",
+				Out.Sprite.bTwoSided, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegrees",
 				Out.Sprite.fBillboardRollDegrees, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegreesPerSecond",
@@ -803,6 +805,8 @@ namespace Client::EffectDocumentCodecDetail
 			<< Detail.Sprite.fBillboardRollDegreesPerSecond;
 		if (Detail.Sprite.bFollowEmitterAxisRotation)
 			Output << ", \"followEmitterAxisRotation\": true";
+		if (Detail.Sprite.bTwoSided)
+			Output << ", \"twoSided\": true";
 		if (Detail.Sprite.LinearReveal.bEnabled)
 		{
 			Output << ", \"linearReveal\": { \"enabled\": true, \"axis\": \""

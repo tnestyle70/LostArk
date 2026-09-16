@@ -702,6 +702,33 @@ std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_R
 	return g_SurfaceBindings;
 }
 
+bool_t Client::CMapAssetRenderUtils::Uses_OpaqueShadowPass(
+	const Engine::MODEL_SURFACE_PARAMETERS* surface,
+	const MAP_ASSET_RENDER_PROFILE& profile,
+	const bool_t useSourceMaterials)
+{
+	if (!surface || !useSourceMaterials ||
+		profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED ||
+		!std::isfinite(profile.opacity) || profile.opacity < 1.f)
+		return false;
+	switch (surface->family)
+	{
+	case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
+	case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
+		return !surface->pbrAlphaMasked;
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
+		return true;
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
+		return (surface->sourceOverlayFlags & 64u) == 0u;
+	case Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED:
+		// BG parallax changes UV only. Its sole shadow discard is mask bit 64.
+		return (surface->sourceBgFlags & 64u) == 0u;
+	default:
+		// Foliage, native character/map and other families retain their source VS/PS.
+		return false;
+	}
+}
+
 HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	const shared_ptr<Engine::CModel>& model,
 	const shared_ptr<Engine::CShader>& shader,

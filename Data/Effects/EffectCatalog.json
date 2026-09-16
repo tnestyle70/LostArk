@@ -1697,6 +1697,11 @@
       "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.center.portal.full.restore.effect.json"
     },
     {
+      "effectAssetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.entry.portal.full.restore.effect.json"
+    },
+    {
       "effectAssetId": "effect.kouku.gate3.mario.boss.pentagram.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"
@@ -2935,6 +2940,16 @@
       "effectAssetId": "effect.valtan.action.420620.stage004.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.action.420620.stage004.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.doll.flame.shared",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.doll.flame.shared.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.mario.circus.ball.aura",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.mario.circus.ball.aura.effect.json"
     }
   ]
 }

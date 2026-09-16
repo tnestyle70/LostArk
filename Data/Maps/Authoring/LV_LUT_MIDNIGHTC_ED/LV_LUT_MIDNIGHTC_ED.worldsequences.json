@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 2032,
+  "revision": 2033,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -207,7 +207,8 @@
       "animated": true,
       "scale": [1, 1, 1],
       "sequenceInstanceId": "",
-      "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.att_battle_2_01"
+      "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.att_battle_2_01",
+      "combatBody": {"maxHp":2000,"localCenterM":[-0.06336006500000002,0.6371705,0.03478447500000001],"halfExtentsM":[0.505442645,0.66646675,0.45264136499999996],"lifetimePolicy":"UNTIL_DESTROYED"}
     },
     {
       "objectId": "world.object.kouku.odd_doll.large",
@@ -219,8 +220,10 @@
       "animated": true,
       "scale": [1.60000002, 1.60000002, 1.60000002],
       "sequenceInstanceId": "",
-      "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01"
+      "defaultMotionInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
+      "combatBody": {"maxHp":2000,"localCenterM":[-0.06336006500000002,0.6371705,0.03478447500000001],"halfExtentsM":[0.505442645,0.66646675,0.45264136499999996],"lifetimePolicy":"UNTIL_DESTROYED"}
     },
+    {"objectId":"world.object.kouku.mario_circus_ball","displayName":"마리오 소환 공 (원본 크기)","modelAssetId":"Map/LV_LUT_MIDNIGHTC_ED/MarioProps/StripedBall/StripedBall.wmodel","anchorKind":"WORLD","diffuseTextureAssetId":"","modelPreScale":0.00999999978,"animated":false,"scale":[1,1,1],"sequenceInstanceId":"","defaultMotionInstanceId":"world.object.instance.kouku.mario_circus_ball.aura","combatBody":{"maxHp":2000,"localCenterM":[5.722045900991013e-08,0.4693360900878906,0.0],"halfExtentsM":[0.47080472946166996,0.47080474853515625,0.47080474853515625],"lifetimePolicy":"UNTIL_DESTROYED","shape":"ELLIPSOID"}},
     {
       "objectId": "world.object.mario.red_star_ball",
       "displayName": "Mario Red Ball (Star) / 빨간 별 공",
@@ -125440,9 +125443,7 @@
         { "slotId": "object", "clipName": "att_battle_2_01", "sourceStartMs": 1539, "startMs": 1539, "playbackRate": 0.60133332, "loop": false, "holdLastFrame": true },
         { "slotId": "object", "clipName": "att_battle_2_01", "sourceStartMs": 10559, "startMs": 16539, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ],
-      "effectTracks": [
-        { "effectTrackId": "effect.doll.flame", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.doll.flame.object-sustain15", "timing": "TIME", "followObject": true, "bone": "", "startMs": 0, "durationMs": 17314, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] }
-      ]
+      "effectTracks": [{"effectTrackId":"effect.doll.flame","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.gate3.doll.flame.shared","timing":"TIME","followObject":true,"bone":"","startMs":0,"durationMs":17314,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1],"fitEffectToDuration":false}]
     },
     {
       "sequenceId": "sequence.kouku.odd_doll.large.att_battle_2_01",
@@ -125464,9 +125465,7 @@
         { "slotId": "object", "clipName": "att_battle_2_01", "sourceStartMs": 1539, "startMs": 1539, "playbackRate": 0.60133332, "loop": false, "holdLastFrame": true },
         { "slotId": "object", "clipName": "att_battle_2_01", "sourceStartMs": 10559, "startMs": 16539, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ],
-      "effectTracks": [
-        { "effectTrackId": "effect.doll.flame", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.gate3.doll.flame.object-sustain15", "timing": "TIME", "followObject": true, "bone": "", "startMs": 0, "durationMs": 17314, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 90, 0], "scale": [1, 1, 1] }
-      ]
+      "effectTracks": [{"effectTrackId":"effect.doll.flame","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.gate3.doll.flame.shared","timing":"TIME","followObject":true,"bone":"","startMs":0,"durationMs":17314,"positionOffset":[0,0,0],"rotationDegrees":[0,90,0],"scale":[1,1,1],"fitEffectToDuration":false}]
     },
     {
       "sequenceId": "sequence.kouku.odd_doll.att_battle_1_r",
@@ -310826,7 +310825,8 @@
         }
       ],
       "animationTracks": []
-    }
+    },
+    {"sequenceId":"sequence.kouku.mario_circus_ball.aura","displayName":"마리오 소환 공_무지개빛에서 붉은빛 반복","category":"WorldObject","durationMs":7500,"interpolation":"LINEAR","objectMotion":{"velocity":[0,0,0],"acceleration":[0,0,0],"angularVelocityDegrees":[0,0,0],"revolutionDegreesPerSecond":[0,0,0],"revolutionOffset":[0,0,0],"count":1,"intervalMs":0,"spreadDegrees":0,"seed":1},"tracks":[{"slotId":"object","keys":[{"timeMs":0,"positionOffset":[-5.72199994e-08,0.00146865845,0],"rotationQuaternion":[0,0,0,1],"scaleMultiplier":[1,1,1],"visible":true},{"timeMs":7500,"positionOffset":[-5.72199994e-08,0.00146865845,0],"rotationQuaternion":[0,0,0,1],"scaleMultiplier":[1,1,1],"visible":true}]}],"animationTracks":[],"effectTracks":[{"effectTrackId":"effect.circus.ball.aura","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.gate3.mario.circus.ball.aura","timing":"TIME","followObject":true,"bone":"","startMs":0,"durationMs":7500,"fitEffectToDuration":false,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1]}]}
   ],
   "instances": [
     {
@@ -313425,11 +313425,12 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
-      "motionEnd": "STOP",
+      "motionEnd": "LOOP",
       "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.odd_doll" }
-      ]
+      ],
+      "loopFullPresentation": true
     },
     {
       "instanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
@@ -313439,11 +313440,12 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
-      "motionEnd": "STOP",
+      "motionEnd": "LOOP",
       "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.odd_doll.large" }
-      ]
+      ],
+      "loopFullPresentation": true
     },
     {
       "instanceId": "world.object.instance.kouku.odd_doll.att_battle_1_r",
@@ -316286,6 +316288,7 @@
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.g3.bazooka" }
       ]
-    }
+    },
+    {"instanceId":"world.object.instance.kouku.mario_circus_ball.aura","templateId":"sequence.kouku.mario_circus_ball.aura","enabled":true,"startDelayMs":0,"playbackSpeed":1,"anchorKind":"WORLD","position":[0,0,0],"motionEnd":"LOOP","nextMotionId":"","bindings":[{"slotId":"object","targetKind":"OBJECT_RESOURCE","targetId":"world.object.kouku.mario_circus_ball"}],"loopFullPresentation":true}
   ]
 }

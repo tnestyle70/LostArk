@@ -1788,6 +1788,11 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     if (timing == 1) changed |= EditUInt("Effect Start (ms)", row.startMs, sequence.durationMs);
     else ImGui::TextDisabled("Follows Motion Lifetime: %u ms", sequence.durationMs);
     changed |= EditUInt("Effect Window (ms)", row.durationMs, CWorldSequenceDocument::MAX_DURATION_MS, 1);
+    if (row.resourceKind == "V1_EFFECT")
+    {
+        changed |= ImGui::Checkbox("Fit Effect lifetime to box", &row.fitEffectToDuration);
+        if (row.fitEffectToDuration) ImGui::TextDisabled("Play the source Effect once over this window; its Object and bone keep their Motion clock.");
+    }
     changed |= ImGui::DragFloat3("Effect Offset (m)", &row.positionOffset.x, .01f);
     changed |= ImGui::DragFloat3("Effect Rotation (deg)", &row.rotationDegrees.x, .5f);
     changed |= ImGui::DragFloat3("Effect Scale", &row.scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
@@ -2134,6 +2139,23 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
         changed |= ImGui::DragFloat("Model Import Scale", &resource.modelPreScale, .001f, .000001f, 1000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::DragFloat3("Object Scale", &resource.scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::Checkbox("Animated Model", &resource.animated);
+        ImGui::SeparatorText("Combat Body / Lifetime");
+        bool combat = resource.combatBody.has_value();
+        ImGui::BeginDisabled(resource.anchorKind != "WORLD");
+        if (ImGui::Checkbox("Destructible Object", &combat))
+        { if (combat) resource.combatBody = WORLD_SEQUENCE_COMBAT_BODY{}; else resource.combatBody.reset(); changed = true; }
+        ImGui::EndDisabled();
+        if (resource.combatBody)
+        {
+            auto& body = *resource.combatBody;
+            changed |= EditUInt("Object Max HP", body.maxHp, 1000000000u, 1u);
+            int bodyShape = body.shape == "ELLIPSOID" ? 1 : 0;
+            if (ImGui::Combo("Body Shape", &bodyShape, "Box\0Ellipsoid\0"))
+            { body.shape = bodyShape == 1 ? "ELLIPSOID" : "BOX"; changed = true; }
+            changed |= ImGui::DragFloat3("Body Center (local m)", &body.localCenterM.x, .01f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            changed |= ImGui::DragFloat3(body.shape == "ELLIPSOID" ? "Body Semiaxes (local m)" : "Body Half Extents (local m)", &body.halfExtentsM.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::TextWrapped("Survives until Server HP reaches zero. Body uses metres after Model Import Scale; Object and placement scales apply afterward. Save and publish to apply combat changes.");
+        }
     }
     if (changed) Mark_Dirty();
     if (!alias)
@@ -2382,52 +2404,14 @@ void CWorldObjectTool::Render_Detail()
     const bool savedTravel = !alias && ObjectTravel::Read(*sequence, false, currentTravel, travelStatus);
     uint32_t duration = sequence->durationMs;
     ImGui::BeginDisabled(savedTravel);
-    if (EditUInt("Motion Key Timeline (ms)", duration, CWorldSequenceDocument::MAX_DURATION_MS, 1))
+    if (EditUInt("Stage Duration (ms)", duration, CWorldSequenceDocument::MAX_DURATION_MS, 1))
+        (void)Resize_Stage(*sequence, duration);
+    if (!sequence->animationTracks.empty() && ImGui::Button("Fit Stage to Animation"))
     {
-        // Preserve the key order and endpoint contract even when shortening a state.
-        bool valid = true;
-        for (const auto& track : sequence->tracks) if (duration + 1u < track.keys.size()) valid = false;
-        for (const auto& collider : sequence->colliderTracks)
-            if (uint64_t(collider.startMs) + collider.durationMs > duration) valid = false;
-        for (const auto& animation : sequence->animationTracks)
-            if (static_cast<size_t>(duration) < std::count_if(sequence->animationTracks.begin(), sequence->animationTracks.end(),
-                [&](const auto& other) { return other.slotId == animation.slotId; })) valid = false;
-        if (valid)
-        {
-            for (auto& track : sequence->tracks)
-            {
-                for (size_t key = 1; key + 1 < track.keys.size(); ++key)
-                {
-                    const auto scaled = static_cast<uint32_t>(std::llround(static_cast<double>(track.keys[key].timeMs) * duration / sequence->durationMs));
-                    track.keys[key].timeMs = (std::clamp)(scaled, track.keys[key - 1].timeMs + 1,
-                        duration - static_cast<uint32_t>(track.keys.size() - key - 1));
-                }
-                if (!track.keys.empty()) track.keys.back().timeMs = duration;
-            }
-            std::unordered_map<std::string, uint32_t> previousStarts;
-            for (size_t index = 0; index < sequence->animationTracks.size(); ++index)
-            {
-                auto& animation = sequence->animationTracks[index];
-                const auto previous = previousStarts.find(animation.slotId);
-                const auto remaining = std::count_if(sequence->animationTracks.begin() + index + 1, sequence->animationTracks.end(),
-                    [&](const auto& other) { return other.slotId == animation.slotId; });
-                const uint32_t scaled = static_cast<uint32_t>(static_cast<double>(animation.startMs) * duration / sequence->durationMs);
-                animation.startMs = previous == previousStarts.end() ? 0 : (std::clamp)(scaled,
-                    previous->second + 1, duration - static_cast<uint32_t>(remaining) - 1);
-                previousStarts[animation.slotId] = animation.startMs;
-            }
-            for (auto& effect : sequence->effectTracks)
-                if (effect.timing == "TIME")
-                    effect.startMs = static_cast<uint32_t>(static_cast<uint64_t>(effect.startMs) * duration / sequence->durationMs);
-            sequence->durationMs = duration;
-            if (sequence->objectMotion.count > 1)
-                sequence->objectMotion.intervalMs = (std::min)(sequence->objectMotion.intervalMs, (sequence->effectTracks.empty() ? duration - 1 : CWorldSequenceDocument::MAX_DURATION_MS - duration) / (sequence->objectMotion.count - 1));
-            for (auto& emission : sequence->objectMotion.emissions)
-                emission.startDelayMs = (std::min)(emission.startDelayMs, sequence->effectTracks.empty() ? duration - 1 : CWorldSequenceDocument::MAX_DURATION_MS - duration);
-            changed = true;
-        }
-        else m_Status = "Lifetime must contain every Collider window and leave at least one millisecond between every existing key or clip. Rows preserved.";
+        uint32_t end = 0u;
+        if (Animation_EndMs(*sequence, false, end)) (void)Resize_Stage(*sequence, end);
     }
+    ImGui::TextDisabled("Animation, Effect and Collider times stay unchanged. Shortening refuses to cut authored content.");
     ImGui::EndDisabled();
     if (savedTravel) ImGui::TextDisabled("Edit Individual Lifetime above; this timeline also includes the last emission delay when needed.");
     ImGui::BeginDisabled(alias || Preview_Group());
@@ -2436,10 +2420,20 @@ void CWorldObjectTool::Render_Detail()
     {
         instance->motionEnd = static_cast<WORLD_SEQUENCE_MOTION_END>(motionEnd);
         if (instance->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) instance->nextMotionId.clear();
+        if (instance->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP) instance->loopFullPresentation = false;
         changed = true;
     }
     ImGui::EndDisabled();
-    if (Preview_Group()) ImGui::TextDisabled("Combined preview members use Stop; each Lifetime remains editable.");
+    ImGui::BeginDisabled(alias);
+    if (ImGui::Checkbox("Loop Animation + Effects", &instance->loopFullPresentation))
+    {
+        if (instance->loopFullPresentation) { instance->motionEnd = WORLD_SEQUENCE_MOTION_END::LOOP; instance->nextMotionId.clear(); }
+        changed = true;
+    }
+    ImGui::EndDisabled();
+    if (instance->loopFullPresentation)
+        ImGui::TextDisabled("Whole cycle: %u ms. Restart after the last Effect tail.", instance->CycleSpanMs(*sequence));
+    if (Preview_Group()) ImGui::TextDisabled("Completion controls above apply to the selected member Motion.");
     if (alias) ImGui::TextDisabled("Placed Object motions use Stop.");
     else if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT)
     {
@@ -2856,15 +2850,28 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
         if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, extent, "%.0f")) Seek(clock);
         ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
     }
-    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
+    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Zoom##ObjectTimeline", &m_Zoom, .1f, 500.f, "%.1f px/s");
+    ImGui::SameLine(); if (ImGui::Button("Fit##ObjectTimeline")) m_TimelineFitRequested = true;
+    ImGui::TextDisabled("Ctrl + mouse wheel: zoom at cursor");
     if (ImGui::BeginChild("CombinedObjectTimeline", ImVec2(0.f, (std::max)(110.f, ImGui::GetContentRegionAvail().y)),
         true, ImGuiWindowFlags_HorizontalScrollbar))
     {
         const ImVec2 origin = ImGui::GetCursorScreenPos();
         auto* draw = ImGui::GetWindowDrawList();
         const uint32_t duration = static_cast<uint32_t>(std::ceil(extent));
-        const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, extent * m_Zoom * .001f);
-        const float pixelsPerMs = width / extent;
+        const float availableWidth = (std::max)(40.f, ImGui::GetContentRegionAvail().x - 12.f);
+        if (m_TimelineFitRequested)
+        { m_Zoom = (std::clamp)(availableWidth * 1000.f / extent, .1f, 500.f); m_TimelineFitRequested = false; ImGui::SetScrollX(0.f); }
+        float width = (std::max)(availableWidth, extent * m_Zoom * .001f);
+        float pixelsPerMs = width / extent;
+        const auto& io = ImGui::GetIO();
+        if (ImGui::IsWindowHovered() && io.KeyCtrl && io.MouseWheel != 0.f && !io.WantTextInput && !ImGui::IsAnyItemActive())
+        {
+            const float oldScale = pixelsPerMs;
+            m_Zoom = (std::clamp)(m_Zoom * std::pow(1.2f, io.MouseWheel), .1f, 500.f);
+            width = (std::max)(availableWidth, extent * m_Zoom * .001f); pixelsPerMs = width / extent;
+            ImGui::SetScrollX((std::max)(0.f, ImGui::GetScrollX() + (io.MousePos.x - origin.x) * (pixelsPerMs / oldScale - 1.f)));
+        }
         CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), duration, pixelsPerMs * 1000.f);
         ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
         if (!parentOverview && ImGui::IsItemActive())
@@ -3005,7 +3012,9 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     float clock = (std::min)(m_ClockMs, SpanMs());
     if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
     ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
-    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
+    ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Zoom##ObjectTimeline", &m_Zoom, .1f, 500.f, "%.1f px/s");
+    ImGui::SameLine(); if (ImGui::Button("Fit##ObjectTimeline")) m_TimelineFitRequested = true;
+    ImGui::TextDisabled("Ctrl + mouse wheel: zoom at cursor | Drag Stage right edge: change duration");
     ImGui::BeginDisabled((m_SelectedBoxKind != 1 && m_SelectedBoxKind != 2 && m_SelectedBoxKind != 3) ||
         (m_SelectedBoxKind == 1 && m_SelectedAnimationRow >= sequence.animationTracks.size()) ||
         (m_SelectedBoxKind == 2 && m_SelectedEffectRow >= sequence.effectTracks.size()) ||
@@ -3023,8 +3032,9 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     for (const auto& animation : sequence.animationTracks)
         if (std::find(animationSlots.begin(), animationSlots.end(), animation.slotId) == animationSlots.end()) animationSlots.push_back(animation.slotId);
     const uint32_t timelineDuration = sequence.PresentationSpanMs();
-    const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, timelineDuration * m_Zoom * .001f);
-    const float pixelsPerMs = width / timelineDuration;
+    const float availableWidth = (std::max)(40.f, ImGui::GetContentRegionAvail().x - labelWidth - 24.f);
+    float width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f);
+    float pixelsPerMs = width / timelineDuration;
     const bool showPhysics = resource && resource->sequenceInstanceId.empty();
     const float tracksHeight = rowHeight * static_cast<float>(1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size() + sequence.colliderTracks.size());
     const float height = 28.f + tracksHeight + (showPhysics ? 64.f : 0.f);
@@ -3032,6 +3042,20 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     {
         const auto labelOrigin = ImGui::GetCursorScreenPos();
         const ImVec2 origin(labelOrigin.x + labelWidth, labelOrigin.y);
+        if (m_TimelineFitRequested)
+        {
+            m_Zoom = (std::clamp)(availableWidth * 1000.f / timelineDuration, .1f, 500.f);
+            width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f); pixelsPerMs = width / timelineDuration;
+            m_TimelineFitRequested = false; ImGui::SetScrollX(0.f);
+        }
+        const auto& io = ImGui::GetIO();
+        if (ImGui::IsWindowHovered() && io.KeyCtrl && io.MouseWheel != 0.f && !io.WantTextInput && !ImGui::IsAnyItemActive())
+        {
+            const float oldScale = pixelsPerMs;
+            m_Zoom = (std::clamp)(m_Zoom * std::pow(1.2f, io.MouseWheel), .1f, 500.f);
+            width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f); pixelsPerMs = width / timelineDuration;
+            ImGui::SetScrollX((std::max)(0.f, ImGui::GetScrollX() + (io.MousePos.x - origin.x) * (pixelsPerMs / oldScale - 1.f)));
+        }
         auto* draw = ImGui::GetWindowDrawList();
         const auto label = [&](const char* text, float y) { draw->AddText(ImVec2(labelOrigin.x + 4.f, y + 4.f), IM_COL32_WHITE, text); };
         ImGui::SetCursorScreenPos(origin);
@@ -3044,9 +3068,43 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             if (instance) Seek(instance->startDelayMs + local / instance->playbackSpeed);
         }
         label("Stage", origin.y + 28.f);
+        const float stageEndX = origin.x + sequence.durationMs * pixelsPerMs;
+        ImGui::SetCursorScreenPos(ImVec2(origin.x, origin.y + 28.f));
+        ImGui::InvisibleButton("StageSelect", ImVec2((std::max)(1.f, stageEndX - origin.x - 7.f), 25.f));
+        if (ImGui::IsItemClicked()) { m_SelectedBoxKind = 4; m_DetailOpen = true; }
         CompositionTimeline::DrawBox(draw, ImVec2(origin.x, origin.y + 28.f),
-            ImVec2(origin.x + sequence.durationMs * pixelsPerMs, origin.y + 53.f),
-            IM_COL32(96, 96, 112, 255), false, sequence.displayName.c_str());
+            ImVec2(stageEndX, origin.y + 53.f), IM_COL32(96, 96, 112, 255), m_SelectedBoxKind == 4, sequence.displayName.c_str());
+        WORLD_OBJECT_TRAVEL_DRAFT travel;
+        std::string travelReason;
+        const auto* stageResource = m_Document.Find_ObjectResource(m_SelectedObject);
+        const bool travelOwned = stageResource && stageResource->sequenceInstanceId.empty() && ObjectTravel::Read(sequence, false, travel, travelReason);
+        ImGui::BeginDisabled(travelOwned);
+        ImGui::SetCursorScreenPos(ImVec2(stageEndX - 6.f, origin.y + 28.f));
+        ImGui::InvisibleButton("StageEndResize", ImVec2(12.f, 25.f));
+        if (ImGui::IsItemActivated())
+        {
+            m_SelectedBoxKind = 4; m_DetailOpen = true;
+            m_StageResizeSequence = sequence.sequenceId;
+            m_StageResizeOriginalMs = m_StageResizeDurationMs = sequence.durationMs;
+            m_StageResizePixelsPerMs = pixelsPerMs;
+        }
+        if (ImGui::IsItemActive() && m_StageResizeSequence == sequence.sequenceId)
+        {
+            const double delta = ImGui::GetMouseDragDelta(0).x / m_StageResizePixelsPerMs;
+            m_StageResizeDurationMs = static_cast<uint32_t>((std::clamp)(std::round(m_StageResizeOriginalMs + delta), 1., double(CWorldSequenceDocument::MAX_DURATION_MS)));
+            const float x = origin.x + m_StageResizeDurationMs * pixelsPerMs;
+            draw->AddLine(ImVec2(x, origin.y + 28.f), ImVec2(x, origin.y + 53.f), IM_COL32(255, 223, 87, 255), 3.f);
+            ImGui::SetTooltip("Stage: %u ms (release to apply)", m_StageResizeDurationMs);
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        const bool applyStageResize = ImGui::IsItemDeactivated() && m_StageResizeSequence == sequence.sequenceId;
+        ImGui::EndDisabled();
+        if (applyStageResize)
+        {
+            const auto requested = m_StageResizeDurationMs;
+            m_StageResizeSequence.clear();
+            (void)Resize_Stage(sequence, requested);
+        }
         for (size_t index = 0; index < sequence.tracks.size(); ++index)
         {
             auto& track = sequence.tracks[index]; ImGui::PushID(track.slotId.c_str());
@@ -3173,6 +3231,44 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         ImGui::SetCursorScreenPos(labelOrigin); ImGui::Dummy(ImVec2(width + labelWidth, height));
     }
     ImGui::EndChild();
+}
+
+bool CWorldObjectTool::Animation_EndMs(const WORLD_SEQUENCE_TEMPLATE& sequence, const bool preserveWindows, uint32_t& outEnd)
+{
+    outEnd = 0u;
+    if (sequence.animationTracks.empty()) return true;
+    Refresh_AnimationResources();
+    if (!m_AnimationCatalogReady)
+    { m_Status = "Cannot resolve native Animation lengths: " + m_AnimationResourceStatus; return false; }
+    double end = 0.;
+    for (const auto& clip : sequence.animationTracks)
+    {
+        const auto source = std::find_if(m_AnimationResources.begin(), m_AnimationResources.end(),
+            [&](const auto& row) { return row.clipName == clip.clipName; });
+        if (source == m_AnimationResources.end() || !std::isfinite(clip.playbackRate) || clip.playbackRate <= 0.f ||
+            clip.sourceStartMs > source->durationMs)
+        { m_Status = "Cannot resize Stage: missing or invalid native Animation " + clip.clipName; return false; }
+        double nativeEnd = clip.startMs + (std::max)(1., std::ceil((source->durationMs - clip.sourceStartMs) / clip.playbackRate));
+        // Earlier clips already end at the next authored clip, regardless of their natural duration.
+        for (const auto& next : sequence.animationTracks)
+            if (next.slotId == clip.slotId && next.startMs > clip.startMs) nativeEnd = (std::min)(nativeEnd, double(next.startMs));
+        if (preserveWindows) nativeEnd = (std::min)(nativeEnd, double(sequence.durationMs));
+        end = (std::max)(end, nativeEnd);
+    }
+    if (!std::isfinite(end) || end < 1. || end > CWorldSequenceDocument::MAX_DURATION_MS)
+    { m_Status = "Native Animation range exceeds the Stage limit."; return false; }
+    outEnd = static_cast<uint32_t>(end);
+    return true;
+}
+
+bool CWorldObjectTool::Resize_Stage(WORLD_SEQUENCE_TEMPLATE& sequence, const uint32_t durationMs)
+{
+    if (durationMs == sequence.durationMs) return true;
+    uint32_t required = 0u;
+    if (durationMs < sequence.durationMs && !Animation_EndMs(sequence, true, required)) return false;
+    if (!m_Document.Resize_TimelineDuration(sequence.sequenceId, durationMs, required, m_MapTargets, m_DeployTargets, m_Status)) return false;
+    Mark_Dirty();
+    return true;
 }
 
 void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)

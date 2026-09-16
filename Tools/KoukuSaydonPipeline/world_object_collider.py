@@ -235,6 +235,9 @@ def bake_windows(sequences, worlds, boxes, load_model):
             emissions = motion.get("emissions",[])
             delays = [e["startDelayMs"] for e in emissions] if emissions else [i*motion.get("intervalMs",0) for i in range(motion.get("count",1))]
             span = sequence["durationMs"] + (max(delays,default=0) if sequence.get("effectTracks") else 0)
+            if instance.get("loopFullPresentation", False):
+                effect_end = max((sequence["durationMs"] if row.get("timing", "MOTION_END") == "MOTION_END" else row.get("startMs", 0)) + row["durationMs"] for row in sequence.get("effectTracks", [])) if sequence.get("effectTracks") else sequence["durationMs"]
+                span = max(span, effect_end + max(delays, default=0))
             end_policy = instance.get("motionEnd","STOP")
             repeats = math.ceil(max(0,box["durationMs"]-begin)/(span/rate)) if end_policy == "LOOP" else 1
             for cycle in range(repeats):

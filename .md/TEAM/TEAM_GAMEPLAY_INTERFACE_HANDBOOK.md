@@ -35,7 +35,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 `CHARACTER_SELECT_ARENA`의 gameplay authority는 Server에 남지만 simulation ownership은 session-private이다. 각 session은 자기 `CGameRoom`의 player, audition entity, HP와 damage event만 snapshot으로 받고 다른 Character Select session과 만나지 않는다. 퇴장한 session의 private room은 queued `LEAVE`와 reset을 처리한 뒤 폐기한다. Bern, Valtan, Training Ground는 기존처럼 world별 shared room이므로 그 안에서는 여러 player가 같은 authoritative 상태를 본다.
 
-Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Character Select, Training, Valtan entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
+Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
 2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.14:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.14/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.14:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
@@ -279,6 +279,8 @@ Client의 gameplay 키보드·마우스와 raw 입력은 실제 Client 창이 fo
 | H | `vehicleId` | 탈것 탑승/하차 토글. `C2S_SET_VEHICLE_RIDING`을 제출하고 결과는 `PLAYER_SNAPSHOT.iVehicleId`로 반영 |
 
 `CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Controller는 Transform을 직접 변경하거나 `Play_Skill`을 호출하지 않는다. 일반 이동 명령의 typed sink 송신이 성공하면 `CCharacter::Predict_NetworkMoveGoal(sequence, goal)`로 자기 캐릭터의 표시 예측을 요청한다.
+
+우클릭 이동의 hold 재전송은 유지하고 `effect.world.mouse_click`은 최초 물리 press에서 송신이 성공한 경우에만 생성한다. `Request_MoveToPoint(goal, playClickEffect = true)`의 일반 이동 caller는 raw press edge를 전달하고, Bern NPC 접근의 명시 클릭 caller는 기본값을 사용한다. UI·잡힘·타기팅 종료로 표식을 다시 생성하지 않는다.
 
 일반 클릭 이동 예측은 `CCharacter`의 기존 `CNavigation/CNavPathFollower`와 `CLocalMovePrediction`이 소유한다. 송신 직후 RUN을 요청하고 다음 ObjectUpdate부터 위치를 전진시킨다. `ClientReplication`은 protocol 81 `PLAYER_SNAPSHOT`의 `iLastProcessedMoveSequence`, `fMoveSpeed`(태세 배율 포함), `canPredictMove`, `hasMoveGoal`, `fMoveWaypointX/Y/Z`를 전달한다. 처리 sequence는 이동 승인이 아니며, 최신 미처리 클릭은 이전 IDLE 응답으로 취소하지 않는다. 처리된 입력은 Server 위치와 다음 경유점으로 보정한다. 외삽은 150ms와 다음 경유점으로, 무응답 예측은 350ms로 제한한다. 연속 위치 오차는 최소 80ms와 오차/이동속도에 따른 기간으로 줄이며, 큰 불연속·피격·사망·패턴 구속·마리오는 예측을 해제한다. 일반 예측에서 SKILL 보간으로 넘어갈 때만 표시 잔여 offset을 120ms에 줄인다. 두 replication 소비자는 같은 SKILL 상태를 전달한다. 다른 플레이어는 기존 2 tick 보간을 사용하고 스킬·피해·충돌 권위는 Server에 남는다. Client 경로를 Server 정답으로 전송하지 않는다. Client/Server gameplay socket은 TCP_NODELAY를 사용한다.
 
@@ -832,6 +834,11 @@ Create Pattern 또는 Link Existing Pattern으로 연결하며 원본 패턴·�
 모든 Composition Save는 수정 내용을 저장하고, Patterns 목록의 `Publish All Patterns`가 전체
 Parent/Bundle/Pattern을 함께 게시한다. 수동 PRODUCT 선택은 없으며 publisher가 각 대상의 실행
 가능 여부를 검사한다. 미완성 항목은 F1의 같은 위치에 사유와 함께 남고 재생만 비활성화된다.
+Kouku Composition과 독립 Sequencer의 Save는 로드 기준본·draft·현재 저장본을 비교한다.
+서로 다른 stable ID/필드의 변경은 함께 저장하고, 동일 필드의 다른 변경·삭제와 수정·상충하는
+행 순서는 경로를 알려 거절하며 draft와 디스크를 보존한다. 좌표 같은 비-ID 배열은 통째로
+한 필드다. 외부 writer는 revision 증가와 writer lock을 유지하며, 저장 성공 후 편집기는 병합된
+LastGood을 소비한다. 구버전 실행 파일의 충돌을 Reload나 파일 전체 덮어쓰기로 우회하지 않는다.
 Encounter/patternbindings와 Gameplay 게시 중 실패하면 domain owner가 이전 생성물·receipt를 복구한다.
 배포 성공 후 F1 목록을 갱신하며 Complete Play는 최신 Product를 재조회한다. Workbench의 미저장
 변경·배포 진행·source/Product revision 불일치를 거절하고, Server 활성 revision 검사는 유지한다.
@@ -859,6 +866,12 @@ Stage가 포함되면 뒤 구간을 밀고 삽입점을 가로지르는 기존 m
 외부 카드와 검색 master 참조는 유지한다. 긴 master/World까지 직접 선택하면 그 전체 구간이 복제되므로
 한 타격만 복제할 때는 선택 표시를 확인한다. lane만 복제하면 선택 끝에 배치하고 필요한 끝 시간을 늘린다.
 Delete도 선택 전체를 한 번에 처리한다. Earlier/Later는 Stage/Animation만 선택했을 때 사용한다.
+쿠크 Composition과 독립 Sequence에서 Ctrl+C는 선택한 Animation·Effect를 세션 안에 복사하고,
+다른 Pattern을 선택한 뒤 Ctrl+V는 대상 Pattern 끝에 추가한다. 혼합 선택의 상대 시각·clip 구간·
+재생 속도·Effect 수명·배치·그룹을 유지하고 새 stable ID를 발급한다. 함께 선택한 두 clip의
+Animation Blend와 필요한 World owner도 연결한다. 다른 actor의 animation, 지원하지 않는 lane,
+누락되거나 변경된 의존 정의는 이유를 표시하고 전체 붙여넣기를 거절한다. 텍스트 입력·드래그 중에는
+단축키를 소비하지 않는다. 기존 Save로 저장하며 운영체제 clipboard나 다른 편집 세션으로 전송하지 않는다.
 복제·삭제 후 Save → Publish All Patterns → Server 재시작을 거쳐 Complete Play로 확인한다.
 Pattern/Parent/Bundle/Logic/Resource의 Rename은 현재 표시 이름을 열어 Apply하고 기존 Save로 저장한다.
 stable ID와 참조는 바뀌지 않는다. Stage 삽입·삭제는 겹치는 BossMotion 시간도 함께 늘리거나 압축하며
@@ -917,14 +930,21 @@ Server/Shared/Client는 같은 protocol 84로 함께 빌드·재시작한다. FE
 마리오 진행 횟수는 Server 방 상태가 소유한다. 시작·초기화는1이며, `ENTER_AREA`의 단일
 `MARIO_ENTER` 결과가 실제 입장 commit에 성공했을 때만1..4단계를 소비한다. UI 이름이나
 Client collider가 횟수를 증가시키지 않는다. `PATTERN_COMPLETION_COUNT` duration은 같은
-관문의1..16개 패턴 pool과 완료 개수를 저장하고, 선택된 실제 패턴의 `COMPLETED`만 세어
-Success 결과를 실행한다. Timeout·취소·실패를 성공으로 바꾸지 않는다.
+관문의1..16개 패턴 pool과 완료 개수를 저장하고, Server가 중복 없이 선택한 실제 패턴의
+`PATTERN_COMPLETED`만 센다. Success는 비워 두거나 FOLLOWUP_PATTERN 하나를 연결한다.
+비어 있으면 마지막 완료로 해당 chain을 종료하고, 연결했으면 기존 후속 패턴을 실행한다.
+Timeout·취소·실패를 성공으로 바꾸지 않는다. 명시적인 lifetime을 가진 Parent Summon은 기존
+확장 Stage를 사용해 후보로 검증하며, 원본의 빈 Stage 배열만으로 배제하지 않는다.
+Sequencer Play는 활성 completion-count Logic이 있는 패턴을 기존 typed Server Play로 보낸다.
+해당 요청의 Server 패턴 ID·현재 시작 tick으로 선택과 커서를 갱신하고, 편집 입력이 시작되면
+이번 실행의 자동 선택을 멈춰 미적용 입력을 보존한다. Stop은 같은 Server service로 제출한다.
 마리오 시작 root의 entry collider·anchor·시계는 child 패턴이 바뀌는 동안 Server가 유지하고,
 기존 Bundle member state를 통해 Client의 retained entry presentation에 전달한다. 늦은 입장도
 같은 root 시계를 소비하며, 입장 소비·chain 종료·취소에는 해당 owner의 상태를 정리한다.
-솔로 마리오 입장 회차는 Server가 참가자 identity와 실제 복귀 완료를 보관한다. 랜덤 패턴을 모두
-마쳐도 진입자가 남아 있으면 2페이즈 Success를 보류한다. 미진입 또는 복귀 완료 상태에서는
-세 패턴 완료 직후 이어지며, 사망·퇴장은 성공으로 대신 처리하지 않는다. 현재 P33은 감금 판정이 없다.
+Success 후속 패턴이 연결된 솔로 마리오 회차는 Server가 참가자 identity와 실제 복귀 완료를
+보관한다. 지정한 랜덤 패턴을 모두 마쳐도 진입자가 남아 있으면 2페이즈 Success를 보류한다.
+미진입 또는 복귀 완료 상태에서는 지정 완료 개수를 채운 직후 이어지며, 사망·퇴장은 성공으로
+대신 처리하지 않는다. 현재 P33은 감금 판정이 없다.
 숫자열 0키는 마리오 조작 중 typed MARIO_RETURN 요청을 보낸다. Server가 해당 회차의 마지막
 movePlayer 트리거와 3관문 stage.kakul.sl05 목적지의 navigation/collision을 검증하고 기존
 스크립트 이동을 실행한다. 마지막 출구와 0키 모두 실제 착지 뒤 복귀를 완료한다. Client는
@@ -1539,7 +1559,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
 - Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster/Warlord 여섯 선택 slot, Lobby 승인 Character Select visual map, Server-authoritative class 변경, 여섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
-- Character Select `Create Character`의 process-session pending/created nickname transaction, Server-approved Bern commit, created/audition direct Valtan identity, Bern/Valtan Server-replicated nameplate
+- Character Select `Create Character`의 process-session pending/created nickname transaction, Server-approved Bern commit, created/audition direct Bern/Valtan/KoukuSaydon identity, Bern/Valtan Server-replicated nameplate
 
 별도 수직 슬라이스:
 
@@ -1623,3 +1643,16 @@ Projector는 각 세트의 hash visual ID·lifetime을 `showtimeTargets.randomVo
 Object Sequencer의 Play 왼쪽과 Object Detail의 Edit Parent Object 왼쪽 Save는 같은 원본 저장을 사용한다. 새 Logic 정의만 만들었어도 Pattern 또는 Sequence 문서는 미저장 상태다. 해당 Save 후 Object Save를 사용한다. 이미 실행 중인 Publish만 완료를 기다리며, Object Save를 위해 Publish를 새로 시작할 필요는 없다. 저장 상태와 게시 상태는 별개로 표시한다.
 
 Collider 행은 일반 피해(DAMAGE, 최대 HP 정수 비율), 즉사(INSTANT_DEATH), 갈고리 부착(HOOK_CAPTURE)을 설정한다. 모델 자전과 독립된 수평 rectangle이 Object 이동을 따르며, 갈고리의 본과 미터 offset으로 실제 끝 위치를 지정한다. WorldSequence 데이터 계약은 AREA_DATA_LAYER_GUIDE의 Object Motion Collider 절을 따른다. 제품 결과는 기존 Server ENTER_AREA와 WORLD_HOOK_TIP attachment로 전달한다. 기존 잡힌 캐릭터 pose를 유지하므로 새 매달림 애니메이션을 복원했다는 의미는 아니다.
+
+### HP가 있는 Kouku WORLD cue
+
+Object Tool `combatBody/UNTIL_DESTROYED`는 Kouku projector→`PATTERNWORLDCOMBAT`→Server의 명시적 `WORLD_OBJECT` 피격 대상으로 연결된다. 기존 PlayerSkill/Projectile/ServerCombatHit 경로가 HP를 판정하며, 일반 monster/NPC bootstrap 생성과 Client monster presentation을 사용하지 않는다. 생성 전 cue packet을 검증하고 boss tick 중에는 stage한 뒤 tick 경계에서 entity를 commit한다.
+
+WORLD timeline은 한 번의 spawn을 소유하고 Server HP와 개별 cue identity가 이후 수명을 소유한다. 정상 Pattern/Bundle 완료는 유지하며 HP0, 취소, 새 run, 원래 boss의 제거·사망, owner session 퇴장과 room reset은 exact `STOP_CUE`로 모델·Effect를 함께 정리한다. late join은 살아 있는 cue만 재생하고 Client tombstone은 먼저 도착한 STOP 뒤의 지연 PLAY를 무시한다. wire protocol88의 `bUntilDestroyed`와 `STOP_CUE`를 쓰므로 양쪽 실행 파일을 함께 갱신한다. 데이터 필드·현재 고정 WORLD/count1/LOOP 지원 범위는 [Area 가이드](AREA_DATA_LAYER_GUIDE.md#생존하는-pattern-world-object와-object-tool-반복)를 따른다.
+
+
+### Kouku occurrence의 반복 Effect 수명과 Pattern 미리보기
+
+V1_EFFECT/V1_ELEMENT presentation occurrence의 optional `loopEffectToDuration`(기본false)은 원본 loop0 emitter를 occurrence duration까지 원래 속도로 유지한다. `fitEffectToDuration`과 동시true는 거절한다. sprite/mesh/CASCADE_RIBBON_V1의 실제 source recipe만 지원하며 particle 고유수명·원본 emitter 주기·finite loop·공용 Effect asset을 변경하지 않는다. 기존 occurrence 종료 owner가 정리한다. Workbench의 `Loop Effect through lifetime`와 `Match remaining animation time` 후 Apply/Save로 마지막 animation end에 맞출 수 있다.
+
+Effect Tool Open/Play는 현재 Composition의 선택 Pattern과 해당 Effect occurrence가 유일하거나 명시 선택됐을 때 그 animation snapshot·effect start·duration을 사용한다. 본 sampling도 같은 snapshot과 시작 시각을 소비한다. 저장 SourceModelPreview는 원본 참고로 유지하며 중복 미선택/미지원 nested·blend/trim은 상태를 표시하고 기존 source preview로 돌아간다. 제품 게시와 새 Client 적용 및 사용자 화면 판정은 별개다.

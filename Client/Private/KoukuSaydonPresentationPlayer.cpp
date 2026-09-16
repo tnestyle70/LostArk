@@ -277,6 +277,14 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
             (Field(row, "resourceKind").Get_String() != "V1_EFFECT" && Field(row, "resourceKind").Get_String() != "V1_ELEMENT")))
             throw std::runtime_error("Fit Effect lifetime requires a V1 Effect resource.");
     }
+    if (const auto* loop = row.Find("loopEffectToDuration"))
+    {
+        if (!loop->Is_Boolean()) throw std::runtime_error("loopEffectToDuration must be Boolean.");
+        box.bLoopEffectToDuration = loop->Get_Boolean();
+        if (box.bLoopEffectToDuration && (box.bFitEffectToDuration || kind != KIND::EFFECT ||
+            (Field(row, "resourceKind").Get_String() != "V1_EFFECT" && Field(row, "resourceKind").Get_String() != "V1_ELEMENT")))
+            throw std::runtime_error("Loop Effect lifetime requires a V1 Effect without time stretching.");
+    }
     if (const auto* debug = row.Find("debugRender"))
     {
         if (!debug->Is_Boolean()) throw std::runtime_error("debugRender must be Boolean.");
@@ -293,17 +301,18 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("worldEmissionIndex")) box.iWorldEmissionIndex = UInt(row, "worldEmissionIndex", 0u, 127u);
     if (box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" &&
         !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
-        !(kind == KIND::EFFECT && box.strAnchorKind == "MAP"))
+        !((kind == KIND::EFFECT || kind == KIND::COLLIDER) && box.strAnchorKind == "MAP"))
         throw std::runtime_error("Presentation anchorKind is unsupported.");
     if (kind == KIND::LIGHT && ((box.strAnchorKind != "WORLD" && !box.strWorldId.empty()) ||
         box.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
         (box.strAnchorKind != "BOSS" && !box.strBone.empty()) ||
         (box.strAnchorKind == "PLAYER" && !box.bFollowBoss)))
         throw std::runtime_error("Invalid Light anchor, scale or bone.");
-    if (kind == KIND::EFFECT && box.strAnchorKind == "MAP" &&
+    if ((kind == KIND::EFFECT || kind == KIND::COLLIDER) && box.strAnchorKind == "MAP" &&
         (box.bFollowBoss || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
-            !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty()))
-        throw std::runtime_error("MAP Effect requires a fixed position without a bone or World occurrence.");
+            !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() ||
+            (kind == KIND::COLLIDER && box.iWorldEmissionIndex != 0u)))
+        throw std::runtime_error("MAP Effect/Collider requires a fixed position without a bone or World occurrence.");
     if ((kind == KIND::EFFECT || kind == KIND::LIGHT || kind == KIND::COLLIDER) &&
         box.strAnchorKind == "WORLD" && box.strWorldId.empty())
         throw std::runtime_error("World Object anchor needs a worldId; fixed world coordinates use MAP: " + box.strOccurrenceId);
@@ -970,9 +979,12 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_SourceAnchorWorlds(
 
 bool Client::CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
     const EFFECT_DOCUMENT_DESC& document, const EFFECT_V2_TARGET_VIEW& view,
-    const float4x4_t& root, const float seconds, SOURCE_BONES& anchors, std::string& error)
+    const float4x4_t& root, const float seconds, SOURCE_BONES& anchors, std::string& error,
+    const EFFECT_SOURCE_MODEL_PREVIEW* sourceOverride)
 {
-    if (!document.SourceModelPreview) return Resolve_SourceAnchorWorlds(document, view, root, anchors, error);
+    const auto* sourceModel = sourceOverride ? sourceOverride :
+        (document.SourceModelPreview ? &*document.SourceModelPreview : nullptr);
+    if (!sourceModel) return Resolve_SourceAnchorWorlds(document, view, root, anchors, error);
     if (!std::isfinite(seconds) || seconds < 0.f)
     { error = "Source model animation time must be finite and nonnegative."; return false; }
     const auto attachments = Source_Attachments(document);
@@ -982,7 +994,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
             std::find(names.begin(), names.end(), attachment.strRuntimeBoneName) == names.end())
             names.push_back(attachment.strRuntimeBoneName);
     std::vector<ANCHOR_ANIMATION> animations;
-    for (const auto& source : document.SourceModelPreview->Animations)
+    for (const auto& source : sourceModel->Animations)
     {
         ANCHOR_ANIMATION animation;
         animation.strRuntimeClip = source.strRuntimeClip;
@@ -1851,7 +1863,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 !exactRoot(box.iStartMs / 1000.f, anchor, m_strStatus))
             { row.failed = true; return; }
             auto anchorModel = model;
-            if ((resource.eKind == KIND::LIGHT || resource.eKind == KIND::EFFECT) && box.strAnchorKind == "MAP")
+            if ((resource.eKind == KIND::LIGHT || resource.eKind == KIND::EFFECT || resource.eKind == KIND::COLLIDER) && box.strAnchorKind == "MAP")
             { XMStoreFloat4x4(&anchor, XMMatrixIdentity()); anchorModel.reset(); }
             if (box.strAnchorKind == "WORLD")
             {
@@ -1938,6 +1950,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     spawn.RootWorld = row.pivot;
                     spawn.fInitialSampleTimeSeconds = effectAge;
                     spawn.bExternallySampled = true;
+                    spawn.fSourceLoopEndSeconds = box.bLoopEffectToDuration ? box.iDurationMs / 1000.f : 0.f;
                     EFFECT_WORLD_ROOT_HANDLE handle;
                     if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_strStatus))
                     {

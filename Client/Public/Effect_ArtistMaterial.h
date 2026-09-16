@@ -236,6 +236,29 @@ inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
     std::array<float4_t,32> Parameters{};
     return Build_ArtistParameters(Source,Parameters);
 }
+// A carrier-local option, not a replacement source material or native ABI.
+inline bool Supports_ArtistSpriteTwoSided(const EFFECT_ELEMENT_DESC& Element)
+{
+    const auto Profile = Element.Material.eRenderProfile;
+    return Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+        Element.SourceRecipe.bEnabled && Element.SourceRecipe.strRendererShape == "sprite" &&
+        Element.Material.SourceMaterial.bEnabled &&
+        !Element.Material.Execution.bAuthoringApproximate && Element.RuntimeCarrier.Is_Empty() &&
+        Element.Detail.Mesh.SourceMaterialSlots.empty() &&
+        (Profile == EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+         Profile == EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ) &&
+        Has_ArtistMaterialContract(Element);
+}
+
+inline EFFECT_RENDER_PROFILE Resolve_ArtistSpriteRenderProfile(const EFFECT_ELEMENT_DESC& Element)
+{
+    if (!Element.Detail.Sprite.bTwoSided) return Element.Material.eRenderProfile;
+    if (!Supports_ArtistSpriteTwoSided(Element)) return EFFECT_RENDER_PROFILE::END;
+    return Element.Material.eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ?
+        EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ :
+        EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ;
+}
+
 inline bool Has_ArtistModelCueMaterialContract(const EFFECT_MODEL_CUE_DESC& Cue)
 {
     if (!Cue.Material) return false;

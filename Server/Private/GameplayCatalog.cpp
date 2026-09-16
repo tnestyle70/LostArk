@@ -24,7 +24,8 @@ namespace
 	accepts would make Validate and Load disagree about the same document. */
 	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
 	// Matches the publisher bound for the complete gameplay document.
-	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 32768u;
+	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS =
+		LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_ROWS;
 	/* The wire names one plate per bit, so a boss cannot wear more than the
 	snapshot can carry. The publisher rejects a larger authored count. */
 	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
@@ -3455,6 +3456,25 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "World placement needs one unplaced occurrence with neutral legacy offsets and no support surface"; return false; }
 			cue->Placement = placement;
 		}
+		else if (!fields.empty() && "PATTERNWORLDCOMBAT" == fields[0])
+		{
+			BOSS_PATTERN_WORLD_COMBAT_BODY body;
+			if (fields.size() != 9u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], body.iMaximumHp) || !body.iMaximumHp || body.iMaximumHp > 1000000000u ||
+				!ParseNumber(fields[5], body.fCenterX) || !ParseNumber(fields[6], body.fCenterY) || !ParseNumber(fields[7], body.fCenterZ) ||
+				!ParseNumber(fields[8], body.fRadiusM) || !std::isfinite(body.fCenterX) || !std::isfinite(body.fCenterY) ||
+				!std::isfinite(body.fCenterZ) || !std::isfinite(body.fRadiusM) || std::abs(body.fCenterX) > 100000.f ||
+				std::abs(body.fCenterY) > 100000.f || std::abs(body.fCenterZ) > 100000.f || body.fRadiusM <= .001f || body.fRadiusM > 1000.f)
+			{ m_strStatus = "World combat body row is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "World combat encounter is missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end()) { m_strStatus = "World combat pattern is missing"; return false; }
+			const auto cue = std::find_if(pattern->WorldSequences.begin(), pattern->WorldSequences.end(), [&](const auto& row) { return row.strOccurrenceId == fields[3]; });
+			if (cue == pattern->WorldSequences.end() || cue->CombatBody || cue->bAnchorBossSpawn || !cue->SupportWindows.empty())
+			{ m_strStatus = "World combat body requires one stationary occurrence without a support surface"; return false; }
+			cue->CombatBody = body;
+		}
 		else if (!fields.empty() && "PATTERNWORLDSUPPORT" == fields[0])
 		{
 			BOSS_PATTERN_WORLD_SUPPORT_WINDOW support;
@@ -3474,7 +3494,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (pattern == owners->second.end()) { m_strStatus = "World support pattern missing"; return false; }
 			const auto cue = std::find_if(pattern->WorldSequences.begin(), pattern->WorldSequences.end(),
 				[&](const auto& row) { return row.strOccurrenceId == fields[3]; });
-			if (cue == pattern->WorldSequences.end() || cue->Placement || cue->SupportWindows.size() >= 32u ||
+			if (cue == pattern->WorldSequences.end() || cue->Placement || cue->CombatBody || cue->SupportWindows.size() >= 32u ||
 				support.iEndOffsetTicks > (static_cast<std::uint64_t>(cue->iDurationMs) * 30u + 999u) / 1000u ||
 				(!cue->SupportWindows.empty() && support.iStartOffsetTicks < cue->SupportWindows.back().iEndOffsetTicks))
 			{ m_strStatus = "World support cue missing, windows overlap or exceed cue lifetime"; return false; }
@@ -6665,9 +6685,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
                 {
                     if (window.PatternIds.empty() || window.PatternIds.size() > 16u || window.iCompletionCount < 1u ||
                         window.iCompletionCount > window.PatternIds.size() || !window.CardRegions.empty() ||
-                        window.OnSuccess.size() != 1u || window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN ||
+                        window.OnSuccess.size() > 1u || (!window.OnSuccess.empty() && window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN) ||
                         !window.OnFail.empty() || !window.OnTimeout.empty())
-                        return fail("Completion chain requires a bounded pool, count and one Success followup");
+                        return fail("Completion chain requires a bounded pool, count and at most one Success followup");
                     std::unordered_set<std::string> candidateIds;
                     for (const auto& id : window.PatternIds)
                     {

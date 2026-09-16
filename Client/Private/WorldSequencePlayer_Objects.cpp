@@ -991,7 +991,7 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
             start += motion->startDelayMs;
             const f32_t localMs = (active.elapsedMs - start) * rate;
             if (localMs < 0.f || start > cutoffMs) break;
-            const f32_t period = static_cast<f32_t>(sequence->ObjectSpanMs());
+            const f32_t period = static_cast<f32_t>(motion->CycleSpanMs(*sequence));
             for (const auto& effect : sequence->effectTracks)
             {
                 const auto snapshot = m_EffectSnapshots.find(effect.resourceKind + ":" + effect.resourceId);
@@ -1034,6 +1034,15 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                 found->sourceDocument : CEffectCatalog::Find_Loaded(effect.resourceId);
                             if (v1 && !document)
                             { m_Status = "World Object V1 Effect document was not prepared: " + effect.resourceId; return false; }
+                            float effectTimeScale = 1.f;
+                            if (effect.fitEffectToDuration)
+                            {
+                                float sourceDuration = 0.f;
+                                if (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effect.resourceId, sourceDuration) ||
+                                    !CWorldSequenceDocument::Try_EffectTimeScale(effect, sourceDuration, effectTimeScale))
+                                { m_Status = "World Object Effect fit needs a finite prepared V1 duration: " + effect.resourceId; return false; }
+                            }
+                            const float sourceSeconds = ageMs * .001f * effectTimeScale;
                             ACTIVE_INSTANCE placementState;
                             placementState.positionOffset = active.positionOffset;
                             placementState.placement = active.placement;
@@ -1041,12 +1050,12 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                             // inputs are owned values or immutable prepared model/document handles.
                             const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
                                 [placementState, owner = instance, sequence = *sequence, resource = *resource,
-                                 effect, emissionAnchor, emitter, trigger, model = prepared->second.model, document, v1]
+                                 effect, emissionAnchor, emitter, trigger, effectTimeScale, model = prepared->second.model, document, v1]
                                 (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error) -> bool_t
                             {
                                 output.SourceAnchorWorlds.clear();
                                 if (!std::isfinite(seconds) || seconds < 0.f) return false;
-                                const float sampleMs = (std::min)(trigger + (effect.followObject ? seconds * 1000.f : 0.f),
+                                const float sampleMs = (std::min)(trigger + (effect.followObject ? seconds * 1000.f / effectTimeScale : 0.f),
                                     static_cast<float>(sequence.durationMs));
                                 float4x4_t objectWorld;
                                 if (!Sample_ObjectWorld(placementState, owner, sequence, resource, effect.slotId,
@@ -1071,7 +1080,7 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                     sampleMs, output.RootWorld, output.SourceAnchorWorlds, error);
                             };
                             EFFECT_FIXED_STEP_TRANSFORM_SAMPLE frame;
-                            if (!provider(ageMs * .001f, frame, m_Status)) return false;
+                            if (!provider(sourceSeconds, frame, m_Status)) return false;
                             if (found == active.effects.end())
                             {
                                 size_t total = active.effects.size();
@@ -1086,7 +1095,7 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                     spawn.strPlacementId = "world-object:" + std::to_string(reinterpret_cast<std::uintptr_t>(this)) + ":" + key;
                                     spawn.strEffectAssetId = effect.resourceId;
                                     spawn.RootWorld = frame.RootWorld;
-                                    spawn.fInitialSampleTimeSeconds = ageMs * .001f;
+                                    spawn.fInitialSampleTimeSeconds = sourceSeconds;
                                     spawn.bExternallySampled = true;
                                     spawn.bExternalModelCueAnchors = !document->ModelCues.empty();
                                     EFFECT_WORLD_ROOT_HANDLE handle;
@@ -1118,7 +1127,7 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                     found->sampledPositionOffset.y != active.positionOffset.y ||
                                     found->sampledPositionOffset.z != active.positionOffset.z;
                                 if (!CEffectPresentationService::Update_WorldRoot({found->v1Handle}, frame.RootWorld) ||
-                                    !CEffectPresentationService::Seek_WorldRoot({found->v1Handle}, ageMs * .001f, provider, placementEdited))
+                                    !CEffectPresentationService::Seek_WorldRoot({found->v1Handle}, sourceSeconds, provider, placementEdited))
                                 { m_Status = "World Object V1 effect sample failed: " + effect.resourceId + " / " + CEffectPresentationService::Get_Status(); return false; }
                                 found->sampledPlacement = active.placement;
                                 found->sampledPositionOffset = active.positionOffset;

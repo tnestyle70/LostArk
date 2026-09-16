@@ -106,7 +106,7 @@ namespace
 		const BOSS_RUNTIME_PROFILE* bossProfile =
 			catalog.Find_Boss(entity.strArchetypeId);
 		const float targetRadius =
-			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
+			((WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == entity.eKind) ?
 				entity.fCollisionRadius :
 				(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
 		return LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ{
@@ -117,7 +117,7 @@ namespace
 	{
 		using namespace LostArk::Server;
 		return (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind ||
-			WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) &&
+			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == entity.eKind)) &&
 			LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
 			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
 	}

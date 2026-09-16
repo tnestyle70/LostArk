@@ -126,6 +126,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iNextMoveSequence = 1;
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
+	m_wasRightMousePhysicallyDown = false;
 	m_wasVehicleKeyDown = false;
 	m_wasVehicleDismountKeyDown = false;
 	m_wasVehicleSkillKeyDown.fill(false);
@@ -195,6 +196,10 @@ void Client::CPlayerController::Update(
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
 	const bool_t isRightMousePhysicallyDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+	// Observe raw presses before any early return; UI/capture release is not a new click.
+	const bool_t isRightMousePressed =
+		isRightMousePhysicallyDown && !m_wasRightMousePhysicallyDown;
+	m_wasRightMousePhysicallyDown = isRightMousePhysicallyDown;
 	for (std::size_t key = 0u; key < m_wasKeyDown.size(); ++key)
 	{
 		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
@@ -380,7 +385,7 @@ void Client::CPlayerController::Update(
 					XMVectorGetZ(position),
 					goal))
 			{
-				Request_MoveToPoint(goal);
+				Request_MoveToPoint(goal, isRightMousePressed);
 			}
 		}
 	}
@@ -1743,7 +1748,8 @@ bool_t Client::CPlayerController::Try_PickGroundPlane(
 		std::isfinite(outPosition.z);
 }
 
-bool_t Client::CPlayerController::Request_MoveToPoint(const float3_t& goal)
+bool_t Client::CPlayerController::Request_MoveToPoint(
+	const float3_t& goal, const bool_t playClickEffect)
 {
 	if (Is_PlayerControlCaptured(
 			CCombatHUDViewModel::Get().Get_Player()))
@@ -1763,7 +1769,7 @@ bool_t Client::CPlayerController::Request_MoveToPoint(const float3_t& goal)
 
 	m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
 	m_LastSentMoveGoal = goal;
-	if (nullptr != m_pClickMoveEffect)
+	if (playClickEffect && nullptr != m_pClickMoveEffect)
 		m_pClickMoveEffect->Play(goal, m_pLocalCharacter.lock());
 	m_BasicAttackResendGate.Suppress_UntilRelease();
 	++m_iNextMoveSequence;

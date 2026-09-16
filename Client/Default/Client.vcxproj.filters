@@ -3299,6 +3299,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.object-sustain15.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.pentagram.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.portal.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.entry.portal.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.boss.pentagram.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.center.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
@@ -4163,5 +4164,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3648.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.doll.flame.shared.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.mario.circus.ball.aura.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

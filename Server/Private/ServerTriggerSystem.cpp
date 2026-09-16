@@ -214,7 +214,8 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
 	const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 		const std::string&)>& activateTarget,
-	std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges)
+	std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges,
+	const SERVER_TRIGGER_MOVE_ENTRY_HANDLER& moveEntry)
 {
 	outTransfers.clear();
 	outPromptEdges.clear();
@@ -266,8 +267,27 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			else
 #endif
 			{
-				fired = Run_Action(trigger, player, actionStartTick,
-					outTransfers, activateTarget);
+				const auto ownedEntry = moveEntry &&
+					WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == trigger.Definition.TriggerActions.front().eKind ?
+					moveEntry(trigger.Definition, player, actionStartTick) :
+					SERVER_TRIGGER_MOVE_ENTRY_RESULT::USE_DEFAULT;
+				if (SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE == ownedEntry)
+				{
+					/* Contact was detected but not admitted. Do not turn a
+					   temporary authority lock into a consumed entry edge. */
+					currentInside.erase(playerId);
+					continue;
+				}
+				if (SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED == ownedEntry)
+				{
+					fired = true;
+					player.TriggerMove.strSourcePlacementId = trigger.Definition.strPlacementId;
+				}
+				else
+				{
+					fired = Run_Action(trigger, player, actionStartTick,
+						outTransfers, activateTarget);
+				}
 			}
 #ifdef _DEBUG
 			/* Stage_Boss keeps its real activateEncounter action, then places the

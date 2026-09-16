@@ -608,6 +608,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 		message.strOccurrenceId = play.strOccurrenceId;
 		message.iStartTick = play.iStartTick ? play.iStartTick : serverTick; message.iServerTick = serverTick;
 		message.iBossNetEntityId = boss.iNetEntityId; message.iPatternSequence = boss.iPatternSequence;
+		if (play.CombatBody) { message.bUntilDestroyed = true; message.iDurationMs = 0u; }
 		if (play.Placement)
 		{
 			const auto& placement = *play.Placement; message.bHasPlacement = true;
@@ -615,11 +616,15 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 			message.fWorldRotationXDegrees = placement.fRotationXDegrees; message.fWorldRotationYDegrees = placement.fRotationYDegrees; message.fWorldRotationZDegrees = placement.fRotationZDegrees;
 			message.fWorldScaleX = placement.fScaleX; message.fWorldScaleY = placement.fScaleY; message.fWorldScaleZ = placement.fScaleZ;
 		}
+		if (play.CombatBody && !Stage_KoukuWorldBody(*play.CombatBody, message)) continue;
 		if (!play.strTargetSequenceInstanceId.empty())
 		{
 			const auto& cues = play.strTargetWorldOccurrenceId.empty() ? member->WorldCueByInstance : member->WorldCueByOccurrence;
 			const auto target = cues.find(play.strTargetWorldOccurrenceId.empty() ? play.strTargetSequenceInstanceId : play.strTargetWorldOccurrenceId);
 			if (target == cues.end()) { m_strStatus = "World motion target has no owned occurrence"; continue; }
+			if (std::any_of(m_KoukuDamageableWorldCues.begin(), m_KoukuDamageableWorldCues.end(), [&](const auto& cue) {
+				return cue.Play.iRunEpoch == message.iRunEpoch && cue.Play.strMemberId == message.strMemberId && cue.Play.strCueId == target->second; }))
+			{ m_strStatus = "Damageable World Object cannot be retargeted to an unbaked motion"; continue; }
 			message.strTargetCueId = target->second;
 		}
 		else
@@ -967,13 +972,21 @@ void LostArk::Server::CGameRoom::Cleanup_EmptyMarioStages()
 	}
 }
 
+void LostArk::Server::CGameRoom::Reset_MarioContactAction(SERVER_PLAYER& player)
+{
+	const bool combatReady = player.isCombatReady;
+	Cancel_PlayerActionForPatternStatus(player);
+	player.isCombatReady = combatReady;
+	player.iFearEndTick = 0u;
+	player.strFearPresentationId.clear();
+}
+
 #ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, const std::uint8_t stage)
 {
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || stage < 1u || stage > 4u || !player.isCombatReady ||
-		!player.iCurrentHp || player.iMarioStage || player.TriggerMove.isActive || player.bPatternBound ||
-		player.iAttachmentOwnerNetEntityId != INVALID_NET_ENTITY_ID || player.eAction != PLAYER_ACTION_STATE::NONE) return false;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || stage < 1u || stage > 4u ||
+		!CKoukuSaydonLogicRuntime::Can_EnterMarioEntry(player)) return false;
 	const auto* intro = Find_Placement("Mario" + std::to_string(stage) + "_Intro");
 	SERVER_NAV_POINT ground;
 	if (!intro || !intro->isEnabled || intro->eKind != WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ||
@@ -985,9 +998,14 @@ bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, c
 	if (!CServerTriggerSystem::Contains_Placement(*intro, candidate) ||
 		!m_ServerCollisionSystem.Is_PlayerPositionClear(candidate.fPositionX, candidate.fPositionY, candidate.fPositionZ, player.iNetEntityId))
 	{ m_strStatus = "Mario entry destination is outside the Intro box or blocked"; return false; }
-	Reset_PlayerForDebugTeleport(candidate);
+	// Stage action interruption on the detached player. The Debug teleport
+	// helper also cancels live objects/trigger occupancy, so it is not a preflight.
+	candidate.Clear_MarioControl();
+	Reset_MarioContactAction(candidate);
 	Update_MarioControlState(candidate);
 	if (candidate.iMarioStage != stage) return false;
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 	player = std::move(candidate);
 	return true;
 }

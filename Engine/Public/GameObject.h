@@ -32,6 +32,10 @@ public:
 	virtual int32_t Get_BlendSortPriority() const { return 0; }
 	virtual HRESULT Render_DeferredOverlay();
 	virtual HRESULT Render_Shadow();
+    // Opt in only for side-effect-free, time-invariant depth. Every change to
+    // the rendered geometry or visibility must change the nonzero revision.
+    virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const
+    { outRevision = 0u; return false; }
 
 protected:
 	map<const wstring_t, shared_ptr<CComponent>>		m_Components;

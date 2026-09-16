@@ -1749,3 +1749,58 @@ Parent는 Summon occurrence 하나를 배치하고 그 start/duration만 실행 
 Sequence는 이전 작업자의 카메라·컷신 수정과 빙고 엔딩을 기준으로 병합한다. 겹치지 않는 우리 플레이어 도착 트리거4개와 바주카·절단칼 등 WORLD 수정도 보존한다. WorldSequences의 촛대·HandBook 수정은 상대 값을 유지하며 authoring/runtime을 같은 게시 결과로 맞춘다. 자동 병합 C++6파일은 카메라 편집 연결과 기존 preview 호출 흐름을 대조한다.
 
 원본 작업 폴더의 미커밋 RESULT는 별도 보존하고, 분리 worktree에서 병합·참조/ID/수명 검사와 해당 publisher를 수행한다. 변경 JSON/XML parse, diff-check와 필요한 컴파일을 확인하고 PR을 병합한 뒤 원래 작업 폴더에서 main을 fast-forward pull한다. 실행 중 편집기의 미저장 상태를 버리거나 Client를 자동 실행·종료·조작하지 않는다. 화면 최종 판정은 사용자에게 남긴다.
+
+## G45. 명시 Pattern 길이가 있는 클립 추가의 편집 거절 — 2026-09-16
+
+현재 P67은 durationMs6267과 Stage 합6267이 같다. 기존 append는 Stage만 늘려 정상적인 explicit lifetime 검증에서 거절된다. `KoukuSaydonActionWorkbench.cpp`의 Stage 추가, 단일 clip append/bind, action append, cinematic group append와 Pattern Start Offset 변경에서 기존 `Extend_PatternLifetimeForAuthoredLanes`를 candidate commit 전에 호출한다. Stage 합·기존 수명·저작 lane 끝의 최댓값으로만 늘리고 Effect/Logic의 시간·TRS·stable ID는 보존한다. 길이 검사를 삭제하거나 정본 JSON의 duration을 임의로 지우지 않는다.
+
+기존 파일만 수정하므로 신규 H/CPP와 project/filter 등록은 없다. 실제 함수와 현행 codec으로 P67 거절 재현, 추가/기존 Stage 양쪽 입력, 긴 tail 보존, implicit clock, 상한·잘못된 입력 rollback 및 out 사본 Save/Reload를 검사한다. 실행 중 Client의 미저장 편집은 유지하며 Product 빌드에는 사용자 저장·종료가 필요하다. 실제 UI 입력 확인은 사용자에게 남긴다.
+
+## G46. 편집 중 외부 Composition 변경의 보존 병합 — 2026-09-16
+
+작은 오망성 resource/occurrence duration을 외부에서 수정하자 열린 편집기의 Save가 기준본 불일치로 거절됐다. 해당 외부 수정만 writer lock과 정확한 before/after SHA로 되돌렸고 사용자가 Save 성공을 확인했다. 기존 Save_Atomic은 끝에 추가된 presentation resource만 특별히 병합하며 기존 항목의 서로 다른 필드 수정도 모두 거절한다.
+
+Document 내부에서 로드 기준본·사용자 draft·현재 디스크의 세 상태를 비교한다. 객체 필드와 stable ID 배열의 겹치지 않는 변경은 함께 보존하고, 비-ID 배열은 하나의 값으로 취급한다. 동일 필드의 서로 다른 변경, 삭제와 수정의 경쟁, 충돌하는 순서 변경은 정확한 경로를 알려 거절한다. writer lock, freshness/CAS, 후보 validation, 원자 교체·재개방을 그대로 유지하고 Save 성공 후 기존 LastGood 소비 경로로 draft에 병합 결과를 돌려준다. 별도 Workbench 저장 경로나 무조건 덮어쓰기 기능은 만들지 않는다.
+
+KoukuSaydonCompositionDocument.cpp와 기존 public 계약 주석을 수정하며 새 C++ 파일/project/filter 항목은 없다. 실제 codec의 Save/Reload로 겹치지 않는 편집·동일 필드 충돌·추가·삭제·순서·실패 시 원본/draft 보존을 검증하고 해당 TU를 격리 컴파일한다. 실행 중 구버전 Client는 소스 수정만으로 갱신되지 않으므로 사용자 빌드·재실행과 실제 Save 결과를 별도로 기록한다. 현재 사용자가 계속 편집 중인 정본 Composition에는 추가 외부 수정을 하지 않는다.
+
+
+## G47. 화염링 Sprite의 양면 저작 옵션 — 2026-09-16
+
+화염링_동일화염포 Sprite Particle02의 native2876은 Additive One Sided이며 회전 후 뒷면이 컬링된다. detail.sprite.twoSided 선택 bool을 기본false로 추가한다. 원본 material renderProfile과 native descriptor 일치 검사는 유지한다. Artist registry의 실행 가능한 source Sprite 중 Alpha/Additive One Sided만 허용하고 실제 particle draw에서 기존 양면 pass1/2로 선택한다. 일반Validate는 미지원요소의true를 거절하고 source-contract 문서는 이 저작옵션을 거절한다. 사용자 후속 지시대로 ImGui 항목은 추가하지 않는다. 지정된 조립 Effect의 Sprite Particle02에만 twoSided=true를 적용한다. 기본false는 JSON에서 생략하며 재수입의 기존Detail보존 경로를 사용한다. 기존 파일만 확장하므로 프로젝트 등록은 없다. 현재 사용자 effect와 Composition은 직접 덮어쓰지 않고 지정element 하나의 byte-preserving 후보를 준비한다. 현재헤더로 codec roundtrip·오류거절·원본재질보존·패스상태검사와 수정TU의 격리컴파일을 수행한다. 제품빌드·재실행과 화면검증은 사용자 담당이다.
+
+
+## G48. 패턴 사이 Animation·Effect 선택 복사/붙여넣기 — 2026-09-16
+
+기존 타임라인의 Stage/Animation/Presentation stable 선택을 Ctrl+C로 세션 내 값 snapshot에 보관하고, 다른 Pattern 선택 뒤 Ctrl+V로 그 Pattern 끝에 추가한다. OS 문자열 clipboard나 다른 런타임을 만들지 않는다. snapshot은 패턴 전환과 원본 이후 편집에서 독립적이며 유효한 새 Copy만 기존 내용을 교체한다. Ctrl/Shift 클릭과 marquee로 선택한 Animation·Effect 혼합과 Stage 자식을 한 번만 복사하고 지원하지 않는 lane이 섞이면 전체를 거절한다.
+
+clip의 원본 profile/action/stage/slot/refRevision과 sourceIn/out/playRate/endPolicy, Effect의 상대 시각·수명·follow/fit/TRS·그룹을 보존한다. 새 Stage/action/animation/presentation/group ID는 대상 Pattern allocator로 재발급하며 복사된 WORLD anchor owner도 새 occurrence로 연결한다. 선택된 두 clip 사이의 ANIMATION_BLEND window는 함께 옮기고 외부 clip과의 boundary만 제외한다. 일반 gameplay Logic에 연결된 Effect는 무관한 전투를 복제하지 않도록 전체를 거절한다. 복사 시 현재 유효한 미저장 geometry를 함께 캡처한다. 누락·변경된 의존 정의, actor가 다른 animation, ID 소진·600000ms 상한은 명확히 거절한다.
+
+Paste는 기존 Commit_Candidate와 lifetime 확장/Mark_Draft를 통해 한 번만 commit한다. 원본과 대상 기존 행의 timing·공유 정의를 보존하고 실패 시 draft·clipboard·선택을 유지한다. 새 항목을 선택하고 다음 Save가 기존 원자 저장 경로를 사용한다. 사용자가 편집 중인 Composition JSON을 외부 수정하지 않는다.
+
+Workbench H/CPP만 확장한다. 독립 Patterns/Sequencer pane과 standalone 모두 focus 소유권을 확인하고 textinput·활성 widget·popup·drag/marquee에는 키를 소비하지 않는다. 프레임의 row 포인터 소비 뒤 한 번 처리하고 Ctrl+D/Delete의 기존 동작을 유지한다. 새 C++ 파일과 project/filter 등록은 없다. 실제 copy/paste API와 현재 Composition codec으로 혼합 선택·반복 Paste·ID/참조·상한·rollback·저장 왕복을 검사하고 Debug TU 컴파일을 수행한다. Client UI는 실행하지 않으며 새 제품 빌드·재실행과 실제 단축키 확인은 사용자가 한다.
+
+## G49. 마리오 본무대 인형·공의 생존 재생과 Object 편집 기능 — 2026-09-16
+
+첨부 두 이미지에서는 공 둘레의 무지개빛 고리·상부 문양과 붉어진 후속 연출을 관찰했다. 원본 NPC 자료의 본무대 서커스 공 480713은 MN_PPCC_00이며 미니게임 안의 빨강·노랑·파랑 공 480715~480717과 별도다. 대상 공의 활성 action/buff 원본을 추적해 하나의 재사용 Effect로 조합하고 색 전환 시각·크기·재질을 원본 입력으로 확인한다. 이미 설치한 미니게임 공의 다른 동작은 유지한다. 인형의 회전 화염 Motion은 현재 작은/큰 두 형태 모두 17314ms이며 3개 animation track과 object-sustain15 Effect를 사용한다. 사용자 요청대로 공통 불뿜기 25요소를 실제 입 본에 연결한 조립 Effect로 교체하고 현재 Object의 크기·배치를 보존한다.
+
+World Object는 현재 HP가 없는 Client 표현이다. 기존 colliderTracks는 Object가 플레이어에게 피해를 주는 판정이므로 피격 body와 구분한다. objectResources의 선택적 전투 body에 HP·실측 local bounds·생존 정책을 저장하고 projector가 실제 resource scale과 WORLD placement를 반영해 Server 정의로 게시한다. 일반 몬스터로 위장하지 않고 기존 world entity/전투 hit 경로의 명시적 WORLD_OBJECT 대상으로 처리한다. Server가 HP 감소·0·소멸을 결정하고 기존 owned WORLD cue의 정확한 식별자로 Client의 모델·Effect를 함께 정리한다. 일반 종료 뒤 생존, 취소·전투 중단·방 정리, 늦게 들어온 플레이어와 지연된 cue의 재생 방지도 같은 계약에서 처리한다. 인형 두 크기와 본무대 공은 HP 2000을 사용하며 단위와 모델 범위를 확인한 뒤 후보를 만든다.
+
+Object Tool은 공용 Sequencer 창 안에서 별도 CWorldObjectTool 편집 코드를 사용한다. Stage 끝 드래그·직접 길이 편집·Fit Stage to Animation을 candidate 검증 경로로 연결하며 기존 animation/effect의 시작과 속도·Transform을 보존한다. Zoom 슬라이더·Ctrl+wheel·timeline Fit을 제공하고 Effect의 선택적 lifetime fit을 codec·publisher·재생 시계까지 연결한다. Animation과 Effect의 마지막 tail을 포함한 전체 단위 반복은 명시적 옵션으로 저장해 기존 모션 반복 결과를 바꾸지 않는다. 같은 주기를 모델과 Effect가 소비하며 사망 시 두 재생을 함께 끝낸다.
+
+기존 WorldSequence Document/Tool/Player, Kouku projector와 Gameplay 정의, Shared 메시지, Server 전투와 owned cue, Client cue 소비자를 확장한다. 새 CPP가 필요하면 실제 소유자에 두고 vcxproj/filters에 함께 등록한다. 사용 중인 Composition/WorldSequences는 외부에서 덮어쓰지 않는다. 최종 후보는 최신 사용자 저장본과 비교해 요청 필드만 반영하고 해당 domain publisher로 게시한다. 실제 codec 저장 왕복·실패 보존, loop 경계·fit source clock, 서버 공격→HP0→정확한 cue 종료·정상 완료/취소·late join, 변경 TU 최소 컴파일을 검증한다. 제품 빌드와 사용자 화면 확인은 별도 상태로 기록한다.
+
+## G50. 중앙 포탈·쇼타임 노이즈의 화면 중복 보호 — 2026-09-16
+
+사용자가 중앙 오망성에서 캐릭터/쿠크와 노이즈가 겹쳐 두 개처럼 보이고 쇼타임 폭탄도 같은 현상이라고 보고했다. 실제 정본6문서를 native dispatch와 조인하면 중앙 문양2584와 폭탄 도화선2847/2805/2848은 화면 샘플이나 별도 왜곡이 없지만, 중앙 합본 포탈과 작은/큰 폭발에는 별도 distortion pass를 가진 native14개가 있다. 직접 SceneColor 샘플은 없다. 기존 노란 장판은 Decal receiver에서만 actor를 제외하며 이 별도 화면 resolve에는 적용되지 않는다.
+
+별도 source pass14개 중11개는 상수0이므로 유지하고, 실제 왜곡을 만드는 native2461/2587/3682만 기존 RG distortion 대신 같은 RGBA16 MRT의 BA에 원본 offset을 기록한다. native 식·색·시각·크기는 유지하고 설치 생성기에도 같은 명시 범위를 반영한다. 일반 효과의 RG 왜곡은 그대로 둔다. EffectCommon의 alpha/additive/opaque RT1 write mask를RGBA로 연결하고 reveal/fill coverage를 BA에도 적용한다. 실제 compiled adapter가 소비하는 같은 fixed-function 계약을 함께 갱신한다.
+
+Engine 정본 Deferred의 Scene resolve는 BA만 receiver를 검사한다. 현재 픽셀과 이동 후 bilinear 샘플에 actor 표식이 있으면 BA를 적용하지 않고, 다른 깊이 표면의 영상이 넘어오는 경계도 차단한다. 일반 RG를 적용한 기존 샘플과 HDR/bloom 쌍은 유지한다. marker0/5의 skinned bit8과 source skin/equipment program 범위만 actor로 해석하며 다른 Map marker의 payload를 잘못 읽지 않는다. Renderer는 이 resolve에서 Depth와 PickPos SRV를 명시적으로 바인딩한다. 별도 캐릭터 캡처나 화면 복사 pass는 만들지 않는다.
+
+기존 Engine/Renderer·Deferred, EffectCommon과 material fixed-function 검사 및 native installer/dispatch만 확장한다. 새 제품 CPP나 프로젝트 등록은 없다. 실제 full shader compile, WARP 수치 출력으로 일반RG 보존·BA 배경 유지·actor/이동 샘플/깊이 경계 차단·HDR/bloom 동일좌표·MRT BA 전달을 검증한다. 사용자 요청대로 실행 중 Client/Server와 열린 저작 데이터는 그대로 두고 소스 검증을 진행한다. 설치 대기 중인 G49 공·인형 데이터와 제품 빌드·사용자 화면 판정은 분리한다.
+
+
+## G51. F1 게시 패턴 목록의 대용량 로드 — 2026-09-16
+
+현재 revision1143 Encounter는16,061,098bytes이며 F1 BossTool의8MiB 선행 상한에서 거절된다. Reload가 Flow 로드 전에 종료되므로 저장된6/11/5개 Flow까지 없는 것으로 표시된다. BossTool의 파일·JSON byte 상한을64MiB로 일치시키고 value 상한은4,000,000개, depth64로 제한한다. 현재385,408values/depth12를 확인했다. 실패 원인을 별도로 보존해 두 목록 안에 표시하고, 마지막 정상 목록과 미저장 Flow draft는 유지한다. 게시기는 같은 Encounter 상한을 게시 전에 검사한다. 기존 파일만 수정하며 새 C++/프로젝트 등록은 없다. 실제 생성물을 기존 로더로 읽고 잘못된 문서·상한 거절과 마지막 정상 상태 보존을 검사하며 변경TU를 격리 컴파일한다. 실행 중 Client와 Composition은 변경하지 않으며 EXE 반영과 사용자 화면 확인은 별도로 보고한다.

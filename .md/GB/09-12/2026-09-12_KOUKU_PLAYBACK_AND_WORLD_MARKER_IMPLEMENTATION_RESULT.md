@@ -125,3 +125,32 @@ commit, push하지 않았다. 준비된 자료를 GPU pixel 성공이나 사용�
    Composition Play All 또는 Complete Play - Sequences + Pattern Flow를 확인한다.
 5. 입구 우클릭에는 mouse_click만 나오고, 이동/종이 트리거 중심에는 금색 표식이 반복되는지 확인한다.
 6. 두 LocalDecal 링의 첫 표시와 Stop/Level 퇴장 후 정리 상태를 확인한다.
+
+## G06. 2026-09-16 우클릭 hold의 클릭 표식 반복 생성 수정
+
+### 반영한 변경
+
+현재 branch `codex/mario-random-two-play`, HEAD `16d052131a577327fb6383fa1143de6c66fed069`의 다른 작업을 보존했다.
+`CPlayerController::Update`는 raw 우클릭 press edge를 모든 early return 전에 관찰한다.
+일반 이동은 `Request_MoveToPoint(goal, isRightMousePressed)`를 호출하고,
+성공한 이동 송신 뒤 `playClickEffect`가 true일 때만 `CClickMoveEffect::Play`를 호출한다.
+기존 50ms 이동 목적지 재전송·도착 deadzone·예측·sequence는 변경하지 않았다.
+
+새 물리 입력 상태는 Set_LocalCharacter에서 초기화하고 Rebind_LocalCharacter에서는 보존한다.
+Bern의 NPC 접근 두 caller는 이미 raw press로 제한되며 기본 인자 true로 기존 피드백을 유지한다.
+송신 실패는 기존처럼 이펙트·예측·sequence 갱신 이전에 반환한다. 최초 press 송신이 실패한 뒤
+같은 hold에서 뒤늦게 성공해도 클릭 이펙트를 생성하지 않는다.
+H/CPP는 UTF-8 BOM 없음·CRLF를 유지했다. 새 C++ 파일·project/filter 등록·JSON/XML·Resources 변경은 없다.
+
+### 실행한 검증과 제품 반영 경계
+
+- 기존 `Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py`: 6 tests PASS. 주변 입력/타기팅 회귀이며 클릭 표식 횟수의 직접 실행 검사는 아니다.
+- 변경한 H/CPP·PLAN/RESULT·공통 문서의 `git diff --check` PASS. 독립 읽기 전용 diff 검토에서도 구체적 회귀를 발견하지 않았다.
+- 수정 `PlayerController.cpp`의 Debug x64 격리 컴파일 PASS. 현행 Product가 선택하는 VS 18 Insiders/v143 14.44.35207 및 Windows SDK 10.0.26100.0을 사용했다. 증거: `out/RightClickEdge20260916/compile.rsp`, `compile.log`, `PlayerController.obj`. 기존 SDK 헤더의 문자 인코딩 경고는 남는다.
+- 첫 격리 시도는 forced include의 상대 경로를 찾지 못해 실패했고, 절대 경로로 교정한 뒤 성공했다. 제품 출력은 변경하지 않았다.
+- 정식 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`는 Client PID 58036 / Server PID 57572가 표준 Debug 출력을 사용 중이어서 compile 전 보호 검사에서 차단됐다. 기록: `out/BuildPipeline/runs/20260916T052453366Z-debug-product.json`.
+- 이후 사용자가 소스 수정과 컴파일 확인까지만 요청했다. Product 빌드는 재시도하지 않고 실행 중 Client/Server와 제품 EXE를 보존했다. 자동 종료·실행·UI 조작·화면 검증은 하지 않았다.
+
+사용자 화면 확인은 추후 새 Product 빌드 후 진행한다. 플레이 가능한 맵에서 우클릭을 누르고
+커서를 움직여도 표식은 최초 한 번만 나오고 이동 목적지는 계속 갱신되어야 한다. 버튼을 놓고
+다시 누르면 새 표식이 한 번 나오며, Bern NPC 접근 클릭과 UI/타기팅 차단이 유지되는지 확인한다.

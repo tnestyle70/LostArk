@@ -70,6 +70,17 @@ struct WORLD_SEQUENCE_MAP_MATERIAL_BINDING
     bool operator==(const WORLD_SEQUENCE_MAP_MATERIAL_BINDING&) const = default;
 };
 
+struct WORLD_SEQUENCE_COMBAT_BODY
+{
+	uint32_t maxHp = 2000;
+	// Local metres after modelPreScale, before resource/occurrence scale.
+	float3_t localCenterM = {};
+	float3_t halfExtentsM = {.5f, .5f, .5f};
+	// ELLIPSOID interprets halfExtentsM as semiaxes; omitted authoring stays BOX.
+	std::string shape = "BOX";
+	std::string lifetimePolicy = "UNTIL_DESTROYED";
+};
+
 struct WORLD_SEQUENCE_OBJECT_RESOURCE
 {
 	std::string objectId;
@@ -83,6 +94,7 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string diffuseTextureAssetId;
 	// Immutable source material input shared by every Motion of this resource.
 	std::optional<WORLD_SEQUENCE_MATERIAL_PROFILE> materialProfile;
+	std::optional<WORLD_SEQUENCE_COMBAT_BODY> combatBody;
     // Derived static/skinned objects retain their explicit original material owner.
     std::string materialSourceModelAssetId;
     // Reuse admitted map surface inputs, without a static placement's baked light.
@@ -188,6 +200,7 @@ struct WORLD_SEQUENCE_EFFECT_TRACK
 	std::string resourceId;
 	// V1_EFFECT uses the same authored catalog as the Effect and Sequence tools.
 	bool_t followObject = false;
+	bool_t fitEffectToDuration = false;
 	std::string bone;
 	std::string timing = "MOTION_END";
 	uint32_t startMs = 0;
@@ -274,8 +287,12 @@ struct WORLD_SEQUENCE_INSTANCE
 	std::string anchorKind = "WORLD";
 	float3_t position = {};
 	WORLD_SEQUENCE_MOTION_END motionEnd = WORLD_SEQUENCE_MOTION_END::STOP;
+	bool_t loopFullPresentation = false;
 	std::string nextMotionId;
 	std::optional<WORLD_SEQUENCE_WALKABLE_SURFACE> walkableSurface;
+	uint32_t CycleSpanMs(const WORLD_SEQUENCE_TEMPLATE& sequence) const noexcept
+	{ return motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP && loopFullPresentation ?
+		(std::max)(sequence.ObjectSpanMs(), sequence.PresentationSpanMs()) : sequence.ObjectSpanMs(); }
 };
 
 class CWorldSequenceDocument final
@@ -315,6 +332,11 @@ public:
 		const std::string& instanceId) const;
 	bool_t Is_Equivalent(const CWorldSequenceDocument& other) const;
     // Stage and validate before replacing one template. Failure preserves the document.
+    bool_t Resize_TimelineDuration(const std::string& sequenceId, uint32_t durationMs,
+        uint32_t requiredAnimationEndMs, const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+        const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, std::string& outStatus);
+    static bool_t Try_EffectTimeScale(const WORLD_SEQUENCE_EFFECT_TRACK& effect,
+        f32_t sourceDurationSeconds, f32_t& outScale);
     bool_t Duplicate_TimelineBox(const std::string& sequenceId, bool animation, size_t index,
         const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
         const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus);

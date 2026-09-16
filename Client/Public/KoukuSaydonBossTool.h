@@ -131,6 +131,8 @@ namespace Client
 		int m_iSelectedInventoryKind = 0;
 		int m_iSelectedGate = 0;
 		std::string m_strStatus;
+		std::string m_strProductLoadError;
+		std::string m_strFlowLoadError;
 		std::uint32_t m_iSourceRevision = 0u;
 		bool m_bOpen = true;
 		bool m_bLoadAttempted = false;

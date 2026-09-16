@@ -1538,7 +1538,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	{
 		for (auto& [id, cue] : m_OwnedWorldCues) cue.player->Stop_All(targets, true);
 		m_OwnedWorldCues.clear(); m_PendingOwnedWorldCues.clear();
-		m_StoppedWorldOwners.clear(); m_ConsumedWorldCueIds.clear();
+		m_StoppedWorldOwners.clear(); m_FinishedWorldOwners.clear(); m_ConsumedWorldCueIds.clear();
 		m_iLatestWorldRunEpoch = pendingRun.iRunEpoch;
 	}
 	// Product presentation is prepared by MainApp after the first arena update.
@@ -4413,6 +4413,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
         m_OwnedWorldCues.clear();
         m_PendingOwnedWorldCues.clear();
         m_StoppedWorldOwners.clear();
+        m_FinishedWorldOwners.clear();
         m_ConsumedWorldCueIds.clear();
         m_iLatestWorldRunEpoch = play.iRunEpoch;
     }
@@ -4421,21 +4422,32 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     if (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
         play.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER)
     {
-        m_StoppedWorldOwners.insert(owner);
+        (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ? m_StoppedWorldOwners : m_FinishedWorldOwners).insert(owner);
         for (auto cue = m_OwnedWorldCues.begin(); cue != m_OwnedWorldCues.end();)
             if (cue->second.runEpoch == play.iRunEpoch &&
                 (play.strMemberId.empty() || cue->second.memberId == play.strMemberId))
             {
                 if (play.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER &&
-                    cue->second.player->Get_LongestElapsedSpanMs() > cue->second.durationMs)
+                    (cue->second.untilDestroyed || cue->second.player->Get_LongestElapsedSpanMs() > cue->second.durationMs))
                 { ++cue; continue; }
                 cue->second.player->Stop_All(targets, true); cue = m_OwnedWorldCues.erase(cue);
             }
             else ++cue;
         return;
     }
-    if (m_StoppedWorldOwners.contains(owner) || m_StoppedWorldOwners.contains(runOwner)) return;
     const std::string key = owner + ":" + play.strCueId;
+    if (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_CUE)
+    {
+        // Death is idempotent and wins over a delayed reliable PLAY for this exact cue.
+        m_ConsumedWorldCueIds.insert(key);
+        std::erase_if(m_PendingOwnedWorldCues, [&](const auto& cue) {
+            return cue.iRunEpoch == play.iRunEpoch && cue.strMemberId == play.strMemberId && cue.strCueId == play.strCueId; });
+        if (const auto cue = m_OwnedWorldCues.find(key); cue != m_OwnedWorldCues.end())
+        { cue->second.player->Stop_All(targets, true); m_OwnedWorldCues.erase(cue); }
+        return;
+    }
+    if (m_StoppedWorldOwners.contains(owner) || m_StoppedWorldOwners.contains(runOwner) ||
+        (!play.bUntilDestroyed && (m_FinishedWorldOwners.contains(owner) || m_FinishedWorldOwners.contains(runOwner)))) return;
     if (m_ConsumedWorldCueIds.contains(key)) return; // reliable resend is idempotent
     if (m_ConsumedWorldCueIds.size() >= 65536u) { OutputDebugStringA("[KoukuWORLD] Run cue capacity exceeded.\n"); return; }
     float seconds = 0.f;
@@ -4443,7 +4455,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(tick, play.iStartTick, 30.f, seconds)) return;
     const float ageMs = seconds * 1000.f;
     if (!play.strTargetSequenceInstanceId.empty() && play.iDurationMs && ageMs >= play.iDurationMs) return;
-    if (play.strTargetSequenceInstanceId.empty() && ageMs >= m_SequencePlayer.Get_InstanceElapsedSpanMs(
+    if (!play.bUntilDestroyed && play.strTargetSequenceInstanceId.empty() && ageMs >= m_SequencePlayer.Get_InstanceElapsedSpanMs(
         play.strSequenceInstanceId, play.fPlaybackSpeed, play.iDurationMs)) return;
     if (!play.strTargetSequenceInstanceId.empty())
     {
@@ -4485,9 +4497,9 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     const auto& run = m_Replication.Get_KoukuBundleState();
     const auto member = std::find_if(run.Members.begin(), run.Members.end(),
         [&](const auto& value) { return value.strMemberId == play.strMemberId; });
-    if (run.iRunEpoch != play.iRunEpoch || member == run.Members.end() || !m_WorldEmissionResolver ||
+    if (!play.bUntilDestroyed && (run.iRunEpoch != play.iRunEpoch || member == run.Members.end() || !m_WorldEmissionResolver ||
         !m_WorldEmissionResolver(run.iPinnedSourceRevision, member->strPatternId,
-            play.strOccurrenceId, cueTargets.objectEmissionAnchor))
+            play.strOccurrenceId, cueTargets.objectEmissionAnchor)))
     {
         const bool pending = std::any_of(m_PendingOwnedWorldCues.begin(), m_PendingOwnedWorldCues.end(),
             [&](const auto& value) { return value.iRunEpoch == play.iRunEpoch &&
@@ -4510,6 +4522,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     }
     OWNED_WORLD_CUE cue;
     cue.runEpoch = play.iRunEpoch; cue.startTick = play.iStartTick; cue.durationMs = play.iDurationMs;
+    cue.untilDestroyed = play.bUntilDestroyed;
     cue.memberId = play.strMemberId; cue.cueId = play.strCueId; cue.occurrenceId = play.strOccurrenceId; cue.sequenceId = play.strSequenceInstanceId;
     cue.emissionAnchor = std::move(cueTargets.objectEmissionAnchor);
     cue.clockMs = ageMs; cue.player = std::move(player);

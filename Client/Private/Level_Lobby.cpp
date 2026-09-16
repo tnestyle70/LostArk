@@ -243,9 +243,7 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	if (!CCharacterSelectionState::Try_Resolve_ForWorld(
 		eWorldId, identity))
 	{
-		m_strStatus = LostArk::Shared::WORLD_ID::BERN == eWorldId ?
-			"Create a character before entering Bern." :
-			"The entry identity could not be resolved.";
+		m_strStatus = "The entry identity could not be resolved.";
 		return false;
 	}
 	const bool_t usesPendingCreation =

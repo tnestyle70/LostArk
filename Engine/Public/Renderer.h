@@ -53,6 +53,20 @@ private:
 	ComPtr<ID3D11Texture2D>				m_pShadowDepthTexture = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
 	ComPtr<ID3D11ShaderResourceView>		m_pShadowSRV = { nullptr };
+    struct STATIC_SHADOW_CASTER final
+    {
+        weak_ptr<CGameObject> Owner;
+        const CGameObject* Identity = nullptr;
+        uint64_t Revision = 0u;
+    };
+    // Weak ownership prevents a cached map from retaining an unloaded Level.
+    ComPtr<ID3D11Texture2D> m_pStaticShadowDepthTexture;
+    vector<STATIC_SHADOW_CASTER> m_StaticShadowCasters;
+    vector<STATIC_SHADOW_CASTER> m_CandidateStaticShadowCasters;
+    vector<uint8_t> m_StaticShadowFlags;
+    float4x4_t m_StaticShadowView{}, m_StaticShadowProjection{};
+    bool_t m_bStaticShadowCacheValid = false;
+    bool_t m_bStaticShadowSourceMaterials = false;
 	ComPtr<ID3D11DepthStencilView>			m_pBloomDSV = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pSSAODSV = { nullptr };
 	ComPtr<ID3D11DepthStencilView> m_pSourceLightMaskDSV;
