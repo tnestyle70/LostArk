@@ -1351,6 +1351,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CValtanPatternFlowService::Get().Update();
 	CValtanTuningCommandService::Get().Update();
 	CKoukuSaydonPatternAuditionService::Get().Update();
+	if (m_pKoukuSaydonBossTool)
+	{
+		const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
+		if (m_pKoukuSaydonActionWorkbench &&
+			(m_pKoukuSaydonActionWorkbench->Consume_ServerPlayCancelRequest() ||
+				(preparing && (m_pKoukuSaydonActionWorkbench->Is_Dirty() ||
+					m_pKoukuSaydonActionWorkbench->Is_PublishRunning()))))
+			(void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
+		m_pKoukuSaydonBossTool->Update();
+		if (preparing) m_strKoukuCompletePlayStatus = m_pKoukuSaydonBossTool->Get_Status();
+		if (m_pKoukuSaydonActionWorkbench)
+			m_pKoukuSaydonActionWorkbench->Set_ServerPlayPreparationPending(
+				m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+	}
 #endif
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Engine.Update");
@@ -1874,6 +1888,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
 			(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
+			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
 		}
 		KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
 		std::uint32_t startClockMs = 0u;
@@ -2166,6 +2181,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, true);
 				(void)m_pKoukuSaydonBossTool->Play_PatternById(
 					serverPatternId, sourceRevision, m_strToolStatus);
+				workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
 				m_eDebugInputOwner = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
 				m_eDebugWindowFocusPending = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
 			}
@@ -9033,7 +9049,8 @@ bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std
 {
 	auto* arena = CLevel_KakulSaydonArena::Get_Active();
 	if (!arena || CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight() ||
-		CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive)
+		CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive ||
+		(m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending()))
 	{ status = "Complete Play requires the KoukuSaydon Arena and no active Server playback."; return false; }
 	if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
 	if (!m_pKoukuSaydonBossTool->Validate_PatternFlow(gateId, status)) return false;
@@ -9211,11 +9228,12 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	else ImGui::TextDisabled("Select a playback bundle or child Pattern. Parent folders are not executable.");
 	auto& service=CKoukuSaydonPatternAuditionService::Get(); const auto audition=service.Get_Snapshot();
 	const auto flow = service.Get_FlowSnapshot();
+	const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
 	const bool ready=bundleSelected?selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
 	const bool sequencePlaying = !m_strKoukuCompletePlayFlowGate.empty() ||
 		(m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_CompleteSequencePlaying());
-	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight() || flow.bActive || sequencePlaying);
+	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight() || flow.bActive || sequencePlaying || preparing);
 	const auto prepareSavedProduct = [&]() {
 		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition())
 		{
@@ -9252,10 +9270,12 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		}
 	}
 	ImGui::EndDisabled(); ImGui::SameLine();
-	ImGui::BeginDisabled(!arena || (!sequencePlaying && !flow.bActive && !audition.Is_InFlight()));
+	ImGui::BeginDisabled(!arena || (!sequencePlaying && !flow.bActive && !audition.Is_InFlight() && !preparing));
 	if (ImGui::Button("Stop Complete Play"))
 	{
-		if (sequencePlaying)
+		if (preparing)
+			(void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
+		else if (sequencePlaying)
 		{
 			m_pSequenceActionWorkbench->Cancel_CompleteSequencePlay();
 			StopCompositionPreview(DEBUG_TOOL::SEQUENCER_BENCHMARK);
@@ -9266,7 +9286,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	ImGui::SameLine(); ImGui::BeginDisabled(audition.strBundleId.empty() || sequencePlaying || flow.bActive || !audition.iRoomAuditionEpoch);
 	if (ImGui::Button("Restart Bundle")) (void)service.Restart_Bundle(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled(); ImGui::EndDisabled();
-	ImGui::BeginDisabled(!arena || audition.Is_InFlight() || flow.bActive || sequencePlaying);
+	ImGui::BeginDisabled(!arena || audition.Is_InFlight() || flow.bActive || sequencePlaying || preparing);
 	if (ImGui::Button("Complete Play - Sequences + Pattern Flow"))
 		(void)StartKoukuGateCompletePlay(gate, m_strKoukuCompletePlayStatus);
 	ImGui::SameLine();
@@ -9276,6 +9296,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (ImGui::Button("Composition Play All") && prepareSavedProduct())
 		(void)m_pKoukuSaydonBossTool->Play_CompositionAll(gate, m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled();
+	if (preparing) ImGui::TextWrapped("%s", m_pKoukuSaydonBossTool->Get_Status().c_str());
 	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
 	if (!flow.strStatus.empty()) ImGui::TextWrapped("%s", flow.strStatus.c_str());
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);

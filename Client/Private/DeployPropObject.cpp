@@ -5,10 +5,14 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
+#include "Profiler.h"
+#include "Engine_RenderTypes.h"
 
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <cstring>
+#include <limits>
 #include <string_view>
 #include <unordered_map>
 
@@ -274,6 +278,8 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 
 HRESULT CDeployPropObject::Render()
 {
+	if (Should_CullStaticIntact(false)) return S_OK;
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Deploy.Render");
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
@@ -304,6 +310,7 @@ HRESULT CDeployPropObject::Render()
 
 HRESULT CDeployPropObject::Render_DeferredOverlay()
 {
+	if (Should_CullStaticIntact(false)) return S_OK;
 	if (!Should_RenderDeferredEmissiveOverlay())
 		return S_OK;
 	if (FAILED(Bind_CommonShaderResources()))
@@ -313,6 +320,8 @@ HRESULT CDeployPropObject::Render_DeferredOverlay()
 
 HRESULT CDeployPropObject::Render_Shadow()
 {
+	if (Should_CullStaticIntact(true)) return S_OK;
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Deploy.Shadow");
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	const bool_t sourceVisible =
@@ -342,6 +351,109 @@ HRESULT CDeployPropObject::Render_Shadow()
 
 	return Has_VisibleDebrisPreviewInstance() ?
 		Render_DebrisPreview(true) : S_OK;
+}
+
+bool_t CDeployPropObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
+{
+	outRevision = 0u;
+	const auto reject = [this]()
+	{
+		m_bStaticShadowSnapshotValid = false;
+		return false;
+	};
+	if (m_ModelKind != DEPLOY_PROP_MODEL_KIND::STATIC ||
+		m_State != DEPLOY_PROP_STATE::INTACT || !m_pIntactModelCom ||
+		!m_pTransformCom || m_pIntactModelCom->Is_Skinned() ||
+		m_pIntactModelCom->Get_NumMeshes() == 0u ||
+		m_SurfacePresentation.fOpacity != 1.f ||
+		m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive ||
+		m_bAnimationAuthoringPoseActive || m_bDebrisPreviewActive ||
+		Is_BasePresentationSuppressed() ||
+		!CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+		return reject();
+
+	const float4x4_t& world = *m_pTransformCom->Get_WorldMatrixPtr();
+	for (const auto& row : world.m)
+		for (const auto component : row)
+			if (!std::isfinite(component)) return reject();
+
+	// Render_Static draws every mesh, including surface castsShadow=false rows.
+	// Match that existing consumer exactly; do not infer a different caster set.
+	// Its legacy UV/tint are identity and native elapsed time is always zero.
+	MAP_ASSET_RENDER_PROFILE profile{};
+	profile.opacity = m_SurfacePresentation.fOpacity;
+	for (uint32_t mesh = 0u; mesh < m_pIntactModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pIntactModelCom->Get_MaterialSurface(mesh);
+		if (m_pIntactModelCom->Has_MorphBaseVertices(mesh) ||
+			m_pIntactModelCom->Has_MaterialTextureOverrides(mesh) ||
+			!CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, profile, true))
+			return reject();
+	}
+
+	if (!m_bStaticShadowSnapshotValid || m_pStaticShadowModel != m_pIntactModelCom.get() ||
+		0 != std::memcmp(&m_StaticShadowWorld, &world, sizeof(world)))
+	{
+		if (m_iStaticShadowRevision == (std::numeric_limits<uint64_t>::max)())
+			return reject();
+		m_bStaticCullBoundsValid = false;
+		if (m_pIntactModelCom->Has_LocalBounds() && world._14 == 0.f &&
+			world._24 == 0.f && world._34 == 0.f && world._44 == 1.f)
+		{
+			const auto& minimum = m_pIntactModelCom->Get_LocalBoundsMin();
+			const auto& maximum = m_pIntactModelCom->Get_LocalBoundsMax();
+			const float3_t localCenter((minimum.x + maximum.x) * .5f,
+				(minimum.y + maximum.y) * .5f, (minimum.z + maximum.z) * .5f);
+			const double halfX = (double(maximum.x) - minimum.x) * .5;
+			const double halfY = (double(maximum.y) - minimum.y) * .5;
+			const double halfZ = (double(maximum.z) - minimum.z) * .5;
+			double scaleSquared = 0.0;
+			for (uint32_t row = 0u; row < 3u; ++row)
+				for (uint32_t column = 0u; column < 3u; ++column)
+					scaleSquared += double(world.m[row][column]) * world.m[row][column];
+			// Frobenius norm also bounds shear/nonuniform editor transforms.
+			// Inflate the result to retain float rounding at clip boundaries.
+			const double radius = std::sqrt((halfX * halfX + halfY * halfY +
+				halfZ * halfZ) * scaleSquared) * 1.02 + .05;
+			XMStoreFloat3(&m_vStaticCullCenter, XMVector3TransformCoord(
+				XMLoadFloat3(&localCenter), XMLoadFloat4x4(&world)));
+			m_bStaticCullBoundsValid = halfX >= 0.0 && halfY >= 0.0 && halfZ >= 0.0 &&
+				std::isfinite(m_vStaticCullCenter.x) && std::isfinite(m_vStaticCullCenter.y) &&
+				std::isfinite(m_vStaticCullCenter.z) && std::isfinite(radius) && radius > 0.0 &&
+				radius <= (std::numeric_limits<f32_t>::max)();
+			if (m_bStaticCullBoundsValid) m_fStaticCullRadius = static_cast<f32_t>(radius);
+		}
+		m_pStaticShadowModel = m_pIntactModelCom.get();
+		m_StaticShadowWorld = world;
+		++m_iStaticShadowRevision;
+		m_bStaticShadowSnapshotValid = true;
+	}
+	outRevision = m_iStaticShadowRevision;
+	return true;
+}
+
+bool_t CDeployPropObject::Should_CullStaticIntact(const bool_t shadowPass) const
+{
+	uint64_t revision = 0u;
+	if (!Try_GetStaticShadowRevision(revision) || !m_bStaticCullBoundsValid)
+		return false;
+	if (shadowPass)
+	{
+		MAP_SHADOW_CULL_SNAPSHOT snapshot{};
+		return CMapAssetRenderUtils::Capture_ShadowCullSnapshot(snapshot) &&
+			!CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(
+				snapshot, m_vStaticCullCenter, m_fStaticCullRadius);
+	}
+	MAP_CAMERA_CULL_SNAPSHOT snapshot{};
+	MAP_FRUSTUM_RUNTIME_STATE state{};
+	MAP_FRUSTUM_CULL_DECISION decision{};
+	MAP_FRUSTUM_CULLING_POLICY policy{};
+	policy.baseMargin = .05f;
+	return CMapAssetRenderUtils::Capture_CameraCullSnapshot(snapshot) &&
+		CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, snapshot,
+			m_Placement.assetId, {}, m_Placement.runtimePlacementId,
+			m_vStaticCullCenter, m_fStaticCullRadius, state, decision) &&
+		!decision.shouldRender;
 }
 
 bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)

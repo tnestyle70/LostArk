@@ -2063,3 +2063,22 @@ Effect Tool 모델을 현재 Pattern clip으로 바꿔도 SourceModelPreview 기
 ### 게시 성공과 F1 목록 로드의 용량 계약을 함께 검사한다
 
 Kouku Encounter가 root-motion/월드 연출을 포함해 커지면 publisher 성공 뒤 BossTool의 선행 byte 상한에서 거절될 수 있다. 파일 크기 제한뿐 아니라 `CDataJson`의 기본16MiB와 value/depth 제한도 같은 호출에 명시한다. 현재 F1 Encounter 계약은64MiB/4,000,000values/depth64이며 projector가 같은 조건을 게시 전에 검사한다. Load 실패로 Flow까지 읽지 못한 상태를 `No saved Pattern Flow`로 표시하지 않고 실제 오류와 마지막 정상 목록을 유지한다. 재발 검증은09-14 Sequence RESULT G51.
+
+### 쿠크 Effect는 나오는데 보스 animation만 idle이면 binding root 계약을 확인한다
+
+`KoukuSaydon.patternbindings.json`은 보스 Animation과 별도 PresentationPlayer가 함께 소비한다. publisher가 `targetedCombatVisuals` 같은 공용 optional section을 추가하면 두 reader의 root 허용 필드를 함께 갱신한다. Effect 소비 성공은 CNpc의 action binding 로드 성공을 보장하지 않는다. unknown field·schema·revision·clip 검증을 제거하지 말고 실제 게시 문서로 기존 엄격 reader 호환 검사를 실행한다.
+
+Complete Play의 `target is not spawned`는 Parent/Summon 실행 전에 대상 보스가 없는 상태다. 다른 관문의 보스만 자동 생성하면 플레이어·맵·조명·HUD가 어긋나므로 기존 Gate 활성화의 spawn와 이동 승인을 기다린 뒤 저장 revision을 고정한 audition을 제출한다. Flow가 없는 새 session에 과거 `Level changed` 사유를 Flow 결과로 복사하지 않는다.
+
+### 공유 Effect의 원본 애니메이션과 Pattern 선택을 구분한다
+
+Effect를 원본 Resource 목록에서 열었는데 다른 동작이면 SourceModelPreview와 설치 clip을 먼저 비교한 뒤 Workbench의 선택 provider를 조사한다. 같은 Effect를 여러 Pattern이 사용하므로 마지막 편집 선택을 Open/Play 때 자동 소비하면 정상 저장 원본이 덮여 보인다. 기본은 저장 source이며 occurrence preview는 명시적으로 선택한 값 snapshot이다. 모델 pose와 bone sampler에 같은 snapshot/start/duration을 전달하고 성공한 문서 교체에서만 초기화한다. 선택 실패·로드 취소는 기존 상태를 보존한다. 해당 Effect를 특정 Pattern에 맞춰 재저장하는 우회는 하지 않는다.
+
+### Trail의 폭 축 연속성과 단면 winding을 함께 검사한다
+
+Trail이 꼬이거나 끊길 때 tick이나 shader부터 바꾸지 않는다. 설치 모델의 실제 궤적, 현재 sample cadence, camera와 tangent의 cross, 이웃 폭 축의 부호와 triangle winding을 함께 비교한다. 폭 축을 연속화하면서 단면 재질의 front/back을 바꾸면 일부 구간이 사라질 수 있다. 카메라 평행·왕복·중복점의 축과 완전퇴화 구간의 연결도 검사한다. baked AnimationTrail은 EdgePairs가 원본 geometry이며 centerline Points가 비어 있을 수 있으므로 centerline tessellation을 적용하지 않는다. 수치 검사와 사용자 GPU 화면 판정은 구분한다. 구현과 개별 증거는09-16 KOUKU_PATTERN_CLEANUP_AND_TRAIL_IMPLEMENTATION_RESULT에 둔다.
+### 정적 맵 캐시 밖의 Deploy 그림자와 GPU elapsed 해석
+
+맵 shadow cache hit만으로 정적 장면 전체가 재사용된다고 판단하지 않는다. MapStaticBatchObject/MapAssetObject 외의 DeployPropObject처럼 같은 Render_Shadow 큐를 사용하는 소품도 별도로 확인한다. 파괴 가능한 소품은 intact STATIC, actual world/model, opaque presentation 및 시간·카메라 독립 alpha 입력을 검증한 때만 기존 depth 캐시에 참여하고 destruction/fade/animation/physics/debris/suppression/morph/texture override에는 기존 경로를 유지한다. source pass를 유지하며 camera 밖 shadow caster는 최종 light volume으로만 제외한다.
+
+GPU timestamp의 Shadow elapsed에는 CPU 명령 공급 공백이 포함될 수 있다. CPU NonBlend와 실제 draw/VS/PS 및 완전한 CPU 표본을 함께 읽고, enqueue 수를 실제 draw 수로 쓰지 않는다. 계측 예산이 차면 자식보다 늦게 종료하는 부모 scope도 사라질 수 있으므로 main root/pass 여유를 보존한다. detail 누락이 있으면 parent inclusive는 유효해도 SelfMs를 정확한 exclusive 비용이라고 보고하지 않는다. 안개는 별도 추정 대신 실제 포함 패스의 시간을 먼저 대조한다. [G34 결과](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md)에 적용 및 검증 범위를 기록한다.

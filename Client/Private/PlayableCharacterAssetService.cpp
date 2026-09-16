@@ -1,6 +1,7 @@
 #include "PlayableCharacterAssetService.h"
 
 #include "ActorCatalog.h"
+#include "AssetPreparationBatch.h"
 #include "CharacterCatalog.h"
 #include "CharacterSpec.h"
 #include "Effect_Catalog.h"
@@ -204,7 +205,8 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const std::atomic_bool* pCancellationRequested,
 	const PROGRESS_CALLBACK& progress, PREPARED_MODELS& staged,
-	const AUTHORING_INPUT& authoring, std::shared_ptr<const PREPARED_PRESENTATION>& presentation)
+	const AUTHORING_INPUT& authoring, std::shared_ptr<const PREPARED_PRESENTATION>& presentation,
+	CAssetPreparationBatch& preparationBatch)
 {
 	if (nullptr == pDevice || nullptr == pContext ||
 		iLevelIndex >= ETOUI(LEVEL::END) ||
@@ -244,52 +246,116 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 			characterScale) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
 
-    const auto loadDescription = [pActor](const std::string& assetId,
-        MODEL_ASSET_LOAD_DESC& description) {
-        std::string status;
-        if (CActorCatalog::Build_ModelLoadDescription(assetId, description, status, pActor->assetId))
-            return true;
-        OutputDebugStringA(("[PlayableCharacterAssetService] " + status + "\n").c_str());
-        return false;
-    };
-	const size_t totalModelCount =
-		1u + pTags->iEquipmentCount + pTags->iWeaponCount;
-	staged.reserve(totalModelCount);
-	CModel* pBodyPalette = nullptr;
-	const auto StageModel = [
-		&staged,
-		&pBodyPalette,
-		&pDevice,
-		&pContext,
-		&progress,
-        &loadDescription,
-		characterClass,
-		totalModelCount](
-		const tchar_t* pTag,
-		const std::string& assetId,
-		const MODEL modelType,
-		const matrix_t& transform)
+	struct MODEL_PREPARATION final
 	{
-		if (progress)
-			progress(staged.size(), totalModelCount, assetId);
-		const std::filesystem::path path =
-			CRuntimeAssetRoot::Resolve(assetId);
-		if (nullptr == pTag || path.empty())
-			return false;
-		MODEL_ASSET_LOAD_DESC description;
-		if (!loadDescription(assetId, description)) return false;
-		unique_ptr<CModel> pModel = CModel::Create(
-			pDevice,
-			pContext,
-			modelType,
-			description,
-			transform);
-		if (nullptr == pModel)
-			return false;
+		std::wstring Tag;
+		std::string AssetId;
+		MODEL Type = MODEL::NONANIM;
+		MODEL_ASSET_LOAD_DESC Description;
+		float4x4_t Transform{};
+		bool AnimationSet = false;
+	};
+	const size_t prototypeCount = 1u + pTags->iEquipmentCount + pTags->iWeaponCount;
+	const size_t totalModelCount = prototypeCount + pActor->animationSetModels.size();
+	std::vector<MODEL_PREPARATION> tasks;
+	tasks.reserve(totalModelCount);
+	const auto captureModel = [&](const tchar_t* tag, const std::string& assetId,
+		MODEL type, const matrix_t& transform, bool animationSet = false)
+	{
+		if (Is_Cancelled(pCancellationRequested)) return false;
+		MODEL_PREPARATION task;
+		task.AssetId = assetId;
+		task.Type = type;
+		task.AnimationSet = animationSet;
+		XMStoreFloat4x4(&task.Transform, transform);
+		if (animationSet)
+		{
+			// Separate animation sets keep their existing path admission and do
+			// not inherit body/equipment material overrides from the catalog.
+			task.Description.meshPath = CRuntimeAssetRoot::Resolve(assetId);
+			if (task.Description.meshPath.empty()) return false;
+		}
+		else
+		{
+			if (!tag) return false;
+			task.Tag = tag;
+			std::string status;
+			if (!CActorCatalog::Build_ModelLoadDescription(assetId,
+				task.Description, status, pActor->assetId))
+			{
+				OutputDebugStringA(("[PlayableCharacterAssetService] " + status + "\n").c_str());
+				return false;
+			}
+		}
+		tasks.push_back(std::move(task));
+		return true;
+	};
+	// Catalog/root lookup and task allocation stay on the owner. Children only
+	// consume immutable descriptions and write their preallocated result slot.
+	if (!captureModel(pTags->pBody, pActor->bodyModel, MODEL::ANIM, characterTransform))
+		return Is_Cancelled(pCancellationRequested) ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
+	for (const auto& animationSet : pActor->animationSetModels)
+		if (!captureModel(nullptr, animationSet, MODEL::ANIM, characterTransform, true))
+			return Is_Cancelled(pCancellationRequested) ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
+	const size_t equipmentBegin = tasks.size();
+	for (size_t index = 0u; index < pTags->iEquipmentCount; ++index)
+		if (!captureModel(pTags->Equipment[index], pActor->equipmentModels[index],
+			MODEL::ANIM, characterTransform))
+			return Is_Cancelled(pCancellationRequested) ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
+	for (size_t index = 0u; index < pTags->iWeaponCount; ++index)
+		if (!captureModel(pTags->Weapons[index], pActor->weaponModels[index],
+			MODEL::NONANIM, XMMatrixIdentity()))
+			return Is_Cancelled(pCancellationRequested) ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
+
+	std::vector<unique_ptr<CModel>> models(tasks.size());
+	std::mutex progressMutex;
+	size_t completedModelCount = 0u;
+	if (progress) progress(0u, totalModelCount, tasks.front().AssetId);
+	const auto prepared = preparationBatch.Run(pDevice.Get(), tasks.size(),
+		pCancellationRequested, [&](size_t index) -> HRESULT
+	{
+		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.Model.Prepare");
+		const auto& task = tasks[index];
+		const matrix_t transform = XMLoadFloat4x4(&task.Transform);
+		auto model = task.AnimationSet ?
+			CModel::Create(pDevice, pContext, task.Type,
+				task.Description.meshPath.string().c_str(), transform) :
+			CModel::Create(pDevice, pContext, task.Type, task.Description, transform);
+		if (!model) return E_FAIL;
+		models[index] = std::move(model);
+		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		std::scoped_lock lock{progressMutex};
+		++completedModelCount;
+		if (progress) progress(completedModelCount, totalModelCount, task.AssetId);
+		return S_OK;
+	});
+	if (FAILED(prepared.result))
+	{
+		if (prepared.failedTask < tasks.size() &&
+			prepared.result != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+			OutputDebugStringA(("[PlayableCharacterAssetService] Model preparation failed: " +
+				tasks[prepared.failedTask].AssetId + "\n").c_str());
+		return prepared.result;
+	}
+	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+
+	// Cross-model mutation begins only after every independent load joined.
+	// Keep authored animation order and reject hash/clip collisions as before.
+	CModel* pBodyPalette = models.front().get();
+	for (size_t index = 1u; index < equipmentBegin; ++index)
+	{
+		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (FAILED(pBodyPalette->Attach_AnimationSet(*models[index]))) return E_FAIL;
+		models[index].reset();
+	}
+	for (size_t index = equipmentBegin; index < equipmentBegin + pTags->iEquipmentCount; ++index)
+	{
+		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		const auto& pModel = models[index];
 		bool requiresBodyPalette = false;
 		// This source-normalized rig contract belongs to the DimensionMaster pack.
-		if (modelType == MODEL::ANIM &&
-			characterClass == LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER)
+		if (characterClass == LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER)
 		{
 			for (uint32_t mesh = 0; mesh < pModel->Get_NumMeshes(); ++mesh)
 			{
@@ -302,8 +368,7 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 		if (requiresBodyPalette)
 		{
 			const auto boneNames = pModel->Get_BoneNames();
-			bool compatible = pBodyPalette &&
-				pModel->Get_SkeletonHash() == pBodyPalette->Get_SkeletonHash() &&
+			bool compatible = pModel->Get_SkeletonHash() == pBodyPalette->Get_SkeletonHash() &&
 				boneNames == pBodyPalette->Get_BoneNames();
 			for (uint32_t bone = 0; compatible && bone < boneNames.size(); ++bone)
 			{
@@ -317,90 +382,15 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 			if (!compatible)
 			{
 				OutputDebugStringA(("[PlayableCharacterAssetService] Equipment body palette mismatch: " +
-					assetId + "\n").c_str());
-				return false;
-			}
-		}
-		staged.emplace_back(pTag, std::move(pModel));
-		if (progress)
-			progress(staged.size(), totalModelCount, assetId);
-		return true;
-	};
-
-	{
-		if (progress)
-			progress(staged.size(), totalModelCount, pActor->bodyModel);
-		const std::filesystem::path bodyPath =
-			CRuntimeAssetRoot::Resolve(pActor->bodyModel);
-		if (nullptr == pTags->pBody || bodyPath.empty())
-			return E_FAIL;
-		MODEL_ASSET_LOAD_DESC description;
-		if (!loadDescription(pActor->bodyModel, description)) return E_FAIL;
-		unique_ptr<CModel> pBodyModel = CModel::Create(
-			pDevice,
-			pContext,
-			MODEL::ANIM,
-			description,
-			characterTransform);
-		if (nullptr == pBodyModel)
-			return E_FAIL;
-		/* Shared clips the class borrows rather than cooks into its body -- the
-		Esther summon cast, the character-creation idle -- ship as separate
-		animation sets. Attaching is fail-closed on skeleton hash and clip
-		collisions, so one bad set fails this class's admission rather than
-		leaving the character half-built. */
-		for (const std::string& animationSetModel : pActor->animationSetModels)
-		{
-			if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			const std::filesystem::path animSetPath =
-				CRuntimeAssetRoot::Resolve(animationSetModel);
-			if (animSetPath.empty())
-				return E_FAIL;
-			const unique_ptr<CModel> pAnimSet = CModel::Create(
-				pDevice,
-				pContext,
-				MODEL::ANIM,
-				animSetPath.string().c_str(),
-				characterTransform);
-			if (nullptr == pAnimSet ||
-				FAILED(pBodyModel->Attach_AnimationSet(*pAnimSet)))
-			{
+					tasks[index].AssetId + "\n").c_str());
 				return E_FAIL;
 			}
 		}
-		pBodyPalette = pBodyModel.get();
-		staged.emplace_back(pTags->pBody, std::move(pBodyModel));
-		if (progress)
-			progress(staged.size(), totalModelCount, pActor->bodyModel);
 	}
-
-	for (size_t index = 0; index < pTags->iEquipmentCount; ++index)
-	{
-		if (Is_Cancelled(pCancellationRequested))
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		if (!StageModel(
-			pTags->Equipment[index],
-			pActor->equipmentModels[index],
-			MODEL::ANIM,
-			characterTransform))
-		{
-			return E_FAIL;
-		}
-	}
-
-	for (size_t index = 0; index < pTags->iWeaponCount; ++index)
-	{
-		if (Is_Cancelled(pCancellationRequested))
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		if (!StageModel(
-			pTags->Weapons[index],
-			pActor->weaponModels[index],
-			MODEL::NONANIM,
-			XMMatrixIdentity()))
-		{
-			return E_FAIL;
-		}
-	}
+	staged.reserve(prototypeCount);
+	for (size_t index = 0u; index < tasks.size(); ++index)
+		if (!tasks[index].AnimationSet)
+			staged.emplace_back(tasks[index].Tag, std::move(models[index]));
 
 	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 	Engine::CProfilerScope authoringScope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.Authoring.Prepare");
@@ -467,7 +457,8 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 	const uint32_t iLevelIndex,
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const std::atomic_bool* cancellation, const PROGRESS_CALLBACK& progress,
-	const std::shared_ptr<const AUTHORING_INPUT>& authoringInput)
+	const std::shared_ptr<const AUTHORING_INPUT>& authoringInput,
+	CAssetPreparationBatch* preparationBatch)
 {
 	uint64_t generation;
 	{
@@ -479,8 +470,12 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 	std::shared_ptr<const PREPARED_PRESENTATION> presentation;
 	const auto authoring = authoringInput ? authoringInput : Capture_AuthoringInput(characterClass);
 	if (!authoring) return E_FAIL;
-	const HRESULT result = Prepare_Models(pDevice, pContext, iLevelIndex, characterClass, cancellation, progress, staged, *authoring, presentation);
-	return FAILED(result) ? result : Commit_Models(iLevelIndex, characterClass, generation, staged, presentation);
+	CAssetPreparationBatch localBatch;
+	const HRESULT result = Prepare_Models(pDevice, pContext, iLevelIndex, characterClass, cancellation,
+		progress, staged, *authoring, presentation, preparationBatch ? *preparationBatch : localBatch);
+	if (FAILED(result)) return result;
+	if (Is_Cancelled(cancellation)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+	return Commit_Models(iLevelIndex, characterClass, generation, staged, presentation);
 }
 
 struct Client::CPlayableCharacterAssetService::ASYNC_PREPARATION final
@@ -489,6 +484,7 @@ struct Client::CPlayableCharacterAssetService::ASYNC_PREPARATION final
 	std::condition_variable Decision;
 	std::atomic_bool Cancelled{false};
 	std::atomic_bool Completed{false};
+	CAssetPreparationBatch Batch;
 	std::atomic<HANDLE> WorkerHandle{nullptr};
 	std::atomic<ULONGLONG> TransitionCancelTick{0u};
 	bool ReadyForCommit = false;
@@ -560,7 +556,7 @@ HRESULT Client::CPlayableCharacterAssetService::Begin_AsyncPreparation(
 				{
 					Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.Prepare.Worker");
 					job->Result = FAILED(apartment) ? apartment : Prepare_Models(device, context,
-						job->Level, job->CharacterClass, &job->Cancelled, progress, job->Models, *job->Authoring, job->Presentation);
+						job->Level, job->CharacterClass, &job->Cancelled, progress, job->Models, *job->Authoring, job->Presentation, job->Batch);
 					if (job->Cancelled.load()) job->Result = HRESULT_FROM_WIN32(ERROR_CANCELLED);
 				}
 				if (SUCCEEDED(job->Result))
@@ -599,6 +595,7 @@ void Client::CPlayableCharacterAssetService::Cancel_AsyncPreparation()
 	if (!m_AsyncPreparation) return;
 	m_AsyncPreparation->Cancelled.store(true);
 	m_AsyncPreparation->Decision.notify_all();
+	m_AsyncPreparation->Batch.Cancel_SynchronousIo();
 	if (m_Worker.joinable()) CancelSynchronousIo(m_Worker.native_handle());
 }
 
@@ -684,6 +681,7 @@ void Client::CPlayableCharacterAssetService::Cancel_AllAsyncPreparations()
 			}
 			job->Cancelled.store(true);
 			job->Decision.notify_all();
+			job->Batch.Cancel_SynchronousIo();
 			if (const HANDLE worker = job->WorkerHandle.load()) CancelSynchronousIo(worker);
 		}
 	}

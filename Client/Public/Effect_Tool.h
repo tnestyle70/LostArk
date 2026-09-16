@@ -45,7 +45,7 @@ struct EFFECT_TOOL_KOUKU_PATTERN_PREVIEW final
     std::uint32_t iEffectStartMs = 0u;
     std::uint32_t iDurationMs = 0u;
     bool bLoopEffectToDuration = false;
-    std::string strPatternId, strOccurrenceId;
+    std::string strEffectAssetId, strPatternId, strOccurrenceId;
 };
 
 class CCharacterPreviewPanel;
@@ -1506,6 +1506,7 @@ private:
     std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
     std::shared_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
     KOUKU_PATTERN_PREVIEW_PROVIDER m_KoukuPatternPreviewProvider;
+    std::optional<EFFECT_TOOL_KOUKU_PATTERN_PREVIEW> m_KoukuPatternPreviewContext;
     std::string m_strKoukuPatternPreviewStatus;
     std::vector<EFFECT_COMPOSITION_WORLD_RESOURCE> m_AuthoringWorldObjects;
     std::unordered_map<CEffectObject*, uint32_t> m_AuthoringOccurrenceLevels;

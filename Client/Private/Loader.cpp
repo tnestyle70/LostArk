@@ -50,6 +50,7 @@
 #include <array>
 #include <cmath>
 #include <exception>
+#include <limits>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -757,169 +758,227 @@ HRESULT CLoader::Ready_MapArea(
 	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
 		return E_INVALIDARG;
 
-	if (FAILED(Ready_MapAuthoringCore(iLevelIndex)))
-		return E_FAIL;
-
-	CMapAssetCatalog mapCatalog;
-	Set_Status(TEXT("Map: explicit area catalog"));
-	if (!mapCatalog.Load_Area(areaId))
+	try
 	{
-		// Recovery records this status; keep the catalog reason, not only its phase.
-		{
-			lock_guard<mutex> activeLock(g_ActiveStatusMutex);
-			g_ActiveStatus = "Map " + areaId + ": " + mapCatalog.Get_Status();
-		}
-		OutputDebugStringA((
-			"[Loader][Map] " +
-			mapCatalog.Get_Status() +
-			"\n").c_str());
-		return E_FAIL;
-	}
+		if (FAILED(Ready_MapAuthoringCore(iLevelIndex)))
+			return E_FAIL;
 
-	std::unordered_set<std::string> requiredAssetIds;
-	std::vector<MAP_PLACEMENT_RECORD> scopedPlacements;
-	if (loadScope.isEnabled)
-	{
-		std::string placementStatus;
-		Set_Status(TEXT("Map: product load scope"));
-		if (!CMapPlacementRuntime::Read_Placements(
-			mapCatalog, scopedPlacements, placementStatus))
+		CMapAssetCatalog mapCatalog;
 		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Loader.Map.Catalog");
+			Set_Status(TEXT("Map: explicit area catalog"));
+			if (!mapCatalog.Load_Area(areaId))
 			{
-				lock_guard<mutex> activeLock(g_ActiveStatusMutex);
-				g_ActiveStatus = "Map " + areaId +
-					": product load scope: " + placementStatus;
+				{
+					lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+					g_ActiveStatus = "Map " + areaId + ": " + mapCatalog.Get_Status();
+				}
+				OutputDebugStringA(("[Loader][Map] " + mapCatalog.Get_Status() + "\n").c_str());
+				return E_FAIL;
 			}
-			OutputDebugStringA(("[Loader][Map] " + placementStatus + "\n").c_str());
-			return E_FAIL;
 		}
-		CMapPlacementRuntime::Apply_LoadScope(
-			mapCatalog, loadScope, scopedPlacements);
-		for (const MAP_PLACEMENT_RECORD& record : scopedPlacements)
-			requiredAssetIds.insert(record.assetId);
-		if (requiredAssetIds.empty())
-		{
-			lock_guard<mutex> activeLock(g_ActiveStatusMutex);
-			g_ActiveStatus = "Map " + areaId +
-				": product load scope selected no placements";
-			return E_FAIL;
-		}
-		CMapPlacementRuntime::Cache_LoadStage(
-			areaId,
-			loadScope,
-			mapCatalog,
-			scopedPlacements);
-	}
 
-	const matrix_t mapAssetTransform =
-		XMMatrixScaling(0.01f, 0.01f, 0.01f);
-	const size_t requiredModelCount = loadScope.isEnabled ?
-		requiredAssetIds.size() : mapCatalog.Get_Entries().size();
-    // All map entries here use the same pretransform. Material/RNM variants
-    // share immutable GPU meshes through the first admitted physical model.
-    std::unordered_map<std::wstring, const CModel*> geometryPrototypes;
-	size_t loadedModelCount = {};
-	for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
-	{
-		if (loadScope.isEnabled &&
-			requiredAssetIds.end() == requiredAssetIds.find(entry.id))
+		std::unordered_set<std::string> requiredAssetIds;
+		std::vector<MAP_PLACEMENT_RECORD> scopedPlacements;
 		{
-			continue;
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Loader.Map.Scope");
+			if (loadScope.isEnabled)
+			{
+				std::string placementStatus;
+				Set_Status(TEXT("Map: product load scope"));
+				if (!CMapPlacementRuntime::Read_Placements(
+					mapCatalog, scopedPlacements, placementStatus))
+				{
+					{
+						lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+						g_ActiveStatus = "Map " + areaId + ": product load scope: " + placementStatus;
+					}
+					OutputDebugStringA(("[Loader][Map] " + placementStatus + "\n").c_str());
+					return E_FAIL;
+				}
+				CMapPlacementRuntime::Apply_LoadScope(mapCatalog, loadScope, scopedPlacements);
+				for (const MAP_PLACEMENT_RECORD& record : scopedPlacements)
+					requiredAssetIds.insert(record.assetId);
+				if (requiredAssetIds.empty())
+				{
+					lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+					g_ActiveStatus = "Map " + areaId + ": product load scope selected no placements";
+					return E_FAIL;
+				}
+			}
+		}
+
+		const size_t requiredModelCount = loadScope.isEnabled ?
+			requiredAssetIds.size() : mapCatalog.Get_Entries().size();
+		std::vector<const MAP_ASSET_ENTRY*> entries;
+		std::vector<std::vector<size_t>> groups;
+		std::unordered_map<std::wstring, size_t> geometryGroups;
+		entries.reserve(requiredModelCount);
+		// Catalog order selects the same physical base and material/LOD inputs
+		// as the serial loader; scheduling only changes independent groups.
+		for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
+		{
+			if (loadScope.isEnabled && !requiredAssetIds.contains(entry.id))
+				continue;
+			const size_t index = entries.size();
+			entries.push_back(&entry);
+			const std::wstring key = entry.resolvedModelPath.lexically_normal().wstring();
+			const auto [found, inserted] = geometryGroups.emplace(key, groups.size());
+			if (inserted)
+				groups.emplace_back();
+			groups[found->second].push_back(index);
+		}
+		if (entries.size() != requiredModelCount)
+			return E_FAIL;
+
+		std::vector<std::pair<wstring_t, unique_ptr<CPrototype>>> staged(requiredModelCount);
+		for (size_t index = 0u; index < entries.size(); ++index)
+			staged[index].first = entries[index]->prototypeTag;
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Loader.Map.Models");
+			const auto started = std::chrono::steady_clock::now();
+			const auto assetRoot = CRuntimeAssetRoot::Get();
+			std::vector<size_t> failedModels(groups.size(), (std::numeric_limits<size_t>::max)());
+			std::atomic_bool failed = false;
+			std::mutex progressMutex;
+			size_t completed = 0u;
+			Set_DeterminateStatus(TEXT("Map: model prototypes"), 0u, requiredModelCount);
+			const auto preparation = m_AssetPreparationBatch.Run(m_pDevice.Get(), groups.size(),
+				&m_isCancellationRequested, [&](const size_t groupIndex) -> HRESULT
+				{
+					size_t activeIndex = (std::numeric_limits<size_t>::max)();
+					try
+					{
+						Engine::CProfilerScope workerScope(CGameInstance::Get().Get_Profiler(),
+							"Loader.Map.ModelWorker");
+						const matrix_t transform = XMMatrixScaling(0.01f, 0.01f, 0.01f);
+						const CModel* geometry = nullptr;
+						for (const size_t index : groups[groupIndex])
+						{
+							if (failed.load(std::memory_order_acquire))
+								return S_OK; // The failing group's result owns the actual error.
+							if (m_isCancellationRequested.load(std::memory_order_acquire))
+								return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+							activeIndex = index;
+							const MAP_ASSET_ENTRY& entry = *entries[index];
+							Engine::MODEL_ASSET_LOAD_DESC loadDesc;
+							loadDesc.assetRoot = assetRoot;
+							loadDesc.meshPath = entry.resolvedModelPath;
+							loadDesc.materialOverrides = entry.materialOverrides;
+							auto model = geometry ?
+								CModel::Create_MaterialVariant(*geometry, loadDesc) :
+								CModel::Create(m_pDevice, m_pContext, MODEL::NONANIM, loadDesc, transform);
+							if (!model)
+							{
+								failedModels[groupIndex] = index;
+								failed.store(true, std::memory_order_release);
+								return E_FAIL;
+							}
+							if (!geometry)
+								geometry = model.get();
+							// The group's first staged model keeps geometry alive. No worker
+							// changes the container or another group's catalog slots.
+							staged[index].second = std::move(model);
+							{
+								std::scoped_lock progressLock(progressMutex);
+								++completed;
+								Set_DeterminateStatus(TEXT("Map: model prototypes"), completed, requiredModelCount);
+							}
+						}
+						return S_OK;
+					}
+					catch (...)
+					{
+						failedModels[groupIndex] = activeIndex;
+						failed.store(true, std::memory_order_release);
+						throw; // The common worker boundary preserves E_OUTOFMEMORY/E_FAIL.
+					}
+				});
+			HRESULT result = preparation.result;
+			if (SUCCEEDED(result) && m_isCancellationRequested.load(std::memory_order_acquire))
+				result = HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			if (SUCCEEDED(result) && completed != requiredModelCount)
+				result = E_FAIL;
+			const double elapsedMs = std::chrono::duration<double, std::milli>(
+				std::chrono::steady_clock::now() - started).count();
+			char diagnostic[512]{};
+			sprintf_s(diagnostic,
+				"[Loader][Map] area=%s models=%zu geometryGroups=%zu variants=%zu workers=%u prepared=%zu elapsedMs=%.3f result=0x%08lX\n",
+				areaId.c_str(), requiredModelCount, groups.size(),
+				requiredModelCount - groups.size(), preparation.workerCount, completed, elapsedMs,
+				static_cast<unsigned long>(result));
+			OutputDebugStringA(diagnostic);
+			if (FAILED(result))
+			{
+				const size_t failedIndex = preparation.failedTask < failedModels.size() ?
+					failedModels[preparation.failedTask] : (std::numeric_limits<size_t>::max)();
+				if (failedIndex < entries.size())
+				{
+					const MAP_ASSET_ENTRY& entry = *entries[failedIndex];
+					{
+						lock_guard<mutex> activeLock(g_ActiveStatusMutex);
+						g_ActiveStatus = "Map " + areaId + ": model prototype failed " +
+							entry.id + " / " + entry.modelRelativePath.generic_string() +
+							" (" + std::to_string(completed) + "/" +
+							std::to_string(requiredModelCount) + ")";
+					}
+					OutputDebugStringW((L"[Loader][Map] Model failed: " + entry.prototypeTag +
+						L" / " + entry.resolvedModelPath.wstring() + L"\n").c_str());
+				}
+				return result;
+			}
+		}
+
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Loader.Map.Navigation");
+			MAP_NAVIGATION_CONTRACT navigationContract;
+			std::string navigationStatus;
+			Set_Status(TEXT("Map: navigation contract"));
+			if (!CMapNavigationContract::Resolve_Area(areaId, navigationContract, navigationStatus))
+			{
+				OutputDebugStringA(("[Loader][Map] " + navigationStatus + "\n").c_str());
+				return E_FAIL;
+			}
+			if (navigationContract.runtimeGridAvailable)
+			{
+				f32_t maximumStepHeight = 0.f;
+				if (!CMapNavigationContract::Read_RuntimeStepHeight(
+					navigationContract, maximumStepHeight, navigationStatus))
+				{
+					OutputDebugStringA(("[Loader][Map] " + navigationStatus + "\n").c_str());
+					return E_FAIL;
+				}
+				auto navigation = CNavigation::Create_NavGrid(m_pDevice, m_pContext,
+					navigationContract.runtimePath.c_str(), maximumStepHeight);
+				if (!navigation)
+					return E_FAIL;
+				staged.emplace_back(navigationContract.prototypeTag, std::move(navigation));
+			}
 		}
 		if (m_isCancellationRequested.load(std::memory_order_acquire))
 			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 
-		tchar_t progress[128]{};
-		_snwprintf_s(
-			progress,
-			std::size(progress),
-			_TRUNCATE,
-			TEXT("Map: model prototypes %zu/%zu"),
-			loadedModelCount,
-			requiredModelCount);
-		Set_DeterminateStatus(
-			progress, loadedModelCount, requiredModelCount);
-
-		Engine::MODEL_ASSET_LOAD_DESC loadDesc;
-		loadDesc.assetRoot = CRuntimeAssetRoot::Get();
-		loadDesc.meshPath = entry.resolvedModelPath;
-		loadDesc.materialOverrides = entry.materialOverrides;
-        const std::wstring geometryKey = entry.resolvedModelPath.lexically_normal().wstring();
-        const auto sharedGeometry = geometryPrototypes.find(geometryKey);
-        auto pModel = sharedGeometry == geometryPrototypes.end() ?
-            CModel::Create(m_pDevice, m_pContext, MODEL::NONANIM, loadDesc, mapAssetTransform) :
-            CModel::Create_MaterialVariant(*sharedGeometry->second, loadDesc);
-        const CModel* admittedGeometry = pModel.get();
-		if (nullptr == pModel ||
-			FAILED(CGameInstance::Get().Add_Prototype(
-				iLevelIndex,
-				entry.prototypeTag,
-				std::move(pModel))))
 		{
-			// Preserve the failed asset in session recovery, not only the last counter.
-			{
-				lock_guard<mutex> activeLock(g_ActiveStatusMutex);
-				g_ActiveStatus = "Map " + areaId + ": model prototype failed " +
-					entry.id + " / " + entry.modelRelativePath.generic_string() +
-					" (" + std::to_string(loadedModelCount) + "/" +
-					std::to_string(requiredModelCount) + ")";
-			}
-			const std::wstring detail =
-				L"[Loader][Map] Model failed: " +
-				entry.prototypeTag +
-				L" / " +
-				entry.resolvedModelPath.wstring() +
-				L"\n";
-			OutputDebugStringW(detail.c_str());
-			return E_FAIL;
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Loader.Map.Commit");
+			if (!staged.empty() &&
+				FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
+				return E_FAIL;
+			// Failed model/navigation preparation never publishes a placement stage.
+			if (loadScope.isEnabled)
+				CMapPlacementRuntime::Cache_LoadStage(areaId, loadScope, mapCatalog, scopedPlacements);
 		}
-        if (sharedGeometry == geometryPrototypes.end())
-            geometryPrototypes.emplace(geometryKey, admittedGeometry);
-		++loadedModelCount;
+		return S_OK;
 	}
-	if (loadedModelCount != requiredModelCount)
-		return E_FAIL;
-
-	MAP_NAVIGATION_CONTRACT navigationContract;
-	std::string navigationStatus;
-	Set_Status(TEXT("Map: navigation contract"));
-	if (!CMapNavigationContract::Resolve_Area(
-		areaId,
-		navigationContract,
-		navigationStatus))
+	catch (const std::bad_alloc&)
 	{
-		OutputDebugStringA((
-			"[Loader][Map] " +
-			navigationStatus +
-			"\n").c_str());
+		OutputDebugStringA("[Loader][Map] Map preparation allocation failed.\n");
+		return E_OUTOFMEMORY;
+	}
+	catch (...)
+	{
+		OutputDebugStringA("[Loader][Map] Map preparation failed with an exception.\n");
 		return E_FAIL;
 	}
-
-	if (navigationContract.runtimeGridAvailable)
-	{
-		f32_t maximumStepHeight = 0.f;
-		if (!CMapNavigationContract::Read_RuntimeStepHeight(
-			navigationContract, maximumStepHeight, navigationStatus))
-		{
-			OutputDebugStringA(("[Loader][Map] " + navigationStatus + "\n").c_str());
-			return E_FAIL;
-		}
-		auto pNavigation = CNavigation::Create_NavGrid(
-			m_pDevice,
-			m_pContext,
-			navigationContract.runtimePath.c_str(),
-			maximumStepHeight);
-		if (nullptr == pNavigation ||
-			FAILED(CGameInstance::Get().Add_Prototype(
-				iLevelIndex,
-				navigationContract.prototypeTag,
-				std::move(pNavigation))))
-		{
-			return E_FAIL;
-		}
-	}
-
-	return S_OK;
 }
 
 HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
@@ -1113,22 +1172,17 @@ HRESULT CLoader::Ready_Character_Rendering(
 			characterClass](
 			const size_t completedModelCount,
 			const size_t totalModelCount,
-			const std::string& assetId)
+			const std::string&)
 		{
-			const std::wstring fileName =
-				std::filesystem::path(assetId).filename().wstring();
 			tchar_t status[MAX_PATH]{};
 			_snwprintf_s(
 				status,
 				std::size(status),
 				_TRUNCATE,
-				TEXT("Character %zu/%zu | %s models %zu/%zu | %s"),
+				TEXT("Character %zu/%zu | %s models"),
 				classIndex + 1u,
 				classCount,
-				Get_CharacterClassName(characterClass),
-				completedModelCount,
-				totalModelCount,
-				fileName.c_str());
+				Get_CharacterClassName(characterClass));
 			Set_DeterminateStatus(
 				status, completedModelCount, totalModelCount);
 		};
@@ -1139,7 +1193,8 @@ HRESULT CLoader::Ready_Character_Rendering(
 			characterClass,
 			&m_isCancellationRequested,
 			progress,
-			m_pCharacterAuthoringInput)))
+			m_pCharacterAuthoringInput,
+			&m_AssetPreparationBatch)))
 		{
 			return E_FAIL;
 		}
@@ -1420,6 +1475,7 @@ void CLoader::Free()
 		if (WAIT_TIMEOUT == waitResult)
 		{
 			CancelSynchronousIo(m_hThread);
+			m_AssetPreparationBatch.Cancel_SynchronousIo();
 			waitResult = WaitForSingleObject(m_hThread, 5000);
 			FailFastOnWaitFailure(waitResult);
 		}

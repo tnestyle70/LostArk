@@ -210,6 +210,8 @@ public:
 	void Debug_HoldSequenceCombatFade();
 	void Debug_RetireGateActivation(const std::string& reason);
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
+	// Changes whenever a new gate activation is submitted, including the same gate.
+	std::uint32_t Get_DebugGateGeneration() const { return m_iNextDebugGateRequestSequence; }
 	const string& Get_GatePresentationProfileId() const { return m_strGatePresentationProfileId; }
 	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }

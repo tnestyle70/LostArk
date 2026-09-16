@@ -414,6 +414,9 @@
     <ClCompile Include="..\Private\NavRuntimeBlockerDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\AssetPreparationBatch.cpp">
+      <Filter>01.Levels\05. Loading\Loader</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -1050,6 +1053,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\NavRuntimeBlockerDocument.h">
       <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\AssetPreparationBatch.h">
+      <Filter>01.Levels\05. Loading\Loader</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
