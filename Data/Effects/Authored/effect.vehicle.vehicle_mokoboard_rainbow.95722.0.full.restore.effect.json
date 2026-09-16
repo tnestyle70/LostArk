@@ -438,7 +438,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 32,
           "pointLifeTimeSeconds": 0.5,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,

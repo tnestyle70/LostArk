@@ -356,6 +356,23 @@ masked 재질이 깊이 쓰기 없는 반투명 패스(pass 7, `DSS_ReadOnly`+`B
 Debug Product 빌드 PASS(`out/BuildPipeline/runs/20260916T033530502Z-debug-product.json`, 2064초,
 CSO 7·OBJ 2·binary 1). 이후 변경은 데이터·리소스뿐이라 Client 재시작으로 반영했다.
 
+### 테르페이온 Space와 모델 큐 루트 이동 (2026-09-16)
+
+Space(96030)만 이펙트가 통째로 생략됐다. 세 겹이었고 앞의 하나를 풀 때마다 다음 관문이 드러났다.
+
+| 증상 | 원인(실측) | 조치 | 사용자 확인 |
+|---|---|---|---|
+| Space 이펙트 전체 생략 | portable runtime이 `efparticlemodulekilllength`를 모름. 원본은 `length` 분포 하나(300 UE cm = 3 m)로 생성 지점에서 그만큼 멀어진 파티클을 소멸시킨다 | `PARTICLE_STATE::vSpawnPosition`을 spawn에 기록하고 `KILL_LENGTH` update kind를 기존 `particlemodulekillheight`와 같은 형태로 추가. portable runtime 모듈 52→53, 분포 82→83 등록 | 다음 관문으로 진행 |
+| 〃 (다음 관문) | `Effect Document exceeds the particle, trail, or after-image budget`. trail 6개가 각각 `maxPoints=500`이라 합 3000 > 상한 2048. particle 782는 상한 8192 아래였다 | 원본 `maxparticleintrailcount` 500은 UE3의 **상한**이고 실제 보유 점은 `pointLifeTimeSeconds / sampleIntervalSeconds`(27~39)가 정한다. `min(원본, 필요량+2)`로 투영. `build_kouku_backstep_electric_group.py`의 `ribbon_capacity`와 같은 계산. 96030 3000→202, 98520 1500→153, 95722 500→32 | 이펙트 나옴 |
+| 날개가 말보다 빨리 앞으로 새어 나감 | `npc_sk_dash`가 자체 루트 이동을 갖고, 그게 탈것 이동에 더해진다. 루트 이동이 없는 Q(`victorypose`)·W(`relaxation`)는 정상이었다 | 사용자 지적: 서버가 이동을 거부하면(벽·비보행 셀) 애니메이션만 재생되고 날개만 나간다. 속도를 맞추는 게 아니라 자체 이동을 없애야 한다. 모델 큐에 `suppressHorizontalRootMotionBone='b_root'` 적용 — `CModel::Enable_RootMotionSuppression(bone, 1)`이 루트 본 X/Z를 rest에 고정하고 Y만 애니메이션에 맡긴다 | 잘 작동 |
+
+- 루트 이동 억제는 날개 3개뿐 아니라 아우프슈텐 인형 4개를 포함한 모델 큐 15개 전부에 적용했다.
+  큐별 패치가 아니라 계약이다. 서버 권위 탈것에 붙은 표현은 자기 월드 변위를 가지면 안 된다.
+  수평 루트 이동이 없는 클립에는 무효 연산이며 사용자가 Q/W·인형이 그대로임을 확인했다.
+- trail 축소는 절대 채워지지 않던 여유 용량을 없앤 것이라 화면 변화가 없어야 하고, 사용자가 신화·모코보드 포함 확인했다.
+- Debug Product 빌드 PASS(KillLength CPP, 92초, OBJ 68·CSO 0). trail·루트 이동은 데이터만 바뀌어 Client 재시작으로 반영했다.
+- 실패한 Product target은 같은 catalog revision 동안 fail-closed로 캐시되므로 리소스·문서를 고친 뒤에는 Client를 재시작해야 다시 준비를 시도한다.
+
 ### 하지 않은 확인
 
 - 계획 4절의 "쿠크 `4219801` closure를 같은 resolver로 다시 뽑아 기존 `source_occurrences.json`과 비교"는 이 PC에

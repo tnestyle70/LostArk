@@ -1065,6 +1065,12 @@ def model_cues(evidence, stage, identity):
                 alphaMode='TRANSLUCENT', visible=True,
                 localTransform=copy.deepcopy(local),
                 assetPreTransform=dict(scale=[0.0001] * 3, rotationDegrees=[0, -90, 0]),
+                # The cue rides the vehicle's presentation root, and the Server can
+                # refuse the movement a skill asks for (a wall, a non-walkable cell)
+                # while the action still plays. A clip that carries its own forward
+                # root translation would then leave the vehicle behind, so the root
+                # bone keeps its rest X/Z and only animates vertically.
+                suppressHorizontalRootMotionBone='b_root',
                 material=copy.deepcopy(patch[part['material']]))
             if tracks:
                 cue['materialParameterTracks'] = tracks
@@ -1191,6 +1197,22 @@ def project_documents(evidence, install):
                 if emitter['sourceDurationSeconds'] > 0 and (recipe['emitterDelaySeconds'] +
                         recipe['emitterDurationSeconds'] * recipe['emitterLoopCount']) > timing['lifeTimeSeconds']:
                     recipe['emitterLoopCount'] = 0
+            # Source MaxParticleInTrailCount is an upper bound, not the ribbon's
+            # fill. A point older than the trail lifetime is dropped, so capacity
+            # is what one lifetime of fixed-step samples can hold. Terpeion Space
+            # keeps six 500-point ribbons that never exceed 39, and the document
+            # trail budget rejects their sum. build_kouku_backstep_electric_group
+            # clamps the same way.
+            for element in document['elements']:
+                if element['kind'] != 'trail':
+                    continue
+                trail = element['detail']['trail']
+                native = next((m for m in element['sourceRecipe']['modules']
+                               if m['className'] == 'particlemoduletypedataribbon'), None)
+                source_points = int(next((v['value'] for v in native['literals']
+                    if v['propertyPath'] == 'maxparticleintrailcount'), 0)) if native else 0
+                required = math.ceil(trail['pointLifeTimeSeconds'] / trail['sampleIntervalSeconds']) + 2
+                trail['maxPoints'] = min(source_points, required) if source_points > 0 else required
             document.update(effectAssetId=asset, displayName=f"{catalog[stage['vehicleId']]['archetypeId']} {stage['inputSlot']} {stage['clip']}")
             document.pop('sourceModelPreview', None)
             expanded = []

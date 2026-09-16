@@ -384,7 +384,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 51,
           "pointLifeTimeSeconds": 0.800000011920929,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -1983,7 +1983,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 51,
           "pointLifeTimeSeconds": 0.800000011920929,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -3582,7 +3582,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 51,
           "pointLifeTimeSeconds": 0.800000011920929,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,

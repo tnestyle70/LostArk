@@ -66,6 +66,7 @@
           0
         ]
       },
+      "suppressHorizontalRootMotionBone": "b_root",
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "mn_pmstg_00.mat.mn_pmstg_00-2_aa_mi",

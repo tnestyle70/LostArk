@@ -552,7 +552,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.30000001192092896,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -2361,7 +2361,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.30000001192092896,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,
@@ -6572,7 +6572,7 @@
       "resources": [
         {
           "slotId": "meshModel",
-          "assetId": "Effect/Vehicle/FullRestore/Meshes/fm_i_helix_03.wmodel"
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/fm_i_helix_03.wmodel"
         }
       ],
       "material": {
@@ -8660,7 +8660,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.20000000298023224,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,

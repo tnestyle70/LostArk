@@ -66,6 +66,7 @@
           0
         ]
       },
+      "suppressHorizontalRootMotionBone": "b_root",
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "mn_pmstg_00.mat.mn_pmstg_00-2_aa_mi",
@@ -20591,7 +20592,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 36,
           "pointLifeTimeSeconds": 0.550000011920929,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -22162,7 +22163,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 36,
           "pointLifeTimeSeconds": 0.550000011920929,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -42933,7 +42934,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 32,
           "pointLifeTimeSeconds": 0.5,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -44640,7 +44641,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 32,
           "pointLifeTimeSeconds": 0.5,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -64670,7 +64671,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 39,
           "pointLifeTimeSeconds": 0.6000000238418579,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -64726,7 +64727,7 @@
         "rendererShape": "ribbon",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.5,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -65954,7 +65955,7 @@
           }
         },
         "trail": {
-          "maxPoints": 500,
+          "maxPoints": 27,
           "pointLifeTimeSeconds": 0.4000000059604645,
           "sampleIntervalSeconds": 0.016666666666666666,
           "minimumDistance": 0,
@@ -66010,7 +66011,7 @@
         "rendererShape": "ribbon",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.5,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [
           {
             "timeSeconds": 0.0,

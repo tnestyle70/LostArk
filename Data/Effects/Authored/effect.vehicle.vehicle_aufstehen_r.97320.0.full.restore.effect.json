@@ -66,6 +66,7 @@
           0
         ]
       },
+      "suppressHorizontalRootMotionBone": "b_root",
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "mn_admg_00.mat.sk_admg_00_mi_dead",
@@ -796,6 +797,7 @@
           0
         ]
       },
+      "suppressHorizontalRootMotionBone": "b_root",
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "mn_admg_00.mat.sk_admg_00_hair_mi_dead",
@@ -1421,6 +1423,7 @@
           0
         ]
       },
+      "suppressHorizontalRootMotionBone": "b_root",
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "mn_admg_00.mat.sk_admg_00_mi_dead",
@@ -2151,6 +2154,7 @@
           0
         ]
       },
+      "suppressHorizontalRootMotionBone": "b_root",
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "wp_mn_admg_00.mat.sk_admg_00_mi_dead",
