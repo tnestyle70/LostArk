@@ -1,6 +1,6 @@
 ## 요약
 
-캐릭터 머리 위 이름표·HP바와 채팅 말풍선을 원작 `headstatus.gfx` 배치로 다시 만들고, 칭호 시스템(원작 `honortitle.gfx` 축소 창 + Server 소유 칭호 id)을 추가한다. protocol **84 → 86** — Server와 Client를 같은 커밋으로 함께 빌드·재시작해야 한다. (85는 `feature/combat-analysis` PR이 쓴다. 두 PR이 모두 머지되면 `PacketType.h`의 버전 줄이 충돌하므로 뒤에 머지되는 쪽이 86으로 맞춘다.)
+캐릭터 머리 위 이름표·HP바와 채팅 말풍선을 원작 `headstatus.gfx` 배치로 다시 만들고, 칭호 시스템(원작 `honortitle.gfx` 축소 창 + Server 소유 칭호 id)을 추가한다. protocol **87 → 88** — Server와 Client를 같은 커밋으로 함께 빌드·재시작해야 한다. (09-16 origin/main 리베이스 완료. 충돌 3건: `PacketType.h` 버전 줄, `PlayerController.cpp`·`MainApp.cpp`의 탈것 스킬/전투분석기 추가와 인접한 위치 — 모두 양쪽 유지.)
 
 ## 동작
 
